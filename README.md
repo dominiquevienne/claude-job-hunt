@@ -37,6 +37,7 @@ mode this plugin is built against. See
 - [Install — Linux](#install--linux)
 - [Install — macOS](#install--macos)
 - [Install — Windows](#install--windows)
+- [Updating](#updating)
 - [Check that it works](#check-that-it-works)
 - [Platform support](#platform-support)
 - [First run](#first-run)
@@ -322,6 +323,25 @@ profile — that is fine.
 
 ---
 
+## Updating
+
+**Two commands, in this order.** The first is the one that is easy to miss:
+
+```
+/plugin marketplace update claude-job-hunt
+/plugin update claude-job-hunt
+```
+
+There are two separate caches. The **marketplace clone** is what Claude Code
+reads to learn which versions exist; the **plugin cache** is what is actually
+installed. `/plugin update` compares the installed version against the
+marketplace clone — so while that clone is stale, it reports the version you
+already have, finds nothing newer, and does nothing. Correctly, and silently:
+it looks exactly like a broken plugin.
+
+**Newly installed skills appear after restarting Claude Code** — the skill list
+is read at session start.
+
 ## Check that it works
 
 **The short way — one command**, in the shell Claude Code uses (Git Bash on
@@ -532,6 +552,8 @@ Adding a module for your country is the most useful contribution you can make.
 
 | Symptom | Cause | Fix |
 | :-- | :-- | :-- |
+| `/plugin update` does nothing and the version never changes | The marketplace clone is stale, so there is no newer version to see | Run `/plugin marketplace update claude-job-hunt` **first**, then `/plugin update` |
+| A new skill is installed but not offered | The skill list is read at session start | Restart Claude Code |
 | `ERROR: pandoc not found` / `xelatex not found` | Not installed, or not on the `PATH` of the shell Claude Code uses | Reinstall per your platform above, then open a **new** terminal. On macOS see [Make `xelatex` findable](#3-make-xelatex-findable) |
 | `xelatex` aborts on a font error | Noto Sans missing | Install the family, then `fc-cache -f` on Linux |
 | MiKTeX asks to install a package mid-render | Normal on first use | Allow it; it happens once |
@@ -557,6 +579,10 @@ is worse than no adapter — it fails silently, and the user has no way to tell.
 implementation, no PowerShell fork — the reasoning and the traps are in
 [`shared/portability.md`](shared/portability.md). No new dependency lands
 without its Windows, macOS and Linux install commands.
+
+**Bump the version in `.claude-plugin/plugin.json` for anything users should
+receive.** The plugin cache is keyed by version: merged commits without a bump
+are invisible to `/plugin update`, however many there are.
 
 Issues and pull requests welcome. Two rules:
 
