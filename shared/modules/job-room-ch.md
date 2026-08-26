@@ -57,10 +57,14 @@ Two traps seen in real use:
 - **A remote role with a foreign employer** requires changing the country, which
   turns the postcode/town field into two free-text fields.
 
-Rows in the ledger that reach `applied` carry a job-room marker at the head of
-their `Note` — `` `JR:YYYY-MM-DD` `` once declared, or `` **`JR:missing`** ``
-while it is not. **Never strip that marker** when updating a row: it is how the
-user knows, at a glance, which applications are still undeclared.
+Rows that reach `applied` **or `rejected`** carry a job-room marker at the head
+of their `Note` — `` `JR:YYYY-MM-DD` `` once declared, or `` **`JR:missing`** ``
+while it is not.
+
+**`rejected` is included deliberately.** An application the employer turned down
+still went out, and it is exactly the kind that gets forgotten in a declaration.
+**Never strip that marker** when updating a row: it is how the user sees, at a
+glance, which applications are still undeclared.
 
 ---
 

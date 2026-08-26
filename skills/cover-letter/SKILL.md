@@ -157,7 +157,7 @@ a lead role rather than the hands-on one advertised). **Only continue to step 4
 once the user says so.** Never soften a bad ratio — or a poor range — to make
 the application feel worth writing.
 
-**On a no-go:** update that ad's row to `rejected <YYYY-MM-DD>` with the reason
+**On a no-go:** update that ad's row to `no-go <YYYY-MM-DD>` with the reason
 in `Note` (one short clause — the unmet must-have, the language, the commute,
 the pay). That row is then excluded from future scans, so the reason has to be
 readable later. **Write the step-3b range into `Pay`** as well — especially when
@@ -547,6 +547,13 @@ gave none — then say so in the closing report.
 
 If the ledger predates the `Pay` column, add the column, pad the existing rows
 with `—`, and **tell the user you migrated their file.**
+
+**`no-go` means the application never left**, and it is not the same status as
+`rejected`, which records an application that went out and came back refused.
+Never use one for the other: a count of real applications is `applied` +
+`rejected`, and putting a sent application under `no-go` erases it from every
+such count. When the user later tells you an employer said no, move that row
+from `applied` to `rejected`.
 
 `applied` requires a **confirmed** send: either 8.6 saw the confirmation, or the
 user says they sent it. Otherwise write `todo` with a `dossier generated <date>`

@@ -48,8 +48,9 @@ user has to clean by hand.
 **No ledger file** → create it from `templates/job-pipeline.example.md`.
 
 Then build the **exclusion set**: every `ID` in the ledger whose status is
-`applied`, `rejected` or `discarded`. Those are never proposed again. Rows still
-`todo` stay in the file and get refreshed in place rather than duplicated.
+`applied`, `rejected`, `no-go` or `discarded`. Those are never proposed again.
+Rows still `todo` stay in the file and get refreshed in place rather than
+duplicated.
 
 ## 1 — Load the candidate
 
@@ -150,8 +151,8 @@ estimate — and offer to generate it once, since the same guesses recur every
 week.
 
 When a row already in the ledger breaches the rule, flip it to `discarded` with
-the reason on the next run — but **never rewrite an `applied` or `rejected`
-row**, those record what actually happened.
+the reason on the next run — but **never rewrite an `applied`, `rejected` or
+`no-go` row**, those record what actually happened.
 
 ## 4 — Read the descriptions of the survivors
 

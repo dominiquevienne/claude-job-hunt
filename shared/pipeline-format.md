@@ -15,9 +15,15 @@ proposed again next week.
 Shared file: `job-scan` fills it and uses it to skip ads already seen;
 `cover-letter` reads it and writes the outcome of each application back.
 
-Statuses: `todo` · `applied YYYY-MM-DD` · `rejected YYYY-MM-DD` · `discarded`
-(`rejected` = the candidate decided not to apply; `discarded` = noise or
-out of scope, never proposed again.)
+Statuses: `todo` · `applied YYYY-MM-DD` · `rejected YYYY-MM-DD` ·
+`no-go YYYY-MM-DD` · `discarded`
+
+- `applied` — sent, no answer yet.
+- `rejected` — sent, and **the employer said no**.
+- `no-go` — the candidate decided **not to apply** after the gate.
+- `discarded` — noise or out of scope, never proposed again.
+
+**An application that went out stays countable: `applied` + `rejected`.**
 
 Pay: gross range, full-time equivalent. `(A)` stated in the ad · `(B)` board
 estimate · `(C)` derived · `—` not established.
@@ -74,10 +80,12 @@ column, the log and everything you say to the user follow the user's
 - **Merge, never overwrite.** Keep every existing row, refresh `todo` rows in
   place (age, status, score), append new ones, and sort by match descending
   within each status group.
-- **Never rewrite an `applied` or `rejected` row.** Those record what actually
-  happened. A later scan may add to the note; it may not change the verdict.
+- **Never rewrite an `applied`, `rejected` or `no-go` row.** Those record what
+  actually happened. A later scan may add to the note; it may not change the
+  verdict. The one legitimate transition is `applied` → `rejected`, when the
+  employer's answer arrives.
 - **Build the exclusion set first**, from every row whose status is `applied`,
-  `rejected` or `discarded`. Those ads are never proposed again.
+  `rejected`, `no-go` or `discarded`. Those ads are never proposed again.
 - **Append one `Log` line per run** — date, what was searched, what came back.
 
 ### A ledger written before the `Pay` column existed
@@ -91,6 +99,25 @@ harmless.
 Do not backfill the old rows with derived figures: an application sent in March
 was decided on what was known in March, and a number invented today would read
 as though it had been.
+
+## `rejected` and `no-go` are not the same event, and the difference is load-bearing
+
+Both end the story of an ad, so it is tempting to collapse them. Do not.
+
+A **`rejected`** row is a **real application**: it went out, it counts toward
+the volume the candidate can report, it belongs in any unemployment-office
+evidence, and it documents the market's answer. A **`no-go`** row never left the
+machine.
+
+Collapse them and every count based on "applied" silently loses the
+applications that were turned down — which is precisely the population a
+jobseeker is asked about most often. This is not hypothetical: the distinction
+was added to a real ledger only after an application that had been refused
+stopped appearing in any count, and went undeclared to the unemployment office
+as a result.
+
+So when the user reports an employer's answer, move the row from `applied` to
+`rejected` — never to `no-go`, and never back to `discarded`.
 
 ## Deduplication has a blind spot: the same role, republished
 
