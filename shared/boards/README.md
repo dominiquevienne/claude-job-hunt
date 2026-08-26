@@ -1,0 +1,105 @@
+# Board adapters
+
+`job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
+and each adapter owns one site. Two ship today, both verified against the live
+site.
+
+## Which boards are available
+
+| Board | File | Status |
+| :-- | :-- | :-- |
+| LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
+| jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
+| *your board here* | — | See *Writing an adapter* below |
+
+## Without any adapter, the plugin still works
+
+`cover-letter <ad URL>` needs no adapter and no browser: give it a URL from any
+board on earth — or paste the ad text when the page is gated — and it scores the
+fit, gates on go/no-go, and writes the resume and letter. It is the full
+workflow minus the automatic sweep.
+
+So the answer to *"can it do <board X>?"* is never a flat no. It is: *"not
+automatically yet — give me an ad URL from it and I'll do everything else."*
+
+## Nothing is enabled by default
+
+**An unconfigured workspace scans no board at all.** Scanning drives the user's
+own browser, in their own logged-in session, under their own account — so it
+only ever touches a site they explicitly switched on.
+
+Each board is enabled *and configured* in `config.yml`:
+
+```yaml
+boards:
+  linkedin:
+    enabled: true
+    profile_url: "https://www.linkedin.com/in/adalovelace"
+```
+
+Three states, three different behaviours — never improvise a fourth:
+
+| State | What `job-scan` does |
+| :-- | :-- |
+| No board enabled | Scans nothing. Says so, lists the adapters available, and offers `/job-setup boards` |
+| Enabled but a required setting is empty | Skips that board, names the missing key, and offers to fill it. **Never half-runs** |
+| Enabled and complete | Sweeps it |
+
+A board named in `config.yml` with no adapter file is an error, not a fallback:
+the skill says so and skips it rather than improvising selectors against a site
+nobody has tested. **Guessing at a board's DOM produces a scan that silently
+returns nothing, or worse, returns the wrong ads** — and the user has no way to
+tell.
+
+## What the skill expects from an adapter
+
+The skill is board-agnostic. It asks each adapter for four things and does the
+scoring, the ledger and the reporting itself.
+
+| Contract | What the adapter must document |
+| :-- | :-- |
+| **0. Its config keys** | Everything it needs under `boards.<name>` in `config.yml`, which of those are **required**, and what to ask the user to obtain each one. An adapter that reads an undocumented key is a bug |
+| **1. Prerequisites** | Whether it needs the browser, whether the user must be logged in, and what to say to them before starting |
+| **2. Search** | How to build a search URL from `keywords`, `location`, `posted_within` and `remote_only`; how to extract the result cards; what a card yields (**a stable id**, title, company, location, work mode, posting age) |
+| **3. Description** | How to open one ad and extract its full text |
+| **4. Ad URL** | How to rebuild a canonical ad URL **from the id** — never by scraping a URL out of the page |
+
+Optionally, a fifth: **assisted application**, if the board has an in-site apply
+flow. It must follow the same gate as LinkedIn's — the user validates every
+send, and nothing is reported as sent without a visible confirmation.
+
+The **id is the load-bearing part**. It is the ledger's dedup key, so it must be
+stable across visits and rebuildable into a URL. A board with no stable per-ad
+id needs a documented composite key (company + title + posting date) and a note
+saying it will occasionally miss a duplicate.
+
+## Writing an adapter
+
+Copy the shape of `linkedin.md`. It is not a spec document — it is a field
+report, and that is what makes it useful. Write down:
+
+- the **constraints you hit**, and what happens when you ignore them
+  (virtualized lists, hidden-tab throttling, synthetic clicks that do nothing,
+  endpoints that return an error code instead of data);
+- the **selectors and snippets that actually worked**, verbatim;
+- the **traps**: geocoding that lies, aggregator reposts, stale form fields,
+  anything that produced a wrong result once;
+- what the board does about **rate limiting**, and the pace that stays under it.
+
+Two rules for anything added here:
+
+1. **Only document what you have run against the live site.** An adapter that
+   describes a plausible DOM is worse than no adapter.
+2. **Date what you verified**, and say when a selector was last confirmed.
+   Boards change their markup; a dated note lets the next person tell a broken
+   adapter from a broken assumption.
+
+## Boards without an adapter
+
+The user can still apply to an ad from any board: `cover-letter` takes a URL,
+and falls back to asking for pasted ad text when the page is gated. It is only
+the *scan* — the automated sweep that fills the ledger — that needs an adapter.
+
+So a reasonable answer to "can it do <board X>?" is: *"not automatically yet;
+give me an ad URL from it and I'll do everything else."* Say that, rather than
+attempting a scan that has never worked.

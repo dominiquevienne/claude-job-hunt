@@ -1,0 +1,193 @@
+# Driving LinkedIn through browser automation — hard-won constraints
+
+Read this **before improvising** any LinkedIn automation. Every line below was
+established by trial; ignoring one costs many wasted round-trips, and two of
+them cost a lost application.
+
+Applies to both skills: scanning search results (`job-scan`) and filling an
+Easy Apply form (`cover-letter`).
+
+## Configuration
+
+This adapter runs only when it is switched on in the user's `config.yml`:
+
+```yaml
+boards:
+  linkedin:
+    enabled: true
+    profile_url: "https://www.linkedin.com/in/<handle>"   # required
+```
+
+| Key | Required | How the user gets it |
+| :-- | :-- | :-- |
+| `enabled` | yes | Set by `/job-setup`, or by hand. False or absent → this board is not scanned at all |
+| `profile_url` | yes | Their own LinkedIn profile page URL: open LinkedIn → **Me** → *View profile* → copy the address bar. The handle is the last path segment, and it is what builds the `/details/…` export URLs |
+
+If `enabled` is true and `profile_url` is empty, **skip the board and say which
+key is missing** — offer to fill it there and then. Never sweep with a guessed
+handle.
+
+## Prerequisites — say these out loud before touching the browser
+
+Browser automation here is not a background capability: it needs two things
+from the user, and both fail silently-looking ways if they are missing. **Tell
+the user before you start, not after the first error.**
+
+1. **The Claude extension for Chrome must be installed and connected.** Without
+   it there is no browser at all — the `mcp__claude-in-chrome__*` tools are
+   simply absent or return no connected browser. If you cannot reach a tab,
+   say exactly that: *"this step drives your own Chrome and needs the Claude
+   Chrome extension installed and connected; without it I can still produce
+   your documents, but I cannot open or fill anything for you."* Then continue
+   with everything that does not need a browser rather than stopping the run.
+2. **The user must already be logged in to the site, in that Chrome, before
+   you begin.** This automation works *inside their session* — it does not and
+   must not authenticate on their behalf, and it never handles their password.
+   Ask them to log in first, in as many words, and wait for confirmation:
+   *"open <site> in Chrome and log in, then tell me when you're in — I work in
+   your session and I won't sign in for you."*
+
+If a page comes back showing the logged-out layout, that is the diagnosis:
+name it (*"LinkedIn is showing me the signed-out page"*), give the URL, ask
+the user to sign in, and resume when they confirm. Never try to work around a
+login wall, and never fill a credential field.
+
+## Setup
+
+Load the browser tools in ONE call:
+
+```
+ToolSearch "select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__javascript_tool,mcp__claude-in-chrome__browser_batch,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__form_input,mcp__claude-in-chrome__file_upload,mcp__claude-in-chrome__tabs_create_mcp"
+```
+
+Then `tabs_context_mcp{createIfEmpty:true}` and work in that tab. **This runs in
+the user's own logged-in Chrome** — say so before starting, since it acts under
+their identity. If a page returns the logged-out layout, stop and ask them to
+log in rather than trying to authenticate.
+
+## The constraint table
+
+| Constraint | Consequence |
+| :-- | :-- |
+| The automated tab is `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps **times out the 45 s CDP budget**. Never sleep in page JS — use `computer{action:"wait"}` between steps inside a `browser_batch` |
+| The results list is virtualized **and** the tab is hidden | Only the **first ~7 job cards** ever hydrate. Scrolling the list (window, container, or `scrollIntoView`) does **not** hydrate more. Do not fight it: run **more, narrower searches** instead of trying to read 25 results from one |
+| The job description pane only loads on a **real** mouse click on a card | `element.click()` from JS updates the URL but renders nothing. `/jobs/view/<id>/` standalone renders nothing either. You must `screenshot` → read the card's y-position → `computer{left_click}` at those coordinates |
+| `fetch()` of `/jobs/view/...` or `/jobs-guest/jobs/api/...` | Returns HTTP **999** or an empty body. There is no API shortcut |
+| `localStorage` is unavailable in the injected world | Silently no-ops. Accumulate results in the tool output, not in the page |
+| Returning `location.href` (or anything carrying a query string or cookie) from `javascript_tool` | The whole result is replaced by `[BLOCKED: Cookie/query string data]`. **Never return URLs from page JS** — rebuild them from the job ID |
+| Modal buttons ignore synthetic clicks | Same rule as the cards: `screenshot`, then a real `computer{left_click}` at the coordinates you read off it |
+
+## Pace
+
+Pace it like a human reading job ads: a few dozen page views, not hundreds. Do
+not batch-open every result — the session gets throttled, and the throttle lands
+on the user's real account, not on a scraper.
+
+## Building a search URL
+
+`sortBy=R` is relevance; relevance decays fast, so the top ~7 results are the
+useful ones — which is exactly what hydrates (see the constraint table).
+
+```
+https://www.linkedin.com/jobs/search/?keywords=<terms>&location=<place>&sortBy=R
+   &distance=50          # miles around the location. This is a net, not the commute
+                         # rule: it is measured from the search city as the crow flies,
+                         # so it still returns unreachable ads. The commute filter in
+                         # shared/scoring-rubric.md is what actually discards them.
+   &f_TPR=r2592000       # posted within: r604800 = week, r2592000 = month,
+                         # r7776000 = 3 months. Map from search.posted_within
+   &f_WT=2               # remote only (1 = on-site, 3 = hybrid). Set when the
+                         # query has remote_only: true
+```
+
+Quoting a keyword (`keywords="Laravel"`) matches it strictly — four results
+instead of six hundred of noise. Unquoted keywords are matched very loosely (a
+"PHP" search returns junior Python jobs), so **always sanity-check the titles**.
+
+## The ad id and its URL
+
+The id is `data-occludable-job-id` on the result card. It is the ledger's dedup
+key. Rebuild the canonical URL from it:
+
+```
+https://www.linkedin.com/jobs/view/<ID>/
+```
+
+**Never scrape the URL out of the page** — see the constraint table: returning
+anything with a query string from page JS blocks the whole result.
+
+## Extracting search results
+
+Returns no URLs, so it is never blocked:
+
+```js
+const N=/^(with verification|Viewed|Promoted|Easy Apply|Company review|You.{0,3}d be a top|Applied|Within the past|Actively reviewing|Be an early applicant|Response managed|.*works here|.*alum.*|Reposted)/i;
+JSON.stringify([...document.querySelectorAll('li[data-occludable-job-id]')].map(li=>{
+  const p=li.innerText.split('\n').map(s=>s.trim()).filter(Boolean); const t=p[0];
+  return {i:li.getAttribute('data-occludable-job-id'), s:[t,...p.slice(1).filter(s=>s!==t&&!N.test(s))].join(' · ')};
+}).filter(c=>c.s.length>3))
+```
+
+An `Applied` marker on a card means the user **already applied** — record it as
+such instead of proposing it again.
+
+## Extracting one job description
+
+After a real click on the card, plus `computer{wait:4}`:
+
+```js
+const q=s=>(document.querySelector(s)?.innerText||'').replace(/\s+/g,' ').trim();
+JSON.stringify({
+  t:q('.job-details-jobs-unified-top-card__job-title').slice(0,90),
+  m:q('.job-details-jobs-unified-top-card__primary-description-container').slice(0,140),
+  d:q('#job-details').slice(0,1500)
+})
+```
+
+**Confirm `t` matches the ad you meant to open** — the list re-orders between
+visits, so the card at a given y-coordinate is not stable across navigations.
+
+Several clicks on the same search page chain nicely in one `browser_batch`
+(click → wait → extract, repeated): one screenshot, then 3–6 descriptions.
+
+## The Easy Apply modal may be invisible to the accessibility tree
+
+LinkedIn has been migrating Easy Apply to an SDUI flow (the job link carries
+`openSDUIApplyFlow=true`, and the modal footer reads *Application powered by
+Workable*). In that flow `read_page` and `find` return the underlying job page
+and report **no modal at all**, even though it is plainly on screen.
+
+Do **not** conclude the modal failed to open. Take a `screenshot`, confirm it
+visually, and drive the whole flow by coordinates: `computer{left_click}` on
+fields, `computer{type}` for text, `cmd+a` then `Delete` to clear a field before
+retyping. `form_input` needs a `ref` and is unusable there; so is `file_upload`.
+
+Scrolling in that flow needs care too: the modal has its own scroll container,
+and a `scroll` aimed at its upper half often scrolls the page *behind* it. Aim
+low inside the modal, near its footer, and confirm on the next screenshot that
+the modal content actually moved.
+
+## Click *Easy Apply* exactly once
+
+The button stays visible while the page is still loading, and a second click
+lands *behind* the modal the first one opened — which LinkedIn reads as
+dismissing it, raising a *Save this application? / Discard / Save* prompt. If
+that appears, close it with its **X**: *Discard* throws the application away and
+*Save* closes the modal.
+
+## Never click a file input or an "Upload" button
+
+It opens a native file picker that cannot be seen or controlled, and the session
+hangs. Use `read_page` or `find` to get the input's `ref`, then `file_upload`
+with an absolute path.
+
+When there is no `ref` — the SDUI flow above — **this is a dead end by design,
+not a failure to route around**. Hand it to the user: open the folder so the
+file is one click away, name the exact button and the exact filename, and ask
+them not to advance the form until you resume.
+
+## Never trigger a native dialog
+
+`alert`, `confirm`, `prompt` and browser modals block every subsequent command
+and kill the session. If one appears by accident, tell the user it must be
+dismissed by hand in their browser.

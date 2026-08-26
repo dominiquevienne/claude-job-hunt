@@ -1,0 +1,210 @@
+---
+name: job-scan
+description: Sweep the job boards the user has enabled (LinkedIn, jobup.ch) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
+user-invocable: true
+allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
+---
+
+# Job scan → pipeline ledger
+
+Sweep a job board in the user's logged-in Chrome, score each ad against their
+real profile, and write the results into the **ledger** that the `cover-letter`
+skill reads and updates.
+
+**Shared references — read the ones a step points to, not all of them up front.**
+They live in this plugin, one level above this skill's folder
+(`../../shared/…`, or `${CLAUDE_PLUGIN_ROOT}/shared/…`):
+
+| File | When |
+| :-- | :-- |
+| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported |
+| `shared/workspace.md` | Step 0 — locating and loading the user's data |
+| `shared/setup.md` | Step 0 — only when the workspace is not configured |
+| `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
+| `shared/boards/README.md` | Step 2 — which boards are supported and what an adapter owes the skill |
+| `shared/boards/<board>.md` | Steps 2–4 — the adapter for each board enabled under `boards:` in `config.yml` |
+| `shared/scoring-rubric.md` | Step 5 — scoring, and the commute filter |
+| `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |
+| `shared/modules/*.md` | Step 6 — only those enabled in `config.yml` |
+
+**When a prerequisite is missing at any point, do not stop at saying so.**
+Follow `shared/prerequisites.md`: name what it blocks, give the exact command
+for the user's platform, offer to run it, verify, and fall back gracefully if
+they decline.
+
+## 0 — Load the workspace, then the ledger (always first)
+
+```bash
+JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
+cat "$JOB_HUNT_HOME/job-pipeline.md" 2>/dev/null
+```
+
+**No `config.yml` → this is a first run.** Say so in one line, then follow
+`shared/setup.md` in full before scanning anything. Do not improvise a profile
+and do not scan with defaults: a scan built on guesses produces a ledger the
+user has to clean by hand.
+
+**No ledger file** → create it from `templates/job-pipeline.example.md`.
+
+Then build the **exclusion set**: every `ID` in the ledger whose status is
+`applied`, `rejected` or `discarded`. Those are never proposed again. Rows still
+`todo` stay in the file and get refreshed in place rather than duplicated.
+
+## 1 — Load the candidate
+
+```bash
+# -l 3 = first 3 pages. Do not pipe into `head`: it is the same SIGPIPE trap
+# that silently truncated sync-sources.sh, and page count is what you want here.
+for f in "$JOB_HUNT_HOME"/profile/*.pdf; do pdftotext -layout -l 3 "$f" -; done
+cat "$JOB_HUNT_HOME/candidate.md"
+cat "$JOB_HUNT_HOME/repos.md" 2>/dev/null
+cat "$JOB_HUNT_HOME/commute.md" 2>/dev/null
+```
+
+What matters for scoring: core stack, seniority, leadership history, working
+languages, and home base. `candidate.md` also carries the **hard blockers** and
+the current **search posture** — read them before deciding what counts as a good
+ad, not afterwards.
+
+Home base and the commute limit come from `config.yml` (`location.home_base`,
+`location.max_commute_minutes`). Every distance in this skill is measured from
+there.
+
+## 2 — Resolve the boards, then set up the browser
+
+`config.yml` → `boards` says which job boards may be swept. **Nothing is
+enabled by default and an unconfigured workspace scans nothing** — scanning
+drives the user's own browser under their own account, so it only ever touches
+a site they explicitly switched on.
+
+**No board enabled → do not scan anything.** Say so in one line, list the
+adapters that exist (`shared/boards/`), say what each needs, and offer to
+enable one now (`/job-setup boards`). Do not pick a default, and do not scan
+"just LinkedIn since it's the common one".
+
+Then give the user the route that works right now, because there is one:
+*"you can also just hand me an ad URL from any board — `/cover-letter <URL>` —
+and I'll score it and write the documents without any of this."* Never leave
+them at a dead end because a board is not configured.
+
+For each board that *is* enabled, read its adapter — `shared/boards/<board>.md`
+— **before the first browser call.** The adapter owns its config keys, the URL
+recipe, the card extraction, the description reading and the ad-URL rebuild;
+this skill owns the scoring, the ledger and the reporting.
+
+- **Enabled but a required setting is empty** → skip that board, name the
+  missing key, say how to obtain it, and offer to fill it now. **Never
+  half-run** a board on a guessed value.
+- **Enabled with no adapter file** → skip it and say so plainly: *"there is no
+  adapter for <board> yet, so I can't sweep it automatically — give me an ad
+  URL from it and `cover-letter` will do the rest."* Guessing at an untested
+  site's markup returns nothing, or the wrong ads, with no way for the user to
+  tell. See `shared/boards/README.md`.
+
+Then the adapter's **prerequisites block**, which is not optional: the user must
+be told that this drives their own Chrome, that it needs the Claude Chrome
+extension installed and connected, and that they must be logged in to the board
+themselves first. If the extension is absent, follow `shared/prerequisites.md`
+— help them install it, and offer the no-browser route meanwhile.
+
+The adapter's constraint table is the difference between a scan that works and
+forty wasted round-trips. Read it; do not improvise around it.
+
+## 3 — Run the searches
+
+Take the sweep from `config.yml` → `search.queries`. Each entry becomes one
+search on each configured board, built with that adapter's URL recipe from
+`keywords`, `location`, `posted_within` and `remote_only`.
+
+Quoting a keyword (`keywords: '"Laravel"'`) makes most boards match it strictly
+— four results instead of six hundred of noise. Unquoted keywords are matched
+very loosely, so **always sanity-check the titles**.
+
+For each search: `navigate` → wait → extract the cards with the adapter's
+snippet.
+
+If the user asked for a different perimeter than the configured one, use theirs
+for this run — and offer to save it into `config.yml` if they want it to stick.
+
+### Filter out the noise before spending clicks
+
+Record as `discarded`, **with the reason**, so they are never re-proposed (the
+full list is in `shared/pipeline-format.md`):
+
+- Aggregators and repost farms, plus anything in `search.blocklist`.
+- Ads whose stack is explicitly foreign to the candidate.
+- Anything breaching the commute filter below.
+- Anything already in the exclusion set from step 0.
+
+### The commute filter
+
+**An ad requiring physical presence further than `max_commute_minutes` from the
+home base is discarded, whatever its score.** Apply it *before* spending clicks
+on the description — the card already carries the location and the work mode.
+The full rule, including how hybrid and remote-with-distant-HQ are treated and
+the two traps that catch everyone, is in `shared/scoring-rubric.md`.
+
+Use `commute.md` for travel times rather than guessing. If it does not exist,
+estimate — and offer to generate it once, since the same guesses recur every
+week.
+
+When a row already in the ledger breaches the rule, flip it to `discarded` with
+the reason on the next run — but **never rewrite an `applied` or `rejected`
+row**, those record what actually happened.
+
+## 4 — Read the descriptions of the survivors
+
+The description is only readable through a **real click** on the card — see
+`shared/boards/linkedin.md` for the click-by-coordinates procedure and the
+extraction snippet. Several clicks on one search page chain in a single
+`browser_batch`: one screenshot, then three to six descriptions.
+
+Confirm the extracted title matches the ad you meant to open; the list re-orders
+between visits.
+
+## 5 — Score each ad
+
+Use `shared/scoring-rubric.md` — the **same rubric the `cover-letter` skill
+uses**, so the numbers stay comparable end to end.
+
+Mark a score **provisional (`~`)** when it comes from the card only, because the
+description was not opened. Never present a provisional score as if the ad had
+been read.
+
+## 6 — Write the ledger
+
+Merge, don't overwrite — the rules are in `shared/pipeline-format.md`. Keep
+every existing row, refresh `todo` rows in place, append the new ones, sort by
+match descending within each status group, and append one `Log` line.
+
+**The `Pay` column: record only what the board published.** Some boards attach a
+figure to the ad — jobup does — and when the adapter extracts one, put it in
+`Pay` with its tier letter (`(A)` if it is the employer's own range, `(B)` if it
+is the board's estimate). **Never derive a figure here:** estimating per ad
+across a whole sweep is expensive and would fill the ledger with
+low-confidence numbers wearing the same clothes as real ones. Leave `—`;
+`cover-letter` fills it properly at step 3b when the user picks the ad.
+
+If a module is enabled in `config.yml` (`modules.unemployment_declaration`),
+read `shared/modules/<name>.md` and honour what it asks of the ledger — some
+modules add a marker to the `Note` column that must never be stripped.
+
+Then report: how many ads were scanned, how many are new, the top matches with
+their scores, and **what was discarded and why**. The discards matter — they are
+what the user does not have to look at again.
+
+**Then the accounting, per `shared/never-fail-silently.md`.** Give the counts as
+*n of m*, never as a bare total: searches run of searches planned, descriptions
+read of ads shortlisted, boards swept of boards enabled. Close with the "not
+done this run" block whenever anything was skipped, capped or scored
+provisionally — a board skipped for a missing key, a search cut short by
+throttling, ads scored from the card alone. **A run that ends with nothing new
+still owes the user the zero and the reason for it.**
+
+## 7 — Hand off to `cover-letter`
+
+Propose the top `todo` rows in match order. When the user picks one, invoke the
+`cover-letter` skill with the ad URL rebuilt from the `ID`; it re-scores the ad
+in depth, gates on go/no-go, and writes the resulting status back into the
+ledger.

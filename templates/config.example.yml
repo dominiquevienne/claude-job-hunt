@@ -1,0 +1,141 @@
+# claude-job-hunt — user configuration
+#
+# Lives in your workspace, NOT in the plugin:
+#   $JOB_HUNT_HOME/config.yml     (default: ~/Documents/job_applications/config.yml)
+#
+# Normally written for you by `/job-setup`. Editing it by hand is fine and
+# supported — every value below is documented, and the skills re-read the file
+# on every run. Run `/job-setup` again to change it conversationally.
+#
+# The example values describe a fictional person. Replace all of them.
+
+version: 1
+
+candidate:
+  # Your full name, as it should appear on the documents.
+  name: "Ada Lovelace"
+  # Used to build the output filenames: <family>_<given>_<Company>.pdf
+  # e.g. Lovelace_Ada_Acme.pdf and Lovelace_Ada_Acme_CoverLetter.pdf
+  family_name: "Lovelace"
+  given_name: "Ada"
+  # Your public LinkedIn profile URL. Used to refresh the exports and, where
+  # readable, as a supplementary source. Leave empty if you have no LinkedIn.
+  linkedin: "https://www.linkedin.com/in/adalovelace"
+
+location:
+  # Where every commute is measured FROM. Be precise — town plus region — so
+  # travel times can be estimated: "Bristol, England" not "UK".
+  home_base: "Bristol, England"
+  # Longest one-way commute you accept, in minutes. An ad requiring regular
+  # physical presence beyond this is discarded whatever its score.
+  # Set to 0 if you will only consider fully remote work.
+  max_commute_minutes: 90
+  # Which work modes you accept: on-site, hybrid, remote. Remove what you
+  # will not consider — a removed mode is filtered out before scoring.
+  work_modes: [remote, hybrid, on-site]
+  # Location strings used in job-board searches, most specific first. These
+  # are what the board itself understands, so use its own spelling.
+  search_locations:
+    - "Bristol, England, United Kingdom"
+    - "United Kingdom"
+
+languages:
+  # Languages you can genuinely work in — write, interview, negotiate.
+  # An ad requiring a language that is not on this list scores 0 on that
+  # requirement, and it is treated as a hard blocker, not a gap.
+  working: ["English", "French"]
+  # Languages you understand but cannot work in professionally. Listed so the
+  # scoring never mistakes them for working proficiency, and so they are kept
+  # out of your resume. Delete the key if it does not apply.
+  passive: ["German (A2, not professional)"]
+  # Language of the conversation and of anything not dictated by the ad.
+  # The resume and cover letter always follow the LANGUAGE OF THE AD instead.
+  interface: "en"
+
+boards:
+  # WHICH JOB BOARDS job-scan MAY SWEEP.
+  #
+  # Nothing is enabled by default, and an unconfigured setup scans NOTHING.
+  # This is deliberate: scanning drives your own browser, inside your own
+  # logged-in session, under your own account — so it never touches a site you
+  # did not explicitly switch on.
+  #
+  # Enable a board by setting `enabled: true` AND filling the settings it
+  # needs. A board that is enabled but incomplete is skipped with a message
+  # saying which value is missing; it is never half-run.
+  #
+  # Only boards with an adapter in shared/boards/ can be enabled. Ask
+  # /job-setup which ones exist, or read shared/boards/README.md.
+  linkedin:
+    enabled: false
+    # Your own public profile URL. Used to rebuild the detail-page URLs the
+    # setup asks you to print, and as a supplementary source where readable.
+    profile_url: ""
+    # You must be logged in to LinkedIn, yourself, in the Chrome the Claude
+    # extension is connected to. The plugin never signs in for you.
+
+  jobup:
+    # jobup.ch — French-speaking Switzerland. Scanning needs NO login.
+    enabled: false
+    language: "fr"
+
+search:
+  # The sweep job-scan runs on each enabled board. /job-setup proposes these
+  # from your own profile; tune them freely. One entry = one search. Quoting a
+  # keyword makes most boards match it strictly, which cuts enormous noise.
+  queries:
+    - keywords: '"Laravel"'
+      location: "United Kingdom"
+    - keywords: 'Laravel OR Symfony'
+      location: "Bristol, England, United Kingdom"
+    - keywords: '"Senior Software Engineer"'
+      location: "Bristol, England, United Kingdom"
+    - keywords: 'PHP OR Laravel'
+      location: "United Kingdom"
+      remote_only: true
+  # How far back to look: week | month | quarter
+  posted_within: "month"
+  # Companies to always discard on sight — aggregators, reposting farms, and
+  # anyone you never want to see again. Matched case-insensitively on the
+  # company name. /job-setup seeds this with known aggregators.
+  blocklist: []
+
+thresholds:
+  # Minimum fit score (percent) worth applying to. Below it, the skill
+  # recommends against applying — you can still override at the gate.
+  # 55 is a deliberate, "apply broadly" setting; 70 is selective.
+  apply_from: 55
+
+compensation:
+  # At the go/no-go gate, cover-letter estimates what the role pays and where
+  # you would land in that range, given your fit and your record.
+  #
+  # It is always a RANGE with its source and its basis — the ad's own figure
+  # when there is one, the board's estimate when there is one, otherwise a
+  # reasoned estimate that says so. It never goes into your resume or letter,
+  # and it never fills a salary field on a form: that number stays yours.
+  estimate: true
+  # Currency to report in. Ads in another currency are reported in theirs, with
+  # an indicative conversion.
+  currency: "GBP"
+  # Optional. A figure below your floor is flagged once, plainly — it is not
+  # turned into a recommendation against applying, because circumstances decide
+  # that, not a number. Leave empty if you would rather not set one.
+  floor: null
+  target: null
+
+documents:
+  # Page budget for the resume. "strict" = one page, trim to fit.
+  # "generous" = up to 3 pages, never sacrifice content for pagination.
+  resume_length: "generous"
+  # Optional handwritten signature on the cover letter. Put the image at
+  # $JOB_HUNT_HOME/signature.png (see make-signature.sh) — if the file is
+  # absent, the letter simply leaves blank space to sign by hand.
+  signature_height_cm: 2.2
+
+modules:
+  # Optional country-specific add-ons. See shared/modules/ in the plugin.
+  #   none         — no unemployment-office paperwork
+  #   job-room-ch  — Switzerland: capture the fields the ORP "preuve de
+  #                  recherche d'emploi" (PRE) form on job-room.ch requires
+  unemployment_declaration: "none"

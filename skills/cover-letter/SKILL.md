@@ -1,0 +1,603 @@
+---
+name: cover-letter
+description: Draft a tailored cover letter and a matching ATS-compliant resume for a specific job ad, after scoring the fit and estimating what the role pays for this candidate. Input is the job-ad URL; with no URL, it picks the highest-scoring `todo` ad from the pipeline ledger that job-scan maintains. The user's own profile documents are the source of truth — nothing is invented. Outputs markdown + PDF into a per-application folder, and can optionally fill a LinkedIn Easy Apply form in the user's own Chrome (the user always validates the send). Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "draft a cover letter for <URL>", "apply to this job <URL>", "tailor my resume for <URL>", or invokes it with no argument to take the next pending ad.
+user-invocable: true
+allowed-tools: Bash(*), Read, WebFetch, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
+---
+
+# Tailored cover letter + resume
+
+Given a **job-ad URL**, produce a tailored **cover letter** and a concise
+**resume**, both in the **language of the job ad**, as markdown **and** PDF,
+saved into a per-application folder.
+
+**The user's real history is the source of truth — never fabricate.** Do not
+invent employers, job titles, dates, skills, tools or certifications that are
+not in the record. If the ad requires something the user lacks, leave it out of
+the documents and flag the gap to them at the end.
+
+**Shared references** — in this plugin, one level above this skill's folder
+(`../../shared/…`, or `${CLAUDE_PLUGIN_ROOT}/shared/…`):
+
+| File | When |
+| :-- | :-- |
+| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported |
+| `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
+| `shared/workspace.md` | Step 0 — locating and loading the user's data |
+| `shared/setup.md` | Step 0 — only when the workspace is not configured |
+| `shared/scoring-rubric.md` | Step 3 — the go/no-go score |
+| `shared/salary-estimate.md` | Step 3b — the compensation range, and where it must never go |
+| `shared/pipeline-format.md` | Steps 1, 4 and 9 — the ledger |
+| `shared/boards/linkedin.md` | Step 8 — before touching the browser |
+| `shared/modules/*.md` | Step 4 — only those enabled in `config.yml` |
+
+## 0 — Load the workspace
+
+```bash
+JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
+```
+
+**No `config.yml` → first run.** Say so in one line, then follow
+`shared/setup.md` in full before drafting anything. A resume written from
+guesses is worse than no resume.
+
+## Inputs & sources
+
+Everything the documents may claim comes from the workspace — see
+`shared/workspace.md` for the precedence rules:
+
+- **`profile/`** — the user's own exports or CV. The factual record.
+- **`candidate.md`** — contact block, target role families, hard blockers,
+  standing resume content, and corrections that override a stale export. Read
+  it in full, every run. It is authoritative for the YAML headers of both
+  documents: never re-derive the contact line from the PDFs when it exists.
+- **`repos.md`** (optional) — technologies verified in the user's own
+  repositories, with their real depth and an explicit "never claim these" list.
+  Exports systematically *understate* the stack, so when this file exists it is
+  **not** optional reading. A skill may be claimed when it appears in the
+  exports **or** is documented here — and **at the strength stated there, never
+  above it**.
+- **`job-pipeline.md`** — the ledger (`shared/pipeline-format.md`). Read at the
+  start, written back at the end. If it does not exist, skip the lookup and
+  don't write a status; creating the ledger is `job-scan`'s job.
+
+**Refreshing the exports.** When the user says they have updated their profile,
+run `sync-sources.sh "<Full Name>" "$JOB_HUNT_HOME/profile"` (this skill's
+folder). If a needed document is missing from `profile/`, offer to run it — and
+if the source is missing too, give the exact export procedure from
+`shared/setup.md` step 1 rather than a vague "please export your profile".
+
+## 1 — Parse the job ad
+
+**No URL given → take the next pending ad from the ledger.** Do not stop and
+ask which one. Read `job-pipeline.md`, pick the **highest-`Match` row whose
+status is `todo`** (ties go to the more recently posted ad), rebuild its URL
+from the `ID`, say in one line which ad you picked and why, and carry on. The
+go/no-go gate in step 3 is where the user gets their say.
+
+A provisional score (`~`) still counts for ranking; step 3 replaces it either
+way. If **no** row is `todo`, say so, report how many ads are in the file and
+when the last scan ran, and offer to run `job-scan` rather than inventing a
+target.
+
+When a URL **is** given, use it and ignore the ranking. **Any URL works** — this
+skill needs no board adapter and no browser. It is the route for every board on
+earth, including the ones `job-scan` cannot sweep.
+
+**If the URL is from a board with no adapter** in `shared/boards/`, note it and
+invoke the `board-request` skill *in the background of your reasoning* — it
+decides whether the site is really a board and, if so, records what an adapter
+would need. Do this **without interrupting the application**: mention it in one
+clause at the end, never as a question in the middle. A user who asked for a
+cover letter did not ask to file a feature request.
+
+Then, in both cases: WebFetch the URL and extract **company**, **role**,
+**location**, **language of the ad**, key **responsibilities**, **required
+skills**, and any **must-haves**. LinkedIn URLs may 301 to a country host — if
+WebFetch reports a cross-host redirect, call it again with the redirect URL. If
+the page is gated or empty, ask the user to paste the ad text.
+
+Set **`LANG`** = the ad's language. Everything in the candidate-facing documents
+is written in `LANG`, whatever `languages.interface` says.
+
+## 2 — Load the candidate
+
+1. `candidate.md` — the contact block and the standing rules.
+2. The documents in `profile/`. **If the main profile document is missing**, run
+   `sync-sources.sh`; if it is still missing, stop and give the export procedure
+   from `shared/setup.md`.
+3. `repos.md`, if it exists.
+
+## 3 — Score the fit, then STOP for a go/no-go
+
+**Do not draft anything before this gate.** Writing a tailored application for a
+job the user cannot plausibly get wastes their time and their credibility — the
+honest answer is sometimes "don't apply".
+
+Score with `shared/scoring-rubric.md`. Then report, **before drafting**:
+
+1. The **ratio**, with its band label.
+2. **Two or three sentences** on why — the genuine matches, then the blockers,
+   naming the specific unmet must-haves.
+3. A clear **recommendation** (apply / apply with caveats / don't apply),
+   measured against the user's own `thresholds.apply_from`.
+
+## 3b — Estimate what it pays, for this candidate
+
+Part of the same gate, reported in the same breath as the ratio: an evening
+spent on an application is spent on the money too, and finding out at the offer
+stage is finding out too late.
+
+Follow `shared/salary-estimate.md`. In short: work down its three tiers —
+**stated in the ad**, **published by the board**, then **derived** — and say
+which one you used. Give a **range, never a point figure**, with its basis in
+one line (gross, period, instalments, workload, currency, what is excluded).
+Then place the candidate inside that range using the fit ratio you just
+computed and what the record shows beyond the ad's asks.
+
+**When you are reasoning from general market knowledge rather than a source you
+checked, say so in those words and widen the range.** Never cite a report you
+did not read — a plausible figure with a fabricated source is the single most
+damaging thing this skill can produce.
+
+If the market or the role is one you cannot credibly assess, **say that and
+give no number.** An empty space is a valid answer; a range invented to fill it
+is not. Either way it is reported, per `shared/never-fail-silently.md`.
+
+Three lines at the gate, next to the ratio — not instead of it. Flag it only
+when it is decision-relevant: below the user's `compensation.floor`, a foreign
+employer whose social-security system changes take-home and entitlements, or an
+agency posting whose advertised range is the agency's rather than the client's
+budget.
+
+Then ask whether to continue, with `AskUserQuestion`. Offer: proceed anyway,
+stop, and — where it makes sense — an angle that would change the framing (pitch
+a lead role rather than the hands-on one advertised). **Only continue to step 4
+once the user says so.** Never soften a bad ratio — or a poor range — to make
+the application feel worth writing.
+
+**On a no-go:** update that ad's row to `rejected <YYYY-MM-DD>` with the reason
+in `Note` (one short clause — the unmet must-have, the language, the commute,
+the pay). That row is then excluded from future scans, so the reason has to be
+readable later. **Write the step-3b range into `Pay`** as well — especially when
+money is why the user said no, since that is the row they will want to find
+again if the company reposts at a better figure. Append a row if the ad was not
+in the file. Then stop.
+
+## 4 — Create the application folder
+
+**First: check for a same-company duplicate. This is not optional.**
+
+```bash
+grep -n "<Company>" "$JOB_HUNT_HOME/job-pipeline.md"
+```
+
+The ledger is deduplicated by job id, but **the same role republished per
+country carries a different id** — the id check will not catch it. If a row
+exists for the same company **and a comparable role**, stop and tell the user;
+mark the new id `discarded` with the duplicate reason. Only proceed if they
+confirm it is genuinely a different position.
+
+**Never write into a directory that already exists** without checking what is in
+it. If `Write` reports *updated* rather than *created*, an earlier dossier is
+being overwritten — stop and resolve it.
+
+Then sanitize `<Company>` and `<Role>` (letters, digits, dashes; spaces to
+dashes) and **prefix the folder with today's date**:
+
+```
+$JOB_HUNT_HOME/<YYYYMMDD>_<Company>-<Role>/
+```
+
+Take the date from the environment, not from the ad's publication date — it
+records when the dossier was produced.
+
+**Why the prefix.** Every application reuses the same two output filenames, so
+with a dozen folders the PDFs are indistinguishable outside their directory —
+and the real risk is attaching the wrong CV to an application. The date prefix
+sorts them chronologically and identifies each dossier unambiguously, while the
+filenames themselves stay clean and ATS-neutral.
+
+Write the parsed ad to `job-ad.md` there (title, company, location, link,
+requirements, responsibilities) so the dossier is self-documenting.
+
+Add a **`## Compensation`** section carrying step 3b's range with its tier, its
+basis and today's date. That is what makes it re-readable in three weeks, when
+an interview reaches the money conversation and the user needs to remember where
+the number came from — and whether it was a figure the employer published or one
+you derived.
+
+**If a module is enabled** in `config.yml` (`modules.unemployment_declaration`),
+read `shared/modules/<name>.md` now and capture what it asks for **while the ad
+is still open** — that is the whole point of doing it here rather than weeks
+later.
+
+## 5 — Draft the resume (`resume.md`) — tailored, ATS-compliant
+
+Strictly truthful, reordered to foreground what THIS ad wants. Length follows
+`documents.resume_length` in `config.yml`. `render.sh` styles it via
+`resume-template.tex`.
+
+**ATS compliance is mandatory** — the resume must parse cleanly in applicant
+tracking systems:
+
+- **Single column, linear top-to-bottom flow.** No tables, no multi-column
+  layouts, no text boxes, no sidebars — parsers read left-to-right, top-to-
+  bottom and scramble columns.
+- **Standard section headings** the parser recognises, in `LANG`. EN: `Summary`
+  / `Experience` / `Skills` / `Education` / `Certifications` / `Languages`.
+  FR: `Profil` / `Expérience professionnelle` / `Compétences` / `Formation` /
+  `Certifications` / `Langues`. Avoid creative section names.
+- **No graphics, icons, logos, photos, charts or rating bars.** Skill levels are
+  words, not dots or progress bars.
+- **Plain bullets (`-`) and plain text only.** No emoji, no decorative glyphs.
+- **Contact details in the body**, not in a page header or footer — parsers
+  routinely drop those.
+- **Spell out then abbreviate** key terms so both forms are searchable, e.g.
+  "Continuous Integration (CI/CD)", "Amazon Web Services (AWS)". Mirror the
+  ad's exact keywords wherever they are genuinely true of the user — ATS ranks
+  on keyword match.
+- **Standard, consistent date format** (`MM/YYYY – MM/YYYY`), `present` for
+  current roles.
+- **Selectable text** — the pandoc/xelatex pipeline already emits real text.
+  Never embed the content as an image.
+- Keep job titles, employers and dates on their own clearly-labelled lines so
+  the parser can map role → employer → dates.
+
+Structure — name, title and contact go in a **YAML metadata block** (the
+template renders the header from them), then the body:
+
+```markdown
+---
+name: "<Full name>"
+jobtitle: "<Target title> · <secondary> · <tertiary>"
+contact: "<email>  ·  <phone>  ·  <city, country>  ·  <linkedin>  ·  <github>"
+---
+
+## Summary
+
+<2–3 lines rewritten to mirror the ad's role and top requirements, using only
+real strengths. Weave in the ad's key keywords where truthful.>
+
+## Skills
+
+- **<Group>:** <skills the ad asks for that the user genuinely has, first>
+
+## Experience
+
+### <Role> — <Company>
+*<City> · MM/YYYY – MM/YYYY*
+
+- <achievement-oriented bullet, chosen for relevance to the ad>
+
+### <next role...>
+```
+
+Draw on **both** the exports and `repos.md` — omitting what only `repos.md`
+records silently under-sells the user. Mirror its **depth wording**: label
+prototype-level work as such rather than implying production depth, and give a
+`repos.md` project its own `## Projects` entry when the ad makes it relevant.
+
+**Formatting rules the template depends on:**
+
+- The city/date line is a single `*italic*` line.
+- **Always leave a blank line between the `*meta*` line and the bullet list**,
+  and after each `## heading`. Without it, pandoc folds the bullets into the
+  meta paragraph and they render as literal `-` characters.
+- Order roles by recency; give the most relevant one or two bullets each. Fold
+  the oldest roles into a single italic "Earlier experience (YYYY–YYYY) — …".
+- **Never alter titles, employers or dates.**
+
+End with `## Certifications` (real ones, ad-relevant first), `## Education` and
+`## Languages` — **working languages only**; a language listed as passive in
+`config.yml` never appears here.
+
+Apply anything `candidate.md` records under *standing resume content*.
+
+## 6 — Draft the cover letter (`cover-letter.md`)
+
+Tailored prose in `LANG`, ~250–400 words, honest and specific. Same YAML header
+as the resume (rendered by `letter-template.tex`).
+
+```markdown
+---
+name: "<Full name>"
+jobtitle: "<Target title> · <secondary> · <tertiary>"
+contact: "<email>  ·  <phone>  ·  <city, country>  ·  <linkedin>"
+---
+
+\hfill <City>, <today's date in LANG's convention>
+
+**<Company>**\
+<Recipient, or the HR department if unknown>\
+<Company city>
+
+**<Subject line: application for <Role>>**
+
+<Salutation appropriate to LANG.>
+
+<Opening: state the role and a genuine hook — what draws the user to this
+company and this role.>
+
+<Body 1: map two or three of their REAL, most relevant experiences directly to
+the ad's key requirements. Be concrete — only what is true.>
+
+<Body 2: why this company specifically, and the value they bring.>
+
+<Closing: availability, interview interest, courteous sign-off.>
+
+\vspace{45pt}
+
+\hfill <Full name>\hspace{1.5cm}
+```
+
+**Formatting notes:** `\hfill` before the date and the signature right-aligns
+them; the trailing `\hspace{1.5cm}` keeps the name off the right margin; the
+`\vspace{45pt}` leaves room to sign by hand. End recipient-block lines with a
+trailing `\` to force line breaks.
+
+**Signature.** If `$JOB_HUNT_HOME/signature.png` exists, replace the `\vspace`
+placeholder with the `\includegraphics` block documented in `candidate.md`,
+sized by **height** (the image is near-square; a width-based include blows it
+out of proportion). If there is no signature file, keep the `\vspace` — a letter
+signed by hand after printing is entirely normal.
+
+**No figure of any kind goes in the letter** — not the step 3b estimate, not the
+user's expectation, not a rate. That number is theirs to disclose at a moment of
+their choosing, and a letter that opens with a price has made the choice for
+them. The only exception is an ad that explicitly *requires* a salary
+expectation in the application, and then you ask the user for the figure and use
+theirs.
+
+Do not claim skills the user does not have; if the ad wants X and they lack it,
+omit it or honestly frame adjacent experience — never assert a false
+proficiency. `repos.md` is fair game for concrete proof points, but **respect
+its confidentiality notes**: work under NDA is described at architecture level
+only, with no endpoints, internal names or ticket references.
+
+## 7 — Render to PDF
+
+```bash
+./render.sh <folder>/resume.md       <folder>/<Family>_<Given>_<Company>.pdf
+./render.sh <folder>/cover-letter.md <folder>/<Family>_<Given>_<Company>_CoverLetter.pdf letter
+```
+
+(`render.sh` sits in this skill's folder; the name parts come from
+`config.yml` → `candidate`.) It uses pandoc + xelatex and opens each PDF when
+it is done. If it reports a missing tool it prints the install command for the
+platform — relay it and re-render; the markdown is already saved.
+
+**Always check the page count** — `pdfinfo <file>.pdf | grep Pages`. Do not
+trust Spotlight metadata (`mdls`): it serves a stale cache and reports the
+*previous* render's count.
+
+- **The letter must be exactly one page.** It overflows easily: at ~400 words
+  the signature block, or just the typed name, spills alone onto page 2, which
+  looks like a mistake. **Fix it by cutting the body**, 40–60 words, not by
+  shrinking the signature or tightening `\vspace`. ~360 words is a reliable
+  ceiling with a 2.2 cm signature. Verify with `pdftotext -f 2 -l 2 <file> -` —
+  if page 2 exists at all, trim.
+- **The resume follows `documents.resume_length`.** On `generous`, never trim
+  substance for pagination; fix only genuine layout faults (orphan headings,
+  split entries).
+
+**Never post-process with Ghostscript.** `-dPDFSETTINGS=/ebook` shrinks a letter
+from 169 kB to 22 kB, but it re-encodes the fonts and loses the ToUnicode
+mapping for ligatures: the page looks identical while the extracted text
+silently rots ("qualifications" → "quali cations"). For an ATS-parsed CV that is
+fatal. If a PDF is heavy, the cause is almost always an oversized signature
+image, not the text.
+
+## 8 — Assisted Easy Apply (optional, LinkedIn only)
+
+**Only on the user's explicit request** — "apply", "send it", "do the Easy
+Apply". Never start this on your own: generating the dossier is the default end
+of the skill.
+
+This fills the LinkedIn **Easy Apply** form in the user's own Chrome. **You
+never submit it alone** — the final send is gated on the user.
+
+**Applies to LinkedIn Easy Apply only.** If the ad's button says *Apply* rather
+than *Easy Apply*, it redirects to an external ATS (Workday, Greenhouse,
+SmartRecruiters, Taleo…): those need an account, ask bespoke questions and often
+gate on a captcha. **Do not attempt them** — open the URL, say which ATS it is,
+and say which files to attach.
+
+### 8.1 — Prerequisites and setup
+
+Read `shared/boards/linkedin.md` first. Its prerequisites are not optional:
+tell the user that this drives **their own Chrome**, that it requires the
+**Claude Chrome extension** installed and connected, and that they must be
+**logged in to LinkedIn themselves** before you begin — you work inside their
+session and never sign in for them.
+
+Then `tabs_context_mcp{createIfEmpty:true}`, navigate to the job URL,
+`computer{wait:4}`, `screenshot`. If the page shows the logged-out layout, stop
+and ask them to log in.
+
+### 8.2 — Open the modal and walk its steps
+
+Click *Easy Apply* **exactly once** (see the constraints file for why a second
+click destroys the modal), `wait:2`, then loop until the primary button reads
+*Submit application*:
+
+1. `read_page` for field refs and button labels.
+2. Fill what you can (8.3), upload the PDFs (8.4).
+3. `screenshot`, then a real click on *Next* / *Review*, `wait:2`.
+
+The modal is typically 2–5 steps: contact info → resume → work experience →
+education → review. **Screenshot each step before advancing** — that is the
+record of what was actually filled, and what you show the user at the gate.
+
+If the same step reappears after *Next*, a required field failed validation:
+`read_page` again (or `screenshot`, in the SDUI flow described in the
+constraints file), find the error text, and fix it — or, if it is a question you
+must not answer, stop and hand over.
+
+### 8.3 — Filling fields: truth only, no guessing
+
+`candidate.md` is authoritative for name, email, phone, city, country.
+
+**Never invent an answer.** Screening questions are frequently knock-out
+filters, and a wrong answer is a lie told in the user's name:
+
+- **Answerable from the record** (years on a named technology, location, working
+  languages, a notice period recorded in `candidate.md`): answer it, and
+  **report each one at the gate** with the value used.
+- **Not answerable** (salary expectation, work permit status, "why do you want
+  to work here", availability date, willingness to relocate): **leave it blank
+  and ask the user**. Do not approximate, do not put a placeholder, do not
+  answer "yes" to be safe.
+  - **Salary expectation in particular: the step 3b estimate does not make this
+    answerable.** Show the user the range and what it was based on, then ask for
+    *their* number and use that. An estimate you produced is material for their
+    decision, never a substitute for it — and a figure typed into a form is a
+    commitment made in their name.
+- **Radio and checkbox knock-outs** follow the same rule: if the record says `0`
+  on it, the honest answer is *No*, even when it fails the filter. Never click
+  *Yes* to get past a gate.
+
+Step 3's score already told the user where the gaps are — a screening question
+hitting one of them is expected, not a surprise.
+
+### 8.4 — Attaching the PDFs
+
+**Never click a file input or an "Upload" button** — it opens a native picker
+you cannot control and the session hangs. Get the input's `ref` with
+`read_page`, then `file_upload` with absolute paths.
+
+**Expect to hand the upload to the user** in the SDUI flow, where there is no
+`ref` to give `file_upload`. That is a dead end by design: open the folder so
+the file is one click away, name the exact button and filename, ask them to
+confirm the selection moved, and ask them **not** to click *Next* — you resume
+from 8.2 so the remaining steps stay under the gate.
+
+**Two fields carry stale data from previous applications. Check both, every
+time — they are the likeliest way to send the wrong document in the user's
+name:**
+
+- **The pre-selected CV.** LinkedIn re-proposes the last file uploaded, which
+  may not even be a CV — a cover letter sitting in the resume slot, with
+  months-old CVs tailored to other employers below it. Expand *Show N more
+  resumes* to see the full list before deciding.
+- **The free-text "Cover letter" box.** It keeps the text typed for a previous
+  ad. Select all, delete, and retype the current letter's body as plain text —
+  no LaTeX, no `\vspace`, no `\includegraphics` — ending with a typed name.
+
+That plain-text box is often the **only** route for the letter: many Easy Apply
+forms have a single file slot, so the letter PDF never gets attached. Say so
+explicitly at the gate rather than letting the user assume both went out.
+
+Where the form offers optional *Headline* and *Summary* fields, fill them from
+the resume's own title line and summary — same words, no new claims.
+
+### 8.5 — The gate: the user validates the send
+
+At the review step, **stop**. Show:
+
+- the company and role;
+- the attached filenames — and, when the form had a single slot, that the letter
+  went in as **text** and its PDF is not attached;
+- **every screening question and the exact answer filled in**. When there were
+  none, say so in as many words: "no screening questions, nothing was guessed"
+  is information, not an absence of it;
+- **the compensation range from step 3b, again, with its tier and its basis** —
+  and, when the form asked for a figure, **the exact number the user gave, shown
+  back to them.** This is the last moment it can be corrected: a salary typed
+  into an application is the anchor for every conversation that follows, and it
+  cannot be withdrawn. If the field was left blank, say that too, so nobody
+  discovers later that the form went out without it;
+- anything left blank;
+- **any pre-ticked box that acts beyond the application** — LinkedIn ticks
+  *Follow <Company>* by default, which makes the user follow it publicly. Never
+  silently accept or silently untick it: name it and let them choose.
+
+Then `AskUserQuestion`: **Send** (you click it on their go-ahead) · **I'll click
+it myself** (leave the modal untouched; treat the outcome as unconfirmed) ·
+**Fix a field** (apply the correction, re-gate) · **Cancel** (close the modal,
+change nothing in the ledger).
+
+Never click the final button without an explicit answer, and never reuse an
+approval from an earlier ad in the same session — one approval, one application.
+
+### 8.6 — Confirm it actually went out
+
+After the send, `wait:3` + `screenshot`. Only a visible confirmation (*Your
+application was sent*, or the card now marked *Applied*) counts. If you cannot
+see one — or the user chose to click it themselves and has not confirmed — the
+application is **unconfirmed**: write `todo` with a `dossier generated <date>,
+send not confirmed` note, and say so plainly. **Never report a send you did not
+see land.**
+
+## 9 — Update the ledger, then report
+
+Update the ad's row to `applied <YYYY-MM-DD>` and note the dossier folder in
+`Note`. Append the row if it was not there. Keep the deep score from step 3 in
+`Match` (it replaces any provisional `~`). Add a `Log` line. If a module is
+enabled, honour its ledger marker.
+
+**Write the step-3b range into the `Pay` column**, with its tier letter:
+`CHF 115–135k (C)`. That is what makes a month of applications comparable later
+— and what tells the user, at a glance, which figures came from an employer and
+which you derived. Two rules from `shared/pipeline-format.md`: **never overwrite
+a better tier with a worse one** (an `(A)` from the ad outranks a `(C)` you
+computed today), and **leave `—` rather than inventing a figure** when step 3b
+gave none — then say so in the closing report.
+
+If the ledger predates the `Pay` column, add the column, pad the existing rows
+with `—`, and **tell the user you migrated their file.**
+
+`applied` requires a **confirmed** send: either 8.6 saw the confirmation, or the
+user says they sent it. Otherwise write `todo` with a `dossier generated <date>`
+note — **documents existing is not an application.**
+
+Then tell the user:
+
+- the folder path and the files;
+- a short **fit summary** — which of the ad's key requirements are well matched;
+- the **gaps**, so they can decide whether to address them. These are for the
+  user, never inserted into the documents;
+- an offer to tweak tone, length or emphasis;
+- **anything that did not happen**, per `shared/never-fail-silently.md`: a
+  document rendered without a page-count check, a PDF that could not be produced
+  because a tool is missing, a field left blank on the form, a profile export
+  that was absent from the record, the letter that went in as text rather than
+  as a PDF. Name each one and what it costs. If nothing was skipped, say that in
+  one clause;
+- **the "How to apply" block below — always, without being asked.**
+
+### 9.1 — "How to apply": mandatory, every run
+
+A dossier the user cannot act on is unfinished work. **Every run ends with this
+block**, whether or not step 8 ran. Never make them come back to ask "so where
+do I apply?".
+
+**1. The apply URL, on its own line, in a fenced block** so it is copy-pasteable:
+
+- LinkedIn Easy Apply → the LinkedIn job URL.
+- External ATS → **the company's own careers URL**, not the LinkedIn mirror, and
+  say which ATS it is so they expect an account and bespoke questions.
+- **Verify it when you can.** If WebFetch 403s or the site blocks retrieval, say
+  so and give the route you *did* verify. Never present an unverified URL as
+  confirmed — mark it explicitly as unverified.
+
+**2. The steps that follow, as a short ordered list** — what the user actually
+has to do, in order (sign in → upload CV → answer N questions → salary → submit).
+Flag anything to prepare **before** opening the form: written answers, portfolio
+links, a salary figure, a notice period. If the process is known to be long (a
+vetting funnel, a paid trial, an essay form), say so and give a realistic sense
+of the time it takes.
+
+**3. Which files go where** — the exact filenames and the field each belongs in.
+Say explicitly when a document will **not** be used, so they do not hunt for a
+slot that does not exist.
+
+**4. What only the user can supply** — salary, availability, work-permit status,
+free-text motivation answers. Offer to draft any written answers. **Repeat the
+step 3b range here**, with its basis, so they have it in front of them when the
+form asks for a figure — and say again that the number they give is theirs, not
+yours.
+
+If it is a LinkedIn Easy Apply and step 8 was not run, close by offering it:
+"I can fill the Easy Apply form — you validate the send."

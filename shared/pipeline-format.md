@@ -1,0 +1,125 @@
+# The pipeline ledger
+
+`$JOB_HUNT_HOME/job-pipeline.md` is the memory of the whole workflow.
+`job-scan` fills it, `cover-letter` reads it and writes outcomes back.
+
+**Read it first, write it last, and never lose a row.** It is the only thing
+preventing an ad the user already applied to — or already rejected — from being
+proposed again next week.
+
+## Format
+
+```markdown
+# Job pipeline — <Full name>
+
+Shared file: `job-scan` fills it and uses it to skip ads already seen;
+`cover-letter` reads it and writes the outcome of each application back.
+
+Statuses: `todo` · `applied YYYY-MM-DD` · `rejected YYYY-MM-DD` · `discarded`
+(`rejected` = the candidate decided not to apply; `discarded` = noise or
+out of scope, never proposed again.)
+
+Pay: gross range, full-time equivalent. `(A)` stated in the ad · `(B)` board
+estimate · `(C)` derived · `—` not established.
+
+Last scan: YYYY-MM-DD
+
+## Ads
+
+| ID | Role | Company | Location / mode | Posted | Match | Pay | Status | Note |
+| :-- | :-- | :-- | :-- | :-- | --: | :-- | :-- | :-- |
+| 4430721631 | Tech Lead PHP | Acme | Bristol · on-site | 2026-07 | 85 % | GBP 75–90k (A) | applied 2026-07-28 | Stack and location ideal |
+| 4434970873 | Senior Backend Engineer, PHP | Globex | UK · remote | 2026-07 | ~78 % | — | todo | Provisional — description not read |
+
+## Log
+
+- 2026-08-04 — initial scan: 8 searches, 26 ads kept, 12 descriptions read.
+```
+
+- **`ID`** is the job board's own job id — the dedup key. Rebuild the ad URL
+  from it (`https://www.linkedin.com/jobs/view/<ID>/`); **never scrape a URL**
+  out of the page (see `shared/boards/linkedin.md`).
+- **`Match`** carries a `~` prefix while the score is provisional — read from
+  the card only. `cover-letter` replaces it with the deep score.
+- **`Pay`** is the compensation range for the ad, with the **tier letter that
+  says where it came from** — see `shared/salary-estimate.md`. Compact and
+  comparable: `CHF 115–135k (C)`, gross, full-time equivalent, currency named.
+  This column is what lets the user sort a month of applications by what they
+  actually pay, and see at a glance which figures are the employer's and which
+  are guesses.
+  - **`job-scan` fills it only when a board publishes a figure** — jobup does.
+    It never derives one: estimating per ad across a whole sweep is expensive
+    and would fill the ledger with low-confidence numbers.
+  - **`cover-letter` fills it at step 9**, from its step-3b estimate.
+  - **Never overwrite a better tier with a worse one.** An `(A)` from the ad
+    outranks a `(B)` board estimate, which outranks a `(C)` derivation. A later
+    run that only has a `(C)` leaves an existing `(A)` alone.
+  - `—` means not established. **Leave it at `—` rather than inventing a
+    figure**, and say at the end of the run that it stayed empty and why.
+- **`Note`** is what makes the file useful three weeks later: the reason for a
+  low score, for a rejection, or the dossier folder for an application. One
+  short clause, not a paragraph.
+- **`Location`**: record the **town**, not just the region. `UK · remote` is
+  unusable for an unemployment-office declaration (see `shared/modules/`) and
+  for judging a commute. When the ad gives only a region or "remote", say so
+  explicitly in `Note` (`town to be established`) so the gap is visible before
+  it blocks something.
+
+The status vocabulary is **fixed and English** — it is parsed. The `Note`
+column, the log and everything you say to the user follow the user's
+`languages.interface` setting.
+
+## Merge rules
+
+- **Merge, never overwrite.** Keep every existing row, refresh `todo` rows in
+  place (age, status, score), append new ones, and sort by match descending
+  within each status group.
+- **Never rewrite an `applied` or `rejected` row.** Those record what actually
+  happened. A later scan may add to the note; it may not change the verdict.
+- **Build the exclusion set first**, from every row whose status is `applied`,
+  `rejected` or `discarded`. Those ads are never proposed again.
+- **Append one `Log` line per run** — date, what was searched, what came back.
+
+### A ledger written before the `Pay` column existed
+
+Older files have eight columns, not nine. Add the header cell, pad every
+existing row with `—`, and **tell the user you migrated their file** — one line,
+naming the column added. A ledger silently rewritten under someone is exactly
+the failure `shared/never-fail-silently.md` forbids, even when the rewrite is
+harmless.
+
+Do not backfill the old rows with derived figures: an application sent in March
+was decided on what was known in March, and a number invented today would read
+as though it had been.
+
+## Deduplication has a blind spot: the same role, republished
+
+The ledger is keyed by job id, but **the same role republished per country
+carries a different id**, so the id check will not catch it. Before creating a
+dossier, grep the ledger for the company name:
+
+```bash
+grep -n "<Company>" "$JOB_HUNT_HOME/job-pipeline.md"
+```
+
+If a row exists for the same company **and a comparable role**, stop and tell
+the user: applying twice to one role through regional postings adds nothing and
+reads as careless in a shared applicant-tracking system. Mark the new id
+`discarded` with the duplicate reason, and only proceed if the user confirms it
+is genuinely a different position.
+
+## Noise to discard on sight
+
+Record these as `discarded` **with the reason**, so they are never re-proposed:
+
+- **Aggregator and repost farms** — recycled titles, absurd hourly ranges,
+  "EMEA (Remote)" with no employer named, posted hours ago, no real company
+  behind them. Seed the user's `search.blocklist` with the ones they meet;
+  they are regional and they change names often.
+- Ads whose stack is explicitly foreign to the candidate.
+- Anything already in the exclusion set.
+- Anything breaching the commute rule (see `shared/scoring-rubric.md`).
+
+A `discarded` row still costs one line and saves the same click every week
+forever. Write the reason down — "no employer named, aggregator" — because in a
+month nobody remembers why.

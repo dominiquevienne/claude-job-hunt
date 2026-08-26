@@ -1,0 +1,74 @@
+\documentclass[$if(fontsize)$$fontsize$,$endif$a4paper]{article}
+
+\usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+
+\usepackage{fontspec}
+% Scale=1.05 on a 10pt class gives the intended 10.5pt body: \documentclass
+% rejects fractional sizes, so the size cannot come from the class option.
+\setmainfont{Noto Sans}[Ligatures=TeX, Scale=1.05]
+
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{muted}{HTML}{555555}
+\definecolor{hrule}{HTML}{C9D1D9}
+
+\usepackage{adjustbox}  % shrink the contact line to fit if it would overflow
+
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.1em, itemsep=3pt, topsep=2pt, parsep=0pt,
+  partopsep=0pt, label=\textcolor{accent}{\small\textbullet}}
+
+\usepackage{needspace}  % keep each job entry from splitting across pages
+
+\setcounter{secnumdepth}{-\maxdimen}  % no section/subsection numbering
+\usepackage{titlesec}
+% \needspace must cover the heading, its rule, AND the first entry underneath —
+% otherwise the heading fits, the following \subsection does not, and the heading
+% is left stranded at the foot of the page (seen 2026-08-18 with 6 lines reserved:
+% "EXPÉRIENCE PROFESSIONNELLE" ended page 1 alone). 10 lines covers heading + rule
+% + job title + its gray meta line + the first two bullets.
+\titleformat{\section}
+  {\needspace{10\baselineskip}\bfseries\color{accent}\large}{}{0pt}{\MakeUppercase}[{\color{hrule}\titlerule[0.9pt]}]
+% {before}{after}: generous space above the heading, and clear room UNDER the rule.
+\titlespacing*{\section}{0pt}{18pt}{14pt}
+% Roomy space ABOVE each job title; the city/date meta line hugs it (negative after).
+% \needspace reserves ~5 lines so a title never lands alone at the foot of a page.
+\titleformat{\subsection}{\needspace{5\baselineskip}\bfseries\normalsize}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{13pt}{-4pt}
+
+% Gray, smaller meta line (city / dates) — authored as *italic* in markdown.
+\let\oldemph\emph
+\renewcommand{\emph}[1]{{\color{muted}\small #1}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+% Never hyphenate — keeps tech proper nouns (Laravel, Kubernetes, PHPStan…) whole.
+% A little tolerance/emergencystretch keeps justified text tidy without hyphens.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\tolerance=2000
+\setlength{\emergencystretch}{3em}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\usepackage[hidelinks]{hyperref}
+$if(colorlinks)$
+\hypersetup{colorlinks=true, linkcolor=accent, urlcolor=accent}
+$endif$
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\begin{document}
+
+% ---- Header ----
+{\fontsize{22}{24}\selectfont\bfseries\color{accent} $name$\par}
+$if(jobtitle)$\vspace{1pt}{\color{muted}\large $jobtitle$\par}$endif$
+$if(contact)$\vspace{3pt}{\adjustbox{max width=\linewidth}{\small $contact$}\par}$endif$
+\vspace{4pt}{\color{hrule}\rule{\linewidth}{0.9pt}\par}
+\vspace{2pt}
+
+$body$
+
+\end{document}

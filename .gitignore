@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------
+# Safety net. No personal data belongs in this repository — ever.
+#
+# By design the user's configuration lives OUTSIDE the plugin, in the workspace
+# ($JOB_HUNT_HOME, default ~/Documents/job_applications). Nothing below should
+# ever be created inside a clone. These rules exist because a single careless
+# `cp` of a real candidate.md or a LinkedIn export would publish someone's
+# identity, address, phone number and employment history in a public repo, and
+# git history keeps it there after the delete.
+#
+# The `templates/*.example.*` files are the ONLY candidate-shaped files that are
+# meant to be committed, and they contain a fictional person.
+# ---------------------------------------------------------------------------
+
+# Real configuration and personal records
+config.yml
+config.yaml
+candidate.md
+repos.md
+commute.md
+job-pipeline.md
+profile/
+workspace/
+
+# Signature images and any scan they were made from
+signature*.png
+signature*.jpg
+signature*.jpeg
+signature*.pdf
+
+# Generated application dossiers (YYYYMMDD_Company-Role/)
+[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*/
+
+# Anything a user might drop in while testing
+*.pdf
+!docs/**/*.pdf
+resume.md
+cover-letter.md
+job-ad.md
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

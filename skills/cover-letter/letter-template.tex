@@ -1,0 +1,50 @@
+\documentclass[$if(fontsize)$$fontsize$,$endif$a4paper]{article}
+
+\usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+
+\usepackage{fontspec}
+\setmainfont{Noto Sans}[Ligatures=TeX]
+
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{muted}{HTML}{555555}
+\definecolor{hrule}{HTML}{C9D1D9}
+
+\usepackage{adjustbox}  % shrink the contact line to fit if it would overflow
+\usepackage{graphicx}   % so the body can \includegraphics a scanned signature
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+\linespread{1.06}
+
+% Never hyphenate — keeps tech proper nouns (Laravel, Symfony, Kubernetes…) whole.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\tolerance=2000
+\setlength{\emergencystretch}{3em}
+
+\providecommand{\tightlist}{}
+
+\usepackage[hidelinks]{hyperref}
+$if(colorlinks)$
+\hypersetup{colorlinks=true, linkcolor=accent, urlcolor=accent}
+$endif$
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\pagestyle{empty}  % no page number on the cover letter
+
+\begin{document}
+
+% ---- Header (identical to the resume) ----
+{\fontsize{22}{24}\selectfont\bfseries\color{accent} $name$\par}
+$if(jobtitle)$\vspace{1pt}{\color{muted}\large $jobtitle$\par}$endif$
+$if(contact)$\vspace{3pt}{\adjustbox{max width=\linewidth}{\small $contact$}\par}$endif$
+\vspace{4pt}{\color{hrule}\rule{\linewidth}{0.9pt}\par}
+\vspace{12pt}
+
+$body$
+
+\end{document}

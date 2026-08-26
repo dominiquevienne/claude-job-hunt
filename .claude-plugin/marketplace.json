@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-job-hunt",
+  "description": "Job-search toolkit for Claude Code: scan job boards, score ads against your real profile, and draft tailored resumes and cover letters.",
+  "owner": {
+    "name": "Dominique Vienne",
+    "url": "https://github.com/dominiquevienne"
+  },
+  "plugins": [
+    {
+      "name": "claude-job-hunt",
+      "description": "Scan job boards for ads that match your real profile, score them honestly, and produce tailored ATS-compliant resumes and cover letters — with a shared pipeline ledger so nothing is proposed twice.",
+      "author": {
+        "name": "Dominique Vienne",
+        "url": "https://github.com/dominiquevienne"
+      },
+      "category": "productivity",
+      "source": "./",
+      "homepage": "https://github.com/dominiquevienne/claude-job-hunt"
+    }
+  ]
+}
