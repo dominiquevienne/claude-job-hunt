@@ -106,8 +106,8 @@ instead of six hundred of noise. Unquoted keywords are matched very loosely (a
 
 ## The ad id and its URL
 
-The id is `data-occludable-job-id` on the result card. It is the ledger's dedup
-key. Rebuild the canonical URL from it:
+The id is `data-occludable-job-id` on the result card. In the ledger it is
+recorded **prefixed**, as `linkedin:<ID>`. Rebuild the canonical URL from it:
 
 ```
 https://www.linkedin.com/jobs/view/<ID>/

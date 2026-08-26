@@ -34,8 +34,8 @@ Last scan: YYYY-MM-DD
 
 | ID | Role | Company | Location / mode | Posted | Match | Pay | Status | Note |
 | :-- | :-- | :-- | :-- | :-- | --: | :-- | :-- | :-- |
-| 4430721631 | Tech Lead PHP | Acme | Bristol · on-site | 2026-07 | 85 % | GBP 75–90k (A) | applied 2026-07-28 | Stack and location ideal |
-| 4434970873 | Senior Backend Engineer, PHP | Globex | UK · remote | 2026-07 | ~78 % | — | todo | Provisional — description not read |
+| linkedin:4430721631 | Tech Lead PHP | Acme | Bristol · on-site | 2026-07 | 85 % | GBP 75–90k (A) | applied 2026-07-28 | Stack and location ideal |
+| linkedin:4434970873 | Senior Backend Engineer, PHP | Globex | UK · remote | 2026-07 | ~78 % | — | todo | Provisional — description not read |
 
 ## Log
 
@@ -45,10 +45,15 @@ Last scan: YYYY-MM-DD
 - **`ID`** is the job board's own job id — the dedup key. Rebuild the ad URL
   from it with the adapter's recipe; **never scrape a URL** out of the page
   (see `shared/boards/linkedin.md`).
-  - **More than one board ships, so a bare id is ambiguous.** Prefix it with the
-    board for anything that is not LinkedIn: `jobup:4302da20-…`,
-    `indeed:cbdabcaff5c…`. A bare numeric id means LinkedIn, which keeps every
-    ledger written before a second adapter existed valid.
+  - **Always prefix it with the board**: `linkedin:4430721631`,
+    `jobup:4302da20-…`, `indeed:cbdabcaff5c…`. **No board is the default**, and
+    a bare id is not valid. Two boards already ship and ids are not unique
+    across them, so an unprefixed id is a guess about which site it came from —
+    a guess that gets silently wrong the day a third adapter arrives, and that
+    makes an ad URL impossible to rebuild without one.
+  - A ledger written before this convention has bare numeric ids. Migrate them
+    to `linkedin:<id>` in one pass and **say you did it**, rather than carrying
+    two conventions and re-deciding on every row.
   - **`—` is a legitimate id** for an application reconstructed after the fact —
     from a mailbox, from memory — where the ad is gone. Such a row cannot be
     deduplicated, so say so in `Note`. It still belongs in the ledger: an

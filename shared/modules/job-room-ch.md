@@ -58,9 +58,9 @@ Two traps seen in real use:
   turns the postcode/town field into two free-text fields.
 
 Rows that reach `applied` **or `rejected`** carry a job-room marker at the head
-of their `Note` — `` `JR:YYYY-MM-DD` `` once declared, or `` **`JR:absent`** ``
+of their `Note` — `` `JR:YYYY-MM-DD` `` once declared, or `` **`JR:missing`** ``
 while it is not. A quick audit the user can run themselves:
-`grep -c 'JR:absent' job-pipeline.md` should fall to zero after every session of
+`grep -c 'JR:missing' job-pipeline.md` should fall to zero after every session of
 applications — the PRE is transmitted to the ORP on a fixed date, and an
 application not entered before that transmission does not count as evidence.
 
@@ -117,4 +117,4 @@ to press it.
 
 Only once the user confirms the declaration went through, update the ledger row
 marker to `` `JR:YYYY-MM-DD` ``. An unconfirmed submission stays
-`` **`JR:absent`** ``: the value of that marker is that it never lies.
+`` **`JR:missing`** ``: the value of that marker is that it never lies.

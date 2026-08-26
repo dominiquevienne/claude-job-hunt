@@ -69,7 +69,8 @@ The id is a UUID on the card's link element:
 <a data-cy="job-link" id="vacancy-link-4302da20-da24-449c-af7b-2e7577ce45a8" …>
 ```
 
-Strip the `vacancy-link-` prefix. Rebuild the canonical URL from the id:
+Strip the `vacancy-link-` prefix. In the ledger it is recorded **prefixed**, as
+`jobup:<ID>`. Rebuild the canonical URL from the bare id:
 
 ```
 https://www.jobup.ch/fr/emplois/detail/<ID>/
