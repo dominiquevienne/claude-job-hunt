@@ -43,8 +43,16 @@ Last scan: YYYY-MM-DD
 ```
 
 - **`ID`** is the job board's own job id — the dedup key. Rebuild the ad URL
-  from it (`https://www.linkedin.com/jobs/view/<ID>/`); **never scrape a URL**
-  out of the page (see `shared/boards/linkedin.md`).
+  from it with the adapter's recipe; **never scrape a URL** out of the page
+  (see `shared/boards/linkedin.md`).
+  - **More than one board ships, so a bare id is ambiguous.** Prefix it with the
+    board for anything that is not LinkedIn: `jobup:4302da20-…`,
+    `indeed:cbdabcaff5c…`. A bare numeric id means LinkedIn, which keeps every
+    ledger written before a second adapter existed valid.
+  - **`—` is a legitimate id** for an application reconstructed after the fact —
+    from a mailbox, from memory — where the ad is gone. Such a row cannot be
+    deduplicated, so say so in `Note`. It still belongs in the ledger: an
+    application that happened counts whether or not its ad still exists.
 - **`Match`** carries a `~` prefix while the score is provisional — read from
   the card only. `cover-letter` replaces it with the deep score.
 - **`Pay`** is the compensation range for the ad, with the **tier letter that
