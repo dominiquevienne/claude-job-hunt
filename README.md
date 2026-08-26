@@ -1,7 +1,7 @@
 # claude-job-hunt
 
-Two [Claude Code](https://claude.com/claude-code) skills that run a job search
-end to end, honestly.
+[Claude Code](https://claude.com/claude-code) skills that run a job search end
+to end, honestly.
 
 - **`job-scan`** — sweeps the job boards you switch on, in *your own* Chrome,
   scores every ad against your real profile, and keeps a ledger so the same ad
@@ -12,6 +12,9 @@ end to end, honestly.
   telling you whether the job is actually worth applying to **and roughly what
   it pays for someone with your record**. Needs no adapter and no browser: a URL
   is enough.
+- **`job-report`** — how many applications you actually sent over a period, and
+  which ones are still undeclared to an unemployment office. Counts what went
+  out, not what you looked at.
 
 The unusual part is what it *refuses* to do: it will not claim a skill you do
 not have, will not answer a screening question by guessing, will not report an
@@ -410,6 +413,8 @@ comes back with the reason and the fix rather than a shrug.
 /job-setup                       # change any of it, later
 /job-setup boards                # enable or configure a board
 /board-request <board URL>       # note a board that has no adapter yet
+/job-report                      # applications sent this month
+/job-report --from 2026-07-01 --to 2026-07-31
 ```
 
 You will be asked for, in this order: your profile documents, your contact

@@ -69,6 +69,12 @@ still went out, and it is exactly the kind that gets forgotten in a declaration.
 **Never strip that marker** when updating a row: it is how the user sees, at a
 glance, which applications are still undeclared.
 
+**The `job-report` skill surfaces this automatically.** It counts `JR:missing`
+rows over the whole ledger and reports them with any period report — because a
+period report is exactly the moment the user is thinking about their
+declaration, and a total that hides an undeclared application is worse than no
+total.
+
 ---
 
 ## Optional — assisted filling of the job-room form
