@@ -342,6 +342,17 @@ it looks exactly like a broken plugin.
 **Newly installed skills appear after restarting Claude Code** — the skill list
 is read at session start.
 
+The same two steps from a shell:
+
+```bash
+claude plugin marketplace update claude-job-hunt
+claude plugin update claude-job-hunt
+```
+
+`update`, not `install`: on an already-installed plugin `install` answers
+"already installed" and leaves the version pointer where it was, even once the
+new version has been fetched.
+
 ## Check that it works
 
 **The short way — one command**, in the shell Claude Code uses (Git Bash on
@@ -579,6 +590,13 @@ is worse than no adapter — it fails silently, and the user has no way to tell.
 implementation, no PowerShell fork — the reasoning and the traps are in
 [`shared/portability.md`](shared/portability.md). No new dependency lands
 without its Windows, macOS and Linux install commands.
+
+Before pushing, validate the manifests — it takes a second and catches a
+malformed plugin before anyone installs it:
+
+```bash
+claude plugin validate .
+```
 
 **Bump the version in `.claude-plugin/plugin.json` for anything users should
 receive.** The plugin cache is keyed by version: merged commits without a bump
