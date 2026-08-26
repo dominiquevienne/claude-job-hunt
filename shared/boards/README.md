@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Two ship today, both verified against the live
+and each adapter owns one site. Three ship today, each verified against the live
 site.
 
 ## Which boards are available
@@ -10,6 +10,7 @@ site.
 | :-- | :-- | :-- |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
 | jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
+| Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## Without any adapter, the plugin still works

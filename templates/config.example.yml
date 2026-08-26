@@ -79,6 +79,15 @@ boards:
     enabled: false
     language: "fr"
 
+  indeed:
+    # Country-scoped. `domain` has no default: guessing the country would
+    # silently search the wrong market.
+    # NOTE: Indeed serves anti-bot challenges. They are YOURS to solve — the
+    # plugin stops and hands over rather than working around one.
+    enabled: false
+    domain: "ch.indeed.com"
+    language: "fr"
+
 search:
   # The sweep job-scan runs on each enabled board. /job-setup proposes these
   # from your own profile; tune them freely. One entry = one search. Quoting a
