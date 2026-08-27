@@ -121,6 +121,52 @@ the page is gated or empty, ask the user to paste the ad text.
 Set **`LANG`** = the ad's language. Everything in the candidate-facing documents
 is written in `LANG`, whatever `languages.interface` says.
 
+## 1b — Is the ad still open? Check before you spend anything
+
+**A successful WebFetch is not proof the ad accepts applications.** Boards serve
+the full description of a closed ad, and the *"no longer accepting
+applications"* banner is rendered client-side — it never reaches the fetched
+markdown. The call that just gave you the responsibilities and the must-haves
+says nothing about whether anyone is still reading applications.
+
+Two signals put an ad in the at-risk band. Neither is conclusive alone:
+
+- **Age** — roughly three weeks or more since it was posted.
+- **Competition** — a high applicant count, say 100 or more.
+
+When either holds, verify **before drafting**:
+
+1. **Find the employer's own posting, not their careers page.** Take the ad's
+   external apply link, or search for the company and role plus their applicant
+   tracking system. A closed posting on Factorial, Workday, Greenhouse, Lever or
+   SmartRecruiters says so unambiguously — *"This job opening doesn't exist
+   anymore"* — where a board keeps serving the description as if nothing
+   happened.
+2. **A role missing from the employer's careers page is a strong signal, not a
+   weak one**, when that page is listing their other openings. Do not file it as
+   a note and carry on.
+3. **Report the result at the gate as a finding**, naming the route you used. If
+   you could not verify, say that in those words — never let silence imply the
+   ad is live.
+
+Do not guess a careers-page URL beyond a single attempt; the board's own search
+and a web search for the ATS posting are the routes that work.
+
+**When the ad is closed, stop.** Say so, mark the row `discarded` with the
+reason and the date (`shared/pipeline-format.md`), keep the score you have, and
+offer the next row. Never draft a dossier for a role nobody can apply to.
+
+Seen on 2026-08-27, and it is the whole reason this step exists. A Senior PHP /
+Full-Stack role scored **86 %** — the strongest fit in the pipeline — on a
+description WebFetch returned in full. The ad was a month old with **200+
+applicants**, and the employer's careers page listed six openings, none of them
+technical. That was reported at the gate as a reserve, and the dossier was
+written anyway. The role was gone: LinkedIn showed *"No longer accepting
+applications"*, and the employer's own ATS posting answered *"This job opening
+doesn't exist anymore."* **One request to that URL, before drafting, would have
+settled it.** Two earlier ads in the same ledger died the same way at 77 % and
+~75 %; this was the first where a full CV and letter were spent on one.
+
 ## 2 — Load the candidate
 
 1. `candidate.md` — the contact block and the standing rules.
@@ -142,6 +188,9 @@ Score with `shared/scoring-rubric.md`. Then report, **before drafting**:
    naming the specific unmet must-haves.
 3. A clear **recommendation** (apply / apply with caveats / don't apply),
    measured against the user's own `thresholds.apply_from`.
+4. **What step 1b established about the ad still being open** — verified live,
+   verified closed, or not verified and why. A strong ratio is the case where
+   this gets skipped, and it is exactly the case where it costs the most.
 
 ## 3b — Estimate what it pays, for this candidate
 

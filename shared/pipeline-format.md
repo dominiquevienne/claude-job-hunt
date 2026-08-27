@@ -212,7 +212,36 @@ Record these as `discarded` **with the reason**, so they are never re-proposed:
 - Ads whose stack is explicitly foreign to the candidate.
 - Anything already in the exclusion set.
 - Anything breaching the commute rule (see `shared/scoring-rubric.md`).
+- **Ads that have closed or expired** — see below, because the status is not
+  obvious and the row keeps more than the reason.
 
 A `discarded` row still costs one line and saves the same click every week
 forever. Write the reason down — "no employer named, aggregator" — because in a
 month nobody remembers why.
+
+## An ad that closed is `discarded`, and it keeps its score
+
+A closed or expired ad is **not** a `no-go`: the user decided nothing. It is not
+`rejected` either — no application went out to be refused. It is `discarded`,
+with the reason and the date in `Note`, so no later scan proposes it again.
+
+Two things stay on the row, and both are easy to throw away by accident:
+
+- **The score**, including a deep one computed minutes before the discovery. It
+  cost real work and it describes a real fit. If the role is reposted, having
+  the number already there turns a fresh scoring session into a lookup.
+- **The dossier folder, when one was written** — and say in the note that it is
+  reusable. Employers republish: the same role under a new id is common enough
+  that the ledger's whole deduplication blind spot is built around it. A repost
+  is exactly where a finished CV, a letter, a sourced pay range and a cleared
+  blocker are worth having in hand.
+
+Record whether the **employer** is still alive and hiring, because that is what
+decides if the dossier is worth keeping warm. Two rows from one real ledger, three
+weeks apart: one company's ad was closed and its domain was parked for sale at a
+registrar — nothing will be reposted there. The other closed a single role while
+running six other openings across 16 countries — that one is worth watching, and
+its 86 % dossier was kept for the repost.
+
+**Verifying closure is `cover-letter` step 1b's job**, before a dossier is
+written rather than after.
