@@ -175,6 +175,44 @@ declaration needs and what most boards omit. **Capture it while the ad is open**
 URL and opening a side panel. Harmless, but do not mistake that id for a
 selection you made.
 
+**5. Some result cards are fabricated duplicates.** Observed live on
+`ch.indeed.com` on 2026-08-27: **five cards across eight searches** carried
+hand-made `data-jk` values — `a1b2c3d4e5f67890`, `abcdef0123456789`,
+`0f1e2d3c4b5a6978`, `789abcdef0123456`, `cdef0123456789ab` — each **cloning the
+real ad immediately above it**. Ingest them and the ledger gains phantom rows
+pointing at ad URLs that do not exist.
+
+They were inspected: no hidden instructions, no URLs, no injected markup beyond
+the duplication. Treat them as bad data, not as an attack — but **never harvest
+them**.
+
+Two signals, in order of reliability:
+
+- **The card's text has no line breaks.** A real card's `innerText` splits into
+  title / company / location / workload; these come back as one concatenated
+  string. This is the robust test, because it does not depend on the id's shape.
+- The `data-jk` is a hand-made pattern rather than random hex — sequential
+  (`abcdef0123456789`), rotated (`cdef0123456789ab`) or interleaved
+  (`a1b2c3d4e5f67890`). Useful for recognising one by eye, too brittle to filter
+  on.
+
+Filter on the line-break count, which drops in cleanly to the extraction
+snippet above:
+
+```js
+[...document.querySelectorAll('.job_seen_beacon')]
+  .filter(c => (c.innerText.match(/\n/g) || []).length > 1)
+```
+
+Verified over eight searches: it removed all five fabricated cards and kept
+every genuine one.
+
+**A note on reading these cards.** Dumping a list of raw `data-jk` values or a
+card's `innerHTML` can trip the extension's own content filter, which returns
+`[BLOCKED: Cookie/query string data]` — sixteen-character hex strings look like
+session tokens to it. That is the filter doing its job, not evidence about the
+card. Extract the fields you need rather than raw markup.
+
 ## Applying
 
 Cards can carry *Candidature simplifiée* (Indeed's in-site apply). **That flow
