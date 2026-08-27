@@ -52,6 +52,11 @@ Then build the **exclusion set**: every `ID` in the ledger whose status is
 Rows still `todo` stay in the file and get refreshed in place rather than
 duplicated.
 
+**Build a second index at the same time: company name → existing rows.** The id
+check alone is not enough, because **the same ad carries a different id on every
+board**, and boards rename the employer as they please. Keep the company strings
+from the ledger to hand; step 3 matches new cards against them.
+
 ## 1 — Load the candidate
 
 ```bash
@@ -137,6 +142,42 @@ full list is in `shared/pipeline-format.md`):
 - Ads whose stack is explicitly foreign to the candidate.
 - Anything breaching the commute filter below.
 - Anything already in the exclusion set from step 0.
+- **Anything the company index from step 0 matches to an existing row for a
+  comparable role** — see below.
+
+### Cross-board duplicates: the id check will not catch them
+
+The same ad on two boards has two ids, so **the id check cannot see it**. The
+only signal available at scan time is the employer's name — and it must be
+matched **as a substring, in both directions**, never as an exact cell:
+
+```bash
+grep -n "<Company>" "$JOB_HUNT_HOME/job-pipeline.md"
+```
+
+Boards write the same employer differently, and an exact match fails on either
+side of the difference. Both of these were observed on one real scan, on
+2026-08-27:
+
+| Board's string | Ledger's string | Why exact matching failed |
+| :-- | :-- | :-- |
+| `Université de Lausanne` | `Université de Lausanne — Centre informatique (DCSR)` | the ledger's is **longer** — the board omits the department |
+| `Infomaniak Network SA` | `Infomaniak` | the ledger's is **shorter** — the board adds the legal form |
+
+Three duplicates slipped through that scan, including one for an ad the ledger
+had already scored in depth two weeks earlier and one the user had explicitly
+frozen. All three were caught later at `cover-letter`'s own duplicate gate —
+after the scan had reported them as new finds.
+
+**When a match comes back, do not silently discard it either.** Check whether it
+is genuinely the same position: same company *and* comparable role. If it is,
+record the new id as `discarded` naming the row it duplicates. If the roles
+differ, keep it and say so in `Note` — the same employer advertising two real
+openings is normal.
+
+**Read the matched row's `Note` before moving on.** It may carry a standing
+decision — a freeze on that employer, a pending application, a reason the
+company was set aside — that outranks the score on the new card.
 
 ### The commute filter
 
