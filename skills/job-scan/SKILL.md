@@ -214,6 +214,39 @@ Mark a score **provisional (`~`)** when it comes from the card only, because the
 description was not opened. Never present a provisional score as if the ad had
 been read.
 
+### A hard blocker found here changes the status, not just the `Note`
+
+Step 3 discards ads whose stack is foreign to the candidate — but it works from
+the **card**, before any description is open. When the blocker only becomes
+visible in the description you just read, **the row is `discarded`, with the
+reason. It does not stay `todo` carrying a warning.**
+
+This is not bookkeeping pedantry. **Both selection paths rank on `Match` alone** —
+step 7 here, and `cover-letter` step 1 — so a `todo` row scoring 57 % is proposed
+ahead of a clean 52 % one, whatever its `Note` says. A verdict written in a note
+and not carried into the status will be ignored, because **the status is what
+gets read and the note is what gets skipped.**
+
+Observed on a real ledger on 2026-08-27: two rows — a .NET/C# team lead at 57 %
+and a .NET/Azure integration role at 35 % — had been read weeks earlier, had
+`bloqueur dur` written in their own notes, and were still `todo`. The 57 % one
+was then proposed to the user as a top pick, on its score and its excellent
+commute, by a run that had just finished writing the rule about reading notes.
+
+So, at this step:
+
+- **Hard blocker** (the ad's primary backend language, a required certification
+  or spoken language the record lacks, whatever `candidate.md` lists) → status
+  `discarded`, reason in `Note`, and say so in the report. Do not score it into
+  the shortlist.
+- **Partial gap** → keep it `todo` and score it honestly. That is what the score
+  is for.
+- **An open question rather than a verdict** — a contract form to clarify, a
+  description not yet read — stays `todo`, and the `Note` says what has to be
+  answered *before* drafting. This is the one case where a note may legitimately
+  carry the word "blocker" on a `todo` row, and it reads as a question, not a
+  conclusion.
+
 ## 6 — Write the ledger
 
 Merge, don't overwrite — the rules are in `shared/pipeline-format.md`. Keep
