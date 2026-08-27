@@ -175,6 +175,13 @@ record the new id as `discarded` naming the row it duplicates. If the roles
 differ, keep it and say so in `Note` — the same employer advertising two real
 openings is normal.
 
+**And when you cannot tell, keep the row and record the doubt** — do not discard
+on a suspicion. Write what you suspect and what would settle it into `Note`, and
+raise it in the run's report. The decision belongs to the user, and step 7 will
+put it to them; a row quietly discarded on a maybe is an opportunity they never
+hear about. See *When you suspect a duplicate but cannot confirm one* in
+`shared/pipeline-format.md`.
+
 **Read the matched row's `Note` before moving on.** It may carry a standing
 decision — a freeze on that employer, a pending application, a reason the
 company was set aside — that outranks the score on the new card.

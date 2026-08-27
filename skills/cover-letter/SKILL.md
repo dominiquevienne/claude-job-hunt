@@ -199,6 +199,20 @@ exists for the same company **and a comparable role**, stop and tell the user;
 mark the new id `discarded` with the duplicate reason. Only proceed if they
 confirm it is genuinely a different position.
 
+**When you suspect a duplicate but cannot confirm one, the user decides — not
+you.** Do not proceed on the assumption it is fine, and do not discard on the
+assumption it is not: one risks a second application to a single role, the other
+throws away a real opportunity, and **the user sees neither**.
+
+Name the suspicion, say what you could not establish and what would settle it,
+give your reading labelled as a reading, then ask. The full rule and the case it
+was written for — intermediaries whose end client is not named — are in
+`shared/pipeline-format.md`.
+
+**Read the description to the end first.** A sector, a named product or a
+mission statement usually settles it, and a question you could have answered
+yourself is a question worth not asking.
+
 **Never write into a directory that already exists** without checking what is in
 it. If `Write` reports *updated* rather than *created*, an earlier dossier is
 being overwritten — stop and resolve it.
