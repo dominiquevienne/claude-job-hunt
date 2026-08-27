@@ -13,6 +13,18 @@ site.
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
 | *your board here* | — | See *Writing an adapter* below |
 
+## When a shipped adapter stops working
+
+Boards redesign, and an adapter that was verified against the live site stops
+matching it. **That is a bug in the plugin, not in the user's setup, and it is
+reported upstream** — invoke `board-request` in its broken-adapter mode
+(section 2b). `job-scan` does this on its own when a sweep fails.
+
+The reason it goes upstream rather than getting patched locally: the installed
+plugin lives in a cache directory that the next update overwrites, and the site
+changed for every user, not just this one. **One issue fixes it for everybody;
+a local edit fixes it for nobody, twice.**
+
 ## Without any adapter, the plugin still works
 
 `cover-letter <ad URL>` needs no adapter and no browser: give it a URL from any
