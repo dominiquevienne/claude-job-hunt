@@ -60,9 +60,25 @@ Two traps seen in real use:
 Rows that reach `applied` **or `rejected`** carry a job-room marker at the head
 of their `Note` — `` `JR:YYYY-MM-DD` `` once declared, or `` **`JR:missing`** ``
 while it is not. A quick audit the user can run themselves:
-`grep -c 'JR:missing' job-pipeline.md` should fall to zero after every session of
-applications — the PRE is transmitted to the ORP on a fixed date, and an
-application not entered before that transmission does not count as evidence.
+
+```bash
+grep -E '^\| ' "$JOB_HUNT_HOME/job-pipeline.md" | grep -c 'JR:missing'
+```
+
+It should fall to zero after every session of applications — the PRE is
+transmitted to the ORP on a fixed date, and an application not entered before
+that transmission does not count as evidence.
+
+**The `grep -E '^\| '` prefix is not optional, and this is why.** A bare
+`grep -c 'JR:missing' job-pipeline.md` counts *every* occurrence in the file,
+including the `Log` section — and the log is exactly where the marker gets
+discussed, so the count inflates as soon as anyone writes about it. Observed on
+a real ledger on 2026-08-27: the bare command returned **8** where the true
+number of undeclared applications was **3**. Restricting to table rows is what
+makes the number mean what it says.
+
+This affects only the manual command. `job-report` parses the table properly and
+its `jr_missing` figure was never wrong.
 
 **`rejected` is included deliberately.** An application the employer turned down
 still went out, and it is exactly the kind that gets forgotten in a declaration.
