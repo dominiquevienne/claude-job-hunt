@@ -170,6 +170,37 @@ reads as careless in a shared applicant-tracking system. Mark the new id
 `discarded` with the duplicate reason, and only proceed if the user confirms it
 is genuinely a different position.
 
+### When you suspect a duplicate but cannot confirm one
+
+**Say so, and let the user decide. Never resolve the doubt yourself in either
+direction.**
+
+Silently proceeding risks a second application to one role. Silently discarding
+loses a real opportunity — and the user never learns it existed. Both failures
+are invisible to them, which is exactly what
+`shared/never-fail-silently.md` forbids.
+
+So when the evidence is genuinely ambiguous:
+
+1. **Name the suspicion and its basis** — same intermediary, same location, same
+   role family, overlapping dates.
+2. **Say precisely what you could not establish**, and what would settle it.
+3. **Give your reading**, if you have one, labelled as a reading rather than a
+   finding.
+4. **Ask, and abide by the answer.** The decision to apply is the user's.
+
+The case this rule was written for: **recruitment intermediaries whose end
+client is not named.** Two ads from the same platform, both "based in
+Switzerland", both for unnamed employers, are unresolvable by company name — the
+company on both rows is the intermediary. They may be one client or two, and the
+id check cannot tell. Seen on 2026-08-27, where two such ads turned out to have
+entirely different end clients, established only by reading each description to
+the end.
+
+**A detail deep in the description often settles it** — a named product, a
+sector, a mission statement, a customer count. Read for that before asking, so
+the question you put to the user is the one you genuinely could not answer.
+
 ## Noise to discard on sight
 
 Record these as `discarded` **with the reason**, so they are never re-proposed:
