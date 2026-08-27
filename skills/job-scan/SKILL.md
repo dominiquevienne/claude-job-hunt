@@ -283,3 +283,19 @@ Propose the top `todo` rows in match order. When the user picks one, invoke the
 `cover-letter` skill with the ad URL rebuilt from the `ID`; it re-scores the ad
 in depth, gates on go/no-go, and writes the resulting status back into the
 ledger.
+
+**Read each row's `Note` before proposing it — match order is not the whole
+ranking.** The rows you are about to recommend include ones written weeks ago by
+earlier runs, and a `todo` row can carry a verdict its status never received: a
+blocker found when its description was read, a hold on that employer, an
+application already open there.
+
+A row whose note settles the matter does not belong in the list — skip it, and
+offer to correct its status. A row whose note raises an **open question** belongs
+in the list, with the question named next to the score, because that question is
+what `cover-letter` must resolve before drafting.
+
+**Never present a row on its score and its commute alone.** That is exactly how a
+.NET/C# role whose own note read *"bloqueur dur"* was recommended as a top pick
+on a real ledger on 2026-08-27 — by a run that had, hours earlier, written the
+rule about reading notes.
