@@ -56,6 +56,9 @@ how_to() {
     pillow:macos)      echo "python3 -m pip install --user Pillow" ;;
     pillow:windows)    echo "py -m pip install --user Pillow" ;;
     pillow:*)          echo "sudo apt install -y python3-pil" ;;
+    python:macos)      echo "python3 ships with macOS; if it is gone: brew install python" ;;
+    python:windows)    echo "winget install --id Python.Python.3.12 -e   (tick 'Add to PATH')" ;;
+    python:*)          echo "sudo apt install -y python3" ;;
     *)                 echo "see README.md" ;;
   esac
 }
@@ -76,6 +79,19 @@ have_font() {
            "${LOCALAPPDATA:-}/Microsoft/Windows/Fonts"; do
     [ -d "$d" ] || continue
     ls "$d" 2>/dev/null | grep -qi "^notosans" && return 0
+  done
+  return 1
+}
+
+# The HiringCafe sweep is plain HTTP driven by a stdlib-only Python script, so
+# an interpreter is enough — no third-party package to install.
+have_python() {
+  local c
+  for c in python3 python py; do
+    if command -v "$c" >/dev/null 2>&1 \
+       && "$c" -c "import json,urllib.request" >/dev/null 2>&1; then
+      return 0
+    fi
   done
   return 1
 }
@@ -124,6 +140,9 @@ echo "Reading your profile"
 check "pdftotext" probe_pdftotext "reading your exports; setup cannot validate them" poppler required
 check "pdfinfo"   probe_pdfinfo   "page-count checks after rendering"                poppler required
 echo
+echo "Job boards"
+check "Python"    have_python     "the HiringCafe sweep; the other boards are unaffected" python required
+echo
 echo "Handwritten signature (optional)"
 check "magick"    probe_magick    "keying a scanned signature"                       magick  optional
 check "Pillow"    have_pillow     "keying a scanned signature"               pillow  optional
@@ -167,7 +186,8 @@ echo "Browser automation (scanning boards, filling application forms)"
 echo "  Cannot be probed from a shell. Two things are needed, both yours to set up:"
 echo "    1. the Claude extension for Chrome, installed and connected"
 echo "       — https://claude.com/chrome"
-echo "    2. you, logged in to the board in that Chrome (LinkedIn needs it; jobup.ch does not)"
+echo "    2. you, logged in to the board in that Chrome (LinkedIn needs it; jobup.ch does not)
+  Neither is needed for the HiringCafe sweep, which is plain HTTP."
 echo "  Test it by asking Claude: \"open a tab on linkedin.com and tell me if I'm logged in\""
 echo
 

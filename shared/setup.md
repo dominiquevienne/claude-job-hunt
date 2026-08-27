@@ -256,8 +256,15 @@ List what exists in `shared/boards/`, with what each one needs:
 
 | Board | Needs |
 | :-- | :-- |
+| HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
 | LinkedIn | Their own profile URL, and they must be logged in themselves, in the Chrome the Claude extension is connected to |
 | jobup.ch | Nothing — **no login needed to scan.** Swiss ads, French-speaking Switzerland |
+
+For HiringCafe, a **city** search needs the region name *and* the coordinates as
+a complete set — the site has no public geocoder, and a partial location returns
+zero ads with no error. Either collect all four (`city`, `region`, `lat`, `lon`)
+or configure `country` alone. **Never invent coordinates**: wrong ones return a
+plausible result set centred on the wrong place.
 
 Multi-select which to enable, then **collect each one's required settings
 immediately** — a board switched on with an empty required key is skipped at

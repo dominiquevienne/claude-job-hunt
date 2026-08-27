@@ -51,7 +51,14 @@ Last scan: YYYY-MM-DD
     linkedin:4430721631
     jobup:4302da20-da24-449c-af7b-2e7577ce45a8
     indeed:c8a3978553801746
+    hiringcafe:bs8vw0v4viy4i6se
     ```
+
+  - **A HiringCafe row also keeps its `apply_url`**, in `Note`. The id
+    identifies the ad *on HiringCafe*; the `apply_url` identifies the same
+    posting on the employer's own ATS, which is where it will turn up again —
+    through another board, or through a future per-ATS adapter. It is the only
+    key that survives the crossing.
 
     **No board is the default**, and a bare id is not valid. Two boards already
     ship and ids are not unique across them, so an unprefixed id is a guess

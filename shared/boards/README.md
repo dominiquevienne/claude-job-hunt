@@ -1,13 +1,14 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Three ship today, each verified against the live
+and each adapter owns one site. Four ship today, each verified against the live
 site.
 
 ## Which boards are available
 
 | Board | File | Status |
 | :-- | :-- | :-- |
+| HiringCafe | `hiringcafe.md` | **Shipped.** Worldwide meta-board over ~40 ATS. Search sweep and description reading, **with no browser and no login** — plain HTTP. No apply flow to support: every ad links to the employer's own ATS |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
 | jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
