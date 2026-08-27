@@ -76,6 +76,26 @@ status is `todo`** (ties go to the more recently posted ad), rebuild its URL
 from the `ID`, say in one line which ad you picked and why, and carry on. The
 go/no-go gate in step 3 is where the user gets their say.
 
+**Read the row's `Note` before picking it — the score alone is not the ranking.**
+A `todo` row can carry a verdict its status never received: a blocker found when
+the description was read, a standing decision to hold off on that employer, a
+pending application at the same company. Ranking on `Match` walks straight past
+all of it.
+
+- **The note records a settled blocker** → skip the row, say why in one line,
+  and take the next. Offer to correct its status, since a row like that should
+  not have been in the `todo` pool (see `job-scan` step 5).
+- **The note records an open question** — a contract form to clarify, a
+  description never read → the row is still a legitimate pick, but **that
+  question is the first thing step 3 puts to the user**, before any drafting.
+- **The note records a hold on the employer** — a freeze pending an answer, an
+  application already open there → surface it and let the user decide. Do not
+  lift a hold they set.
+
+Seen on a real ledger on 2026-08-27: a .NET/C# role whose own note read
+*"bloqueur dur … le management seul ne rachète pas un rôle qui exige d'écrire du
+.NET"* was proposed as a top pick, on its 57 % and a 30-minute commute.
+
 A provisional score (`~`) still counts for ranking; step 3 replaces it either
 way. If **no** row is `todo`, say so, report how many ads are in the file and
 when the last scan ran, and offer to run `job-scan` rather than inventing a
