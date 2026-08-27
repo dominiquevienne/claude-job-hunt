@@ -416,8 +416,11 @@ trust Spotlight metadata (`mdls`): it serves a stale cache and reports the
 
   | Recipient block | Usable ceiling |
   | :-- | --: |
+  | 2 lines (company, country — employer not named) | **~300 words** |
   | 3 lines (company, street, town) | **~285 words** |
   | 4 lines (company, department, street, town) | **~265 words** |
+
+  Roughly 15 words per address line, measured across three real letters.
 
   A long `jobtitle` in the YAML header costs another line when it wraps.
 
