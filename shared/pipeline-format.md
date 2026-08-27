@@ -45,12 +45,34 @@ Last scan: YYYY-MM-DD
 - **`ID`** is the job board's own job id — the dedup key. Rebuild the ad URL
   from it with the adapter's recipe; **never scrape a URL** out of the page
   (see `shared/boards/linkedin.md`).
-  - **Always prefix it with the board**: `linkedin:4430721631`,
-    `jobup:4302da20-…`, `indeed:cbdabcaff5c…`. **No board is the default**, and
-    a bare id is not valid. Two boards already ship and ids are not unique
-    across them, so an unprefixed id is a guess about which site it came from —
-    a guess that gets silently wrong the day a third adapter arrives, and that
-    makes an ad URL impossible to rebuild without one.
+  - **Always prefix it with the board**, and **always write the id in full**:
+
+    ```
+    linkedin:4430721631
+    jobup:4302da20-da24-449c-af7b-2e7577ce45a8
+    indeed:c8a3978553801746
+    ```
+
+    **No board is the default**, and a bare id is not valid. Two boards already
+    ship and ids are not unique across them, so an unprefixed id is a guess
+    about which site it came from — a guess that gets silently wrong the day a
+    third adapter arrives, and that makes an ad URL impossible to rebuild
+    without one.
+
+  - **Never abbreviate an id to make the column narrower.** The id's whole job
+    is to rebuild the ad URL; a shortened one cannot, and the row becomes a
+    dead end that still *looks* fine. jobup ids are 36-character UUIDs and this
+    is where it bites: `jobup:4302da20` renders a blank page, while
+    `jobup:4302da20-da24-449c-af7b-2e7577ce45a8` opens the ad.
+
+    Seen on a real ledger on 2026-08-27: **all 55 jobup rows** carried only the
+    first 8 characters of their UUID, so not one of them was reconstructible.
+    36 were recovered by re-harvesting ids from jobup search results and joining
+    on the prefix; **19 were lost for good**, their ads having expired out of
+    the index. Recovery is possible but slow, and it only works while the ad is
+    still listed — so write the id in full the first time.
+
+    Markdown tables do not need narrow cells. Let the column be wide.
   - A ledger written before this convention has bare numeric ids. Migrate them
     to `linkedin:<id>` in one pass and **say you did it**, rather than carrying
     two conventions and re-deciding on every row.
