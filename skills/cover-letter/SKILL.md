@@ -28,6 +28,7 @@ the documents and flag the gap to them at the end.
 | `shared/scoring-rubric.md` | Step 3 — the go/no-go score |
 | `shared/salary-estimate.md` | Step 3b — the compensation range, and where it must never go |
 | `shared/pipeline-format.md` | Steps 1, 4 and 9 — the ledger |
+| `shared/ats-open-check.md` | Step 1b — asking an employer's ATS directly whether the ad is still open |
 | `shared/boards/linkedin.md` | Step 8 — before touching the browser |
 | `shared/modules/*.md` | Step 4 — only those enabled in `config.yml` |
 
@@ -168,6 +169,15 @@ When either holds, verify **before drafting**:
 
 Do not guess a careers-page URL beyond a single attempt; the board's own search
 and a web search for the ATS posting are the routes that work.
+
+**When the ad's apply link points at an applicant tracking system, ask it
+directly — see `shared/ats-open-check.md`.** One request to the employer's own
+vacancy URL settles in seconds what a careers-page search only hints at, and it
+answers unauthenticated on the hosts recorded there. Some hosts say *closed* with
+a status code (umantis answers `403`); others cannot say it at all (Jobvite never
+returns an error, so it is usable only to confirm an ad is **listed**, never to
+conclude it is gone). **Read the host's row before trusting either direction**,
+and if the host is not recorded, say you could not verify rather than guessing.
 
 **Whatever this step turns up, note the host.** Verifying an ad routinely lands
 you on a board nobody asked about — an employer-owned careers site, or an ATS

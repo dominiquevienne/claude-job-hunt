@@ -108,6 +108,22 @@ Two rules for anything added here:
    Boards change their markup; a dated note lets the next person tell a broken
    adapter from a broken assumption.
 
+## ATS hosts — not boards, but useful for a different question
+
+`shared/ats-open-check.md` records hosts that answer *"is this ad still open?"*
+in one unauthenticated request — Haufe/Abacus umantis, Jobvite, and the ATSs
+already named in `cover-letter` step 1b.
+
+**Those are deliberately not adapters, and adding one here would be a mistake.**
+An adapter exists so `job-scan` can **sweep many employers**; an ATS host serves
+**one employer per tenant** and has no cross-employer search, so there is nothing
+to sweep. What it does have is an authoritative answer about a single ad, which
+is what step 1b needs and what a board is worst at providing.
+
+Keep the two apart: **sweepable board → an adapter here. Employer ATS → a row in
+`shared/ats-open-check.md`.** When a `board-request` turns out to be an ATS, that
+file is where its findings belong.
+
 ## Boards without an adapter
 
 The user can still apply to an ad from any board: `cover-letter` takes a URL,
