@@ -27,6 +27,11 @@ They live in this plugin, one level above this skill's folder
 | `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |
 | `shared/modules/*.md` | Step 6 — only those enabled in `config.yml` |
 
+**When a board with an adapter fails to sweep, invoke the `board-request` skill**
+(broken-adapter mode, its section 2b) before the run ends — the fix belongs
+upstream, where it reaches every user, not in a local workaround that the next
+plugin update overwrites.
+
 **When a prerequisite is missing at any point, do not stop at saying so.**
 Follow `shared/prerequisites.md`: name what it blocks, give the exact command
 for the user's platform, offer to run it, verify, and fall back gracefully if
@@ -107,6 +112,22 @@ this skill owns the scoring, the ledger and the reporting.
   URL from it and `cover-letter` will do the rest."* Guessing at an untested
   site's markup returns nothing, or the wrong ads, with no way for the user to
   tell. See `shared/boards/README.md`.
+- **Adapter present but the board fails anyway** — the search page loads and
+  nothing extracts, a selector no longer matches, a login wall or consent gate
+  appeared, the URL recipe 404s → **skip that board, keep sweeping the others,
+  and invoke the `board-request` skill in its broken-adapter mode (its section
+  2b) before the run ends.** Capture the symptom while the browser is still on
+  the page; a failure reconstructed afterwards is a guess.
+
+  **A board that broke for this user broke for everyone.** Working around it
+  locally is half the job — the issue is what turns one broken scan into a fix
+  that ships to every user on the next plugin update. `board-request` handles
+  the duplicate check, the privacy pass on search URLs and page dumps, and the
+  submission; do not hand-roll any of it here.
+
+  Do **not** file for an anti-bot challenge that the adapter already documents
+  as expected (`indeed.md` does), for a logged-out session, or for a search that
+  genuinely has no results. Section 2b's table separates the three.
 
 Then the adapter's **prerequisites block**, which is not optional: the user must
 be told that this drives their own Chrome, that it needs the Claude Chrome
@@ -283,6 +304,12 @@ done this run" block whenever anything was skipped, capped or scored
 provisionally — a board skipped for a missing key, a search cut short by
 throttling, ads scored from the card alone. **A run that ends with nothing new
 still owes the user the zero and the reason for it.**
+
+**A board that failed is named in that block with its issue URL**, or with the
+fact that no issue was filed and why — the user declined, `gh` was unavailable,
+a duplicate was already open. *"jobup returned nothing"* on its own is the
+silent failure this whole rule exists to refuse: the user cannot tell a broken
+adapter from an empty market, and those call for opposite reactions.
 
 ## 7 — Hand off to `cover-letter`
 
