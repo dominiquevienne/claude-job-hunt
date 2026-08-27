@@ -372,12 +372,37 @@ platform — relay it and re-render; the markdown is already saved.
 trust Spotlight metadata (`mdls`): it serves a stale cache and reports the
 *previous* render's count.
 
-- **The letter must be exactly one page.** It overflows easily: at ~400 words
-  the signature block, or just the typed name, spills alone onto page 2, which
-  looks like a mistake. **Fix it by cutting the body**, 40–60 words, not by
-  shrinking the signature or tightening `\vspace`. ~360 words is a reliable
-  ceiling with a 2.2 cm signature. Verify with `pdftotext -f 2 -l 2 <file> -` —
-  if page 2 exists at all, trim.
+- **The letter must be exactly one page.** It overflows easily, and what spills
+  is usually the signature block or just the typed name, alone on page 2, which
+  looks like a mistake. Verify with `pdftotext -f 2 -l 2 <file> -` — if page 2
+  exists at all, trim. **Fix it by cutting the body**, never by shrinking the
+  signature or tightening `\vspace`.
+
+  **Diagnose before cutting — the word count is often the wrong culprit.** Read
+  what page 1 actually ends with:
+
+  ```bash
+  pdftotext -layout -f 1 -l 1 <file>.pdf - | grep . | tail -3
+  ```
+
+  - **Page 1 ends mid-body** → the body is genuinely too long. Cut prose.
+  - **Page 1 ends on the closing salutation** → the body already fits, and the
+    signature block alone is overflowing. You need roughly **four to five lines**
+    of room, so cutting ten words will not do it however many times you try.
+
+  **There is no fixed word ceiling — it depends on the recipient block.** Each
+  address line costs a line of body. Measured on real letters with a 2.2 cm
+  signature:
+
+  | Recipient block | Usable ceiling |
+  | :-- | --: |
+  | 3 lines (company, street, town) | **~285 words** |
+  | 4 lines (company, department, street, town) | **~265 words** |
+
+  A long `jobtitle` in the YAML header costs another line when it wraps.
+
+  Treat those figures as the starting estimate, not the rule: write, render,
+  read the tail of page 1, and cut against what you see.
 - **The resume follows `documents.resume_length`.** On `generous`, never trim
   substance for pagination; fix only genuine layout faults (orphan headings,
   split entries).
