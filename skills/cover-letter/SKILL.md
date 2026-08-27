@@ -112,6 +112,23 @@ would need. Do this **without interrupting the application**: mention it in one
 clause at the end, never as a question in the middle. A user who asked for a
 cover letter did not ask to file a feature request.
 
+**One board leading to another is the exception — there you ask.** The rule above
+is about the URL the *user* handed you, and it stays silent because they did not
+ask for a feature request. But when following a board takes you to a **second,
+different board** — most often an employer-owned careers site or ATS reached
+through an outbound *apply* link (step 1b does this by design) — that is a board
+the user never mentioned, and you found it on your own initiative. **Ask them,
+with `AskUserQuestion`, whether to file a `board-request` for it, and prefill the
+question with everything you already established**: the host, the vendor or "own
+ATS", the shape of a vacancy URL, whether the description is served without
+authentication, and how you got there. Asking costs one option in a question the
+gate is already putting to them; discovering the board a second time, months
+later, costs the whole investigation again.
+
+Fold it into the go/no-go gate's `AskUserQuestion` call rather than raising it on
+its own — a second, separate prompt is the interruption the rule above exists to
+prevent.
+
 Then, in both cases: WebFetch the URL and extract **company**, **role**,
 **location**, **language of the ad**, key **responsibilities**, **required
 skills**, and any **must-haves**. LinkedIn URLs may 301 to a country host — if
@@ -151,6 +168,13 @@ When either holds, verify **before drafting**:
 
 Do not guess a careers-page URL beyond a single attempt; the board's own search
 and a web search for the ATS posting are the routes that work.
+
+**Whatever this step turns up, note the host.** Verifying an ad routinely lands
+you on a board nobody asked about — an employer-owned careers site, or an ATS
+with no adapter in `shared/boards/`. That is the board-to-board case in step 1,
+and it is a question for the user at the gate, not a silent note: carry the host,
+the vacancy-URL shape and whether the description came back unauthenticated
+forward to step 3, and offer the `board-request` there.
 
 **When the ad is closed, stop.** Say so, mark the row `discarded` with the
 reason and the date (`shared/pipeline-format.md`), keep the score you have, and
