@@ -49,6 +49,14 @@ Write a `## Job-room data (PRE)` block at the end of the dossier's `job-ad.md`:
 | **Link to the online form** | yes, as soon as the application is electronic | the full ad URL — a truncated identifier is unusable |
 | Occupancy rate | yes | full time / part time, per the ad |
 
+**When the ad came from the `job-room` sweep, some of this arrives already
+filled — but less of it than you would expect.** Measured on 100 fresh VD/GE
+ads on 2026-08-28: the employer name is always present, **postcode and town on
+39**, **street and number on 7**, an AVAM number on **2**. So the adapter is a
+head start on the postcode field, not a way to skip it. Everything still gets
+read before it goes on the form, and a missing town is still asked for, never
+inferred. See `shared/boards/job-room.md`.
+
 Two traps seen in real use:
 
 - **A recruitment agency whose end client is not named** leaves the town

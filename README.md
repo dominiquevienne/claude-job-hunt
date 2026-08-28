@@ -6,7 +6,8 @@ to end, honestly.
 - **`job-scan`** — sweeps the job boards you switch on, in *your own* Chrome,
   scores every ad against your real profile, and keeps a ledger so the same ad
   is never proposed twice. Ships with adapters for **HiringCafe** (worldwide,
-  no browser needed), **LinkedIn**, **jobup.ch** and **Indeed**; no board is
+  no browser needed), **job-room.ch** (Switzerland's public employment service,
+  no browser either), **LinkedIn**, **jobup.ch** and **Indeed**; no board is
   enabled until you enable it.
 - **`cover-letter`** — takes one ad, from **any board**, and produces a
   tailored, ATS-compliant resume and cover letter as markdown and PDF, after
@@ -484,6 +485,7 @@ Plain files. Read them, edit them, grep them, back them up, delete them.
 
 | Board | Sweep | Login to scan | Notes |
 | :-- | :-- | :-- | :-- |
+| **job-room.ch** | yes | no | Switzerland's public employment service portal (SECO), through its public API. **No browser needed.** Reaches the Swiss SMEs and foundations the others miss — and tells you exactly which jobup row each of its duplicates is |
 | **HiringCafe** | yes | no | Worldwide meta-board over ~40 ATS: every ad is an employer posting, linked to that employer's own application page. **Needs no browser and no extension.** Blind to the Swiss ATS (Refline, Ostendis, Umantis), and thin in emerging markets |
 | **LinkedIn** | yes | **yes**, in your own Chrome | Also drives Easy Apply forms — you always validate the send |
 | **jobup.ch** | yes | no | French-speaking Switzerland. Ads carry a full street address, which few boards do |

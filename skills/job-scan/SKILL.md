@@ -1,6 +1,6 @@
 ---
 name: job-scan
-description: Sweep the job boards the user has enabled (HiringCafe, LinkedIn, jobup.ch, Indeed) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
+description: Sweep the job boards the user has enabled (HiringCafe, job-room.ch, LinkedIn, jobup.ch, Indeed) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
 user-invocable: true
 allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---
@@ -136,8 +136,8 @@ themselves first. If the extension is absent, follow `shared/prerequisites.md`
 — help them install it, and offer the no-browser route meanwhile.
 
 **Read that block rather than assuming it.** Not every adapter drives the
-browser: `hiringcafe.md` is plain HTTP and needs no extension, no login and no
-Chrome at all. Announcing requirements a board does not have costs the user a
+browser: `hiringcafe.md` and `job-room.md` are plain HTTP and need no extension, no
+login and no Chrome at all. Announcing requirements a board does not have costs the user a
 setup they did not need — and when the extension really is missing, HiringCafe
 is a sweep that still runs, not just a fallback to `cover-letter`.
 
