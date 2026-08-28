@@ -38,7 +38,71 @@ When nothing was skipped, **say that too**, in one clause. "All 8 searches ran,
 all 12 descriptions read" is information. Its absence is what makes users
 wonder.
 
+## HTTP 200 is not a yes
+
+**The dominant way this plugin fails silently is not a crash. It is a site
+answering successfully while meaning "no".** Thirteen adapters have now been
+built against live sites, and **every one of them** turned up at least one case
+where a request that looks like it worked carries a refusal — or, worse, where a
+refusal comes back looking like data.
+
+They were all found the same way: by deliberately asking wrongly and looking at
+what came back. None was visible in the response status.
+
+| What was asked | What came back | What it actually meant |
+| :-- | :-- | :-- |
+| umantis, a vacancy at the wrong `Description` segment | `200` + the tenant's chrome | wrong URL — the segment is per **vacancy** |
+| umantis, an unallocated tenant number | `200` + the vendor's marketing page | wrong host, not an employer with nothing open |
+| umantis, a client-rendered tenant | `200`, 64 kB, **zero** vacancy rows | the listing is not in the HTML; the board is not empty |
+| SmartRecruiters, an unknown tenant | `200`, `totalFound: 0` | wrong tenant **or** nothing open — and nothing can separate them |
+| SmartRecruiters, `limit=500` | `200` with **100** results | silently clamped; the rest of the board is invisible |
+| SmartRecruiters, `city=boston` | `200`, zero | wrong case — `Boston` returns 17 |
+| jobup / jobs.ch, `location=geneve` | `200`, zero, on **both** boards | missing accent — `Genève` returns 11 |
+| HiringCafe, a city without its region | `200`, **0** ads — the same object **with** the region returns 2 162 | an incomplete location, not an empty market |
+| Lever, a location string the employer does not use | zero kept | the board was not empty; the filter was |
+| Lever, the wrong one of its two disjoint hosts | `404` | the employer exists, on the other host |
+| Workday, a hardcoded location facet name | filters nothing at all | the facet name is per-tenant configuration |
+| SuccessFactors, `/search/?q=<anything>` | `200`, byte-identical each time | client-rendered shell; it lists nothing for anyone, ever |
+| SuccessFactors, `/search/rss/` | `200`, HTML | not a feed — the one shape that should have bypassed rendering |
+
+And the same trap runs backwards, which is worse, because the failure looks
+like data:
+
+| What was asked | What came back | What it actually meant |
+| :-- | :-- | :-- |
+| HiringCafe, `short_name: "ZZ"` — a country that does not exist | **124 plausible ads** | not zero, not an error: ads from nowhere in particular |
+| Indeed, a search with no matches | the "no results" banner **and six valid cards** | browsing-history suggestions — harvest them and six unrelated ads enter the ledger |
+| Michael Page, a search with no matches | `404` | a real zero, not a broken domain |
+| Michael Page, an ad page | `200` with **invalid** JSON-LD | literal newlines inside JSON strings; a strict parser sees no ad at all |
+| LinkedIn, a results page | `(25)` in `<title>` | the unread-messages badge — the same `(25)` appeared on 2 259 results and on 2 |
+
+### What follows from it
+
+**1. Never convert an empty result into a statement about the market.** *"No ads
+matched"* is a fact about a request. *"They are not hiring"* is a claim about the
+world, and on the boards above the two are routinely different. Say which one
+you are reporting, and if you cannot tell them apart — SmartRecruiters, by
+construction — **say that too**.
+
+**2. Every adapter must document its zero-shaped answers**, alongside its
+selectors. An adapter that describes only the happy path hands the next reader a
+zero with no way to interpret it. See the contract in `shared/boards/README.md`.
+
+**3. Prefer a refusal to an empty result.** Where an adapter can tell that the
+request itself was wrong — a vendor page, an unparseable block, a shell with no
+rows — it should **fail loudly with its own exit code** rather than print
+nothing. Printing nothing is indistinguishable from a board with nothing on it,
+which is precisely the confusion this page exists to prevent.
+
+**4. When you write an adapter, ask wrongly on purpose.** A wrong tenant, a
+wrong case, a missing accent, an oversized page, an id that does not exist. That
+is where every entry in the tables above came from, and none of them would have
+been found by reading the site's documentation or the adapter's own code.
+
 ## Empty is a result, not a silence
+
+**First establish that it is a zero** — see the section above; on several boards
+an empty result is a refusal wearing a `200`. Then report it.
 
 Zero new ads, zero matches above threshold, zero pending rows — **report the
 zero and why it happened**: how many ads were seen, how many were already in the
