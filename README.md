@@ -495,6 +495,7 @@ Plain files. Read them, edit them, grep them, back them up, delete them.
 | **job-room.ch** | yes | no | Switzerland's public employment service portal (SECO), through its public API. **No browser needed.** Reaches the Swiss SMEs and foundations the others miss — and tells you exactly which jobup row each of its duplicates is |
 | **HiringCafe** | yes | no | Worldwide meta-board over ~40 ATS: every ad is an employer posting, linked to that employer's own application page. **Needs no browser and no extension.** Blind to the Swiss ATS (Refline, Ostendis, Umantis), and thin in emerging markets |
 | **LinkedIn** | yes | **yes**, in your own Chrome | Also drives Easy Apply forms — you always validate the send |
+| **Michael Page** | yes | no | The recruitment agency's own board, country-scoped. **No browser.** Reaches roles that never appear on an employer's ATS — but the employer is **described, never named**, so you cannot research them before applying |
 | **jobup.ch** | yes | no | French-speaking Switzerland. Ads carry a full street address, which few boards do |
 | **jobs.ch** | yes | no | The same platform as jobup, German-speaking Switzerland — and **the same ad ids**, so running both never doubles a row. Three times the national volume; in Romandie jobup still finds more, so it is a companion, not a replacement |
 | **Indeed** | yes | possibly | Country-scoped (`ch.indeed.com`, …). **Serves anti-bot challenges** — you solve them, the plugin never does. Ads carry a postcode |

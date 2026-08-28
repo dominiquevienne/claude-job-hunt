@@ -1,6 +1,6 @@
 ---
 name: job-scan
-description: Sweep the job boards the user has enabled (HiringCafe, job-room.ch, Workday, Greenhouse, Lever, Ashby, SmartRecruiters, umantis, LinkedIn, jobup.ch, jobs.ch, Indeed) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
+description: Sweep the job boards the user has enabled (HiringCafe, job-room.ch, Workday, Greenhouse, Lever, Ashby, SmartRecruiters, umantis, Michael Page, LinkedIn, jobup.ch, jobs.ch, Indeed) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
 user-invocable: true
 allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---

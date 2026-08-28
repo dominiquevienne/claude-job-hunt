@@ -98,6 +98,16 @@ boards:
     enabled: false
     hosts: []          # e.g. ["jobs.bobst.com", "recruitingapp-2698.umantis.com"]
 
+  michaelpage:
+    # Michael Page - the recruitment agency's own board. Scanning needs NO
+    # login and NO browser. Country-scoped like Indeed: `domain` has no
+    # default, because guessing it searches the wrong market.
+    # NOTE: the employer is DESCRIBED and never NAMED on this board. You
+    # cannot research the company before applying, and the ledger cannot
+    # match these ads against the same role on the employer's own ATS.
+    enabled: false
+    domain: "www.michaelpage.ch"
+
   indeed:
     # Country-scoped. `domain` has no default: guessing the country would
     # silently search the wrong market.
