@@ -256,6 +256,7 @@ List what exists in `shared/boards/`, with what each one needs:
 
 | Board | Needs |
 | :-- | :-- |
+| Workday | The employers they would work for. **No login, no browser.** Where the large Swiss employers are — Swisscom, Swiss Life, Roche, Lindt. Each board needs three coordinates (host, tenant, site); resolve them with `workday.py resolve "<employer>"`, and ask which site when an employer runs several |
 | Greenhouse / Lever / Ashby | A list of **employers** they would actually work for. **No login, no browser.** These answer "is my target employer hiring?", never "who is hiring near me?" — a user with nobody in mind gains nothing, so offer them only when the user names employers. Resolve each tenant token with `ats.py resolve "<employer>"`; never ask the user to guess it |
 | job-room.ch | The cantons they would work in (official uppercase codes), or a point and a radius of at least 10 km. **No login, no browser.** Switzerland only. Reaches the SMEs, foundations and staffing agencies HiringCafe misses |
 | HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
