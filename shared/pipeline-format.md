@@ -57,6 +57,7 @@ Last scan: YYYY-MM-DD
     lever:caseware:0dcbf482-60a0-4fd2-9d8f-9945f18d419d
     workday:swisscom:SwisscomExternalCareers:R-0006153
     umantis:jobs.bobst.com:9151
+    smartrecruiters:nexthink:744000145952849
     ```
 
     **The ATS boards carry the employer in the key**, as
