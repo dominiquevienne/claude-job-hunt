@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Ten ship today, each verified against the live
+and each adapter owns one site. Eleven ship today, each verified against the live
 site.
 
 ## Which boards are available
@@ -14,6 +14,7 @@ site.
 | Lever | `lever.md` | **Shipped.** Same family. Two disjoint hosts (US / EU) — the wrong one looks exactly like a missing employer |
 | Ashby | `ashby.md` | **Shipped.** Same family. Multi-city postings hide their other locations in `secondaryLocations` |
 | Workday | `workday.md` | **Shipped.** One employer at a time, by host + tenant + site. Public JSON, **no browser**. Where the large Swiss employers are |
+| Haufe / Abacus umantis | `umantis.md` | **Shipped.** One employer at a time, by host. Public HTML, **no browser**. The Swiss SMEs, communes, clinics and institutes **HiringCafe does not index at all**. No tenant resolution exists — the user supplies the careers URL |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
 | jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
 | jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |

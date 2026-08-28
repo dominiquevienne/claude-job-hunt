@@ -28,18 +28,25 @@ localised and get rewritten; status codes do not.
 
 ### Haufe / Abacus umantis — a strong, status-code signal
 
-- **Recognise it by the path**, not the host: `/Vacancies/<numeric id>/Description/2`.
+- **Recognise it by the path**, not the host: `/Vacancies/<numeric id>/Description/<segment>`.
   Employers front it either with `recruitingapp-<n>.umantis.com` or a vanity
   domain of their own (`jobs.<employer>.com`), so **the host tells you nothing
   and the path tells you everything.**
-- **The trailing `2` is required.** It is *not* a language or view index.
+- **The trailing segment is per *vacancy*, and must never be guessed.**
+  Corrected 2026-08-28: this file previously said the `2` was required and was
+  not a view index. It is one, and it varies **inside a single tenant** — on
+  BOBST, vacancy 9151 serves at `/2` while 9220, 9221 and 9222 serve at `/3`;
+  Swiss TPH serves at `/1`. Every wrong segment answers `200`.
+  **Read the segment from the employer's `/Jobs` listing, which links each
+  vacancy with a working one** — `skills/job-scan/scripts/umantis.py` does this,
+  and `umantis.py check --host … --id …` answers this whole section in one call.
 
 | Response | Reading |
 | :-- | :-- |
 | **`200`** + a real job title in `<title>` | **Open.** |
-| **`403`** | **Not open** — closed, withdrawn, or never existed. Body is localised (*"Invalid permission"* / *"Fehlende Berechtigung"*); **match the 403, not the words.** |
+| **`403`** | **Not open** — closed, withdrawn, or never existed. Body is localised (*"Invalid permission"* / *"Fehlende Berechtigung"*); **match the 403, not the words.** Confirmed at every segment, so a 403 needs no segment hunt. |
 | `404` | Malformed path — you got the URL shape wrong, not an answer about the ad. |
-| `200` + `<title>` is `Applicant Management` | **Wrong trailing segment** (`/1`, `/99`…). The ATS shell, not a description. **Not an answer** — retry with `/2`. |
+| `200` + **nothing before the `\|`** in `<title>` (`  \| Applicant Management`, `  \| eRecruiting Swiss TPH`) | The tenant's chrome, not a description. **Wrong segment, not a dead ad** — try the ones the listing publishes. What follows the pipe is per-tenant and localised; what is stable is that nothing precedes it. |
 
 **Verified 2026-08-27 on two unrelated tenants, in two locales.** The decisive
 case: a vacancy on `recruitingapp-2698.umantis.com` that a search engine had
@@ -48,6 +55,11 @@ a genuinely closed vacancy returning 403, not merely an unknown id.
 
 **The site root is usually gated by SSO. That does not matter** — the direct
 vacancy URL answers unauthenticated, which is the whole value.
+
+**umantis now also has a board adapter** (`shared/boards/umantis.md`): it sweeps
+one employer at a time, and reaches the Swiss SMEs, communes and institutes that
+HiringCafe does not index at all. This section stays as the open/closed oracle;
+that file is for listing a board.
 
 ### Jobvite — a weak, title-only signal. Affirmative use only.
 
