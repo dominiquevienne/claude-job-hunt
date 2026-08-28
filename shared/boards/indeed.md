@@ -4,8 +4,9 @@ Country-scoped: `ch.indeed.com`, `fr.indeed.com`, `www.indeed.com`… The search
 domain is configured; ad URLs work from the generic `www.indeed.com` whatever
 the country (verified: a Swiss ad opens identically from both).
 
-**Verified against `ch.indeed.com` on 2026-08-26.** Selectors rot; re-check
-before trusting an old note.
+**Verified against `ch.indeed.com` on 2026-08-26, re-verified 2026-08-28.**
+Every selector below still holds. Selectors rot; re-check before trusting an old
+note.
 
 ## Configuration
 
@@ -49,9 +50,25 @@ an image grid, not a slider. When one appears:
    challenges mean the pace was wrong; hand the user the search URLs to browse
    themselves, and fall back to `cover-letter <ad URL>` for anything they find.
 
-The exact challenge markup was **not observed** (the user cleared theirs before
-the verification began), so detect it by what is *missing* rather than by
-matching a wording you have never seen:
+**The challenge markup has now been observed** — 2026-08-28, on the first
+request of a re-verification run, before any pace could be at fault:
+
+| Signal | Value |
+| :-- | :-- |
+| `document.title` | `Security Check - Indeed.com` |
+| Body text | *"Vérification supplémentaire requise"*, followed by *"Voici votre Ray ID pour cette requête"* |
+| `Ray ID` | a Cloudflare request id — the challenge is served by Cloudflare, not by Indeed itself |
+| `.job_seen_beacon` | **0** |
+
+**The detection rule below fired correctly on it**: zero cards, and `v[ée]rifi`
+matched *Vérification*. That is the first time it has been checked against a
+real challenge rather than reasoned about.
+
+**It did not clear on its own.** The user solved it in the running session, and
+the run resumed on the real results page. Do not wait one out.
+
+Detect it by what is *missing* as much as by the wording, since the body is
+localised:
 
 ```js
 // Run this before trusting any extraction.
@@ -87,9 +104,21 @@ Roughly **10 to 16 cards** hydrate per page — enough that a broad search plus
 paging beats many narrow ones.
 
 **The remote filter is an opaque `sc=0kf:attr(...)` token that was NOT
-verified.** Do not guess it. Filter remote work from the card text instead,
-which is verified: a home-office ad carries `Travail à domicile` (or the
-site-language equivalent) in the card.
+verified.** Do not guess it. Filter remote work from the card text instead —
+but **not on the exact string `Travail à domicile`**, which is only one of three
+forms. Observed on a single page of ten cards, 2026-08-28:
+
+| Card text | Reading |
+| :-- | :-- |
+| `Travail à domicile` | home office, standing alone |
+| `Télétravail à Lausanne, VD` | remote — **and the town is fused into the marker** |
+| `Travail hybride à Le Vaud, VD` | hybrid, town fused the same way |
+
+Matching `Travail à domicile` exactly therefore **misses the most remote ads of
+the three**, silently. Match on the stem instead —
+`/t[ée]l[ée]travail|à domicile|hybride/i` — and read the work mode from the ad
+text, never from the marker alone. The fused town is not a location field: the
+card's own location line is.
 
 ## The ad id and its URL
 
