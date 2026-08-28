@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Nine ship today, each verified against the live
+and each adapter owns one site. Ten ship today, each verified against the live
 site.
 
 ## Which boards are available
@@ -16,6 +16,7 @@ site.
 | Workday | `workday.md` | **Shipped.** One employer at a time, by host + tenant + site. Public JSON, **no browser**. Where the large Swiss employers are |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
 | jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
+| jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
 | *your board here* | — | See *Writing an adapter* below |
 
