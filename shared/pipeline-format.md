@@ -52,7 +52,14 @@ Last scan: YYYY-MM-DD
     jobup:4302da20-da24-449c-af7b-2e7577ce45a8
     indeed:c8a3978553801746
     hiringcafe:bs8vw0v4viy4i6se
+    job-room:f9673db9-86b5-4792-a360-ba1c7907bb35
     ```
+
+  - **A job-room row that names a duplicate names it exactly.** Roughly a
+    third of its Romandie ads are syndicated from jobup, and the card carries
+    `duplicate_of` — `jobup:<uuid>`, lifted from the ad's own external URL.
+    That is a certainty, not the substring guess the employer-name check makes:
+    discard the new row naming the one it duplicates.
 
   - **A HiringCafe row also keeps its `apply_url`**, in `Note`. The id
     identifies the ad *on HiringCafe*; the `apply_url` identifies the same
