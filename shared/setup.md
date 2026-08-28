@@ -263,6 +263,7 @@ List what exists in `shared/boards/`, with what each one needs:
 | HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
 | LinkedIn | Their own profile URL, and they must be logged in themselves, in the Chrome the Claude extension is connected to |
 | jobup.ch | Nothing — **no login needed to scan.** Swiss ads, French-speaking Switzerland |
+| Michael Page | Their country domain — `www.michaelpage.ch`, `.fr`, `.de`, `.co.uk` … **No default**: guessing it searches the wrong market. **No login, no browser.** Warn them the employer is never named on this board, so they cannot research the company before applying, and the ledger cannot dedup it against the employer's own ATS |
 | jobs.ch | Nothing — **no login needed to scan.** The same platform as jobup, German-speaking Switzerland. Offer it alongside jobup rather than instead of it: nationally it is ~3× the board, in Romandie it is thinner. Shared ad ids mean the ledger never doubles a row. **No French UI** — `de` or `en` only |
 
 For HiringCafe, a **city** search needs the region name *and* the coordinates as
