@@ -88,6 +88,16 @@ boards:
     enabled: false
     language: "de"
 
+  umantis:
+    # Haufe/Abacus umantis — one employer per host. Scanning needs NO login
+    # and NO browser. Reaches Swiss SMEs, communes, clinics and institutes
+    # that HiringCafe does not index AT ALL.
+    # NOTE: there is no tenant resolver for this ATS. Give the careers URL
+    # of each employer; a guessed tenant number serves the vendor's own
+    # marketing page with HTTP 200 and looks like an empty board.
+    enabled: false
+    hosts: []          # e.g. ["jobs.bobst.com", "recruitingapp-2698.umantis.com"]
+
   indeed:
     # Country-scoped. `domain` has no default: guessing the country would
     # silently search the wrong market.

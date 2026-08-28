@@ -56,6 +56,7 @@ Last scan: YYYY-MM-DD
     greenhouse:elastic:8098185
     lever:caseware:0dcbf482-60a0-4fd2-9d8f-9945f18d419d
     workday:swisscom:SwisscomExternalCareers:R-0006153
+    umantis:jobs.bobst.com:9151
     ```
 
     **The ATS boards carry the employer in the key**, as
