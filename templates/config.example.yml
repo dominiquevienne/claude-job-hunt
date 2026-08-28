@@ -79,6 +79,15 @@ boards:
     enabled: false
     language: "fr"
 
+  jobs-ch:
+    # jobs.ch — jobup's German-language sibling, same JobCloud platform.
+    # Scanning needs NO login. Safe to run ALONGSIDE jobup: an ad on both
+    # boards carries the SAME id, so the ledger holds it once.
+    # Nationally ~3x jobup; in Romandie thinner. Not a replacement.
+    # NOTE: there is no French UI here — "de" (default) or "en" only.
+    enabled: false
+    language: "de"
+
   indeed:
     # Country-scoped. `domain` has no default: guessing the country would
     # silently search the wrong market.

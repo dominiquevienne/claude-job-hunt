@@ -1,8 +1,10 @@
 # Board adapter — jobup.ch
 
-Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud);
-the German-language sibling very likely behaves identically but **has not been
-verified** — do not assume it.
+Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud).
+**The sibling has now been verified** (`jobs-ch.md`, 2026-08-28): same DOM, same
+selectors, and — the part that matters — **the same ad ids**. An ad on both
+boards carries one UUID, so `jobup:<uuid>` and `jobs.ch:<uuid>` are the same
+posting. Check the ledger for the other prefix before writing a row.
 
 **Everything below was verified against the live site on 2026-08-26.** Selectors
 rot; re-check before trusting an old note.
@@ -57,9 +59,27 @@ adding `&benefit=working-from-home` → 4; `&page=2` returns a different first a
 `quarter` → omit the parameter (30 days is jobup's longest option; say so rather
 than silently narrowing the user's window).
 
-**Unlike LinkedIn, all 20 cards on a page hydrate**, and pagination works. So a
+**The accent in `location` is load-bearing, and dropping it returns zero
+silently** — HTTP `200`, a normal page, no error, no ads. On `term=php`:
+`Genève` and `Genf` both return 11, **`geneve` returns 0**; `Neuchâtel` returns
+1, **`neuchatel` returns 0**. Case is irrelevant, the diacritic is not, and
+exonyms are fine. **Pass the town exactly as the user wrote it** — never
+lowercase-and-strip it — and if a location returns zero, retry once with the
+accented form before reporting an empty board. Measured 2026-08-28; the same
+trap applies to jobs.ch.
+
+**Unlike LinkedIn, every card on a page hydrates**, and pagination works. So a
 broad search is fine here: prefer fewer, wider searches plus paging over many
 narrow ones.
+
+**A page holds more cards than results.** `term=laravel` returned **21**
+`serp-item` cards, one of them carrying `data-cy="recommended"` — a paid
+placement sitting on top of the 20 organic results. It is **not** evidence the
+ad matches the search, and on jobs.ch such cards were observed repeating across
+pages. Capture the flag rather than the count: add
+`promo:!!c.querySelector('[data-cy="recommended"]')` to the card map, and never
+compute "how many results did I read" from the number of cards. Measured
+2026-08-28.
 
 ## The ad id and its URL
 
@@ -175,12 +195,24 @@ It matters most where the requisition id is otherwise unguessable. On SAP
 SuccessFactors it is the *only* route to a checkable URL, because that host's
 own search page renders nothing — see `shared/ats-open-check.md`.
 
-Read it out of the page source rather than the DOM:
+Read it out of the page source rather than the DOM, and **anchor the match on
+`applicationOptions`**:
 
 ```js
-(()=>{const m=document.documentElement.innerHTML.match(/"externalUrl":"([^"]+)"/);
- return m?m[1].replace(/\\u002F/g,'/'):'';})()
+(()=>{const m=document.documentElement.innerHTML
+        .match(/"applicationOptions":\{[^{}]*?"externalUrl":"([^"]*)"/);
+ return m&&m[1]?m[1].replace(/\\u002F/g,'/'):'';})()
 ```
+
+**The anchor is not decoration.** A detail page contains **four or five**
+`"externalUrl"` keys, most of them empty strings belonging to other blocks, so an
+unanchored `/"externalUrl":"([^"]+)"/` matches whichever one is non-empty first
+— which is the ad's own only by luck. Corrected 2026-08-28, after counting the
+occurrences; on the seven ads measured across both hosts the two forms agreed,
+and the anchored one is the one that stays right.
+
+**An empty string is the normal case**, meaning the ad applies in-site — treat it
+as absent, not as a failure.
 
 **Observed 2026-08-27** on a BCV ad, alongside `"isActive":true` and a rendered
 *Postuler* button — two independent corroborations of the same fact. A

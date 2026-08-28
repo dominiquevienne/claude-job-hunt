@@ -69,6 +69,22 @@ Last scan: YYYY-MM-DD
     That is a certainty, not the substring guess the employer-name check makes:
     discard the new row naming the one it duplicates.
 
+  - **jobup and jobs.ch share one id space, and that is the one exception to
+    "the prefix decides".** They are the two faces of JobCloud, and an ad
+    published on both carries the **same UUID** on both — verified 2026-08-28 on
+    two ads, one of which jobup serves under a machine-translated title while
+    jobs.ch keeps the employer's own. So the titles disagree, the employer names
+    match, and **only the UUID proves it is one posting**.
+
+    Before writing a `jobs.ch:<uuid>` row, look for `jobup:<uuid>`, and the
+    reverse. When the bare UUID already appears under the other prefix this is
+    the same ad: discard the new row naming the one it duplicates, with the
+    certainty an exact key gives — and do **not** fall back to the fuzzy
+    employer-name check, which is for when no such key exists.
+
+    This is what makes enabling both boards safe, and enabling both is the point:
+    neither contains the other.
+
   - **A HiringCafe row also keeps its `apply_url`**, in `Note`. The id
     identifies the ad *on HiringCafe*; the `apply_url` identifies the same
     posting on the employer's own ATS, which is where it will turn up again —

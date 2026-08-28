@@ -8,7 +8,7 @@ to end, honestly.
   is never proposed twice. Ships with adapters for **HiringCafe** (worldwide,
   no browser needed), **job-room.ch** (Switzerland's public employment service,
   no browser either), **Workday / Greenhouse / Lever / Ashby** (your target
-  employers' own boards) plus **LinkedIn**, **jobup.ch** and **Indeed**; no board is
+  employers' own boards) plus **LinkedIn**, **jobup.ch**, **jobs.ch** and **Indeed**; no board is
   enabled until you enable it.
 - **`cover-letter`** — takes one ad, from **any board**, and produces a
   tailored, ATS-compliant resume and cover letter as markdown and PDF, after
@@ -492,6 +492,7 @@ Plain files. Read them, edit them, grep them, back them up, delete them.
 | **HiringCafe** | yes | no | Worldwide meta-board over ~40 ATS: every ad is an employer posting, linked to that employer's own application page. **Needs no browser and no extension.** Blind to the Swiss ATS (Refline, Ostendis, Umantis), and thin in emerging markets |
 | **LinkedIn** | yes | **yes**, in your own Chrome | Also drives Easy Apply forms — you always validate the send |
 | **jobup.ch** | yes | no | French-speaking Switzerland. Ads carry a full street address, which few boards do |
+| **jobs.ch** | yes | no | The same platform as jobup, German-speaking Switzerland — and **the same ad ids**, so running both never doubles a row. Three times the national volume; in Romandie jobup still finds more, so it is a companion, not a replacement |
 | **Indeed** | yes | possibly | Country-scoped (`ch.indeed.com`, …). **Serves anti-bot challenges** — you solve them, the plugin never does. Ads carry a postcode |
 | Anything else | not yet | — | `cover-letter <URL>` still does the whole job |
 
