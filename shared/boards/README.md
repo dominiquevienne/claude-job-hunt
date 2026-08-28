@@ -76,7 +76,7 @@ tell.
 
 ## What the skill expects from an adapter
 
-The skill is board-agnostic. It asks each adapter for four things and does the
+The skill is board-agnostic. It asks each adapter for five things and does the
 scoring, the ledger and the reporting itself.
 
 | Contract | What the adapter must document |
@@ -86,8 +86,9 @@ scoring, the ledger and the reporting itself.
 | **2. Search** | How to build a search URL from `keywords`, `location`, `posted_within` and `remote_only`; how to extract the result cards; what a card yields (**a stable id**, title, company, location, work mode, posting age) |
 | **3. Description** | How to open one ad and extract its full text |
 | **4. Ad URL** | How to rebuild a canonical ad URL **from the id** — never by scraping a URL out of the page |
+| **5. Its zero-shaped answers** | Every way this board says *no* while answering `200`, and every way it says *yes* while answering an error. **This is not optional and not a nicety**: it is the failure mode every adapter built so far has turned up, and an adapter that documents only the happy path hands the next reader a zero with no way to read it. See *HTTP 200 is not a yes* in `shared/never-fail-silently.md` |
 
-Optionally, a fifth: **assisted application**, if the board has an in-site apply
+Optionally, a sixth: **assisted application**, if the board has an in-site apply
 flow. It must follow the same gate as LinkedIn's — the user validates every
 send, and nothing is reported as sent without a visible confirmation.
 
