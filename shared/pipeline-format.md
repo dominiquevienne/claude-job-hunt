@@ -75,6 +75,11 @@ Last scan: YYYY-MM-DD
     through another board, or through a future per-ATS adapter. It is the only
     key that survives the crossing.
 
+    **A jobup row keeps its `externalUrl` the same way**, for the same reason —
+    it is the employer's own posting, published in the ad's vacancy JSON
+    (`shared/boards/jobup.md`). On hosts whose requisition id cannot be derived
+    from the ad, it is the only route to an open/closed check at all.
+
     **No board is the default**, and a bare id is not valid. Two boards already
     ship and ids are not unique across them, so an unprefixed id is a guess
     about which site it came from — a guess that gets silently wrong the day a

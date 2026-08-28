@@ -65,6 +65,82 @@ vacancy URL answers unauthenticated, which is the whole value.
 > **So Jobvite is trustworthy in one direction only:** a real job title means
 > listed; anything else means *ask another way*, never *the ad is dead*.
 
+### SAP SuccessFactors — affirmative only, and the search page lies
+
+- **Recognise it by the path**, not the host. Employers front it with a vanity
+  domain of their own (`jobs.<employer>.ch`), so the host tells you nothing.
+  Vacancy path: `/job/<slug>/<id>-<locale>` — e.g.
+  `/job/IT-Business-Analyst-domaine-Opérations-de-Marché/31130-fr_FR`.
+- Confirm the vendor from the page source: `rmkcdn` (i.e.
+  `rmkcdn.successfactors.com`) or `/platform/bootstrap/`.
+- **Like Jobvite, it never signals absence with a status code.** The `<title>`
+  is the whole signal.
+
+| Response | Reading |
+| :-- | :-- |
+| **`200`** + a real job title in `<title>` (`<Job Title> Détails du poste \| <Employer>`) | **Listed.** |
+| **`200`** + `<title>` opens on its separator, the title slot empty (`` ` Détails du poste \| <Employer>` ``) | The requisition does not resolve. **Not proof the ad closed** — it is the same response an invented id gives. |
+
+**Verified 2026-08-27 on one tenant, with a negative control**: a real
+requisition (`31130`) answered `200` / 55 742 B with its title; the same slug
+with an invented id (`99999`) answered `200` / 46 424 B with the slot empty. The
+≈ 9 kB delta is a second, weaker tell; **the title is the reliable one.**
+
+#### The search page is client-rendered, and that invalidates step 1b's rule 2
+
+`/search/` returns a navigation shell and **nothing else** — zero `/job/` hrefs,
+zero job titles, zero occurrences of the search term, for anyone, always.
+Measured unauthenticated with a desktop user-agent:
+
+| Request | Result |
+| :-- | :-- |
+| `/search/?q=&sortColumn=referencedate&sortDirection=desc` | `200`, 66 141 B |
+| `/search/?q=&searchResultView=LIST` | `200`, **66 141 B — byte-identical** |
+| `/search/?q=<terms>` | `200`, navigation shell only |
+| `/search/rss/?q=` | `200`, 65 993 B — **the HTML shell, not a feed** |
+
+**Step 1b treats "the role is missing from the employer's careers page, while
+that page lists their other openings" as a strong signal of closure. On this
+host that inference is invalid**, because the page lists nothing at all. A
+fetched summary saying *"the page does not display actual job listings"* means
+*nothing was rendered*, not *the employer has no openings* — and reading it the
+second way concludes "closed" from a page that was never read.
+
+`/search/rss/` is the trap inside the trap: the one URL shape that would normally
+bypass client rendering is present, answers `200`, and is worthless.
+
+**Detection, before drawing any conclusion:** a `200` of a few tens of kB
+containing `rmkcdn` or `/platform/bootstrap/` and **no `/job/` hrefs** is a
+client-rendered shell. Two different query strings returning byte-identical
+responses is a second, independent tell.
+
+#### Getting the vacancy URL, which is not guessable
+
+The requisition id cannot be derived from the ad, and that is what previously
+made this host unverifiable. **jobup publishes it** — the vacancy JSON on a
+jobup detail page carries the employer's own posting:
+
+```
+"externalUrl":"https://jobs.<employer>.ch/job/<slug>/<id>-fr_FR"
+```
+
+So on a jobup ad the working sequence is: read `externalUrl` from the detail
+page → request it → look for a non-empty job title in `<title>`. The same page's
+`isActive` corroborates independently. See `shared/boards/jobup.md`.
+
+> **What a genuinely *closed* requisition returns is UNVERIFIED.** Only the
+> invented-id state was tested, and a closed requisition may well keep serving
+> its description. **Affirmative direction only:** a real job title means listed;
+> an empty title slot means *ask another way*, never *the ad is dead*.
+
+#### The browser is not the easy fallback here
+
+Rendering the list in the Chrome extension is not the easy fallback it looks
+like. Observed 2026-08-20 on this tenant: **the portal only opens in the tab
+where the session was authenticated**, and the extension could not join that
+tab — a dossier was rendered and then abandoned. Unreadable headless *and*
+awkward in the browser is the same host, twice.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
