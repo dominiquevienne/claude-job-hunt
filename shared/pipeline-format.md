@@ -55,6 +55,7 @@ Last scan: YYYY-MM-DD
     job-room:f9673db9-86b5-4792-a360-ba1c7907bb35
     greenhouse:elastic:8098185
     lever:caseware:0dcbf482-60a0-4fd2-9d8f-9945f18d419d
+    workday:swisscom:SwisscomExternalCareers:R-0006153
     ```
 
     **The ATS boards carry the employer in the key**, as
