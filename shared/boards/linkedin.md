@@ -190,6 +190,17 @@ visits, so the card at a given y-coordinate is not stable across navigations.
 Several clicks on the same search page chain nicely in one `browser_batch`
 (click → wait → extract, repeated): one screenshot, then 3–6 descriptions.
 
+## Easy Apply — established 2026-08-26, NOT re-verified since
+
+Everything from here to the end of the file dates from **2026-08-26** and was
+**deliberately left out of the 2026-08-28 re-verification**: exercising it means
+driving a real application form on the user's real account, on an ad they may
+not want to send. It is the oldest standing claim in this file, and
+`bin/adapter-age.sh` reports the file by this date because of it.
+
+Treat these sections as the most likely to have rotted, and re-verify them the
+next time an Easy Apply is run for real.
+
 ## The Easy Apply modal may be invisible to the accessibility tree
 
 LinkedIn has been migrating Easy Apply to an SDUI flow (the job link carries

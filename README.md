@@ -597,6 +597,20 @@ Adding a module for your country is the most useful contribution you can make.
 ran against the live site, and date it.** An adapter describing a plausible DOM
 is worse than no adapter — it fails silently, and the user has no way to tell.
 
+**Re-verifying an existing adapter is the second most useful.** Boards change,
+and a dated note is what lets the next person tell a broken adapter from a
+broken assumption:
+
+```bash
+bin/adapter-age.sh          # what is due, oldest claim first (default 30 days)
+```
+
+It changes nothing and always exits 0 — a stale adapter is not a broken one, it
+is one nobody has re-run. And re-verifying means *running* it against the live
+site, never re-reading it: every defect found in a single day of re-verification
+was a rule generalised one step past what had been observed, and none were
+visible on the page.
+
 **All three platforms are in scope for every change.** One portable `bash`
 implementation, no PowerShell fork — the reasoning and the traps are in
 [`shared/portability.md`](shared/portability.md). No new dependency lands
