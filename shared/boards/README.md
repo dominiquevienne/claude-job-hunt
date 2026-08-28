@@ -116,8 +116,8 @@ Two rules for anything added here:
 ## ATS hosts — not boards, but useful for a different question
 
 `shared/ats-open-check.md` records hosts that answer *"is this ad still open?"*
-in one unauthenticated request — Haufe/Abacus umantis, Jobvite, and the ATSs
-already named in `cover-letter` step 1b.
+in one unauthenticated request — Haufe/Abacus umantis, Jobvite, SAP
+SuccessFactors, and the ATSs already named in `cover-letter` step 1b.
 
 **Those are deliberately not adapters, and adding one here would be a mistake.**
 An adapter exists so `job-scan` can **sweep many employers**; an ATS host serves

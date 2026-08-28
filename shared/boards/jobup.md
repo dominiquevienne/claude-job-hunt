@@ -155,6 +155,38 @@ job-room.ch PRE form demands and that LinkedIn ads almost never provide (see
 open** — on this board it is free, and it is the field users most often have to
 hunt down weeks later.
 
+## A second gift: the employer's own posting URL
+
+The ad's detail page carries the vacancy JSON, and that JSON names the
+employer's own ATS posting:
+
+```
+"externalUrl":"https://jobs.<employer>.ch/job/<slug>/<id>-fr_FR"
+"isActive":true
+```
+
+**Harvest it while the ad is open**, into `Note` on the ledger row. It plays the
+same role as HiringCafe's `apply_url` (`shared/pipeline-format.md`): the jobup id
+identifies the ad *on jobup*, the `externalUrl` identifies the same posting on
+the employer's ATS — the only key that survives the crossing to another board,
+and the one step 1b needs to ask whether the ad is still open.
+
+It matters most where the requisition id is otherwise unguessable. On SAP
+SuccessFactors it is the *only* route to a checkable URL, because that host's
+own search page renders nothing — see `shared/ats-open-check.md`.
+
+Read it out of the page source rather than the DOM:
+
+```js
+(()=>{const m=document.documentElement.innerHTML.match(/"externalUrl":"([^"]+)"/);
+ return m?m[1].replace(/\\u002F/g,'/'):'';})()
+```
+
+**Observed 2026-08-27** on a BCV ad, alongside `"isActive":true` and a rendered
+*Postuler* button — two independent corroborations of the same fact. A
+`data-cy` selector for this field was **not** established; the source match is
+what was run.
+
 ## Applying
 
 `apply-button-external` was observed on an ad that hands off to the employer's

@@ -162,7 +162,12 @@ When either holds, verify **before drafting**:
    happened.
 2. **A role missing from the employer's careers page is a strong signal, not a
    weak one**, when that page is listing their other openings. Do not file it as
-   a note and carry on.
+   a note and carry on. **The clause carries the whole rule: first confirm the
+   page actually listed something.** A client-rendered careers site returns a
+   navigation shell with no openings at all, for anyone, always — SAP
+   SuccessFactors does exactly this — and reading that emptiness as closure
+   concludes from a page you never saw. `shared/ats-open-check.md` gives the
+   detection rule and the vacancy URL that does answer.
 3. **Report the result at the gate as a finding**, naming the route you used. If
    you could not verify, say that in those words — never let silence imply the
    ad is live.
@@ -174,10 +179,11 @@ and a web search for the ATS posting are the routes that work.
 directly — see `shared/ats-open-check.md`.** One request to the employer's own
 vacancy URL settles in seconds what a careers-page search only hints at, and it
 answers unauthenticated on the hosts recorded there. Some hosts say *closed* with
-a status code (umantis answers `403`); others cannot say it at all (Jobvite never
-returns an error, so it is usable only to confirm an ad is **listed**, never to
-conclude it is gone). **Read the host's row before trusting either direction**,
-and if the host is not recorded, say you could not verify rather than guessing.
+a status code (umantis answers `403`); others cannot say it at all (Jobvite and
+SAP SuccessFactors never return an error, so they are usable only to confirm an
+ad is **listed**, never to conclude it is gone). **Read the host's row before
+trusting either direction**, and if the host is not recorded, say you could not
+verify rather than guessing.
 
 **Whatever this step turns up, note the host.** Verifying an ad routinely lands
 you on a board nobody asked about — an employer-owned careers site, or an ATS
