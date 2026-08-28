@@ -4,6 +4,11 @@ Read this **before improvising** any LinkedIn automation. Every line below was
 established by trial; ignoring one costs many wasted round-trips, and two of
 them cost a lost application.
 
+**Re-verified against the live site on 2026-08-28.** The constraint table held —
+25 cards in the DOM, **7 hydrated**, on a search reporting 2 259 results. What
+changed is recorded in the two traps at the end of this file, and one bug in the
+extraction snippet was corrected.
+
 Applies to both skills: scanning search results (`job-scan`) and filling an
 Easy Apply form (`cover-letter`).
 
@@ -69,7 +74,7 @@ log in rather than trying to authenticate.
 
 | Constraint | Consequence |
 | :-- | :-- |
-| The automated tab is `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps **times out the 45 s CDP budget**. Never sleep in page JS — use `computer{action:"wait"}` between steps inside a `browser_batch` |
+| The automated tab is **usually** `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps **times out the 45 s CDP budget**. Never sleep in page JS — use `computer{action:"wait"}` between steps inside a `browser_batch`. **It is not an invariant** — see the last trap |
 | The results list is virtualized **and** the tab is hidden | Only the **first ~7 job cards** ever hydrate. Scrolling the list (window, container, or `scrollIntoView`) does **not** hydrate more. Do not fight it: run **more, narrower searches** instead of trying to read 25 results from one |
 | The job description pane only loads on a **real** mouse click on a card | `element.click()` from JS updates the URL but renders nothing. `/jobs/view/<id>/` standalone renders nothing either. You must `screenshot` → read the card's y-position → `computer{left_click}` at those coordinates |
 | `fetch()` of `/jobs/view/...` or `/jobs-guest/jobs/api/...` | Returns HTTP **999** or an empty body. There is no API shortcut |
@@ -124,12 +129,47 @@ Returns no URLs, so it is never blocked:
 const N=/^(with verification|Viewed|Promoted|Easy Apply|Company review|You.{0,3}d be a top|Applied|Within the past|Actively reviewing|Be an early applicant|Response managed|.*works here|.*alum.*|Reposted)/i;
 JSON.stringify([...document.querySelectorAll('li[data-occludable-job-id]')].map(li=>{
   const p=li.innerText.split('\n').map(s=>s.trim()).filter(Boolean); const t=p[0];
-  return {i:li.getAttribute('data-occludable-job-id'), s:[t,...p.slice(1).filter(s=>s!==t&&!N.test(s))].join(' · ')};
+  return {i:li.getAttribute('data-occludable-job-id'), s:[t,...p.slice(1).filter(s=>{
+    // The verification badge FOLLOWS the title on its line — it never starts it,
+    // so N's ^-anchored `with verification` alternative never fires. Strip the
+    // suffix, then compare to the title.
+    const b=s.replace(/\s+with verification$/i,'').trim();
+    return b!==t&&s!==t&&!N.test(s);
+  })].join(' · ')};
 }).filter(c=>c.s.length>3))
 ```
 
 An `Applied` marker on a card means the user **already applied** — record it as
 such instead of proposing it again.
+
+### Traps found on re-verification, 2026-08-28
+
+**The number in the page title is the messaging badge, not the result count.**
+`(25) developer Jobs in Switzerland | LinkedIn` on a search reporting **2 259
+results**, and `(25) "Laravel" Jobs in Lausanne | LinkedIn` on a search
+reporting **2** — the same `(25)` both times, because it counts unread messages.
+Read the count from the list header (`… results`), never from `document.title`.
+
+**The left column continues past the results.** Below the last card sit *"Are
+these results helpful?"*, *"Expand your search"* and **"Top job picks for you"**
+— recommendations built from the profile, not results for this query. The
+selector above is scoped to `li[data-occludable-job-id]` and does not reach
+them; **keep it that way.** A looser selector silently mixes recommendations
+into the sweep, attributed to a search they never matched.
+
+**`document.hidden === true` is the normal case, not a guarantee — and the
+click rule follows from it.** Observed once, on 2026-08-28, while the user had
+the Chrome window in the foreground: `document.hidden` was `false`, and the
+description pane **rendered on plain navigation, with no click at all**. The
+moment the window went back to the background, `hidden` returned to `true` and
+the pane stayed empty — verified after 6 s and again after a further 8 s, so it
+is a block and not slowness.
+
+So the constraint table is right about what to *do* (screenshot, then a real
+click), and the reason is narrower than it reads: **LinkedIn defers rendering
+the detail pane while the tab is hidden.** Do not build on the foreground
+behaviour — it depends on where the user's attention is, which the plugin does
+not control and must never assume.
 
 ## Extracting one job description
 
