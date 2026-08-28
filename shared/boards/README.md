@@ -115,6 +115,33 @@ Two rules for anything added here:
    Boards change their markup; a dated note lets the next person tell a broken
    adapter from a broken assumption.
 
+3. **When you re-verify a file in part, date the part you did not touch.** A
+   header saying *"re-verified 2026-08-28"* over sections nobody re-ran makes
+   the file read as fresh when half of it is not — and `bin/adapter-age.sh`
+   reports each file by its **oldest** standing date, so an undated old section
+   is invisible to it. `linkedin.md` carries the worked example: its Easy Apply
+   sections say in their own heading that they date from 2026-08-26 and were
+   deliberately left out, because exercising them means driving a real
+   application on the user's real account.
+
+## Which adapters are due for re-verification
+
+```
+bin/adapter-age.sh [days]      # default 30
+```
+
+Reads the dates back out of every file here plus `shared/ats-open-check.md`,
+sorts by the oldest claim still standing, and flags anything past the threshold
+— or carrying no date at all, which is worse than stale because nothing says
+when it was true. It changes nothing and always exits 0: **a stale adapter is
+not a broken one, it is one nobody has re-run.**
+
+Re-verifying means *running* the adapter against the live site, not re-reading
+it. That distinction is the whole point: every defect found on 2026-08-28 —
+umantis's per-vacancy segment, the unanchored `externalUrl`, LinkedIn's
+`^with verification` anchor — was a rule generalised one step past what had been
+observed, and **none of them were visible on re-reading.**
+
 ## ATS hosts — not boards, but useful for a different question
 
 `shared/ats-open-check.md` records hosts that answer *"is this ad still open?"*
