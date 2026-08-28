@@ -8,7 +8,8 @@ to end, honestly.
   is never proposed twice. Ships with adapters for **HiringCafe** (worldwide,
   no browser needed), **job-room.ch** (Switzerland's public employment service,
   no browser either), **Workday / Greenhouse / Lever / Ashby** (your target
-  employers' own boards) plus **umantis** (the Swiss ATS nothing else indexes),
+  employers' own boards, plus **SmartRecruiters**) plus **umantis** (the Swiss
+  ATS nothing else indexes),
   **LinkedIn**, **jobup.ch**, **jobs.ch** and **Indeed**; no board is
   enabled until you enable it.
 - **`cover-letter`** — takes one ad, from **any board**, and produces a
@@ -489,6 +490,7 @@ Plain files. Read them, edit them, grep them, back them up, delete them.
 | :-- | :-- | :-- | :-- |
 | **Workday** | yes, per employer | no | Where the large Swiss employers are — Swisscom, Swiss Life, Roche, Lindt. **No browser.** Applying still means creating an account on their site yourself; the plugin never does that |
 | **umantis** | yes, per employer | no | Haufe/Abacus umantis — Swiss SMEs, communes, clinics and institutes. **No browser.** The one board here that reaches employers **no other sweep indexes at all**; you give it the employer's careers URL, because no tenant directory exists |
+| **SmartRecruiters** | yes, per employer | no | Same family, public JSON, **no browser**. Separate `remote` and `hybrid` flags, and a server-side country filter. A wrong tenant answers `200` with zero postings, so an empty result is never proof they are not hiring |
 | **Greenhouse**, **Lever**, **Ashby** | yes, per employer | no | Your target employers' own job boards, read straight from their ATS. **No browser.** They tell you whether *a named employer* is hiring — for *who is hiring near me*, that is HiringCafe and job-room |
 | **job-room.ch** | yes | no | Switzerland's public employment service portal (SECO), through its public API. **No browser needed.** Reaches the Swiss SMEs and foundations the others miss — and tells you exactly which jobup row each of its duplicates is |
 | **HiringCafe** | yes | no | Worldwide meta-board over ~40 ATS: every ad is an employer posting, linked to that employer's own application page. **Needs no browser and no extension.** Blind to the Swiss ATS (Refline, Ostendis, Umantis), and thin in emerging markets |
