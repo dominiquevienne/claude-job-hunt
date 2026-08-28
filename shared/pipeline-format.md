@@ -53,7 +53,14 @@ Last scan: YYYY-MM-DD
     indeed:c8a3978553801746
     hiringcafe:bs8vw0v4viy4i6se
     job-room:f9673db9-86b5-4792-a360-ba1c7907bb35
+    greenhouse:elastic:8098185
+    lever:caseware:0dcbf482-60a0-4fd2-9d8f-9945f18d419d
     ```
+
+    **The ATS boards carry the employer in the key**, as
+    `<provider>:<tenant>:<id>`. That is not decoration: those platforms host
+    one board per employer, and the id alone cannot rebuild a URL without
+    knowing whose board it came from.
 
   - **A job-room row that names a duplicate names it exactly.** Roughly a
     third of its Romandie ads are syndicated from jobup, and the card carries
