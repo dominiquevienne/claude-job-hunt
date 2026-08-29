@@ -179,9 +179,10 @@ and a web search for the ATS posting are the routes that work.
 directly — see `shared/ats-open-check.md`.** One request to the employer's own
 vacancy URL settles in seconds what a careers-page search only hints at, and it
 answers unauthenticated on the hosts recorded there. Some hosts say *closed* with
-a status code (umantis answers `403`); others cannot say it at all (Jobvite and
-SAP SuccessFactors never return an error, so they are usable only to confirm an
-ad is **listed**, never to conclude it is gone). **Read the host's row before
+a status code (umantis answers `403`); others cannot say it at all (Jobvite,
+SAP SuccessFactors and Refline never return an error, so they are usable only to
+confirm an ad is **listed**, never to conclude it is gone — on Refline the tell
+is a `JobPosting` block that is present or absent, not the status). **Read the host's row before
 trusting either direction**, and if the host is not recorded, say you could not
 verify rather than guessing.
 

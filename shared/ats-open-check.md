@@ -171,6 +171,48 @@ where the session was authenticated**, and the extension could not join that
 tab — a dossier was rendered and then abandoned. Unreadable headless *and*
 awkward in the browser is the same host, twice.
 
+### Refline — the cleanest signal here, and readable without a browser
+
+- **Recognise it by the path**: `apply.refline.ch/<tenant>/<id>/pub/1/index.html`.
+  The tenant is a six-digit number, the id a short one.
+- The vacancy page is **server-rendered** — plain HTTP, no browser, no cookie.
+
+**Two independent tells, and they agree.** Verified 2026-08-29 on **three
+unrelated tenants** — 424626 (Möbel Pfister), 891537 and 637921:
+
+| Response | Reading |
+| :-- | :-- |
+| `200`, a `JobPosting` block in the markup, **and a job title in `<title>`** | **Open.** |
+| `200`, **no `JobPosting`**, `<title>` **empty** | The posting does not resolve. |
+
+| | live | invented id |
+| :-- | --: | --: |
+| bytes | 12 000 – 20 500 | 1 385 – 1 831 |
+| `JobPosting` | **1** | **0** |
+| `<title>` | the job title | **empty** |
+
+**Match on the `JobPosting` block and the title, not on the size.** The shell is
+a different length on every tenant (1 385, 1 573, 1 790 bytes on the three
+above), so size is a corroboration and never the test.
+
+Rendered in a browser, the non-resolving page says *"Ce poste n'est plus
+disponible. Il se peut que le lien soit invalide ou que le poste ait été
+supprimé."* — client-side, so a fetch never sees those words. **That is why the
+test is the missing `JobPosting`, not the message.**
+
+> **What a genuinely *closed* posting returns is UNVERIFIED.** Only invented ids
+> were tested. The rendered message conflates "invalid link" and "deleted
+> posting" in one sentence, so even in a browser it does not separate them.
+> **Affirmative direction only.**
+
+**There is no listing, and this will never be a board adapter.** Eight
+tenant-level URL shapes were tried; every one returns the same shell with zero
+ad links. `apply.refline.ch/<tenant>/pub/1/index.html` is not a list — it is the
+vacancy viewer with no id, which is why it renders "no longer available".
+
+**Where the URLs come from:** job-room carries them. HiringCafe indexes no
+Refline ad at all (`shared/boards/hiringcafe.md`), so job-room is the route.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
@@ -191,6 +233,34 @@ always said so; no table needed, because the page tells you in words.
 - **A host that is not listed here is not a failure.** Say you could not verify
   and why, then carry on. Adding a host means testing its **closed** state, not
   just its open one — that is the whole difference between the two entries above.
+
+## Investigated and rejected — do not investigate a third time
+
+A negative result costs as much to establish as a positive one and is worth
+exactly as much, because without it the next person repeats the work. Both of
+these were reached the same way as Refline: a sweep of **2 800 job-room ads
+across all 25 cantons**, on 2026-08-29, harvesting `externalUrl` hosts.
+
+### Ostendis — opaque without a browser, and almost absent
+
+- **1 ad in 2 800.** Path: `link.ostendis.com/publication/<slug>/<opaque token>`.
+- The page answers `200` with **1 850 bytes** and `<title>` = `Publikation` — a
+  client-rendered shell, no `JobPosting`, no job title.
+- **A bogus token also answers `200`**, with the same shell. There is nothing to
+  match on.
+
+Neither an adapter nor an oracle: no signal headless, and no volume to justify a
+browser route. Revisit only if a user actually hits one, and then in a browser.
+
+### Rexx — nothing to measure
+
+- **0 ads in 2 800.** No tenant was found by probing the usual domain shapes
+  (`career.`, `jobs.`, `www.` under `rexx-systems.com`).
+
+This is **not** "it does not work" — it is "no employer in this sample publishes
+through it". `shared/boards/hiringcafe.md` names Rexx among the Swiss ATS it
+does not index; that remains true, and job-room does not carry it either. Any
+future work needs a real tenant URL first, from a user who has one.
 
 ## Adding a host
 

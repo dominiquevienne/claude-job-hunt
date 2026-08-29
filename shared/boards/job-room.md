@@ -136,6 +136,23 @@ carrieres-rolex.com 17, michaelpage.ch 10, successfactors 7, jobs.ch 3,
 offres-emploi.vd.ch 2, smartrecruiters 2. So roughly a third of what this board
 returns for Romandie is a jobup ad the ledger may already hold.
 
+**A wider sweep, 2026-08-29 — 2 800 ads across all 25 cantons — adds two facts
+the 100-ad sample could not show.**
+
+**One agency supplies a third of this board.** `med-ipersonal.ch` accounted for
+**872 of 2 800** ads, and all 872 come from a **single employer**: MediPersonal,
+a healthcare staffing agency. That is not a market signal and not an ATS — it is
+one company publishing at scale. **Never read this board's volume as demand
+without checking the host distribution**, and expect a healthcare-heavy skew
+that has nothing to do with the user's field.
+
+**This board is the route to the Swiss ATS HiringCafe cannot see.** The same
+sweep carried **13 Refline** ads and **8 umantis** ads — hosts of which
+HiringCafe indexes *zero* across 771 Swiss ads (`hiringcafe.md`). So job-room
+earns its place twice: for the SMEs and foundations, and as the only supplier of
+`apply.refline.ch` and `recruitingapp-*.umantis.com` URLs, which
+`shared/ats-open-check.md` turns into open/closed answers.
+
 The good news: the duplicate is **exactly** identifiable, not merely suspected.
 The card carries `duplicate_of` — `jobup:<uuid>` or `jobs.ch:<uuid>`, extracted
 from the external URL. When it is set and the ledger already has that row, this
