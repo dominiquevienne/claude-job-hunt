@@ -140,10 +140,11 @@ boards:
     # fachkraft.ch / sta.jobs - Swiss trades and industry, via a staffing
     # agency. Scanning needs NO login and NO browser, and the whole board
     # (~3500 ads) arrives in ONE request.
-    # NOTE: the two domains are the SAME board with disjoint numeric ids.
-    # Pick one. The employer is never named on this board.
+    # NOTE: fachkraft.ch is the UMBRELLA for sta.jobs and stellenpartner.ch.
+    # Their numeric ids are disjoint, so enabling a brand domain as well adds
+    # no ads and doubles every row. The employer is never named here.
     enabled: false
-    domain: "www.fachkraft.ch"    # or "www.sta.jobs" - never both
+    domain: "www.fachkraft.ch"    # the umbrella - do not add a brand domain
 
   michaelpage:
     # Michael Page - the recruitment agency's own board. Scanning needs NO

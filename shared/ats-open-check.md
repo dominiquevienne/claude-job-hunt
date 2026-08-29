@@ -375,6 +375,36 @@ through it". `shared/boards/hiringcafe.md` names Rexx among the Swiss ATS it
 does not index; that remains true, and job-room does not carry it either. Any
 future work needs a real tenant URL first, from a user who has one.
 
+### stellenpartner.ch — already covered, do not enable it
+
+Not a separate board: **501 of its 501 distinct slugs also appear on
+fachkraft.ch**, and its `-SPxxx` references resolve there too. `fachkraft.md`
+sweeps it already. Enabling it alongside would record every ad twice, because
+the numeric ids are per-domain. Recorded here so the resemblance to a new board
+does not cost anyone a second investigation.
+
+### krippenstellen.ch — a real board, and far too small
+
+10 employers across 11 ads — genuinely multi-employer, childcare sector, and
+the employers are named. But `/de/` **is** the whole listing and it carries
+**11 ads**. No `JobPosting` block, and the ad page renders only chrome to a
+plain fetch; the content arrives by AJAX.
+
+Eleven ads against sozialinfo's 708. The volume does not justify the work.
+Revisit only if the board grows.
+
+### okjob.ch — its job-room URLs are not ads
+
+**6 of 6** external URLs sampled led to a *category* page, `<title>` = *"Toutes
+les offres d'emploi à &lt;slug&gt;"*, not to a posting — see `job-room.md` trap
+6b, where the general lesson is recorded. One employer (OK Job, an agency), no
+`JobPosting` anywhere. Nothing here to read as a single ad.
+
+### evergreen-hr.ch — one employer, no listing
+
+An agency, 12 ads in the sweep, no `JobPosting` block, and `/stellen/` answers
+`404` — no listing was found at any path tried. Nothing to sweep.
+
 ## Investigated, buildable, not built
 
 Recorded so the work is not repeated. All three came out of the same 2 800-ad

@@ -1,8 +1,23 @@
 # Board adapter — fachkraft.ch / sta.jobs
 
-**One board, two domains.** `www.fachkraft.ch` and `www.sta.jobs` serve the same
-STA-group listings. They are not two boards, and they must not become two ledger
-rows.
+**One board, several brand domains — and `fachkraft.ch` is the umbrella.**
+Corrected 2026-08-29: this file first said "one board, two domains", which was
+incomplete. `www.fachkraft.ch` carries the listings of at least three brands,
+each with its own reference suffix and its own front door:
+
+| Domain | Reference suffix | Relationship to fachkraft.ch |
+| :-- | :-- | :-- |
+| `www.fachkraft.ch` | serves **all** of them | the umbrella — **sweep this one** |
+| `www.sta.jobs` | `-STAZH`, `-STALU`, `-STAOF` | a subset |
+| `www.stellenpartner.ch` | `-SPFFR`, `-SPZZG` | a subset, **501 of 501 slugs also on fachkraft.ch** |
+
+The containment is one-way: `21790-SPFFR` resolves on stellenpartner.ch **and**
+on fachkraft.ch, while `19868-STAZH` answers `410` on stellenpartner.ch and
+`21790-SPFFR` answers `410` on sta.jobs.
+
+**So sweep `fachkraft.ch` and nothing else.** Enabling a brand domain as well
+records every one of its ads a second time — the numeric ids are per-domain (see
+below), so without `--with-ref` the ledger cannot tell they are the same ad.
 
 A staffing **agency** board, like `michaelpage.md`: `hiringOrganization` is
 *STA Personal AG* on every ad and **the client employer is never named**.
@@ -77,10 +92,11 @@ role on the employer's own ATS — expect that duplicate to survive, and say so.
 Handwerker`. The `JobPosting` block carries the job title alone; the adapter
 reads that and falls back to `<title>` only if it is missing.
 
-**4. fachkraft.ch is the larger face.** 3 534 ads against 1 835 on sta.jobs on
-the same day. Prefer it unless the user asked for the other, and **never sweep
-both** — that is the same board twice, and without `--with-ref` the ledger
-cannot tell.
+**4. fachkraft.ch is the umbrella, not just the larger face.** 3 534 ads against
+1 835 on sta.jobs and 707 on stellenpartner.ch on the same day — and every
+stellenpartner slug (501 of 501 distinct) also appears on fachkraft. Sweep
+fachkraft and **never sweep a brand domain as well**: that is the same board
+twice, and without `--with-ref` the ledger cannot tell.
 
 ## What this board gives that most do not
 

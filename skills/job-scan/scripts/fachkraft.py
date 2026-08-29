@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Read the fachkraft.ch / sta.jobs board.
 
-**One board, two domains.** www.fachkraft.ch and www.sta.jobs serve the same
-STA-group listings, and the same `<n>-STAxx` reference resolves on both. They
-are not two boards and must not become two ledger rows.
+**One board, several brand domains.** www.fachkraft.ch is the umbrella: it
+serves the listings of www.sta.jobs (`-STAxx` references) and
+www.stellenpartner.ch (`-SPxxx`) as well as its own. Sweep fachkraft.ch and
+nothing else — a brand domain adds no ads and doubles every row.
 
 It is a staffing AGENCY board: `hiringOrganization` is STA Personal AG on every
 ad, and the client employer is never named. Same shape as michaelpage.md.
@@ -30,7 +31,10 @@ import urllib.request
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-DOMAINS = ("www.fachkraft.ch", "www.sta.jobs")
+# fachkraft.ch is the umbrella and serves every brand's references; the
+# others are subsets. Sweep the first, and use the rest only to resolve or
+# check a reference that arrived from elsewhere.
+DOMAINS = ("www.fachkraft.ch", "www.sta.jobs", "www.stellenpartner.ch")
 CARD = re.compile(r'<li class="ff-job-entry"(.*?)</li>', re.S)
 ATTR = re.compile(r'data-(canton|jobtype|sector|job-id)="([^"]*)"')
 HREF = re.compile(r'href="https://(?:www\.fachkraft\.ch|www\.sta\.jobs)/stellen/([^"/]+)/"')
@@ -226,7 +230,9 @@ def main():
 
     def dom(sp):
         sp.add_argument("--domain", default=DOMAINS[0], choices=DOMAINS,
-                        help="both serve the same board; fachkraft.ch carries more")
+                        help="fachkraft.ch is the umbrella and the one to sweep; "
+                             "the others are subsets, useful only for resolving "
+                             "or checking a reference that came from elsewhere")
 
     li = sub.add_parser("list", help="the whole board, in one request")
     dom(li)
