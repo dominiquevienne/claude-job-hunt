@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Fifteen ship today, each verified against the live
+and each adapter owns one site. Sixteen ship today, each verified against the live
 site.
 
 ## Which boards are available
@@ -20,6 +20,7 @@ site.
 | Haufe / Abacus umantis | `umantis.md` | **Shipped.** One employer at a time, by host. Public HTML, **no browser**. The Swiss SMEs, communes, clinics and institutes **HiringCafe does not index at all**. No tenant resolution exists — the user supplies the careers URL |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
 | jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
+| fachkraft.ch / sta.jobs | `fachkraft.md` | **Shipped.** A staffing **agency** board — the whole listing in one request (~3 500 ads), **no browser**. One board on two domains whose numeric ids are disjoint; the `<n>-STAxx` reference is the only key that crosses |
 | Michael Page | `michaelpage.md` | **Shipped.** A recruitment **agency** board — one search across many employers, country-scoped, **no browser**. The employer is described and **never named**, so no dedup key crosses to their own ATS |
 | jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
@@ -166,6 +167,25 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 **rejected**, with why — a negative costs as much to establish as a positive and
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
+
+## Investigated, buildable, not built
+
+**jobeo.ch** — a staffing-agency board (Adecco and others), verified 2026-08-29
+over the same job-room sweep that produced `fachkraft.md`.
+
+What is established: the listing lives at **`/jobsearch/offers`** (also `/jobs`)
+and serves **20 ads per page**; every ad page carries a `JobPosting` block whose
+`hiringOrganization` is the agency, with a **GUID** as `identifier`. There is
+**no `validThrough`**.
+
+What is not: pagination was never exercised, and it is unclear which of the slug
+or the GUID is the stable key — so the ledger contract cannot be met yet.
+
+One trap already worth knowing: **`/candidat/offres/` — the path job-room
+publishes in its `externalUrl` — answers `200` with a "Page non trouvée" page.**
+The ad URLs under it work; the directory itself does not.
+
+Built when someone needs it; the remaining work is one session, not a project.
 
 ## Boards without an adapter
 

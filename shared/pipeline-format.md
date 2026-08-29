@@ -61,6 +61,7 @@ Last scan: YYYY-MM-DD
     michaelpage:www.michaelpage.ch:jn-072026-7075230
     successfactors:jobs.bcv.ch:31130
     solique:iss:4061853
+    fachkraft:19868-STAZH
     ```
 
     **The ATS boards carry the employer in the key**, as
