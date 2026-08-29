@@ -88,6 +88,16 @@ boards:
     enabled: false
     language: "de"
 
+  solique:
+    # Solique - Swiss employer portals (ISS, Kanton Zurich, Manor, Otto's).
+    # Scanning needs NO login and NO browser.
+    # NOTE: three architectures behind one host. Two serve the whole board
+    # as JSON; the third serves a TRUNCATED HTML page that cannot be paged
+    # (one tenant states 157 ads and serves 25). The adapter reports which
+    # route answered and how complete it was - read that line.
+    enabled: false
+    tenants: []        # e.g. ["iss", "ktzh"] - the path segment of an ad URL
+
   successfactors:
     # SAP SuccessFactors - one employer per host. Scanning needs NO login and
     # NO browser, even though the careers page renders nothing without one.

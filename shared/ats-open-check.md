@@ -257,7 +257,18 @@ host root both `301` to an S3 bucket. This is an oracle, not a board.
 | **`200`** on either shape | **Listed.** |
 | **`404`** | **Not listed.** Also what a wrong tenant returns. |
 
-**The `404` is the reliable test, and the markup is not.** A `JobPosting` block
+> **Corrected 2026-08-29, while building the adapter: the 404 is not universal
+> either.** `iss`, `manor` and `ottosag` answer an unknown id with `404`;
+> **`ktzh` answers `200` with its own landing page** — 1 112 bytes against
+> 23 196 for a real ad. A status-only check reports a non-existent ad as
+> **open**, which is exactly what the adapter did on its first run.
+>
+> **The control is the tenant's landing page.** Fetch `<tenant>/` once and
+> compare its `<title>` to the ad page's; equal means the id does not resolve,
+> whatever the status was. `solique.py check --tenant … --id …` does this and
+> answers this whole section in one call.
+
+**The `404` is the usual test, and the markup is never one.** A `JobPosting` block
 is present on some tenants and absent on others — Vebego, ISS, Kanton Zürich and
 Manor carry one; Otto's and united-machining do not, and the `Microsites` pages
 **never** do. So the presence of structured data says something about the
@@ -267,12 +278,11 @@ on 2026-08-29.
 Where a `JobPosting` is present it carries `validThrough`, which is worth using
 under the rule above — but never rely on it being there.
 
-> **An open lead, not an adapter.** `live.solique.ch/manor/` answers `200` with
-> **10 ad links** — a real per-employer listing. But `/iss/` and `/KTZH/` answer
-> `200` with **zero**, so the listing renders on some tenants and not others,
-> exactly as on umantis. A board adapter that works on a third of its tenants is
-> not a sweep, and would promise coverage it cannot give. Recorded here so the
-> lead is not lost, and deliberately not built.
+**The lead recorded here on 2026-08-29 was built the same day, and the caution
+that came with it was wrong.** `/iss/` and `/KTZH/` answering `200` with zero ad
+links does not mean those tenants cannot be swept — they are AngularJS shells
+whose data is one request away, on two *different* JSON routes. All six known
+tenants are reachable. See `shared/boards/solique.md`.
 
 ### The ones already named in step 1b
 
