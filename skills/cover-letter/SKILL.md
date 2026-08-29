@@ -152,7 +152,22 @@ Two signals put an ad in the at-risk band. Neither is conclusive alone:
 - **Age** — roughly three weeks or more since it was posted.
 - **Competition** — a high applicant count, say 100 or more.
 
-When either holds, verify **before drafting**:
+**And one signal that is conclusive on its own, when it is there: a stated
+expiry date in the past.** It needs no request to any ATS — the employer
+published it. Look for it before doing anything else:
+
+- **`validThrough`** in a `JobPosting` block on the ad page. Prospective
+  (`ohws.prospective.ch`) carries it on every ad, and Solique on several of its
+  tenants — see `shared/ats-open-check.md`.
+- **A deadline in the ad text**, which boards' structured data often carries
+  even when their visible page does not.
+
+A date in the past means the ad is closed: mark the row `discarded` with the
+date and move on, without a verification request. A date in the future is not
+proof it is still open — the employer can fill the role early — but it is a
+genuine reason to lower the age weighting.
+
+When either at-risk signal holds, verify **before drafting**:
 
 1. **Find the employer's own posting, not their careers page.** Take the ad's
    external apply link, or search for the company and role plus their applicant

@@ -213,6 +213,67 @@ vacancy viewer with no id, which is why it renders "no longer available".
 **Where the URLs come from:** job-room carries them. HiringCafe indexes no
 Refline ad at all (`shared/boards/hiringcafe.md`), so job-room is the route.
 
+### Prospective — the only host that gives a status code AND an expiry date
+
+- **Recognise it by the host and path**: `ohws.prospective.ch/public/v1/jobs/<uuid>`.
+- **The path looks like a REST API and is not one.** It serves HTML, and
+  `Accept: application/json` answers `301`. Do not chase a JSON endpoint here.
+- Unlike every other entry in this file, it is **multi-employer**: 15 distinct
+  employers across the 28 ads sampled — Coop, the Swiss Army, the Canton of
+  Bern, Psychiatrie St.Gallen.
+
+| Response | Reading |
+| :-- | :-- |
+| **`200`** + a `JobPosting` block | **Listed.** |
+| **`404`** (`<title>` = `Fehlermeldung`) | **Not listed** — unknown or withdrawn. |
+
+**Every ad carries `validThrough`, and that is the point.** Measured 2026-08-29
+on eight ads: `JobPosting` **8/8**, `validThrough` **8/8**, a real employer name
+in `hiringOrganization` **8/8**.
+
+```json
+{"datePosted": "2026-08-28", "validThrough": "2026-09-25",
+ "hiringOrganization": {"name": "BâleHotels"}}
+```
+
+**A `validThrough` in the past closes the question with no request to anyone** —
+the employer published the deadline. This is the *stated application deadline*
+that a 2026-08-27 board report flagged as "a first-class step-1b signal,
+currently unused"; it arrives here as structured data rather than as prose to
+parse. `cover-letter` step 1b now checks it first.
+
+**There is no listing and there will be no adapter**: `/public/v1/jobs` and the
+host root both `301` to an S3 bucket. This is an oracle, not a board.
+
+### Solique — trust the 404, not the markup
+
+- **Two ad shapes, and they are not equivalent**:
+  `live.solique.ch/<tenant>/job/details/<numeric id>/` is the full page
+  (10–19 kB); `live.solique.ch/Microsites/showPublication/<uuid>` is a light one
+  (4.5–7 kB).
+
+| Response | Reading |
+| :-- | :-- |
+| **`200`** on either shape | **Listed.** |
+| **`404`** | **Not listed.** Also what a wrong tenant returns. |
+
+**The `404` is the reliable test, and the markup is not.** A `JobPosting` block
+is present on some tenants and absent on others — Vebego, ISS, Kanton Zürich and
+Manor carry one; Otto's and united-machining do not, and the `Microsites` pages
+**never** do. So the presence of structured data says something about the
+employer's configuration, not about the ad. Measured across 24 ads and 6 tenants
+on 2026-08-29.
+
+Where a `JobPosting` is present it carries `validThrough`, which is worth using
+under the rule above — but never rely on it being there.
+
+> **An open lead, not an adapter.** `live.solique.ch/manor/` answers `200` with
+> **10 ad links** — a real per-employer listing. But `/iss/` and `/KTZH/` answer
+> `200` with **zero**, so the listing renders on some tenants and not others,
+> exactly as on umantis. A board adapter that works on a third of its tenants is
+> not a sweep, and would promise coverage it cannot give. Recorded here so the
+> lead is not lost, and deliberately not built.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
@@ -221,6 +282,12 @@ always said so; no table needed, because the page tells you in words.
 
 ## Rules
 
+- **A stated expiry date in the past is the one exception, and it outranks
+  everything here.** `validThrough` is the employer's own statement, not an
+  inference from a response — so when it is present and past, the ad is closed
+  and no host needs asking. Check it before making any request; only Prospective
+  guarantees it, but several Solique tenants and other boards' structured data
+  carry it too.
 - **Never infer closure from a signal not verified for closure.** An unverified
   host earns *"could not verify"*, which is a reportable outcome under
   `shared/never-fail-silently.md` — not a silent assumption either way.
