@@ -145,6 +145,24 @@ page → request it → look for a non-empty job title in `<title>`. The same pa
 > its description. **Affirmative direction only:** a real job title means listed;
 > an empty title slot means *ask another way*, never *the ad is dead*.
 
+#### Corrected 2026-08-28: there is an API, and the title test needs a control
+
+Two things in this section were true but incomplete.
+
+**The board is readable without a browser.** The client-rendered `/search/` page
+is backed by `POST /services/recruiting/v1/jobs`, which answers unauthenticated.
+`skills/job-scan/scripts/successfactors.py` reads it, and
+`successfactors.py check --host … --id …` answers this whole section in one
+call. See `shared/boards/successfactors.md`.
+
+**The empty title slot is not empty text.** A live requisition reads
+`<Job Title> Détails du poste | BCV`; an invented id reads
+`  Détails du poste | BCV` — the tenant's chrome is still there. Testing that
+*something* precedes the separator therefore passes an invented id. The chrome
+phrase is per-tenant **and** per-locale, so it cannot be matched either.
+**Compare against a control instead**: fetch an id that cannot exist on the same
+tenant; an identical page means the requisition does not resolve.
+
 #### The browser is not the easy fallback here
 
 Rendering the list in the Chrome extension is not the easy fallback it looks

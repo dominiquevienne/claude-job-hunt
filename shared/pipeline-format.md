@@ -59,6 +59,7 @@ Last scan: YYYY-MM-DD
     umantis:jobs.bobst.com:9151
     smartrecruiters:nexthink:744000145952849
     michaelpage:www.michaelpage.ch:jn-072026-7075230
+    successfactors:jobs.bcv.ch:31130
     ```
 
     **The ATS boards carry the employer in the key**, as

@@ -88,6 +88,15 @@ boards:
     enabled: false
     language: "de"
 
+  successfactors:
+    # SAP SuccessFactors - one employer per host. Scanning needs NO login and
+    # NO browser, even though the careers page renders nothing without one.
+    # NOTE: never guess the locale. One the tenant does not publish returns
+    # an EMPTY board with no error - run
+    #   successfactors.py locale --host <host>
+    enabled: false
+    hosts: []          # e.g. ["jobs.bcv.ch"]
+
   umantis:
     # Haufe/Abacus umantis — one employer per host. Scanning needs NO login
     # and NO browser. Reaches Swiss SMEs, communes, clinics and institutes
