@@ -117,6 +117,16 @@ boards:
     enabled: false
     hosts: []          # e.g. ["jobs.bobst.com", "recruitingapp-2698.umantis.com"]
 
+  sozialinfo:
+    # sozialinfo.ch - Switzerland's social-sector job portal. Scanning needs
+    # NO login and NO browser, and the whole board (~700 ads) arrives in ONE
+    # request because its pagination is cumulative.
+    # Worth enabling for social work, care, education or public-sector
+    # roles; pointless otherwise. It NAMES the employer, unlike the agency
+    # boards, so duplicate detection works properly on it.
+    enabled: false
+    pages: 24          # ?page=N is cumulative; 24 covered the whole board
+
   fachkraft:
     # fachkraft.ch / sta.jobs - Swiss trades and industry, via a staffing
     # agency. Scanning needs NO login and NO browser, and the whole board

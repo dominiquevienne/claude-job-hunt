@@ -284,6 +284,25 @@ links does not mean those tenants cannot be swept — they are AngularJS shells
 whose data is one request away, on two *different* JSON routes. All six known
 tenants are reachable. See `shared/boards/solique.md`.
 
+### sozialinfo.ch — a JobPosting block, and an expiry date on every ad
+
+- Path: `www.sozialinfo.ch/arbeitsmarkt/stellenportal/<token>/`. **The token
+  alone is enough** — the slug in front of it is decorative.
+- Server-rendered, unauthenticated.
+
+| Response | Reading |
+| :-- | :-- |
+| `200` + a `JobPosting` block | **Listed.** |
+| `200`, **no `JobPosting`**, `<title>` **empty** | The token does not resolve. |
+
+**The status code is not a test here**: an unknown token answers `200` with a
+~300 kB page. The block is the test, as on Refline.
+
+**Every ad carries `validThrough`** (6/6 sampled), so most questions about this
+board are settled by the expiry rule above without any request at all. It also
+names the hiring employer with a `sameAs` link to their own site — see
+`shared/boards/sozialinfo.md`, which sweeps it.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
@@ -338,6 +357,35 @@ This is **not** "it does not work" — it is "no employer in this sample publish
 through it". `shared/boards/hiringcafe.md` names Rexx among the Swiss ATS it
 does not index; that remains true, and job-room does not carry it either. Any
 future work needs a real tenant URL first, from a user who has one.
+
+## Investigated, buildable, not built
+
+Recorded so the work is not repeated. All three came out of the same 2 800-ad
+job-room sweep, on 2026-08-29.
+
+### persigo.ch — ready to build
+
+A staffing agency (Persigo AG). **890 ads on a single `/stelle-finden/` page**,
+ids are six-character tokens at `/stelle-finden/stelle/<token>/`, an unknown one
+answers a clean **`404`**, and every ad carries a `JobPosting` block. **No
+`validThrough`.** The employer is the agency, never the client.
+
+Nothing blocks it; it simply has not been written.
+
+### randstad.ch — blocked on pagination
+
+`/jobs/` serves **29 ads**, an unknown id answers **`410`**, and the ad page
+carries a `JobPosting` with `validThrough`. But **`?page=2` returns the same 29**
+and no other pagination mechanism was found. Reading an ad is solved; walking
+the board is not.
+
+### wigumar.ch — not a board
+
+**One employer** (Wigumar AG), 25 ads in the sweep. `/` and `/stellen/` answer
+`200` with **zero** ad links, and every other path tried answers `404`; no
+listing was found. This is a single company's own site — the shape of an ATS
+tenant, not a board. An unknown ad id answers `404`, so if a user ever lands on
+one, that is a usable open/closed signal; nothing more is worth doing.
 
 ## Adding a host
 

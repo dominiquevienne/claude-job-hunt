@@ -62,6 +62,7 @@ Last scan: YYYY-MM-DD
     successfactors:jobs.bcv.ch:31130
     solique:iss:4061853
     fachkraft:19868-STAZH
+    sozialinfo:TA94iHqG
     ```
 
     **The ATS boards carry the employer in the key**, as
