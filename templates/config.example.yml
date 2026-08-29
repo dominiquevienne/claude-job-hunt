@@ -117,6 +117,15 @@ boards:
     enabled: false
     hosts: []          # e.g. ["jobs.bobst.com", "recruitingapp-2698.umantis.com"]
 
+  persigo:
+    # persigo.ch - a Swiss staffing agency (central Switzerland, trades and
+    # technical roles). Scanning needs NO login and NO browser, and the whole
+    # board (890 ads) arrives in ONE request.
+    # NOTE: no expiry date anywhere, and NO date on the listing at all. This
+    # board keeps ads for over a year, so 890 is not 890 current openings.
+    # The employer is never named - it is an agency board.
+    enabled: false
+
   sozialinfo:
     # sozialinfo.ch - Switzerland's social-sector job portal. Scanning needs
     # NO login and NO browser, and the whole board (~700 ads) arrives in ONE

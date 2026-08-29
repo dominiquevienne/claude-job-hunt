@@ -303,6 +303,23 @@ board are settled by the expiry rule above without any request at all. It also
 names the hiring employer with a `sameAs` link to their own site — see
 `shared/boards/sozialinfo.md`, which sweeps it.
 
+### persigo.ch — a clean 404, and no expiry date at all
+
+- Path: `www.persigo.ch/stelle-finden/stelle/<token>/`, the token six
+  alphanumeric characters. **The token alone rebuilds the URL.**
+
+| Response | Reading |
+| :-- | :-- |
+| `200` + a `JobPosting` block | **Listed** — but read `datePosted`, see below |
+| `404` | **Not listed.** |
+| `200`, no `JobPosting` | A page-shape change, **not** a dead ad. |
+
+**There is no `validThrough` anywhere on this board**, so the expiry rule above
+cannot help, and *listed* is a weaker statement here than elsewhere: **the board
+keeps ads for over a year.** Of 14 sampled, 3 were posted in 2025, the oldest
+2025-05-23. Always read `datePosted` alongside the verdict —
+`persigo.py check` returns both. Swept by `shared/boards/persigo.md`.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
@@ -362,15 +379,6 @@ future work needs a real tenant URL first, from a user who has one.
 
 Recorded so the work is not repeated. All three came out of the same 2 800-ad
 job-room sweep, on 2026-08-29.
-
-### persigo.ch — ready to build
-
-A staffing agency (Persigo AG). **890 ads on a single `/stelle-finden/` page**,
-ids are six-character tokens at `/stelle-finden/stelle/<token>/`, an unknown one
-answers a clean **`404`**, and every ad carries a `JobPosting` block. **No
-`validThrough`.** The employer is the agency, never the client.
-
-Nothing blocks it; it simply has not been written.
 
 ### randstad.ch — blocked on pagination
 
