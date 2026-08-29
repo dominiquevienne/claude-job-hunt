@@ -320,6 +320,20 @@ keeps ads for over a year.** Of 14 sampled, 3 were posted in 2025, the oldest
 2025-05-23. Always read `datePosted` alongside the verdict —
 `persigo.py check` returns both. Swept by `shared/boards/persigo.md`.
 
+### randstad.ch — the 410, and never the markup
+
+- Path: `www.randstad.ch/jobs/<uuid>/`. **The UUID alone rebuilds the URL.**
+
+| Response | Reading |
+| :-- | :-- |
+| `200` | **Listed** |
+| `410` | **Not listed** — this board says gone with a 410, not a 404 |
+
+**Do not use the `JobPosting` block as a test here.** It is present on some ads
+and absent on others, and the split follows the *region*: 8 of 8 German-region
+ads sampled carried one, 4 of 4 Geneva-area ads did not. Its absence says
+nothing about the ad. Swept by `shared/boards/randstad.md`.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
@@ -409,13 +423,6 @@ An agency, 12 ads in the sweep, no `JobPosting` block, and `/stellen/` answers
 
 Recorded so the work is not repeated. All three came out of the same 2 800-ad
 job-room sweep, on 2026-08-29.
-
-### randstad.ch — blocked on pagination
-
-`/jobs/` serves **29 ads**, an unknown id answers **`410`**, and the ad page
-carries a `JobPosting` with `validThrough`. But **`?page=2` returns the same 29**
-and no other pagination mechanism was found. Reading an ad is solved; walking
-the board is not.
 
 ### wigumar.ch — not a board
 

@@ -117,6 +117,14 @@ boards:
     enabled: false
     hosts: []          # e.g. ["jobs.bobst.com", "recruitingapp-2698.umantis.com"]
 
+  randstad:
+    # randstad.ch - the staffing agency's Swiss board (~985 ads over 33
+    # pages). Scanning needs NO login and NO browser.
+    # NOTE: pagination is a PATH segment (/jobs/page-2/), and past the last
+    # page the site silently serves page 1 again - the adapter stops on that
+    # repeat. The employer is never named.
+    enabled: false
+
   persigo:
     # persigo.ch - a Swiss staffing agency (central Switzerland, trades and
     # technical roles). Scanning needs NO login and NO browser, and the whole
