@@ -130,6 +130,17 @@ the longest one and report the tag as-is.
 **6. `externalUrl` carries affiliate tracking**, a `utm_campaign` blob 200
 characters long. Strip the query string before storing or comparing.
 
+**6b. And it is not always the URL of an ad.** Measured 2026-08-29: **6 of 6**
+`okjob.ch` external URLs led to a *category* page — `<title>` = *"Toutes les
+offres d'emploi à &lt;slug&gt;"* — and not to the posting. The slug looks like an
+ad's, which is exactly what makes it deceptive.
+
+So `externalUrl` is a strong dedup key (trap 7) and a **weak** promise about
+what is at the other end. Before treating one as an ad URL, confirm the page is
+an ad: a `JobPosting` block, or a title that is not a listing heading. Reporting
+"read the employer's posting" from a category page is the silent-failure this
+plugin exists to avoid.
+
 **7. This is the board most likely to duplicate the ledger, by construction.**
 98 of 100 fresh VD/GE ads had an `externalUrl`; the hosts were jobup.ch 32,
 carrieres-rolex.com 17, michaelpage.ch 10, successfactors 7, jobs.ch 3,
