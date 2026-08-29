@@ -153,6 +153,11 @@ earns its place twice: for the SMEs and foundations, and as the only supplier of
 `apply.refline.ch` and `recruitingapp-*.umantis.com` URLs, which
 `shared/ats-open-check.md` turns into open/closed answers.
 
+The same sweep surfaced two more oracle hosts: **28 `ohws.prospective.ch`** ads
+across 15 employers and **24 `live.solique.ch`** ads across 6 tenants. Both are
+now in the registry, and Prospective publishes an explicit `validThrough`
+expiry date on **every** ad — the only host anywhere here that does.
+
 The good news: the duplicate is **exactly** identifiable, not merely suspected.
 The card carries `duplicate_of` — `jobup:<uuid>` or `jobs.ch:<uuid>`, extracted
 from the external URL. When it is set and the ledger already has that row, this
