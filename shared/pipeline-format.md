@@ -64,6 +64,7 @@ Last scan: YYYY-MM-DD
     fachkraft:19868-STAZH
     sozialinfo:TA94iHqG
     persigo:00G6LE
+    randstad:aefa6056-8e23-4d6d-b22e-d2b4c9ef9047
     ```
 
     **The ATS boards carry the employer in the key**, as
