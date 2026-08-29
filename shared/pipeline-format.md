@@ -63,6 +63,7 @@ Last scan: YYYY-MM-DD
     solique:iss:4061853
     fachkraft:19868-STAZH
     sozialinfo:TA94iHqG
+    persigo:00G6LE
     ```
 
     **The ATS boards carry the employer in the key**, as
