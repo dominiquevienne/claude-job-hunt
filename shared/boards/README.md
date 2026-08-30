@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Twenty-three ship today, each verified against the
+and each adapter owns one site. Twenty-four ship today, each verified against the
 live site.
 
 ## Which boards are available
@@ -31,6 +31,7 @@ live site.
 | Meteojob | `meteojob.md` | **Shipped.** French generalist board, **no browser, no account**. Its robots.txt opens exactly one door — `Allow: /jobs?*` against a blanket `Disallow: /*?` — and pages 2+ live behind the disallowed API, so **one search is 20 ads and there is no second page**: a targeted probe, not a sweep. Names the employer on every ad, unlike its France Travail feed |
 | HelloWork | `hellowork.md` | **Shipped.** France's largest private generalist board — the SMEs and the regions. **No browser, no account.** The most restrictive robots.txt here: `Disallow: /*?` with **no** search carve-out, and the sitemap it advertises answers 403. What is open is its path-based facet system, so coverage is a **facet list** — `facets` enumerates the ones each sector publishes. Richest `JobPosting` of any board: skills as a list, experience in months, a real remote flag |
 | APEC | `apec.md` | **Shipped.** France's executive employment agency — 77 023 ads, **no browser, no key, no cookie**. The only French board here with **no pagination ceiling**: `startIndex` walked to 76 900 and still returned disjoint ads. But `texteOffre` is a fixed 283-character teaser and the detail endpoint sits behind a DataDome captcha, so it is **triage, not ad text** — with a salary on every single ad, which no other board manages |
+| Cadremploi | `cadremploi.md` | **Shipped — browser only.** The other French cadre board. Cloudflare answers **403 to every scripted request, `robots.txt` included**, so there is no script and cannot be one; it runs in the user's own Chrome like `linkedin.md`. Its location parameter has a decoy that is accepted and ignored, and its card list drifts out of the search area with nothing marking where |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
@@ -262,34 +263,6 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 **rejected**, with why — a negative costs as much to establish as a positive and
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
-
-## Investigated and closed — cadremploi.fr
-
-**Verified 2026-08-30.** Cadremploi is behind Cloudflare bot protection that
-returns **HTTP 403 on every path**, including `/`, `/sitemap.xml` and
-**`robots.txt` itself** — the block page is Cloudflare's *"Sorry, you have been
-blocked"*, not the site's.
-
-That is not a rule to interpret, it is a refusal at the edge, and there is no
-reading of it that permits a scripted sweep. **Getting past it would mean
-defeating bot detection, which this plugin does not do** — the same line
-`indeed.md` draws when it says the user solves the challenge and the plugin
-never does.
-
-**So there is no no-browser adapter here, and no amount of header work changes
-that.** Two honest routes remain, and neither is a scraper:
-
-- **A browser adapter**, in the family of `linkedin.md`, `jobup.md`,
-  `jobs-ch.md` and `indeed.md`: the sweep runs in *the user's own Chrome*, in
-  their own session, and any challenge is theirs to solve. That is the only
-  shape this board can take, and it has not been built — building it means
-  driving a real browser against the live site, which is what the rule above
-  requires before anything is written down as working.
-- **No adapter at all.** `cover-letter <URL>` takes a Cadremploi ad like any
-  other, and needs neither an adapter nor a browser.
-
-Recorded here rather than left for the next person to rediscover: a negative
-costs as much to establish as a positive.
 
 ## Investigated, buildable, not built
 
