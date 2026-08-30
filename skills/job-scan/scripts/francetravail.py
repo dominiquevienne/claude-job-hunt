@@ -61,6 +61,13 @@ REACHABLE = MAX_START + MAX_PAGE          # 3150
 
 PUBLIEE_DEPUIS = {1, 3, 7, 14, 31}
 
+# Partner boards whose referral URL carries the ad's own id on that board, so
+# the same posting can be matched to a row another adapter already wrote. Only
+# boards with an adapter here belong in this map.
+DUPLICATE_HOSTS = {
+    "www.meteojob.com": ("meteojob", re.compile(r"/jobs/(\d+)")),
+}
+
 # 1 = posted to France Travail directly. 2 = fed in by a partner board
 # (Meteojob, DirectEmploi, Beetween, Gojob…). A search naming neither returns
 # only 1 — see the module docstring and `cmd_search`.
@@ -170,6 +177,25 @@ def call(path, params=None, scope=SCOPE):
         die(f"could not reach the France Travail API: {e}")
 
 
+def duplicate_of(partner_url):
+    """Ledger id of the same ad on a board this plugin already sweeps.
+
+    Measured 2026-08-30: every METEOJOB referral URL was
+    `https://www.meteojob.com/jobs/<id>?utm_source=pole-emploi&…`, so the id
+    crosses cleanly. Other partners publish a tracked link with no usable id
+    and get nothing rather than a guess.
+    """
+    if not partner_url:
+        return None
+    p = urllib.parse.urlparse(partner_url)
+    entry = DUPLICATE_HOSTS.get(p.netloc)
+    if not entry:
+        return None
+    board, rx = entry
+    m = rx.search(p.path)
+    return f"{board}:{m.group(1)}" if m else None
+
+
 def total_from(content_range):
     """`Content-Range: offres 0-149/13295` → 13295. `*/0` on a 204 → 0."""
     if not content_range:
@@ -270,6 +296,10 @@ def card(o, with_description=False):
         # says the posting also lives somewhere else.
         "partner": partners[0].get("nom") if partners else None,
         "partner_url": partners[0].get("url") if partners else None,
+        # Set only when the partner link names an ad on a board this plugin
+        # sweeps. When it is set and the ledger already holds that row, this is
+        # the same posting — record it discarded naming the row.
+        "duplicate_of": duplicate_of(partners[0].get("url") if partners else None),
         # Where the employer actually takes applications, when they said so.
         # Present on France Travail's own ads only, and often an ATS this
         # plugin already sweeps.

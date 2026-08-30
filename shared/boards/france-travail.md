@@ -216,10 +216,26 @@ dedup key. **The card does not expose it.**
 **11. What does name the source is `partenaires[].nom`.** On 150 partner ads
 from department 75: BEETWEEN 38, METEOJOB 30, PMEJOB 17, DIRECTEMPLOI 15,
 CRECHEMPLOI 11, TALENTPLUG 7, COOKORICO 5, WE_RECRUIT 4, GOJOB 3, JOBINLIVE 3.
-The card carries it as `partner`, with `partner_url` — a tracked referral link,
-not a canonical ad URL. None of these boards has an adapter here, so **no
-`duplicate_of` key is emitted**: there is no row to point at. If Meteojob ever
-gets an adapter, this is where the key comes from.
+The card carries it as `partner`, with `partner_url`.
+
+**And on Meteojob, that link carries the ad's own id**, so the duplicate is
+exactly identifiable rather than merely suspected:
+`https://www.meteojob.com/jobs/56420784?utm_source=pole-emploi&…`. The card
+therefore sets `duplicate_of: meteojob:<id>` — 20 of 60 partner ads in one
+measured page. When it is set and the ledger already holds that row, this is the
+same posting: record it `discarded` naming the row, and do **not** apply the
+fuzzy employer-name check from `skills/job-scan/SKILL.md`, which is for cases
+where no such key exists.
+
+The other partners publish a tracked link with no usable id, and get **no key
+rather than a guess**. `DUPLICATE_HOSTS` in `francetravail.py` is the map, and
+only boards with an adapter here belong in it — a key pointing at a row nothing
+writes is worse than none.
+
+**Sweep Meteojob directly as well as through this feed.** Its own ads name the
+employer on every posting; here 23% of partner ads name nobody (trap 9). See
+`meteojob.md` — and note it caps at 20 ads per search, so the two are
+complementary rather than redundant.
 
 **12. The apply URL lives in `contact.urlPostulation`, and only on France
 Travail's own ads.** Present on 36 of 150 origine-1 ads, pointing at the
