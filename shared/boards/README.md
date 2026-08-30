@@ -66,13 +66,98 @@ boards:
     profile_url: "https://www.linkedin.com/in/adalovelace"
 ```
 
-Three states, three different behaviours — never improvise a fourth:
+Four states, four different behaviours — never improvise a fifth:
 
 | State | What `job-scan` does |
 | :-- | :-- |
 | No board enabled | Scans nothing. Says so, lists the adapters available, and offers `/job-setup boards` |
 | Enabled but a required setting is empty | Skips that board, names the missing key, and offers to fill it. **Never half-runs** |
 | Enabled and complete | Sweeps it |
+| **Dormant** — `enabled: false` **plus** the four `dormant_*` keys | Does not sweep it, and says nothing about it — **until its `recheck_after` date passes**, when it offers one cheap yield re-check. See below |
+
+`enabled: false` **with no `dormant_since` is a hard off**: never swept, never
+probed, never mentioned. That state predates dormancy and keeps its meaning
+exactly — a user who said no to a board is not asked again.
+
+## The fourth state: dormant, or "wrong month, not wrong board"
+
+**A board can come back empty for two completely different reasons**, and until
+this state existed the config could only record one of them.
+
+- *This board does not serve this candidate.* sozialinfo.ch carries social-work
+  ads; a backend engineer will still be finding none of them in five years.
+- *This board serves this candidate and had nothing open that week.* On
+  2026-08-30, `jobs.bobst.com` — BOBST, **25 minutes** from that user's home,
+  on an adapter that worked perfectly — had ten vacancies, and all ten were
+  apprenticeships and internships.
+
+Both produce the same zero, and switching both off the same way throws the
+second one away permanently. **Dormancy is the state for a board whose zero is
+about timing, and it is the user's own measured evidence that puts it there.**
+
+```yaml
+boards:
+  umantis:
+    enabled: false
+    dormant_since: "2026-08-30"
+    dormant_reason: "the 10 vacancies on jobs.bobst.com are all apprenticeships"
+    recheck_after: "2026-11-28"
+    recheck_count: 0
+    employers: ["jobs.bobst.com"]
+```
+
+| Key | Meaning |
+| :-- | :-- |
+| `dormant_since` | When the run that measured the zero happened. **Its presence is what makes the board dormant rather than off** |
+| `dormant_reason` | The measurement, in one line — counts, not adjectives. This is what the user reads months later when deciding, and *"nothing relevant"* tells them nothing |
+| `recheck_after` | The date `job-scan` may offer a re-check. Required: a dormant board with no date never comes back, which is a hard off wearing dormancy's clothes |
+| `recheck_count` | How many re-checks have already found nothing. Drives the back-off |
+
+**Its own configuration is kept, not deleted.** The tenant list, the domain, the
+cantons — waking a board must be one line changed, not a setup interview
+repeated.
+
+`skills/job-scan/scripts/dormant.py` reads these back:
+
+```bash
+dormant.py list --config "$JOB_HUNT_HOME/config.yml"   # all dormant boards
+dormant.py due  --config "$JOB_HUNT_HOME/config.yml"   # only those now due
+dormant.py next --count 0                              # the next date to write
+```
+
+**Do the date arithmetic with `dormant.py`, not by hand.** *"Is 2026-11-28 in
+the past?"* is exactly the question a language model answers confidently and
+wrongly, and both wrong answers are bad: one nags the user about a board they
+just parked, the other buries it forever.
+
+### The back-off, and why there is one
+
+A re-check that finds nothing pushes the next one out: **90 days → 180 → 365,
+then 365 forever.** A board that is genuinely wrong for this candidate therefore
+costs one decision this quarter, one next spring, and then roughly one a year —
+while a board that comes good is still caught within a season.
+
+Without the back-off this feature becomes a recurring chore, and a recurring
+chore gets switched off wholesale — taking the BOBST case down with it.
+
+### What a re-check is, and what it is not
+
+**A yield check, not a scan.** One listing call at the adapter's cheapest
+setting, capped. **No descriptions are opened, no scoring is done beyond
+title-and-location screening, and nothing whatsoever is written to the ledger.**
+A re-check that quietly turned into a sweep would make dormancy expensive, which
+is the one thing it must not be.
+
+**Never re-check a browser board silently.** LinkedIn, jobup, jobs.ch and Indeed
+drive the user's own Chrome under their own account; for those, dormancy expiry
+means *offering* the re-check and waiting for a yes — never running one because
+a date passed.
+
+**A re-check that fails is not a re-check that found nothing**, and the two must
+never be reported the same way. A dormant board whose probe errors, 404s or hits
+a login wall goes to `board-request` in its broken-adapter mode like any other
+failure — its dormancy says the board was *empty*, and that claim is now
+unverified rather than confirmed.
 
 A board named in `config.yml` with no adapter file is an error, not a fallback:
 the skill says so and skips it rather than improvising selectors against a site

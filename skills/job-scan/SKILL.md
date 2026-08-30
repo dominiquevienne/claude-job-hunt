@@ -129,6 +129,64 @@ this skill owns the scoring, the ledger and the reporting.
   as expected (`indeed.md` does), for a logged-out session, or for a search that
   genuinely has no results. Section 2b's table separates the three.
 
+### 2a — Dormant boards: the ones switched off on evidence, not on principle
+
+**Run this once, at the same time as reading `config.yml`:**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/dormant.py" due \
+  --config "$JOB_HUNT_HOME/config.yml"
+```
+
+It prints one JSON object per board whose re-check date has passed, and usually
+prints nothing at all — which is the normal case and is not an error.
+
+**Never work out those dates yourself.** *"Has 2026-11-28 passed?"* is the kind
+of question that gets answered confidently and wrongly, and both wrong answers
+cost the user something: one nags them about a board they parked last week, the
+other silently buries a board that was worth another look.
+
+A board is **dormant**, not off, when `config.yml` carries `dormant_since`
+alongside `enabled: false` — see *The fourth state* in `shared/boards/README.md`
+for the shape and the reasoning. **A bare `enabled: false` is a hard off: do not
+probe it, do not report it, do not mention it.** The user said no.
+
+For each board the script reports as due:
+
+1. **Run one yield check — not a sweep.** One listing call at the adapter's
+   cheapest setting, capped. **No descriptions, no scoring beyond title and
+   location, and nothing written to the ledger.** A dormant board must stay
+   cheap; a re-check that turns into a full sweep is how this feature ends up
+   switched off wholesale.
+2. **Never probe a browser board on your own.** LinkedIn, jobup, jobs.ch and
+   Indeed run in the user's own Chrome under their own account. For those, a
+   passed date means *offering* the re-check and waiting for a yes.
+3. **Report it as a measurement, next to the one that put it to sleep** — counts
+   against counts, so the user is comparing like with like:
+
+   > **umantis (dormant since 2026-08-30)** — parked because the 10 vacancies on
+   > `jobs.bobst.com` were all apprenticeships. Today: 14 vacancies, **3 engineering
+   > roles**, one *Software Engineer Full Stack* at Mex (~25 min). Wake it up?
+
+4. **Then let the user decide, and write their answer back:**
+
+   | Answer | What to write in `config.yml` |
+   | :-- | :-- |
+   | Wake it | `enabled: true`, and **remove all four `dormant_*` keys**. Its own configuration was kept, so this is one line plus a deletion — never a fresh setup interview |
+   | Leave it asleep | Set `recheck_after` and `recheck_count` to what `dormant.py next --count <current>` returns. The back-off is 90 → 180 → 365 days |
+   | Never again | Delete the four `dormant_*` keys and leave `enabled: false`. That is the hard off, and it is silent from then on |
+
+   **Ask before writing, and ask once.** If the user does not answer this run,
+   leave the config untouched — an unanswered question is not a snooze, and
+   pushing the date out on their silence loses the very signal they were asked
+   about.
+
+**A probe that fails is not a probe that found nothing.** Dormancy records that
+a board was *empty*; an error, a 404 or a login wall leaves that claim
+unverified, not confirmed. Treat it as any other board failure — `board-request`
+in its broken-adapter mode — and say plainly in the report that the re-check did
+not happen, rather than letting a silent failure read as another empty quarter.
+
 Then the adapter's **prerequisites block**, which is not optional: the user must
 be told that this drives their own Chrome, that it needs the Claude Chrome
 extension installed and connected, and that they must be logged in to the board
@@ -311,6 +369,34 @@ done this run" block whenever anything was skipped, capped or scored
 provisionally — a board skipped for a missing key, a search cut short by
 throttling, ads scored from the card alone. **A run that ends with nothing new
 still owes the user the zero and the reason for it.**
+
+### A board that swept fine and yielded nothing: offer dormancy, don't just say it
+
+**When a board completed its sweep and produced no kept row, say so with the
+counts — and then offer to park it.** *"randstad: 18 ads, 4 in range, 0 kept"*
+is a fact the user cannot act on; the offer is what turns it into a decision.
+
+The offer has three doors, and the middle one is the point of this whole
+mechanism:
+
+| Offer | When it is the right one |
+| :-- | :-- |
+| **Leave it on** | One empty run is thin evidence. A board swept for the first time, or one whose queries were narrow this run, has not been measured yet |
+| **Make it dormant** | The zero looks structural *for now* — but the board is geographically or technically plausible, so a later look is worth one question a quarter. Write the four `dormant_*` keys, with the **counts** in `dormant_reason` |
+| **Switch it off** | The board serves a different trade entirely, and no month will change that. `enabled: false`, no `dormant_*` keys, silent from then on |
+
+**Put the counts in `dormant_reason`, never an adjective.** *"nothing
+relevant"* tells the user nothing three months later; *"10 vacancies, all
+apprenticeships"* lets them decide in one read — and it is what the re-check
+compares against.
+
+**Two boards with the same zero can deserve different doors, and usually do.**
+On a real run on 2026-08-30: sozialinfo returned 687 ads with 1 in range —
+social-sector work, a trade the candidate will still not be in next year.
+umantis returned 10, all of them apprenticeships, from an employer **25 minutes
+away** on an adapter that worked perfectly. Identical zeros; the second is
+timing and the first is not. Reading them the same way is how the good bet gets
+thrown out with the bad one.
 
 **A board that failed is named in that block with its issue URL**, or with the
 fact that no issue was filed and why — the user declined, `gh` was unavailable,

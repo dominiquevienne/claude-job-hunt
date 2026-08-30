@@ -511,6 +511,29 @@ Plain files. Read them, edit them, grep them, back them up, delete them.
 under your own account, so it never touches a site you did not switch on. Turn
 one on with `/job-setup boards`.
 
+### A board that comes back empty can be parked instead of dropped
+
+Some boards will return nothing for you, and there are two very different
+reasons for that. A social-sector portal has nothing for a backend engineer this
+month or any other. But a board can also be right for you and simply have had a
+quiet week — the run that first swept BOBST's careers site found ten vacancies,
+all of them apprenticeships, at an employer twenty-five minutes from the user's
+home.
+
+Both look like the same zero, so switching both off the same way throws the
+second one away for good. Instead, `job-scan` offers to make a board
+**dormant**: it stops sweeping it, keeps its configuration, records the counts
+that justified it, and **comes back to you once with a fresh count** — after
+three months, then six, then yearly:
+
+> **umantis** (dormant since 2026-08-30) — parked because the 10 vacancies on
+> `jobs.bobst.com` were all apprenticeships. Today: 14 vacancies, **3 engineering
+> roles**, one *Software Engineer Full Stack* at Mex. Wake it up?
+
+Waking it is one line — its tenants and settings were never deleted. And a board
+you switch off outright stays off: **`enabled: false` on its own is silent
+forever**, and only a board carrying `dormant_since` is ever brought up again.
+
 **Using a board that has no adapter changes nothing for you** — hand
 `cover-letter` the ad URL and it scores the fit and writes both documents as
 usual. The only thing you lose is the automatic sweep. When you do that, the
