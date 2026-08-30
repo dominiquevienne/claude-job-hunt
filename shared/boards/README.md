@@ -263,6 +263,34 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
 
+## Investigated and closed — cadremploi.fr
+
+**Verified 2026-08-30.** Cadremploi is behind Cloudflare bot protection that
+returns **HTTP 403 on every path**, including `/`, `/sitemap.xml` and
+**`robots.txt` itself** — the block page is Cloudflare's *"Sorry, you have been
+blocked"*, not the site's.
+
+That is not a rule to interpret, it is a refusal at the edge, and there is no
+reading of it that permits a scripted sweep. **Getting past it would mean
+defeating bot detection, which this plugin does not do** — the same line
+`indeed.md` draws when it says the user solves the challenge and the plugin
+never does.
+
+**So there is no no-browser adapter here, and no amount of header work changes
+that.** Two honest routes remain, and neither is a scraper:
+
+- **A browser adapter**, in the family of `linkedin.md`, `jobup.md`,
+  `jobs-ch.md` and `indeed.md`: the sweep runs in *the user's own Chrome*, in
+  their own session, and any challenge is theirs to solve. That is the only
+  shape this board can take, and it has not been built — building it means
+  driving a real browser against the live site, which is what the rule above
+  requires before anything is written down as working.
+- **No adapter at all.** `cover-letter <URL>` takes a Cadremploi ad like any
+  other, and needs neither an adapter nor a browser.
+
+Recorded here rather than left for the next person to rediscover: a negative
+costs as much to establish as a positive.
+
 ## Investigated, buildable, not built
 
 **jobeo.ch** — a staffing-agency board (Adecco and others), verified 2026-08-29
