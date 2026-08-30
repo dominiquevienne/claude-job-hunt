@@ -419,13 +419,6 @@ for the exact keys and how the user obtains each one.
 
 **Skip this section entirely unless the user enabled `france-travail`.**
 
-**Say this first, before the click path:** the adapter is written but has
-**never been run against the live API** (`shared/boards/france-travail.md`).
-Asking someone to spend three minutes creating a key for something that has not
-been proven to work is a fair thing to do only if they know that is what they
-are doing. Offer it as such — and if they would rather wait, that is the
-dormant route at the end of this section, not a failure.
-
 Every other board here needs nothing, or a URL. This one needs an OAuth
 client_id and client_secret. They are free, self-service, and take about three
 minutes — but the user will not find the path on their own, so walk them

@@ -6,6 +6,16 @@ free, documented REST API. It is the largest single source of French ads, and
 it carries the SMEs, the public sector and the staffing agencies that no
 meta-board indexes well.
 
+Two things about this API decide the shape of this script, both measured on
+2026-08-30 and both invisible from a single happy-path call:
+
+  * A search with no `origineOffre` returns **only France Travail's own ads**,
+    never the partner ads — which are 77% of the board. So a sweep runs both
+    passes and says so. See `cmd_search`.
+  * `range` cannot start past 3000 and cannot span more than 150, so at most
+    the first 3150 hits of any search are reachable. Paging to the end is not
+    the same as reading the board.
+
 Unlike every other no-browser adapter here, this one needs credentials: an
 OAuth2 client_id / client_secret pair, created for free at francetravail.io.
 They are read from the environment, never from config.yml — see `creds()`.
@@ -36,30 +46,25 @@ API = "https://api.francetravail.io/partenaire/offresdemploi/v2"
 AD_URL = "https://candidat.francetravail.fr/offres/recherche/detail/{}"
 UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
 
-# The scope the API subscription grants. Some applications also require
-# "application_<client_id>" as a third element; --scope overrides the whole
-# string when the token call comes back with invalid_scope.
 SCOPE = "api_offresdemploiv2 o2dsoffre"
 
 ENV_ID = "FRANCE_TRAVAIL_CLIENT_ID"
 ENV_SECRET = "FRANCE_TRAVAIL_CLIENT_SECRET"
 
-# The API serves at most the first 1 150 hits of any search: range goes from
-# 0-0 to 1000-1149, and 150 is the largest page. A search wider than that is
-# not paginated to the end — it is truncated, and the caller has to narrow it.
+# Measured 2026-08-30 against the live API, from its own 400 messages:
+#   "La position de début doit être inférieure ou égale à 3000."
+#   "La plage de résultats demandée est trop importante."   (span > 150)
+# So the reachable window is offers 0..3149 — the first 3150 hits, no more.
+MAX_START = 3000
 MAX_PAGE = 150
-MAX_OFFSET = 1149
-
-# `commune` takes an INSEE code, and the three cities with arrondissements do
-# not have a usable one: their aggregate code returns nothing. Map each to its
-# first arrondissement so a wrong answer becomes a loud one.
-ARRONDISSEMENT_ONLY = {
-    "75056": ("Paris", "75101-75120"),
-    "69123": ("Lyon", "69381-69389"),
-    "13055": ("Marseille", "13201-13216"),
-}
+REACHABLE = MAX_START + MAX_PAGE          # 3150
 
 PUBLIEE_DEPUIS = {1, 3, 7, 14, 31}
+
+# 1 = posted to France Travail directly. 2 = fed in by a partner board
+# (Meteojob, DirectEmploi, Beetween, Gojob…). A search naming neither returns
+# only 1 — see the module docstring and `cmd_search`.
+ORIGINES = ("1", "2")
 
 
 def die(msg, code=2):
@@ -107,17 +112,28 @@ def token(scope=SCOPE):
             return _token
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:300]
-        if e.code == 400 and "invalid_scope" in detail:
+        if "invalid_scope" in detail:
             die("France Travail refused the scope. Retry with "
                 f"--scope 'application_<your client_id> {scope}' — some "
                 f"applications need the id in the scope.\n{detail}")
-        if e.code in (400, 401):
-            die("France Travail rejected the credentials (HTTP "
-                f"{e.code}). Check {ENV_ID}/{ENV_SECRET}, and that the "
-                f"application is subscribed to 'Offres d'emploi v2'.\n{detail}")
+        if "invalid_client" in detail:
+            die("France Travail did not recognise the credentials "
+                "(invalid_client). Two causes, in order of likelihood: the "
+                "secret was pasted across a line break and arrived truncated, "
+                f"or {ENV_ID} is the application id rather than the OAuth "
+                "client id. The subscription to 'Offres d'emploi v2' is not "
+                f"the cause — that fails later, on the search.\n{detail}")
         die(f"token endpoint returned HTTP {e.code}: {detail}")
     except Exception as e:  # noqa: BLE001 - network shape varies by platform
         die(f"could not reach the France Travail token endpoint: {e}")
+
+
+def api_message(raw):
+    """The API states its refusals in French, in a `message` field. Use it."""
+    try:
+        return json.loads(raw).get("message") or raw[:200]
+    except Exception:  # noqa: BLE001
+        return raw[:200]
 
 
 def call(path, params=None, scope=SCOPE):
@@ -131,32 +147,31 @@ def call(path, params=None, scope=SCOPE):
     })
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            # 204 means the request was fine and there is nothing to return —
-            # a real answer, not a failure. Returning {} here would make it
-            # indistinguishable from an empty result set, so say which it was.
+            # 204 is a real answer with an empty body: zero matches on a
+            # search, and "this offer is gone" on a detail read. Returning {}
+            # would make it indistinguishable from a parse failure.
             if r.status == 204:
-                return 204, None, None
+                return 204, r.headers.get("Content-Range"), None
             raw = r.read()
             body = json.loads(raw) if raw else None
             return r.status, r.headers.get("Content-Range"), body
     except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")[:300]
+        detail = api_message(e.read().decode(errors="replace"))
         if e.code == 400:
-            die("France Travail refused the query (HTTP 400). It validates its "
-                f"parameters, so this is a malformed filter, not an empty "
-                f"result.\n{detail}")
-        if e.code == 404:
-            die("that offer no longer exists (HTTP 404) — record it as "
-                "discarded, do not retry.", code=3)
+            die("France Travail refused the query (HTTP 400). It validates "
+                "every parameter, so this is a malformed filter, not an empty "
+                f"result:\n  {detail}")
         if e.code == 429:
-            die("rate-limited (HTTP 429). Wait before retrying; do not loop.")
+            die("rate-limited (HTTP 429). The API publishes 10 requests per "
+                "second per client in its X-Ratelimit headers; wait, do not "
+                "loop.")
         die(f"France Travail returned HTTP {e.code}: {detail}")
     except Exception as e:  # noqa: BLE001
         die(f"could not reach the France Travail API: {e}")
 
 
 def total_from(content_range):
-    """`Content-Range: offres 0-149/1247` → 1247. Absent on a full 200."""
+    """`Content-Range: offres 0-149/13295` → 13295. `*/0` on a 204 → 0."""
     if not content_range:
         return None
     m = re.search(r"/(\d+)\s*$", content_range)
@@ -178,13 +193,9 @@ def build_params(a):
     if a.mots_cles:
         p["motsCles"] = " ".join(a.mots_cles)
     if a.commune:
-        warn = ARRONDISSEMENT_ONLY.get(a.commune)
-        if warn:
-            city, codes = warn
-            die(f"{a.commune} is the aggregate INSEE code for {city}, which "
-                f"this API does not search on. Use an arrondissement code "
-                f"({codes}) — or --departement, which does cover the whole "
-                "city.")
+        if not re.fullmatch(r"[0-9AB]{5}", a.commune.upper()):
+            die(f"'{a.commune}' is not an INSEE commune code. It is five "
+                "characters (2A/2B for Corsica), and it is not the postcode.")
         p["commune"] = a.commune
     if a.departement:
         p["departement"] = ",".join(a.departement)
@@ -192,9 +203,13 @@ def build_params(a):
         p["region"] = ",".join(a.region)
     if a.distance is not None:
         if not a.commune:
-            die("--distance only means something with --commune; on its own "
-                "it is accepted and does nothing.")
+            die("--distance only means something with --commune.")
         p["distance"] = a.distance
+    elif a.commune:
+        # Measured: commune alone behaves as distance=10, not distance=0 —
+        # 75056 returned 25 676 bare and 9 709 at distance=0. Pin it, so the
+        # radius is the caller's choice rather than the API's default.
+        p["distance"] = 10
     if a.type_contrat:
         p["typeContrat"] = ",".join(a.type_contrat)
     if a.experience:
@@ -210,12 +225,10 @@ def build_params(a):
             die(f"--publiee-depuis takes only {sorted(PUBLIEE_DEPUIS)} days; "
                 "any other value is refused with HTTP 400.")
         p["publieeDepuis"] = a.publiee_depuis
-    if a.origine_offre:
-        p["origineOffre"] = a.origine_offre
     if not p:
         die("give at least one filter (--departement, --commune, --mots-cles…)."
-            " An unfiltered sweep is the whole national database, and the API "
-            f"would hand back only its first {MAX_OFFSET + 1} rows anyway.")
+            " An unfiltered sweep is the whole national database, and only its "
+            f"first {REACHABLE} rows are reachable anyway.")
     return p
 
 
@@ -225,16 +238,17 @@ def card(o, with_description=False):
     sal = o.get("salaire") or {}
     origin = o.get("origineOffre") or {}
     partners = origin.get("partenaires") or []
-    external = origin.get("urlOrigine")
+    contact = o.get("contact") or {}
+    apply_url = contact.get("urlPostulation")
     out = {
         "id": o.get("id"),
         "ledger_id": f"france-travail:{o.get('id')}",
         "url": AD_URL.format(o.get("id")),
         "title": o.get("intitule"),
-        # Employers may post without naming themselves; when they do, this is
-        # None and the ledger's employer dedup has nothing to work with.
+        # Absent on about 1 ad in 18 overall, and on nearly 1 in 4 partner ads:
+        # the employer is allowed to stay anonymous. Nothing else in the record
+        # names them when this is None.
         "company": ent.get("nom"),
-        "company_described": bool(ent.get("description")),
         "city": lieu.get("libelle"),
         "commune_insee": lieu.get("commune"),
         "postal_code": lieu.get("codePostal"),
@@ -250,14 +264,18 @@ def card(o, with_description=False):
         "published": o.get("dateCreation"),
         "updated": o.get("dateActualisation"),
         "alternance": o.get("alternance"),
-        # origine 1 = posted to France Travail directly; 2 = syndicated from a
-        # partner board, where urlOrigine is the ad's real home and the likely
-        # duplicate of a row another adapter already wrote.
         "origin": origin.get("origine"),
-        "origin_partner": partners[0].get("nom") if partners else None,
-        "external_url": external,
-        "external_host": (urllib.parse.urlparse(external).netloc
-                          if external else None),
+        # The board the ad was fed in from, on origine 2. This — not
+        # urlOrigine, which always points back at France Travail — is what
+        # says the posting also lives somewhere else.
+        "partner": partners[0].get("nom") if partners else None,
+        "partner_url": partners[0].get("url") if partners else None,
+        # Where the employer actually takes applications, when they said so.
+        # Present on France Travail's own ads only, and often an ATS this
+        # plugin already sweeps.
+        "apply_url": apply_url,
+        "apply_host": (urllib.parse.urlparse(apply_url).netloc
+                       if apply_url else None),
     }
     if with_description:
         out["description"] = to_text(o.get("description"))
@@ -270,39 +288,39 @@ def cmd_token(a):
     print(json.dumps({"ok": True, "scope": a.scope}))
 
 
-def cmd_search(a):
-    params = build_params(a)
+def sweep(params, a, origine):
+    """One origine's worth of results. Returns rows emitted."""
     size = min(a.size, MAX_PAGE)
     rows, total = 0, None
     for page in range(a.page, a.page + a.pages):
         start = page * size
-        if start > MAX_OFFSET:
-            print(f"[france-travail] stopping at offset {start}: the API "
-                  f"serves only the first {MAX_OFFSET + 1} hits of a search. "
-                  "Narrow it — by departement, by codeROME, by publieeDepuis "
-                  "— rather than paging further; the rest is not reachable.",
+        if start > MAX_START:
+            print(f"[france-travail] origine {origine}: stopping at offset "
+                  f"{start}. The API refuses a start past {MAX_START}, so only "
+                  f"the first {REACHABLE} hits of a search are reachable. This "
+                  "sweep is truncated — narrow it (a single department, a "
+                  "codeROME, publieeDepuis) rather than paging further.",
                   file=sys.stderr)
             break
-        end = min(start + size - 1, MAX_OFFSET)
-        status, crange, body = call("/offres/search",
-                                    {**params, "range": f"{start}-{end}"},
-                                    a.scope)
+        end = min(start + size, REACHABLE) - 1
+        status, crange, body = call(
+            "/offres/search",
+            {**params, "origineOffre": origine, "range": f"{start}-{end}"},
+            a.scope)
         if status == 204 or not body:
-            print("[france-travail] the API answered 'no content' — that is "
-                  "zero matching offers, not an error", file=sys.stderr)
+            if total is None:
+                print(f"[france-travail] origine {origine}: 0 offers "
+                      "(HTTP 204) — that is an empty result, not an error",
+                      file=sys.stderr)
             break
         if total is None:
             total = total_from(crange)
-            print(f"[france-travail] {total if total is not None else '?'} "
-                  f"offers match (HTTP {status})", file=sys.stderr)
-            if total == 0:
-                print("[france-travail] zero results — check the INSEE commune "
-                      "code and the departement before concluding the market "
-                      "is empty", file=sys.stderr)
-            if total is not None and total > MAX_OFFSET + 1:
-                print(f"[france-travail] {total} matches but only the first "
-                      f"{MAX_OFFSET + 1} are reachable — this sweep is "
-                      "truncated, not complete", file=sys.stderr)
+            print(f"[france-travail] origine {origine}: {total} offers match "
+                  f"(HTTP {status})", file=sys.stderr)
+            if total is not None and total > REACHABLE:
+                print(f"[france-travail] origine {origine}: only the first "
+                      f"{REACHABLE} of {total} are reachable — this sweep "
+                      "cannot be complete", file=sys.stderr)
         results = body.get("resultats") or []
         if not results:
             break
@@ -311,14 +329,31 @@ def cmd_search(a):
             rows += 1
         if len(results) < size:
             break
+    return rows
+
+
+def cmd_search(a):
+    params = build_params(a)
+    origines = (a.origine_offre,) if a.origine_offre else ORIGINES
+    if not a.origine_offre:
+        # Measured 2026-08-30: a search naming no origine returned origine 1
+        # and nothing else, across the whole reachable window. Partner ads are
+        # 77% of the board and are simply absent from it. Both passes, always,
+        # unless the caller asked for one.
+        print("[france-travail] sweeping both origins: a search that names "
+              "neither returns France Travail's own ads only, and silently "
+              "omits the partner ads that are most of the board",
+              file=sys.stderr)
+    rows = sum(sweep(params, a, o) for o in origines)
     print(f"[france-travail] {rows} cards returned", file=sys.stderr)
 
 
 def cmd_ad(a):
     status, _, body = call(f"/offres/{a.id}", scope=a.scope)
     if status == 204 or not body:
-        die(f"offer {a.id} exists but the API returned no content for it "
-            "(HTTP 204) — read it on the site instead of guessing.", code=3)
+        die(f"offer {a.id} is gone — the API answers 204 with an empty body "
+            "for an id it no longer serves. Record it as discarded, do not "
+            "retry.", code=3)
     print(json.dumps(card(body, with_description=True),
                      ensure_ascii=False, indent=1))
 
@@ -345,7 +380,9 @@ def main():
     s.add_argument("--commune", help="INSEE code, not a postcode")
     s.add_argument("--departement", action="append", help="'75', repeatable")
     s.add_argument("--region", action="append")
-    s.add_argument("--distance", type=int, help="km around --commune")
+    s.add_argument("--distance", type=int,
+                   help="km around --commune; defaults to 10, which is also "
+                        "what the API applies when it is omitted")
     s.add_argument("--type-contrat", action="append",
                    help="CDI, CDD, MIS (intérim), SAI…")
     s.add_argument("--experience", choices=["1", "2", "3"],
@@ -357,8 +394,9 @@ def main():
     s.add_argument("--code-rome", action="append", help="'M1805', repeatable")
     s.add_argument("--publiee-depuis", type=int,
                    help="days: 1, 3, 7, 14 or 31 only")
-    s.add_argument("--origine-offre", choices=["1", "2"],
-                   help="1 France Travail, 2 partner boards")
+    s.add_argument("--origine-offre", choices=list(ORIGINES),
+                   help="1 France Travail's own, 2 partner boards. Omit to "
+                        "sweep both, which is the only complete option")
     s.add_argument("--page", type=int, default=0)
     s.add_argument("--pages", type=int, default=1)
     s.add_argument("--size", type=int, default=50,

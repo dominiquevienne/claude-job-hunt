@@ -1,8 +1,8 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Nineteen ship today, each verified against the live
-site; a twentieth, `france-travail.md`, is written but not yet verified.
+and each adapter owns one site. Twenty ship today, each verified against the live
+site.
 
 ## Which boards are available
 
@@ -27,7 +27,7 @@ site; a twentieth, `france-travail.md`, is written but not yet verified.
 | Michael Page | `michaelpage.md` | **Shipped.** A recruitment **agency** board — one search across many employers, country-scoped, **no browser**. The employer is described and **never named**, so no dedup key crosses to their own ATS |
 | jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
-| France Travail | `france-travail.md` | **Written, not verified.** France's public employment service (ex-Pôle emploi), ~300 000 offers over a free documented REST API — **no browser**, but the only adapter here that needs an API key. Never run with credentials: the file says per section what is measured and what is claimed, and it carries the checklist that promotes it to Shipped |
+| France Travail | `france-travail.md` | **Shipped.** France's public employment service (ex-Pôle emploi) — **no browser**, but the only adapter here that needs an API key, free from francetravail.io. A search that does not name `origineOffre` returns France Travail's own ads and **silently omits the partner ads that are 77% of the board**, finishing early enough to look complete — so the sweep runs both passes |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working

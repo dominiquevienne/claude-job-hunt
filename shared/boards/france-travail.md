@@ -1,51 +1,44 @@
 # Board adapter — France Travail
 
 France's **public employment service**, ex-Pôle emploi. It publishes its whole
-vacancy database — around 300 000 live offers — through a free, documented REST
-API, and it is the largest single source of French ads there is. Employers post
-to it directly, and partner boards syndicate into it.
+vacancy database through a free REST API, and it is the largest single source of
+French ads there is. Employers post to it directly, and a dozen partner boards
+feed into it.
 
 It is the French counterpart of `job-room.md`: same institution, same role in a
 sweep, and the same reason to run it next to a meta-board — it reaches the SMEs,
 the communes, the associations and the staffing agencies that HiringCafe indexes
 thinly or not at all.
 
-## ⚠ Status: written, **not yet verified against the live API**
+**Everything here was verified against the live API on 2026-08-30**, with a real
+client_id. Where an earlier draft of this file guessed, the guess is recorded at
+the bottom with what actually happened — three of its five traps were wrong.
 
-**This adapter has never been run with credentials.** Rule 1 in
-`shared/boards/README.md` says only document what you have run against the live
-site, so this file says, per section, which side of that line it is on. Until
-the *Verification* section below is filled in with measured numbers, this board
-is **not `enabled: true` material** — treat it as a draft that needs one
-session with a real client_id.
+## The finding that decides how this adapter works
 
-**Verified on 2026-08-30, by request, without credentials:**
+**A search that does not name `origineOffre` returns France Travail's own ads
+and nothing else.** Measured on department 75:
 
-- `GET https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search`
-  answers **`401` with `WWW-Authenticate: Bearer`** and an empty body. The host,
-  the path and the auth scheme are real.
-- `POST https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=%2Fpartenaire`
-  with `grant_type=client_credentials` alone answers **`400`** — it exists and
-  parses the form.
-- Every guard in `francetravail.py` fires before any network call: missing
-  credentials, `--commune 75056`, `--publiee-depuis 5`, `--distance` without
-  `--commune`, and a filterless sweep.
+| Query | Matches |
+| :-- | --: |
+| `departement=75` | 13 295 |
+| `departement=75&origineOffre=1` | 3 079 |
+| `departement=75&origineOffre=2` | **10 216** |
 
-**Not verified — every one of these is a claim, not a measurement:** the effect
-of each search parameter, the response body's shape, the `Content-Range` header,
-the 1 150-hit ceiling, the 204 behaviour, the arrondissement rule, how often
-`entreprise.nom` is absent, and every count anywhere in this file. Their source
-is the published documentation and a working third-party client, not a run.
+The unfiltered search reports 13 295 — and then serves only origine 1. Sampling
+the result window at offsets 0, 500, 1500 and 2900 returned **150 origine-1 ads
+every time, 600 of 600**. The partner ads, 77% of the board, are not merely
+ranked low: they are absent.
 
-## Why it earns a place next to HiringCafe
+And the miss is undetectable from inside. The reachable window is 3 150 rows
+(below); department 75 has 3 079 origine-1 ads. **A sweep runs out of origine-1
+ads just before it runs out of window**, so it terminates naturally, reports a
+complete-looking pass, and has seen 23% of the board.
 
-Untested for France, but the structural argument is the one `job-room.md`
-measured for Switzerland: a public employment service carries a layer of
-employer — small firms, communes, associations, staffing agencies — that
-publishes nowhere an ATS-oriented meta-board can see. HiringCafe's own file
-records **130 951 French ads**; France Travail claims around **300 000**. The
-overlap is unmeasured and **measuring it is the first job of the verification
-session**, not something to assert here.
+So `francetravail.py search` **runs both passes by default** and says so on
+stderr. `--origine-offre` restricts it to one, deliberately. This is the
+`shared/never-fail-silently.md` case in its purest form: HTTP 206, a plausible
+count, a clean finish, and three quarters of the data missing.
 
 ## No browser — but credentials, which is new here
 
@@ -53,12 +46,17 @@ session**, not something to assert here.
 POST https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=%2Fpartenaire
      grant_type=client_credentials & client_id & client_secret
      & scope=api_offresdemploiv2 o2dsoffre
-→ {"access_token": "...", "expires_in": 1499}
+→ {"access_token": "…"}                                    (27 characters)
 
-GET  https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search?departement=75&range=0-49
+GET  https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search
+       ?departement=75&origineOffre=2&range=0-149
      Authorization: Bearer <token>
-→ {"resultats": [...]}, the match count in the Content-Range header
+→ HTTP 206, {"resultats": [...]}
+  Content-Range: offres 0-149/13295
 ```
+
+`api_offresdemploiv2 o2dsoffre` was the scope that worked; the
+`application_<client_id>` variant was not needed.
 
 **This is the only adapter here that needs a secret**, and that changes one
 thing: `francetravail.py` reads `FRANCE_TRAVAIL_CLIENT_ID` and
@@ -67,13 +65,10 @@ It does not read them from `config.yml` and must never be changed to — that fi
 is read aloud, pasted into issues and backed up, and an OAuth secret has no
 business in it.
 
-Getting the pair is free and self-service: an account on
-<https://francetravail.io>, an application, then subscribe that application to
-*Offres d'emploi v2*.
+Getting the pair is free and self-service; `shared/setup.md` section 5c is the
+click path.
 
 ```bash
-export FRANCE_TRAVAIL_CLIENT_ID=…
-export FRANCE_TRAVAIL_CLIENT_SECRET=…
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/francetravail.py" token
 ```
 
@@ -84,7 +79,7 @@ boards:
   france-travail:
     enabled: true
     departements: ["75", "92", "93"]   # or a commune + radius:
-    # commune: "69381"                 # INSEE code, not a postcode
+    # commune: "69123"                 # INSEE code, not a postcode
     # distance_km: 20
     publiee_depuis: 7                  # 1, 3, 7, 14 or 31 — nothing else
     type_contrat: ["CDI", "CDD"]       # optional
@@ -93,48 +88,47 @@ boards:
 | Key | Required | Notes |
 | :-- | :-- | :-- |
 | `enabled` | yes | False or absent → not scanned |
-| `departements` | one of the two | Two-character codes as strings — `"75"`, and **`"01"` keeps its leading zero** |
-| `commune` + `distance_km` | one of the two | `commune` is an **INSEE code**, which is not the postcode; `distance_km` is the radius around it |
-| `publiee_depuis` | no | Days, and **only 1, 3, 7, 14 or 31**. Any other value is an HTTP 400 |
+| `departements` | one of the two | Two-character codes as strings — `"75"`; **`"01"` keeps its leading zero** and works (6 065 offers) |
+| `commune` + `distance_km` | one of the two | `commune` is an **INSEE code**, which is not the postcode. `distance_km` defaults to 10 |
+| `publiee_depuis` | no | Days, and **only 1, 3, 7, 14 or 31**. Anything else is an HTTP 400 |
 | `type_contrat` | no | `CDI`, `CDD`, `MIS` (intérim), `SAI` (saisonnier)… |
 | `code_rome` | no | ROME job codes — the precise way to search a trade, and better than keywords |
-| `scope` | no | Only when the token call returned `invalid_scope` — the exact string `francetravail.py` printed. Left out, the default `api_offresdemploiv2 o2dsoffre` is used |
+| `scope` | no | Only if the token call returns `invalid_scope`; the default worked here |
 
-**The credentials are not config keys.** Ask for the departements or the
-commune; the client_id/secret are obtained and stored separately, and
+**The credentials are not config keys.** Ask for the departments or the commune;
 **`shared/setup.md` section 5c is the click path** — the portal, the
-application, the subscription step everyone misses, and the check that proves
-it works. Do not improvise that walkthrough here. A board switched on with no credentials in the environment is
-skipped with that reason named, like any other incomplete board.
+application, the subscription step everyone misses, and the check that proves it
+works. Do not improvise that walkthrough here. A board switched on with no
+credentials in the environment is skipped with that reason named, like any other
+incomplete board.
 
 ## Building a search
 
-Parameter names below come from a working third-party client, not from a run
-here. The **Verified** column is what this repository has measured — currently
-nothing.
+Every row below was exercised on 2026-08-30.
 
 | `search.*` config | API parameter | Verified |
 | :-- | :-- | :-- |
-| `keywords` | `motsCles` | no |
-| `location` (area) | `departement`, `region` | no |
-| `location` (point) | `commune` (INSEE) + `distance` (km) | no |
-| `posted_within` | `publieeDepuis` — 1, 3, 7, 14, 31 only | no |
-| — | `typeContrat` — `CDI`, `CDD`, `MIS`, `SAI` | no |
-| — | `codeROME` — the trade, precisely | no |
-| — | `experience` — `1` <1 an, `2` 1–3 ans, `3` >3 ans | no |
-| — | `qualification` — `0` non-cadre, `9` cadre | no |
-| — | `tempsPlein` — boolean | no |
-| — | `origineOffre` — `1` France Travail, `2` partner boards | no |
-| pagination | `range=<start>-<end>` | no |
+| `keywords` | `motsCles` | yes |
+| `location` (area) | `departement`, `region` | 75 → 13 295, 01 → 6 065 |
+| `location` (point) | `commune` (INSEE) + `distance` (km) | Lyon `69123` → 9 031 |
+| `posted_within` | `publieeDepuis` — 1, 3, 7, 14, 31 only | yes; `5` → 400 |
+| — | `typeContrat` — `CDI`, `CDD`, `MIS`, `SAI` | yes |
+| — | `codeROME` | yes |
+| — | `experience` — `1` <1 an, `2` 1–3 ans, `3` >3 ans | yes |
+| — | `qualification` — `0` non-cadre, `9` cadre | yes |
+| — | `tempsPlein` — boolean | yes |
+| — | `origineOffre` — `1` own, `2` partners | **load-bearing; see above** |
+| — | `sort` — `0`, `1`, `2` all accepted (206) | effect not characterised |
+| pagination | `range=<start>-<end>` | yes, with two hard limits |
 
-**There is no salary filter.** The field exists on the response
-(`salaire.libelle`, free text) but not as a search parameter, so any minimum-pay
-screening happens after the fetch, in `shared/scoring-rubric.md`, not in the
-query.
+**There is no salary filter.** `salaire.libelle` is on the response as free text
+(740 of 900 ads), never as a search parameter, so minimum-pay screening happens
+after the fetch, in `shared/scoring-rubric.md`.
 
 ## The ad id and its URL
 
-The id is the offer's own reference (`176RSNK` shape). Rebuild the page from it:
+The id is the offer's own reference — `213CNGF` on France Travail's own ads,
+`6437418` on partner ads. Rebuild the page from it:
 
 ```
 https://candidat.francetravail.fr/offres/recherche/detail/<id>
@@ -142,116 +136,139 @@ https://candidat.francetravail.fr/offres/recherche/detail/<id>
 
 In the ledger: `france-travail:<id>`.
 
-## Reading one ad
+## Reading one ad — which you do not need to do
 
 ```bash
 python3 .../francetravail.py ad <id>
 ```
 
-`GET /offres/<id>` returns the full record including `description`. A deleted
-offer is a 404, which the script reports as exit 3 — record it `discarded`.
+**The detail endpoint returns exactly what the search already gave you.** Same
+37 keys, and the description byte-identical on 6 of 6 ads compared (133, 1 074,
+2 852, 3 656, 1 653 and 1 397 characters). So unlike `job-room.md` trap 8, the
+per-ad read buys nothing: **score straight from the search payload** and spend
+the request budget on more pages instead.
+
+The command stays, for reading one ad by id outside a sweep.
 
 ## Traps
 
-Each one is a **prediction to be confirmed or deleted** in the verification
-session, not an observation. They are written down because each is a specific,
-falsifiable claim, and a session that confirms three and deletes two has done
-its job.
+**1. The unfiltered search is a 77% silent loss.** Documented at the top,
+because it changes the adapter's design rather than merely warning about it.
 
-**1. The API serves only the first 1 150 hits of any search.** `range` runs from
-`0-0` to `1000-1149`, 150 rows at most per page. A department-wide sweep matches
-far more than that, so **paging to the end is not the same as reading the
-board** — past the ceiling the rest is simply unreachable. The script stops at
-the offset and says so rather than looping; the fix is a narrower search
-(`codeROME`, `publieeDepuis`, one department at a time), never more pages.
+**2. `range` has two separate limits, and the API states both.** Start must be
+≤ 3000 — *"La position de début doit être inférieure ou égale à 3000."* — and a
+page may span at most 150 — *"La plage de résultats demandée est trop
+importante."* So **the first 3 150 hits of a search are all you can ever
+reach**, per origine. `3000-3149` works; `3100-3149` does not, despite being
+smaller and ending at the same row. Paris has 13 295 offers and you may read
+6 300 of them, 3 150 per origine. The script stops at the start limit and says
+the sweep is truncated; the fix is a narrower query, never more pages.
 
-**2. `commune` is an INSEE code, and the postcode looks just like one.** `75001`
-is a postcode; the INSEE code for Paris 1er is `75101`. A wrong-but-plausible
-code is the classic silent zero on this API.
+**3. `commune` is an INSEE code, and a wrong one fails in two different ways.**
+A code that does not exist is a loud 400 — `commune=75001`, the Paris 1er
+*postcode*, returns *"Valeur du paramètre « commune » incorrecte."* But a
+postcode that happens to also be a real INSEE code somewhere else is **silently
+accepted and searches the wrong city**: `commune=13001` is the Marseille 1er
+postcode *and* the INSEE code for Aix-en-Provence, and it returns Aix's 2 359
+offers instead of Marseille's 3 181. There is no error and no clue. Resolve
+INSEE codes from a gazetteer, never from a postcode.
 
-**3. Paris, Lyon and Marseille have no usable aggregate commune code.** `75056`,
-`69123` and `13055` are the codes for the cities as a whole and are not what the
-search takes — the arrondissement codes are (`75101`–`75120`, `69381`–`69389`,
-`13201`–`13216`). The script refuses the three aggregates by name and points at
-`--departement`, which does cover the whole city. **This is the trap most likely
-to be wrong as stated**: confirm what `75056` actually returns before trusting
-the wording.
+**4. `commune` alone is a 10 km radius, not a commune.** Measured on Paris:
+bare `commune=75056` → 25 676, `distance=0` → 9 709, `5` → 11 804, `10` →
+25 676, `30` → 51 822. The API's implicit default is 10 km, so a "commune"
+search quietly includes the whole ring around it. The script pins `distance=10`
+explicitly so the radius is the caller's choice rather than an unstated default.
 
-**4. HTTP 206 is a success, not a partial failure.** A search that does not
-return every match answers `206 Partial Content` with the rows in the body and
-the true total in `Content-Range: offres 0-149/1247`. Code that treats anything
-but 200 as an error throws away a good page.
+**5. Paris arrondissement codes are not distinguished.** `75056` (the aggregate),
+`75101` and `75120` all return **9 709** at `distance=0` — they resolve to the
+same Paris. Do not build per-arrondissement searches; they are the same search.
+Lyon `69123` and Marseille `13055` likewise work as aggregates.
 
-**5. 204 No Content is a real answer.** Zero matching offers comes back as an
-empty body, not as an empty array — so a client that does `body["resultats"]`
-crashes on the one response that means *"nothing here"*. The script reports it
-as zero results with the reason, never as a failure.
+**6. HTTP 206 is the success case.** Every non-empty search answered
+`206 Partial Content`, never 200, with the true total in
+`Content-Range: offres 0-149/13295`. Code that treats anything but 200 as an
+error throws away every page.
 
-**6. `entreprise.nom` is routinely absent.** France Travail lets an employer
-post without naming itself; the ad then carries a description of the company and
-no name. That is the same problem the agency boards have — no research before
-applying, and **nothing for the ledger's employer dedup to match on**. The card
-carries `company: null` and `company_described: true` so the difference is
-visible rather than looking like a parsing bug. How often this happens is
-unmeasured.
+**7. Zero results is `204` with an empty body**, and `Content-Range: */0`. A
+client doing `body["resultats"]` crashes on the one response that means
+*"nothing here"*. The script reports it as zero with the reason.
 
-**7. `origineOffre: 2` is a syndicated ad, and the likely duplicate.** Those
-carry `urlOrigine` pointing at the board the ad really lives on, and the partner
-in `partenaires[].nom`. This is the France Travail analogue of job-room's
-`externalUrl`, with the same consequence: a share of what this board returns is
-already in the ledger under another adapter's id. Unlike job-room, **no
-`duplicate_of` is emitted yet** — the id formats of the French partner boards
-are not known here, so the card exposes `external_url` and `external_host` and
-leaves the match to the fuzzy employer check in `skills/job-scan/SKILL.md`.
-Filling that in is verification work: sweep, count the hosts, and add the ones
-worth a key.
+**8. A missing offer is also a 204, not a 404.** `GET /offres/9999999` — a
+well-formed id that does not exist — returns 204 with no body; only a
+*malformed* id gets a 400 (*"Le format de l'id de l'offre recherchée est
+incorrect."*). So on the detail endpoint 204 means **gone**, and the script
+exits 3 for `discarded`. The same status code means "empty result" on search
+and "deleted" on detail; do not share one handler between them.
 
-**8. The scope string is not settled.** `api_offresdemploiv2 o2dsoffre` is what
-the working client uses; some applications additionally require
-`application_<client_id>`. The script detects `invalid_scope` on the token call
-and tells the user the exact alternative to pass to `--scope`, rather than
-failing with an OAuth error nobody can act on.
+**9. The employer is usually named — but not on partner ads.** `entreprise.nom`
+was absent on **50 of 900** ads overall (5.6%), and on **34 of 150** partner ads
+(23%). None of the 50 carried a company description either, so when the name is
+missing there is nothing else in the record identifying the employer. This is
+still far better than the agency boards, where the employer is never named: the
+ledger's employer dedup works on 94% of this board.
 
-**9. Volume is not demand.** The `job-room.md` finding — one staffing agency
-supplying a third of the board — is the thing to check here too before reading
-any count as a market signal. Unmeasured.
+**10. `origineOffre.urlOrigine` is not an external URL.** On all 1 050 ads
+sampled, across both origines, it pointed back to
+`candidat.francetravail.fr/offres/recherche/detail/<id>` — the France Travail
+page itself. It is not a link to the partner's copy and it is worthless as a
+dedup key. **The card does not expose it.**
+
+**11. What does name the source is `partenaires[].nom`.** On 150 partner ads
+from department 75: BEETWEEN 38, METEOJOB 30, PMEJOB 17, DIRECTEMPLOI 15,
+CRECHEMPLOI 11, TALENTPLUG 7, COOKORICO 5, WE_RECRUIT 4, GOJOB 3, JOBINLIVE 3.
+The card carries it as `partner`, with `partner_url` — a tracked referral link,
+not a canonical ad URL. None of these boards has an adapter here, so **no
+`duplicate_of` key is emitted**: there is no row to point at. If Meteojob ever
+gets an adapter, this is where the key comes from.
+
+**12. The apply URL lives in `contact.urlPostulation`, and only on France
+Travail's own ads.** Present on 36 of 150 origine-1 ads, pointing at the
+employer's real ATS — `jobs.ashbyhq.com`, `*.teamtailor.com`,
+`job.mytalentplug.com`, `tnl2.jometer.com`. Partner ads carry `contact: {}`.
+The card exposes it as `apply_url` / `apply_host`; an `ashbyhq.com` host there
+is an ad this plugin can already read through `ashby.md`.
+
+**13. Volume is not demand.** Not measured here — the equivalent of
+`job-room.md`'s "one agency supplied a third of the board" was not checked, and
+with a dozen partner feeds it is worth checking before reading any count as a
+market signal.
 
 ## Applying
 
 There is no in-site apply flow to drive, and **the plugin does not create
-accounts and does not fill credential fields.** Hand the user `external_url`
-when the ad is syndicated, the France Travail page otherwise, with their
-documents. Some offers are answered by email or phone rather than a form; the
-detail record carries the contact, and it goes to the user, not into an
-automated send.
+accounts and does not fill credential fields.** Hand the user `apply_url` when
+there is one, the France Travail page otherwise, with their documents. Many ads
+are answered by email or phone; `contact` carries that, and it goes to the user,
+never into an automated send.
 
 ## Pace, and the note on access
 
-One request per page of results, one per ad read; a sweep is a few dozen. The
-API is free and documented for exactly this purpose, and its published ceiling
-is generous — but the token is per-application and rate limits are enforced with
-`429`, which the script treats as a stop, never as a retry loop.
+**The API publishes its own rate limit in response headers:**
+`X-Ratelimit-Burst-Capacity-Clientidlimiter: 10` with a replenish rate of 10 per
+second, alongside a default limiter at 100. A sweep is a few dozen requests and
+sits far below that; the script treats a `429` as a stop, never as a retry loop.
+Since the detail endpoint adds nothing (above), a sweep costs one request per
+page and no per-ad reads.
 
 These are public vacancy data published by a public employment service whose
 stated purpose is getting people into work, read through the interface that
 service built for the purpose, under the user's own registered application. Keep
 the pace human.
 
-## Verification — what the first session with credentials must produce
+## What the first draft got wrong
 
-Fill this in, then delete the status banner at the top and move the row in
-`shared/boards/README.md` to *Shipped*.
+Kept as a record, because the pattern repeats: every wrong claim came from
+generalising a plausible mechanism one step past what anyone had observed.
 
-- [ ] A token, and the scope string that actually worked.
-- [ ] `Content-Range` on a real response — the header's exact shape.
-- [ ] The status codes actually seen: 200 vs 206, and what a zero-result search
-      really returns.
-- [ ] A count per department the user cares about, dated.
-- [ ] What `--commune 75056` returns — confirming or killing trap 3.
-- [ ] The share of a 200-ad sample with no `entreprise.nom` (trap 6).
-- [ ] The `origineOffre` split and the host distribution of `urlOrigine`
-      (trap 7), which is what tells us whether a `duplicate_of` key is worth
-      building and against which boards.
-- [ ] Whether the detail endpoint returns more description than the search does
-      — the question `job-room.md` trap 8 answered with "sometimes, so always
-      read it".
+| Claimed, unverified | Measured |
+| :-- | :-- |
+| The ceiling is 1 150 rows (`range` to `1000-1149`) | **3 150**, and the rule is *start ≤ 3000*, not an end index |
+| Paris/Lyon/Marseille aggregate INSEE codes are refused; use arrondissements | **All three work.** Arrondissement codes are not even distinguished — 75056, 75101 and 75120 return the same 9 709 |
+| A wrong commune code is the classic silent zero | **A non-existent one is a loud 400.** The silent failure is a *valid* code for the wrong town |
+| `urlOrigine` points at the partner's copy and is a dedup key | It points back at France Travail on every ad sampled. `partenaires[].nom` is the real signal |
+| Reading the detail endpoint is worth one request per ad | It returns byte-identical content, 6 of 6 |
+| The employer is "routinely absent" | Absent on 5.6% overall — the employer is named on 94% of the board |
+
+Two of its predictions held: 206 as the success case, and 204 for an empty
+result. One thing nobody predicted — the origine split — turned out to be the
+only finding that changed the code.
