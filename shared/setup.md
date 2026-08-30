@@ -283,6 +283,27 @@ immediately** — a board switched on with an empty required key is skipped at
 scan time, which reads as a bug. Read the adapter's own *Configuration* section
 for the exact keys and how the user obtains each one.
 
+### Turning a board *off* has two meanings — ask which one
+
+When the user switches a board off, or when `/job-setup boards` is run to prune
+a list that has grown, **do not assume they mean "never again".** Two different
+intentions produce the same request, and `config.yml` can record both:
+
+- **Off for good** — the board serves a trade they are not in. `enabled: false`,
+  nothing else. Silent from then on, and never mentioned again.
+- **Dormant** — it came back empty, but it is plausible: right region, right
+  kind of employer, an adapter that worked. Write `enabled: false` **plus** the
+  four `dormant_*` keys, and `job-scan` offers one cheap re-check per quarter
+  instead of losing the board. See *The fourth state* in `shared/boards/README.md`.
+
+**Keep the board's own configuration either way** — tenants, domains, cantons.
+Waking a dormant board must be one line changed, not this interview repeated.
+
+Dormancy is only honest when it carries the measurement that justified it:
+`dormant_reason` takes **counts, not adjectives**. *"10 vacancies, all
+apprenticeships"* is a reason; *"not relevant"* is a shrug the user cannot
+re-read in three months.
+
 Say clearly what happens if they enable none: `job-scan` will tell them there is
 nothing to sweep, **and `cover-letter <ad URL>` still does the whole job for any
 ad from any board.** Enabling a board is an optimisation, not a prerequisite.

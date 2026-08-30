@@ -66,6 +66,36 @@ boards:
   #
   # Only boards with an adapter in shared/boards/ can be enabled. Ask
   # /job-setup which ones exist, or read shared/boards/README.md.
+  #
+  # ---------------------------------------------------------------------------
+  # OFF, OR MERELY ASLEEP? `enabled: false` MEANS TWO DIFFERENT THINGS.
+  #
+  # A board that comes back empty is either wrong for you, or right for you and
+  # having a quiet month — and those deserve opposite treatment.
+  #
+  #   enabled: false, nothing else
+  #       A hard off. Never swept, never probed, never mentioned again. This is
+  #       the right state for a board serving a trade you are not in.
+  #
+  #   enabled: false PLUS the four dormant_* keys below
+  #       Dormant. Also not swept — but job-scan comes back to you ONCE when
+  #       recheck_after has passed, with a fresh count to compare against the
+  #       one that put it to sleep. Then it backs off: 90 days, 180, then a
+  #       year. Its own settings are kept, so waking it is one line.
+  #
+  # Put COUNTS in dormant_reason, never adjectives. "10 vacancies, all
+  # apprenticeships" is something you can act on in three months; "not
+  # relevant" is a shrug you will not be able to re-read.
+  #
+  #   umantis:
+  #     enabled: false
+  #     dormant_since: "2026-08-30"     # the run that measured the zero
+  #     dormant_reason: "10 vacancies on jobs.bobst.com, all apprenticeships"
+  #     recheck_after: "2026-11-28"     # required — no date means never back
+  #     recheck_count: 0                # empty re-checks so far; drives back-off
+  #     employers: ["jobs.bobst.com"]   # KEPT, so waking it needs no new setup
+  #
+  # ---------------------------------------------------------------------------
   linkedin:
     enabled: false
     # Your own public profile URL. Used to rebuild the detail-page URLs the
