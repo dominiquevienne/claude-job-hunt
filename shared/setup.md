@@ -68,6 +68,24 @@ read it, show the current values, and ask which section to change rather than
 re-asking everything. Never overwrite an existing config without showing what
 is in it first.
 
+**When `/job-setup` was given an argument, go straight to that section** and
+leave the rest of the config untouched. The named sections:
+
+| Argument | Section | Use it when |
+| :-- | :-- | :-- |
+| `profile` | 1 | New CV, new export, a career step to add |
+| `contact` | 2 | Address, phone, `signature`, `repos` |
+| `commute` | 3 | Moved, or changed what commute they will accept |
+| `languages` | 4 | A language became working rather than passive |
+| `searches` | 5 | The queries return junk, or the target role moved |
+| `orientation` | **4b** | **What they are looking for changed** — widening the geography, a reconversion, opening up to intérim. This is the one that re-picks the boards |
+| `boards` | 5b | Adding or pruning a board without redoing the interview |
+| `thresholds` | 6 | Too much noise, or too little getting through |
+| `modules` | 7 | Turning unemployment-office declaration on or off |
+
+An argument you do not recognise is not a reason to re-run everything: say which
+sections exist and let the user pick.
+
 ```bash
 JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
 mkdir -p "$JOB_HUNT_HOME/profile"
@@ -220,9 +238,120 @@ letter always follow **the language of the ad**, whatever this setting says.
 
 ---
 
+## 4b — Orientation: what they are looking for, which is not what they have done
+
+**Run this before step 5, and re-run it on its own with `/job-setup orientation`.**
+It is the step that turns a pile of CV facts into a *search*, and it exists
+because the two are not the same thing: **step 1 reads what the user has done;
+this step asks what they want next**, and step 5 cannot draft a single query
+until it knows. Skipping it and inferring the search from
+the CV quietly assumes the answer is "more of the same" — which for anyone
+changing trade, changing country, or leaving a field they are tired of is the
+wrong sweep, every run, for months.
+
+It also does the thing that makes 5b bearable. Twenty adapters is too long a
+list to hand someone cold; four answers here cut it to the three or four boards
+that can actually serve them, with a reason attached to each.
+
+### First, say back what you read — then let them correct it
+
+Draft a profile from step 1's documents and **show it before asking anything**:
+
+> Voici ce que je lis dans votre dossier — corrigez-moi :
+> **Métier** — ingénieur logiciel backend, 12 ans, dont 4 en encadrement
+> **Secteurs** — fintech, industrie
+> **Base** — Lausanne (VD), Suisse
+> **Langues de travail** — français, anglais
+> **Contrats** — CDI, salarié
+
+Five lines, no more. The point is a correction, not a portrait: a wrong trade or
+a wrong seniority here propagates into every search query and every board
+choice, and it is far cheaper to fix now than after a scan.
+
+**Never present an inference as a fact.** If the documents were thin, say which
+line you are unsure about and mark it — `Secteurs — fintech (déduit d'un seul
+poste)`. A user corrects a hedged line; they skim past a confident one.
+
+### Then four questions, and they are closed on purpose
+
+Use `AskUserQuestion` — one call, all four, each with the consequence stated in
+the option text so nobody is choosing blind.
+
+| # | Question | Options | What it decides |
+| :-- | :-- | :-- | :-- |
+| 1 | **Chercher dans la continuité de ce profil, ou autre chose ?** | Continuité · Élargir aux métiers adjacents · Reconversion, autre métier · Peu importe, je regarde ce qui passe | The search queries in step 5, the scoring rubric's treatment of gaps, **and whether the CV is a target or just a history** |
+| 2 | **Mobilité géographique ?** | Rester dans ma région · Ailleurs dans le pays · Un autre pays · Full remote, le lieu m'est égal | Which country's boards exist at all, and whether the commute limit from step 3 still applies |
+| 3 | **Quels pays / régions ?** *(only if 2 ≠ "rester")* | Free text, or a country list | The board shortlist, and the language check below |
+| 4 | **Quels types de contrat acceptez-vous ?** | CDI / permanent · CDD, mission, projet · Intérim · Freelance / indépendant · Alternance, stage, premier emploi | Whether the **agency boards** are worth enabling at all, and which sector boards apply |
+
+**Question 1 is the one people answer too fast.** If they pick *reconversion* or
+*élargir*, say plainly what changes: the searches stop being built from their
+stack, the scoring rubric's "missing skill" penalty has to be relaxed or the
+whole market scores badly, and the boards keyed to their old sector come off the
+list. Record the answer in `candidate.md` as a first-class target, the way
+step 5 will for "roles with no hands-on work" — otherwise every later run
+re-derives the old profile from the same documents and quietly undoes this.
+
+**Question 2 has a trap worth naming out loud.** *Un autre pays* is not only a
+board change. Ask, in the same breath: do they have the **right to work** there,
+and do they have a **working language** for it from step 4? A user with passive
+German sweeping Zurich gets a full pipeline and no interviews — and the plugin
+will have produced that outcome enthusiastically. Record the answer; do not
+guess it from a passport or a surname.
+
+### Then propose the boards, do not list them
+
+Turn the four answers into a **shortlist with a reason each**, and present that
+instead of the full table in 5b. The user edits a proposal far more readily than
+they build a selection.
+
+| Signal from the answers | Boards to propose | Boards to leave out, and say why |
+| :-- | :-- | :-- |
+| **Anywhere / any profile** | HiringCafe — worldwide, no browser, no account, the one sweep that works everywhere | — |
+| **Country = Switzerland** | job-room.ch, jobup.ch (Romandie) or jobs.ch (Suisse alémanique), randstad.ch | Indeed on anything but `ch.indeed.com` — the country domain is the filter, and the wrong one searches the wrong market |
+| **Country = France** | Indeed `fr.indeed.com`, Michael Page `.fr`, LinkedIn, HiringCafe | Every `.ch` board — they carry no French ads at all. **No French national board has an adapter yet**: say so, and that `cover-letter <URL>` still handles any ad from one |
+| **Country not covered by any adapter** | HiringCafe, LinkedIn, Indeed on that country's domain | Say plainly that the national boards there have no adapter, and that `cover-letter <URL>` still handles any ad from them |
+| **Names specific employers** | Workday, Greenhouse, Lever, Ashby, SmartRecruiters, SuccessFactors, Solique, umantis — resolved per employer | Offer these **only** when employers were named. They answer *"is X hiring?"*, never *"who is hiring near me?"*, and a user with nobody in mind gains nothing |
+| **Accepts intérim / mission** | The agency boards for that country — randstad.ch, persigo.ch, fachkraft.ch, Michael Page | Leave them out otherwise: they are volume the user has already said no to, and the employer is never named |
+| **Sector = social, care, education** | sozialinfo.ch (CH) | — |
+| **Sector = trades, industry, technical** | fachkraft.ch (CH), persigo.ch (CH) | — |
+| **Reconversion (Q1)** | Broad boards only — HiringCafe, the national one, LinkedIn | **Drop the sector boards keyed to the old trade.** This is the case where a sector board is actively harmful: it fills the pipeline with exactly the work they are leaving |
+| **Wants LinkedIn / Easy Apply** | LinkedIn | Needs their own Chrome and their own logged-in session — say so before enabling, not after |
+
+Present it as: *"d'après vos réponses, je propose ces quatre — voici pourquoi
+chacune, et voici celles que j'ai écartées."* **Naming the exclusions matters as
+much as the selection**: a user who sees that jobs.ch was left out *because they
+said Romandie* trusts the shortlist; one who just gets four boards wonders what
+they are missing.
+
+Carry the answers into step 5 — they decide how the queries are built — then
+into 5b, which collects the settings for each board they kept.
+
+### Re-running this later
+
+`/job-setup orientation` re-runs exactly this step against the existing
+workspace. It is the right command for the three things that actually change
+mid-search:
+
+- **they decide to widen or narrow** — "je ne trouve rien en local, j'ouvre à
+  toute la France";
+- **a board came back empty for a season** — that is the dormancy decision in
+  5b, not a reason to redo the whole interview;
+- **the profile itself changed** — a new qualification, a first job in a new
+  trade.
+
+**Keep every board's own configuration when re-running.** Tenants, domains,
+cantons, departments: a board dropped from the shortlist goes to `enabled:
+false`, it does not lose its settings. Re-enabling must be one line changed, not
+this interview repeated — the same rule as *Turning a board off* below.
+
+---
+
 ## 5 — Target roles and the search sweep
 
-**Propose, then confirm.** Read the skills and experience gathered in step 1 and
+**Propose, then confirm.** Read the skills and experience gathered in step 1,
+**and the orientation answers from 4b** — a user who said *reconversion* gets
+queries built from the trade they are moving to, not the one on their CV — then
 draft:
 
 - the **target role families** — often more than one (hands-on senior engineer
@@ -252,7 +381,9 @@ Seed `search.blocklist` with the aggregator and repost farms listed in
 deliberate: scanning drives the user's own browser under their own account. Say
 that when you ask — it explains why they are being asked at all.
 
-List what exists in `shared/boards/`, with what each one needs:
+**Step 4b has already produced a shortlist.** This table is the reference for
+what each board on it needs — not a menu to read out. Show the full list only if
+the user asks what else exists.
 
 | Board | Needs |
 | :-- | :-- |

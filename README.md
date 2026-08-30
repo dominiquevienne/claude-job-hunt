@@ -447,6 +447,7 @@ comes back with the reason and the fix rather than a shrug.
 /cover-letter <job ad URL>       # one ad from any board, start to finish
 /cover-letter                    # takes the best pending ad from the ledger
 /job-setup                       # change any of it, later
+/job-setup orientation           # what you're looking for changed — re-picks the boards
 /job-setup boards                # enable or configure a board
 /board-request <board URL>       # note a board that has no adapter yet
 /job-report                      # applications sent this month
@@ -455,8 +456,23 @@ comes back with the reason and the fix rather than a shrug.
 
 You will be asked for, in this order: your profile documents, your contact
 details (pre-filled from those documents — you confirm rather than type), your
-home base and how far you will commute, your working languages, the searches to
-run, how selective to be, and which optional modules you want.
+home base and how far you will commute, your working languages, **what you are
+actually looking for**, the searches to run, how selective to be, and which
+optional modules you want.
+
+That middle step is the one that does the most work. The plugin reads your
+documents, shows you back the profile it derived — trade, seniority, sectors,
+base, contract types — and asks you to correct it. Then four questions:
+**continuity, a wider net, or a career change? stay local, move within the
+country, or relocate? which countries? which kinds of contract?** Your answers
+decide how the search queries are written and **which boards get switched on**
+— you are proposed three or four with a reason each, and told which were left
+out and why, instead of picking from a list of twenty.
+
+Your CV says what you have done; it does not say what you want next. Nothing
+here assumes the two are the same. When that changes — you widen the geography,
+you decide to change trade — `/job-setup orientation` re-runs just that step
+and re-picks the boards, keeping every board's existing settings.
 
 ---
 
