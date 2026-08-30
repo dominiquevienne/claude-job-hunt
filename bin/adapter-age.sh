@@ -48,9 +48,19 @@ echo
 # Collect "<oldest> <newest> <count> <path>" per file, then sort by oldest.
 ROWS=""
 UNDATED=""
+UNVERIFIED=""
 for f in "$ROOT"/shared/boards/*.md "$ROOT"/shared/ats-open-check.md; do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in README.md) continue ;; esac
+
+  # An adapter written but never run carries a date — the day it was drafted —
+  # and without this check the report calls it fresh, which is the exact
+  # misreading the file's own banner exists to prevent.
+  if grep -qiE '^#{2,3} .*not yet verified against the live' "$f"; then
+    UNVERIFIED="$UNVERIFIED$f
+"
+    continue
+  fi
 
   dates="$(grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$f" | sort -u)"
   if [ -z "$dates" ]; then
@@ -82,6 +92,15 @@ echo "$ROWS" | grep -v '^$' | sort | while read -r oldest newest count f; do
   fi
   printf '%s %-22s %-12s %5sd   %s\n' "$mark" "$name" "$oldest" "$a" "$note"
 done
+
+if [ -n "$UNVERIFIED" ]; then
+  echo
+  echo "Never run against the live site — a draft, not a stale adapter. Its own"
+  echo "file lists what one session with real access has to measure:"
+  echo "$UNVERIFIED" | grep -v '^$' | while read -r f; do
+    echo "  [ !! ] $(basename "$f" .md)"
+  done
+fi
 
 if [ -n "$UNDATED" ]; then
   echo

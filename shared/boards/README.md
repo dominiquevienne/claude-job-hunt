@@ -2,7 +2,7 @@
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
 and each adapter owns one site. Nineteen ship today, each verified against the live
-site.
+site; a twentieth, `france-travail.md`, is written but not yet verified.
 
 ## Which boards are available
 
@@ -27,6 +27,7 @@ site.
 | Michael Page | `michaelpage.md` | **Shipped.** A recruitment **agency** board — one search across many employers, country-scoped, **no browser**. The employer is described and **never named**, so no dedup key crosses to their own ATS |
 | jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
+| France Travail | `france-travail.md` | **Written, not verified.** France's public employment service (ex-Pôle emploi), ~300 000 offers over a free documented REST API — **no browser**, but the only adapter here that needs an API key. Never run with credentials: the file says per section what is measured and what is claimed, and it carries the checklist that promotes it to Shipped |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
@@ -227,7 +228,10 @@ bin/adapter-age.sh [days]      # default 30
 Reads the dates back out of every file here plus `shared/ats-open-check.md`,
 sorts by the oldest claim still standing, and flags anything past the threshold
 — or carrying no date at all, which is worse than stale because nothing says
-when it was true. It changes nothing and always exits 0: **a stale adapter is
+when it was true. A file whose heading says it was **never verified against the
+live site** is pulled out of the age ranking entirely and listed under its own
+`[ !! ]` — a draft is not a stale adapter, and its drafting date is not a
+verification date. It changes nothing and always exits 0: **a stale adapter is
 not a broken one, it is one nobody has re-run.**
 
 Re-verifying means *running* the adapter against the live site, not re-reading

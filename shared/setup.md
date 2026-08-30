@@ -308,8 +308,8 @@ they build a selection.
 | Signal from the answers | Boards to propose | Boards to leave out, and say why |
 | :-- | :-- | :-- |
 | **Anywhere / any profile** | HiringCafe — worldwide, no browser, no account, the one sweep that works everywhere | — |
-| **Country = Switzerland** | job-room.ch, jobup.ch (Romandie) or jobs.ch (Suisse alémanique), randstad.ch | Indeed on anything but `ch.indeed.com` — the country domain is the filter, and the wrong one searches the wrong market |
-| **Country = France** | Indeed `fr.indeed.com`, Michael Page `.fr`, LinkedIn, HiringCafe | Every `.ch` board — they carry no French ads at all. **No French national board has an adapter yet**: say so, and that `cover-letter <URL>` still handles any ad from one |
+| **Country = Switzerland** | job-room.ch, jobup.ch (Romandie) or jobs.ch (Suisse alémanique), randstad.ch | France Travail — French offers only |
+| **Country = France** | France Travail *(see 5c, and say it is unverified)*, Indeed `fr.indeed.com`, Michael Page `.fr` | Every `.ch` board — they carry no French ads at all |
 | **Country not covered by any adapter** | HiringCafe, LinkedIn, Indeed on that country's domain | Say plainly that the national boards there have no adapter, and that `cover-letter <URL>` still handles any ad from them |
 | **Names specific employers** | Workday, Greenhouse, Lever, Ashby, SmartRecruiters, SuccessFactors, Solique, umantis — resolved per employer | Offer these **only** when employers were named. They answer *"is X hiring?"*, never *"who is hiring near me?"*, and a user with nobody in mind gains nothing |
 | **Accepts intérim / mission** | The agency boards for that country — randstad.ch, persigo.ch, fachkraft.ch, Michael Page | Leave them out otherwise: they are volume the user has already said no to, and the employer is never named |
@@ -392,6 +392,7 @@ the user asks what else exists.
 | SAP SuccessFactors | The employers they would work for, **as careers domains** — `jobs.<employer>.ch`, `www.carrieres-<employer>.com`. **No login, no browser.** Never guess the site's locale: one the tenant does not publish returns an empty board with no error at all. `successfactors.py locale --host <host>` reads the right one |
 | umantis | The employers they would work for, **as careers URLs** — `recruitingapp-<n>.umantis.com` or the employer's own `jobs.<employer>.com`. **No login, no browser.** Unlike the other ATS boards there is no resolver: HiringCafe indexes no umantis ad, so a tenant cannot be looked up from a name. Ask for the URL; never guess a tenant number, because a wrong one serves the vendor's marketing page and looks like an employer with nothing open |
 | Greenhouse / Lever / Ashby / SmartRecruiters | A list of **employers** they would actually work for. **No login, no browser.** These answer "is my target employer hiring?", never "who is hiring near me?" — a user with nobody in mind gains nothing, so offer them only when the user names employers. Resolve each tenant token with `ats.py resolve "<employer>"`; never ask the user to guess it. **On SmartRecruiters that resolution is not optional**: a wrong tenant answers `200` with zero postings there, so a guessed token looks exactly like an employer with nothing open |
+| France Travail | Their **departments** (`"75"`, `"69"` — strings, leading zero kept) or an **INSEE commune code** plus a radius. **No login, no browser** — but the only board here that needs an API key, free from francetravail.io. Walk them through it with section 5c; do not ask for the key before they have enabled the board. France only |
 | job-room.ch | The cantons they would work in (official uppercase codes), or a point and a radius of at least 10 km. **No login, no browser.** Switzerland only. Reaches the SMEs, foundations and staffing agencies HiringCafe misses |
 | HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
 | LinkedIn | Their own profile URL, and they must be logged in themselves, in the Chrome the Claude extension is connected to |
@@ -413,6 +414,97 @@ Multi-select which to enable, then **collect each one's required settings
 immediately** — a board switched on with an empty required key is skipped at
 scan time, which reads as a bug. Read the adapter's own *Configuration* section
 for the exact keys and how the user obtains each one.
+
+## 5c — France Travail: the one board that needs a key, and how to get it
+
+**Skip this section entirely unless the user enabled `france-travail`.**
+
+**Say this first, before the click path:** the adapter is written but has
+**never been run against the live API** (`shared/boards/france-travail.md`).
+Asking someone to spend three minutes creating a key for something that has not
+been proven to work is a fair thing to do only if they know that is what they
+are doing. Offer it as such — and if they would rather wait, that is the
+dormant route at the end of this section, not a failure.
+
+Every other board here needs nothing, or a URL. This one needs an OAuth
+client_id and client_secret. They are free, self-service, and take about three
+minutes — but the user will not find the path on their own, so walk them
+through it. Do not ask for "your France Travail credentials" and stop there;
+that is exactly the failure the prime directive is about.
+
+**Say what it is, before asking.** France Travail publishes its vacancy
+database through an API meant for exactly this kind of reuse. The key identifies
+the application, not the person: it is **not** a France Travail *candidate*
+account, it is not linked to their file as a jobseeker, and creating one tells
+nobody they are looking. Users who are registered with France Travail often
+assume the opposite, and the assumption stops them.
+
+### The click path — give it in full, in one message
+
+1. Go to **<https://francetravail.io>** and select **Inscription** (top right).
+   Any email address works; this is a developer portal, separate from
+   `francetravail.fr`.
+2. Confirm the address, then sign in.
+3. Open **Mes applications** → **Créer une application**. The name is free text
+   — suggest `recherche-emploi-perso`. A description of one line is enough.
+4. In that application, open the API catalogue and **subscribe it to
+   « Offres d'emploi v2 »**. This is the step people miss: an application with
+   no subscription authenticates fine and then returns `401` on every search.
+5. The application page now shows an **Identifiant client** and a **Clé
+   secrète**. The secret is shown in full — copy it now.
+
+### Storing it — the plugin never types it
+
+**Do not ask the user to paste the secret into the conversation, and never
+write it into `config.yml`.** That file is read aloud, copied into issues and
+backed up; a secret does not belong in it, and `francetravail.py` deliberately
+cannot read one from there.
+
+Give them these two lines and ask them to run them **themselves**, with the `!`
+prefix so the shell is theirs:
+
+```bash
+export FRANCE_TRAVAIL_CLIENT_ID='<identifiant client>'
+export FRANCE_TRAVAIL_CLIENT_SECRET='<clé secrète>'
+```
+
+That lasts for one shell. For it to survive a reboot, the same two lines go in
+their shell profile — `~/.zshrc` on macOS, `~/.bashrc` on most Linux. **Offer
+to append them, do not just do it**: a shell profile is the user's, and an edit
+they did not expect is worse than a manual paste. If they prefer, they append it
+themselves and you say nothing further.
+
+### Then check it, and say what the check proved
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/francetravail.py" token
+```
+
+Run this before finishing setup. A board that is switched on and unverified
+turns into a failed sweep three days later, when nobody remembers this
+conversation.
+
+| What comes back | What it means | What to say |
+| :-- | :-- | :-- |
+| `{"ok": true, …}` | Credentials and subscription both good | Confirm it, and move on |
+| `set FRANCE_TRAVAIL_CLIENT_ID…` | The exports did not reach this shell | They ran them in a different terminal, or in a subshell. Re-run both in the same session |
+| `rejected the credentials (HTTP 400/401)` | Wrong id/secret, **or** step 4 was skipped | Send them back to the application page: check the subscription to « Offres d'emploi v2 » first, the secret second |
+| `refused the scope` | Their application wants the id in the scope | The script prints the exact `--scope` string to use. Record it in `config.yml` as `scope:` so the sweep reuses it |
+
+### If they stop partway
+
+**Do not leave the board enabled with no key.** Two honest ways out, and the
+user picks:
+
+- Leave `france-travail` enabled and finish the rest of setup. `job-scan` will
+  skip it each run, naming the missing credentials — visible, not silent.
+- Set `enabled: false` with `dormant_since`, `dormant_reason: "clé API
+  francetravail.io non créée"` and a `recheck_after` 90 days out. It comes back
+  once, later, instead of being lost.
+
+Both are fine. Guessing which one they meant is not.
+
+---
 
 ### Turning a board *off* has two meanings — ask which one
 
