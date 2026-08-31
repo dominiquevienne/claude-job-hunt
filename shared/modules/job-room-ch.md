@@ -93,6 +93,32 @@ still went out, and it is exactly the kind that gets forgotten in a declaration.
 **Never strip that marker** when updating a row: it is how the user sees, at a
 glance, which applications are still undeclared.
 
+### A third state: `` `JR:waived YYYY-MM-DD` ``
+
+`JR:missing` means *not declared yet*. `` `JR:<date>` `` means *declared*. Some
+applications are neither: the user has decided, deliberately, **never** to
+declare this one — most often because a field the form demands cannot be
+recovered.
+
+Without a marker for that, such a row is re-proposed at every session forever,
+and the only way to silence it is to delete the evidence of a real application.
+So it gets its own state:
+
+```
+**`JR:waived 2026-08-31`** — decision of <date>: not to be declared. Reason: …
+```
+
+Three rules, and they are the point of the marker:
+
+- **The application still counts.** It went out; it stays in `applied` +
+  `rejected` and in every volume figure. Only its PRE entry is abandoned.
+- **Record the reason in the same note.** A waiver whose motive is lost reads,
+  months later, exactly like an oversight.
+- **`plan` lists it, it does not hide it.** A decision that silently removes a
+  row from view is indistinguishable from a row that was lost.
+
+Only the user decides this. Never waive a row to make a count come out clean.
+
 **The `job-report` skill surfaces this automatically.** It counts `JR:missing`
 rows over the whole ledger and reports them with any period report — because a
 period report is exactly the moment the user is thinking about their

@@ -41,6 +41,13 @@ STATUS_RE = re.compile(
 )
 JR_DECLARED_RE = re.compile(r"JR:(\d{4}-\d{2}-\d{2})")
 JR_MISSING_RE = re.compile(r"JR:missing")
+# A third state the vocabulary needed. `JR:missing` means "not declared yet" and
+# `JR:<date>` means "declared"; neither covers an application the candidate has
+# decided, deliberately, never to declare — typically because a field the form
+# demands cannot be recovered. Without it such a row is re-proposed at every
+# session forever, and the only way to silence it is to delete evidence of a
+# real application.
+JR_WAIVED_RE = re.compile(r"JR:waived(?:\s+(\d{4}-\d{2}-\d{2}))?")
 
 HEADER_ALIASES = {
     "id": "id",
@@ -110,6 +117,8 @@ def load_rows(path: str) -> list[dict]:
         row["jr_missing"] = bool(JR_MISSING_RE.search(note))
         jr = JR_DECLARED_RE.search(note)
         row["jr_declared"] = jr.group(1) if jr else None
+        w = JR_WAIVED_RE.search(note)
+        row["jr_waived"] = (w.group(1) or True) if w else None
         rows.append(row)
     if columns is None:
         raise SystemExit(f"error: no table header found in {path}")
@@ -183,7 +192,7 @@ def build_plan(rows: list[dict], state: dict) -> dict:
     the status (`rejected 2026-08-20`) and the declaration (`JR:2026-08-18`),
     and the comparison between the two is the whole test.
     """
-    to_enter, to_update = [], []
+    to_enter, to_update, waived = [], [], []
     for r in rows:
         if not sent(r):
             continue
@@ -195,7 +204,13 @@ def build_plan(rows: list[dict], state: dict) -> dict:
             "status_date": r["date"],
             "declared": r["jr_declared"],
         }
-        if r["jr_missing"] or not r["jr_declared"]:
+        if r["jr_waived"]:
+            # Counted as an application, never proposed for entry again. It is
+            # listed, not hidden: a decision that silently removes a row from
+            # view is indistinguishable from a row that was lost.
+            item["waived_on"] = r["jr_waived"] if r["jr_waived"] is not True else None
+            waived.append(item)
+        elif r["jr_missing"] or not r["jr_declared"]:
             to_enter.append(item)
         elif r["kind"] in ("rejected", "refusé", "refuse") and r["date"] > r["jr_declared"]:
             item["expected_result"] = "Réponse négative"
@@ -204,7 +219,9 @@ def build_plan(rows: list[dict], state: dict) -> dict:
         "last_sync": state.get("last_sync"),
         "to_enter": to_enter,
         "to_update": to_update,
-        "counts": {"to_enter": len(to_enter), "to_update": len(to_update)},
+        "waived": waived,
+        "counts": {"to_enter": len(to_enter), "to_update": len(to_update),
+                   "waived": len(waived)},
     }
 
 
@@ -311,6 +328,14 @@ def print_plan(plan: dict) -> None:
         print(f"      job-room should read: {i['expected_result']}")
     if not plan["to_update"]:
         print("  (none)")
+    if plan.get("waived"):
+        print()
+        print(f"deliberately not declared ({len(plan['waived'])}) — still counted "
+              "as applications:")
+        for i in plan["waived"]:
+            on = f" (decided {i['waived_on']})" if i.get("waived_on") else ""
+            print(f"  · {i['status_date']}  {i['company'][:40]:40} "
+                  f"{i['role'][:38]}{on}")
 
 
 def print_check(res: dict) -> None:
