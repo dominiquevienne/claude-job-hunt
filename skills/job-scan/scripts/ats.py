@@ -34,7 +34,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
-PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable")
+PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable",
+             "teamtailor")
 
 
 def die(msg, code=2):
@@ -349,12 +350,81 @@ def workable_card(tenant, j, with_description=False):
     return out
 
 
+def teamtailor_list(tenant, _want_content=True, _a=None):
+    # `<tenant>.teamtailor.com`, NOT the employer's own `careers.<company>.com`
+    # vanity host, even though both answer this path. They do not serve the same
+    # board: measured on one tenant the same day, the vanity domain was missing
+    # every ad published after 13 July and still carried five the platform had
+    # dropped — 8 ads on one side, 5 on the other, only 8 of 16 in common. The
+    # platform host is the live one; the vanity is a stale mirror.
+    d = fetch(f"https://{tenant}.teamtailor.com/jobs.json")
+    if d is None:
+        die(f"Teamtailor has no board called {tenant!r} (HTTP 404). The tenant "
+            "is the subdomain in <tenant>.teamtailor.com — read it off the "
+            "employer's careers page.", code=4)
+    items = d.get("items") or []
+    for i in items:
+        i["_feed_title"] = d.get("title")
+        # The numeric ad id lives in `_jobposting.identifier.value`; the item's
+        # own `id` is a UUID that appears nowhere in any URL, so it cannot be
+        # pasted back into a browser. Fall back to the slug when the JobPosting
+        # block is absent.
+        jp = i.get("_jobposting") or {}
+        ident = (jp.get("identifier") or {}).get("value")
+        if ident is None:
+            m = re.search(r"/jobs/(\d+)-", i.get("url") or "")
+            ident = m.group(1) if m else i.get("id")
+        i["id"] = str(ident)
+    return items
+
+
+def teamtailor_card(tenant, j, with_description=False):
+    jp = j.get("_jobposting") or {}
+    place = (jp.get("jobLocation") or [{}])
+    addr = (place[0].get("address") if place else {}) or {}
+    where = [addr.get("addressLocality"), addr.get("addressCountry")]
+    out = {
+        "id": j.get("id"),
+        "ledger_id": f"teamtailor:{tenant}:{j.get('id')}",
+        "url": j.get("url"),
+        # Teamtailor hosts the form on the ad itself; there is no separate
+        # apply endpoint to link to.
+        "apply_url": j.get("url"),
+        "title": j.get("title"),
+        "company": (jp.get("hiringOrganization") or {}).get("name")
+                   or j.get("_feed_title") or tenant,
+        "tenant": tenant,
+        "provider": "teamtailor",
+        "location": ", ".join(x for x in where if x) or None,
+        "published": j.get("date_published") or jp.get("datePosted"),
+        "updated": None,
+        "department": None,
+        # Measured absent on 16 of 16 ads: Teamtailor's feed publishes no
+        # employment type, no salary, no validThrough and no remote flag.
+        # Reported as None rather than guessed from the description.
+        "employment_type": None,
+        "remote": None,
+    }
+    if addr.get("postalCode") or addr.get("streetAddress"):
+        # The employer's postal address, which the job-room-ch module records as
+        # the field that goes missing most often. Present on 13 of 16 measured.
+        out["address"] = {k: v for k, v in (
+            ("street", addr.get("streetAddress")),
+            ("postal_code", addr.get("postalCode")),
+            ("locality", addr.get("addressLocality")),
+            ("region", addr.get("addressRegion")),
+            ("country", addr.get("addressCountry"))) if v}
+    if with_description:
+        out["description"] = to_text(j.get("content_html") or jp.get("description"))
+    return out
+
+
 LISTERS = {"greenhouse": greenhouse_list, "lever": lever_list,
            "ashby": ashby_list, "smartrecruiters": smartrecruiters_list,
-           "workable": workable_list}
+           "workable": workable_list, "teamtailor": teamtailor_list}
 CARDERS = {"greenhouse": greenhouse_card, "lever": lever_card,
            "ashby": ashby_card, "smartrecruiters": smartrecruiters_card,
-           "workable": workable_card}
+           "workable": workable_card, "teamtailor": teamtailor_card}
 
 
 # ----------------------------------------------------------------- filters --
