@@ -301,10 +301,41 @@ What was established:
 An adapter written now would be an adapter for **one WordPress theme**, and
 would break on the next customer. Rule 1 forbids shipping that.
 
-**What would unblock it:** one working Beetween customer careers URL. If two of
-them share a structure — most plausibly the `JobPosting` block, which is
-schema.org and therefore identical whoever emits it — the adapter becomes a
-JSON-LD reader keyed on the careers hostname, and it is a short job.
+### There *is* a platform surface — and it still does not make a board
+
+Followed up 2026-08-31, from the France Travail partner links: **79 BEETWEEN
+ads across four departments all pointed at one host**,
+`app.beetween.com/WeaselWeb/p/#/apply/job/<id>/<slug>`. So Beetween does have a
+shared surface after all — the customer careers sites vary, the *apply* pages
+do not.
+
+Three things about it, all measured:
+
+- It is a **hash-route Vue SPA**. The shell is 1.3 KB with no data and no
+  JSON-LD, so plain HTTP gets nothing.
+- Its backend is `https://apehi.beetween.com` — read out of
+  `window.__NUXT__.config.backendApiBaseUrl` — and it answers unauthenticated:
+  `/WeaselWeb/api/publicoffer/detail` returns a **RESTEasy 404**, which is a
+  live backend rejecting a wrong path, not a refusal. The exact call was not
+  established.
+- **It is a detail surface, not a listing.** One ad at a time, keyed by ad id.
+  No per-tenant index was found on that host.
+
+So even fully reverse-engineered, Beetween would not be a board: **France
+Travail would still be doing the enumerating**, and Beetween would only add the
+employer's name and the full ad text to rows the partner feed already carries
+anonymously. Real, but modest — and resting on an undocumented internal
+application API with no contract and no versioning.
+
+**Two routes remain, and neither is blocked:** finish reverse-engineering
+`apehi.beetween.com`, or read the SPA in the user's own browser as
+`cadremploi.md` does. Both were left unbuilt deliberately: the value is small
+and the foundation is unstable.
+
+**What would change that:** one working Beetween *customer* careers URL with a
+real listing on it. That puts Beetween back in the shape of every other ATS
+here — a per-tenant adapter — and most plausibly a `JobPosting` reader, since
+schema.org is identical whoever emits it.
 
 **And Beetween ads already reach the ledger.** It is the **largest single
 supplier** of France Travail's partner feed — 38 of 150 sampled Paris partner
