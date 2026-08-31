@@ -273,6 +273,51 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
 
+## Investigated and closed — leboncoin.fr
+
+**Verified 2026-08-31, from `robots.txt` alone** — once the rule was read,
+nothing else on the site was fetched.
+
+Leboncoin is the largest French audience with no adapter, and it will not get
+one. Its `robots.txt` **declares no `User-agent: *` group at all**, and opens
+with a prose statement rather than a rule:
+
+> *"It's forbidden to use search robots or other automatic methods to access
+> Leboncoin.fr. Access is only permitted with special permission from
+> Leboncoin.fr."*
+
+Everything after that is the list of exceptions they have granted — and it is
+the most considered file this repository has read, because it **splits AI
+agents into three classes**:
+
+| Group | Agents | Treatment |
+| :-- | :-- | :-- |
+| AI **search / retrieval** | `Claude-User`, `Claude-SearchBot`, `ChatGPT-User`, `Perplexity-User`, `Applebot`… | Allowed, **except `/recherche`** |
+| AI **training** | `ClaudeBot`, `anthropic-ai`, `GPTBot`, `CCBot`, `Google-Extended` | Allowed, **except `/recherche` and `/ad/`** |
+| `Bytespider` | — | `Disallow: /` |
+
+**`Claude-User` is precisely the class this plugin falls into**: a fetch a
+person asked for, on their own behalf. Leboncoin permits it — and still closes
+`/recherche`, which is the results page, which is the sweep.
+
+That is not an obstacle to route around, it is a considered position: *read an
+ad a human pointed you at; do not harvest our search results.* **A browser
+adapter changes nothing here** — what is refused is not the access, it is the
+sweeping. `cadremploi.md` uses a browser because a script is blocked; nothing
+of the kind applies.
+
+**What remains true and useful:** individual ad pages are not disallowed to the
+retrieval class. That is exactly the `cover-letter <URL>` case — the user finds
+an ad, hands over the link, and the plugin does everything else. It needs no
+adapter and works today.
+
+**Worth carrying to other adapters:** this is the first site here to
+distinguish *user-initiated retrieval* from *training crawls*, and to allow the
+first while refusing the second on the pages that matter. `softy.md` banned
+every AI agent outright; `taleez.md` allowed `ClaudeBot` explicitly. When a
+`robots.txt` names AI agents, read which class it is talking about before
+concluding anything — the answer is no longer binary.
+
 ## Investigated and not built — Beetween
 
 **Verified 2026-08-31.** Beetween is the fifth French ATS name on the list, and
