@@ -34,7 +34,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
-PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters")
+PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable")
 
 
 def die(msg, code=2):
@@ -282,10 +282,79 @@ def smartrecruiters_card(tenant, j, with_description=False):
     return out
 
 
+def workable_list(tenant, want_content, _a=None):
+    # `details=true` returns the full description with the listing, so the whole
+    # board — text included — is one request. Without it the same call returns
+    # the same jobs with no description at all.
+    q = "?details=true" if want_content else ""
+    d = fetch(f"https://apply.workable.com/api/v1/widget/accounts/{tenant}{q}")
+    if d is None:
+        die(f"Workable has no account called {tenant!r} (HTTP 404). Check the "
+            "tenant with: ats.py resolve \"<employer name>\"", code=4)
+    jobs = d.get("jobs") or []
+    for j in jobs:
+        # The employer's real name lives on the account, not on the job. Carry
+        # it down so the card does not have to fall back to the tenant slug.
+        j["_account_name"] = d.get("name")
+        # Workable calls the identifier `shortcode`; every other provider here
+        # calls it `id`, and `cmd_ad` looks one ad up by that name across all of
+        # them. Without this alias `ats.py ad` reports a live posting as pulled.
+        j.setdefault("id", j.get("shortcode"))
+    return jobs
+
+
+def workable_card(tenant, j, with_description=False):
+    locs = j.get("locations") or []
+    # `city` is empty on most remote ads; `locations[]` is the reliable one.
+    where = [x for x in (j.get("city"), j.get("state"), j.get("country")) if x]
+    if not where and locs:
+        first = locs[0]
+        where = [x for x in (first.get("city"), first.get("region"),
+                             first.get("country")) if x]
+    remote = bool(j.get("telecommuting"))
+    out = {
+        "id": j.get("shortcode"),
+        "ledger_id": f"workable:{tenant}:{j.get('shortcode')}",
+        "url": j.get("shortlink") or j.get("url"),
+        "apply_url": j.get("application_url") or j.get("shortlink"),
+        "title": j.get("title"),
+        "company": j.get("_account_name") or tenant,
+        "tenant": tenant,
+        "provider": "workable",
+        "location": ", ".join(where) or None,
+        # `published_on` is when the ad went live; `created_at` is when it was
+        # drafted. They differ by weeks on republished ads, and reading the
+        # wrong one is how a fresh vacancy gets scored as stale — measured at
+        # six weeks apart on a live posting (created 2026-07-13, published
+        # 2026-08-24). `published` is the one that answers "how old is this ad".
+        "published": j.get("published_on"),
+        "created": j.get("created_at"),
+        "updated": None,
+        "department": j.get("department") or j.get("function"),
+        "employment_type": j.get("employment_type"),
+        "remote": remote,
+    }
+    # A remote ad on Workable is very often remote *within one country only*.
+    # The countries are the ad's real eligibility rule — schema.org calls this
+    # applicantLocationRequirements — and taking "remote" at face value without
+    # them produces a perfect-looking match nobody is allowed to take.
+    if remote:
+        codes = [x.get("countryCode") for x in locs if x.get("countryCode")]
+        names = [x.get("country") for x in locs if x.get("country")]
+        if codes or names:
+            out["remote_countries"] = codes or None
+            out["remote_country_names"] = names or None
+    if with_description:
+        out["description"] = to_text(j.get("description"))
+    return out
+
+
 LISTERS = {"greenhouse": greenhouse_list, "lever": lever_list,
-           "ashby": ashby_list, "smartrecruiters": smartrecruiters_list}
+           "ashby": ashby_list, "smartrecruiters": smartrecruiters_list,
+           "workable": workable_list}
 CARDERS = {"greenhouse": greenhouse_card, "lever": lever_card,
-           "ashby": ashby_card, "smartrecruiters": smartrecruiters_card}
+           "ashby": ashby_card, "smartrecruiters": smartrecruiters_card,
+           "workable": workable_card}
 
 
 # ----------------------------------------------------------------- filters --
@@ -380,7 +449,8 @@ def cmd_resolve(a):
     for h in hits:
         src = {"grnhse": "greenhouse", "lever": "lever", "eu_lever": "lever",
                "ashby": "ashby",
-               "smartrecruiters": "smartrecruiters"}.get(h.get("source"))
+               "smartrecruiters": "smartrecruiters",
+               "workable": "workable"}.get(h.get("source"))
         name = ((h.get("attributed_org") or {}).get("name")
                 or (h.get("enriched_company_data") or {}).get("name") or "?")
         if src:
