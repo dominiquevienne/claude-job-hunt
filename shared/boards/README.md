@@ -273,6 +273,44 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
 
+## Investigated and not built — Beetween
+
+**Verified 2026-08-31.** Beetween is the fifth French ATS name on the list, and
+the only one of the five investigated that **cannot have a platform adapter** —
+for a reason worth writing down, because it is not a wall, it is an absence.
+
+The other four each have one contract that holds across every customer:
+Taleez's `/api/careez`, Flatchr's `__NEXT_DATA__`, Talentsoft's `fld*` element
+ids, DigitalRecruiters' single API keyed by hostname. **Beetween has none.** It
+sells careers sites *"from basic to fully customised"*, and its own —
+`recrutement.beetween.fr` — is a bespoke **WordPress + Elementor** build whose
+pages call no Beetween service at all: the only host they talk to is their own.
+
+What was established:
+
+- Ads live at `/poste/<id>-<slug>/` **on that site**, and the ad page carries a
+  standard schema.org `JobPosting` — description, `baseSalary`, `datePosted`,
+  education and experience requirements.
+- **The sitemap contains no ads** — only posts, pages, categories and tags — so
+  there is no enumeration route even on that one site.
+- The single hosted-looking domain found in the markup,
+  `<tenant>.nous-recrutons.fr`, answers **403 in a real browser as well as to a
+  script**. Not bot protection: that host is not served publicly.
+- No Beetween *customer* careers site was found to verify against.
+
+An adapter written now would be an adapter for **one WordPress theme**, and
+would break on the next customer. Rule 1 forbids shipping that.
+
+**What would unblock it:** one working Beetween customer careers URL. If two of
+them share a structure — most plausibly the `JobPosting` block, which is
+schema.org and therefore identical whoever emits it — the adapter becomes a
+JSON-LD reader keyed on the careers hostname, and it is a short job.
+
+**And Beetween ads already reach the ledger.** It is the **largest single
+supplier** of France Travail's partner feed — 38 of 150 sampled Paris partner
+ads, ahead of METEOJOB — so `france-travail.md` with `origineOffre=2` carries
+them today, without the employer being named.
+
 ## Investigated, buildable, not built
 
 **jobeo.ch** — a staffing-agency board (Adecco and others), verified 2026-08-29
