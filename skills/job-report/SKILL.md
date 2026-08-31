@@ -123,3 +123,17 @@ A period report is the moment the user is thinking about their declaration, so
 naming the gap there is worth more than any total. List those rows explicitly —
 company, role, date — and repeat the module's responsibility line: the
 declaration is theirs to check and submit.
+
+**`jr_missing` is half the picture, and the visible half.** A row already
+declared whose employer has since answered no still reads *En suspens* in
+job-room: it misses nothing, so it is counted nowhere, and only a comparison
+between the status date and the `JR:` date finds it. When the user is heading
+for a declaration session, hand them both lists:
+
+```bash
+python3 "<this skill's folder>/scripts/jobroom_sync.py" plan
+```
+
+The same script carries the **duplicate gate** that any writing into job-room
+must pass — `check`, fed `get_page_text` and never `read_page`. See the
+`job-room-ch` module for the rule and for why the distinction matters.
