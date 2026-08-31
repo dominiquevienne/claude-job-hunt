@@ -11,10 +11,19 @@ SmartRecruiters is the odd one of the four: it paginates (100 per page, silently
 clamped), it needs a second request per ad for the description, and it is the
 only one with server-side filters — see --country.
 
+**join.com is the odd one of the seven.** It publishes no JSON feed at all — it
+is a Next.js app, and the whole payload rides in the page's own `__NEXT_DATA__`,
+which is a complete state object rather than markup to scrape. It is also the
+only provider here that hands the description over **already cut into `intro`,
+`tasks`, `requirements`, `benefits` and `outro`** — `requirements` on its own is
+what the scoring rubric actually reads. And it is the only one whose money is
+stored in **minor units**: `2035` means `20.35`. See `join_money`.
+
 Usage:
   ats.py list --provider greenhouse --tenant elastic [--location Switzerland]
               [--keywords kubernetes] [--posted-within-days 30] [--remote]
   ats.py list --provider smartrecruiters --tenant nexthink --country ch
+  ats.py list --provider join --tenant simplee-energy --with-description
   ats.py ad   --provider greenhouse --tenant elastic --id 8148720
   ats.py resolve "Nexthink"        # employer name -> provider + tenant
 
@@ -35,7 +44,7 @@ from datetime import datetime, timedelta, timezone
 
 UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
 PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable",
-             "teamtailor")
+             "teamtailor", "join")
 
 
 def die(msg, code=2):
@@ -419,12 +428,185 @@ def teamtailor_card(tenant, j, with_description=False):
     return out
 
 
+# ---------------------------------------------------------------- join.com --
+
+JOIN = "https://join.com/companies/{}"
+NEXT_DATA_RE = re.compile(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
+
+
+def join_state(url):
+    """The page's own React state, which is a complete JSON payload.
+
+    join.com is a Next.js app that ships `__NEXT_DATA__` in the HTML, so no
+    scraping is involved: the tenant page carries `initialState.jobs` with its
+    items, its pagination and its aggregations, and an ad page carries
+    `initialState.job` in full. Returns None on 404 — an ad that was pulled.
+    """
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(
+            url, headers={"User-Agent": UA, "Accept": "text/html"}), timeout=60)
+        page = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code in (404, 410):
+            return None
+        die(f"{url} returned HTTP {e.code}")
+    except Exception as e:  # noqa: BLE001 - network shape varies by platform
+        die(f"could not reach join.com: {e}")
+    m = NEXT_DATA_RE.search(page)
+    if not m:
+        die("join.com served a page with no __NEXT_DATA__ — the app changed "
+            "shape, or this is a Cloudflare interstitial. Report it with the "
+            "board-request skill rather than parsing the HTML.", code=2)
+    return json.loads(m.group(1))["props"]["pageProps"]["initialState"]
+
+
+def join_money(amount):
+    """`{"currency": "CHF", "amount": 2035}` is **CHF 20.35**, not 2 035.
+
+    join.com stores money in **minor units**. The board renders that ad as
+    *"CHF 20.35 bis CHF 25.25 / Stunde"* and its own JSON-LD writes
+    `minValue: 20.35`, so the factor of 100 is not a guess — it is confirmed
+    twice on the same page.
+
+    Reading the integer raw turns an hourly rate of CHF 20.35 into CHF 2 035,
+    which is not an implausible number: it reads as a monthly salary, so it
+    would pass every sanity check a human applies to a pay figure. This is the
+    single most dangerous field on the board.
+    """
+    if not isinstance(amount, dict) or amount.get("amount") is None:
+        return None
+    return {"currency": amount.get("currency"),
+            "amount": round(amount["amount"] / 100, 2)}
+
+
+def join_list(tenant, _want_content=True, _a=None):
+    st = join_state(JOIN.format(urllib.parse.quote(tenant)))
+    if st is None:
+        die(f"join.com has no company page called {tenant!r} (HTTP 404). The "
+            "tenant is the slug in join.com/companies/<tenant>, read off the "
+            "ad URL — join.com publishes no directory of them.", code=4)
+    company = st.get("company") or {}
+    jobs, seen = [], set()
+    page = st.get("jobs") or {}
+    pages = int((page.get("pagination") or {}).get("pageCount") or 1)
+    for n in range(1, pages + 1):
+        if n > 1:
+            nxt = join_state(f"{JOIN.format(urllib.parse.quote(tenant))}?page={n}")
+            page = (nxt or {}).get("jobs") or {}
+        items = page.get("items") or []
+        # **A page past the end repeats the last one.** Measured on an 8-ad
+        # tenant with pageCount 2: `?page=3` answered with page 2's two ads
+        # again, while `?page=99` answered `page: 98` and no items at all. The
+        # loop is bounded by pageCount for that reason, and still dedupes.
+        fresh = [i for i in items if i.get("id") not in seen]
+        if not fresh:
+            break
+        seen.update(i["id"] for i in fresh)
+        for i in fresh:
+            i["_company"] = company
+        jobs.extend(fresh)
+    return jobs
+
+
+def join_card(tenant, j, with_description=False):
+    company = j.get("_company") or j.get("company") or {}
+    city = j.get("city") or {}
+    office = j.get("office") or {}
+    ocity = office.get("city") or {}
+    idp = j.get("idParam") or j.get("id")
+    where = [city.get("cityName") or ocity.get("cityName"),
+             city.get("countryName") or ocity.get("countryName")]
+    url = f"{JOIN.format(urllib.parse.quote(tenant))}/{idp}"
+    workplace = j.get("workplaceType")
+    out = {
+        "id": str(j.get("id")),
+        "ledger_id": f"join:{tenant}:{j.get('id')}",
+        "url": url,
+        # join.com hosts the form on the ad itself.
+        "apply_url": url,
+        "title": j.get("title"),
+        # **The employer's own name, not an inference.** HiringCafe indexes
+        # join.com heavily and labels how it got the name — `llm_pick`,
+        # `single_deterministic`. On 11 Swiss tenants the two disagreed 5 times,
+        # once badly: HiringCafe said "Smile Fahrlehrerausbildung AG" where the
+        # tenant's own record says "wab kurs". Neither is authoritative for a
+        # human, but only one of them is what the employer wrote.
+        "company": company.get("name") or tenant,
+        "tenant": tenant,
+        "provider": "join",
+        "location": ", ".join(x for x in where if x) or None,
+        "published": j.get("createdAt"),
+        "updated": j.get("updatedAt"),
+        "department": (j.get("category") or {}).get("name"),
+        "employment_type": (j.get("employmentType") or {}).get("name"),
+        "workplace_type": workplace,
+        "remote": workplace == "REMOTE",
+        # The ad's own language, which cover-letter needs before it writes a
+        # line — this board is DACH-first and mixes de/fr/en on one tenant.
+        "language": (j.get("language") or {}).get("locale"),
+    }
+    if office.get("postalCode") or ocity.get("cityName"):
+        out["address"] = {k: v for k, v in (
+            ("postal_code", office.get("postalCode")),
+            ("locality", ocity.get("cityName")),
+            ("region", ocity.get("regionName")),
+            ("country", ocity.get("countryName"))) if v}
+    if ocity.get("lat") or company.get("lat"):
+        out["coordinates"] = {"lat": ocity.get("lat") or company.get("lat"),
+                              "lng": ocity.get("lng") or company.get("lng")}
+    lo, hi = join_money(j.get("salaryAmountFrom")), join_money(j.get("salaryAmountTo"))
+    if lo or hi:
+        out["salary"] = {"from": lo, "to": hi, "period": j.get("salaryFrequency")}
+    elif (j.get("settings") or {}).get("showSalary"):
+        # `showSalary: true` with nothing to show, on 14 of the 15 ads that set
+        # it. The flag is the employer's *intent*, not a promise of a figure —
+        # never report a salary because it is true.
+        out["salary"] = None
+        out["salary_flag_without_amount"] = True
+    if j.get("contactName") or j.get("contactEmail"):
+        # Published in the clear by the employer, on the public ad, for
+        # candidates to use. Nothing is de-obfuscated to get it.
+        out["contact"] = {k: v for k, v in (("name", j.get("contactName")),
+                                            ("email", j.get("contactEmail"))) if v}
+    if with_description:
+        full = join_state(url)
+        job = (full or {}).get("job") or {}
+        if job:
+            out["status"] = job.get("status")
+            out["language"] = (job.get("language") or {}).get("locale") \
+                or out.get("language")
+            # **The description arrives already cut into its parts.** No other
+            # provider here does this: `requirements` is the must-have list on
+            # its own, which is exactly what the scoring rubric reads and what
+            # every other adapter has to dig out of one prose blob.
+            for src, dst in (("intro", "intro"), ("tasks", "tasks"),
+                             ("requirements", "requirements"),
+                             ("benefits", "benefits"), ("outro", "outro")):
+                if job.get(src):
+                    out[dst] = job[src]
+            out["description"] = job.get("description") or to_text(
+                job.get("schemaDescription"))
+            for extra in ("contactName", "contactEmail"):
+                if job.get(extra):
+                    out.setdefault("contact", {})[
+                        "name" if extra == "contactName" else "email"] = job[extra]
+            lo = join_money(job.get("salaryAmountFrom"))
+            hi = join_money(job.get("salaryAmountTo"))
+            if lo or hi:
+                out["salary"] = {"from": lo, "to": hi,
+                                 "period": job.get("salaryFrequency")}
+                out.pop("salary_flag_without_amount", None)
+    return out
+
+
 LISTERS = {"greenhouse": greenhouse_list, "lever": lever_list,
            "ashby": ashby_list, "smartrecruiters": smartrecruiters_list,
-           "workable": workable_list, "teamtailor": teamtailor_list}
+           "workable": workable_list, "teamtailor": teamtailor_list,
+           "join": join_list}
 CARDERS = {"greenhouse": greenhouse_card, "lever": lever_card,
            "ashby": ashby_card, "smartrecruiters": smartrecruiters_card,
-           "workable": workable_card, "teamtailor": teamtailor_card}
+           "workable": workable_card, "teamtailor": teamtailor_card,
+           "join": join_card}
 
 
 # ----------------------------------------------------------------- filters --
@@ -486,6 +668,21 @@ def cmd_ad(a):
             die(f"no SmartRecruiters posting {a.id} on board {a.tenant} "
                 "(HTTP 404) — it was filled or pulled. Record it as "
                 "discarded.", code=3)
+    elif a.provider == "join":
+        # Fetched directly rather than looked up in the board, because **an ad
+        # carries two numbers and both address it**. The item's `id` is the
+        # stable identity; `idParam`'s numeric prefix is a different number
+        # issued when the ad is republished — measured on one tenant as
+        # `id 16257505` against `idParam 16620520-…`, three ads out of seven.
+        # Either resolves, and the slug is ignored entirely: a wrong slug on a
+        # right number still serves the ad. Searching the list for whichever
+        # number the user pasted would report a live ad as pulled.
+        st = join_state(f"{JOIN.format(urllib.parse.quote(a.tenant))}/{a.id}")
+        j = (st or {}).get("job")
+        if not j:
+            die(f"no join.com ad {a.id} for {a.tenant} — it was filled or "
+                "pulled. Record it as discarded.", code=3)
+        j["_company"] = j.get("company") or {}
     else:
         j = next((x for x in LISTERS[a.provider](a.tenant, True, a)
                   if str(x.get("id")) == str(a.id)), None)
@@ -517,10 +714,16 @@ def cmd_resolve(a):
     hits = (json.loads(m.group(1))["props"]["pageProps"].get("ssrHits") or [])
     supported, other = {}, {}
     for h in hits:
+        # HiringCafe's own name for each ATS. `teamtailor` and `join` were
+        # missing here long after their adapters shipped, so `resolve` answered
+        # "an ATS this script does not cover" about two providers it covers —
+        # a wrong answer that read like a limitation.
         src = {"grnhse": "greenhouse", "lever": "lever", "eu_lever": "lever",
                "ashby": "ashby",
                "smartrecruiters": "smartrecruiters",
-               "workable": "workable"}.get(h.get("source"))
+               "workable": "workable",
+               "teamtailor": "teamtailor",
+               "join": "join"}.get(h.get("source"))
         name = ((h.get("attributed_org") or {}).get("name")
                 or (h.get("enriched_company_data") or {}).get("name") or "?")
         if src:
