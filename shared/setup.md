@@ -217,6 +217,13 @@ Write, at the top of that file, that the times are **estimates the user
 validated**, with the date — so a later run knows they were confirmed, not
 invented.
 
+**One country changes what happens later in this flow.** If the home base, the
+commute table or the search perimeter reaches **Austria**, note it now and run
+**section 5d** when you get to the boards. AMS is the largest source of Austrian
+vacancies and the only board in this plugin that asks the user to take a
+position rather than supply a value — raising it at the geography step is too
+early, and not raising it at all leaves the biggest Austrian gap unexplained.
+
 ---
 
 ## 4 — Languages
@@ -538,7 +545,117 @@ ad from any board.** Enabling a board is an optimisation, not a prerequisite.
 
 If the user names a board that has no adapter, do not promise one and do not
 improvise: hand it to the `board-request` skill, which records what an adapter
-would need.
+would need. **AMS is the one documented exception** — a board with no adapter
+and a decision already taken. See 5d.
+
+## 5d — AMS (Austria): a decision to take, not a value to fetch
+
+**Run this section only when Austria is in scope** — flagged at step 3, or
+Austria named as a target country. Skip it entirely otherwise; nobody outside
+Austria needs to hear any of it.
+
+**Check first whether the adapter exists** — `shared/boards/ams.md` and
+`skills/job-scan/scripts/ams.py`. The two states read very differently and
+blurring them is the failure this section exists to prevent:
+
+| State | What this step is |
+| :-- | :-- |
+| **No adapter** (the state today) | An **advisory**. Explain, record their stance, configure nothing. `job-scan` sweeps no AMS ad whatever they answer, and you say so |
+| **Adapter present** | A real enable step. Pre-fill from the recorded stance, confirm it in one question, and **do not run the explanation again** |
+
+### Why this board gets a section instead of a table row
+
+Every board in 5b asks *can we*. This one asks *should we*, and the answer is
+the user's, not yours. So give them the facts and let them decide — **do not
+present it as a recommended setting and never pre-tick it.**
+
+Say this, in one message, in this order:
+
+1. **What AMS is.** Austria's federal public employment service, and the largest
+   single source of Austrian vacancies — the equivalent of France Travail.
+2. **What its `robots.txt` says.** Quote it; it is four lines and it convinces
+   better than any summary:
+
+   ```
+   user-agent: LinkedInBot     Allow: /public/emps/    Disallow:
+   user-agent: *               Allow: /public/emps/$   Disallow: /public/emps/
+   ```
+
+   `LinkedInBot` gets the employer pages entire. Everyone else gets that exact
+   index page — the `$` — and nothing beneath it.
+3. **What this project decided, and on what ground.** Not that the obstacle is
+   inconvenient: that a publicly funded body has granted machine access to one
+   privately held platform and refused it to every other actor, free or paid,
+   closed or open-source. The rule it was decided by — four questions, and a
+   default of *obey* that every other case lands on — is in
+   `shared/robots-policy.md`. Offer the file; do not paraphrase it into a slogan.
+4. **What it costs them, not us.** The realistic failure is AMS blocking the
+   address the requests come from — **theirs** — which costs them their own
+   ordinary use of the site. Say it plainly and early.
+5. **That this is the only one.** Softy, Tecnoempleo, InfoJobs and Leboncoin are
+   refused on files of the same kind, and stay refused. A user who hears "we
+   override robots.txt" without hearing "once, here, for this reason" has been
+   told something false about the plugin.
+
+### The question, and the three answers it can have
+
+`AskUserQuestion`, single select, no default:
+
+- **Enable it** — they accept the override for their own workspace.
+- **Leave it off** — a hard no.
+- **Decide later** — recorded as undecided.
+
+### Recording it — and why not as a board
+
+**With no adapter, write nothing under `boards:`.** A board switched on with no
+adapter behind it is skipped at scan time and reads as a bug; an entry the
+scanner does not recognise is worse. `shared/boards/README.md` lists four board
+states and says never to improvise a fifth — this is not one of them. Record it
+outside that structure:
+
+```yaml
+pending_decisions:
+  ams:
+    stance: opt_in          # opt_in | declined | undecided
+    decided_on: 2026-08-31
+    basis: shared/robots-policy.md
+```
+
+**Once the adapter ships**, that stance becomes an ordinary board block — plus
+the key the policy requires:
+
+```yaml
+boards:
+  ams:
+    enabled: true
+    override_robots: true   # absent or false → skipped, and the skip is reported
+```
+
+**`enabled: true` without `override_robots` is not half-configured, it is the
+safe state.** Never write one without the other on the user's behalf, and never
+infer the override from `enabled` — that inference is the whole thing this
+design exists to prevent.
+
+### If they decline
+
+`stance: declined`, and that is a **hard off**: never swept, never probed, never
+mentioned — including when the adapter ships. **Not dormancy**: dormancy means
+*wrong month, not wrong board*, and a refusal on principle is neither. The only
+thing that reopens it is the user asking.
+
+### What to say before moving on, whatever they answered
+
+**Do not promise them the `cover-letter <URL>` fallback here.** It is the honest
+answer on Leboncoin, whose file permits the fetch and refuses only the sweep.
+AMS is not that shape: its `Disallow` is **path-based and applies to everyone**,
+so an ad page under `/public/emps/` is covered by the same rule as the listing.
+**Whether AMS ad URLs live under that path has not been established** — the
+index page is the only thing this project has fetched there — and settling it is
+part of building the adapter, not something to assume in a setup conversation.
+
+So say the true thing: today AMS is not swept, and if they have an AMS ad in
+hand, **pasting its text into `cover-letter` works and raises no question at
+all.**
 
 ## 6 — Thresholds and document preferences
 

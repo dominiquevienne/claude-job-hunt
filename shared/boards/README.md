@@ -276,6 +276,21 @@ Keep the two apart: **sweepable board → an adapter here. Employer ATS → a ro
 saves the next person from repeating it. When a `board-request` turns out to be an ATS, that
 file is where its findings belong.
 
+## Reading a robots.txt, and the one case that overrides it
+
+The sections below decide individual boards. **The rule they are decided by
+lives in `shared/robots-policy.md`** — four questions, answered in the board's
+own file before any code, and a default of *obey* that four of the five cases
+land on. Read it before concluding anything about a board that names AI agents;
+the answer stopped being binary at `leboncoin`, and the file records why.
+
+The one board decided the other way is the Austrian **AMS**, whose `robots.txt`
+grants `LinkedInBot` the employer pages and refuses every other agent. That
+override is **opt-in and off by default** (`override_robots: true`), it must
+announce itself in the run's output, and its full reasoning — including the
+open-data check that came back empty rather than negative — is in the policy
+file, not here.
+
 ## Investigated and closed — leboncoin.fr
 
 **Verified 2026-08-31, from `robots.txt` alone** — once the rule was read,

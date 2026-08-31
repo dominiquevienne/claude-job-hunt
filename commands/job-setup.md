@@ -18,6 +18,9 @@ Arguments: `$ARGUMENTS`
   `languages`, `boards`, `searches`, `thresholds`, `modules`, `signature`,
   `repos`) → jump straight to that step of the procedure, change only it, and
   leave the rest untouched.
+- **`boards`** also runs section **5d** when the user's geography reaches
+  Austria: AMS is the one board that asks them to take a position rather than
+  supply a value, and it is raised there rather than buried in the board list.
 - **`orientation`** is the one to reach for when *what the user is looking for*
   has changed rather than a single value — widening the geography, a
   reconversion, opening up to intérim. It re-derives the profile from their
