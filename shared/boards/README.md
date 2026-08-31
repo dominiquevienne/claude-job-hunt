@@ -320,6 +320,100 @@ every AI agent outright; `taleez.md` allowed `ClaudeBot` explicitly. When a
 `robots.txt` names AI agents, read which class it is talking about before
 concluding anything — the answer is no longer binary.
 
+## Investigated and closed — Monster
+
+**Verified 2026-08-31, live.** Monster gets no French adapter, and the reason is
+not access: **there is no French job board left to adapt.** Monster still
+exists, still calls itself a job board, and still answers to `monster.fr` — the
+name is the only thing that survived.
+
+### `monster.fr` is a CV advert
+
+Every path on the domain answers `301` to **one** destination, discarding the
+path and the query with it:
+
+| Asked | Sent to |
+| :-- | :-- |
+| `www.monster.fr/emploi/recherche?q=developpeur` | `www.monster.com/fr/` |
+| `www.monster.fr/emploi/annonce/12345` | `www.monster.com/fr/` |
+| `www.monster.fr/entreprises/` | `www.monster.com/fr/` |
+| `jobview.monster.fr/...`, `job-openings.monster.fr/...` | `www.monster.com/` |
+
+And `www.monster.com/fr/` is not a job board. Its `<title>` is **"Monster et
+monCVparfait CV designer"**, its body sells a CV builder, and it contains **no
+search form and not one link to a job** — the only outbound links are to
+`moncvparfait.fr`, the affiliate. The footer's language switcher confirms it is
+not a French accident: **every non-US locale points at a CV page** —
+`fr`, `de`, `es`, `it`, `nl`, `se` at `/xx/`, and Canada, Ireland and the United
+Kingdom at `/resume/`. The US board is the only board.
+
+**This matters to `cover-letter <URL>` even with no adapter.** An old Monster
+France link does not 404 and does not say *"offre expirée"*. It returns **200**
+and a CV advertisement — a page with a title, prose and a call to action, which
+is exactly the shape a fetch-and-summarise step mistakes for an ad. If a user
+hands over a `monster.fr` URL, say the ad is gone; do not describe the page.
+
+### The US board accepts a French location and answers with Mississippi
+
+This is worth recording in full, because it is the most convincing wrong answer
+any board in this repository has given.
+
+`www.monster.com/jobs/search` accepts `where=` without validating it. Measured:
+
+| Searched | Header echoed back | What came back |
+| :-- | :-- | :-- |
+| `q=engineer&where=Lyon, France` | *"Engineer Jobs in Lyon, France"* | 7 ads: **Lyon, MS**, Clarksdale MS, West Helena AR |
+| `q=ingénieur&where=France` | *"Ingénieur Jobs in France"* | Huntsville AL, Boise ID, Houston TX, Kassel DE |
+| `q=developpeur&where=Paris, France` | *"Developpeur Jobs in Paris, France"* | **1 ad**, Sabattus, **Maine** |
+| `q=Paris, France` (empty `where`) | *"…Jobs in **Remote**"* | Palo Alto CA, and **France, ID** |
+
+It matched **Lyon, Mississippi** — a Delta town of a few hundred people — and
+returned its neighbours within 30 miles. `France` was dropped. An empty `where`
+silently became `Remote`. Nothing errored, nothing warned, and the page kept
+repeating the French location back in its own heading while serving Arkansas.
+
+A handful of genuinely European rows are in the index (*"Systems Engineer,
+Territory South (Lyon Based) France"*, a Kassel ad in German) — but they surface
+because their **title** contains the word, never because the location filter
+found them. There is no French inventory to sweep, only French words in US ads.
+
+### A browser adapter does not rescue this one
+
+`indeed.md`, `cadremploi.md` and `softy.md` each use the user's own Chrome
+because a script is blocked. Monster is blocked too — **DataDome** guards every
+page and the underlying API alike:
+
+```
+POST https://appsapi.monster.io/jobs-svx-service/v2/monster/search-jobs/samsearch/en-US?apikey=…
+```
+
+From a script that answers `403` with a **`geo.captcha-delivery.com` URL**, and
+this plugin does not solve CAPTCHAs. From inside the browser it answers
+normally — so the browser route is *technically* open, exactly as it was for
+Indeed.
+
+**It is still the wrong build**, and the distinction is the point: for Indeed
+the browser buys access to French ads. Here it would buy access to
+**Mississippi**. The blocker is not the wall, it is the inventory. Note also
+that the locale is a path segment (`…/samsearch/en-US`) — `fr-FR` and `fr` were
+tried and are not a way in.
+
+### What would reopen this
+
+A French Monster job board coming back — a `monster.fr` that serves its own
+search again, or a `www.monster.com/fr/jobs/…` that returns French locations.
+Re-check by asking one question, which takes ten seconds and no adapter:
+
+```bash
+curl -sI 'https://www.monster.fr/emploi/recherche?q=x' | grep -i location
+```
+
+While that answers `https://www.monster.com/fr/`, there is nothing here. Until
+then Monster is a brand licensed onto a CV builder in France, and the honest
+answer to *"can it scan Monster?"* is **"Monster no longer publishes French
+jobs"** — not *"not yet"*, which invites the user to wait for something that is
+not coming.
+
 ## Investigated and not built — Beetween
 
 **Verified 2026-08-31.** Beetween is the fifth French ATS name on the list, and
@@ -417,3 +511,9 @@ the *scan* — the automated sweep that fills the ledger — that needs an adapt
 So a reasonable answer to "can it do <board X>?" is: *"not automatically yet;
 give me an ad URL from it and I'll do everything else."* Say that, rather than
 attempting a scan that has never worked.
+
+**Two boards are exceptions, and "not yet" is the wrong answer for both.**
+Leboncoin has declined the sweep on purpose, and **Monster no longer publishes
+French jobs at all** — telling either user to wait invites them to wait for
+something that is not coming. Read their sections above and say what is
+actually true.
