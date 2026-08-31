@@ -5,7 +5,10 @@ employers and public bodies — ministries, airports, energy, publishing,
 agencies. It is the **fifth and last** of the French ATS family here, after
 `taleez.md`, `flatchr.md`, `softy.md` and `digitalrecruiters.md`.
 
-**Everything here was verified against the live site on 2026-08-31.**
+**Everything here was verified against the live site on 2026-08-31, on two
+tenants** — `businessfrance-recrute` (19 ads) and `place-ep-recrute`
+(**51 708**). The second is where most of the traps below came from: one tenant
+was not enough to write this file.
 
 ## Old-school, and better for it
 
@@ -30,7 +33,15 @@ id="fldlocation_location_geographicalareacollection"
 Those names come from the platform's data model, not from a theme, so they hold
 across tenants and across restyling — the opposite of the Tailwind utility
 classes on `softy.md` and `cadremploi.md`, which mean nothing and change with
-any redesign. **Anchor on the ids and on the `<h2>` section names**
+any redesign.
+
+**But stable as a *name* is not stable as a *meaning*.*
+`fldjobdescription_professionalcategory` reads `Cadre` on Business France and
+`Vacant` on the public-service tenant, which uses the field for the post's
+vacancy status instead. Use the ids to find the values; never assume what a
+value means across tenants.
+
+**Anchor on the ids and on the `<h2>` section names**
 (`JobDescription`, `Location`, `ApplicantCriteria`), never on presentation
 classes.
 
@@ -59,6 +70,26 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/talentsoft.py" \
 
 `robots.txt` on the tenant sampled is **HTTP 200 with zero bytes** — an empty
 file, which is a valid "everything allowed", and distinct from a 404.
+
+### choisirleservicepublic.gouv.fr is this adapter
+
+The French state's public-service job portal — ex-Place de l'emploi public — is
+a Talentsoft tenant: **`place-ep-recrute`**. Nothing on the portal says so; the
+giveaway was an RSS link in its page source. **It needs no separate adapter.**
+
+Three things specific to it:
+
+- **51 708 ads at 50 per page**, so a full sweep is over a thousand requests.
+  It is not a board to read whole — screen or filter first. `--max-pages`
+  defaults to 50, and the script reports how many of the announced total it
+  actually collected rather than implying it got them all.
+- **The canonical public URL is the portal's, not Talentsoft's**:
+  `https://choisirleservicepublic.gouv.fr/offre-emploi/<reference>/`, built from
+  the ad's `reference` (`2026-2395447`). Hand the user that one — it is the
+  address the employer publishes.
+- **A freshness feed exists**: `/handlers/offerRss.ashx?LCID=1036` returns the
+  **20 most recent** ads, with per-contract and per-domain variants. Twenty, not
+  the board: useful for *what is new since yesterday*, useless for enumeration.
 
 ## The ad id and its URL
 
@@ -98,32 +129,59 @@ one measured), `professional_category` (Cadre / Non Cadre), `job_family`,
 
 ## Traps
 
-**1. The location is not always an address, and a postcode rule silently drops
-the overseas jobs.** The first parser here matched a French five-digit postcode
-and filled `location` on 10 of 19 ads. The other nine were real and fine —
-*Bureau Business France à Bombay*, *New Delhi* — postings abroad with no French
-postcode. A public agency, an airport group or a ministry will all have some.
-The row's fields are unlabelled fragments in a fixed order, so the parser
-identifies the title, reference, date and contract by pattern and takes **what
-is left** as the location. That fills 19/19.
+**1. The row's fields are unlabelled, and what they *are* varies by tenant.**
+Business France: title, reference, date, contract (`CDI`), address.
+`place-ep-recrute`: title, reference, date, a **status** phrase — *"Emploi
+ouvert aux titulaires et aux contractuels"* — an address, **and the employing
+body**. Same markup, different meanings, different count.
 
-**2. The listing row starts inside its own opening tag.** The block is cut at
+Two parsers failed here in the same well-formed way before this one held:
+
+- Matching a French postcode filled `location` on 10 of 19 Business France ads
+  and left nine blank. Those nine were *Bombay*, *New Delhi*, *Montréal*,
+  *Houston* — real ads with no French postcode.
+- Taking **whatever was left** fixed that, and then put *"Emploi ouvert aux
+  titulaires et aux contractuels"* into the location field of the entire public
+  service board. Fifty-one thousand ads, a location that is not a location, and
+  nothing anywhere reporting a problem.
+
+So the parser now **labels only what it can identify** — the reference, the
+date, a contract matching known vocabulary, an address carrying a French
+postcode — and hands everything else back in **`other_fields`**, in order,
+uninterpreted. An unnamed string is better than a wrong label. On the
+public-service tenant that means `contract` is empty on all 50 and `location`
+on 19; the rest are foreign postings (*Ambassade de France au Japon*) sitting
+in `other_fields` rather than invented.
+
+**1b. `Vacant (45823)` is not a postcode.** That tenant's status field carries a
+bracketed id, and a bare five-digit rule made it the job's location. The rule
+now rejects digits in brackets. Three variants of one mistake in a single
+adapter is why the design is now *refuse to guess*.
+
+**2. The last row on every page swallows the footer.** Blocks are cut at the
+next row marker, so the final one runs to the end of the document and collects
+the sidebar filters, the pagination and the legal links — thirty extra fields on
+the last ad of every page, all `<li>` elements indistinguishable from the row's
+own. They cannot be cut by structure, so the parser takes a **bounded number of
+fields** (`MAX_FIELDS`): the real ones come first, the furniture does not.
+
+**3. The listing row starts inside its own opening tag.** The block is cut at
 `class="ts-offer-list-item offerlist-item`, so flattening it puts leftover
 attribute text — `class=… title=… onclick=…` — where the title should be. Taken
 positionally, every title on the board becomes a fragment of HTML that *looks
 like data*. The title comes from `ts-offer-list-item__title-link` instead.
 
-**3. A wrong tenant is a DNS failure, not a 404.** The host simply does not
+**4. A wrong tenant is a DNS failure, not a 404.** The host simply does not
 exist, so the error arrives from the resolver. Passed through, it reads as a
 network problem; it is a typo in the one value the user supplied. The script
 says so.
 
-**4. The ad page ends with other people's ads.** A *"Ces offres pourraient vous
+**5. The ad page ends with other people's ads.** A *"Ces offres pourraient vous
 intéresser"* block carries `ts-offer-card__title-link` links to unrelated
 postings. Harvesting ad links from a detail page therefore pulls in ads that
 are not related to it — collect links from the **listing** only.
 
-**5. There is no expiry date**, as on all four other French ATS. Freshness comes
+**6. There is no expiry date**, as on all four other French ATS. Freshness comes
 from the listing's own publication date, which — unlike
 `digitalrecruiters.md` — is there without opening the ad.
 

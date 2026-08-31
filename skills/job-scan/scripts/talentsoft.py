@@ -54,12 +54,29 @@ DATE_RE = re.compile(r"\b(\d{2}/\d{2}/\d{4})\b")
 CONTRACT_RE = re.compile(
     r"\b(CDI|CDD|Alternance|Stage|Int[ée]rim|Apprentissage|VIE|"
     r"Contrat de professionnalisation)\b", re.I)
-# The row's fields are unlabelled fragments in a fixed order: title, "Réf. :",
-# a date, a contract, then the location. Identifying the first four by pattern
-# and taking what is left is the only way that survives a location which is
-# not a French address — "Bureau Business France à Bombay" has no postcode,
-# and a postcode-based rule silently drops every posting abroad.
-JUNK_RE = re.compile(r"^(class=|title=|onclick=|\s*$)")
+# The row's fields are unlabelled fragments, and **what they are varies by
+# tenant**. Business France: title, "Réf.", date, contract (CDI), address.
+# place-ep-recrute: title, "Réf.", date, a public-service *status* phrase,
+# address, employer. Taking "whatever is left" as the location put
+# "Emploi ouvert aux titulaires et aux contractuels" in the location field —
+# a well-formed, entirely wrong answer.
+#
+# So: label only what can be identified with confidence, and hand the rest
+# back as `other_fields` rather than guessing at its meaning. A field this
+# adapter cannot name is better as an unnamed string than as a wrong label.
+JUNK_RE = re.compile(r"^(class=|title=|onclick=|<li|\s*$)")
+# A French postcode, but not an id in brackets: this tenant carries a status
+# field reading "Vacant (45823)", and a bare five-digit rule made that the
+# job's location — a well-formed, entirely wrong answer, which is the exact
+# failure this parser is written to avoid.
+POSTCODE_RE = re.compile(r"(?<![(\d])\d{5}(?![)\d])")
+
+# A row carries four or five fields — reference, date, contract or status,
+# address, sometimes the employing body. The last block on a page also
+# contains the whole footer, in `<li>` elements indistinguishable from the
+# row's own. Taking a bounded number keeps the real fields, which come first,
+# and drops the page furniture, which does not.
+MAX_FIELDS = 8
 
 # The ad page's fields, keyed by element id. These are Talentsoft's own field
 # names, so they are the stable part of the page.
@@ -150,6 +167,13 @@ def to_text(markup):
 
 
 def rows(page):
+    """One block per ad.
+
+    The **last** block runs to the end of the document, so it also contains
+    the sidebar filters, the pagination and the footer. Those are `<li>`
+    elements too — the same shape as the row's own fields — so they cannot be
+    cut by structure. They are bounded by count instead: see MAX_FIELDS.
+    """
     starts = [m.start() for m in ROW_RE.finditer(page)]
     return [page[a:b] for a, b in zip(starts, starts[1:] + [len(page)])]
 
@@ -172,17 +196,27 @@ def card(block, tenant):
         else None
     date = (DATE_RE.search(flat) or [None, None])[1] if DATE_RE.search(flat)\
         else None
-    contract = (CONTRACT_RE.search(flat) or [None, None])[1]\
-        if CONTRACT_RE.search(flat) else None
+
     parts = [x.strip() for x in flat.split("|") if x.strip()]
-    location = None
+    rest, location, contract, taken = [], None, None, 0
     for x in parts:
+        if taken >= MAX_FIELDS:
+            break
         if JUNK_RE.match(x) or x == title:
             continue
-        if REF_RE.search(x) or DATE_RE.fullmatch(x) or CONTRACT_RE.fullmatch(x):
+        taken += 1
+        if REF_RE.search(x) or DATE_RE.fullmatch(x):
             continue
-        location = x
-        break
+        if contract is None and CONTRACT_RE.fullmatch(x):
+            contract = x
+            continue
+        # A French postcode is the one unambiguous marker of an address. It
+        # misses postings abroad, which is why they fall through to
+        # `other_fields` instead of being mislabelled as the location.
+        if location is None and POSTCODE_RE.search(x):
+            location = x
+            continue
+        rest.append(x)
     return {
         "id": ident,
         "ledger_id": f"talentsoft:{tenant}:{ident}",
@@ -192,11 +226,18 @@ def card(block, tenant):
         # The employer's own reference, e.g. "2026-1563" — not the ledger key.
         "reference": ref,
         "published": date,
+        # Only when it matches known contract vocabulary. This tenant's
+        # "Emploi ouvert aux titulaires et aux contractuels" is a status, not
+        # a contract, and lands in `other_fields`.
         "contract": contract,
-        # Present on the *listing*, which is unusual: most boards make you
-        # open the ad to learn where the job is. It is a full street address
-        # in France and a free-text place abroad — never assume a postcode.
+        # Set only from a fragment carrying a French postcode. A posting
+        # abroad has no postcode and no location here — it is in
+        # `other_fields`, unlabelled, rather than wrong.
         "location": location,
+        # Everything this adapter will not name: a public-service status, the
+        # employing body, a foreign place. Which of these appear depends on
+        # the tenant, so they are carried in order and not interpreted.
+        "other_fields": rest,
     }
 
 
