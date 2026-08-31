@@ -101,6 +101,94 @@ total.
 
 ---
 
+## Work out what job-room actually needs — `jobroom_sync.py plan`
+
+**Never reconstruct this by reading the whole period by eye.** A period holds
+tens of entries (17 to 64 a month on a real account), and re-deriving the delta
+each session is both slow and the moment mistakes enter.
+
+```bash
+python3 "<job-report skill>/scripts/jobroom_sync.py" plan
+```
+
+It reads the ledger and splits it in two:
+
+- **`to declare`** — sent (`applied` / `rejected`) and never declared.
+- **`result changed since declaration`** — declared, but the employer answered
+  *afterwards*, so job-room still shows the old result.
+
+**The second list is the one no count can surface.** Those rows are declared, so
+they miss nothing; what is stale is the outcome recorded beside them. It needs
+no new field: the ledger already dates the status (`rejected 2026-08-20`) and
+the declaration (`JR:2026-08-18`), and comparing the two *is* the test. A row
+whose refusal is later than its declaration still reads *En suspens* in
+job-room.
+
+`mark-synced` records when the period was last brought up to date:
+
+```bash
+python3 "<…>/jobroom_sync.py" mark-synced --entries <count shown by job-room>
+```
+
+It writes `$JOB_HUNT_HOME/.jobroom-sync.json`. The timestamp is context for the
+user, **not** a permission to skip the check below.
+
+---
+
+## The duplicate check is not optional — `jobroom_sync.py check`
+
+**RULE: nothing is written into a PRE until the period has been read and the
+candidate row has been rapproché against it.** Two entries for one application
+is an inaccurate official declaration; a missing one is a search that does not
+count. Both are invisible in a row count.
+
+```bash
+# capture the period listing with get_page_text, then:
+python3 "<…>/jobroom_sync.py" check --jobroom-text listing.txt
+```
+
+Output is three lists — `safe to enter`, `BLOCKED as duplicate`, and the
+employers already present under **another** role. **Enter only what it calls
+safe.**
+
+**If the listing cannot be read, it refuses and exits `2`.** An empty or
+unrecognised text is never read as "verified, no duplicate found": that is the
+one outcome the check exists to prevent, and it is the reason the refusal is an
+exit code rather than a printed remark.
+
+### Feed it `get_page_text`, never `read_page`
+
+**The job-room list is virtualised.** `read_page` returns only the rows
+currently on screen — **5 exposed out of 48** on a measured run — so a check
+built on it sees almost nothing and clears entries that are plainly there.
+`get_page_text` returns every entry of the period. The script rejects
+`read_page`-shaped input rather than trusting it.
+
+`get_page_text` does **not** carry the state of the radio buttons, so it cannot
+tell you the *Résultat de l'offre de service*. That is what `plan`'s second list
+is for; the two are complementary and neither replaces the other.
+
+### The key is employer + job title, never the employer alone
+
+Measured on one real session — 48 existing entries, 11 to add — matching on the
+employer alone would have discarded **four genuine applications**:
+
+| Already in job-room | About to be entered |
+| :-- | :-- |
+| an intermediary with 1 role | 2 further, different roles |
+| an employer with 2 roles | 1 further, different role |
+| an agency under one reference | a different reference |
+
+The reverse error — matching too loosely — creates the duplicate. So the script
+normalises case, accents and punctuation and nothing else: no stemming, no
+dropping "senior", no collapsing "PHP/Symfony". Fusing two real roles at one
+employer is how an application disappears.
+
+**When it is still ambiguous, the user decides — not the agent.** Do not write,
+do not discard: name the doubt and ask.
+
+---
+
 ## Optional — assisted filling of the job-room form
 
 Only on the user's explicit request. This is **assistance, never submission on
@@ -125,9 +213,20 @@ to work around the login.
 
 ### Filling
 
-Navigate to the PRE form, fill **only** the fields captured above, and follow
-the same rules as any other form in this plugin: truth only, no guessing, leave
-unknown fields blank and ask.
+**Order of operations, and it is not negotiable:**
+
+1. `plan` — what the period is missing, and what it has wrong.
+2. Open the period, capture the listing with `get_page_text`.
+3. `check` — and enter **only** the rows it calls safe.
+4. Fill the form.
+
+Then fill **only** the fields captured above, and follow the same rules as any
+other form in this plugin: truth only, no guessing, leave unknown fields blank
+and ask.
+
+**Reaching step 4 without step 3 is a bug, not a shortcut.** No delta, no
+timestamp and no "I just looked at the list" replaces it — a saisie made
+manually by the user between two sessions appears in no state file.
 
 ### The gate — the user submits, always
 
@@ -148,3 +247,14 @@ to press it.
 Only once the user confirms the declaration went through, update the ledger row
 marker to `` `JR:YYYY-MM-DD` ``. An unconfirmed submission stays
 `` **`JR:missing`** ``: the value of that marker is that it never lies.
+
+Then record the synchronisation, so the next session starts from the delta
+rather than from the whole period:
+
+```bash
+python3 "<…>/jobroom_sync.py" mark-synced --entries <count job-room now shows>
+```
+
+**Only after the user has confirmed**, for the same reason as the marker: a
+timestamp written for a submission that did not happen makes the next run skip
+exactly the rows that still need attention.
