@@ -228,6 +228,47 @@ The shape generalises past sitemaps: a JSON-LD ad page that yields no
 announces N pages is unread, not empty. **A correct pattern is a fact that
 expires. An invariant catches the next wrapper without being told about it.**
 
+### And the same rule applies to what we print
+
+The paragraphs above were written as if this were only about reading a board.
+It is not. **Two counters of the same object have to agree, ours included.**
+
+`recruitee.py` shipped a run summary that said *"39 of 145 state a figure — and
+the period is {month: 50}"*: **fifty units for thirty-nine salaries.** Some
+offers carry a `period` with no amount, and the two counters were tallied over
+different sets. Nothing was wrong with the board; the adapter's own output was
+the thing that failed the arithmetic it exists to apply.
+
+So before a run prints two numbers about the same thing, check that they can
+both be true. If the counts are drawn from different subsets, say which — the
+fixed line reports the orphans separately rather than folding them in. A
+summary is a claim like any other, and *"it was only the log line"* is not a
+defence: the log line is what the user reads.
+
+### A field can be constant because nobody asked the question
+
+The counterpart to a zero that is really a misread: **a value that is present
+everywhere because it was never a variable.**
+
+| Board | Field | Reads as | Actually |
+| :-- | :-- | :-- | :-- |
+| `empleate.md` | `modality` | remote-work status | `No informado` on 25 790 of 28 099 |
+| `platsbanken.md` | `workplace_model` | on-site / remote / hybrid | `Arbete på plats` on 300 of 300 |
+| `platsbanken.md` | `salary_type` | pay is documented | filled on 300/300, an amount on **0**/300 |
+| `turijobs.md` | `salary` | a salary is stated | the object on 40/40, `salaryVisible` on 27, a figure on **2** |
+| `recruitee.md` | `status` | the ad is live | `published` on 238 of 238 — the endpoint serves nothing else |
+| `oposiciones.md` | `estadoPlazoF` | the deadline is open | `Abierto` on 76 050 of 76 050, **including 498 expired** |
+
+**A field whose value is constant because the question was never asked looks
+exactly like a field that is well filled.** A coverage check reports 100% on
+every row of that table, and five of the six say nothing at all.
+
+Two ways to tell them apart, both cheap: count the **distinct values**, not the
+filled ones — one distinct value across a large sample is the signal — and
+check the field against something it should correlate with, as
+`oposiciones.md` does by comparing `estadoPlazoF` with the closing date it
+claims to describe.
+
 ## Errors
 
 - **Never swallow a tool error.** If a call fails, say which one and what it
