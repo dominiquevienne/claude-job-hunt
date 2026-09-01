@@ -29,11 +29,11 @@ ads carries a word of its own description**. The parameter does not filter the
 board or translate it; it serves whatever translation the employer happened to
 enter, and returns the position with an empty body when there is none.
 
-That is the worst version of this for the user this plugin was built for: a
-French-speaking candidate asks for French and gets a full-looking board of
-empty ads. So the adapter **reads the default feed**, and when a language is
-requested it fetches both and refuses to report a language whose text is
-missing — see `language_check`.
+It is the worst shape this failure takes, because the request that triggers it
+is a reasonable one: anybody asking for the language they read gets a
+full-looking board of empty ads. So the adapter **reads the default feed**, and
+when a language is requested it fetches both and refuses to report a language
+whose text is missing — see `language_check`.
 
 THE SECOND ONE IS ISSUE #55's, IN A NEW TAG. Every `<value>` in
 `<jobDescriptions>` is wrapped in CDATA:

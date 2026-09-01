@@ -62,7 +62,7 @@ has gone stale before.
 | Bundesagentur für Arbeit | `arbeitsagentur.md` | **Shipped.** **994 348 live ads** — Germany's federal employment service, the fourth national public service here and **the first German adapter**. Thirty-five times the largest board this repo had. **No browser, no account**, and the key is printed in the state's own OpenAPI spec on `bund.dev`. **But you cannot read it**: the API returns at most **10 000 ads per query** (`page=101` → 400) while reporting the true match count, so Berlin answers *45 901* and delivers 10 000. The adapter checks every count against that ceiling **before paging** and refuses a query it cannot deliver whole. `berufsfeld=Informatik` is 10 002 — it looks like it fits. Carries what no other board does: **`istArbeitnehmerUeberlassung`**, the employer's own legally-required declaration that the work is temp-agency, plus the syndication channel and a career-changer flag. Salary figures are **hourly** on most ads that state one |
 | JobsIreland | `jobsireland.md` | **Shipped.** **4 934 live ads** — Ireland's public employment service (DSP), the **fifth national public service** here and the first Irish adapter. **No browser, no key**, and a `robots.txt` with **no `Disallow` at all**. **More than half the board is not a job**: 135 of the 250 newest are Community Employment Scheme placements, 106 ordinary vacancies, 9 WPEP — a distinction that lives only in a CSS class and a reference prefix, so the card carries `offer_kind` and every run prints the split. Its trap outlives it: **the card class changes with the ad type**, so anchoring on the first variant returns 136 of 251 cards, all correctly parsed and 135 of them CES — a full-looking result set of the wrong population. Some responses also carry an **uninterpolated template row** whose fields are the literal `#StartDate`. Eircode on 195 of 251 |
 | Platsbanken | `platsbanken.md` | **Shipped.** **39 865 ads offering 67 109 posts** — Arbetsförmedlingen, Sweden's public employment service, through the JobTech Dev open API. Sixth national public service here, first Swedish adapter. **No browser, no account, and no key at all** — an open-data product of the state. **The richest record in the repository**: a full description, an application deadline on 300 of 300, coordinates, and **`organization_number`, a legal company identifier no other board publishes** — the cross-board dedup key the ledger has never had. Two honesty points: the salary states its **type** on 300 of 300 and its **amount on 0 of 300**; and the structured `must_have` requirement schema, which nothing else here has, is filled on well under a fifth of ads. **The window is 2 100 of 39 865** — a place alone overflows, a field alone overflows, it takes two — but unlike Germany it refuses with a 400 instead of truncating |
-| Personio | `personio.md` | **Shipped.** One employer at a time, by tenant — **the DACH ATS**, and the one most German, Austrian and **Swiss** SMEs run their careers page on. **No browser, no account, no key**, and no window: one request returns the whole board with descriptions **already split into the employer's own named sections**. Its trap is the sharpest yet for a francophone user: **`?language=fr` returns the same 7 positions with the same ids and 0 of them carrying any text** — same count, HTTP 200, valid XML, no error — so the adapter fetches both feeds and refuses a language whose text has gone. `<value>` is CDATA-wrapped, a second independent sighting of issue #55's wrapper in a new element. `additionalOffices` is a sibling element on 2 of 7. No salary, no closing date, and **no tenant directory** — ask for the URL |
+| Personio | `personio.md` | **Shipped.** One employer at a time, by tenant — **the DACH ATS**, and the one most German, Austrian and **Swiss** SMEs run their careers page on. **No browser, no account, no key**, and no window: one request returns the whole board with descriptions **already split into the employer's own named sections**. Its trap is the sharpest of its kind: **`?language=fr` returns the same 7 positions with the same ids and 0 of them carrying any text** — same count, HTTP 200, valid XML, no error — so the adapter fetches both feeds and refuses a language whose text has gone. `<value>` is CDATA-wrapped, a second independent sighting of issue #55's wrapper in a new element. `additionalOffices` is a sibling element on 2 of 7. No salary, no closing date, and **no tenant directory** — ask for the URL |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
@@ -223,6 +223,37 @@ The **id is the load-bearing part**. It is the ledger's dedup key, so it must be
 stable across visits and rebuildable into a URL. A board with no stable per-ad
 id needs a documented composite key (company + title + posting date) and a note
 saying it will occasionally miss a duplicate.
+
+## Choosing which board to build next
+
+**This is a tool for anyone, and no contributor's own job search is a reason to
+build anything.** Whoever writes an adapter has a country, a language and a
+shortlist of employers, and none of that is an argument. The board that is
+convenient to the person holding the keyboard is not the board that is missing.
+
+Decide on properties of the board and of the gap instead:
+
+- **How many people it reaches** — the size of the board, and whether the
+  population it carries is already covered by something shipped. A sector board
+  in a sector nothing else reaches beats a bigger generalist that overlaps.
+- **Whether there is a door**, and whether it is a *sanctioned* one — see
+  *Reading a robots.txt* below and `shared/robots-policy.md`. An open endpoint
+  that leaks its storage layer is not the same as a published API.
+- **Whether it can be verified.** An adapter that cannot be measured against
+  the live site does not ship, however valuable it looks. Better recorded as
+  *investigated, buildable, not built* than shipped on trust.
+
+The same rule governs the writing. A trap is serious because of **what it
+does** — returning empty ads, truncating in silence, matching every document —
+not because of who it happens to inconvenience. Write *"anybody who asks for
+the language they read"*, never *"our user"*.
+
+**What this does not mean.** Geography that is a measured property of a board
+stays: *jobup.ch is French-speaking Switzerland*, *randstad.ch's structured
+data is missing exactly where Romandie is*, *the `/es/` sitemap is the
+Spanish-language board and 10 of 40 ads are outside Spain*. Those are facts
+about the site, they are useful to whoever searches there, and removing them
+would make the tool worse. The rule is about the **reasoning**, not the map.
 
 ## Writing an adapter
 

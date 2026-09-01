@@ -4,9 +4,9 @@ Personio is the applicant-tracking system most German, Austrian and **Swiss**
 SMEs run their careers page on. Each tenant publishes a **documented XML feed**
 of its open positions, with the full description, and it needs nothing.
 
-It is the first adapter in a while that serves **this plugin's own user**: the
-Swiss market, alongside `umantis.md`, `join.md` and `solique.md`. The last six
-adapters were national boards in countries the user does not live in.
+It sits alongside `umantis.md`, `join.md` and `solique.md` as an **employer's
+own careers page** rather than a national board — the kind of source that
+answers *"is this employer hiring?"* instead of *"who is hiring near me?"*.
 
 **Everything here was verified against a live tenant on 2026-09-01.**
 
@@ -83,10 +83,10 @@ The parameter does not filter the board and does not translate it. It serves
 whatever translation the employer happened to enter, and returns the position
 with an empty body when there is none. Nothing in the response says so.
 
-**This is the worst version of this failure for the user this plugin was built
-for**: a French-speaking candidate in Romandie asks for French and receives a
-full-looking board of empty ads — right count, right titles, right employer,
-no text. `cover-letter` would then be asked to write from nothing.
+**It is the worst shape this failure takes**, because the request that
+triggers it is a reasonable one: anybody who asks for the language they read
+receives a full-looking board of empty ads — right count, right titles, right
+employer, no text — and `cover-letter` is then asked to write from nothing.
 
 So the adapter reads the **default** feed, and when a language is requested it
 fetches both and **refuses** to report one whose text has gone:
