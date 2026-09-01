@@ -244,19 +244,29 @@ and it is a live one:
 `empleate.py fuentes` prints the flag per feed, so the next host to appear in
 that list is visible rather than assumed.
 
-## What is not covered
+## The other index — now `oposiciones.md`
 
-`open/publicoffersearch/selectBuscador` is a **second, separate index of
-76 050 public-sector announcements** — *oposiciones*, *bolsas de trabajo*,
-convocatorias. Same shape, same open access, no key.
+`open/publicoffersearch/selectBuscador` is a second, separate index of Spanish
+public-sector announcements — *oposiciones*, *bolsas de trabajo*,
+convocatorias. It ships as its own adapter, `oposiciones.md`, because it is a
+different board rather than a flag on this one: no ad text, a statutory
+deadline instead of a posting date, and a geography that is Catalan in
+practice.
 
-It is deliberately out of scope. Those are competitive-examination notices with
-statutory deadlines and application procedures, not vacancies you answer with a
-tailored letter, and `cover-letter` would produce the wrong artefact for every
-one of them. **It is the obvious next adapter for Spain, and it is a different
-adapter**, not a flag on this one.
+**Correction to what this file first said.** It described that index as
+"76 050 public-sector announcements". 76 050 is the record count; **1 558 are
+live** — confirmed independently by the site's own
+`open/publicoffersearch/countActive`, which returns exactly that. The other
+74 492 are marked `Inactiva`. The raw figure was quoted here as though it were
+a board, and it is not; `oposiciones.md` has the measured version.
 
-Also not covered, and for a different reason: **InfoJobs**, Spain's largest
+Two things there are worth reading even if Spain's public sector is not the
+user's market. The endpoint **injects no live filter at all**, so the base
+clause this file relies on returns *zero* rather than everything. And its
+`estadoPlazoF` field reads "Abierto" on all 76 050 records, including 498 live
+announcements whose deadline has already passed.
+
+Not covered, and for a different reason: **InfoJobs**, Spain's largest
 private board. `shared/robots-policy.md` records the verdict — it names
 `ClaudeBot`, `Claude-SearchBot` and `Claude-User`, publishes a documented API
 at `developer.infojobs.net`, and the API is the only route.
