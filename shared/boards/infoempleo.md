@@ -141,6 +141,16 @@ whole board and nothing. The adapter reads `/sitemap-index.xml` and names this
 file in its error message, so an empty result points at the cause instead of
 looking like a dead board.
 
+**And zero URLs is never reported as an empty board.** `<loc>` is read with the
+tolerant pattern that also accepts the CDATA wrapper `hays-fr.md` documents —
+infoempleo does not use it today (7 621 `<url>`, 7 621 `<loc>`, no CDATA), so
+that is insurance against a change nobody would announce. Behind it sits the
+check that actually generalises: **zero `<loc>` inside a non-zero number of
+`<url>` blocks is impossible in a valid sitemap**, so it is reported as a
+reading fault rather than an empty board. That arithmetic, not the code, is
+what exposed the CDATA trap on Hays. `<lastmod>` cannot play the same role —
+the spec makes it optional, so its absence proves nothing. See issue #55.
+
 ## What the record carries
 
 Measured on 45 ads sampled at random from the sitemap, read with the body

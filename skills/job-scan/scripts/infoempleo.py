@@ -86,7 +86,14 @@ EMPTY_SITEMAP = BASE + "/sitemap-ofertas-activas-recientes.xml"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
-LOC_RE = re.compile(r"<loc>\s*([^<\s]+)")
+# Reads `<loc>https://…</loc>` and the CDATA-wrapped form both. hays.fr serves
+# the second, where the first non-space character after the tag is `<`, and the
+# strict pattern `<loc>\s*([^<\s]+)` matches nothing at all — 0 URLs from a
+# valid 2.37 MB sitemap. infoempleo.com does not use CDATA today (checked:
+# 7 621 <url>, 7 621 <loc>, no CDATA), so this is insurance against a change
+# nobody would announce, not a fix for a live fault. See issue #55.
+LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
+URL_BLOCK_RE = re.compile(r"<url>")
 AD_RE = re.compile(r"/ofertasdetrabajo/([^/]+)/([^/]+)/(\d+)/")
 LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
                    re.S | re.I)
@@ -154,8 +161,21 @@ def entries():
     body = get(SITEMAP)
     urls = [u for u in LOC_RE.findall(body) if "/ofertasdetrabajo/" in u]
     if not urls:
-        die("the offers sitemap yielded no ad URLs. It is normally ~900 KB "
-            f"and ~7 600 <loc> elements.\n  {SITEMAP}\n"
+        # Arithmetic before conclusions. Zero <loc> inside a non-zero number
+        # of <url> blocks is impossible in any valid sitemap, so it says the
+        # reader is wrong rather than the board being empty. That is what
+        # exposed the CDATA fault on hays.fr — not the code, the counting.
+        # (`<lastmod>` is optional in the spec, so it cannot play this role.)
+        blocks = len(URL_BLOCK_RE.findall(body))
+        if blocks:
+            die(f"read 0 ad URLs out of {blocks} <url> blocks in a "
+                f"{len(body)} character sitemap. That combination is "
+                "impossible in a valid sitemap, so this is a reading fault, "
+                "not an empty board — check <loc> for a wrapper this "
+                f"extractor does not handle.\n  {SITEMAP}")
+        die("the offers sitemap yielded no ad URLs and no <url> blocks "
+            f"either ({len(body)} characters). It is normally ~900 KB and "
+            f"~7 600 entries.\n  {SITEMAP}\n"
             "Note that robots.txt also declares "
             f"{EMPTY_SITEMAP},\n  which is 0 bytes on every request — if that "
             "is what was read, read /sitemap-index.xml instead.")
