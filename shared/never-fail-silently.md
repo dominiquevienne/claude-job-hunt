@@ -41,7 +41,7 @@ wonder.
 ## HTTP 200 is not a yes
 
 **The dominant way this plugin fails silently is not a crash. It is a site
-answering successfully while meaning "no".** Thirteen adapters have now been
+answering successfully while meaning "no".** Forty-two adapters have now been
 built against live sites, and **every one of them** turned up at least one case
 where a request that looks like it worked carries a refusal — or, worse, where a
 refusal comes back looking like data.
@@ -98,6 +98,96 @@ which is precisely the confusion this page exists to prevent.
 wrong case, a missing accent, an oversized page, an id that does not exist. That
 is where every entry in the tables above came from, and none of them would have
 been found by reading the site's documentation or the adapter's own code.
+
+## Two kinds of wrong, and only one is visible in the response
+
+*Written by two sessions working this repository in parallel — one on the
+French boards, one on the country series — after a day spent finding the same
+thing on boards that have nothing to do with each other.*
+
+The section above is about a `200` that means no. This one is about the shape
+underneath it, because after enough cases the failures stopped looking alike:
+
+**A wrong body behind a right status.** The server answered something other
+than what it sent — a challenge, an interstitial, a compressed stream you did
+not decompress, or a payload that contradicts itself. **You can catch all of
+these alone**, by looking at what came back and asking whether it is the kind
+of thing you requested, and whether it agrees with itself.
+
+**A right body behind a wrong question.** The payload is valid, internally
+consistent and describes real jobs. It simply answers something you did not
+ask. **You cannot catch this alone.** Nothing in the response is wrong, because
+the response is not lying — the question was.
+
+The second class has exactly one member below, and that is the point of naming
+it: it is the only failure here that a response cannot betray, however
+carefully you read it.
+
+### The catalogue, as of 2026-09-01
+
+**Wrong body, right status** — the response can betray itself, if you check:
+
+| Signature | Where | The tell |
+| :-- | :-- | :-- |
+| `202 Accepted`, `Content-Length: 0`, `x-amzn-waf-action: challenge` | **tanqeeb** — 0 bytes on both observations | the header, which the WAF deliberately exposes to browser JS via `Access-Control-Expose-Headers` |
+| the same, body 0 then **2 450** bytes | **welcometothejungle** — 10 of 10 challenged at one request per 6 s and again per 12 s | a 2xx whose body is too small to be an ad |
+| `200` + an interstitial, 6 183 bytes, *"Pardon Our Interruption"* ×3, carrying `<meta name="robots" content="noindex, nofollow">` | **dubizzle**, on the URL its own `robots.txt` advertises as its sitemap | a page politely asking not to be indexed, where XML was promised |
+| `200` + `application/x-gzip` read as text — 286 bytes, **0** `<loc>`; decompressed, 906 bytes and 5 sub-sitemaps | **jobindex.dk** `/sitemap.gz` | the magic bytes, and a length no sitemap index could have |
+| `200` + a **self-closing** root: `<urlset xmlns=… xsi:schemaLocation=…/>`, 167 bytes gzipped | **jobindex.dk** `googleforjobs.gz` — the real zero, while `company.gz` holds 3 734 URLs and `content.gz` 1 507 | none, and none is needed: this one is honest. A complete, schema-referencing, valid sitemap containing nothing |
+| `200` + a field contradicting its neighbours — `country: SG` on **90 ads of 90**, beside `region: United Arab Emirates` (54), Saudi Arabia (8), and `location: Dubai` (34), Abu Dhabi (11), Riyadh (8) | **michaelpage.ae** | **not in any field — between two of them.** Compare two that must agree, rather than trusting one |
+| `200` + twenty plausible on-topic ads past the last page, a different twenty on each call | **jobology** — page 9999 answers like page 9 | the same URL twice does not return the same thing |
+
+**Right body, wrong question** — nothing in the response is wrong:
+
+| Signature | Where | Why it cannot betray itself |
+| :-- | :-- | :-- |
+| An ordinal read as a code | **anefa** — department `29` returns 24 real farm jobs in the **Eure-et-Loir**, 400 km from the Finistère, because Corsica takes two slots in the list and every department past 21 is shifted by one | every field agrees with every other. The ads are genuine, the department is genuine, the postcodes match the towns. Only the question was wrong, and the response has no way to know |
+
+That row is alone, and it should stay hard to add to. Two nearby cases that
+look like it are not: `batiactu`'s region filter matches the *employer's name*
+rather than the job's address, and `monster` echoes *"Lyon, France"* in its own
+heading while serving **Lyon, Mississippi** — both catchable by comparing the
+answer to the request, without leaving the response.
+
+### Three rules that follow
+
+**1. The status code is not the answer. Only the payload is.** Before counting
+anything, ask three things of the body: is it the *kind* of thing you asked for,
+is its size plausible, and **does it agree with itself**. A `202`, a `200` and a
+`429` are equally capable of carrying nothing.
+
+**2. Wait for the second success.** On `figaro-emploi.md`, `fetch()` from an
+open tab carries the page's clearance and the whole sweep runs from one tab. On
+`wttj.md` the **first two** fetches return the ad and every one after that is
+challenged. One success can be the wall not having noticed yet — and the
+same-origin assumption turned out to be **per site, not a property of the
+technique**.
+
+**3. Some of these are ours.** Two entries here were not a site misleading us:
+
+- A `429` from **NAV** swallowed by an `except: return None`, which became
+  *"0 dated ads"* and came within one page of being published as a measurement.
+- A success test written as *"body larger than 1 000 bytes"*, which counted a
+  **2 450-byte challenge page** as an ad and reported *"5 of 5 served"* when
+  none were.
+
+Neither is the worse one: the first was caught before publication, the second
+shipped. A catalogue of ways sites mislead you is read once. A catalogue where
+two of the entries are your own error-handling is one you check your code
+against. **Both were found by re-reading a result that looked fine**, which is
+the only method that finds them.
+
+### And the corollary for a guard
+
+When a guard is added because a symptom was reported elsewhere, **check whether
+the bug exists here before fixing it**. On `wttj.py` the decoding was already
+correct — `Content-Encoding: gzip`, one decompress, 10 000 `<loc>`, identical
+with and without `Accept-Encoding`. The guard shipped anyway, because *the
+absence of a bug is not the presence of a defence*: nothing in that script would
+have distinguished a healthy empty answer from an unreadable one. Zero URLs now
+dies naming decompression, and says why a genuinely empty board looks different
+— it is still a `<urlset>` with tags in it, unless it is `jobindex`'s, which
+closes itself in fourteen characters and means it.
 
 ## Empty is a result, not a silence
 
