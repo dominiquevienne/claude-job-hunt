@@ -46,7 +46,12 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
-SITEMAP_LOC_RE = re.compile(r"<loc>\s*([^<\s]+)")
+SITEMAP_BLOCK_RE = re.compile(r"(?s)<sitemap>(.*?)</sitemap>")
+# Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both.
+# hays.fr serves the second, where the first non-space character after the tag
+# is `<` and the strict pattern `<loc>\s*([^<\s]+)` matches nothing at all —
+# 0 URLs from a valid 2.37 MB sitemap. See issue #55 and `hays-fr.md`.
+SITEMAP_LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
 # This site writes `<script type='application/ld+json'>` with **single**
 # quotes. A pattern requiring double ones matches nothing and the adapter
@@ -104,8 +109,13 @@ def job_sitemaps():
     idx = get(INDEX)
     all_maps = SITEMAP_LOC_RE.findall(idx)
     if not all_maps:
-        die(f"{INDEX} parsed to zero <loc> out of {len(idx)} characters. "
-            "That is a read failure, not an empty board.")
+        # In a sitemap index the mandatory container is <sitemap>, not <url>.
+        # Naming its count tells the reader which half failed. Issue #55.
+        blocks = len(SITEMAP_BLOCK_RE.findall(idx))
+        die(f"{INDEX} parsed to zero <loc> out of {len(idx)} characters and "
+            f"{blocks} <sitemap> blocks. That is a read failure, not an "
+            "empty board — zero <loc> inside a non-zero number of blocks "
+            "cannot occur in a valid sitemap index.")
     out = sorted(u for u in all_maps if "jobdetails" in u)
     if not out:
         die("the sitemap index declared no jobdetails file. It listed: "
@@ -129,12 +139,19 @@ def entries():
         if not blocks:
             die(f"{sm} parsed to zero <url> blocks out of {len(page)} "
                 "characters — a read failure, not an empty sitemap.")
+        before = len(out)
         for b in blocks:
             loc = SITEMAP_LOC_RE.search(b)
             if not loc:
                 continue
             mod = MOD_RE.search(b)
             out.append((loc.group(1), mod.group(1).strip() if mod else None))
+        if len(out) == before:
+            # Zero <loc> in N <url> blocks is impossible in a valid sitemap.
+            # Issue #55.
+            die(f"{sm} gave zero URLs out of {len(blocks)} <url> blocks. "
+                "That combination cannot occur in a valid sitemap: it is a "
+                "reading fault, not an empty sitemap.")
         time.sleep(0.4)
     return out
 

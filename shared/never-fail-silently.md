@@ -199,6 +199,35 @@ zero and why it happened**: how many ads were seen, how many were already in the
 ledger, how many were discarded and on what grounds. A run that ends with
 nothing to show and says nothing is indistinguishable from a run that broke.
 
+### Establishing it: look in the same document for a count that ought to match
+
+The cheapest way to tell a zero from a misread is to find, **inside the
+response you already have**, a quantity that could not be what it is if the
+zero were true.
+
+The worked case is `hays-fr.md`. Its sitemap yielded **0 `<loc>`** — and, from
+the same bytes, **3 193 `<lastmod>`**. A sitemap with dates and no URLs is
+impossible, so the reader was wrong rather than the file. Nothing in the HTTP
+layer said so: 200, valid XML, 2.37 MB, correct content type.
+
+**Pick the mandatory sibling, not a convenient one.** The rule as first written
+keyed on `<lastmod>`, which is **optional** in the sitemaps.org schema: a valid
+sitemap may carry none, and the check would then fire on a healthy file. The
+container is what must be there. So, for sitemaps:
+
+> Zero `<loc>` inside a non-zero number of `<url>` blocks cannot occur in a
+> valid sitemap. Report the parse failure, never the count.
+
+Every sitemap reader in `skills/job-scan/scripts/` makes that comparison — see
+issue #55, which is also a record of how a stale count propagated through three
+sessions because it was relayed instead of re-derived.
+
+The shape generalises past sitemaps: a JSON-LD ad page that yields no
+`JobPosting` but **zero `ld+json` blocks at all** is unread, not undescribed
+(`infoempleo.md`); a listing whose card count is zero while its pager still
+announces N pages is unread, not empty. **A correct pattern is a fact that
+expires. An invariant catches the next wrapper without being told about it.**
+
 ## Errors
 
 - **Never swallow a tool error.** If a call fails, say which one and what it

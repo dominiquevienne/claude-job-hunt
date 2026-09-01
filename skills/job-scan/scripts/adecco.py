@@ -43,7 +43,11 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
-LOC_RE = re.compile(r"<loc>\s*([^<\s]+)")
+# Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both.
+# hays.fr serves the second, where the first non-space character after the tag
+# is `<` and the strict pattern `<loc>\s*([^<\s]+)` matches nothing at all —
+# 0 URLs from a valid 2.37 MB sitemap. See issue #55 and `hays-fr.md`.
+LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
 LD_RE = re.compile(
     r"<script[^>]*type=\"application/ld\+json\"[^>]*>(.*?)</script>",
@@ -120,6 +124,15 @@ def entries():
             continue
         mod = MOD_RE.search(b)
         out.append((loc.group(1), (mod.group(1).strip() if mod else None)))
+    if not out:
+        # Zero <loc> inside a non-zero number of <url> blocks is impossible in
+        # a valid sitemap, so the reader is wrong rather than the board empty.
+        # That arithmetic — not the pattern — is what exposed the CDATA trap
+        # on hays.fr. Issue #55.
+        die(f"{SITEMAP} gave zero URLs out of {len(blocks)} <url> blocks. "
+            "That combination cannot occur in a valid sitemap: it is a "
+            "reading fault, not an empty board. Check <loc> for a wrapper "
+            "this extractor does not handle.")
     return out
 
 

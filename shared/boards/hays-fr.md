@@ -68,16 +68,33 @@ returns zero.**
   </loc>
 ```
 
-The pattern used on six other boards in this repository — `<loc>\s*([^<\s]+)` —
-matches **nothing at all**, because the first non-space character after the tag
-is `<`. On a **2.37 MB, valid, HTTP 200** sitemap it yields **0 of 3 193 URLs**:
-a board that appears to publish nothing.
+The naive pattern `<loc>\s*([^<\s]+)` matches **nothing at all**, because the
+first non-space character after the tag is `<`. On a **2.37 MB, valid, HTTP
+200** sitemap it yields **0 of 3 193 URLs**: a board that appears to publish
+nothing.
+
+It was carried by `adecco.py`, `crit.py`, `randstadfr.py` and `wttj.py`, and
+all four now read both forms — issue #55.
+
+*(This paragraph used to say "the pattern used on **six** other boards". That
+number was wrong when it was written, and it was then relayed into an issue and
+a second session's count before anyone re-derived it. **Name the files, not a
+count**: a filename can be checked against any commit by whoever reads it, a
+bare integer against none, and the integer goes stale at the next adapter while
+still reading as fact.)*
 
 **What exposed it was arithmetic, not the code.** The same file gave **3 193
 `<lastmod>` and 0 `<loc>`**. A sitemap with dates and no URLs is impossible, so
 the reader was wrong rather than the file. Had it carried neither — a sitemap
 with no dates either — *"Hays publishes an empty sitemap"* would have been
 written down and published.
+
+**The invariant that generalises keys on `<url>`, not `<lastmod>`.** Zero
+`<loc>` inside a non-zero number of `<url>` blocks cannot occur in a valid
+sitemap, so it is a reading fault and must be reported as one. `<lastmod>` is
+**optional** in the sitemaps.org schema — a valid file may carry none — so a
+check against it raises a false positive on perfectly healthy sitemaps. Every
+sitemap reader here now makes that comparison before reporting a count.
 
 The form to use, here and everywhere:
 

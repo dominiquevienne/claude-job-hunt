@@ -41,7 +41,11 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
-LOC_RE = re.compile(r"<loc>\s*([^<\s]+)")
+# Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both.
+# hays.fr serves the second, where the first non-space character after the tag
+# is `<` and the strict pattern `<loc>\s*([^<\s]+)` matches nothing at all —
+# 0 URLs from a valid 2.37 MB sitemap. See issue #55 and `hays-fr.md`.
+LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
 AD_RE = re.compile(r"/offres/([0-9a-f]{8}-[0-9a-f-]{27})")
 LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
@@ -88,14 +92,24 @@ def entries():
     if not blocks:
         die(f"{SITEMAP} parsed to zero <url> blocks out of {len(page)} "
             "characters. A read failure, not an empty board.")
-    out = []
+    out, locs = [], 0
     for b in blocks:
         loc = LOC_RE.search(b)
+        if loc:
+            locs += 1
         if not loc or not AD_RE.search(loc.group(1)):
             # The first entry is the listing page itself, not an ad.
             continue
         mod = MOD_RE.search(b)
         out.append((loc.group(1), mod.group(1).strip() if mod else None))
+    if not locs:
+        # Counted on <loc> read, not on ads kept: this board legitimately
+        # drops a non-ad entry, and the invariant must not be confused by it.
+        # Zero <loc> in N <url> blocks is impossible in a valid sitemap.
+        # Issue #55.
+        die(f"{SITEMAP} gave zero URLs out of {len(blocks)} <url> blocks. "
+            "That combination cannot occur in a valid sitemap: it is a "
+            "reading fault, not an empty board.")
     return out
 
 

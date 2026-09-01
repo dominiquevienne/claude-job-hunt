@@ -46,10 +46,20 @@ INDEX = BASE + "/sitemaps/index.xml.gz"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
-LOC_RE = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>")
-URL_ENTRY_RE = re.compile(
-    r"<url>\s*<loc>\s*([^<\s]+)\s*</loc>(?:\s*<lastmod>([^<]*)</lastmod>)?",
-    re.S)
+# Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both, and
+# no longer requires `</loc>` to follow the URL directly — that extra
+# strictness made this the tightest of the four naive readers, failing on a
+# merely pretty-printed sitemap where the looser three still worked. hays.fr
+# serves the CDATA form, where the first non-space character after the tag is
+# `<` and the strict pattern yields 0 URLs from a valid 2.37 MB file.
+# Issue #55.
+LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
+MOD_RE = re.compile(r"<lastmod>([^<]*)")
+# Taken block by block rather than as one `<loc>…<lastmod>` pattern: adecco.py
+# records that its sitemap writes those two tags in the reverse order, and a
+# regex that fixes an order matches nothing at all when the order changes.
+URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
+SITEMAP_BLOCK_RE = re.compile(r"(?s)<sitemap>(.*?)</sitemap>")
 # /fr/companies/<company>/jobs/<slug>[_<city>][_<id>]
 AD_RE = re.compile(r"^/(fr|en)/companies/([^/]+)/jobs/(.+)$")
 
@@ -96,7 +106,8 @@ def job_sitemaps():
     idx = get(INDEX)
     everything = LOC_RE.findall(idx)
     if not everything:
-        die(_zero(INDEX, len(idx)))
+        die(_zero(INDEX, len(idx), len(SITEMAP_BLOCK_RE.findall(idx)),
+                   "<sitemap>"))
     out = [u for u in everything if "job-listings" in u]
     if not out:
         die("the sitemap index declared no job-listings file. It listed: "
@@ -104,7 +115,7 @@ def job_sitemaps():
     return sorted(out)
 
 
-def _zero(url, n):
+def _zero(url, n, blocks=0, container="<url>"):
     """The message a silent zero deserves.
 
     A `.gz` read as text yields no `<loc>` from a perfectly healthy file, and
@@ -113,20 +124,40 @@ def _zero(url, n):
     sitemap the same week. So zero URLs is treated as a failure to read, never
     as an empty board: an empty board would still be a `<urlset>` with tags in
     it, and the caller is told which of the two it is.
+
+    The block count settles which. **Zero `<loc>` inside a non-zero number of
+    `<url>` blocks cannot occur in a valid sitemap**, so it names the reader as
+    the fault rather than leaving the caller to guess. That arithmetic — not
+    the pattern — is what exposed the CDATA trap on hays.fr. `<lastmod>` cannot
+    play the same role: the sitemaps.org schema makes it optional, so a valid
+    file may carry none. Issue #55.
     """
-    return (f"{url} parsed to zero URLs out of {n} characters. That is what a "
-            "gzip layer read as text looks like — a healthy file reporting "
-            "nothing. Check the decompression before believing the board is "
-            "empty. If the body really is an empty <urlset/>, say so; do not "
-            "report it as a count.")
+    if blocks:
+        return (f"{url} gave zero URLs out of {blocks} {container} blocks in "
+                f"{n} characters. That combination cannot occur in a valid "
+                "sitemap: the reader is at fault, not the board. Check "
+                f"{container}'s child <loc> for a wrapper — CDATA, say — that "
+                "this extractor does not handle.")
+    return (f"{url} parsed to zero URLs and zero {container} blocks out of "
+            f"{n} characters. That is what a gzip layer read as text looks "
+            "like — a healthy file reporting nothing. Check the decompression "
+            "before believing the board is empty. If the body really is an "
+            "empty <urlset/>, say so; do not report it as a count.")
 
 
 def entries(url):
     """(path, lastmod) for each ad in one sitemap file."""
     page = get(url)
-    found = URL_ENTRY_RE.findall(page)
+    blocks = URL_BLOCK_RE.findall(page)
+    found = []
+    for b in blocks:
+        loc = LOC_RE.search(b)
+        if not loc:
+            continue
+        mod = MOD_RE.search(b)
+        found.append((loc.group(1), mod.group(1) if mod else None))
     if not found:
-        die(_zero(url, len(page)))
+        die(_zero(url, len(page), len(blocks)))
     for loc, mod in found:
         yield loc.replace(BASE, ""), (mod or "").strip() or None
 
