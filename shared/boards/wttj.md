@@ -123,6 +123,19 @@ bite a future maintainer: `202` with `x-amzn-waf-action: challenge`, a body of
 0 or 2 450 bytes, no error to catch. `wttj.py` checks that header on every
 sitemap request and dies loudly if it ever appears there.
 
+**5. And a zero from a sitemap is a failure to read until proved otherwise.**
+The discovery side reads `.gz` files, and **a gzip layer read as text yields no
+`<loc>` from a perfectly healthy index** — a 200, a plausible body, the wrong
+content, nothing raised. `wttj.py` treats zero URLs from the index or from any
+sitemap as an error naming decompression, never as an empty board: an empty
+board would still be a `<urlset>` with tags in it. The distinction is the
+message.
+
+*(Added after a sibling session hit exactly this on another board's sitemap —
+`/sitemap.gz`, 286 bytes, zero `<loc>` read as text and five sub-sitemaps once
+decompressed. Same species as trap 4 by its signature: the status code is not
+the answer, only the payload is.)*
+
 *(A sibling session hit the identical signature on `tanqeeb`, an unrelated
 board, the same day — 202, empty body, same header. It is worth recognising on
 sight.)*

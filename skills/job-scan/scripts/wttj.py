@@ -94,16 +94,40 @@ def get(url, retries=2):
 
 def job_sitemaps():
     idx = get(INDEX)
-    out = [u for u in LOC_RE.findall(idx) if "job-listings" in u]
+    everything = LOC_RE.findall(idx)
+    if not everything:
+        die(_zero(INDEX, len(idx)))
+    out = [u for u in everything if "job-listings" in u]
     if not out:
         die("the sitemap index declared no job-listings file. It listed: "
-            + ", ".join(u.rsplit("/", 1)[-1] for u in LOC_RE.findall(idx)[:8]))
+            + ", ".join(u.rsplit("/", 1)[-1] for u in everything[:8]))
     return sorted(out)
+
+
+def _zero(url, n):
+    """The message a silent zero deserves.
+
+    A `.gz` read as text yields no `<loc>` from a perfectly healthy file, and
+    the run then reports "0 ads" — a 200, a plausible body, the wrong content,
+    nothing raised. A sibling session met exactly this on another board's
+    sitemap the same week. So zero URLs is treated as a failure to read, never
+    as an empty board: an empty board would still be a `<urlset>` with tags in
+    it, and the caller is told which of the two it is.
+    """
+    return (f"{url} parsed to zero URLs out of {n} characters. That is what a "
+            "gzip layer read as text looks like — a healthy file reporting "
+            "nothing. Check the decompression before believing the board is "
+            "empty. If the body really is an empty <urlset/>, say so; do not "
+            "report it as a count.")
 
 
 def entries(url):
     """(path, lastmod) for each ad in one sitemap file."""
-    for loc, mod in URL_ENTRY_RE.findall(get(url)):
+    page = get(url)
+    found = URL_ENTRY_RE.findall(page)
+    if not found:
+        die(_zero(url, len(page)))
+    for loc, mod in found:
         yield loc.replace(BASE, ""), (mod or "").strip() or None
 
 
