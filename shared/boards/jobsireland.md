@@ -177,6 +177,12 @@ each by a different mechanism, measured on 2026-09-01:
 | Netherlands | 4th, 14 | `werk.nl` redirects everything to an Oracle SSO login |
 | Poland | 7th, 12 | The portal sits behind F5 Shape anti-bot |
 
+*(Three more were closed the same way while looking for the board after Sweden
+— Norway, Finland and Denmark. All eight, with the exact mechanism for each and
+what separates "inaccessible" from "refused" from "not sanctioned", are in
+`shared/boards/README.md` § **Investigated and closed — eight national public
+employment services**, which is where to look before probing a country.)*
+
 **The national-public-service pattern that worked four times does not
 generalise.** That is worth writing down: it was the highest-yield heuristic in
 this repository and it has a hit rate, not a guarantee.

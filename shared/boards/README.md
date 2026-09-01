@@ -568,6 +568,53 @@ The ad URLs under it work; the directory itself does not.
 
 Built when someone needs it; the remaining work is one session, not a project.
 
+## Investigated and closed — eight national public employment services
+
+Measured 2026-09-01, while looking for the country to build after Germany. **The
+national-public-service pattern is the highest-yield heuristic in this
+repository — four of the six adapters that use it are the largest board in their
+country — and it has a hit rate, not a guarantee.** These eight were probed and
+none of them yielded a board. Recorded so nobody repeats the work.
+
+| Country | Service | What was measured |
+| :-- | :-- | :-- |
+| Portugal | IEFP | `netemprego.gov.pt` does not resolve (DNS); `iefponline.iefp.pt` answers 302, and its offers path a 404 |
+| Netherlands | UWV | `werk.nl` — every path redirects to `login.werk.nl`, Oracle Access Manager SSO |
+| Denmark | Jobnet / STAR | `job.jobnet.dk` redirects to `jobnet.dk`, which serves a **NemLog-in** error page — national identity |
+| United Kingdom | DWP *Find a job* | Serves a `/waf_failover/` page **as HTTP 200**, including on `/robots.txt` |
+| Poland | praca.gov.pl | `oferty.praca.gov.pl` serves a `/TSPD/` script and `bobcmn` — F5 Shape anti-bot |
+| Finland | Työmarkkinatori | `robots.txt`: **`Disallow: /api/`** and `Disallow: /*/api/`. Explicit, and obeyed |
+| Norway | NAV | `arbeidsplassen.nav.no/stillinger/api/search` answers 200 with no key and `robots.txt` is open — **but it returns the raw Elasticsearch envelope** (`_shards`, `_index`, `took`, `_score`) and **429s after a dozen requests**. See below |
+| Italy | Cliclavoro | **No longer a board at all** — see below |
+
+**Three different states, and they are not interchangeable.** *Inaccessible*
+(Portugal, Netherlands, Denmark, UK, Poland) is the operator's infrastructure.
+*Accessible and refused* (Finland) is the operator's stated wish, and
+`shared/robots-policy.md` governs it. **Accessible and not sanctioned**
+(Norway) is the only one where the decision is ours.
+
+**Norway is the case worth reading.** The door is open and the file permits it,
+so nothing forbids the fetch. It was still not built: an endpoint that returns
+its storage layer verbatim was not designed as an interface, and question 2 of
+`shared/robots-policy.md` asks for a *sanctioned* door rather than an open one.
+The 429 under a light probe is the empirical half of the same conclusion — an
+operator throttling at that volume is not expecting the traffic. Building on it
+would be betting that nobody closes it.
+
+**Italy is a fourth state, and it is the one that will waste someone's time.**
+`cliclavoro.gov.it` is accessible, its `robots.txt` is permissive towards us —
+it refuses `ClaudeBot`, does **not** name `Claude-User`, and sets
+`Content-Signal: search=yes, ai-train=no, use=reference` — and it publishes
+**zero vacancies**. It is now a news and guidance portal; `/offerte-di-lavoro`
+is a 404, and `/concorsi` is fourteen editorial links, half of them photography
+prizes and poetry competitions. A portal that still exists and no longer
+publishes anything will keep appearing in every list of national resources.
+**It is not a closed door. It is a door that no longer leads anywhere.**
+
+*(One thing found here is worth more than the closure: Cliclavoro is the second
+site in this repository to use `Content-Signal`, and the first public body. See
+`shared/robots-policy.md`.)*
+
 ## Boards without an adapter
 
 The user can still apply to an ad from any board: `cover-letter` takes a URL,
