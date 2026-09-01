@@ -40,9 +40,24 @@ Disallow: /es/offerte    Disallow: /pt-pt/oferta  Disallow: /*.aspx
 rule by rule against a real ad URL, not by trusting a parser; see the trap
 below for why that distinction mattered here.
 
-**`urllib.robotparser` reports ALLOW on paths this file explicitly closes.**
-Two independent defects in the standard library, both erring towards
-permission:
+**On Python 3.13 and earlier, `urllib.robotparser` reports ALLOW on paths
+this file explicitly closes.** Two independent defects, both erring towards
+permission — and **both fixed in 3.14**:
+
+| Interpreter | wildcard honoured | rule after a blank line kept |
+| :-- | :-- | :-- |
+| 3.9.6 (`/usr/bin/python3`, macOS) | no | no |
+| 3.13.5 | no | no |
+| 3.14.6 | **yes** | **yes** |
+
+*(3.9.6 and 3.14.6 measured here; 3.13.5 measured by a sibling session, which
+is what turned a flat claim into a version boundary. The first draft of this
+file stated the defect without the bound — it was true on the interpreter it
+was measured on and false on the next one.)*
+
+**That makes it worse, not better.** Every script here starts
+`#!/usr/bin/env python3`, so the interpreter is the user's, and on macOS
+`/usr/bin/python3` is still 3.9.6. The defects:
 
 ```python
 >>> rp.parse(["User-agent: *", "Disallow: /*.aspx"])
@@ -57,9 +72,9 @@ True                       # the rule is stored as "/%2A.aspx" — the
 ```
 
 This file has a blank line before its 25 locale rules, and it uses `*` in
-`/*.aspx` and `*/admin/`. So a `robotparser` check on it drops **every rule
-that matters** and answers ALLOW to `/es/anuncio`, `/en/oferta` and
-`/x.aspx` alike.
+`/*.aspx` and `*/admin/`. So on a pre-3.14 interpreter a `robotparser` check
+drops **every rule that matters** and answers ALLOW to `/es/anuncio`,
+`/en/oferta` and `/x.aspx` alike.
 
 **It does not change the verdict here** — the ad path is allowed under a
 strict, correct reading too, which is the only reason this adapter exists. But
