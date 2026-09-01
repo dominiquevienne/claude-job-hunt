@@ -50,7 +50,7 @@ allowed, however good the argument for it.
 | Board | Aimed at us? | Sanctioned door? | Even-handed? | Verdict |
 | :-- | :-- | :-- | :-- | :-- |
 | **Softy** | Yes — every AI agent, Anthropic twice | No | Yes — same rule for all | **Obey.** Browser adapter, by choice not constraint |
-| **Tecnoempleo** | Yes — six Anthropic agents named | No | Yes | **Obey.** No adapter, and there will not be one |
+| **Tecnoempleo** | Yes — six Anthropic agents named | No | Yes | **Obey.** No adapter, and there will not be one. Its ads still reach us through Empléate — see *When a refused board's ads reach us through an open one* |
 | **InfoJobs (ES)** | Yes — `ClaudeBot`, `Claude-SearchBot` **and `Claude-User`** | Yes — `developer.infojobs.net`, key required | Yes — every AI vendor, same treatment | **Obey.** The API is the only route |
 | **Leboncoin** | Yes — the sweep, not the fetch | No | Yes | **Obey.** Ad-by-ad via `cover-letter <URL>` already works |
 | **AMS (AT)** | By omission | **None found** — see below | **No** — `LinkedInBot` allowed, all others refused | **Override, opt-in only** |
@@ -128,6 +128,45 @@ answering the question directly. Report it and stop — do not rotate, do not
 retry with another agent string, do not go to the browser to get around it.
 `shared/boards/cadremploi.md` uses a browser because a script is *blocked*;
 nothing of the kind applies to a site that has told you no.
+
+## When a refused board's ads reach us through an open one
+
+Decided 2026-09-01, on Empléate. It will recur, so it is written down.
+
+`empleate.gob.es` is Spain's public employment service. Its `robots.txt` names
+nobody and its search API is open. It is also an **aggregator**: 2 436 of its
+28 099 live ads come from **Tecnoempleo**, which the table above rules out
+entirely, and the full text of each one is in the record.
+
+**Reading them there is not reading tecnoempleo.com.** `robots.txt` is an
+instruction to crawlers about access to *that server*. It is not a licence
+term on the content, and it does not follow the content to a third party the
+operator chose to supply. Tecnoempleo feeds this register; the register serves
+it openly; we read the register. Nothing is circumvented, and the alternative —
+treating a syndicated copy as untouchable — would mean discarding ads from a
+public body because of a private site's crawler policy.
+
+**The part that does need care is the link.** Those records carry the
+partner's own URL, so an adapter that emits it as *the* ad URL sends
+`cover-letter <URL>` to fetch a refused host, from the user's own address,
+later, with nobody watching. That is the actual violation, and it is one
+field away from happening by accident.
+
+**The rule.** When an open board republishes a refused board's ads:
+
+1. **Read them.** The open board is the source of record.
+2. **Emit the open board's URL as the ad URL**, always. Never the partner's.
+3. **Carry the partner link separately and mark it** — `empleate.md` uses
+   `source_url` plus `source_url_do_not_fetch: true` — so nothing downstream
+   follows it and the reason is visible in the row.
+4. **Make the list of refused hosts inspectable per run.** `empleate.py
+   fuentes` prints the flag per feed, so the next partner to appear is seen
+   rather than assumed.
+
+**What this does not extend to.** It is about content an operator *published to*
+an open third party. It says nothing about a mirror, a scraper's copy, or a
+cache — those are not the operator's act. And it never reaches a login, a
+paywall, or anything the refused site keeps behind one.
 
 ## What this file does not license
 

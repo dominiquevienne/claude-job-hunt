@@ -1,7 +1,7 @@
 # Board adapters
 
 `job-scan` is board-agnostic: it owns the scoring, the ledger and the reporting,
-and each adapter owns one site. Forty-six ship today, each verified against
+and each adapter owns one site. Forty-seven ship today, each verified against
 the live site — count the rows below rather than trusting this sentence, which
 has gone stale before.
 
@@ -55,6 +55,7 @@ has gone stale before.
 | Cegid Talentsoft | `talentsoft.md` | **Shipped**, verified on two tenants. The last of the five French ATS — and **`choisirleservicepublic.gouv.fr` is one of them** (`place-ep-recrute`, 51 708 posts), so the state portal needs no board of its own. The listing's fields mean different things per tenant, so the parser labels only what it can identify and hands the rest back unnamed — ministries, airports, energy, large agencies. **No browser, no key.** Server-rendered ASP.NET with no JSON and no JSON-LD, but the ad pages carry Talentsoft's **field model as element ids**, which outlive any restyling. A **full street address on the listing**, and a location rule that must not assume a French postcode |
 | Emploi Territorial | `emploi-territorial.md` | **Shipped.** France's **territorial** civil service — communes, departments, regions, CCAS. 26 613 posts, carried by no private board. **No browser, no key.** Search is a *session*, not a URL: the filter is POSTed once and the server remembers it. Publishes a **real closing date**, unlike the boards that print `datePosted` plus a constant |
 | La Bonne Alternance | `labonnealternance.md` | **Shipped.** French state API for **apprenticeship**. **No browser**, one free self-service key. Returns posted ads *and* **companies that take apprentices without advertising** — 150 of them in the Rhône, which no other board here carries. A **sandbox key hands out staging apply URLs**, and the department code takes exactly two characters: `069`, `1` and `075` each fail differently and silently |
+| Empléate (SEPE, Spain) | `empleate.md` | **Shipped.** **28 099 live ads** — the first Spanish board here, and the third public employment service after job-room and France Travail. **No browser, no key**, and the cheapest board in the repo per ad: one request returns **100 complete ads, full text included**. Three silent failures, all HTTP 200: **omit `fq` and it returns 131 510 ads, 103 411 of them dead**; `FAIL!` is a five-byte non-JSON body served as `application/json`; `rows` is capped at 100 without saying so. `url:"#"` matches all 28 099. **29% of its live ads are over a year old**, so `--desde` is correctness, not tuning. Salary in two comma notations at once. Carries 2 436 **Tecnoempleo** ads — the board `robots-policy.md` closed the door on — so the ad URL emitted is never the partner's |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working

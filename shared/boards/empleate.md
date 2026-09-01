@@ -1,0 +1,280 @@
+# Board adapter — empleate.gob.es (SEPE, Spain)
+
+**28 099 live ads.** The first Spanish board in this repository, and the third
+national public employment service after `job-room.md` (Switzerland) and
+`france-travail.md` (France).
+
+**One request returns 100 complete ads, full text included.** There is no
+per-ad fetch and no detail endpoint to call: the search response *is* the ad.
+That makes this the cheapest board here per ad — a 2 000-ad sweep is 20
+requests.
+
+**Everything here was verified against the live index on 2026-09-01.**
+
+**The most useful thing this board taught is not the board.** See trap 1.
+
+## Access
+
+```
+GET /robots.txt                                → Allow: /, six private paths closed
+GET /empleate/open/offersearch/selectBuscador  → Solr, open, no key
+     ?q=*&wt=json&rows=100&fq=checkVisible:1
+https://empleate.gob.es/empleo/#/oferta/<id>   → the ad, for a human
+```
+
+`robots.txt` is nine lines. `User-agent: *` / `Allow: /`, then six
+`Disallow:` paths that are all logged-in areas — `/empleo/perfil/`,
+`/empleo/empresas/`, the saved-and-applied lists. **No crawler is named, no AI
+agent is named, and the API path is not mentioned.** Question 1 of
+`shared/robots-policy.md` does not arise; there is nothing to weigh.
+
+The site is an AngularJS 1.x front end over Solr, and `open/offersearch/` is
+what its own search box calls. `open/master/*` publishes the code tables —
+`modalities`, `contracttypes`, `provinces` — so nothing here is guessed from a
+value seen in the data.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/empleate.py" \
+  search --provincia MADRID --desde 2026-09-01
+```
+
+**No browser, no account, no key.**
+
+## Configuration
+
+```yaml
+boards:
+  empleate:
+    enabled: true
+    searches:
+      - { provincia: "MADRID" }
+      - { provincia: "BARCELONA", categoria: "INFORMÁTICA/TELECOMUNICACIONES" }
+    desde: "2026-09-01"
+```
+
+| Key | Required | Notes |
+| :-- | :-- | :-- |
+| `enabled` | yes | False or absent → not scanned |
+| `provincia` | recommended | Uppercase, as the board writes it. **List them with `empleate.py provincias`** — never type one from memory |
+| `comunidad` | no | The 19 autonomous communities. `empleate.py comunidades` |
+| `categoria` | no | 23 categories. `empleate.py categorias` |
+| `texto` | no | A phrase matched in the title |
+| `desde` | **effectively yes** | See *Age*. Without it, three ads in ten are over a year old |
+| `fuente` / `sin_fuente` | no | Keep or drop one of the thirteen feeds. `empleate.py fuentes` |
+
+Geography is free — it is a filter on the index, not a fetch per ad — so
+unlike `crit.md` or `adecco.md` there is no cost to narrowing.
+
+## Traps
+
+**1. Omit `fq` and the endpoint returns 131 510 ads, four fifths of them
+dead.**
+
+```
+?q=*&rows=0&wt=json                    → numFound 131510
+?q=*&rows=0&wt=json&fq=checkVisible:1  → numFound  28099
+```
+
+The server injects the live filter `(speStateId:1 OR speStateId:4)` **only when
+the request already carries an `fq` of its own** — you can watch it happen in
+`responseHeader.params.fq`, which comes back rewritten. Send no `fq` and it
+applies none, and hands over the entire index: **103 411 expired and withdrawn
+ads**, HTTP 200, well-formed JSON, indistinguishable in shape from the real
+board.
+
+`checkVisible:1` narrows nothing on its own — 28 099 with it and without it.
+**Its only job is to exist**, so that the injection fires. That is the whole
+trick, and it is worth stating plainly because the instinct on an open Solr
+endpoint is the opposite one: to send no filter and get everything.
+
+*The adapter therefore checks the echoed `fq` on every single response and
+treats its absence as fatal.* Nothing downstream could tell 131 510 from
+28 099 — both look like a board.
+
+**2. `FAIL!` is an HTTP 200 with `Content-type: application/json`.**
+
+```
+fq=comunidadF:CASTILLA LEON              → 200, application/json, body: FAIL!
+fq=comunidadF:"CASTILLA LEON"            → 200, 2 130 ads
+fq=checkVisible:1 AND speStateId:1       → 200, application/json, body: FAIL!
+```
+
+Five bytes, not JSON, on a success status with a JSON content type. It is how
+the endpoint rejects an `fq` its validator dislikes: **an unquoted value
+containing a space**, or **any clause naming `speStateId` alongside another**
+(the server passes those through unvalidated instead of rewriting them, then
+its own parser refuses the result).
+
+A client that wraps `json.loads` in a `try` and treats the failure as "no
+results" reports an empty board on a working endpoint. Quote every value,
+never send `speStateId`, and make a non-JSON body an error rather than a zero.
+
+**3. `rows` is capped at 100, silently.**
+
+```
+?rows=1000  →  responseHeader.params.rows = "100",  100 docs
+```
+
+No error, no warning; the echoed parameter is the only sign. A client that
+asks for 1 000, receives 100 and pages `start += 1000` reads **one tenth of
+the board** and reports a complete sweep. Page by the number of documents
+actually returned.
+
+**4. `url:"#"` matches all 28 099 ads.**
+
+The 9 819 SNE records store the literal string `"#"` in `url`. In a Solr text
+field `#` tokenises to nothing, so the clause has no terms and matches every
+document. `url:http*` gives the honest count: **19 945 of 28 099 carry a real
+off-site URL**.
+
+This is the inverse of the usual sitemap failure — `hays-fr.md`'s CDATA `<loc>`
+returns zero from a full file. Here a filter that reads as precise quietly
+returns the whole index. Both are the same lesson: check a filter's count
+against something you already know.
+
+## Age — "live" means "not withdrawn"
+
+| Posted | Live ads |
+| :-- | --: |
+| Last 7 days | 3 382 |
+| Last 30 days | 8 951 |
+| Last 90 days | 15 734 |
+| **Over 1 year ago** | **8 106** |
+| **Over 3 years ago** | **4 326** |
+
+The oldest ad still flagged live is from **July 2020**. Nothing in the record
+marks these as stale — no `validThrough`, no expiry — and `speState` says
+`Activa` on all of them.
+
+**So `--desde` is a correctness control on this board, not an optimisation.**
+The adapter reports, on every run, how many of the ads it returned are over a
+year old, and says so in the run's own output.
+
+## What the record carries
+
+Measured on 28 099 live ads, and by feed on 100 ads from each of the nine
+largest.
+
+| Field | Coverage | Note |
+| :-- | --: | :-- |
+| `titulo`, `contenido` | 28 099 | Description is HTML; median 598 characters, but see below |
+| `provinciaF` | 26 110 | 1 989 have none — mostly remote and syndicated |
+| `ciudadF` | 25 459 | |
+| `cp` (postcode) | 9 432 | `ciudad` is a municipal code, not a postcode |
+| `localizacion` | ~85% | `lat,lon` as a string |
+| `salarioMin` / `salarioMax` | **5 303** | Always a pair when present. **19%** — better than most French boards here |
+| `creador` (employer) | **8 010** | **29%.** See below |
+| `fechaCreacionPortal` | 28 099 | A real per-ad date |
+| `modality` | 2 309 useful | 25 790 are "No informado" |
+
+**The employer is missing on 71% of the board.** `creador` is filled on the
+COGITI, TECNO_EMPLEO and WEB feeds and empty on SNE, INSERTIA,
+CASTILLA_Y_LEON, GESTIONANDOTE, HACESFALTA and PORTALENTO. On SNE ads — 9 819,
+the largest feed — there is no employer field at all: the application route is
+an office reference or an email written inside the description text. Say that
+to the user rather than reporting a blank company.
+
+**Description length is a property of the feed, not of the board.** Medians
+across 100 ads each: TECNO_EMPLEO 2 233, HACESFALTA 1 723, INSERTIA 1 648,
+COGITI 801, SNE 604, GESTIONANDOTE 396, CASTILLA_Y_LEON 383, WEB 367,
+**PORTALENTO 76**. A run that returns mostly PORTALENTO returns titles.
+
+**`modality` does not tell you whether a job is remote.** 25 790 of 28 099 are
+"No informado" and the whole index holds **110** ads flagged teletrabajo, a
+distancia or mixto. Remote work has to be read out of the text.
+
+### The salary comma is ambiguous, and both readings occur
+
+```
+salarioMin  16200,00   →  €16 200,00     comma is the decimal separator
+salarioMin  19,500     →  €19 500        comma is the thousands separator
+```
+
+Both notations, same field, same index. Applying the Spanish rule everywhere
+turns `19,500` into **€19.50 a year**; applying the English rule everywhere
+turns `16200,00` into **€1 620 000**. Wrong by a factor of a thousand in
+either direction, and a salary is exactly the field a user acts on.
+
+The separator is disambiguated by what follows it — **two digits is a decimal,
+three is a thousands mark** — and anything matching neither is returned
+unparsed rather than guessed. The adapter emits `salary_read_as` saying which
+rule it applied, alongside the raw string.
+
+*(Also seen at the source: `14725,34` with a maximum of `148000`. A data error
+on the board, not a parsing question — it is emitted as read.)*
+
+## Thirteen feeds, and one of them is a board this plugin will not read
+
+`entitytype` is the feed. Empléate is an aggregator with a direct-application
+channel bolted on, not a single board:
+
+| Feed | Live ads | Off-site `url` |
+| :-- | --: | :-- |
+| SNE (regional employment services) | 9 819 | none (`#`) |
+| INSERTIA | 7 235 | insertia.net |
+| COGITI (engineering colleges) | 3 285 | proempleoingenieros.es, enginyersbcn.cat |
+| **TECNO_EMPLEO** | **2 436** | **tecnoempleo.com** |
+| WEB (Empléate's own, direct application) | 2 319 | none |
+| CASTILLA_Y_LEON | 880 | empleo.jcyl.es |
+| GESTIONANDOTE | 826 | gestionandote.com |
+| HACESFALTA (third sector) | 584 | hacesfalta.org |
+| PORTALENTO (disability employment) | 526 | portalento.es |
+| NAVARRA, GALICIA, GASTROEMPLEO, MERCADIS | 189 | their own |
+
+**Tecnoempleo is the board `shared/robots-policy.md` closed the door on** — its
+`robots.txt` names six Anthropic agents with `Disallow: /`, and the verdict
+recorded there is *"Obey. No adapter, and there will not be one."* Its ads are
+2 436 of the 28 099 here, complete with the longest descriptions on the board.
+
+**Reading them here is not reading tecnoempleo.com.** This is a Spanish public
+register, fed by the party that owns the ads, served from a host that invites
+us in. `robots.txt` governs access to a server, not the onward publication of
+content by a third party the operator chose to supply.
+
+**But the record's `url` field points straight back at that host** — and if the
+adapter emitted it as *the* ad URL, `cover-letter <URL>` would then go and
+fetch a host that has refused us, on the user's own address. That is the trap,
+and it is a live one:
+
+- the ad URL emitted is **always** `https://empleate.gob.es/empleo/#/oferta/<id>`;
+- the partner link is carried separately as `source_url`, with
+  `source_url_do_not_fetch: true` on the refused hosts;
+- the full text is in the record, so nothing is lost by not following it.
+
+`empleate.py fuentes` prints the flag per feed, so the next host to appear in
+that list is visible rather than assumed.
+
+## What is not covered
+
+`open/publicoffersearch/selectBuscador` is a **second, separate index of
+76 050 public-sector announcements** — *oposiciones*, *bolsas de trabajo*,
+convocatorias. Same shape, same open access, no key.
+
+It is deliberately out of scope. Those are competitive-examination notices with
+statutory deadlines and application procedures, not vacancies you answer with a
+tailored letter, and `cover-letter` would produce the wrong artefact for every
+one of them. **It is the obvious next adapter for Spain, and it is a different
+adapter**, not a flag on this one.
+
+Also not covered, and for a different reason: **InfoJobs**, Spain's largest
+private board. `shared/robots-policy.md` records the verdict — it names
+`ClaudeBot`, `Claude-SearchBot` and `Claude-User`, publishes a documented API
+at `developer.infojobs.net`, and the API is the only route.
+
+## Verification
+
+```bash
+S=skills/job-scan/scripts/empleate.py
+python3 $S provincias | head -5          # BARCELONA 5108, MADRID 4107 …
+python3 $S fuentes                       # thirteen feeds, host_refuses_us flags
+python3 $S search --provincia MADRID --desde 2026-09-01 --limit 3
+```
+
+The three guards are worth exercising after any change, because all three
+failures are silent at the network layer:
+
+```python
+solr("speStateId:1 AND checkVisible:1")         # → dies, does not send it
+check_live_filter({"fq": "checkVisible:1"}, "")  # → dies, filter not injected
+solr("comunidadF:CASTILLA LEON")                # → dies on the FAIL! body
+```
