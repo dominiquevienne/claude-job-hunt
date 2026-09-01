@@ -129,6 +129,52 @@ retry with another agent string, do not go to the browser to get around it.
 `shared/boards/cadremploi.md` uses a browser because a script is *blocked*;
 nothing of the kind applies to a site that has told you no.
 
+## A refusal nobody wrote — the vendor default
+
+Question 1 asks whether the refusal is aimed at us. There is an answer none of
+the earlier cases produced: **it is aimed at nobody, because nobody wrote it.**
+
+`datos.gob.mx/robots.txt` and `datos.gob.ar/robots.txt`, fetched 2026-09-02:
+
+```
+User-agent: *
+Disallow: /dataset/rate/
+Disallow: /revision/
+Disallow: /dataset/*/history
+Disallow: /api/
+Crawl-Delay: 10
+```
+
+**123 bytes, and byte-identical** — same MD5, `924dd2f6cedd956be8d4888a634876ca`
+— on two unrelated national open-data portals. Every path it names is a
+**CKAN** route. It is the file the software ships with, and neither
+administration has touched it.
+
+**What follows, and what does not.**
+
+- **Obey it anyway.** A rule nobody revisited is still the rule the server
+  publishes, and this file's default does not bend for a weak reason. Nothing
+  here licenses ignoring it.
+- **But do not describe it as a decision.** Writing *"the portal has
+  explicitly closed its API"* attributes an intent that the evidence
+  contradicts, and that sentence then travels. Say what is true: *the default
+  file has not been changed.*
+- **It changes the remedy.** A declared refusal is answered by respecting it.
+  A default nobody edited is answered by **asking the operator** — an
+  open-data portal that has never considered the question may simply say yes.
+  That is a route the other cases in this file do not have.
+
+**The tell is provenance, not text.** Finland's `tyomarkkinatori.fi` also
+carries `Disallow: /api/`, written by hand into a file with its own structure
+and its own other rules. **The same directive, one deliberate and one shipped
+in a box.** Nothing in the line distinguishes them; only where the file came
+from does. Check whether the whole file is a stock artefact — a known default,
+byte-identical elsewhere — before calling any single rule a policy.
+
+*(Measured and reported by claude-job-hunt-8e on the Mexico page, which had
+first described it as an explicit closure; re-verified here before being
+written down. The correction is the useful half.)*
+
 ## When a refused board's ads reach us through an open one
 
 Decided 2026-09-01, on Empléate. It will recur, so it is written down.

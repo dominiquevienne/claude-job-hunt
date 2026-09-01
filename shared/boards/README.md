@@ -258,6 +258,35 @@ Spanish-language board and 10 of 40 ads are outside Spain*. Those are facts
 about the site, they are useful to whoever searches there, and removing them
 would make the tool worse. The rule is about the **reasoning**, not the map.
 
+## An ATS-family adapter is verified against two tenants, never one
+
+**What does not vary at the first client is not a property of the API.** One
+tenant validates the shape of the response and nothing that differs between
+customers — and what differs between customers is exactly what a family adapter
+exists to handle.
+
+Two cases, found the same day from opposite directions:
+
+- **`oraclecloud.md`.** The first version built ad URLs from `SiteNumber` and
+  took the first site in the list. Correct on ClubCorp, which publishes at
+  `/sites/CX/` with `SiteURLName` null and lists one active site. **Wrong on
+  FMOLHS**, which publishes at `/sites/fmolhs-careers/` from a site numbered
+  `CX_3001` and lists an `ORA_INACTIVE` portal *first*. Both mistakes produce
+  links that 404 for the user rather than an error in the run.
+- **Operator fingerprints** (a sibling session's country series).
+  `bumeran.com.ar`, `zonajobs.com.ar` and `bumeran.com.mx` share **eleven
+  directive lines of eleven** — one file, two brands, two countries — while
+  carrying **6 560 ads against 1 816**. Identical policy, unrelated volume:
+  measuring either one alone and generalising gets the other wrong.
+
+So: **before shipping a family adapter, run it against a second tenant you did
+not develop against**, and prefer one that looks unlike the first — another
+country, another size, an employer with several career sites. The failures this
+catches are the ones that look like success on the tenant in front of you.
+
+`recruitee.md`, `pinpoint.md`, `personio.md` and `oraclecloud.md` each state
+how many tenants they were measured on, and that number is part of the claim.
+
 ## Writing an adapter
 
 Copy the shape of `linkedin.md`. It is not a spec document — it is a field

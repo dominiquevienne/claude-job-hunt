@@ -233,35 +233,74 @@ def coverage(blocks):
             int(statistics.median(lens)) if lens else 0)
 
 
-def language_check(tenant, language, blocks):
-    """Refuse to report a language whose ads have lost their text.
+# Tried when the feed in hand turns out to be mostly empty. The default is
+# NOT reliably the full one — see `text_check`.
+ALTERNATES = (None, "de", "en")
 
-    `?language=fr` returns the same positions with the same ids and an empty
-    body — 0 of 7 with text against 7 of 7 on the default feed. Nothing in the
-    response says so.
+
+def text_check(tenant, language, blocks):
+    """Refuse to serve a feed whose ads have lost their text — either way.
+
+    `?language=` does not translate the board: it serves whatever translation
+    the employer entered, and returns the position with an empty body when
+    there is none. Same count, same ids, HTTP 200.
+
+    **And the default feed is not reliably the full one.** Measured across
+    four tenants:
+
+        ottonova     default 7/7 described   en 1/7    fr 0/7
+        autarcenergy default 11/12           en 3/12   fr 0/12
+        dieseo-gmbh  default 64/69           en 12/69  fr 0/69
+        merantix     default 1/16            en 15/16  fr 0/16
+
+    On `merantix` the DEFAULT is the empty one and English carries the text.
+    An adapter that trusts the default and refuses every language would hand
+    that tenant's user fifteen empty ads and reject the feed that works.
+
+    So the check is symmetric: whichever feed was asked for, if it is mostly
+    empty, the alternatives are measured and the caller is told which one
+    carries the ads — never handed the empty one.
     """
     with_text, median = coverage(blocks)
     if with_text >= max(1, len(blocks) // 2):
         return
-    base_body, _ = feed(tenant)
-    base = positions(base_body)
-    base_with, base_median = coverage(base)
-    die(f"--language {language} returned {len(blocks)} positions and only "
-        f"{with_text} of them carry any description (median {median} "
-        f"characters). The default feed returns {len(base)} positions with "
-        f"{base_with} described (median {base_median}).\n"
-        "This parameter does not translate the board — it serves whatever "
-        "translation the employer entered, and returns the position with an "
-        "empty body when there is none. Same count, same ids, HTTP 200.\n"
-        "Drop --language to read the ads as written.")
+    rows = [(language, len(blocks), with_text, median)]
+    for alt in ALTERNATES:
+        if alt == language:
+            continue
+        try:
+            body, _ = feed(tenant, alt)
+            b = positions(body)
+        except SystemExit:
+            continue
+        w, m = coverage(b)
+        rows.append((alt, len(b), w, m))
+        time.sleep(0.5)
+    best = max(rows, key=lambda r: r[2])
+    table = "\n".join(
+        f"    {'(default)' if lang is None else '--language ' + lang:16} "
+        f"{n:3} positions, {w:3} with text, median {m}"
+        for lang, n, w, m in rows)
+    asked = "(default)" if language is None else f"--language {language}"
+    if best[2] <= max(1, best[1] // 2):
+        die(f"{asked} returned {len(blocks)} positions and only {with_text} "
+            f"carry any description, and no other feed does better:\n{table}\n"
+            "This tenant publishes positions without text in every language "
+            "measured. There is nothing here for cover-letter to read.")
+    better = "(default)" if best[0] is None else f"--language {best[0]}"
+    die(f"{asked} returned {len(blocks)} positions and only {with_text} carry "
+        f"any description (median {median} characters):\n{table}\n"
+        f"**{better} carries the text on this tenant** — {best[2]} of "
+        f"{best[1]}. The language parameter does not translate the board, it "
+        "serves whatever the employer entered, and the default feed is not "
+        "reliably the full one. Re-run with that feed.")
 
 
 def cmd_jobs(a):
     body, url = feed(a.tenant, a.language)
     blocks = positions(body)
     note(f"{len(blocks)} open positions — {url}")
-    if a.language:
-        language_check(a.tenant, a.language, blocks)
+    text_check(a.tenant, a.language, blocks)
     kept = 0
     for b in blocks:
         c = card(a.tenant, b)

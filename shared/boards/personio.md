@@ -8,7 +8,7 @@ It sits alongside `umantis.md`, `join.md` and `solique.md` as an **employer's
 own careers page** rather than a national board — the kind of source that
 answers *"is this employer hiring?"* instead of *"who is hiring near me?"*.
 
-**Everything here was verified against a live tenant on 2026-09-01.**
+**Measured on four tenants — 2026-09-01, extended 2026-09-02.**
 
 ## Access
 
@@ -69,34 +69,54 @@ for the careers URL and never guess.
 
 **1. `?language=` empties the ads without emptying the board.**
 
-| Feed | Positions | With a description | Median chars |
-| :-- | --: | --: | --: |
-| `/xml` | 7 | **7** | 4 556 |
-| `/xml?language=de` | 7 | **7** | 4 556 |
-| `/xml?language=en` | 7 | **1** | 0 |
-| `/xml?language=fr` | 7 | **0** | 0 |
+| Tenant | default | `?language=de` | `?language=en` | `?language=fr` |
+| :-- | --: | --: | --: | --: |
+| ottonova | **7/7** | 7/7 | 1/7 | **0/7** |
+| autarcenergy | **11/12** | — | 3/12 | **0/12** |
+| dieseo-gmbh | **64/69** | — | 12/69 | **0/69** |
+| **merantix** | **1/16** | 1/16 | **15/16** | 0/16 |
 
-Same count, same ids, HTTP 200, valid XML — and on `fr` **not one of the seven
-ads carries a word of its own description**.
+*(positions carrying any description, out of positions returned — the counts
+are identical in every column)*
+
+Same count, same ids, HTTP 200, valid XML — and on `fr` **not one ad on any of
+the four tenants carries a word of its own description**.
 
 The parameter does not filter the board and does not translate it. It serves
 whatever translation the employer happened to enter, and returns the position
 with an empty body when there is none. Nothing in the response says so.
+
+**And the default feed is not reliably the full one.** On `merantix` the
+default carries text on **1 of 16** and English on **15** — the reverse of the
+other three. An adapter that trusts the default and refuses every language
+would hand that tenant's user fifteen empty ads *and* reject the feed that
+works.
+
+**This was found by testing a second tenant**, and it is the case in
+`shared/boards/README.md` § *An ATS-family adapter is verified against two
+tenants*: the first version of this adapter treated the default as
+authoritative, which is correct on ottonova and wrong on merantix.
 
 **It is the worst shape this failure takes**, because the request that
 triggers it is a reasonable one: anybody who asks for the language they read
 receives a full-looking board of empty ads — right count, right titles, right
 employer, no text — and `cover-letter` is then asked to write from nothing.
 
-So the adapter reads the **default** feed, and when a language is requested it
-fetches both and **refuses** to report one whose text has gone:
+So the check is **symmetric**: whichever feed was asked for, if it is mostly
+empty the alternatives are measured and the caller is told which one carries
+the ads — never handed the empty one.
 
 ```
-$ personio.py jobs --tenant ottonova --language fr
-ERROR: --language fr returned 7 positions and only 0 of them carry any
-description (median 0 characters). The default feed returns 7 positions with
-7 described (median 4544).
+$ personio.py jobs --tenant merantix.jobs.personio.com
+ERROR: (default) returned 16 positions and only 1 carry any description:
+    (default)         16 positions,   1 with text, median 0
+    --language de     16 positions,   1 with text, median 0
+    --language en     16 positions,  15 with text, median 3361
+**--language en carries the text on this tenant** — 15 of 16.
 ```
+
+When no feed carries text, it says that instead, rather than naming a winner
+that is only marginally less empty.
 
 *(My first reading of this was wrong and is worth recording: the `fr` feed is
 4.9 KB against 89 KB, so it looks like **fewer ads**. It is not — it is the
