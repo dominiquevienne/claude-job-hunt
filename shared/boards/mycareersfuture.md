@@ -198,8 +198,14 @@ Reading ten consecutive pages of 100 gave **997 unique of 1 000**; five pages
 read six seconds apart gave **499 of 500**. So roughly **0.2–0.3%**, and it has
 a visible cause: the reported total moved from 96 775 to 97 067 between two
 calls in the same minute. The corpus is being written to while you page it, and
-a row can shift across a page boundary. Dedup on `uuid` and the problem is
-gone; do not expect a stable window.
+a row can shift across a page boundary.
+
+**An independent measurement on the same API found 897 unique of 1 000 — ten
+times as much — and its paging protocol was not recorded.** Two measurements
+that differ by a factor of thirty are themselves the finding: **the overlap is
+a property of how you page, not of the board**, and neither number should be
+quoted as *the* duplicate rate. Dedup on `uuid` and both cases are covered,
+which is what the script does; do not expect a stable window.
 
 ## Configuration
 
