@@ -75,6 +75,7 @@ like data:
 | Michael Page, a search with no matches | `404` | a real zero, not a broken domain |
 | Michael Page, an ad page | `200` with **invalid** JSON-LD | literal newlines inside JSON strings; a strict parser sees no ad at all |
 | LinkedIn, a results page | `(25)` in `<title>` | the unread-messages badge — the same `(25)` appeared on 2 259 results and on 2 |
+| **LinkedIn, a search with no matches** | the *no matching jobs* banner **and seven live ads**, inside the results container | browsing-history suggestions on a query whose true answer is zero — **the second board to do this**, and the container scoping that separates them on a normal page does not separate them here |
 
 ### What follows from it
 

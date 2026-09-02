@@ -121,6 +121,54 @@ https://www.linkedin.com/jobs/view/<ID>/
 **Never scrape the URL out of the page** — see the constraint table: returning
 anything with a query string from page JS blocks the whole result.
 
+## Before extracting anything: is this search a zero?
+
+**A LinkedIn zero is not an empty card list.** A search that matches nothing
+renders **seven or eight real, live, unrelated ads** — browsing-history
+recommendations — and nothing in the extracted text says they are not results.
+Measured 2026-09-01 on `?keywords="Laravel"&location=Switzerland`:
+
+| Signal | Value |
+| :-- | --: |
+| Page text says *No matching jobs found* | **true** |
+| Page text says *Jobs you may be interested in* | **true** |
+| `li[data-occludable-job-id]` matched | **8** |
+| …of those, inside `.scaffold-layout__list` | **8** |
+
+**Scoping the selector to the results container does not separate them** — on a
+zero-result page the suggestion block is rendered *inside* it. Seven unrelated
+ads were about to enter the ledger as new Laravel matches in Switzerland for a
+query whose true answer is zero. Issue #46.
+
+**So run this first, and act on it before mapping any card:**
+
+```js
+(()=>{const t=document.body.innerText;
+ const ZERO=[/No matching jobs found/i,/Aucune offre correspondante/i];
+ const SUGG=[/Jobs you may be interested in/i,/Offres susceptibles de vous int/i];
+ return JSON.stringify({
+   noResults: ZERO.some(r=>r.test(t)),
+   suggestions: SUGG.some(r=>r.test(t)),
+   knownLanguage: /\b(jobs?|results?|offres?|résultats?)\b/i.test(t),
+   cards: document.querySelectorAll('li[data-occludable-job-id]').length
+ });})()
+```
+
+- **`noResults` true → the search is a genuine zero.** Report the zero and
+  **discard every card on the page**, whatever the count.
+- **`suggestions` true while `noResults` is false** → the page mixes both.
+  Extract, and say in the run report that a suggestion block was present.
+- **`knownLanguage` false** → *the guard could not read this interface
+  language*. **Do not treat the extraction as verified**: say so, and let the
+  user look. **A search that could not be checked is not a search that
+  returned results** — the two strings above are the only ones measured, and
+  the banner is localised.
+
+**Card count can never establish a zero on its own**, and the previous version
+of this file said the selector *"does not reach"* the recommendations — true on
+a page with results, false on a page without. That is the shape this repository
+calls *measured in one condition, written as general*.
+
 ## Extracting search results
 
 Returns no URLs, so it is never blocked:
@@ -153,9 +201,15 @@ Read the count from the list header (`… results`), never from `document.title`
 **The left column continues past the results.** Below the last card sit *"Are
 these results helpful?"*, *"Expand your search"* and **"Top job picks for you"**
 — recommendations built from the profile, not results for this query. The
-selector above is scoped to `li[data-occludable-job-id]` and does not reach
-them; **keep it that way.** A looser selector silently mixes recommendations
-into the sweep, attributed to a search they never matched.
+selector above is scoped to `li[data-occludable-job-id]`, and **on a page that
+has results it does not reach them; keep it that way.** A looser selector
+silently mixes recommendations into the sweep, attributed to a search they
+never matched.
+
+**On a zero-result page it does reach them**, which is the whole of issue #46
+and why the guard above runs first. This trap and that one are the same block
+of ads seen from two pages, and only one of the two pages was measured when
+this paragraph was written.
 
 **`document.hidden === true` is the normal case, not a guarantee — and the
 click rule follows from it.** Observed once, on 2026-08-28, while the user had
