@@ -379,6 +379,18 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## Terms of use are a different instrument, and they are read elsewhere
+
+This file governs **machine-readable refusals**. A board's terms of use are
+prose written for many readers at once, and the question there is which reader
+a clause is addressed to — a harvesting clause and an anti-automation clause
+look alike and do not bind alike. **`shared/reading-terms.md` holds that rule**
+(issues #48 and #81).
+
+**It opens no door in this one.** A `robots.txt` refusal stands whatever a
+board's terms say about resale, and no reading of a prose document is a reason
+to revisit the four questions above.
+
 ## What this file does not license
 
 Not credentials, not paywalls, not consent walls, not anything a login guards,

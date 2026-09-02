@@ -23,6 +23,7 @@ They live in this plugin, one level above this skill's folder
 | `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
 | `shared/boards/README.md` | Step 2 — which boards are supported and what an adapter owes the skill |
 | `shared/boards/<board>.md` | Steps 2–4 — the adapter for each board enabled under `boards:` in `config.yml` |
+| `shared/reading-terms.md` | Step 2 — how a board's terms of use are read, and what that reading never licenses |
 | `shared/search-language.md` | Steps 2–4 — which language to ask a market in, and what a zero from a multilingual market does *not* prove |
 | `shared/scoring-rubric.md` | Step 5 — scoring, and the commute filter |
 | `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |

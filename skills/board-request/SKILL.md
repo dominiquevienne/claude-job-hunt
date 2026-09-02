@@ -11,6 +11,13 @@ Read `shared/never-fail-silently.md` first — it governs this skill more than a
 other, because a request that quietly goes nowhere is exactly the failure it
 forbids.
 
+**And when a report quotes a board's terms, read them through
+`shared/reading-terms.md`.** A sweep is one candidate's own search, so a clause
+against commercial harvesting does not describe it — while a clause forbidding
+automated access *as such*, a rate limit, a login wall or a `robots.txt`
+refusal all bind regardless. **Quote the clause before concluding from it**, so
+the maintainer can disagree with the reading without re-finding the document.
+
 `job-scan` can only sweep boards that have an adapter in `shared/boards/`. This
 skill captures what a maintainer needs to fix that — and, crucially, **does not
 stop the user's work**: they can apply to an ad from any board today through

@@ -241,6 +241,16 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**Read a board's terms through `shared/reading-terms.md`, and quote the clause
+before concluding anything from it.** A sweep is one candidate's own search,
+run at their request, under their criteria, and nothing is republished or
+resold — so a clause written against commercial harvesting does not describe
+it, and reading it as though it did refuses the user work they are entitled to
+do. **A clause that forbids automated access *as such* is a different clause
+and it binds**, as does a rate limit, a login wall, and any `robots.txt`
+refusal — the position changes how an ambiguous clause is read, it never
+creates permission a board withheld. Issues #48 and #81.
+
 **Read `application/ld+json` through `skills/job-scan/scripts/_ldjson.py`,
 never with a pattern of your own.** Two independent deviations have already
 cost this repository whole boards, and each was patched where it was found and
