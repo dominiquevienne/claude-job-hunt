@@ -340,6 +340,100 @@ follows from this. What changes is only what we may write down about it —
 CKAN case, the remedy that opens is **asking**, and the sentence that travels
 should be the true one.
 
+### Where it has been seen: eleven sites, eight countries
+
+**Measured by the country surveys on 2026-09-02** (recorded here from those
+surveys, not re-measured in this file):
+
+| Country | Sites |
+| :-- | :-- |
+| Singapore | `nodeflair.com`, `fastjobs.sg` |
+| Philippines | `jobslin` |
+| Vietnam | `topdev.vn`, `mywork.com.vn` |
+| Chile | `getonbrd.com` |
+| Kenya | `publicservice.go.ke` — **the first public-sector site to carry it** |
+| Egypt | `wuzzuf.net`, `forasna.com` |
+| Ghana | `ghanajob.com` |
+| Tanzania | `mabumbe.com` |
+
+**The scope is a number, not an impression**, which is what the issue asked
+for. Expect it anywhere a board sits behind Cloudflare.
+
+### Three forms, and they do not say the same thing about intent
+
+**1. The block alone.** Fingerprint `c6370d4bc025`, no other rule in the file:
+**the operator wrote nothing.** Four sites, three continents.
+
+**2. The block beside the operator's own rules.** Somebody wrote a file, and
+the block was added to it. The operator's own lines are their decision; the
+fenced ones are not, and the two must not be read as one policy.
+
+**3. The block twice.** `wuzzuf.net` carries the **entire preamble twice** and
+names `ClaudeBot` in both. The effect is nil — and it is the proof that the
+block is injected without checking whether it is already there. **A rule
+written twice by accident is not a rule written twice as firmly.**
+
+### The counter-examples matter as much, and there are as many
+
+**Publishers who do decide mostly decide on cost, not on doctrine.**
+`theugandanjobline.com` leaves its engineering log in the file: *"Bingbot made
+122 500 requests in three days, 24% of all traffic, four times Googlebot, for a
+small fraction of the visits Google sends"* — and **`ClaudeBot` is filed beside
+MJ12bot and a competing aggregator: as a cost, not as a threat.** `tazabek.kg`
+names **29 agents** under *"AI robots and SEO analysers: total ban"*, with
+Claude next to SemrushBot and AhrefsBot. And `bayt.com` blocks `LinkedInBot`
+and `IndeedBot` while naming no AI agent at all — **that is competitor
+blocking, and it has nothing to do with this argument.**
+
+**A refusal written by hand, at scale.** The HeadHunter family — `hh.ru`,
+`hh.kz`, `hh.uz`, `hh.by`, and `zarplata.ru` — names **eight AI agents each**,
+barred from the advert pages only, **while `*` keeps explicit access there**,
+replicated byte for byte across four countries. Nobody's CDN did that.
+
+**And permissions, written on purpose.** JobKorea allows `ClaudeBot` on its
+advert pages by an explicit path whitelist. Trade Me gives it **four groups**
+and withholds only commerce. Magneto365 names `ClaudeBot` and `anthropic-ai`
+and publishes an `llms.txt`. And `qatarliving.com` writes **seven `Allow: /`
+lines where `*` already permitted everything** — a redundant permission nobody
+was obliged to write.
+
+**The honest count: eleven restrictive sites against six welcoming ones**
+(four named above), and the far end of the range is `pe.jobomas.com` — **the
+only site in the corpus to block `Claude-User`**, the human-driven agent.
+
+### `ClaudeBot` refused and `Claude-User` unnamed is not a permission
+
+The block names `ClaudeBot` and says nothing about `Claude-User`. **The
+omission is not an invitation.** Whoever wrote that list enumerated training
+and crawling agents; that a person-driven fetcher was not on their list says
+what was in front of them, not what they would have decided.
+
+**And the field shows the distinction is available to publishers who want it**:
+Indeed adds `Claude-User` to its widest group deliberately, and `pe.jobomas.com`
+bars it outright. **A publisher who means to refuse the user-driven agent can
+name it, and one of them did.**
+
+So the rule here is the one `shared/reading-terms.md` already carries and
+`softy.md` already practised: **being a user-driven tool is a reason to read an
+ambiguous clause fairly, never a reason to argue past a publisher who named
+us.** Where the block appears, we obey it.
+
+### What this section settles, and what it deliberately does not
+
+- **The block is recognised on sight** rather than read as a bespoke policy.
+- **A CDN default is weaker evidence of intent than an operator's own line —
+  and exactly as binding.** What changes is the sentence we may write about a
+  publisher, never what we do with their file.
+- **No override follows from any of it.** Nothing here is a reason to fetch
+  anything, and it must not be cited as one.
+
+**And the material does not support a conclusion in our favour.** It supports a
+finer question than the one that was asked: *some* refusals are nobody's
+decision, *some* are considered and about bandwidth rather than about AI, and
+*some publishers say yes in writing when they did not have to.* Anyone tempted
+to read this section as leverage should read the Ugandan file's traffic log
+first.
+
 ## When a refused board's ads reach us through an open one
 
 Decided 2026-09-01, on Empléate. It will recur, so it is written down.
