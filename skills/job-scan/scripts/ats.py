@@ -43,6 +43,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from _robots import verdict as robots_verdict
+
 UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
 PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable",
              "teamtailor", "join")
@@ -366,6 +368,18 @@ def workable_card(tenant, j, with_description=False):
 
 
 def teamtailor_list(tenant, _want_content=True, _a=None):
+    # **The policy belongs to the tenant, not to the platform.** Teamtailor
+    # gives every customer its own hostname, and they do not answer the same:
+    # measured 2026-09-02, investengine and oatly publish
+    # `Content-Signal: search=yes, ai-train=no, ai-input=yes` while polestar
+    # and normative publish `search=no, ai-train=no, ai-input=no`. This file
+    # swept polestar earlier the same day, before anything read its robots.txt
+    # — no script in this repository did. See `_robots.py`.
+    v = robots_verdict(f"{tenant}.teamtailor.com")
+    if not v["sweep"]:
+        die(f"{tenant}.teamtailor.com: {v['reason']} Teamtailor lets each "
+            f"customer set this, so it is this employer's answer and not the "
+            f"platform's.", code=7)
     # `<tenant>.teamtailor.com`, NOT the employer's own `careers.<company>.com`
     # vanity host, even though both answer this path. They do not serve the same
     # board: measured on one tenant the same day, the vanity domain was missing
