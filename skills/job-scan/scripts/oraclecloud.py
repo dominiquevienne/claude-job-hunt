@@ -351,6 +351,10 @@ def cmd_search(a):
 
 
 def cmd_read(a):
+    _v = robots_verdict(a.host)
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On Oracle Cloud the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
     emit(a, resolve_site(a), True)
 
 

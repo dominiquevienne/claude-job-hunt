@@ -224,6 +224,10 @@ def cmd_jobs(a):
 
 
 def cmd_ad(a):
+    _v = robots_verdict(f"{a.tenant}.taleez.com")
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On Taleez the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
     print(json.dumps({"slug": a.slug, "url": AD_URL.format(a.slug),
                       **ad_fields(a.slug, fetch(AD_URL.format(a.slug)))},
                      ensure_ascii=False, indent=1))
@@ -241,6 +245,10 @@ def cmd_sitemap(a):
     It is the board, not a search: there is no keyword or location filter here,
     so this is for enumerating and then reading, not for targeting.
     """
+    _v = robots_verdict(f"{a.tenant}.taleez.com")
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On Taleez the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
     raw = fetch("https://taleez.com/sitemap-job.xml")
     # The slug is not always the short opaque id: 296 of the 14 221 look like
     # `fmudc`, and the rest are long descriptive ones ending in the contract

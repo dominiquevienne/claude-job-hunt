@@ -269,6 +269,10 @@ def cmd_list(a):
 
 
 def cmd_ad(a):
+    _v = robots_verdict(a.host)
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On Workday the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
     path = a.path
     if not path:
         payload = post(cxs(a, "/jobs"),

@@ -478,6 +478,37 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## Which commands ask the host, and which do not
+
+**Every command that reads advert content asks first.** Measured coverage,
+2026-09-02, across the eight families whose tenants have their own hosts:
+
+| Family | Guarded | Not guarded |
+| :-- | :-- | :-- |
+| Workday | `sites`, `list`, `ad` | `facets`, `resolve` |
+| Taleez | `jobs`, `ad`, `sitemap` | — |
+| Personio | `jobs`, `check` | — |
+| umantis | `list`, `ad`, `check` | — |
+| SuccessFactors | `list`, `ad`, `check` | `locale` |
+| Oracle Cloud | `search`, `read` | `sites` |
+| iCIMS | `list`, `ad` | `resolve` |
+| Teamtailor (`ats.py`) | the listing path, so `list` and `ad` both | `resolve` |
+
+**The unguarded ones read no advert.** `locale`, `sites`, `facets` and
+`resolve` answer *what is this host* and *what does it offer* — a question
+about the service, not a use of its content. Guarding them would also make a
+refusing tenant undiscoverable, which helps nobody: **better to identify a host
+and then refuse it loudly than to be unable to name what was refused.**
+
+**`sitemap` is guarded, and that is a decision rather than an oversight.**
+Enumerating a closed set does what the closure exists to prevent — the same
+reasoning the Belarus survey applied when it declined to count ad sitemaps
+sitting outside a disallowed path.
+
+**And `check` is guarded because it is the one `cover-letter` calls when
+somebody applies.** A tenant that wrote `ai-input=no` is refusing the content,
+not the pagination.
+
 ## Terms of use are a different instrument, and they are read elsewhere
 
 This file governs **machine-readable refusals**. A board's terms of use are
