@@ -281,7 +281,7 @@ poste)`. A user corrects a hedged line; they skim past a confident one.
 
 ### Then four questions, and they are closed on purpose
 
-Use `AskUserQuestion` — one call, all four, each with the consequence stated in
+Use `AskUserQuestion` — one call, all five, each with the consequence stated in
 the option text so nobody is choosing blind.
 
 | # | Question | Options | What it decides |
@@ -290,6 +290,31 @@ the option text so nobody is choosing blind.
 | 2 | **Mobilité géographique ?** | Rester dans ma région · Ailleurs dans le pays · Un autre pays · Full remote, le lieu m'est égal | Which country's boards exist at all, and whether the commute limit from step 3 still applies |
 | 3 | **Quels pays / régions ?** *(only if 2 ≠ "rester")* | Free text, or a country list | The board shortlist, and the language check below |
 | 4 | **Quels types de contrat acceptez-vous ?** | CDI / permanent · CDD, mission, projet · Intérim · Freelance / indépendant · Alternance, stage, premier emploi | Whether the **agency boards** are worth enabling at all, and which sector boards apply |
+
+| 5 | **Où pouvez-vous travailler sans parrainage ?** *(offer a default built from `home_base` — for a Swiss base, `CH` + `EU`)* | The default · Add or remove countries · **Passer** | Whether an ad from elsewhere carries one sentence at the gate — see below |
+
+**Question 5 asks for one list and nothing else.** Countries and zones where
+the person needs no sponsorship, written to `location.work_authorization`.
+**Never their nationality, their permit type or their status**: the plugin
+needs the answer to one question, not an immigration file, and a `config.yml`
+gets read aloud and pasted into issues.
+
+**Offer a default rather than an empty box** — `home_base` gives the country,
+and for an EU or EFTA base the zone usually follows. **And let them skip it**:
+somebody who declines gets exactly the previous behaviour, with nothing ever
+flagged. It is one question, asked once, not a gate to get through.
+
+**Say what it buys, because it does not restrict anything.** An ad from outside
+the list is still scanned, still scored and still shown; what changes is one
+sentence at the go/no-go gate saying that a *local employment contract* there
+would need sponsorship, while invoicing that country from here is a different
+legal object and may well be open. **The plugin gives no legal advice and
+decides nothing** — it noticed a mismatch between two lists.
+
+*(This exists because a London role scored 74%, the best stack match in the
+whole ledger, and a complete dossier — CV, letter, rendered PDFs — was produced
+before the user closed it in one sentence: "pas éligible, permis de travail
+UK". Issue #82.)*
 
 **Question 1 is the one people answer too fast.** If they pick *reconversion* or
 *élargir*, say plainly what changes: the searches stop being built from their

@@ -65,12 +65,40 @@ tailoring writes around them:
 - A **spoken language** the candidate does not have at working level. An ad
   written in a language they cannot interview in is a blocker, whatever the
   stack. Passive knowledge is not working knowledge — see `config.yml`.
-- **Work authorization** the candidate lacks.
+- **Work authorization** the candidate lacks — **and this one is not a
+  discard**, see below. It caps the score for a *local employment contract*
+  and says so; it never removes the ad.
 - A **required certification** the candidate does not hold.
 - A **commute that cannot be made** — see below. This one is not scored at all.
 - Whatever `candidate.md` records as a **hard blocker** for this user. That file
   is where they wrote down the rules they do not want re-litigated every run;
   a rule stated there is not a preference to weigh, it is a stop.
+
+## The right to work is not shaped like the commute, and must not be filtered like it
+
+`location.work_authorization` in `config.yml` lists the countries and zones
+where the user needs no sponsorship. When an ad's **employer** sits outside it,
+the run says one thing and removes nothing:
+
+> **A local employment contract there needs sponsorship you have not declared —
+> that is a stop on the employed route, not on the ad.** Invoicing that country
+> from where you are is a different legal object and may well be open.
+
+**Score the ad, show the score, then say it.** The score is what tells somebody
+the job was worth wanting, and the B2B route stays open without any permit —
+so a silent drop would destroy real opportunities invisibly, which is the
+failure `shared/never-fail-silently.md` forbids. That is the difference from
+the commute below: a body cannot be in two places, but a contract can take two
+forms.
+
+**The country that matters is the employer's, not the desk's.** *A remote post
+with a British employer is still British employment*, and this is the case that
+will keep catching people — the ad that produced this rule advertised "hybrid
+and remote working arrangements available".
+
+**With no `work_authorization` configured, nothing is flagged.** The user who
+skipped that question gets exactly the previous behaviour. Issue #82, and
+`skills/job-scan/scripts/_workauth.py` holds the zone lists.
 
 ## The commute is a filter, not a score line
 

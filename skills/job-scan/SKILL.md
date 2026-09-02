@@ -347,6 +347,41 @@ Mark a score **provisional (`~`)** when it comes from the card only, because the
 description was not opened. Never present a provisional score as if the ad had
 been read.
 
+### The right to work: flag it here, and never discard for it
+
+`config.yml` may carry `location.work_authorization` — the countries and zones
+where the user needs no sponsorship. **With no such key, skip this whole
+section**: nothing is flagged and the run behaves as it always did.
+
+```bash
+python3 "$S/_workauth.py" --country GB --allowed "CH,EU"
+```
+
+When the **employer's** country is outside that list, the ad **keeps its score
+and its `todo` status**. This is the one blocker in `shared/scoring-rubric.md`
+that is not a filter, and the reason is in that file: a body cannot be in two
+places, but **a contract can take two forms** — being employed in London and
+invoicing London from here are different legal objects, and the second needs no
+permit. Dropping the ad would destroy a real opportunity invisibly.
+
+**The country that matters is the employer's, not the desk's.** *A remote post
+with a British employer is still British employment* — the ad that produced
+this rule advertised "hybrid and remote working arrangements available", and
+the run noticed the word *remote* and stopped at the place of work instead of
+climbing to the right to work there.
+
+**Carry it in three places, because a note alone is provably ignored** (see the
+next section):
+
+1. **`Note`** — the marker `` `WA:<CC>` ``, which no later run strips.
+2. **The shortlist line at step 7**, in the same breath as the score: *"74% —
+   GB: local employment excluded, B2B possibly open"*.
+3. **The go/no-go gate in `cover-letter`**, where the decision is actually made.
+
+**Never write it as a flat no**, and never as advice: the plugin noticed a
+mismatch between two lists, the user owns the paperwork and the decision.
+Issue #82.
+
 ### A hard blocker found here changes the status, not just the `Note`
 
 Step 3 discards ads whose stack is foreign to the candidate — but it works from
@@ -538,6 +573,11 @@ ranking.** The rows you are about to recommend include ones written weeks ago by
 earlier runs, and a `todo` row can carry a verdict its status never received: a
 blocker found when its description was read, a hold on that employer, an
 application already open there.
+
+**A `` `WA:<CC>` `` marker is neither of those, and it is never a reason to
+skip a row.** It is a route note: propose the ad in its rightful place in the
+ranking, and put the sentence on the same line as the score — *"74% — GB:
+local employment excluded, B2B possibly open"*. The user decides.
 
 A row whose note settles the matter does not belong in the list — skip it, and
 offer to correct its status. A row whose note raises an **open question** belongs

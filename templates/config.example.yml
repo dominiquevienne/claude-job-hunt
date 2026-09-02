@@ -33,6 +33,23 @@ location:
   # Which work modes you accept: on-site, hybrid, remote. Remove what you
   # will not consider — a removed mode is filtered out before scoring.
   work_modes: [remote, hybrid, on-site]
+  # WHERE YOU MAY WORK WITHOUT SPONSORSHIP — countries and zones, not a status.
+  # Zone names understood: EU, EFTA, EEA. Everything else is an ISO-2 code.
+  #
+  # This is the ONLY thing the plugin asks about the right to work. It never
+  # records nationality, permit type or status: it needs the answer to one
+  # question, not an immigration file.
+  #
+  # An ad from a country outside this list is still scanned, still scored and
+  # still shown. What changes is one sentence at the gate: a local employment
+  # contract there would need sponsorship, while invoicing that country from
+  # here is a different legal object and may well be open. A remote post does
+  # not change it by itself — a remote job with a British employer is still
+  # British employment.
+  #
+  # DELETE THE KEY to switch this off entirely: with no list, nothing is ever
+  # flagged and the plugin behaves exactly as it did before.
+  work_authorization: ["CH", "EU"]
   # Location strings used in job-board searches, most specific first. These
   # are what the board itself understands, so use its own spelling.
   search_locations:

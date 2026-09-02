@@ -189,6 +189,10 @@ column, the log and everything you say to the user follow the user's
 - **Build the exclusion set first**, from every row whose status is `applied`,
   `rejected`, `no-go` or `discarded`. Those ads are never proposed again.
 - **Append one `Log` line per run** — date, what was searched, what came back.
+- **Never strip a `` `WA:<CC>` `` marker.** It records that the employer sits
+  outside `location.work_authorization` — *local employment excluded, service
+  provision perhaps open* — and it is a route note, never a verdict: it does
+  not change a status and it is not a reason to skip a row. Issue #82.
 
 ### A ledger written before the `Pay` column existed
 

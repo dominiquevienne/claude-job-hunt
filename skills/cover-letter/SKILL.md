@@ -340,6 +340,32 @@ a lead role rather than the hands-on one advertised). **Only continue to step 4
 once the user says so.** Never soften a bad ratio — or a poor range — to make
 the application feel worth writing.
 
+### The right to work, if `work_authorization` is configured
+
+**Check it before drafting, not after** — the cost this exists to prevent is a
+complete dossier written for an ad the user cannot take. A London role scored
+74%, the best stack match in that ledger; CV, letter and rendered PDFs were
+produced, and the user closed it in one sentence: *"pas éligible, permis de
+travail UK"*. Issue #82.
+
+If `config.yml` carries `location.work_authorization` and the **employer's**
+country is outside it, say so here, in the gate's own question — and say it as
+two routes, never as a refusal:
+
+> **Local employment in GB would need sponsorship you have not declared.**
+> Invoicing GB from here is a different legal object and may well be open — if
+> this employer will work B2B, nothing above blocks it.
+
+**`candidate.md`'s *employment vehicle* section is the question below this
+one**, not this one. Local contract, ANOBAG or B2B is a choice among routes
+that exist; **this is whether the employed route exists at all**, and without
+the right to work the choice of vehicle does not arise.
+
+**Score the ad anyway and show the score.** The number is what tells the user
+the job was worth wanting, and it is what makes a B2B approach worth
+attempting. **With no `work_authorization` key, this section does not apply** —
+say nothing.
+
 **This gate is also where step 1's board questions ride.** It always fires on
 the URL path, which is what makes it the only place they may be asked: a
 `board-request` for a second board found through an apply link, and — when
