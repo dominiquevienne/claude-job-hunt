@@ -241,6 +241,39 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**Name what the card emits, never what it drops.** A deny-list is a bet that
+you enumerated the problem correctly; an allow-list is a bet that you
+enumerated the *need* correctly, and **the two failure modes are not
+symmetric**: an allow-list that is too narrow produces a **missing field** —
+visible, reported, fixed in one line — while a deny-list that is too narrow
+produces a **leak**, invisible and found by somebody else. When two errors are
+possible, prefer the one that announces itself. Issue #75.
+
+The case that produced the rule: `vieclam24h`'s ad record carries **110
+fields**, including a named recruiter's phone, email and address *and the
+board's own account manager*. The obvious implementation — drop
+`employer_info` by name — **would have let four of the five contact fields
+through**. `KEEP` names the sixteen the card emits, so a field the board adds
+tomorrow cannot appear in a ledger.
+
+**And the five fields were not one problem.** The account manager is the
+board's internal staff data, in nobody's advert; the employer's own
+`contact_email` and `contact_phone` were published *so that candidates would
+use them*. The allow-list is right about both, but for different reasons, and
+an adapter file should say which — stripping an ad's stated contact as though
+it were a leak removes exactly what the employer put there for the reader.
+
+```bash
+bin/emit-audit.py     # every adapter, and whether it enumerates what it emits
+```
+
+**54 of 54 pass** as of 2026-09-02 — six of them read by hand, named and dated
+in that file, because a site the tool cannot follow must never be reported as a
+clean one. The single exception it names is `talentsoft`'s `other_fields`: the
+one emitted field here whose *content* is not enumerable, carrying unlabelled
+fragments of a card's visible text, capped, and deliberate — that board's rows
+vary by tenant and a wrong label is worse than an unnamed string.
+
 **Read a board's terms through `shared/reading-terms.md`, and quote the clause
 before concluding anything from it.** A sweep is one candidate's own search,
 run at their request, under their criteria, and nothing is republished or

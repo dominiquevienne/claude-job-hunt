@@ -50,6 +50,25 @@ value means across tenants.
 (`JobDescription`, `Location`, `ApplicantCriteria`), never on presentation
 classes.
 
+
+## `other_fields` is the one field here that does not name its contents
+
+**The card enumerates everything it emits — except this one, on purpose.**
+`shared/boards/README.md` requires an adapter to name what it emits; this file
+is the exception it allows, and the reason is measured: a row's fragments are
+unlabelled and **what they are varies by tenant**. Business France puts an
+address where `place-ep-recrute` puts a public-service status phrase, and
+taking "whatever is left" as the location once produced *"Emploi ouvert aux
+titulaires et aux contractuels"* in a location field — a well-formed, entirely
+wrong answer.
+
+So the card labels only what it can identify with confidence and hands the rest
+back **unnamed rather than mislabelled**. Two things keep that honest: the
+carry-over is **capped at `MAX_FIELDS`**, and it holds only text a visitor sees
+on the card. **A field this adapter cannot name is better as an unnamed string
+than as a wrong label** — but it is the only one, and it is listed as such in
+`bin/emit-audit.py`. Issue #75.
+
 ## Configuration
 
 ```yaml
