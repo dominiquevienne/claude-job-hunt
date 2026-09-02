@@ -478,6 +478,90 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## The same file is a source of coordinates, and reading it only for permission leaves them
+
+Everything above is defensive: what may be fetched, what a refusal means, when
+a file is not a file. **Three findings on 2026-09-02 point the other way.**
+Issue #74.
+
+**1. It names the coordinate the adapter was guessing.** Every Workday tenant's
+file carries one `Allow:` line per career site it has opened. Swisscom
+publishes **three**; `resolve` finds **two** through a meta-board. The employer
+had been publishing the answer all along, and `workday.py sites` reads it.
+
+**2. It names where the duplicates are.** `workventure.com` hides from
+Googlebot a set of feed files **named after the boards it syndicates to** —
+`indeed.xml`, `jooble.xml`, `careerjet.xml`, `incruit.xml`. Read for
+permission, that is a list of paths to avoid. **Read for information, it is the
+board saying where its own ads will appear again**, which is what a ledger
+needs in order to deduplicate.
+
+**3. It names a directory an adapter file said did not exist.** `solique` and
+`taleez` both declared a sitemap at the standard path, under a permissive file,
+and both turned out to be tenant or ad directories. **Nothing was hidden; the
+file was read for whether we could fetch and not for what it said was there**
+(#72).
+
+### Accessible is not intended, and the names do not say which
+
+Novartis's Workday tenant names **`Internal_Careers_for_Acquired_Entities`**
+beside its public site. **A tenant lists what it has opened to robots, not what
+a candidate should read**, and the difference is invisible from the name alone
+— which is why `workday.py sites` now says so out loud when a name reads
+internal, and still only enumerates.
+
+**Enumerating is not choosing.** A name found this way is a **candidate, never
+a target**.
+
+### Three ways this goes wrong, all measured the same day
+
+**A `Sitemap:` line is a declaration, not an inventory.** It announces URLs. It
+does not say they exist, that they resolve, or that they are adverts.
+**Counting sitemap entries as ads produces exactly the class of number
+`shared/plausible-and-false.md` exists for** — and Taleez's own sitemap was
+read at 296 of 14 221 by a regex that matched only one slug shape, while
+reporting success.
+
+**Two formats defeat a naive reader.** AllJobs writes its `Allow:` paths in
+**`%uXXXX`** — a notation removed from the URL specification: it is legible and
+it does **not** compare equal to a normally-encoded URL without conversion.
+And `jobmaster.co.il/jobs/` sits in a **redirect loop on the trailing slash**
+that `curl` abandons at the fiftieth hop. **A discovery that follows the paths
+it finds needs a hop bound and a defined behaviour when it hits one** — the
+answer being *stop and say which path looped*, never *treat it as absent*.
+
+### And the case that must not be read in our favour
+
+`jobmaster.co.il` **names `Google-Extended` and `ChatGPT-User` in order to
+allow them, and does not name any Anthropic agent.** The generic `*` group is
+permissive, so a mechanical reading lands on *allowed*.
+
+**Do not let the fallback settle it.** A site that took the trouble to
+enumerate agents and did not enumerate ours has expressed something the generic
+group does not represent, and **the honest description of that state is "not
+addressed", not "permitted"**. It is the mirror of the case in the managed-block
+section above, where an omission was equally not an invitation: **an omission
+is not a decision in either direction, and it is certainly not a decision in
+ours.**
+
+The question of what a user-driven agent may do where it was not named stays
+open in this repository. **It is not closed by silence, and least of all by
+silence read our way.**
+
+### The rules
+
+1. **Read the file for what it names, not only for what it forbids.**
+   `Sitemap:` lines, `Allow:` paths and the names of disallowed files are
+   coordinates.
+2. **A name found this way is a candidate, never a target** — show it, and let
+   the user choose, especially where the name suggests an internal audience.
+3. **Record where a coordinate came from.** *"Published by the employer in
+   their own `robots.txt`"* is stronger than *"resolved from a meta-board"*,
+   and where the two disagree — Swisscom, three against two — the employer's
+   own file is the one to believe.
+4. **Nothing in this section is a permission.** It changes what we may *learn*
+   from a file, never what we may *fetch* from a host that refused.
+
 ## Which commands ask the host, and which do not
 
 **Every command that reads advert content asks first.** Measured coverage,

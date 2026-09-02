@@ -241,6 +241,15 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**Read a board's `robots.txt` for what it names, not only for what it
+forbids.** A Workday tenant lists its career sites in `Allow:` lines — Swisscom
+publishes three where a meta-board lookup found two — and a syndicating board
+names its outbound feeds, which is where the duplicates will come from.
+`shared/robots-policy.md` holds the rule, and its two guards: **a name found
+that way is a candidate and never a target** (a tenant lists what it opened to
+robots, not what a candidate should read), and **a `Sitemap:` line is a
+declaration, not an inventory.** Issue #74.
+
 **A field whose meaning depends on a caveat gets a name that carries the
 caveat** — `shared/plausible-and-false.md` holds the class and its rules. A
 converted salary is not `salary_min`, an estimate is not a quoted figure, and a

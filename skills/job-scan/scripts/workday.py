@@ -228,6 +228,19 @@ def cmd_sites(a):
           f"robots.txt. The `site` coordinate is case-insensitive at the API "
           f"but case-preserving in the URL — use the spelling here.",
           file=sys.stderr)
+    # **A tenant lists what it opened to robots, not what a candidate should
+    # read.** Novartis names `Internal_Careers_for_Acquired_Entities` beside
+    # its public site, and the difference is invisible from the names alone.
+    # Enumerating is not choosing: this command hands over candidates, and the
+    # user picks. Issue #74.
+    flagged = [x for x in allows
+               if re.search(r"internal|acquired|employee|alumni|contingent",
+                            x, re.I)]
+    if flagged:
+        print(f"[workday] {len(flagged)} of these read as an internal or "
+              f"restricted audience — {', '.join(flagged)}. **A tenant lists "
+              f"what it opened to robots, not what a candidate should read.** "
+              f"Enumerated, not swept: choose deliberately.", file=sys.stderr)
 
 
 def cmd_list(a):
