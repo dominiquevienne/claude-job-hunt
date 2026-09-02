@@ -32,15 +32,72 @@ login.** An account is only needed to apply.
 
 ## Prerequisites
 
-1. **The Claude extension for Chrome** must be installed and connected — this
-   drives the user's own browser. Without it, say so and fall back to
-   `cover-letter <ad URL>`, which needs no browser.
-2. **No login is required to scan.** Say so — it is a genuine difference from
+1. **The sweep does not need the browser.** This file said the Chrome
+   extension was a prerequisite and that a user without it had no jobup sweep
+   at all. **That was wrong**, and it cost the two largest Swiss boards to
+   every user without the extension. Measured 2026-09-02, plain `curl`, no
+   cookie and no session: **the listing and 5 of 5 ads answered 200 in
+   `text/html`**, and every ad carried a full `JobPosting` — see *The
+   plain-HTTP route* below. Drive the browser if it is there; do not require
+   it.
+2. **The application flow is a separate question and it has not been
+   instructed.** What was measured is reading. If applying needs the browser,
+   this adapter splits like `wttj.md` — an HTTP discovery half and a browser
+   apply half — rather than reverting to a browser prerequisite for
+   everything.
+3. **No login is required to scan.** Say so — it is a genuine difference from
    LinkedIn, and users expect to be asked. A logged-in session simply adds the
    user's saved jobs and application history to the page; it changes nothing
    this adapter reads.
 
 Never fill a credential field, here or anywhere.
+
+## The plain-HTTP route
+
+**Measured 2026-09-02** on `https://www.jobup.ch/fr/emplois/?term=developpeur`
+and five ads drawn from it, with `curl`, `Accept-Encoding: identity`, no
+cookie:
+
+| What | Result |
+| :-- | :-- |
+| Listing page | **200**, `text/html`, 510 KB |
+| Ads | **5 of 5 → 200**, 297–353 KB each |
+| `application/ld+json` `JobPosting` | **5 of 5** |
+| `description` inside it | **2 547 – 4 389 characters**, the ad's own text |
+| `hiringOrganization.name` | 5 of 5 |
+
+**And the listing carries a complete JSON record per card**, not merely a
+title: `id` (the UUID this board deduplicates on), `title`, `place`, and a
+`locations[]` array with `city`, `cantonCode`, `postalCode`, `street`,
+`latitude`/`longitude`, plus `publicationDate`, `employmentGrades` (the 80–100%
+band), `isActive` and `listingTags` (`quickApply`, `easyApply`). Twenty cards a
+page.
+
+**Two traps, both measured, both of the `#67` family — a field that is present
+and false:**
+
+1. **`baseSalary` is a shell.** Served as
+   `{"@type":"MonetaryAmount","currency":"CHF","value":{"@type":"QuantitativeValue"}}`
+   — the block on **5 of 5** ads, an amount on **0 of them** in this sample
+   (an independent run found 3 of 12 across both boards). **Counting the key
+   gives 100%; counting the value gives a quarter or less.** Read the amount,
+   never the presence.
+2. **The ad page has no usable location.** `jobLocation.address.addressLocality`
+   was empty on **5 of 5**. The geography is on the listing, in `locations[]`.
+   An adapter that reads only ad pages loses the city — so the sweep goes
+   through the listing, which is open anyway.
+
+**Prefer `ld+json` to the DOM selectors below.** Both work; the structured
+block does not move when the site is redesigned, and `[data-cy="…"]` does. The
+selectors stay documented because the browser path still uses them and because
+they are what a human debugging a page will see.
+
+**What was not measured — do not extrapolate.** Rate limiting under a real
+sweep (this was ~12 requests at one per second), the behaviour of an expired
+ad, whether the `ld+json` `description` is character-for-character what the
+page shows, and whether other parasitic content rides in the payload — the AI
+matching widget documented in *Traps* below does not appear in it, which is
+one absence rather than a clean bill.
 
 ## Building a search URL
 

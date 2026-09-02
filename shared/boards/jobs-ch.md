@@ -23,6 +23,17 @@ titles** — jobup serves a machine translation. So the fuzzy employer-name chec
 in `skills/job-scan/SKILL.md` would not catch this duplicate, and a title
 comparison would actively disagree. **The UUID is the only thing that matches.**
 
+**One precision, added 2026-09-02: that is true when the source language
+differs, not systematically.** UUID `203ad37f-744b-4828-8b0d-a89f583b320b`
+surfaced in both listings and was pulled from both sides: **identical title, a
+description identical to the character (2 572), the same employer and the same
+timestamp to the second** — only the contract-type label was localised
+(`Festanstellung` / `Durée indéterminée`). A French-origin ad is served
+unchanged on both boards; jobup translates when the source is German. **The
+rule does not change — deduplicate on the UUID — but the reason is "titles are
+unreliable", not "titles are actively in disagreement".** The strong claim held
+for SICPA and would have been wrong here.
+
 Not every ad is on both: German-region ads (Bern, Pratteln, Zürich) answered
 `404` on jobup, and one Lausanne ad answered `404` too. So the two boards
 overlap, neither contains the other.
@@ -75,10 +86,26 @@ see trap 3.
 
 ## Prerequisites
 
-1. **The Claude extension for Chrome** must be installed and connected — this
-   drives the user's own browser. Without it, say so and fall back to
-   `cover-letter <ad URL>`, which needs no browser.
-2. **No login is required to scan.** Say so, as for jobup.
+1. **The sweep does not need the browser**, and this file said it did. Same
+   correction as `jobup.md`, same date, same method: measured 2026-09-02 with
+   plain `curl`, no cookie and no session, the listing
+   `https://www.jobs.ch/de/stellenangebote/?term=entwickler` answered **200,
+   `text/html`, 552 KB**, and **5 of 5 ads drawn from it answered 200** at
+   279–306 KB, each carrying an `application/ld+json` `JobPosting` with a
+   `description` of **2 601 to 5 004 characters** and the employer named.
+   Drive the browser when it is there; do not require it.
+2. **The two traps are the same as jobup's, because it is the same platform.**
+   `baseSalary` is a `MonetaryAmount` shell with no amount on **5 of 5**, and
+   `jobLocation.address.addressLocality` is empty on **5 of 5** — the city
+   lives in the listing's per-card JSON (`locations[]`, with canton, postcode
+   and coordinates), not on the ad page. Read
+   `jobup.md` § *The plain-HTTP route* for the full measurement and for what
+   was deliberately **not** measured; none of it is repeated here, because one
+   platform should not be documented twice.
+3. **Applying was not instructed.** If it needs the browser this adapter
+   splits like `wttj.md` rather than going back to a browser prerequisite for
+   reading.
+4. **No login is required to scan.** Say so, as for jobup.
 
 Never fill a credential field, here or anywhere.
 
