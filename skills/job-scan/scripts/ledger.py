@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+"""Read only what the decision needs out of `job-pipeline.md`.
+
+**Issue #77 asked whether the ledger should be split by month. Measured, the
+answer is no — it should stop being read whole.**
+
+MEASURED ON ONE REAL LEDGER, 2026-09-02:
+
+    job-pipeline.md ........ 499 320 bytes   2 926 lines
+      header ...............  14 426   (3 %)
+      ## Ads ............... 283 918  (57 %)    474 ad rows
+      ## Log ............... 200 976  (40 %)  2 233 lines
+
+    inside ## Ads, by column:
+      Note ................. 211 892 bytes — **78.5 %** of all cell content
+      Role .................  16 895
+      ID ...................  11 921
+      everything else ......  25 000 or so
+
+    status: discarded 314 · no-go 91 · applied 46 · todo 17 · rejected 6
+            → closed 411 of 474 = 87 %
+
+**The step that reads this file does so to build one thing: the exclusion set,
+the ids never to propose again.** That needs `ID` and `Status`, which is
+**16 531 bytes — 3.3 % of the file.** The other 96.7 % is read into context on
+every scan and decides nothing: `## Log` is a history nothing consults, and
+`Note` is prose written for the person, never parsed.
+
+So the fix is not a new file layout. **It is to stop reading 96.7 % of one.**
+No format change, no migration, no new file — and `shared/pipeline-format.md`
+stays the contract it is.
+
+WHY A SCRIPT AND NOT AN `awk` ONE-LINER: **ten of the 474 rows contain `\\|`,
+an escaped pipe inside a cell.** Splitting a row on `|` mis-aligns exactly
+those ten and silently shifts every column after the escape — it produced a
+row whose status read `42` while writing this. A ledger tool that corrupts 2 %
+of rows without saying so is worse than no tool, and this is precisely the risk
+the issue names for any migration.
+
+    ledger.py index                 id, status and match — the exclusion set
+    ledger.py rows --status todo    the full rows a run will edit in place
+    ledger.py count                 rows and section sizes
+    ledger.py verify --before N     refuse a write that lost a row
+
+Exit codes: 2 unreadable, 5 a row count that went down.
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+
+DEFAULT = os.path.join(
+    os.environ.get("JOB_HUNT_HOME",
+                   os.path.expanduser("~/Documents/job_applications")),
+    "job-pipeline.md")
+SEP = re.compile(r"^\|[\s:|-]+\|$")
+
+
+def die(msg, code=2):
+    print(f"ERROR: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def note(msg):
+    print(f"[ledger] {msg}", file=sys.stderr)
+
+
+def cells(line):
+    """Split a markdown row on real column breaks only.
+
+    **`\\|` is an escaped pipe, not a break.** Ten rows of 474 carry one, and a
+    naive split shifts every column after it — the kind of corruption that
+    reads as data rather than as an error.
+    """
+    holed = line.replace("\\|", "\x00")
+    return [c.replace("\x00", "\\|").strip() for c in holed.strip("|").split("|")]
+
+
+def read(path):
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError as e:
+        die(f"{path}: {e}")
+
+
+def ads_table(text, path):
+    m = re.search(r"^## Ads\s*$", text, re.M)
+    if not m:
+        die(f"{path} has no `## Ads` heading — is this a job-pipeline.md?")
+    end = re.search(r"^## (?!Ads)", text[m.start() + 1:], re.M)
+    seg = text[m.start(): m.start() + 1 + end.start()] if end else text[m.start():]
+    lines = [l for l in seg.split("\n") if l.startswith("|")]
+    if not lines:
+        die(f"{path}: `## Ads` carries no table row. **This is a reading "
+            f"failure or an empty ledger, and they are not the same** — the "
+            f"section is {len(seg)} characters long.")
+    cols = cells(lines[0])
+    rows = [l for l in lines[1:] if not SEP.match(l)]
+    return cols, rows
+
+
+def parsed(cols, rows, path):
+    out, ragged = [], 0
+    for r in rows:
+        c = cells(r)
+        if len(c) != len(cols):
+            ragged += 1
+        out.append(dict(zip(cols, c)))
+    if ragged:
+        # Loud, because a shifted row means a wrong status, and a wrong status
+        # means an ad proposed again or one silently buried.
+        note(f"{ragged} of {len(rows)} row(s) do not have {len(cols)} cells. "
+             f"Their columns are shifted and their status cannot be trusted — "
+             f"fix the table before relying on this index. ({path})")
+    return out
+
+
+def status_of(row):
+    """`applied 2026-09-01` → `applied`. The vocabulary is fixed and English."""
+    s = (row.get("Status") or "").strip()
+    return s.split()[0].lower() if s else ""
+
+
+def cmd_index(a):
+    text = read(a.file)
+    cols, rows = ads_table(text, a.file)
+    data = parsed(cols, rows, a.file)
+    closed = {"applied", "rejected", "no-go", "discarded"}
+    kept = 0
+    for d in data:
+        st = status_of(d)
+        if a.excluded_only and st not in closed:
+            continue
+        print(json.dumps({"id": d.get("ID", ""), "status": st,
+                          "match": d.get("Match", "")}, ensure_ascii=False))
+        kept += 1
+    whole = len(text.encode())
+    note(f"{kept} row(s) of {len(rows)}. The ledger is {whole} bytes; this "
+         f"index is what the exclusion set actually needs. Issue #77.")
+
+
+def cmd_rows(a):
+    """The full rows a run will edit — `todo` by default, 17 of 474 here."""
+    text = read(a.file)
+    cols, rows = ads_table(text, a.file)
+    n = 0
+    for r, d in zip(rows, parsed(cols, rows, a.file)):
+        if a.status and status_of(d) != a.status:
+            continue
+        print(r)
+        n += 1
+    note(f"{n} row(s) with status {a.status!r} of {len(rows)}.")
+
+
+def cmd_count(a):
+    text = read(a.file)
+    cols, rows = ads_table(text, a.file)
+    heads = [(m.start(), m.group(0).strip())
+             for m in re.finditer(r"^#{1,3} .*$", text, re.M)] + [(len(text), "")]
+    sections = {t: len(text[s:e].encode())
+                for (s, t), (e, _) in zip(heads, heads[1:])}
+    print(json.dumps({"file": a.file, "bytes": len(text.encode()),
+                      "ad_rows": len(rows), "columns": cols,
+                      "sections": sections}, ensure_ascii=False))
+
+
+def cmd_verify(a):
+    """The invariant, as a check rather than as a sentence.
+
+    `shared/pipeline-format.md` opens with *read it first, write it last, and
+    never lose a row*. This is that, after the write.
+    """
+    text = read(a.file)
+    _cols, rows = ads_table(text, a.file)
+    if len(rows) < a.before:
+        die(f"{a.file} now has {len(rows)} ad row(s) and had {a.before} before "
+            f"the write. **{a.before - len(rows)} row(s) were lost.** Restore "
+            f"the file from the copy taken before the run and do not write "
+            f"again until the merge is fixed.", 5)
+    note(f"{len(rows)} row(s), was {a.before} — nothing lost "
+         f"({len(rows) - a.before} added).")
+
+
+def main():
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+    for name, fn, h in (("index", cmd_index, "id, status and match only"),
+                        ("rows", cmd_rows, "whole rows, by status"),
+                        ("count", cmd_count, "rows and section sizes"),
+                        ("verify", cmd_verify, "refuse a write that lost a row")):
+        c = sub.add_parser(name, help=h)
+        c.add_argument("--file", default=DEFAULT)
+        if name == "index":
+            c.add_argument("--excluded-only", action="store_true",
+                           dest="excluded_only",
+                           help="only the statuses that exclude an ad")
+        if name == "rows":
+            c.add_argument("--status", default="todo")
+        if name == "verify":
+            c.add_argument("--before", type=int, required=True)
+        c.set_defaults(func=fn)
+    a = p.parse_args()
+    a.func(a)
+
+
+if __name__ == "__main__":
+    main()

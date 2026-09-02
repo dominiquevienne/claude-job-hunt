@@ -165,8 +165,23 @@ column, the log and everything you say to the user follow the user's
 ## Merge rules
 
 - **Merge, never overwrite.** Keep every existing row, refresh `todo` rows in
-  place (age, status, score), append new ones, and sort by match descending
-  within each status group.
+  place (age, status, score), and **insert** new ones where their match puts
+  them within their status group. The table stays sorted by match descending
+  within each status group — by insertion, not by re-sorting.
+
+  **Never re-emit the whole table to sort it.** On a real ledger that is 474
+  rows and 283 918 bytes, rewritten to place a handful of new ones; it is the
+  most expensive operation in the whole skill and the likeliest way to lose a
+  row. Issue #77.
+
+- **Read the columns you decide on, not the file.** The exclusion set needs
+  `ID` and `Status` — 16 531 bytes of a 499 320-byte ledger, **3.3%**. `## Log`
+  is 40% of that file and nothing reads it to decide anything; the `Note`
+  column is 78.5% of the ads table and is prose for the person, never parsed.
+  `skills/job-scan/scripts/ledger.py` reads the narrow view, and it knows that
+  **`\|` inside a cell is an escaped pipe rather than a column break** — ten
+  of those 474 rows carry one, and splitting on `|` shifts their columns and
+  corrupts their status silently.
 - **Never rewrite an `applied`, `rejected` or `no-go` row.** Those record what
   actually happened. A later scan may add to the note; it may not change the
   verdict. The one legitimate transition is `applied` → `rejected`, when the

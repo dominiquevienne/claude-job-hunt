@@ -43,8 +43,24 @@ they decline.
 ```bash
 JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
 test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
-cat "$JOB_HUNT_HOME/job-pipeline.md" 2>/dev/null
+S="${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts"
+python3 "$S/ledger.py" count                    # rows, and where the bytes are
+python3 "$S/ledger.py" index --excluded-only    # the exclusion set: id + status
+python3 "$S/ledger.py" rows --status todo       # the only rows this run edits
 ```
+
+**Do not `cat` the ledger.** Measured on a real one, 2026-09-02: 499 320 bytes,
+of which **`## Log` is 40% and nothing consults it to decide anything**, and
+the `Note` column is **78.5% of the ads table** and is prose for the person,
+never parsed. What step 0 decides — *which ids are never proposed again* —
+needs `ID` and `Status`: **16 531 bytes, 3.3% of the file.** Reading the whole
+thing spends a hundred thousand tokens to answer a question worth three
+thousand.
+
+**And `\|` inside a cell is an escaped pipe, not a column break.** Ten of those
+474 rows carry one; splitting a row on `|` shifts every column after it and
+produces a wrong *status*, which means an ad silently re-proposed or silently
+buried. `ledger.py` handles it — an `awk` one-liner does not. Issue #77.
 
 **No `config.yml` → this is a first run.** Say so in one line, then follow
 `shared/setup.md` in full before scanning anything. Do not improvise a profile
@@ -54,9 +70,14 @@ user has to clean by hand.
 **No ledger file** → create it from `templates/job-pipeline.example.md`.
 
 Then build the **exclusion set**: every `ID` in the ledger whose status is
-`applied`, `rejected`, `no-go` or `discarded`. Those are never proposed again.
-Rows still `todo` stay in the file and get refreshed in place rather than
-duplicated.
+`applied`, `rejected`, `no-go` or `discarded`. Those are never proposed again —
+`index --excluded-only` is exactly that list. Rows still `todo` stay in the
+file and get refreshed in place rather than duplicated, and `rows --status
+todo` gives them in full because those are the ones a run rewrites.
+
+**Note the row count from `count` before you write anything.** Step 6 ends with
+`verify --before <n>`, which refuses a ledger that came back with fewer rows
+than it went in with.
 
 **Build a second index at the same time: company name → existing rows.** The id
 check alone is not enough, because **the same ad carries a different id on every
@@ -347,8 +368,23 @@ So, at this step:
 ## 6 — Write the ledger
 
 Merge, don't overwrite — the rules are in `shared/pipeline-format.md`. Keep
-every existing row, refresh `todo` rows in place, append the new ones, sort by
-match descending within each status group, and append one `Log` line.
+every existing row, refresh `todo` rows in place, insert the new ones in their
+place within their status group, and append one `Log` line.
+
+**Insert; do not re-sort the table.** Re-sorting means re-emitting all 474
+rows, which is the write-side twin of `cat`-ing the file — the same cost paid
+again, and the occasion for a lost row. Each new row goes where its match puts
+it, and the file stays sorted because it was never unsorted.
+
+**Then check the invariant instead of asserting it:**
+
+```bash
+python3 "$S/ledger.py" verify --before <the count from step 0>
+```
+
+It exits 5 if the ledger came back shorter. `shared/pipeline-format.md` opens
+with *read it first, write it last, and never lose a row*; this is the last
+clause as a check.
 
 **The `Pay` column: record only what the board published.** Some boards attach a
 figure to the ad — jobup does — and when the adapter extracts one, put it in
