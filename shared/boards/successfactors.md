@@ -36,6 +36,19 @@ concluded the parameters did nothing.
   error.
 - `totalJobs` is reliable and is what the script reports against.
 
+
+## The open/closed check reads a `JobPosting` block, not a title
+
+**The tell, the two URL shapes and the numbers live in
+`shared/ats-open-check.md`** — one place, so a corrected figure cannot survive
+in a second copy. In short: a served vacancy carries exactly one
+`itemtype="…JobPosting"`, an id that does not resolve carries none and lands on
+the portal's `/errorpage/`, **and the vacancy URL has two shapes that differ by
+tenant** — reading only the first reported a live SICPA advert as unresolvable.
+
+`successfactors.py check --host … --id …` implements it, and **the slug is
+decorative**: the id alone rebuilds the URL. Issue #87.
+
 ## The locale is the trap, and it fails silently
 
 **A locale the tenant does not publish returns an EMPTY board with

@@ -59,6 +59,23 @@ def get(url):
         die(f"could not reach {urllib.parse.urlsplit(url).netloc}: {e}")
 
 
+def get_with_url(url):
+    """`get`, plus where it landed.
+
+    **The landing URL is half the signal here.** An id that does not resolve is
+    redirected to the portal's own error page, and a check that reads only the
+    body sees a 200 of the right size and has to guess.
+    """
+    try:
+        r = urllib.request.urlopen(
+            urllib.request.Request(url, headers={"User-Agent": UA}), timeout=45)
+        return r.getcode(), r.read().decode("utf8", "replace"), r.geturl()
+    except urllib.error.HTTPError as e:
+        return e.code, "", getattr(e, "url", url)
+    except Exception as e:  # noqa: BLE001 - network shape varies by platform
+        die(f"could not reach {urllib.parse.urlsplit(url).netloc}: {e}")
+
+
 def post(host, body):
     url = f"https://{host}{API}"
     data = json.dumps(body).encode()
@@ -156,10 +173,34 @@ def card(host, locale, r):
     }
 
 
+# The vacancy URL has **two shapes, and they are per tenant**. BCV serves
+# `/job/<slug>/<id>-<locale>`; SICPA serves `/job/<slug>/<id>/` and sends the
+# locale form to `/errorpage/?errortype=Exception`. Measured 2026-09-02, and it
+# matters more than it looks: with only the first shape, `check` on a LIVE
+# SICPA vacancy answered `unverified` — the wrong shape landed on the error
+# page, the error page equals the control, and the control test concluded that
+# the requisition does not resolve. **A live advert reported as unresolvable,
+# plausibly, in silence.** Issue #87.
+AD_SHAPES = ("https://{host}/job/{slug}/{jid}-{locale}",
+             "https://{host}/job/{slug}/{jid}/")
+ERROR_PATH = "/errorpage/"
+POSTING_RE = re.compile(r'itemtype="[^"]*JobPosting"', re.I)
+
+
 def read_ad(host, locale, jid, slug=""):
-    """The vacancy page is server-rendered, unlike /search/."""
-    status, body = get(f"https://{host}/job/{slug or 'x'}/{jid}-{locale}")
-    return status, body
+    """The vacancy page, whichever URL shape this tenant serves.
+
+    Returns `(status, body, url)`. A shape that redirects to the portal's
+    error page is not this tenant's shape; the next one is tried.
+    """
+    last = (0, "", "")
+    for shape in AD_SHAPES:
+        url = shape.format(host=host, slug=slug or "x", jid=jid, locale=locale)
+        status, body, landed = get_with_url(url)
+        last = (status, body, landed)
+        if status == 200 and ERROR_PATH not in landed and POSTING_RE.search(body):
+            return status, body, landed
+    return last
 
 
 # ---------------------------------------------------------------- commands --
@@ -203,8 +244,8 @@ def cmd_list(a):
             seen.add(jid)
             out = card(a.host, locale, r)
             if a.with_description:
-                status, body = read_ad(a.host, locale, jid,
-                                       r.get("unifiedUrlTitle") or "")
+                status, body, _ = read_ad(a.host, locale, jid,
+                                          r.get("unifiedUrlTitle") or "")
                 m = DESC_RE.search(body) if status == 200 else None
                 out["description"] = to_text(m.group(1))[:20000] if m else ""
             print(json.dumps(out, ensure_ascii=False))
@@ -236,11 +277,34 @@ def verdict_for(host, locale, jid):
     One control request settles it without knowing any of that: fetch an id that
     cannot exist, and compare. Same title -> this requisition does not resolve.
     """
-    status, body = read_ad(host, locale, jid)
+    status, body, landed = read_ad(host, locale, jid)
     if status != 200:
         return "unverified", f"HTTP {status}", "", body
     title = page_title(body)
-    _, control_body = read_ad(host, locale, CONTROL_ID)
+
+    # **The tell is the `JobPosting` block, not the title.** Measured on two
+    # tenants: a live vacancy carries exactly one `itemtype="…JobPosting"`
+    # (79 854 B on SICPA), an id that does not resolve carries none (42 956 B,
+    # and it redirects to the portal's error page). The block is binary; the
+    # title is not — BCV returns its chrome with an empty slot while SICPA
+    # returns `Jobs at SICPA`, **so a test on the shape of the title is
+    # tenant-specific and this one is not.** SuccessFactors joins Refline in
+    # `shared/ats-open-check.md`'s "the tell is a JobPosting block" category.
+    if POSTING_RE.search(body):
+        return ("open",
+                "HTTP 200 and the page carries a JobPosting block — the "
+                "advert is being served",
+                title, body)
+    if ERROR_PATH in landed:
+        return ("unverified",
+                f"HTTP 200 after a redirect to {landed} — the id does not "
+                f"resolve on this tenant. NOT proof it closed: a genuinely "
+                f"closed requisition has never been observed on this ATS",
+                title, body)
+
+    # No block and no error redirect: fall back to the control comparison,
+    # which is what carried this check before the block was measured.
+    _, control_body, _ = read_ad(host, locale, CONTROL_ID)
     control = page_title(control_body)
     if control and title.strip() == control.strip():
         return ("unverified",
@@ -249,7 +313,11 @@ def verdict_for(host, locale, jid):
                 "proof it closed: a genuinely closed requisition has never been "
                 "observed on this ATS",
                 title, body)
-    return "open", "HTTP 200, and the page differs from the invented-id control", title, body
+    return ("unverified",
+            "HTTP 200, no JobPosting block, and the page differs from the "
+            "invented-id control — this is neither a served advert nor a "
+            "recognised absence. Read the page before concluding anything",
+            title, body)
 
 
 def clean_title(raw, description):

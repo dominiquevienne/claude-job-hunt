@@ -141,8 +141,41 @@ The table is kept below as the record of what it used to answer.
   `/job/IT-Business-Analyst-domaine-Opérations-de-Marché/31130-fr_FR`.
 - Confirm the vendor from the page source: `rmkcdn` (i.e.
   `rmkcdn.successfactors.com`) or `/platform/bootstrap/`.
-- **Like Jobvite, it never signals absence with a status code.** The `<title>`
-  is the whole signal.
+- **Like Jobvite, it never signals absence with a status code.** **The tell is
+  a `JobPosting` block, present or absent** — the same shape as Refline below,
+  and it replaces the `<title>` test that used to carry this section.
+
+**Measured on two tenants, two dates, independently** — BCV 2026-08-27, SICPA
+2026-09-02:
+
+| Case | HTTP | bytes | `itemtype="…JobPosting"` | lands on |
+| :-- | --: | --: | --: | :-- |
+| a real vacancy | 200 | 79 854 | **1** | the vacancy |
+| an id that never existed | 200 | 42 956 | **0** | `/errorpage/?errortype=Exception` |
+| a **wrong slug** with a real id | 200 | 79 854 | **1** | the vacancy |
+
+**Why the block and not the title.** The two tenants do not return the same
+shell: BCV answers with its chrome and an empty title slot, SICPA with
+`Jobs at SICPA`. **A test on the shape of a title is therefore per tenant; the
+block is binary and is not.** The size gap (~80 kB against ~43 kB) is a third,
+weaker tell.
+
+**And the URL shape is per tenant too, which cost a false negative.** BCV
+serves `/job/<slug>/<id>-<locale>`; SICPA serves `/job/<slug>/<id>/` and sends
+the locale form to the error page. With only the first shape, `check` on a
+**live** SICPA vacancy answered *unverified* — the wrong shape landed on the
+error page, the error page matched the control, and the control test concluded
+the requisition did not resolve. **A live advert reported as unresolvable,
+plausibly and in silence.** The adapter now tries both shapes and stops at the
+one that carries a block.
+
+**The slug is decorative**, confirmed on a second host:
+`/job/Zzz-Not-A-Job/<real id>/` serves the whole vacancy. **So the id alone
+rebuilds a check URL** — there is no need to keep the slug.
+
+**Two tenants, two dates — not a property of the SuccessFactors family.** These
+are two independent deployments of the same vendor, so the repetition
+corroborates; it does not generalise.
 
 | Response | Reading |
 | :-- | :-- |
@@ -200,6 +233,16 @@ page → request it → look for a non-empty job title in `<title>`. The same pa
 > invented-id state was tested, and a closed requisition may well keep serving
 > its description. **Affirmative direction only:** a real job title means listed;
 > an empty title slot means *ask another way*, never *the ad is dead*.
+
+**The block measurement improves the tell and does not widen that conclusion.**
+Block present → the advert is being served. Block absent → **the id does not
+resolve**, which is still not proof that it closed. What was tested is ids that
+never existed, on both tenants; a requisition that really closed has never been
+observed here.
+
+**The missing measurement, named rather than assumed:** one tenant where a
+recently closed vacancy is known would settle it in a single request. Until
+somebody has it, this section stays affirmative-only.
 
 #### Corrected 2026-08-28: there is an API, and the title test needs a control
 
