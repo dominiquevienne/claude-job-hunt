@@ -58,16 +58,16 @@ import json
 import re
 
 from _ldjson import absent_reason, postings
+
+from _match import classify as mark, share
 import sys
 import time
-import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 
 from _zero import zero_note
 
-from _locations import fold, matches_city
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
@@ -259,48 +259,18 @@ def list_path(site, keyword, location=None, page=1):
     return path
 
 
-def flatten(text):
-    """Padded, folded text for whole-word containment tests.
-
-    The folding itself now lives in `_locations.fold`, shared with every other
-    adapter — this file had the only correct copy and keeping it private is
-    how a rule becomes a habit in one script and a bug in ten (issue #65).
-    The padding is local: it makes ` term ` match a whole word rather than a
-    prefix.
-    """
-    return " " + fold(text) + " "
-
-
 def classify(row, keyword, location):
     """Mark ONE card, from the card's own title and location.
 
     The payload counts the padding but does not say which card is which
-    (`report_mix`), so this is the only per-row attribution available. It is a
-    literal test and it is wrong in known ways — see stepstone.md, *Marking a
-    card*: a Dutch title under an English search reads as padding, a keyword
-    that lives in the description and not the title reads as padding, and a
-    location field naming the region rather than the city reads as regional.
-    Hence `semantic?` and `regional?` keep their question marks; only
-    `literal` is asserted.
+    (`report_mix`), so this is the only per-row attribution available. **The
+    test itself now lives in `_match.py`**, shared with every adapter that
+    knows what was searched for: this file had the only copy, and a rule kept
+    private is how it becomes a habit in one script and a bug in ten (#62,
+    #65). Its three known weaknesses are documented there, and they are why
+    only `literal` is asserted.
     """
-    title = flatten(row.get("title"))
-    where = flatten(row.get("location_text"))
-    if location:
-        # `matches_city` compares the first segment with diacritics folded, so
-        # "Zürich, Zurich, CH" and "Zurich, Zurich, CH" — both live on one
-        # page of results — do not land on opposite sides of the test.
-        if not matches_city(row.get("location_text"), location) \
-                and fold(location) not in where:
-            return "regional?", ("the card's location does not contain "
-                                 f"'{location}'")
-    if keyword:
-        terms = [t for t in flatten(keyword).split() if len(t) > 2] \
-            or flatten(keyword).split()
-        missing = [t for t in terms if f" {t} " not in title]
-        if missing:
-            return "semantic?", ("the title does not contain "
-                                 + ", ".join(missing))
-    return "literal", None
+    return mark(row.get("title"), row.get("location_text"), keyword, location)
 
 
 def card(site, ident, block):

@@ -348,6 +348,29 @@ Mark a score **provisional (`~`)** when it comes from the card only, because the
 description was not opened. Never present a provisional score as if the ad had
 been read.
 
+### A full page is not a page of matches
+
+**A board's reported total is not a match count** — and on the boards measured
+it is not always a count of open adverts either. `stepstone.nl` reports 26 for
+*software developer*, holds **one**, and serves a full page of 25 cards that
+nothing in the markup distinguishes. LinkedIn does it on zero-result searches
+with suggestion cards. Others count history, or posts rather than adverts.
+
+**Never report a board's own total as "ads matching you".** Report what was
+read and what was kept, and where the board publishes a decomposition — as
+StepStone does — pass it on.
+
+**Where an adapter marks its rows** (`_match.py`: `literal`, `semantic?`,
+`regional?`), carry the marker into the `Note` and say the share out loud in
+the run report: *"12 of 12 rows are flagged as padding rather than matches"*.
+**Never drop a row on that verdict** — the test is a literal one and it is
+wrong on another language, on a keyword that lives in the description, and on a
+location naming a region. It is a lead for the reader, not a filter.
+
+**And say which boards did the marking**, because most do not: today that is
+StepStone's family. An unmarked sweep is not a clean one, it is an unmeasured
+one. Issue #62, and `shared/plausible-and-false.md` for the class.
+
 ### The right to work: flag it here, and never discard for it
 
 `config.yml` may carry `location.work_authorization` — the countries and zones

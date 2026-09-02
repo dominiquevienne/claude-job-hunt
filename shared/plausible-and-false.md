@@ -68,6 +68,37 @@ all a card built one line above. Both were clean, well-formed and false.
 provenance is the question whoever reads it must ask — and *your own script* is
 a provenance like any other.
 
+## One level up: a count is a claim about *something*, and rarely about matches
+
+The user's question is **how many ads match me**. A board answers a different
+question, and there are at least five different "different questions" —
+measured 2026-09-02:
+
+| What the board shows | What it counts |
+| :-- | :-- |
+| StepStone NL, *software developer*: **26** | 1 literal match and 25 related ads, by the platform's **own** decomposition |
+| LinkedIn, a zero-result search | 7–8 suggestion cards, unmarked (#46) |
+| `greatugandajobs.com`: **102 924 Jobs Posted** | a historical cumulative total |
+| `enbek.kz`: **44 521 ads for 78 421 posts** | two correct counters measuring different objects |
+| `mabumbe.com`: **44 156** | a WordPress archive counter inflated with expired ads |
+| Colombia's public API: **262 275 offers** | true — but the corpus is grouped by operator, so a share read off consecutive pages measures the start of the index |
+
+**`stepstone.nl` holds one Dutch "software developer" ad and serves a full page
+of 25 cards.** Nothing in the markup distinguishes the other 24 — and **the
+padding is heaviest exactly where the board is thinnest**, which is the worst
+possible place for it.
+
+**So: a reported total is not a match count, and it is not always a count of
+open adverts either.** Where a board publishes its own decomposition, record
+it. Where it does not, do not treat the total as matches.
+
+**And mark the rows rather than dropping them.** `_match.py` marks each card
+`literal`, `semantic?` or `regional?` from the card's own title and town — and
+only `literal` is asserted, because the test is wrong on another language, on a
+keyword that lives in the description, and on a location field naming a region.
+**A test wrong in three known directions must not silently remove rows**; it
+gives the reader a lead and says so on stderr while the run is happening.
+
 ## The rules
 
 **1. Make the confusion impossible in the name, not in the documentation.** A
