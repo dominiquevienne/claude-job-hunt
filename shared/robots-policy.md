@@ -98,6 +98,36 @@ ever**, because there is no status to read and nothing to decide on. Its
 remedy is the transport and the pace — HTTP/1.1, a warmed host, one slow retry
 and then a declared truncation — not another client.
 
+### Proving a family: the md5 answers one question, the diff answers another
+
+Multi-country boards are usually one platform wearing national domains, and
+`robots.txt` is the cheapest test of that. **But the test has two forms, and
+using the wrong one gives the wrong answer.**
+
+> **The md5 answers "is this the same file". The diff answers "is this the
+> same platform". When the file contains the hostname — and every `Sitemap:`
+> line does — the md5 always diverges and tells you nothing.**
+
+Both cases, measured 2026-09-02:
+
+- **Computrabajo declares no sitemap**, so the md5 is decisive:
+  `cfcbd02061ac…`, 874 bytes, **byte-identical across eighteen Latin American
+  domains with no exception**. One hash, one answer, eighteen countries.
+- **The Jobint group — Bumeran, Konzerta, Laborum — gives five different
+  md5s and five different sizes**, which refutes the hypothesis at first
+  glance. Compare the bodies **without the `Sitemap:` lines** and four of the
+  five brands are identical to the bit, with `bumeran.com.pe` diverging by
+  **exactly one line**: a template, one exception, one country — the SEEK
+  shape.
+
+**And the strongest evidence there was not in any hash.** Laborum and Konzerta
+declare sitemaps named **`sitemap_avisos_bum.xml`** — the `_bum` of Bumeran
+surviving under the other brands' names. A filename outlived the rebrand, and
+no checksum would have found it.
+
+So: **hash when the file carries nothing host-specific, diff when it does, and
+read the filenames either way.**
+
 ### Five words for the verdict, used identically in every board file
 
 | Word | Means |
