@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch ads from the StepStone platform — nine domains, six inventories, one
+"""Fetch ads from the StepStone platform — eleven domains, six inventories, one
 result list that pads itself with ads that do not match.
 
-One application serves Totaljobs, Jobsite, Caterer, CWJobs, IrishJobs, NIJobs
-and StepStone DE/AT/BE/NL. They run **the same bundle** (`client-bundle.js`,
+One application serves Totaljobs, Jobsite, Caterer, CWJobs, IrishJobs, NIJobs,
+Jobs.ie and StepStone DE/AT/BE/NL. They run **the same bundle** (`client-bundle.js`,
 v4.107.0 on 2026-09-02), the same design system (`data-genesis-element`), the
 same card contract (`data-at="job-item"`) and the same ad markup, and they are
 told apart by one number — `siteId`, in `window.__PRELOADED_STATE__.header`.
@@ -84,6 +84,9 @@ SITES = {
                          seg="/jobs", ad="/job/x/y-job{id}", pages=None,
                          inventory="ie"),
     "nijobs":       dict(host="www.nijobs.com", country="GB-NIR", lang="en-GB",
+                         seg="/jobs", ad="/job/x/y-job{id}", pages=None,
+                         inventory="ie"),
+    "jobs-ie":      dict(host="www.jobs.ie", country="IE", lang="en-IE",
                          seg="/jobs", ad="/job/x/y-job{id}", pages=None,
                          inventory="ie"),
     "stepstone-de": dict(host="www.stepstone.de", country="DE", lang="de-DE",

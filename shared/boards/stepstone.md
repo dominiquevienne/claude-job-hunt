@@ -1,7 +1,7 @@
 # Board adapter — StepStone
 
-**One platform, nine domains, six inventories, six countries.** Totaljobs,
-Jobsite, Caterer, IrishJobs, NIJobs and StepStone DE/AT/BE/NL are the same
+**One platform, eleven domains, six inventories, six countries.** Totaljobs,
+Jobsite, Caterer, IrishJobs, NIJobs, Jobs.ie and StepStone DE/AT/BE/NL are the same
 application: the same JavaScript bundle, the same markup contract, the same ad
 schema. They are told apart by one number.
 
@@ -16,7 +16,7 @@ account and no key.
 
 ## The identity, established rather than assumed
 
-All nine serve `client-bundle.js?v=4.107.0`, the same Genesis design system
+All eleven serve `client-bundle.js?v=4.107.0`, the same Genesis design system
 (`data-genesis-element` on every node), the same `window.__PRELOADED_STATE__`,
 the same `VISITOR_ID` cookie and the same Akamai front. The result cards carry
 `data-at="job-item"` / `job-item-title` / `job-item-company-name` /
@@ -38,25 +38,28 @@ What differs is `siteId`, in `__PRELOADED_STATE__.header`:
 | `stepstone.nl` | 270 | NL | `/banen--…-inline.html` | nl |
 | `nijobs.com` | 300 | GB-NIR | `/job/<slug>/<employer>-job<id>` | ie |
 | `irishjobs.ie` | 301 | IE | same | ie |
+| `jobs.ie` | 302 | IE | same | ie |
 
 Checked and **outside** the family: `stepstone.fr` redirects to the group's
 corporate site and is not a board; `stepstone.lu` redirects to `en.jobs.lu`,
 which is a different platform; `milkround.co.uk` did not answer.
 
-**Six inventories, not nine.** Ad ids were tried across domains, and they do not
-travel:
+**Six inventories, not eleven.** Ad ids were tried across domains, and they do
+not travel:
 
 | Tried | Result |
 | :-- | :-- |
 | A Jobsite card id on `totaljobs.com` | **200, the same ad** — Jobsite is Totaljobs |
 | A Caterer card id on `totaljobs.com` | **200** — Caterer is Totaljobs |
 | An IrishJobs id on `nijobs.com`, and the reverse | **200 both ways** — one island-of-Ireland inventory |
+| A Jobs.ie id on `irishjobs.ie`, and the reverse | **200 both ways** — Jobs.ie is that same inventory |
+| A Jobs.ie id on `totaljobs.com` | **404** |
 | An IrishJobs id, a NIJobs id on `totaljobs.com` | **404** — Ireland is not the UK board |
 | A `stepstone.de` id on `stepstone.at` | **404** |
 | A `stepstone.be` id on `stepstone.nl`, and the reverse | **404** |
 
-So the ledger sees `uk` (four skins), `ie` (two skins), and DE, AT, BE, NL one
-each. **Enabling two skins of one inventory is a duplicate generator**, and the
+So the ledger sees `uk` (four skins), `ie` (**three** skins), and DE, AT, BE,
+NL one each. **Enabling two skins of one inventory is a duplicate generator**, and the
 card carries `inventory` so the ledger can say so.
 
 ## The transport failure, which comes first because it has no status code
@@ -165,7 +168,7 @@ two different mechanisms:
 | `totaljobs.com` | `Disallow: /jobs*?page=*`, then `Allow: /jobs/*?page=2$` … `page=5$` | **5** |
 | `cwjobs.co.uk` | the same `Disallow`, and **the `Allow` lines for 2–5 are commented out** (dated 04/03/25) | 1 |
 | `jobsite.co.uk` | `Disallow: /*?page=*`, `/*page=*`; its `Allow` commented out | 1 |
-| `caterer.com`, `irishjobs.ie`, `nijobs.com` | `Allow: /*?q*&page=` **outranks** `Disallow: /*&page=` — the longer rule wins | result set |
+| `caterer.com`, `irishjobs.ie`, `nijobs.com`, `jobs.ie` | `Allow: /*?q*&page=` **outranks** `Disallow: /*&page=` — the longer rule wins | result set |
 | `stepstone.de/at/be/nl` | `Disallow: /*?*` (any query string), reopened by `Allow: /jobs/*?q=*`, closed again by `Disallow: /jobs/*?q*&*` | 1 |
 
 The StepStone four are the strictest and by a different route: they never
@@ -180,7 +183,7 @@ cards a page that is 25 ads per search on five sites, 125 on Totaljobs, and the
 whole result set on Caterer, IrishJobs and NIJobs.
 
 `Amazonbot` is banned on Totaljobs, CWJobs and Caterer. **No AI agent is named
-anywhere, for or against**, on any of the nine. Apex and `www` are identical
+anywhere, for or against**, on any of the eleven. Apex and `www` are identical
 everywhere (every apex 301s to `www`, byte-identical files). No `Sitemap:` line
 on any of them.
 
@@ -214,15 +217,17 @@ boards:
 | Key | Required | Notes |
 | :-- | :-- | :-- |
 | `enabled` | yes | False or absent → not scanned |
-| `sites` | yes | Any of `totaljobs`, `jobsite`, `caterer`, `irishjobs`, `nijobs`, `stepstone-de`, `stepstone-at`, `stepstone-be`, `stepstone-nl`. **`cwjobs` is refused** |
+| `sites` | yes | Any of `totaljobs`, `jobsite`, `caterer`, `irishjobs`, `nijobs`, `jobs-ie`, `stepstone-de`, `stepstone-at`, `stepstone-be`, `stepstone-nl`. **`cwjobs` is refused** |
 | `searches` | yes | A bare result list is the whole board, and this platform pads a result list. The script refuses a search with neither `keyword` nor `location` |
 | `pages` | no | Above a site's robots ceiling the script errors rather than fetching |
 | `delay` | no | Default 2.0 s. The platform goes silent under a burst, without a 429 |
 
 **Two skins of one inventory is a configuration mistake**, not a wider sweep:
-`totaljobs` + `jobsite`, or `irishjobs` + `nijobs`, return the same ads under
-two ledger keys. Pick the general one — `totaljobs`, `irishjobs` — unless the
-vertical is the point (`caterer` for hospitality).
+`totaljobs` + `jobsite`, or any two of `irishjobs` / `nijobs` / `jobs-ie`,
+return the same ads under two ledger keys. Pick the general one — `totaljobs`,
+`irishjobs` — unless the vertical is the point (`caterer` for hospitality) or
+the market is (`nijobs` reaches the same inventory as IrishJobs; it is a
+Northern Irish presentation of it, not a Northern Irish board).
 
 No credentials, no login, no browser.
 
@@ -354,6 +359,7 @@ python3 $S count  --site totaljobs --keyword "software developer" --location lon
 python3 $S search --site stepstone-de --keyword softwareentwickler --limit 3
 python3 $S search --site irishjobs --keyword "software developer" --limit 4  # € Not Disclosed
 python3 $S ad     --site stepstone-de --id 14330848
+python3 $S count  --site jobs-ie --keyword chef     # 225 reported, 224 literal
 python3 $S search --site cwjobs --keyword x        # refuses, with the measurement
 python3 $S search --site jobsite --keyword chef --pages 3   # refuses, robots ceiling
 ```

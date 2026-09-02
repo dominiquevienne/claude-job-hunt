@@ -203,8 +203,10 @@ than unverified.)*
 
 **Ireland now has a second board, and it is not a public service.**
 `irishjobs.ie` turned out to be the StepStone platform — `siteId` 301 on the
-same bundle as Totaljobs — so `stepstone.md` covers it, alongside `nijobs.com`
-for Northern Ireland, which shares its inventory (ids resolve both ways).
+same bundle as Totaljobs — so `stepstone.md` covers it, alongside `jobs.ie`
+(`siteId` 302) and `nijobs.com`, which serve **the same inventory**: an id from
+any of the three resolves on the other two, and none of them resolves on
+Totaljobs. Three domains, one Irish board; enable one.
 The two Irish boards are complementary rather than redundant: this one is the
 state's, where more than half the rows are placement schemes and there is no
 salary at all; IrishJobs is the private market, which names a salary figure on
