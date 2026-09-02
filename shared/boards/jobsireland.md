@@ -201,6 +201,16 @@ that was a guess, and the measured figure is four. Its key still needs an
 account this plugin cannot open on the user's behalf, so it stays unbuilt rather
 than unverified.)*
 
+**Ireland now has a second board, and it is not a public service.**
+`irishjobs.ie` turned out to be the StepStone platform — `siteId` 301 on the
+same bundle as Totaljobs — so `stepstone.md` covers it, alongside `nijobs.com`
+for Northern Ireland, which shares its inventory (ids resolve both ways).
+The two Irish boards are complementary rather than redundant: this one is the
+state's, where more than half the rows are placement schemes and there is no
+salary at all; IrishJobs is the private market, which names a salary figure on
+**27 of 100** cards and says `€ Not Disclosed` on the other 73. Neither one is
+Ireland on its own.
+
 ## Verification
 
 ```bash
