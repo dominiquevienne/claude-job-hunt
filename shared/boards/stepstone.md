@@ -126,7 +126,7 @@ row `search` writes carries `match` and `match_reason`:
 | `match` | Test |
 | :-- | :-- |
 | `regional?` | a location was asked for and the card's location text does not contain it |
-| `semantic?` | every significant keyword term is absent from the title |
+| `semantic?` | any significant keyword term is missing from the title |
 | `literal` | neither — the card says what was searched for |
 
 Accents and case are folded first, so *Softwareentwickler:in* and
