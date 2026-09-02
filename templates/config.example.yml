@@ -217,6 +217,11 @@ boards:
     # NOTE: Indeed serves anti-bot challenges. They are YOURS to solve — the
     # plugin stops and hands over rather than working around one.
     enabled: false
+    # The country site you actually browse. **The `<iso2>.indeed.com` pattern
+    # holds for 49 countries and lies for a few**: `my.indeed.com` is Indeed's
+    # profile login, not Malaysia (that is `malaysia.indeed.com`), and
+    # `us.indeed.com` does not exist — the United States is `www.indeed.com`.
+    # `ru.indeed.com` refuses every crawler. See `shared/boards/indeed.md`.
     domain: "ch.indeed.com"
     language: "fr"
 

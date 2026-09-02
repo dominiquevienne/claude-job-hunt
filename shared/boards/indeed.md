@@ -25,8 +25,39 @@ boards:
 | Key | Required | Notes |
 | :-- | :-- | :-- |
 | `enabled` | yes | False or absent → not scanned |
-| `domain` | yes | The country site the user actually browses. **No default**: guessing the country silently searches the wrong market |
+| `domain` | yes | The country site the user actually browses. **No default**: guessing the country silently searches the wrong market. Read the host table above before writing this: `my.indeed.com` is not Malaysia, `us.indeed.com` does not exist |
 | `language` | no | `hl=` parameter. Defaults to the site's own |
+
+### The host is `<iso2>.indeed.com` — except where it is not
+
+**`my.indeed.com` is not Malaysia.** At Indeed the `my.` prefix is *my
+profile*: it answered `403` on 2026-09-02 and, when issue #64 measured it, a
+`200` carrying **126 kB of login page** at `/robots.txt`. **Malaysia is
+`malaysia.indeed.com`** — 13 097 bytes, `text/plain`, the same file as every
+other country.
+
+**Swept 2026-09-02, 55 ISO-2 codes plus three named hosts**, reading only
+`/robots.txt`:
+
+| | |
+| :-- | :-- |
+| Country sites on **one identical file** — md5 `674618fb2278`, 13 097 B | 49 codes, plus `malaysia.` and `www.` |
+| **`th.indeed.com` diverges** — 13 164 B, four lines | one exception, and only just |
+| **`ru.indeed.com` is `User-agent: * / Disallow: /`** — 25 bytes | **a total refusal**, on a host whose siblings are wide open |
+| `gb` **redirects** to `uk.indeed.com` | both work; `uk` is the canonical |
+| **`my`** | the profile login, not Malaysia |
+| **`us`, `ke`** | **no such host** — the United States is `www.indeed.com` |
+
+**So the pattern holds for 49 of 55 and the exceptions are not guessable.**
+Check the host before configuring it, and check it by reading `/robots.txt`:
+a country site answers `text/plain`, and anything else is a different product.
+`shared/robots-policy.md` makes that a precondition (#60, #64) and
+`skills/job-scan/scripts/_robots.py` enforces it at run time.
+
+**And `ru.indeed.com` refuses every crawler.** The guard already stops there
+— `User-agent: *` with `Disallow: /` is one of the two states `_robots.py`
+refuses on — but the reason is worth knowing before somebody reads it as a
+broken adapter.
 
 ## Prerequisites — read the bot-detection section first
 
