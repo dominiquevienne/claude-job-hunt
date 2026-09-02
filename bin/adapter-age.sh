@@ -1,13 +1,28 @@
 #!/usr/bin/env bash
 # claude-job-hunt — which adapters are due for re-verification.
 #
-# Every file in shared/boards/ carries the date it was last checked against the
-# live site, because shared/boards/README.md requires it: "Date what you
-# verified, and say when a selector was last confirmed. Boards change their
-# markup; a dated note lets the next person tell a broken adapter from a broken
-# assumption."
+# THE FIELD IS A CONTRACT; A DATE IN THE PROSE IS A GUESS. This script used to
+# read every date it could find in a file and take the oldest as a verification
+# date. On 2026-09-02 it reported jobbkk as 1 384 days stale, because
+# jobbkk.md quotes `created_at: 2022-11-17` — a date this repository MEASURED
+# on a live ad, to document a board that refreshes ancient postings.
 #
-# This reads those dates back and sorts by the OLDEST claim still standing:
+# That is issue #67 turned on our own tooling: a value that is present, well
+# formed, and does not mean what the reader thinks. Five board files had
+# documented that pattern before it caught the tool that looks for it.
+# **A script that reads "any date" has no field — it has a heuristic.**
+#
+# So the source of truth is one explicit header line, near the top of a file:
+#
+#     <!-- verified: 2026-09-02 -->
+#
+# A file without one is reported UNDECLARED, not due: the absence of a header
+# is not an age, and guessing is what caused this. The migration is
+# incremental — every file touched by ordinary work gains the line — with the
+# good side effect that recording a verification becomes deliberate rather
+# than a by-product of having quoted a date somewhere.
+#
+# This reads those headers back and sorts by the oldest:
 #
 #   bin/adapter-age.sh [days]      # default 30
 #
@@ -62,16 +77,20 @@ for f in "$ROOT"/shared/boards/*.md "$ROOT"/shared/ats-open-check.md; do
     continue
   fi
 
-  dates="$(grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$f" | sort -u)"
-  if [ -z "$dates" ]; then
+  # The declared field, and nothing else, sets the age.
+  declared="$(grep -oE '<!--[[:space:]]*verified:[[:space:]]*20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$f" \
+              | grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' | sort -u | head -1)"
+  if [ -z "$declared" ]; then
     UNDATED="$UNDATED$f
 "
     continue
   fi
-  oldest="$(echo "$dates" | head -1)"
-  newest="$(echo "$dates" | tail -1)"
-  count="$(echo "$dates" | wc -l | tr -d ' ')"
-  ROWS="$ROWS$oldest $newest $count $f
+  # Dates in the body are still worth a note — a section may have outrun the
+  # header — but they never set the age. They are data, not metadata.
+  prose="$(grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$f" | sort -u)"
+  newest="$(echo "$prose" | tail -1)"
+  count="$(echo "$prose" | wc -l | tr -d ' ')"
+  ROWS="$ROWS$declared $newest $count $f
 "
 done
 
@@ -86,9 +105,11 @@ echo "$ROWS" | grep -v '^$' | sort | while read -r oldest newest count f; do
   else
     mark="[ ok  ]"; note="fresh"
   fi
-  # A file re-verified in part still carries its old claims; say so.
-  if [ "$oldest" != "$newest" ]; then
-    note="$note; $count distinct dates, newest $newest — parts of this file are older than its header"
+  # A body mentioning dates later than the declared one is worth a glance: a
+  # section may have been re-verified while the header was not — or the file
+  # may simply quote measured data, which is legitimate and common.
+  if [ "$newest" \> "$oldest" ]; then
+    note="$note; body mentions $count date(s), latest $newest — check whether a section outran the header"
   fi
   printf '%s %-22s %-12s %5sd   %s\n' "$mark" "$name" "$oldest" "$a" "$note"
 done
@@ -104,7 +125,9 @@ fi
 
 if [ -n "$UNDATED" ]; then
   echo
-  echo "No date at all — worse than stale, because nothing says when it was true:"
+  echo "UNDECLARED — no <!-- verified: YYYY-MM-DD --> header. Not stale and not"
+  echo "fresh: unknown. Add the line next time you touch the file, carrying the"
+  echo "date you actually re-ran it against the live site:"
   echo "$UNDATED" | grep -v '^$' | while read -r f; do
     echo "  [ !! ] $(basename "$f" .md)"
   done
@@ -112,7 +135,7 @@ fi
 
 echo
 echo "Re-verifying means running the adapter against the live site and updating"
-echo "its date — not re-reading it. Every defect found on 2026-08-28 was a rule"
+echo "its <!-- verified: --> header — not re-reading it. Every defect found on 2026-08-28 was a rule"
 echo "generalised one step past what had been observed, and none of them were"
 echo "visible on re-reading. When a board has genuinely changed, that is a bug"
 echo "in the plugin: report it upstream with the board-request skill."

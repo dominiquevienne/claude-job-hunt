@@ -1,5 +1,7 @@
 # Board adapter — StepStone
 
+<!-- verified: 2026-09-02 -->
+
 **One platform, eleven domains, six inventories, six countries.** Totaljobs,
 Jobsite, Caterer, IrishJobs, NIJobs, Jobs.ie and StepStone DE/AT/BE/NL are the same
 application: the same JavaScript bundle, the same markup contract, the same ad

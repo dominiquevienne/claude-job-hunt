@@ -1,5 +1,7 @@
 # Board adapter — Computrabajo (18 Latin American countries)
 
+<!-- verified: 2026-09-02 -->
+
 **Eighteen national sites, one adapter, and one rule file with no exception.**
 `co cl pe mx ar ec ve cr pa gt bo do uy sv hn ni py pr` — every one of them
 serves the same 874-byte `robots.txt`, **md5 `cfcbd02061ac…`, identical on all

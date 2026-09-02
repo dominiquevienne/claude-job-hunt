@@ -1,5 +1,7 @@
 # Board adapter — jobup.ch
 
+<!-- verified: 2026-09-02 -->
+
 Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud).
 **The sibling has now been verified** (`jobs-ch.md`, 2026-08-28): same DOM, same
 selectors, and — the part that matters — **the same ad ids**. An ad on both

@@ -339,10 +339,30 @@ Two rules for anything added here:
 bin/adapter-age.sh [days]      # default 30
 ```
 
-Reads the dates back out of every file here plus `shared/ats-open-check.md`,
-sorts by the oldest claim still standing, and flags anything past the threshold
-— or carrying no date at all, which is worse than stale because nothing says
-when it was true. A file whose heading says it was **never verified against the
+**Every board file declares when it was last run, in one line near the top:**
+
+```
+<!-- verified: 2026-09-02 -->
+```
+
+That field, and nothing else, sets the age. `adapter-age.sh` reads it out of
+every file here plus `shared/ats-open-check.md`, sorts by the oldest, and
+flags anything past the threshold. A file with **no header** is reported
+`UNDECLARED` — not stale, not fresh, *unknown* — and the line is added the
+next time the file is touched, carrying the date it was actually re-run.
+
+**Why a field and not a date in the prose.** The script used to read any date
+it could find and take the oldest. On 2026-09-02 it called `jobbkk` 1 384 days
+stale, because `jobbkk.md` quotes `created_at: 2022-11-17` — a date this
+repository *measured* on a live ad, to document a board that refreshes ancient
+postings. A present, well-formed value that does not mean what the reader
+thinks: **issue #67, in our own tooling, after five board files had documented
+the pattern.** Parsing prose after a marker would have been the same mistake
+as anchoring on `[data-cy="…"]` instead of `ld+json` — a convention the next
+turn of phrase breaks. A field is a contract.
+
+It has a good side effect: **recording a verification is now deliberate**. A
+file cannot be refreshed by accident because somebody quoted a date in it. A file whose heading says it was **never verified against the
 live site** is pulled out of the age ranking entirely and listed under its own
 `[ !! ]` — a draft is not a stale adapter, and its drafting date is not a
 verification date. It changes nothing and always exits 0: **a stale adapter is

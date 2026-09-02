@@ -1,5 +1,7 @@
 # Board adapter — Adzuna
 
+<!-- verified: 2026-09-02 -->
+
 An aggregator with **one API for nineteen countries**, where the country is a
 path segment. One adapter reaches Switzerland, France, Germany, Austria,
 Belgium, the Netherlands, Italy, Spain, Poland, the United Kingdom, the United

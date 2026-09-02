@@ -1,5 +1,7 @@
 # Board adapter — jobs.ch
 
+<!-- verified: 2026-09-02 -->
+
 Swiss board, German-speaking Switzerland. **Same platform as jobup.ch
 (JobCloud)**, and this file exists because "same platform" turned out to mean
 *the same DOM and the same ad ids* — which is a much stronger statement than it
