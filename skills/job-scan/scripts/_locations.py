@@ -58,9 +58,22 @@ purpose:
   not normalised into one. **Only a measurement is affected, and the honest fix
   for a measurement is to say what it measures.**
 
-So a share computed over these labels is a **label concentration**, and it is a
-**lower bound** on the city's. Call it that wherever it is published: the
-caveat belongs in the name, not in a footnote (#67, #85).
+So a share computed over these labels is a **label concentration**, not the
+city's — and **which of the two naive divisions you used decides whether it is
+a bound at all.** Nothing in this repository computes one; this is the rule for
+whoever publishes it:
+
+| Divide the dominant label by | Error |
+| :-- | :-- |
+| **every card of the market** | **always low — an honest lower bound.** Taipei reads 24% where the city holds 58% |
+| the cards *sharing its first segment* | **no bound in either direction.** Tel Aviv reads **90%** where the city's share is **45%** — 35 of 39, because the other 39 cards of the same city were dropped from the denominator too |
+
+**The second one amputates the denominator as well as the numerator**, which is
+exactly how it climbs above the truth. **Only the first may be called a lower
+bound**, and the caveat belongs in the name rather than a footnote (#67, #85).
+
+*(The Taipei and Tel Aviv figures come from the country surveys of 2026-09-02
+and are recorded here, not measured here.)*
 
 **One more reason this helper does not audit itself.** The metric that found
 the Israeli case had also *missed* it for weeks, because it grouped labels by

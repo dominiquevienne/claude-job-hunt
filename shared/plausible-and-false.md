@@ -85,8 +85,17 @@ grouping by label reads **45%** where the city's share is **90%**.
 name — `Tel Aviv-Yafo` *is* a different name. The knowledge that two names
 denote one place is declared, never computed.
 
-So the fix is the one this page always reaches for: **put it in the name.**
-Publish it as a *label* concentration and as a **lower bound**. Writing a
+So the fix is the one this page always reaches for: **put it in the name** —
+and name the **denominator** with it, because the two naive divisions do not
+fail in the same direction:
+
+| Divide the dominant label by | Error |
+| :-- | :-- |
+| **every card of the market** | **always low — an honest lower bound** (Taipei: 24% read, 58% real) |
+| the cards *sharing its first segment* | **no bound at all** (Tel Aviv: 90% read, 45% real — 35 of 39, the city's other cards dropped from the denominator too) |
+
+**Only the first may be called a lower bound.** Publish it as a *label*
+concentration, over the whole market, and say so. Writing a
 translation table instead would be the failure this page catalogues — **an
 incomplete table looks exactly like a complete one**, corrected where somebody
 thought of it and silently not elsewhere. And the cheap version of that table
