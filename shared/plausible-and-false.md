@@ -140,6 +140,45 @@ keyword that lives in the description, and on a location field naming a region.
 **A test wrong in three known directions must not silently remove rows**; it
 gives the reader a lead and says so on stderr while the run is happening.
 
+## The flag is part of the measurement, and it destroys evidence
+
+**Every convenience flag is a transformation.** `--compressed` replaces the
+file with its transfer encoding; `-L` replaces the response with the last
+response in a chain. **Both are the right default for fetching and the wrong
+default for measuring**, and neither raises anything.
+
+| Flag | What it hid | Where |
+| :-- | :-- | :-- |
+| `--compressed` | **sizes 2 to 7 times too small** — `%{size_download}` reports bytes *transferred* | four files measured at 373, 964, 133 035 and 219 309 against real sizes of 1 335, 2 190, 912 986 and 1 511 079 |
+| `--compressed`, again | **3 255 reported against 5 582 counted** — on a WAF page whose *size was the signature* | a second occurrence, on a measurement that used size as its tell |
+| `-L` | **a `302` reported as "never returns an error status"** | Jobvite: both a real and an invented token `302` to `?invalid=1`, and the operator names the reason in the query. The file had built an oracle on two title strings that no longer exist |
+| `-L` | **a redirect loop read as a dead site** — `curl` gives up at the fiftieth hop | two hosts, where the truth is a trailing-slash loop and not a failure |
+
+**The rules:**
+
+1. **Probe without the flag first.** Add it once you know what it hides.
+2. **Report the status of the first response, not the last** — and where a
+   chain exists, record the chain.
+3. **A size is a property of the decompressed body.** A tool reporting
+   *"downloaded"* is not reporting a size.
+4. **Say which flags a measurement used.** A figure without its probe is not
+   reproducible — and *both* errors above were caught only by a second
+   measurement disagreeing with a first, which requires the method to be
+   written down.
+
+**And the same trap is the default in `urllib`, not only in `curl`.** It
+follows redirects silently: of 63 fetch sites in this repository, **four record
+where they landed** — and each of the four does so because the landing URL
+turned out to *be* the answer. An id that does not resolve redirects to an
+error page; an expired ad redirects to a category page carrying twenty valid
+postings. **Where a redirect changes what the response means, the landing URL
+is not diagnostics — it is half the result**, and `successfactors.py`,
+`jobup.py` and `tenant_offer.py` are the worked examples.
+
+*(That is a property of the default rather than a list of defects: most fetches
+legitimately want to follow. The rule is to notice when yours is not one of
+them.)*
+
 ## The rules
 
 **1. Make the confusion impossible in the name, not in the documentation.** A
