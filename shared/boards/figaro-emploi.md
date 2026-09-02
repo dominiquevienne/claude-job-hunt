@@ -1,5 +1,9 @@
 # Board adapter — Figaro Emploi (ex-Keljob)
 
+<!-- verified: 2026-09-02 -->
+
+**Re-tested 2026-09-02: the constraint holds.** `emploi.lefigaro.fr/robots.txt` still answers **HTTP 403** with 4 579 bytes of `text/html` to a scripted request.
+
 A large French generalist board — **244 815 ads in its own sitemap** — run by
 Figaro Classifieds, the group that also owns `cadremploi.md`.
 
