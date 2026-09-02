@@ -71,6 +71,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 API = "https://api.mycareersfuture.gov.sg/v2/jobs"
 WEB = "https://www.mycareersfuture.gov.sg/job/{uuid}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -254,6 +256,8 @@ def cmd_search(a):
         if a.pages and page >= a.pages:
             break
         time.sleep(a.delay)
+    if kept == 0:
+        note(zero_note("mycareersfuture", what=a.keyword))
     note(f"{kept} ads returned of {total} matching.")
     note("status mix: " + ", ".join(f"{k} {v}" for k, v in statuses.items())
          + ". `Re-open` is live — 9 of 40 sitemap ads carried it — and the "

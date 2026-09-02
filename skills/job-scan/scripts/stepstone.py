@@ -63,6 +63,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 from _locations import fold, matches_city
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -410,6 +412,8 @@ def cmd_search(a):
     total = meta.get("total")
     ext = meta.get("extension") or {}
     main = ext.get("main")
+    if kept == 0:
+        note(zero_note("stepstone", what=a.keyword, where=a.location))
     note(f"{kept} ads returned from {a.site}; the board reported {total} "
          f"({main} literal).")
     note("marked per card: "

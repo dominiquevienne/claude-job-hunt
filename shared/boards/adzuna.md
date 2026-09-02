@@ -122,6 +122,17 @@ the ads are written in**, and for Switzerland that is mostly German. The
 `categories` endpoint (30 tags on CH, `it-jobs`, `engineering-jobs`, …) is the
 language-independent route.
 
+**Since 2026-09-02 the adapter says so on every empty result** (`_zero.py`,
+issue #70): a zero here is a finding, not an answer, and the run must not read
+it as an empty market before the query has been asked in the market's
+language.
+
+**And the same caution attaches to the fill rates above.** A salary on **0 of
+50** German ads and `contract_type` on **0 of 50** were measured through
+German-language queries. *A fill rate measured in one language is not the
+board's fill rate* — those two zeros are reported as what they are, a
+measurement of one slice, not a property of the German market.
+
 ## The `ad` endpoint exists, and it is not in the spec
 
 `adref` is documented as usable "with the 'ad' endpoint" — an endpoint the

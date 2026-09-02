@@ -50,6 +50,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 COUNTRIES = ("co", "cl", "pe", "mx", "ar", "ec", "ve", "cr", "pa", "gt",
              "bo", "do", "uy", "sv", "hn", "ni", "py", "pr")
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -172,6 +174,9 @@ def cmd_search(a):
                      f"page(s).")
                 return
         time.sleep(a.delay)
+    if kept == 0:
+        note(zero_note("computrabajo", what=a.keyword,
+                       where=a.country))
     note(f"{kept} ads returned from {a.country}.")
     note("no salary is on the card and none is in any structured block — the "
          "site's salary filter is disallowed by robots.txt, so pay is read "

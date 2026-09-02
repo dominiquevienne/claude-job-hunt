@@ -52,6 +52,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 from _robots import verdict as robots_verdict
 
 BASE = "https://philjobnet.gov.ph"
@@ -249,6 +251,8 @@ def cmd_search(a):
         if code != 200:
             note(f"POST for page {page}: HTTP {code} — stopping.")
             break
+    if kept == 0:
+        note(zero_note("philjobnet"))
     note(f"{kept} ad(s) over {page} page(s) of ten.")
 
 

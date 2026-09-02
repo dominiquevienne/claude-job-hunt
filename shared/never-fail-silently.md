@@ -109,6 +109,25 @@ something the caller can tell apart from both success and failure. This page's
 principle runs in both directions — a silent zero is one failure, and a
 truncated sweep reported as a clean finish is the other.
 
+**3c. A zero can come from the question, not from the board — and that one
+is invisible from the response.** Every other entry on this page is a reply
+that misleads. This one is a *request that cannot succeed against a board that
+is working perfectly*: on Adzuna's Swiss index `Entwickler` returns 12 666 and
+`développeur` returns **0**, with HTTP 200 and no error, and this project
+builds its search terms from the user's own profile. **A French-speaking user
+searching in French is handed an empty market that has twelve thousand jobs in
+it.**
+
+So an adapter that can return zero says what a zero cannot distinguish —
+`skills/job-scan/scripts/_zero.py` is the shared sentence — and never lets the
+run conclude the market is empty before the query has been asked in the
+market's language. **Naming it does not find the ads; it stops the sweep
+concluding they do not exist**, which is where the damage is.
+
+**Its corollary reaches every fill rate this repository publishes**: on 50
+German Adzuna ads, a salary appeared on 0 and `contract_type` on 0. *A fill
+rate measured in one language is not the board's fill rate.*
+
 **4. When you write an adapter, ask wrongly on purpose.** A wrong tenant, a
 wrong case, a missing accent, an oversized page, an id that does not exist. That
 is where every entry in the tables above came from, and none of them would have

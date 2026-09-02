@@ -51,6 +51,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 API = "https://api.adzuna.com/v1/api"
 UA = "claude-job-hunt (personal job search; one user, own API key)"
 
@@ -262,6 +264,8 @@ def cmd_search(a):
         if a.limit and kept >= a.limit:
             break
         time.sleep(a.delay)
+    if kept == 0:
+        note(zero_note("adzuna", what=a.what, where=a.where))
     note(f"{kept} ads returned of {total} matching, in {b.spent} call(s) of "
          f"the 250/day allowance.")
     note(f"salary: {stated} stated by the advertiser, {predicted} estimated by "

@@ -373,6 +373,34 @@ provisionally — a board skipped for a missing key, a search cut short by
 throttling, ads scored from the card alone. **A run that ends with nothing new
 still owes the user the zero and the reason for it.**
 
+### Before offering dormancy, check the language of the query
+
+**A board that returned zero may have been asked in the wrong language.**
+Measured on Adzuna's Swiss index, 2026-09-02:
+
+| `what=` | Matches |
+| :-- | --: |
+| `Entwickler` | **12 666** |
+| `developer` | 3 162 |
+| `informaticien` | 138 |
+| **`développeur`** | **0** |
+
+Same market, same board, same day. **This skill builds its search terms from
+the user's own profile**, so a French-speaking user is served French terms —
+and on a German-leaning Swiss index that returns nothing, with HTTP 200 and no
+error.
+
+**So a zero from a multilingual market is not evidence of an empty board until
+the query has been asked in the market's own language.** Adapters now say this
+themselves (`_zero.py`), and the run must not turn such a zero into a dormancy
+offer without trying the other language first, or the board's own
+language-independent categories where it has them.
+
+**And the same caution applies to any fill rate quoted from one language.** On
+50 German Adzuna ads a salary appeared on **0** and `contract_type` on **0**.
+"This board is poor in salaries" may be an artefact of the language queried:
+**a fill rate measured in one language is not the board's fill rate.**
+
 ### A board that swept fine and yielded nothing: offer dormancy, don't just say it
 
 **When a board completed its sweep and produced no kept row, say so with the

@@ -60,6 +60,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 from _robots import verdict as robots_verdict
 
 BASE = "https://vieclam24h.vn"
@@ -167,6 +169,8 @@ def cmd_search(a):
         if a.limit and kept >= a.limit:
             break
         time.sleep(a.delay)
+    if kept == 0:
+        note(zero_note("vieclam24h", what=a.keyword))
     note(f"{kept} ad(s) of {total} matching, across {last} page(s) of 30.")
     note("the card carries the sixteen fields named in KEEP and copies "
          "nothing else: the payload also holds a named recruiter's phone, "

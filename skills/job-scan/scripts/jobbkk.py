@@ -58,6 +58,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 BASE = "https://www.jobbkk.com"
 LIST = "/jobs/lists/{page}/หางาน,{keyword},{province},{category}.html"
 AD = "/jobs/detail/{company}/{job}"
@@ -229,6 +231,8 @@ def cmd_search(a):
         if a.pages and page > a.pages:
             break
         time.sleep(a.delay)
+    if kept == 0:
+        note(zero_note("jobbkk", what=a.keyword, where=a.province))
     note(f"{kept} ads returned over {page} page(s) read.")
 
 

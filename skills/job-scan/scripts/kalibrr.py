@@ -56,6 +56,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import zero_note
+
 KJS = "https://www.kalibrr.com/kjs/job_board/search"
 # The older endpoint. Honest about emptiness — `?country=Singapore` is a plain
 # `count: 0` — but less complete (1 011 ID and 674 PH against 1 045 and 778)
@@ -215,6 +217,8 @@ def cmd_search(a):
             # the user's own scoring. It may not be republished.
             c["description"] = j.get("description")
         print(json.dumps(c, ensure_ascii=False))
+    if not rows:
+        note(zero_note("kalibrr", what=a.keyword, where=a.country))
     note(f"{len(rows)} ads returned of {reported} reported for {a.country}.")
     if rows:
         pct = salaried * 100 // len(rows)
