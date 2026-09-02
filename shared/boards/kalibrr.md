@@ -172,9 +172,20 @@ Kalibrr's terms (read 2026-09-02 at `kalibrr.com/terms`, server-rendered):
 > the relevant owners."
 
 So a personal job hunt is inside the licence, including keeping what you
-found; **publishing or redistributing anything from it is not**. That rules
-out putting Kalibrr counts or ad content into any artefact this project
-publishes, the same conclusion `adzuna.md` reaches from a different clause.
+found; **reproducing or disseminating the content is not**. No ad text, no
+description and no employer copy from this board goes into anything this
+project publishes.
+
+**A measured count is a narrower question, and this file does not settle it
+the way `adzuna.md` does.** Adzuna's terms name *aggregation* outright —
+"vacancy counts, average salaries etc." — and exclude it without written
+consent, which is why no Adzuna figure appears in a published page. Kalibrr's
+clause forbids reproducing and disseminating *content*; a number this project
+measured is neither the content nor an aggregation the clause names. The
+project therefore does publish Kalibrr volumes and fill rates, with that
+reasoning stated on the page carrying them so it can be argued with. The two
+boards differ because the two documents differ, not because the practice
+does.
 
 One honest note on scope: the word *scraping* appears **once** in the
 document, in the **Kalibrr Free** section, which governs employer accounts on
