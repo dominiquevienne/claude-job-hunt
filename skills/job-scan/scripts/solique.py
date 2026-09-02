@@ -275,6 +275,34 @@ def cmd_check(a):
     sys.exit(0 if verdict == "open" else 1)
 
 
+def cmd_tenants(a):
+    """Read the tenant names out of the platform's sitemap index.
+
+    **This file used to say "there is no directory". There is one**, at the
+    standard path, under a `robots.txt` of `User-agent: * / Allow: /`, and it
+    was found on 2026-09-02 by looking rather than by reasoning.
+
+    It is a directory, not *the* directory: it named 13 tenants of which 6
+    carried ads, it listed `vebego` where the live tenant is `vebegoag`, and
+    it **missed three tenants this adapter already knew** —
+    `vebegoag`, `united-machining`, `ottosag`. So it is a source of names to
+    try, and the `list` command is what settles whether a name is a board.
+    """
+    code, ctype, body = get(f"{BASE}/sitemap.xml")
+    if code != 200 or "xml" not in ctype:
+        die(f"{BASE}/sitemap.xml answered {code} as {ctype!r} — a sitemap that "
+            f"is not XML is not a sitemap. The directory may have moved; fall "
+            f"back to job-room, which indexes Solique ads.")
+    names = re.findall(rb"<loc>[^<]*/sitemap-([a-z0-9-]+)\.xml</loc>", body)
+    out = sorted({n.decode() for n in names})
+    print(f"[solique] {len(out)} tenant name(s) in the sitemap index. This "
+          f"lists names, not boards: on 2026-09-02, 7 of 13 answered with zero "
+          f"ads and three live tenants were absent from it. Run `list` on each "
+          f"before believing either way.", file=sys.stderr)
+    print(json.dumps({"source": f"{BASE}/sitemap.xml", "tenants": out},
+                     ensure_ascii=False))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -295,6 +323,10 @@ def main():
     common(ad)
     ad.add_argument("--id", required=True)
     ad.set_defaults(fn=cmd_ad)
+
+    te = sub.add_parser("tenants",
+                        help="tenant names from the platform's sitemap index")
+    te.set_defaults(fn=cmd_tenants)
 
     ck = sub.add_parser("check", help="is this ad still open? (step 1b)")
     common(ck)

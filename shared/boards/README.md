@@ -316,6 +316,14 @@ report, and that is what makes it useful. Write down:
   anything that produced a wrong result once;
 - what the board does about **rate limiting**, and the pace that stays under it.
 
+**A fix applied to one caller is not applied to the service.** On 2026-09-02
+`hiringcafe.py` grew a timed backoff for HiringCafe's 403 throttle, and
+`ats.py resolve` — which reads the same site, for the same reason — kept dying
+on a raw 403 for the rest of the day. **The same board behaved differently
+depending on which script asked.** Forty-eight scripts live here and several
+speak to the same hosts: before closing a fix, `grep` for the host, not for
+the function you just edited.
+
 Two rules for anything added here:
 
 1. **Only document what you have run against the live site.** An adapter that

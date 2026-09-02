@@ -1,5 +1,9 @@
 # Board adapter — fachkraft.ch / sta.jobs
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: **3 580 of 3 580 ads**, and the run still warns that keys are domain-scoped without `--with-ref` because the numeric id differs between domains.
+
 **One board, several brand domains — and `fachkraft.ch` is the umbrella.**
 Corrected 2026-08-29: this file first said "one board, two domains", which was
 incomplete. `www.fachkraft.ch` carries the listings of at least three brands,

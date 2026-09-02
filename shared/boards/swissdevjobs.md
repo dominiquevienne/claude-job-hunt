@@ -1,5 +1,9 @@
 # Board adapter — swissdevjobs.ch
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: **177 of 177 postings kept**, against 172 recorded earlier.
+
 Swiss tech and software roles. **A real multi-employer board**, unlike the
 per-tenant ATS family in `ats.py`: one request returns every live vacancy, and
 the employer is named on each. **No browser, no account, no cookie.**

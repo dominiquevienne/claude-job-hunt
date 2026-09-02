@@ -1,5 +1,9 @@
 # Board adapter — job-room.ch
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: a keyword search returned 50 cards on the documented route.
+
 Switzerland's **public employment service portal**, run by SECO. It carries the
 vacancies employers must publish under the Swiss vacancy-reporting duty
 (*Stellenmeldepflicht* / *obligation d'annonce*), plus a large volume syndicated

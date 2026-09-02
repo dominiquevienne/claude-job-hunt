@@ -1,5 +1,9 @@
 # Board adapter — sozialinfo.ch
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: 720 read against a stated 729, and the adapter still says it is nine short and that pagination is cumulative — the documented behaviour, working.
+
 **A real multi-employer board, and the only one here that names the employer.**
 Switzerland's job portal for the social sector — social work, care, education,
 cantonal and municipal services, foundations.

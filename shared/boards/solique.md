@@ -1,5 +1,7 @@
 # Board adapter — Solique
 
+<!-- verified: 2026-09-02 -->
+
 An ATS, not a board: one employer per tenant, no search across employers. Public
 HTML and JSON, unauthenticated, **no key, no cookie, no browser**.
 
@@ -91,10 +93,49 @@ The tenant is lowercased in the key, and the ad URL rebuilds from the pair:
 
 ## Where tenants come from
 
-There is no directory. HiringCafe indexes no Solique ad; **job-room does** —
-24 ads across these six tenants in a 2 800-ad sweep (`job-room.md`). A tenant
-name is the path segment of any of its ad URLs, and it is case-insensitive
-(`ktzh` and `KTZH` both answer).
+**This file said "there is no directory". There is one, and it was found by
+looking rather than by reasoning — 2026-09-02.**
+
+```
+solique.py tenants
+→ 13 names from https://live.solique.ch/sitemap.xml
+  ameos blt egokiefer ewz georgfischer iss kbs ktzh manor
+  spitalverbundar swan vebego zfv
+```
+
+A sitemap index at the standard path, `application/xml`, under a `robots.txt`
+that is **`User-agent: * / Allow: /`**. Nothing hid it.
+
+**What it gained.** Three of those names were tenants this adapter did not
+know, and they answer:
+
+| Tenant | Ads on 2026-09-02 |
+| :-- | --: |
+| **ameos** | **780** |
+| ktzh | 163 |
+| iss | 100 |
+| ottosag *(already known)* | 25 |
+| manor, vebegoag, united-machining *(already known)* | 10 each |
+| **ewz** | **5** |
+| **georgfischer** | **2** |
+
+`ameos` alone is more than twice everything the six documented tenants carry
+together.
+
+**But it is a directory, not *the* directory, and the file says so because
+that matters more than the win.** Seven of the thirteen answered with **zero
+ads**; it lists `vebego` where the live tenant is `vebegoag`; and it **misses
+three tenants this adapter already knew** — `vebegoag`, `united-machining`,
+`ottosag`. So `tenants` is a source of names to try and **`list` is what
+settles whether a name is a board**.
+
+**job-room remains the second route**, and now the complementary one: it
+indexes Solique ads — 24 across the documented tenants in a 2 800-ad sweep
+(`job-room.md`) — and it is where the three sitemap-less tenants came from.
+HiringCafe indexes no Solique ad at all.
+
+A tenant name is the path segment of any of its ad URLs, and it is
+case-insensitive (`ktzh` and `KTZH` both answer).
 
 ## Applying
 

@@ -1,5 +1,25 @@
 # Board adapter — Haufe / Abacus umantis
 
+<!-- verified: 2026-09-02 -->
+
+**No tenant directory was found. Searched 2026-09-02:**
+
+| Looked at | Answer |
+| :-- | :-- |
+| `recruitingapp-2698.umantis.com/robots.txt` | **200** `text/plain`, 508 bytes — admin paths only, nothing that indexes tenants |
+| `recruitingapp-2698.umantis.com/sitemap.xml` | **404** |
+| `www.umantis.com/robots.txt` | 200, 112 bytes |
+| `umantis.com/sitemap.xml` | 200 `application/xml` — a **WordPress** sitemap index for the vendor's marketing site: posts, pages, case studies, taxonomies. No career hosts |
+
+**And one route deliberately not taken.** Hosts are numbered —
+`recruitingapp-<n>.umantis.com` — so the numbering could be walked. That is a
+scan of somebody's estate rather than reading a directory, and this adapter
+does not do it. Ask the user for the careers URL.
+
+*(`solique.md` carried the same "no directory" sentence until the same day,
+when the directory turned out to be at the standard path. This one was looked
+for and not found, which is a different statement.)*
+
 **An ATS, not a board**, in the same family as Workday, Greenhouse, Lever and
 Ashby: one employer per tenant, no search across employers. It earns an adapter
 for the reason those did — it answers *"is my target employer hiring?"* — and it
