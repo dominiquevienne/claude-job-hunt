@@ -191,9 +191,15 @@ this repository and it has a hit rate, not a guarantee.
 **not** name `Claude-User`, and sets `Content-Signal: search=yes, ai-train=no,
 use=reference` on its `*` group — a European state using Content-Signal, and a
 gradation case for issue #48. And Adzuna, which `shared/robots-policy.md`
-already names as publishing a sanctioned API, would cover a dozen of these
-countries at once — but its key needs an account this plugin cannot open on the
-user's behalf, so it stays unbuilt rather than unverified.)*
+already names as publishing a sanctioned API, covers **four of these eight** —
+Italy, the United Kingdom, the Netherlands and Poland — and **not** Portugal,
+Denmark, Finland or Norway. **Nor Ireland**, which is the country this file is
+about: the `country` enum of its live OpenAPI, read 2026-09-02, is the 19
+`gb us at au be br ca ch de es fr in it mx nl nz pl sg za` and nothing else. An
+earlier draft of this parenthesis said "a dozen of these countries at once";
+that was a guess, and the measured figure is four. Its key still needs an
+account this plugin cannot open on the user's behalf, so it stays unbuilt rather
+than unverified.)*
 
 ## Verification
 
