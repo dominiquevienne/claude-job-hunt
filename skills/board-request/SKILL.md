@@ -123,7 +123,42 @@ from the outside and need different fixes, or no fix at all:
 | :-- | :-- | :-- |
 | Adapter broken | **The search legitimately has no results** | Run one of the user's queries by hand in the browser. Results on screen, none extracted → adapter. Nothing on screen either → not a bug |
 | Adapter broken | **The user is logged out**, or the session expired | The adapter's prerequisites block; the logged-out layout is usually obvious in a screenshot |
+| Adapter broken | **The run was on stale code** — the fix already shipped | `bin/version-check.py --print-version`, then compare against the closed issues. **See below: this one is not a symptom of the board at all.** |
 | Adapter broken | **Anti-bot challenge** (`indeed.md` documents this as expected behaviour) | A challenge page. This is the *user's* to solve, and the adapter already says so — not an issue unless the challenge is new or now unsolvable |
+
+### A failure observed on stale code is not evidence about the board
+
+**Fill `Plugin version:` from the code that actually ran**, never from the
+repository:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py" --print-version
+```
+
+**Then check whether the running version is behind**, because the whole report
+depends on it:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
+```
+
+**If it prints anything, stop and say so before filing.** A board that failed
+under an old adapter tells you nothing about the board: the fix may have
+shipped weeks ago and the symptom would be a closed issue re-opened as a new
+one — *the most expensive shape a bug report can take*. Ask the user to update
+and run the sweep again, and file only if it still fails.
+
+This is not hypothetical. A `/job-scan` run on 2026-09-02 executed from plugin
+cache **1.52.0** while the repository was at **1.85.1** — 53 releases behind —
+and reproduced a HiringCafe 403 that had been fixed in v1.72.1 four hours
+earlier. **The stale code even reported it with pre-fix semantics**: exit 2
+(*broken*) where the fixed version exits 6 (*throttled*), so the skill could
+not make the very distinction the fix exists to provide, and it went looking
+for a tracker to file against. Issue #78.
+
+**And the duplicate check has to look at closed issues too**, not only open
+ones — filtered to fixes that shipped *after* the version that observed the
+symptom. An open-issues-only search is what lets a fixed bug be filed twice.
 
 Only when it is genuinely the adapter, write:
 

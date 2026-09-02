@@ -155,9 +155,20 @@ def main():
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--print-version", action="store_true",
+                   dest="print_version",
+                   help="print the running version and nothing else, always. "
+                        "For a run report: a board failure observed on stale "
+                        "code is not evidence about the board (issue #78)")
     p.add_argument("--json", action="store_true", help="print the state and exit")
     p.add_argument("--force", action="store_true", help="ignore the cache")
     a = p.parse_args()
+    if a.print_version:
+        # **Always prints, unlike everything else here.** #79 asks for silence
+        # about *updates*; #78 asks a run to say which code produced it. Those
+        # are different sentences and only the first one is a notification.
+        print(installed() or "unknown")
+        return 0
     s = state(a.force)
     if a.json:
         print(json.dumps(s, ensure_ascii=False))

@@ -452,6 +452,19 @@ Then report: how many ads were scanned, how many are new, the top matches with
 their scores, and **what was discarded and why**. The discards matter — they are
 what the user does not have to look at again.
 
+**Name the version that produced the run**, in the same block as the counts:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py" --print-version
+```
+
+One line — *job-scan v1.92.0* — and it makes every report above
+self-diagnosing. A run on 2026-09-02 executed from plugin cache **1.52.0**
+while the repository was at 1.85.1, reproduced a board failure fixed 53
+releases earlier, and **nothing in the run said which code had produced it**.
+A board failure observed on stale code is not evidence about the board. Issue
+#78.
+
 **Then the accounting, per `shared/never-fail-silently.md`.** Give the counts as
 *n of m*, never as a bare total: searches run of searches planned, descriptions
 read of ads shortlisted, boards swept of boards enabled. Close with the "not
