@@ -478,6 +478,83 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## Being named has five values, not two
+
+**"Named" is not "blocked", and "allowed" without saying where is as misleading
+as "named" without saying which way.** Measured across the country surveys and
+verified directly on 2026-09-02:
+
+| Value | What it looks like | Example |
+| :-- | :-- | :-- |
+| **1. not named** | no group applies; `*` decides | the common case — **and silence settles nothing, in either direction** |
+| **2. refused** | `Disallow: /` on our agents | `linkedin.com`, below |
+| **3. allowed** | a bare `Allow: /` | `ethiojobs.net`, `ikman.lk` |
+| **4. allowed, but restricted** | `Allow: /` for one agent, a narrow permission for another | Indeed: a bare `Allow: /` for `Claude-User` and `Claude-SearchBot`, **pagination only and 145 closed paths for `ClaudeBot`** |
+| **5. refused exactly where it counts** | open everywhere except the ads | `hh.ru`: **`Disallow: /vacancy/*`**, and the rest of the site open |
+
+**Value 5 is the one a permissive summary hides**, and value 4 is the one a
+restrictive summary hides. A survey that records "named" without recording
+which of the five produces a fact nobody can use.
+
+### `linkedin.com` refuses us by hand, including the user-driven agent
+
+**Verified directly, 2026-09-02** — 120 190 bytes, `text/plain`, hand-written
+and not a managed block:
+
+```
+ClaudeBot        Disallow: /
+Claude-Web       Disallow: /
+Claude-User      Disallow: /
+anthropic-ai     Disallow: /
+Claude-SearchBot Disallow: /public-profile/ , /people/search/   ← value 4, not 2
+```
+
+**This matters more than any other entry in the file, for two reasons.**
+
+**It settles the question the repository keeps circling.** Indeed separates the
+two categories in order to *open* to the human-driven agent; **LinkedIn closes
+them alike.** The distinction exists, two major operators have decided it in
+**opposite directions**, and therefore **it is a choice and not an emerging
+standard.** Nothing here may rest on the idea that an agent acting for a person
+is generally accepted — `shared/reading-terms.md` already refuses to argue past
+a publisher who named us, and this is the publisher who named us most
+explicitly.
+
+**And LinkedIn is cited as a source across nearly every country in the
+survey.** A reader who finds this file after us would be right to ask why it
+was not written here.
+
+**What the adapter does is a different act, and the file must say so rather
+than assume it.** `linkedin.md` drives **the user's own Chrome, in the user's
+own session** — that is the person browsing their own account, not one of our
+agents fetching. **LinkedIn's file is precisely the document that declines to
+draw that distinction**, so this repository states it explicitly instead of
+presupposing it, and states equally that **no automated fetch of LinkedIn by
+our agents is permitted by that file.**
+
+### A permission that permits nobody
+
+`reed.co.uk` carries, commented and deliberate:
+
+```
+# Anthropic (Claude)
+User-agent: AnthropicBot
+Allow: /
+```
+
+**No other site in the survey uses that name.** The five that recur are
+`ClaudeBot`, `Claude-User`, `Claude-SearchBot`, `Claude-Web` and
+`anthropic-ai`, so a conforming client not carrying it falls back to `*`.
+
+**It is the exact mirror of the anti-scanner file below**: one is a permission
+that permits nobody, the other a refusal that refuses almost nobody. **Both
+express a real intention and produce no effect, and in both cases a quick
+reading gives the opposite of the effect.**
+
+*(The reservation, kept as stated: this does not establish that `AnthropicBot`
+does not exist. What is observed is that none of the other twenty-two sites in
+the survey uses it — an observation about the corpus, not about our agents.)*
+
 ## Two families, and one conclusion: what counts is what you counted
 
 Everything below this line was measured on 2026-09-02, across the country

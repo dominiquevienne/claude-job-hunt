@@ -32,6 +32,30 @@ If `enabled` is true and `profile_url` is empty, **skip the board and say which
 key is missing** — offer to fill it there and then. Never sweep with a guessed
 handle.
 
+
+## What `linkedin.com/robots.txt` says about us, and why this adapter is still legitimate
+
+**Verified 2026-09-02, hand-written and not a managed block:** `ClaudeBot`,
+`Claude-Web`, `Claude-User` and `anthropic-ai` all get **`Disallow: /`**, and
+`Claude-SearchBot` gets a narrower refusal (`/public-profile/`,
+`/people/search/`). **`Claude-User` — the agent that fetches because a person
+asked — is refused with the rest.**
+
+**So no automated fetch of LinkedIn by our agents is permitted by that file,
+and this adapter does not make one.** It drives **the user's own Chrome, in
+the user's own logged-in session**: that is the person browsing their own
+account, which their own use of the site governs, not a crawler.
+
+**The distinction is ours to state, not to assume** — LinkedIn's file is
+exactly the document that declines to draw it, and `shared/reading-terms.md`
+is explicit that being a user-driven tool is never a reason to argue past a
+publisher who named us. It is a reason to be clear about which act is
+happening.
+
+**Practical consequence: never fetch a LinkedIn URL from a script here.** Not
+in `cover-letter`, not in a checker, not to verify an ad is still open. If a
+LinkedIn page needs reading, it is read in the user's browser or not at all.
+
 ## Prerequisites — say these out loud before touching the browser
 
 Browser automation here is not a background capability: it needs two things
