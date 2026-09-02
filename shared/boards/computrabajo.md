@@ -109,14 +109,14 @@ set. Computrabajo simply stops.
 
 ## In Colombia the public API is not a rival source — it is the salary
 
-Colombia's public employment service publishes an open API: 262 275 offers,
-JSON, no key, the whole corpus reachable, **a salary figure on 83%**. Measured
-offer by offer through its `DETALLES_PRESTADOR` field, which names the
-accredited operator, **about 84% of it is Computrabajo's inventory**.
+Colombia's public employment service publishes an open API: **262 275 offers**
+(`total_registros`), JSON, no key, the whole corpus reachable, **a salary
+figure on 83%**. Its `DETALLES_PRESTADOR` field names the accredited operator
+that carries each offer, and Computrabajo is the operator seen most often.
 
-**An earlier version of this section read that as a reason to choose one.**
-That framing was wrong, and the correction is worth stating because the
-numbers say the opposite:
+**An earlier version of this section read that as a reason to choose one
+source.** That framing was wrong, and the correction is worth stating because
+the numbers say the opposite:
 
 | | Salary figure |
 | :-- | --: |
@@ -124,22 +124,87 @@ numbers say the opposite:
 | The public API record | **83%** |
 
 **These are not two sources of the same content. They are the same advert,
-seen once without a salary and once with one.** An 84% overlap is therefore
-an argument *for* reading both — as **enrichment**, not as a second board.
+seen once without a salary and once with one** — which is an argument *for*
+reading both, as **enrichment**, not as a second board.
 
-**What that needs, and does not yet have.** The join is not free: Computrabajo's
-id is a 32-hex string of its own and no field crosses. The public record
-carries **the origin URL on every offer**, which is the one thread that could
-tie the two, and matching on it has not been built or measured here. Until it
-is, enabling both in Colombia produces duplicate rows the ledger cannot catch
-— so the practical advice is unchanged even though the reasoning is not:
-**enable one until the join exists.**
+**The share itself is not established, and the first version of this file
+claimed one.** Computrabajo's portion cannot be read off consecutive pages,
+because **the corpus is grouped by operator**: measured 2026-09-02, the first
+eight pages are 83.5% Computrabajo and **page 900 is 0%** — all Magneto and the
+compensation funds. A proportion taken from the start of the index is a
+proportion of the start of the index. **What is measured is the join below,
+not the share.**
+
+### The join exists, and it costs no request
+
+**Measured 2026-09-02 on 600 records of the public API.** The origin URL is
+`DETALLES_PRESTADOR[].URL_DETALLE_VACANTE` — a **list**, not a string, one
+entry per accredited operator carrying the offer.
+
+```
+DETALLES_PRESTADOR present ....................... 600 of 600
+entries with no URL_DETALLE_VACANTE .............. 0
+Computrabajo entries ............................. 484
+  → decoded to co.computrabajo.com ............... 484
+  → ending in a 32-hex identifier ................ 484   (100%)
+```
+
+Every Computrabajo URL is a redirector, and **the identifier is already in the
+stored string**:
+
+```
+https://go.computrabajo.com/go/gom?url=https%3a%2f%2fco.computrabajo.com
+  %2fofertas-de-trabajo%2foferta-de-trabajo-de-…-en-madrid-4784707D3318336C61373E686DCF3405
+```
+
+Percent-decode the `url=` parameter, take the trailing 32 hex characters, and
+that is the adapter's own id — `computrabajo.py search --country co` returns
+`89CDDE57D569F7B061373E686DCF3405`, the same shape and the same suffix. **So
+`computrabajo:<id>` is reconstructible from the public record by string
+parsing, with no HTTP request at all.**
+
+**Look at the shape of the id before you trust its length.** Across 334
+identifiers there were **334 distinct first halves and exactly one distinct
+second half** (`61373E686DCF3405`). The last sixteen characters are a constant,
+not entropy. Compare all 32 — but do not claim that all 32 discriminate.
+
+*(This was measured by reading the stored string before following any link,
+which is why it cost nothing: had the URL been followed first, a 200 on the
+board's landing page would have looked like a successful resolution. That is
+the mistake `curl -L` produced on Jobvite.)*
+
+### Two things that will bite whoever writes the API adapter
+
+**1. The server sends only its leaf certificate.** `openssl s_client` reports
+`Verify return code: 21 (unable to verify the first certificate)`, and the
+consequence is that **`curl` succeeds where Python's `urllib` fails** — macOS
+fetches the missing intermediate, OpenSSL does not. **The obvious repair is to
+disable verification, and it is the wrong one**: supply the intermediate
+instead. This is the TLS case in `shared/robots-policy.md`, and it looks like a
+dead host from one client and a healthy one from another.
+
+**2. `totalPages` overstates the corpus by about 390 pages.** The endpoint
+answers `total: 276004` and `totalPages: 5637`, while `total_registros` says
+**262 275** — and 262 275 ÷ 50 is 5 245. Page 5 245 returns 50 rows; **pages
+5 300, 5 520 and 5 637 return zero, with HTTP 200 and no error.** A sweep that
+trusts `totalPages` reads several hundred empty pages and reports a complete
+corpus. `total_registros` is the number that matches the data.
+
+### What that changes, and what it does not
+
+**Enabling both sources in Colombia is now a join rather than a duplicate
+risk** — the public record's salary can be attached to the Computrabajo row it
+belongs to, which is the enrichment the overlap always argued for. **The
+adapter does not do it yet**: nothing here has been built, and until it is, the
+practical advice stands unchanged — **enable one**. The difference is that the
+work is now specified rather than unknown.
 
 Nothing here decides anything for the other seventeen countries, where no such
 measurement exists.
 
-*(Reframed 2026-09-02 after the first version had been published. The
-measurement never changed; what it was taken to mean did.)*
+*(Reframed 2026-09-02 after the first version had been published, then
+completed the same day when the join was measured. The measurement never
+changed; what it was taken to mean did — twice.)*
 
 ## Configuration
 
