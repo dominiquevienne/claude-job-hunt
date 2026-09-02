@@ -32,6 +32,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import urllib.error
@@ -58,9 +60,6 @@ REGIONS = (
 )
 
 AD_RE = re.compile(r"/offre-emploi/([a-z0-9-]+?)-(\d+)\.php")
-LD_RE = re.compile(
-    r"<script[^>]*type=\"application/ld\+json\"[^>]*>(.*?)</script>",
-    re.S | re.I)
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 
@@ -124,15 +123,9 @@ def listing_path(axis, value, page):
 def card(ident, slug):
     """One ad, from its page's JSON-LD JobPosting."""
     page = get(f"/offre-emploi/{slug}-{ident}.php")
-    jp = None
-    for m in LD_RE.finditer(page):
-        try:
-            j = json.loads(m.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     url = f"{BASE}/offre-emploi/{slug}-{ident}.php"
     if jp is None:
         t = TITLE_RE.search(page)

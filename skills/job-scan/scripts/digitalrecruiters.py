@@ -31,6 +31,8 @@ import gzip
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import urllib.error
@@ -45,8 +47,6 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 DOMAIN_RE = re.compile(r"^[a-z0-9.-]+\.[a-z]{2,}$", re.I)
 HOST_RE = re.compile(r"https?://([a-z0-9.-]+)", re.I)
-LD_RE = re.compile(
-    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
 
 # `limit` has no observed ceiling — 1000 returned all 948 ads of the largest
 # tenant sampled. But that single call also timed out at 60s on a later run,
@@ -189,31 +189,28 @@ def card(it, brands, domain, locale):
 
 
 def ad_fields(page):
-    for raw in LD_RE.findall(page):
-        try:
-            d = json.loads(raw.strip())
-        except Exception:  # noqa: BLE001
-            continue
-        if isinstance(d, dict) and d.get("@type") == "JobPosting":
-            org = d.get("hiringOrganization") or {}
-            addr = (d.get("jobLocation") or {}).get("address") or {}
-            sal = d.get("baseSalary") or {}
-            val = sal.get("value") or {}
-            emp = d.get("employmentType")
-            return {
-                "employer": org.get("name"),
-                "street": addr.get("streetAddress"),
-                "city": addr.get("addressLocality"),
-                "postal_code": addr.get("postalCode"),
-                "country": addr.get("addressCountry"),
-                "employment_type": ", ".join(emp) if isinstance(emp, list)
-                else emp,
-                "salary_min": val.get("minValue"),
-                "salary_max": val.get("maxValue"),
-                "salary_currency": sal.get("currency"),
-                "published": d.get("datePosted"),
-                "description": to_text(d.get("description")),
-            }
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    for d in postings(page):
+        org = d.get("hiringOrganization") or {}
+        addr = (d.get("jobLocation") or {}).get("address") or {}
+        sal = d.get("baseSalary") or {}
+        val = sal.get("value") or {}
+        emp = d.get("employmentType")
+        return {
+            "employer": org.get("name"),
+            "street": addr.get("streetAddress"),
+            "city": addr.get("addressLocality"),
+            "postal_code": addr.get("postalCode"),
+            "country": addr.get("addressCountry"),
+            "employment_type": ", ".join(emp) if isinstance(emp, list)
+            else emp,
+            "salary_min": val.get("minValue"),
+            "salary_max": val.get("maxValue"),
+            "salary_currency": sal.get("currency"),
+            "published": d.get("datePosted"),
+            "description": to_text(d.get("description")),
+        }
     return None
 
 

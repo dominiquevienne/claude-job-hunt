@@ -27,6 +27,8 @@ import argparse
 import html
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import urllib.error
@@ -60,8 +62,6 @@ AGE_RE = re.compile(r'<div[^>]*class="cc-font-size-small mt-1[^"]*"[^>]*>([^<]+)
 # contract: its first child is that icon, not text.)
 PLACE_RE = re.compile(r'id="\d+-job-locations"[^>]*>(.*?)</div>', re.S)
 ICON_RE = re.compile(r'<mat-icon\b.*?</mat-icon>', re.S)
-LD_RE = re.compile(
-    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
 
 
 def die(msg, code=2):
@@ -151,23 +151,21 @@ def card_from_listing(block):
 
 
 def job_posting(page):
-    for raw in LD_RE.findall(page):
-        try:
-            d = json.loads(raw.strip())
-        except Exception:  # noqa: BLE001
-            continue
-        if isinstance(d, dict) and d.get("@type") == "JobPosting":
-            return d
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    for d in postings(page):
+        return d
     return None
 
 
 def card_from_ad(ident, page):
     d = job_posting(page)
     if not d:
-        die(f"no JobPosting block on /jobs/{ident}. Either the ad is gone and "
-            "the site served a soft landing page, or the markup changed — "
-            "report it with board-request rather than guessing at selectors.",
-            code=3)
+        why = absent_reason(page)
+        die(f"no JobPosting block on /jobs/{ident} — {why.text} Either the ad "
+            f"is gone and the site served a soft landing page, or the markup "
+            f"changed; report it with board-request rather than guessing at "
+            f"selectors.", code=2 if why.our_fault else 3)
     org = d.get("hiringOrganization") or {}
     addr = (d.get("jobLocation") or {}).get("address") or {}
     sal = d.get("baseSalary") or {}

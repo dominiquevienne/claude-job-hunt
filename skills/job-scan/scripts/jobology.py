@@ -41,6 +41,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import urllib.error
@@ -82,9 +84,6 @@ REGIDX_RE = re.compile(r"/recherche-emploi/list/spos/reg/(\d+)\.aspx")
 # regex that reads only one of them under-counts the board — measured, it
 # capped chauffeur-spl at 2 pages instead of 83.
 PAGE_RE = re.compile(r"/page[-/](\d+)(?:\.aspx)?")
-LD_RE = re.compile(
-    r"<script[^>]*type=\"application/ld\+json\"[^>]*>(.*?)</script>",
-    re.S | re.I)
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
 
 
@@ -199,15 +198,9 @@ def listing_path(metier, region, page):
 def card(site, ident, slug):
     """One ad, from its page's JSON-LD JobPosting."""
     page = get(site, f"/offre-emploi/{slug}-{ident}.aspx")
-    jp = None
-    for m in LD_RE.finditer(page):
-        try:
-            j = json.loads(m.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
         t = TITLE_RE.search(page)
         return {

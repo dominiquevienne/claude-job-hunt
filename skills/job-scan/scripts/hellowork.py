@@ -31,6 +31,8 @@ import argparse
 import html
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import urllib.error
@@ -54,8 +56,6 @@ P_RE = re.compile(r'<p[^>]*>(.*?)</p>', re.S)
 PLACE_RE = re.compile(r'data-cy="localisationCard"[^>]*>\s*([^<]+)')
 CONTRACT_RE = re.compile(r'data-cy="contractCard"[^>]*>\s*([^<]+)')
 AGE_RE = re.compile(r'(il y a [^<]{2,30})<')
-LD_RE = re.compile(
-    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
 
 FACET_CITY_RE = re.compile(
     r'href="/fr-fr/emploi/domaine_([a-z0-9-]+)-ville_([a-z0-9-]+)-(\w+)\.html"')
@@ -169,23 +169,21 @@ def card_from_listing(block):
 
 
 def job_posting(page):
-    for raw in LD_RE.findall(page):
-        try:
-            d = json.loads(raw.strip())
-        except Exception:  # noqa: BLE001
-            continue
-        if isinstance(d, dict) and d.get("@type") == "JobPosting":
-            return d
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    for d in postings(page):
+        return d
     return None
 
 
 def card_from_ad(ident, page):
     d = job_posting(page)
     if not d:
-        die(f"no JobPosting block on /emplois/{ident}.html. Either the ad is "
-            "gone and the site served a soft 404, or the markup changed — "
-            "report it with board-request rather than guessing at selectors.",
-            code=3)
+        why = absent_reason(page)
+        die(f"no JobPosting block on /emplois/{ident}.html — {why.text} "
+            f"Either the ad is gone and the site served a soft 404, or the "
+            f"markup changed; report it with board-request rather than "
+            f"guessing at selectors.", code=2 if why.our_fault else 3)
     org = d.get("hiringOrganization") or {}
     addr = (d.get("jobLocation") or {}).get("address") or {}
     sal = d.get("baseSalary") or {}

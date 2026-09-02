@@ -54,6 +54,8 @@ Verified against the live platform on **2026-09-02**.
 import argparse
 import json
 import re
+
+from _ldjson import postings
 import sys
 import urllib.error
 import urllib.parse
@@ -66,8 +68,6 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 LOC = re.compile(r"<loc>([^<]+)</loc>")
 JOB = re.compile(r"/jobs/(\d+)(?:/([^/?#]*))?")
-LD = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
-                re.S)
 # A branded page names its platform host in its own markup — the only reliable
 # way to get it, because the prefix is not guessable.
 PLATFORM = re.compile(r"https?://([a-z0-9][a-z0-9-]*\.icims\.com)", re.I)
@@ -123,15 +123,9 @@ def ad_url(host, ident, slug=None, iframe=True):
 
 
 def posting(html):
-    for m in LD.finditer(html):
-        try:
-            d = json.loads(m.group(1))
-        except ValueError:
-            continue
-        for o in (d if isinstance(d, list) else [d]):
-            if isinstance(o, dict) and o.get("@type") == "JobPosting":
-                return o
-    return None
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    return next(iter(postings(html)), None)
 
 
 def cmd_resolve(a):

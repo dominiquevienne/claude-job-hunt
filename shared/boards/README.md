@@ -241,6 +241,31 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**Read `application/ld+json` through `skills/job-scan/scripts/_ldjson.py`,
+never with a pattern of your own.** Two independent deviations have already
+cost this repository whole boards, and each was patched where it was found and
+nowhere else:
+
+- **The parse.** Michael Page and a Chilean public service embed literal
+  newlines inside JSON strings, which is invalid JSON. Measured 2026-09-02:
+  `json.loads` reads **0 of 3** Michael Page ads and **0 of 5** Chilean ones;
+  with `strict=False`, **3 of 3** and **5 of 5**. Two boards of ten measured
+  need it — *and you do not know which board will be the third*. The argument
+  costs nothing; its absence costs the whole ad.
+- **The extraction.** One site writes `<script type='application/ld+json'>`
+  with single quotes, and a pattern demanding double ones matches nothing —
+  the adapter then reports `json_ld: false` on every ad. **Ten of the
+  eighteen readers here had that pattern**, and three more lacked `re.I`.
+  Thirteen outages waiting on a punctuation change. Quote style is not a
+  contract.
+
+Both fail the same silent way: the block is skipped inside a
+`try/except: continue`, and the run concludes *this board publishes no
+structured data*. **So when there is no JobPosting, call `absent_reason()` and
+act on `our_fault`** — a block that is present and unreadable, or a page that
+says `JobPosting` and yields none, is a bug here and exits loudly; only a page
+with no structured data at all is a fact about the board. Issue #76.
+
 The **id is the load-bearing part**. It is the ledger's dedup key, so it must be
 stable across visits and rebuildable into a URL. A board with no stable per-ad
 id needs a documented composite key (company + title + posting date) and a note

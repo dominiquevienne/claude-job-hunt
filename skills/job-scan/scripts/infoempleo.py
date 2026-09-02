@@ -69,6 +69,8 @@ import collections
 import gzip
 import json
 import re
+
+from _ldjson import blocks as ld_blocks, postings
 import sys
 import time
 import unicodedata
@@ -95,8 +97,6 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 URL_BLOCK_RE = re.compile(r"<url>")
 AD_RE = re.compile(r"/ofertasdetrabajo/([^/]+)/([^/]+)/(\d+)/")
-LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
-                   re.S | re.I)
 
 
 def die(msg, code=2):
@@ -219,7 +219,7 @@ def address_of(jp):
 def card(url):
     slug, place, ident = parts(url)
     page = get(url)
-    blocks = LD_RE.findall(page)
+    blocks = ld_blocks(page)
     if not blocks:
         # The signature of an undecoded body, not of an ad without data: a
         # real page here always carries three or four blocks. See trap 1.
@@ -228,15 +228,9 @@ def card(url):
             "signature of a body that was not decompressed, not of an ad "
             "with no structured data — check Content-Encoding handling "
             "before believing this.")
-    jp = None
-    for b in blocks:
-        try:
-            j = json.loads(b)
-        except Exception:  # noqa: BLE001 - one broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
         # Blocks present, no JobPosting among them: the ad is gone. Measured
         # on 1 of 45 — the sitemap is called "activas" and is not perfect.

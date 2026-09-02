@@ -30,6 +30,8 @@ import gzip
 import html
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import urllib.error
@@ -44,8 +46,6 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.taleez\.com", re.I)
-LD_RE = re.compile(
-    r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
 
 # `lockedType` on a property definition says what the tenant's own free-form
 # field actually means, so these map to stable keys instead of French labels
@@ -182,23 +182,21 @@ def card(job, site, defs):
 
 
 def ad_fields(slug, page):
-    for raw in LD_RE.findall(page):
-        try:
-            d = json.loads(raw.strip())
-        except Exception:  # noqa: BLE001
-            continue
-        if isinstance(d, dict) and d.get("@type") == "JobPosting":
-            emp = d.get("employmentType")
-            return {
-                "description": to_text(d.get("description")),
-                "qualifications": to_text(d.get("qualifications")),
-                "employment_type": ", ".join(emp) if isinstance(emp, list)
-                else emp,
-                "posted": d.get("datePosted"),
-            }
-    die(f"no JobPosting block on /apply/{slug}. Either the ad closed, or the "
-        "markup changed — report it with board-request rather than guessing.",
-        code=3)
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    for d in postings(page):
+        emp = d.get("employmentType")
+        return {
+            "description": to_text(d.get("description")),
+            "qualifications": to_text(d.get("qualifications")),
+            "employment_type": ", ".join(emp) if isinstance(emp, list)
+            else emp,
+            "posted": d.get("datePosted"),
+        }
+    why = absent_reason(page)
+    die(f"no JobPosting block on /apply/{slug} — {why.text} Either the ad "
+        f"closed, or the markup changed; report it with board-request rather "
+        f"than guessing.", code=2 if why.our_fault else 3)
 
 
 def cmd_jobs(a):

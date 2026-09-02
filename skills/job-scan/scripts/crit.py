@@ -30,6 +30,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import urllib.error
@@ -48,8 +50,6 @@ URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
 AD_RE = re.compile(r"/offres/([0-9a-f]{8}-[0-9a-f-]{27})")
-LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
-                   re.S | re.I)
 DEPT_RE = re.compile(r"^(?:\d{2}|2[AB])$")
 # `<h2 …>Profil recherché</h2><p …>…</p>`. The classes on both are Emotion
 # build hashes — `css-aocjcp`, `css-1nm1tyc` — which change on every deploy,
@@ -131,15 +131,9 @@ def card(url, lastmod):
     if page is None:
         return {"id": ident, "ledger_id": f"crit:{ident}", "url": url,
                 "gone": True}
-    jp = None
-    for blk in LD_RE.finditer(page):
-        try:
-            j = json.loads(blk.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
         if "JobPosting" in page:
             die(f"{url} contains 'JobPosting' but no ld+json block parsed — "

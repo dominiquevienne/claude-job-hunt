@@ -137,6 +137,20 @@ unclassified. **Neither is zero, so neither trips the check on this page.**
 German Adzuna ads, a salary appeared on 0 and `contract_type` on 0. *A fill
 rate measured in one language is not the board's fill rate.*
 
+**3d. `try: … except: continue` is where boards go missing.** Every
+`ld+json` reader here skips a block it cannot parse and carries on, so an
+invalid block and an absent one are indistinguishable by the time the row is
+written — and the row says the board publishes no structured data. Measured
+2026-09-02: `json.loads` reads **0 of 3** Michael Page ads and **3 of 3** with
+`strict=False`; ten of eighteen readers demanded a double-quoted `type="`
+attribute that one board already writes with single quotes.
+
+`skills/job-scan/scripts/_ldjson.py` is now the single reader, and its real
+output is not the JSON — it is **`absent_reason()`, which says whose failure
+this is.** "No JobPosting here" and "we could not read what is here" are
+different sentences, and only one of them should make somebody go and measure
+the board.
+
 **4. When you write an adapter, ask wrongly on purpose.** A wrong tenant, a
 wrong case, a missing accent, an oversized page, an id that does not exist. That
 is where every entry in the tables above came from, and none of them would have

@@ -31,6 +31,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import urllib.error
@@ -49,9 +51,6 @@ URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 # 0 URLs from a valid 2.37 MB sitemap. See issue #55 and `hays-fr.md`.
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
-LD_RE = re.compile(
-    r"<script[^>]*type=\"application/ld\+json\"[^>]*>(.*?)</script>",
-    re.S | re.I)
 
 
 def die(msg, code=2):
@@ -186,15 +185,9 @@ def card(url, lastmod):
     if page is None:
         return {"id": ident, "ledger_id": f"adecco:{ident}", "url": url,
                 "gone": True}
-    jp = None
-    for m in LD_RE.finditer(page):
-        try:
-            j = json.loads(m.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
         return {"id": ident, "ledger_id": f"adecco:{ident}", "url": url,
                 "json_ld": False}

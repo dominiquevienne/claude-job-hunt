@@ -23,6 +23,8 @@ import argparse
 import html as htmlmod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import urllib.error
 import urllib.request
@@ -60,16 +62,9 @@ def to_text(markup):
 
 
 def job_posting(body):
-    for block in re.findall(
-            r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', body, re.S):
-        try:
-            data = json.loads(block, strict=False)
-        except ValueError:
-            continue
-        for obj in (data if isinstance(data, list) else [data]):
-            if isinstance(obj, dict) and obj.get("@type") == "JobPosting":
-                return obj
-    return None
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    return next(iter(postings(body)), None)
 
 
 def cards(body):

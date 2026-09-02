@@ -52,6 +52,8 @@ Everything here was verified against the live site on **2026-09-02**.
 import argparse
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import urllib.error
@@ -70,8 +72,6 @@ ALL_PROVINCES = "ทุกจังหวัด"
 ALL_CATEGORIES = "ทั้งหมด"
 
 DETAIL = re.compile(r'href="/jobs/detail/(\d+)/(\d+)"')
-LD = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
-                re.S)
 
 
 def die(msg, code=2):
@@ -243,18 +243,14 @@ def cmd_ad(a):
     html = get(AD.format(company=comp, job=job))
     if html is None:
         die(f"{a.id}: 404 — the ad is gone.", 3)
-    posting = None
-    for m in LD.finditer(html):
-        try:
-            d = json.loads(m.group(1))
-        except ValueError:
-            continue
-        for o in (d if isinstance(d, list) else [d]):
-            if isinstance(o, dict) and o.get("@type") == "JobPosting":
-                posting = o
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    posting = (postings(html) or [None])[-1]
     if posting is None:
-        die(f"{a.id}: no JobPosting JSON-LD. It was on 12 of 12 ads on "
-            f"2026-09-02 — re-verify jobbkk.md.", 3)
+        why = absent_reason(html)
+        die(f"{a.id}: no JobPosting JSON-LD — {why.text} It was on 12 of 12 "
+            f"ads on 2026-09-02, so re-verify jobbkk.md.",
+            2 if why.our_fault else 3)
     addr = ((posting.get("jobLocation") or {}).get("address") or {})
     print(json.dumps({
         "id": a.id,

@@ -56,6 +56,8 @@ import collections
 import html as html_mod
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import unicodedata
@@ -129,8 +131,6 @@ CARD = re.compile(r'<article\b[^>]*id="job-item-(\d+)"[^>]*>(.*?)</article>',
 TAG = re.compile(r"<(/?)([a-zA-Z][\w-]*)\b[^>]*?(/?)>")
 VOID = {"br", "img", "input", "path", "use", "source", "meta", "hr"}
 PAYLOAD = re.compile(r'data-atx-onpageview-payload="([^"]+)"')
-LD = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
-                re.S)
 
 
 def die(msg, code=2):
@@ -449,20 +449,15 @@ def cmd_ad(a):
     if body is None:
         die(f"{a.site}: ad {a.id} did not answer. A 404 here means the ad is "
             f"gone; no status at all means the platform went quiet.", 3)
-    posting = None
-    for m in LD.finditer(body):
-        try:
-            d = json.loads(m.group(1))
-        except ValueError:
-            continue
-        for o in (d if isinstance(d, list) else [d]):
-            if isinstance(o, dict) and o.get("@type") == "JobPosting":
-                posting = o
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    posting = (postings(body) or [None])[-1]
     if posting is None:
-        die(f"{a.site}: ad {a.id} answered but carries no JobPosting JSON-LD. "
-            f"That is the one thing every ad on this platform had on "
-            f"2026-09-02 — re-verify stepstone.md before trusting the parse.",
-            3)
+        why = absent_reason(body)
+        die(f"{a.site}: ad {a.id} answered but carries no JobPosting "
+            f"JSON-LD — {why.text} That is the one thing every ad on this "
+            f"platform had on 2026-09-02, so re-verify stepstone.md before "
+            f"trusting the parse.", 2 if why.our_fault else 3)
     org = posting.get("hiringOrganization") or {}
     print(json.dumps({
         "id": a.id,

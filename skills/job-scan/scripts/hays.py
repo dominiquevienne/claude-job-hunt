@@ -26,6 +26,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import absent_reason, postings
 import sys
 import time
 import unicodedata
@@ -56,8 +58,6 @@ URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 AD_RE = re.compile(r"/description-emploi/(.+)$")
-LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
-                   re.S | re.I)
 
 
 def die(msg, code=2):
@@ -147,18 +147,18 @@ def card(url, lastmod):
     if page is None:
         return {"id": ident, "ledger_id": f"hays-fr:{ident}", "url": url,
                 "gone": True}
-    jp = None
-    for m in LD_RE.finditer(page):
-        try:
-            j = json.loads(m.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
-        if "JobPosting" in page:
-            die(f"{url} contains 'JobPosting' but no ld+json block parsed.")
+        # **Whose failure is this?** `absent_reason` answers it instead of
+        # letting the sentence imply the board. A block that is present and
+        # unreadable, or a page that says JobPosting and yields none, is our
+        # bug and exits loudly; a page with no structured data is a fact about
+        # the page. Issue #76.
+        why = absent_reason(page)
+        if why.our_fault:
+            die(f"{url}: {why.text}")
         return {"id": ident, "ledger_id": f"hays-fr:{ident}", "url": url,
                 "json_ld": False}
     addr = (jp.get("jobLocation") or {}).get("address") or {}

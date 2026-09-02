@@ -23,6 +23,8 @@ import argparse
 import html as htmlmod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import urllib.error
 import urllib.parse
@@ -32,7 +34,6 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 
 REF = re.compile(r'/ref/(jn-\d{6}-\d+)', re.I)
-LD = re.compile(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', re.S | re.I)
 PAGE_HINT = 30      # observed on .ch and .de; .fr served 20 and .co.uk 17
 
 
@@ -62,19 +63,19 @@ def to_text(markup):
 def job_posting(body):
     """The schema.org JobPosting, or None.
 
-    strict=False is REQUIRED, not defensive: every ad sampled embeds literal
-    newlines inside JSON strings, which is invalid JSON. A strict parser — the
+    **This board is one of the two that make `strict=False` necessary**, and
+    it is still true: on 2026-09-02 a bare `json.loads` read 0 of 3 ads here
+    and `strict=False` read 3 of 3. Every ad sampled embeds literal newlines
+    inside JSON strings, which is invalid JSON, and a strict parser — the
     default in most languages — rejects the whole block and sees no ad at all.
+
+    The argument is no longer passed here: `_ldjson.postings` passes it for
+    every board, because the next board to publish an invalid block will not
+    announce itself. Issue #76.
     """
-    for block in LD.findall(body):
-        try:
-            data = json.loads(block, strict=False)
-        except ValueError:
-            continue
-        for obj in (data if isinstance(data, list) else [data]):
-            if isinstance(obj, dict) and obj.get("@type") == "JobPosting":
-                return obj
-    return None
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    return next(iter(postings(body)), None)
 
 
 def card(domain, ref, posting, title_hint=None, with_description=False):

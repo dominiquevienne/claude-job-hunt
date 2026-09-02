@@ -33,6 +33,8 @@ import argparse
 import html as html_mod
 import json
 import re
+
+from _ldjson import postings
 import sys
 import time
 import unicodedata
@@ -53,13 +55,14 @@ SITEMAP_BLOCK_RE = re.compile(r"(?s)<sitemap>(.*?)</sitemap>")
 # 0 URLs from a valid 2.37 MB sitemap. See issue #55 and `hays-fr.md`.
 SITEMAP_LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^\s\]<]+)")
 MOD_RE = re.compile(r"<lastmod>([^<]*)")
-# This site writes `<script type='application/ld+json'>` with **single**
-# quotes. A pattern requiring double ones matches nothing and the adapter
-# reports `json_ld: false` on every ad — a total failure wearing the face of
-# "this board publishes no structured data". Quote style is not a contract:
-# match the attribute, not the punctuation around it.
-LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
-                   re.S | re.I)
+# **This site writes `<script type='application/ld+json'>` with single
+# quotes**, and a pattern requiring double ones matches nothing: the adapter
+# then reports `json_ld: false` on every ad — a total failure wearing the face
+# of "this board publishes no structured data". Quote style is not a contract.
+#
+# The pattern that survived that lesson now lives in `_ldjson.py` and serves
+# every board here, because ten of the eighteen readers in this repository
+# had the brittle form and only this one had been bitten. Issue #76.
 DEPT_RE = re.compile(r"^(?:\d{2}|2[AB])$")
 
 
@@ -202,15 +205,9 @@ def card(url, lastmod):
     if page is None:
         return {"id": ident, "ledger_id": f"randstad-fr:{ident}", "url": url,
                 "gone": True}
-    jp = None
-    for m in LD_RE.finditer(page):
-        try:
-            j = json.loads(m.group(1))
-        except Exception:  # noqa: BLE001 - a broken block is not fatal
-            continue
-        for x in (j if isinstance(j, list) else [j]):
-            if isinstance(x, dict) and x.get("@type") == "JobPosting":
-                jp = x
+    # One reader for every board's ld+json: tolerant of the quote style
+    # on the script tag, and strict=False on the parse. Issue #76.
+    jp = (postings(page) or [None])[-1]
     if jp is None:
         if "JobPosting" in page:
             # The page says JobPosting and the parser did not find one. That
