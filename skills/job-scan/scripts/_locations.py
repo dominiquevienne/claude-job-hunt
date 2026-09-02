@@ -86,12 +86,42 @@ romanisation is applied upstream, to the whole corpus.** *(Method note: Unicode
 classes `á`, `ü` and `ḩ` as Latin, so the test measures the writing system and
 not the diacritics — which is what makes the result usable.)*
 
-**So nothing here will ever have to transliterate.** No rule in this file needs
-to relate 서울 to *Seoul*. What it faces is only **Latin variants of a
-romanisation somebody else already did, and did several ways** — `Zhubei`
-against `Jhubei`, `Tel Aviv` against `Tel Aviv-Yafo`. Folding closes the first
-kind and no character rule closes the second, and that is the whole of it.
-*(Recorded from the country surveys of 2026-09-02.)*
+**That is true of the aggregated corpus and false of this tool**, and the
+difference is the whole point:
+
+> A normalisation whose only input is the international corpus will never have
+> to transliterate — it will only have to reconcile **Latin variants of a
+> romanisation somebody else already did, and did several ways**: `Zhubei`
+> against `Jhubei`, `Tel Aviv` against `Tel Aviv-Yafo`. **The moment a national
+> board feeds the same table, transliteration is the problem again, because
+> national sources keep their own script.**
+
+**The native characters exist; they simply never reach the aggregator's
+field.** `104.com.tw` shows `新北市中和區`; Taiwan's public service shows
+`高雄市 / 前鎮區`; `ikman.lk` publishes in English, Sinhala and Tamil. An
+adapter reading those boards receives Han, Sinhala and Tamil. **Carrying the
+aggregated population's property over to the source population is the same
+faulty join this repository keeps catching, in the other direction.**
+
+**And the two halves of the tool have opposite problems**, which is more
+interesting than either:
+
+- **The international corpus**: the romanisation was done for us, across
+  everything, **and we do not know how.** Taipei's five region labels, Doha's
+  five spellings, `Zhubei` against `Jhubei` are **the scars of that invisible
+  work** — we inherit the result without the procedure, and it cannot be
+  redone, because the original is gone.
+- **A national board**: the original is right there. The native script and its
+  administrative hierarchy — 市, 區 — are intact, **so it is deduplicable
+  properly**, and a transliteration remains to be done.
+
+**The day two adapters feed one place table, the two meet**: a damaged
+romanisation whose original has disappeared, and an intact original that has to
+be romanised.
+
+*(Recorded from the country surveys of 2026-09-02. The first version of this
+paragraph said transliteration would never be needed; that was measured on the
+aggregator's labels and stated of the tool.)*
 
 **One more reason this helper does not audit itself.** The metric that found
 the Israeli case had also *missed* it for weeks, because it grouped labels by
