@@ -230,6 +230,14 @@ Optionally, a sixth: **assisted application**, if the board has an in-site apply
 flow. It must follow the same gate as LinkedIn's — the user validates every
 send, and nothing is reported as sent without a visible confirmation.
 
+**Compare cities through `skills/job-scan/scripts/_locations.py`, never by
+string equality.** One city arrives under several labels in a single result
+set — `Hanoi, Hanoi`, `Hanoi, Ha Noi`, `Hanoi, Hà Nội` — and on Bogotá's 103
+cards an exact match recovered 17%, the first segment 51%, and the first
+segment **with diacritics folded 100%**. The helper does both, and
+`drop_report` names what a filter excluded, so a city filter that drops rows
+says how many. Issue #65.
+
 The **id is the load-bearing part**. It is the ledger's dedup key, so it must be
 stable across visits and rebuildable into a URL. A board with no stable per-ad
 id needs a documented composite key (company + title + posting date) and a note
