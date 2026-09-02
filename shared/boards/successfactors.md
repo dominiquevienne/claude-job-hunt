@@ -99,7 +99,14 @@ renamed into a location the commute rule would trust.
 **3. The slug is decorative, and the API returns it HTML-escaped.**
 `Responsable-d&apos;applications-...` comes straight out of `unifiedUrlTitle`.
 `/job/x/<id>-<locale>` answers `200` just as well, so the slug is unescaped for
-readability rather than relied on.
+readability rather than relied on — confirmed on a second host, where
+`/job/Zzz-Not-A-Job/<real id>/` serves the whole vacancy.
+
+**But the rest of that URL is not decorative, and it differs by tenant.** BCV
+serves `/job/<slug>/<id>-<locale>`; SICPA serves `/job/<slug>/<id>/` and sends
+the locale form to `/errorpage/`. **Try both** — reading only the first
+reported a live SICPA vacancy as unresolvable. `shared/ats-open-check.md`
+carries the measurement (issue #87).
 
 **4. Reading the description needs the vacancy page, not the API.** The search
 payload carries no description at all. The vacancy page **is** server-rendered —
