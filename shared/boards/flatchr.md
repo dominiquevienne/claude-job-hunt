@@ -1,5 +1,14 @@
 # Board adapter — Flatchr
 
+<!-- verified: 2026-09-02 -->
+
+**No tenant directory was found. Searched 2026-09-02**, after `taleez.md` and
+`solique.md` both turned out to have one at the standard path:
+`careers.flatchr.io/sitemap.xml` **redirects to `www.flatchr.io/sitemap.xml`**
+— 5.7 MB of `application/xml`, and **730 URLs of the vendor's own marketing
+site**: blog posts, landing pages, integration pages. No tenant, no ad. The
+user still supplies the careers URL.
+
 A French ATS for **SMEs and mid-sized companies**, and the second of the French
 ATS family this plugin sweeps, alongside `taleez.md`. Same shape as
 `umantis.md`: one employer per careers site, **no directory**, and the user

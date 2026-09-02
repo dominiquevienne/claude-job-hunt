@@ -1,9 +1,41 @@
 # Board adapter — Taleez
 
+<!-- verified: 2026-09-02 -->
+
+## The directory this file said did not exist
+
+**Corrected 2026-09-02.** This file said there was no tenant directory and
+that the user must supply a careers URL. **The platform publishes the whole
+board**:
+
+```
+https://taleez.com/sitemap.xml       → an index, 2 entries
+https://taleez.com/sitemap-job.xml   → 1.8 MB, application/xml
+                                       **14 221 /apply/<slug> URLs**
+taleez.py sitemap                    → those slugs
+taleez.py ad <slug>                  → the ad, **with no tenant**
+```
+
+That last line is what makes it a directory rather than a list: an ad reads
+without knowing which employer it belongs to, so enumerate-then-read works
+across the whole platform.
+
+**One shape to get right.** The slug is not always the short opaque id: **296
+of the 14 221 look like `fmudc`, and the other 13 925 are long descriptive
+ones** ending in the contract type. Matching only the short form finds **2% of
+the board** — measured here while writing the command, which is how it is
+known.
+
+**It is the board, not a search.** No keyword, no location, no filter: the
+sitemap enumerates and nothing narrows. Per-tenant reading through
+`taleez.py jobs` stays the targeted route, and this is the one for coverage.
+
+
+
 A French ATS, built in Toulouse, used by **SMEs and mid-sized companies**. Its
 careers sites are the French counterpart of `umantis.md`: employers that no
-meta-board indexes, reachable one tenant at a time, with **no directory** to
-look them up in.
+meta-board indexes, reachable one tenant at a time — **and also, since
+2026-09-02, through the platform's own sitemap of 14 221 ads.**
 
 **Everything here was verified against the live API on 2026-08-31.**
 

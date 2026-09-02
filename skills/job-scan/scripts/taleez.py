@@ -225,6 +225,41 @@ def cmd_ad(a):
                      ensure_ascii=False, indent=1))
 
 
+def cmd_sitemap(a):
+    """Every ad on the whole Taleez board, from the platform's own sitemap.
+
+    **This file said "no tenant directory exists" until 2026-09-02.** There is
+    one, at `https://taleez.com/sitemap-job.xml`: 14 221 `/apply/<slug>` URLs,
+    `application/xml`, 1.8 MB, no key and no tenant needed. And `ad <slug>`
+    reads any of them **without knowing which employer it belongs to**, which
+    is what makes the sitemap a usable directory rather than a list of links.
+
+    It is the board, not a search: there is no keyword or location filter here,
+    so this is for enumerating and then reading, not for targeting.
+    """
+    raw = fetch("https://taleez.com/sitemap-job.xml")
+    # The slug is not always the short opaque id: 296 of the 14 221 look like
+    # `fmudc`, and the rest are long descriptive ones ending in the contract
+    # type. Both forms answer `ad`. Matching only the short shape found 2% of
+    # the board — measured while writing this.
+    text = raw if isinstance(raw, str) else raw.decode("utf-8", "replace")
+    slugs = re.findall(r"<loc>https://taleez\.com/apply/([^<]+)</loc>", text)
+    seen, out = set(), []
+    for sl in slugs:
+        if sl not in seen:
+            seen.add(sl)
+            out.append(sl)
+    print(f"[taleez] {len(out)} ad slugs in the platform sitemap. Read one "
+          f"with `taleez.py ad <slug>` — no tenant needed. This is the whole "
+          f"board with no filter, so pick before you fetch.", file=sys.stderr)
+    if a.limit:
+        out = out[:a.limit]
+    for sl in out:
+        print(json.dumps({"slug": sl,
+                          "url": f"https://taleez.com/apply/{sl}"},
+                         ensure_ascii=False))
+
+
 def main():
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -240,6 +275,11 @@ def main():
     j.add_argument("--delay", type=float, default=1.0,
                    help="seconds between ad reads (default 1)")
     j.set_defaults(func=cmd_jobs)
+
+    sm = sub.add_parser("sitemap",
+                        help="every ad slug on the platform, no tenant needed")
+    sm.add_argument("--limit", type=int)
+    sm.set_defaults(func=cmd_sitemap)
 
     d = sub.add_parser("ad", help="read one ad by slug")
     d.add_argument("slug")
