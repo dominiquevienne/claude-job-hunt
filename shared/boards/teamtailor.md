@@ -1,5 +1,12 @@
 # Board adapter — Teamtailor
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02 against three tenants** — `investengine`, `polestar`
+and `oatly` — all three answering with live postings on the documented route.
+The repository's rule is two tenants minimum for an ATS family, because what
+does not vary at the first client is not a property of the API.
+
 One employer at a time, by tenant. **No browser, no account, no cookie.** Same
 family and same script as `greenhouse.md`, `lever.md`, `ashby.md`,
 `smartrecruiters.md` and `workable.md`: `skills/job-scan/scripts/ats.py`.

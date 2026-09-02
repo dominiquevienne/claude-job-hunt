@@ -1,5 +1,7 @@
 # Board adapter — persigo.ch
 
+<!-- verified: 2026-09-02 -->
+
 A Swiss staffing **agency** board, like `michaelpage.md` and `fachkraft.md`:
 `hiringOrganization` is *Persigo AG* on every ad and **the client employer is
 never named**.
@@ -9,11 +11,19 @@ no browser.**
 
 Read by `skills/job-scan/scripts/persigo.py`.
 
-**Verified 2026-08-29**: the whole board, 890 ads, read in one request.
+**Verified 2026-08-29**, re-run 2026-09-02: the whole board in one request,
+**887 ads today against the 890 of the first pass** — the board's own stated
+figure both times, so the drift is the board's, not the parse.
+
+**The constraint held on re-run**: `hiringOrganization` is *Persigo AG* on
+**887 of 887**, and the client employer is named on none. That is the claim
+worth re-testing here, because it is the one that decides whether these ads
+can ever be matched against an employer's own ATS.
 
 ## The whole board in one request
 
-`/stelle-finden/` ships all **890** ads — the figure the page states — as
+`/stelle-finden/` ships all **887** ads — the figure the page states, 890 on
+2026-08-29 — as
 `<div class="row listitem listitem-<TOKEN>">` blocks. There is no pagination to
 write, and each card already yields:
 

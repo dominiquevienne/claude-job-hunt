@@ -1,5 +1,13 @@
 # Board adapter — Workable
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02.** `storyteq` still answers with live postings on the
+documented route. Three other tenants — `rasa`, `contentsquare`, `sylvera` —
+answered **`0 of 0 postings kept`**, which is this adapter's honest empty: the
+account exists and is publishing nothing. `vercel` and `hostinger` answered a
+clean 404. Both shapes are worth knowing apart, and neither is a breakage.
+
 One employer at a time, by tenant. **No browser, no account, no cookie.** Same
 family as `greenhouse.md`, `lever.md`, `ashby.md` and `smartrecruiters.md`, and
 the same script: `skills/job-scan/scripts/ats.py`.
@@ -127,3 +135,23 @@ note in the board request.
 **A `403` has never been observed here**, unlike umantis. Absence from the
 listing is the only closure signal this board gives, and it is a reliable one:
 the endpoint returns the employer's whole live board every time.
+
+## `resolve` can hand you a tenant `list` refuses
+
+Re-verified 2026-09-02. `ats.py resolve "Storyteq"` returns two rows, and the
+second one works. The first does not:
+
+```
+{"provider": "workable", "tenant": "inspired_thinking_group_(itg)", …}
+→ ats.py list --provider workable --tenant "inspired_thinking_group_(itg)"
+→ HTTP 404, raw and percent-encoded alike
+```
+
+`resolve` reads HiringCafe's `ats_tenant` field, and HiringCafe sometimes
+records **a label rather than the slug Workable answers to**. The old error
+message told the reader to run `resolve` — which is what produced the bad
+value — so the advice looped. It now says where the real slug is: **in the
+employer's own `apply.workable.com/<tenant>` URL**.
+
+**A tenant that 404s is not proof the employer has no Workable board.**
+

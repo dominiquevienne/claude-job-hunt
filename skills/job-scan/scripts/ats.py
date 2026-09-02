@@ -299,8 +299,13 @@ def workable_list(tenant, want_content, _a=None):
     q = "?details=true" if want_content else ""
     d = fetch(f"https://apply.workable.com/api/v1/widget/accounts/{tenant}{q}")
     if d is None:
-        die(f"Workable has no account called {tenant!r} (HTTP 404). Check the "
-            "tenant with: ats.py resolve \"<employer name>\"", code=4)
+        die(f"Workable has no account called {tenant!r} (HTTP 404). "
+            f"If that tenant came from `ats.py resolve`, do not simply run it "
+            f"again: resolve reads HiringCafe's `ats_tenant`, and HiringCafe "
+            f"sometimes records a label rather than the slug Workable "
+            f"answers to — 'inspired_thinking_group_(itg)' 404s here both raw "
+            f"and percent-encoded, measured 2026-09-02. Take the slug from "
+            f"the employer's own apply.workable.com URL instead.", code=4)
     jobs = d.get("jobs") or []
     for j in jobs:
         # The employer's real name lives on the account, not on the job. Carry

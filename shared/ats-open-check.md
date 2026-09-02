@@ -1,5 +1,13 @@
 # Is the ad still open? Asking the employer's ATS directly
 
+<!-- verified: 2026-09-02 -->
+
+*Scope of that date: the **Jobvite** section was re-tested on 2026-09-02 and
+its signal is gone (below). The umantis, Greenhouse, Lever and remaining
+sections still carry their own earlier dates in place and were **not** re-run
+in that pass — the header records when the file was last touched against a
+live service, not a claim that every section was.*
+
 Used by `cover-letter` **step 1b**, when an ad is in the at-risk band and the
 question *"is anyone still reading applications?"* has to be answered before a
 dossier is written.
@@ -61,7 +69,35 @@ one employer at a time, and reaches the Swiss SMEs, communes and institutes that
 HiringCafe does not index at all. This section stays as the open/closed oracle;
 that file is for listing a board.
 
-### Jobvite — a weak, title-only signal. Affirmative use only.
+### Jobvite — **the signal is gone as of 2026-09-02. Do not use this section.**
+
+Re-tested 2026-09-02 with a plain client. **Every request to
+`jobs.jobvite.com` answered `200` with the same page** — `<title>Job Seeker
+FAQs and Support | Jobvite` — for a fabricated token, for a fabricated
+employer, and for three plausible employer listings alike:
+
+```
+jobs.jobvite.com/careers/job/oZZZfakefake   200  "Job Seeker FAQs and Support"
+jobs.jobvite.com/nonexistent-employer-xyz/… 200  "Job Seeker FAQs and Support"
+jobs.jobvite.com/ingram-micro               200  "Job Seeker FAQs and Support"
+jobs.jobvite.com/zscaler                    200  "Job Seeker FAQs and Support"
+jobs.jobvite.com/blackline                  200  "Job Seeker FAQs and Support"
+```
+
+The old table below distinguished `<Employer> Careers - <Job Title>` from a
+bare `<Employer> Careers`. **Neither string appears any more**, so the
+affirmative reading cannot be obtained on this host by a plain client, and a
+tool matching those titles now reads every ad as unknown.
+
+**What this is has not been established.** By the layer rule in
+`shared/robots-policy.md` a complete `200` carrying a page nobody asked for is
+*substituted*, and a substituted response is one a browser may change — this
+was not tried in a browser. Until someone does, treat the Jobvite oracle as
+unavailable rather than as a verdict about any ad.
+
+The table is kept below as the record of what it used to answer.
+
+### Jobvite — the former signal, retired 2026-09-02
 
 - Path: `jobs.jobvite.com/<employer>/job/<opaque token>`
 - **Jobvite never returns an error status.** Every request below answered `200`.
