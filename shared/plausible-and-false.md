@@ -73,6 +73,33 @@ written to hunt this exact class, by somebody looking for it.
 provenance is the question whoever reads it must ask — and *your own script* is
 a provenance like any other.
 
+## A share is a share *of the thing you grouped by*
+
+**A concentration measured over labels is a label concentration, not a city
+concentration** — and the two differ by half. Measured on 239 Israeli cards,
+2026-09-02: Tel Aviv appears **78 times under eight labels and three names**
+(the usual one, the municipality's official one, an anglicised one), so
+grouping by label reads **45%** where the city's share is **90%**.
+
+**Character folding cannot close that gap**, because it is not a variation on a
+name — `Tel Aviv-Yafo` *is* a different name. The knowledge that two names
+denote one place is declared, never computed.
+
+So the fix is the one this page always reaches for: **put it in the name.**
+Publish it as a *label* concentration and as a **lower bound**. Writing a
+translation table instead would be the failure this page catalogues — **an
+incomplete table looks exactly like a complete one**, corrected where somebody
+thought of it and silently not elsewhere. And the cheap version of that table
+is worse than incomplete: `X City → X` would fold **Quebec City into a
+province** and **Mexico City, Panama City, Guatemala City and Kuwait City into
+countries.**
+
+**And the metric had missed it for weeks, for the reason that matters most
+here: it grouped labels by first segment — the same way the helper it was
+meant to audit compares them.** It saw four clean cities where there was one
+dirty one. That is *blind agreement* (`never-fail-silently.md`), and it is why
+a measurement built alongside the thing it measures proves less than it looks.
+
 ## One level up: a count is a claim about *something*, and rarely about matches
 
 The user's question is **how many ads match me**. A board answers a different

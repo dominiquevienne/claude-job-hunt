@@ -30,6 +30,44 @@ cards:
 rather than copied — `stepstone.py` had the right implementation and a private
 copy of it, which is how a rule becomes a habit in one file and a bug in ten.
 
+WHAT THIS CANNOT DO, AND WILL NOT BE MADE TO DO. Folding reconciles *Zürich*
+with *Zurich*. **It will never reconcile `Tel Aviv` with `Tel Aviv-Yafo`,
+because that is not a variation on a name — it is a different name for the
+same place.** Measured on 239 Israeli cards, 2026-09-02: Tel Aviv appears **78
+times under eight labels and three names** — the usual name, the municipality's
+official one, and an anglicised one — so a count grouped by label reads **45%**
+where the city's real share is 90%.
+
+**No character rule reaches it.** Knowing that two names denote one city is
+not computed, it is declared — and a declaration table is not written here, on
+purpose:
+
+- **It never stops growing**, and an incomplete one looks complete. That is
+  the class `shared/plausible-and-false.md` exists for: corrected in the
+  entries somebody thought of, uncorrected elsewhere, and indistinguishable
+  from the outside.
+- **The obvious cheap rule is wrong in a direction that destroys
+  information.** `X City → X` would cover the Philippine cases (*Makati City*,
+  *Taguig City*, *Pasig City*) in three lines — and it would fold **Quebec City
+  into a province, Mexico City and Panama City and Guatemala City and Kuwait
+  City into countries.** *(Reasoned from place names, not measured in this
+  corpus — but the counter-examples have to be excluded before the rule is
+  written, and they are not hard to find.)*
+- **And nothing here is a search problem.** A candidate searching Tel Aviv
+  receives all 78 cards, because the query is compared against the label and
+  not normalised into one. **Only a measurement is affected, and the honest fix
+  for a measurement is to say what it measures.**
+
+So a share computed over these labels is a **label concentration**, and it is a
+**lower bound** on the city's. Call it that wherever it is published: the
+caveat belongs in the name, not in a footnote (#67, #85).
+
+**One more reason this helper does not audit itself.** The metric that found
+the Israeli case had also *missed* it for weeks, because it grouped labels by
+first segment — **the same way this file compares them.** A check that shares
+its object's blind spot agrees with it by construction; see *blind agreement*
+in `shared/never-fail-silently.md`.
+
 Usage from a sibling script in this directory:
 
     from _locations import city_key, matches_city, drop_report
