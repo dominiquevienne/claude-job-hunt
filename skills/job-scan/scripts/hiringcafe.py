@@ -26,6 +26,7 @@ import html
 import json
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -68,15 +69,56 @@ class _Redirect308(urllib.request.HTTPRedirectHandler):
 OPENER = urllib.request.build_opener(_Redirect308)
 
 
-def get(url):
-    return OPENER.open(urllib.request.Request(url, headers={"User-Agent": UA}),
-                       timeout=60).read().decode("utf-8", "replace")
+# Exit codes, because "the sweep was throttled" and "the adapter is broken"
+# must not look the same to the caller.
+EXIT_BROKEN = 2      # the shape changed, the ad is gone, the search is invalid
+EXIT_THROTTLED = 6   # the site refused us; whatever came back is a partial pass
+
+
+class Throttled(Exception):
+    """A 403/429/5xx that survived the backoff. Transient, not broken."""
+
+
+def get(url, attempts=4, first_wait=20.0):
+    """Fetch with a timed backoff.
+
+    hiring.cafe answers 403 intermittently and the refusal rate rises with the
+    number of pages asked for: measured 2026-09-02, `--pages 6` failed 8 times
+    out of 8, while one page at a time with 25 s between requests returned 6
+    pages of 6. **So the remedy is waiting, not retrying quickly** — the waits
+    are 20 s, 40 s, 80 s rather than the usual second or two.
+    """
+    wait = first_wait
+    for attempt in range(1, attempts + 1):
+        try:
+            return OPENER.open(
+                urllib.request.Request(url, headers={"User-Agent": UA}),
+                timeout=60).read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            if e.code not in (403, 429) and e.code < 500:
+                raise
+            if attempt == attempts:
+                raise Throttled(f"HTTP {e.code} after {attempts} attempts")
+            print(f"[hiringcafe] HTTP {e.code} — waiting {wait:.0f}s "
+                  f"(attempt {attempt} of {attempts}). This site throttles by "
+                  f"pages requested; waiting works where retrying does not.",
+                  file=sys.stderr)
+            time.sleep(wait)
+            wait *= 2
+        except urllib.error.URLError as e:
+            if attempt == attempts:
+                raise Throttled(f"{e}")
+            time.sleep(wait)
+            wait *= 2
+    raise Throttled("unreachable")
 
 
 def fetch_page_props(params):
     url = BASE + "?" + urllib.parse.urlencode(params)
     try:
         raw = get(url)
+    except Throttled:
+        raise
     except urllib.error.HTTPError as e:
         die(f"hiringcafe returned HTTP {e.code} for a search request")
     except Exception as e:  # noqa: BLE001 - network shape varies by platform
@@ -185,11 +227,23 @@ def card(hit):
 def cmd_search(a):
     state = build_state(a)
     seen, rows, total = set(), 0, None
+    asked = a.pages
+    got = 0
+    throttled = None
     for page in range(a.page, a.page + a.pages):
+        if page > a.page and a.delay:
+            # One page at a time, spaced. This is the measured remedy: the
+            # refusal rate tracks how many pages a run asks for.
+            time.sleep(a.delay)
         params = {"searchState": json.dumps(state, separators=(",", ":"))}
         if page:
             params["page"] = page
-        pp = fetch_page_props(params)
+        try:
+            pp = fetch_page_props(params)
+        except Throttled as exc:
+            throttled = exc
+            break
+        got += 1
         if total is None:
             total = pp.get("ssrTotalCount")
             print(f"[hiringcafe] {total} ads, {pp.get('ssrCompanyCount')} companies",
@@ -209,7 +263,23 @@ def cmd_search(a):
             rows += 1
         if pp.get("ssrIsLastPage"):
             break
-    print(f"[hiringcafe] {rows} unique cards returned", file=sys.stderr)
+    if throttled:
+        # `shared/never-fail-silently.md` in both directions: a truncated
+        # sweep must not exit 0, and it must not look like a broken adapter
+        # either. Whatever came back is real and is already on stdout.
+        print(f"[hiringcafe] THE SWEEP IS PARTIAL: {got} of {asked} page(s) "
+              f"read before the site refused ({throttled}). {rows} unique "
+              f"cards were returned and they are good; the rest were never "
+              f"fetched. Re-run later, or with --pages 1 and a larger "
+              f"--delay. Do not report this as a complete pass.",
+              file=sys.stderr)
+        if got == 0:
+            die("hiringcafe refused every attempt. Nothing was read — this is "
+                "a throttle, not a breakage, so try again in a few minutes "
+                "rather than reporting the board broken.", EXIT_THROTTLED)
+        sys.exit(EXIT_THROTTLED)
+    print(f"[hiringcafe] {rows} unique cards returned over {got} page(s) "
+          f"of {asked} asked", file=sys.stderr)
 
 
 def to_text(markup):
@@ -262,6 +332,10 @@ def main():
     s.add_argument("--sort", default="relevance", choices=sorted(SORTS))
     s.add_argument("--page", type=int, default=0)
     s.add_argument("--pages", type=int, default=1)
+    s.add_argument("--delay", type=float, default=25.0,
+                   help="seconds between pages. The default is high on "
+                        "purpose: 25 s apart returned 6 pages of 6 where a "
+                        "burst of 6 failed 8 times out of 8")
     s.set_defaults(func=cmd_search)
 
     d = sub.add_parser("ad", help="read one ad in full")

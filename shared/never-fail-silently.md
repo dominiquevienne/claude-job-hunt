@@ -94,6 +94,21 @@ rows — it should **fail loudly with its own exit code** rather than print
 nothing. Printing nothing is indistinguishable from a board with nothing on it,
 which is precisely the confusion this page exists to prevent.
 
+**3b. A truncated pass is neither a success nor a breakage, and it needs its
+own exit code.** HiringCafe throttles by the number of pages a run asks for —
+`--pages 6` was refused eight times out of eight while one page at a time,
+25 s apart, returned six of six. An adapter that dies on the first refusal
+reports the same exit code as a board whose payload has changed shape, and a
+sweep that got five pages of six has no way to say so.
+
+So `hiringcafe.py` now exits **6 for throttled** and keeps **2 for broken**,
+prints how many pages of how many it read, and says the rest were never
+fetched. **The rule generalises**: where an adapter can obtain part of what
+was asked, it must report the part, name the shortfall, and exit with
+something the caller can tell apart from both success and failure. This page's
+principle runs in both directions — a silent zero is one failure, and a
+truncated sweep reported as a clean finish is the other.
+
 **4. When you write an adapter, ask wrongly on purpose.** A wrong tenant, a
 wrong case, a missing accent, an oversized page, an id that does not exist. That
 is where every entry in the tables above came from, and none of them would have

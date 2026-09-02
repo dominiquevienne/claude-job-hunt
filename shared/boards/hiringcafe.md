@@ -244,10 +244,60 @@ HiringCafe sweep as an empty market.
 employer's own ATS. Hand the user that URL with their documents, exactly as for
 any external ATS. Never attempt the employer's form from here.
 
+## The site throttles by pages asked for, and the sweep now says so
+
+**Measured 2026-09-02 (issue #59), from a Swiss IP:**
+
+| Run | Result |
+| :-- | :-- |
+| `--country ID --pages 1` | 403, 403, then success on the third attempt |
+| **`--country ID --pages 6`** | **8 consecutive attempts, 8 × 403** |
+| `--country CH --pages 1` | first try, 30 862 ads |
+| `--country FR --pages 1` | first try, 121 503 ads |
+
+All in the same quarter hour, so it is neither a country nor an ISO-code
+problem: **the refusal rate tracks how many pages a run asks for.** One page at
+a time with 25 s between requests returned **6 pages of 6**.
+
+**So the remedy is waiting, not retrying quickly**, and the adapter now does
+three things it did not:
+
+1. **A timed backoff on 403, 429 and 5xx** — four attempts at 20 s, 40 s, 80 s.
+   A second-scale retry is useless against this.
+2. **`--delay`, default 25 s between pages**, deliberately high. A one-page
+   sweep is unaffected; a six-page sweep takes two minutes and works.
+3. **A distinct exit code.** `6` means *throttled*: the site refused, and the
+   cards already printed are real. `2` still means *broken* — the payload
+   shape changed, the search was invalid. They were indistinguishable before,
+   and a caller cannot tell a partial pass from a failure without them.
+
+**A truncated sweep never reports a clean finish.** It prints how many pages
+of how many were read, says the rest were never fetched, and exits 6:
+
+```
+[hiringcafe] THE SWEEP IS PARTIAL: 3 of 6 page(s) read before the site
+refused (HTTP 403 after 4 attempts). 118 unique cards were returned and they
+are good; the rest were never fetched. Do not report this as a complete pass.
+```
+
+That is `shared/never-fail-silently.md` applied in both directions: not a
+silent zero, and not a silent success either — the rule is written there as
+its point 3b.
+
+**And the pacing works on the case that failed.** Indonesia at `--pages 3`,
+the sweep that could not get past three pages of six during the incident,
+returned **114 unique cards over 3 pages of 3 asked** with 8 s spacing on
+2026-09-02, with no refusal at all.
+
+**Any figure taken from this board must record the pages that came back**, not
+the pages that were asked for. A country measured during a throttle rests on a
+smaller sample than its wording implies.
+
 ## Pace, and one honest note
 
-One request per search page. A whole sweep is a few dozen — keep it that way,
-sequentially, and it stays indistinguishable from a person reading.
+One request per search page, now spaced by `--delay`. A whole sweep is a few
+dozen — keep it that way, sequentially, and it stays indistinguishable from a
+person reading.
 
 `robots.txt` disallows `/*?searchState=*` and `/*?page=*` **for crawlers**. This
 adapter is not a crawler: it makes a handful of requests, on one user's behalf,
