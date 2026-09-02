@@ -64,6 +64,11 @@ very issue*: it counted the request bodies four adapters **send** to their APIs
 as potential leaks, and then reported **80 suspicious sites** that were almost
 all a card built one line above. Both were clean, well-formed and false.
 
+**Mechanism 8 has a name, and it is in `never-fail-silently.md`: blind
+agreement** — a check and its object sharing a failure mode, so that agreement
+proves nothing. Both of the false numbers above were produced by tooling
+written to hunt this exact class, by somebody looking for it.
+
 **Mechanism 8 is why this page is not called "boards lie".** A value's
 provenance is the question whoever reads it must ask — and *your own script* is
 a provenance like any other.

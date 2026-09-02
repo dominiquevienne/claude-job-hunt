@@ -216,17 +216,39 @@ That second row is the one to read before adding a third: it took a check that
 **follows redirects and verifies structured data** — both good habits — and
 turned them into a false *open* with twenty pieces of evidence behind it.
 
-**And it has a sibling worth naming, because it is what makes this family
-different from the one above: the verifier and the verified can share a failure
-mode.** A SuccessFactors control test compared an ad's page against a
-deliberately invented id and concluded *does not resolve* when the two matched —
-correct reasoning, and it matched because **both** requests had been built with
-a URL shape that tenant does not serve, so both landed on the same error page
-for different reasons. **The comparison that was meant to settle the question
-confirmed instead.** The same shape appeared twice more the same day: a
-concentration metric that audited a normalisation helper by grouping labels the
-way the helper did, and an emit audit that counted outbound request bodies as
-leaks. **When a check and its object fail alike, agreement proves nothing.**
+### Blind agreement
+
+**A check and its object can share a failure mode — and then agreement proves
+nothing.**
+
+It is not a third family, and it is deliberately not one: the two families
+above classify by **where the failure is**, and this classifies by **why nobody
+saw it**. It applies to both of them, which is why it lives here as a note and
+not as a heading.
+
+**The name exists so it can be cited**, because it is not a curiosity — three
+instances turned up in one day, on three different layers: **1. The transport layer.** A SuccessFactors control test compared an ad's page
+against a deliberately invented id and concluded *does not resolve* when the
+two matched. The reasoning was correct; they matched because **both** requests
+had been built with a URL shape that tenant does not serve, so both landed on
+the same error page **for different reasons**. The comparison meant to settle
+the question confirmed instead, and a live vacancy was reported unresolvable.
+
+**2. The measurement layer.** A concentration metric written to audit a
+city-normalisation helper grouped labels by their first segment — **the same
+way the helper did** — so it saw four clean cities where there was one dirty
+one. It shared the blind spot of the thing it was auditing.
+
+**3. The tooling layer.** An emit audit written to find fields that leak
+counted the request bodies four adapters **send** to their APIs, then called
+eighty call sites suspicious that were a card built one line above. Both
+numbers were clean, well-formed, and false — **and both flattered the tool that
+produced them.**
+
+**The tell, where there is one, is that the check and the object were built by
+the same hand, in the same session, on the same assumption.** A control that
+agrees with what it controls has said nothing until you know it could have
+disagreed.
 
 That first row is alone, and it should stay hard to add to. Two nearby cases that
 look like it are not: `batiactu`'s region filter matches the *employer's name*
