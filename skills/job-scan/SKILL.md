@@ -196,8 +196,8 @@ themselves first. If the extension is absent, follow `shared/prerequisites.md`
 **Read that block rather than assuming it.** Most adapters do not drive the
 browser at all. `hiringcafe.md`, `job-room.md`, `france-travail.md`, `apec.md`,
 `meteojob.md`, `hellowork.md` and the ATS family (`workday.md`,
-`greenhouse.md`, `lever.md`, `ashby.md`, `workable.md`, `teamtailor.md`, `swissdevjobs.md`, `taleez.md`, `flatchr.md`, `digitalrecruiters.md`, `talentsoft.md`, `emploi-territorial.md`, `labonnealternance.md`, `jobology.md`, `batiactu.md`, `anefa.md`, `adecco.md`, `randstad-fr.md`, `crit.md`, `hays-fr.md`, `empleate.md`, `oposiciones.md`, `infoempleo.md`, `turijobs.md`, `arbeitsagentur.md`, `jobsireland.md`, `platsbanken.md`, `personio.md`, `recruitee.md`, `pinpoint.md`, `oraclecloud.md`, `stepstone.md`, `mycareersfuture.md`, `kalibrr.md`) are plain HTTP and need no extension,
-no login and no Chrome. Only `linkedin.md`, `jobup.md`, `jobs-ch.md`,
+`greenhouse.md`, `lever.md`, `ashby.md`, `workable.md`, `teamtailor.md`, `swissdevjobs.md`, `taleez.md`, `flatchr.md`, `digitalrecruiters.md`, `talentsoft.md`, `emploi-territorial.md`, `labonnealternance.md`, `jobology.md`, `batiactu.md`, `anefa.md`, `adecco.md`, `randstad-fr.md`, `crit.md`, `hays-fr.md`, `empleate.md`, `oposiciones.md`, `infoempleo.md`, `turijobs.md`, `arbeitsagentur.md`, `jobsireland.md`, `platsbanken.md`, `personio.md`, `recruitee.md`, `pinpoint.md`, `oraclecloud.md`, `stepstone.md`, `mycareersfuture.md`, `kalibrr.md`, `jobup.md`, `jobs-ch.md`) are plain HTTP and need no extension,
+no login and no Chrome. Only `linkedin.md`,
 `indeed.md`, `cadremploi.md`, `figaro-emploi.md`, `softy.md` and `wttj.md` (for reading; its discovery half is plain HTTP) need the user's own browser — and of those,
 only LinkedIn needs them logged in. Announcing requirements a board does not have costs the user a
 setup they did not need — and when the extension really is missing, HiringCafe
