@@ -25,6 +25,7 @@ the documents and flag the gap to them at the end.
 | `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
 | `shared/workspace.md` | Step 0 — locating and loading the user's data |
 | `shared/setup.md` | Step 0 — only when the workspace is not configured |
+| `shared/interview-debrief.md` | Step 2b — when the user reports back on a meeting instead of preparing one |
 | `shared/scoring-rubric.md` | Step 3 — the go/no-go score |
 | `shared/salary-estimate.md` | Step 3b — the compensation range, and where it must never go |
 | `shared/pipeline-format.md` | Steps 1, 4 and 9 — the ledger |
@@ -301,6 +302,18 @@ in the `profile/` PDFs, and `.text/` is those PDFs as plain text. Step 3 needs
 it for every must-have the ad names, in both directions, and doing that from
 the PDFs directly is what made the wrong answer cheaper than the right one.
 Issue #63.
+
+## 2b — If the user is reporting back on a meeting, not preparing one
+
+**A user who says "I had the interview" is not asking for a letter.** Follow
+`shared/interview-debrief.md` and stop there: it asks what happened, what was
+**not** answered, what the next step is and by when, and — separately, because
+it exists nowhere else — **the candidate's own read of the room**.
+
+Two things from that page matter more than the format: **the read is collected
+and never inferred**, and **an interview question they could not answer is not
+a gap in their profile** (issue #63 — prove it against `profile/.text/` first,
+and a disproved gap becomes an evidence line).
 
 ## 3 — Score the fit, then STOP for a go/no-go
 

@@ -126,6 +126,24 @@ of the most recent one outside it** — that is usually the real question behind
 an empty result, and an unexplained zero is indistinguishable from a broken
 filter.
 
+### Follow-ups whose date has arrived
+
+**Run this whenever a report is produced**, and put the result at the top:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/ledger.py" due --within 3
+```
+
+A `` `FU:YYYY-MM-DD` `` marker is a date **somebody promised in a conversation**
+— *"we will reply by the end of next week"*, *"relance le 14.09"* — and it is
+the one thing a chat transcript cannot keep. An overdue row is the most
+actionable line a report can carry.
+
+**When nothing comes back, say which of the two it is**: no row carries a
+follow-up date, or none has arrived. `ledger.py` prints that distinction
+itself; pass it on rather than reporting a clean sheet. `shared/interview-debrief.md`
+is where the marker gets written in the first place. Issue #69.
+
 ### It does not offer to enable a board, and that is deliberate
 
 `cover-letter` offers to switch on an unconfigured board when the user pastes a

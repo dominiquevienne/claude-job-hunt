@@ -155,6 +155,45 @@ def cmd_rows(a):
     note(f"{n} row(s) with status {a.status!r} of {len(rows)}.")
 
 
+FU_RE = re.compile(r"\bFU:(\d{4})-(\d{2})-(\d{2})\b")
+
+
+def cmd_due(a):
+    """Rows carrying a follow-up date that has arrived.
+
+    **The one thing a chat transcript cannot keep.** An interview ends with
+    *"we will reply by the end of next week"* and a promise to present the file
+    internally; a week later the date has passed and nothing knows. `FU:` is
+    that date on the row, and this is the reading of it. Issue #69.
+    """
+    import datetime as dt
+    text = read(a.file)
+    cols, rows = ads_table(text, a.file)
+    today = dt.date.fromisoformat(a.today) if a.today else dt.date.today()
+    n = 0
+    for r, d in zip(rows, parsed(cols, rows, a.file)):
+        m = FU_RE.search(r)
+        if not m:
+            continue
+        when = dt.date(*map(int, m.groups()))
+        if (when - today).days > a.within:
+            continue
+        n += 1
+        print(json.dumps({
+            "id": d.get("ID", ""), "company": d.get("Company", ""),
+            "role": d.get("Role", ""), "status": status_of(d),
+            "follow_up": when.isoformat(),
+            "days": (when - today).days,
+            "state": "overdue" if when < today else "due",
+        }, ensure_ascii=False))
+    if n == 0:
+        note(f"no follow-up falls within {a.within} day(s) of {today}. "
+             f"**That is an answer, not a clean run**: a row only appears here "
+             f"if somebody wrote `FU:` on it after a meeting.")
+    else:
+        note(f"{n} follow-up(s) due by {today} + {a.within} day(s).")
+
+
 def cmd_count(a):
     text = read(a.file)
     cols, rows = ads_table(text, a.file)
@@ -192,6 +231,7 @@ def main():
     for name, fn, h in (("index", cmd_index, "id, status and match only"),
                         ("rows", cmd_rows, "whole rows, by status"),
                         ("count", cmd_count, "rows and section sizes"),
+                        ("due", cmd_due, "follow-up dates that have arrived"),
                         ("verify", cmd_verify, "refuse a write that lost a row")):
         c = sub.add_parser(name, help=h)
         c.add_argument("--file", default=DEFAULT)
@@ -201,6 +241,10 @@ def main():
                            help="only the statuses that exclude an ad")
         if name == "rows":
             c.add_argument("--status", default="todo")
+        if name == "due":
+            c.add_argument("--within", type=int, default=3,
+                           help="days ahead to include (default 3)")
+            c.add_argument("--today", help="YYYY-MM-DD, for testing")
         if name == "verify":
             c.add_argument("--before", type=int, required=True)
         c.set_defaults(func=fn)
