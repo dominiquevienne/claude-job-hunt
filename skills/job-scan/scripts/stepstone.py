@@ -63,6 +63,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _locations import fold, matches_city
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
@@ -256,11 +258,15 @@ def list_path(site, keyword, location=None, page=1):
 
 
 def flatten(text):
-    """Lowercase, strip accents, keep letters and digits — for comparing a
-    search term against a title the site wrote in its own language."""
-    text = unicodedata.normalize("NFKD", text or "")
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    return " " + re.sub(r"[^a-z0-9]+", " ", text.lower()).strip() + " "
+    """Padded, folded text for whole-word containment tests.
+
+    The folding itself now lives in `_locations.fold`, shared with every other
+    adapter — this file had the only correct copy and keeping it private is
+    how a rule becomes a habit in one script and a bug in ten (issue #65).
+    The padding is local: it makes ` term ` match a whole word rather than a
+    prefix.
+    """
+    return " " + fold(text) + " "
 
 
 def classify(row, keyword, location):
@@ -278,8 +284,11 @@ def classify(row, keyword, location):
     title = flatten(row.get("title"))
     where = flatten(row.get("location_text"))
     if location:
-        place = flatten(location).strip()
-        if place and place not in where:
+        # `matches_city` compares the first segment with diacritics folded, so
+        # "Zürich, Zurich, CH" and "Zurich, Zurich, CH" — both live on one
+        # page of results — do not land on opposite sides of the test.
+        if not matches_city(row.get("location_text"), location) \
+                and fold(location) not in where:
             return "regional?", ("the card's location does not contain "
                                  f"'{location}'")
     if keyword:

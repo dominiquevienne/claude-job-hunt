@@ -293,6 +293,38 @@ returned **114 unique cards over 3 pages of 3 asked** with 8 s spacing on
 the pages that were asked for. A country measured during a throttle rests on a
 smaller sample than its wording implies.
 
+## One city, several labels — and the filter that says what it dropped
+
+This board writes the same place several ways inside one result set. Measured
+across two countries (issue #65):
+
+| Label | Cards |
+| :-- | --: |
+| `Kuala Lumpur, Kuala Lumpur` | 58 |
+| `Kuala Lumpur, Federal Territory of Kuala Lumpur` | 16 |
+| `Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur` | 12 |
+| `Hanoi, Hanoi` / `Hanoi, Ha Noi` / **`Hanoi, Hà Nội`** | 19 / 3 / **2** |
+
+Comparing whole strings by equality loses **a fifth to a third of a capital**,
+silently. And on Bogotá's 103 cards: whole string 17%, first segment 51%,
+**first segment with diacritics folded 100%** — neither condition works alone.
+
+**`--city-filter` applies that comparison to what came back**, which is
+different from `--city`, which asks the *site* to search a place. It folds
+diacritics, compares the first segment, and **reports what it dropped**:
+
+```
+[hiringcafe] --city-filter 'Zurich' kept 2 and dropped 38.
+Dropped labels: None ×7, 'Basel, Basel-Stadt, CH' ×4, 'London, England, GB' ×2 …
+```
+
+**The two rows it kept were `Zurich, Zurich, CH` and `Zürich, Zurich, CH`** —
+the same city with and without the umlaut, on one page of results. An exact
+comparison keeps one and loses the other, and says nothing.
+
+The comparison lives in `skills/job-scan/scripts/_locations.py`, shared, not
+copied.
+
 ## Pace, and one honest note
 
 One request per search page, now spaced by `--delay`. A whole sweep is a few

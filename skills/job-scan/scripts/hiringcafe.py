@@ -31,6 +31,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _locations import drop_report, matches_city
+
 BASE = "https://hiringcafe.com/"
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -230,6 +232,7 @@ def cmd_search(a):
     asked = a.pages
     got = 0
     throttled = None
+    dropped, dropped_labels = 0, {}
     for page in range(a.page, a.page + a.pages):
         if page > a.page and a.delay:
             # One page at a time, spaced. This is the measured remedy: the
@@ -252,6 +255,7 @@ def cmd_search(a):
                 print("[hiringcafe] zero results — check the location and the "
                       "keywords before concluding the market is empty",
                       file=sys.stderr)
+        page_rows = []
         for hit in pp.get("ssrHits") or []:
             if hit.get("is_expired"):
                 continue
@@ -259,7 +263,21 @@ def cmd_search(a):
             if key in seen:      # the same posting duplicated on the employer's ATS
                 continue
             seen.add(key)
-            print(json.dumps(card(hit), ensure_ascii=False))
+            page_rows.append(card(hit))
+        if a.city_filter:
+            # This board writes one city several ways in the same result set —
+            # "Hanoi, Hanoi", "Hanoi, Ha Noi" and "Hanoi, Hà Nội" are 24 cards
+            # for one place. Comparing whole strings loses a fifth to a third
+            # of a capital, silently. `_locations` folds diacritics and
+            # compares the first segment; see issue #65.
+            page_rows, dropped_n, labels = drop_report(
+                page_rows, a.city_filter,
+                location_of=lambda r: (r.get("cities") or [None])[0])
+            dropped += dropped_n
+            for label, n in labels.items():
+                dropped_labels[label] = dropped_labels.get(label, 0) + n
+        for row in page_rows:
+            print(json.dumps(row, ensure_ascii=False))
             rows += 1
         if pp.get("ssrIsLastPage"):
             break
@@ -280,6 +298,14 @@ def cmd_search(a):
         sys.exit(EXIT_THROTTLED)
     print(f"[hiringcafe] {rows} unique cards returned over {got} page(s) "
           f"of {asked} asked", file=sys.stderr)
+    if a.city_filter:
+        print(f"[hiringcafe] --city-filter {a.city_filter!r} kept {rows} "
+              f"and dropped {dropped}. Dropped labels: "
+              + (", ".join(f"{k!r} ×{v}" for k, v in
+                           sorted(dropped_labels.items(),
+                                  key=lambda kv: -kv[1])[:8]) or "none")
+              + ". A city filter that drops rows says how many, so the loss "
+                "is visible rather than silent.", file=sys.stderr)
 
 
 def to_text(markup):
@@ -332,6 +358,12 @@ def main():
     s.add_argument("--sort", default="relevance", choices=sorted(SORTS))
     s.add_argument("--page", type=int, default=0)
     s.add_argument("--pages", type=int, default=1)
+    s.add_argument("--city-filter", dest="city_filter",
+                   help="keep only cards whose first city segment matches "
+                        "this, diacritics folded. Different from --city, "
+                        "which asks the SITE to search a place: this checks "
+                        "what came back, because the site labels one city "
+                        "several ways. See issue #65")
     s.add_argument("--delay", type=float, default=25.0,
                    help="seconds between pages. The default is high on "
                         "purpose: 25 s apart returned 6 pages of 6 where a "
