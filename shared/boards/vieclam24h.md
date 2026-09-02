@@ -26,11 +26,38 @@ Measured on 90 ads:
 | `contact_phone` | filled |
 | `contact_address` | filled |
 
-A named recruiter's direct line and a named salesperson's mailbox are not job
-data. **A pipeline ledger is a file on somebody's disk that gets read aloud,
-pasted into issues and backed up**, and none of that belongs in it.
+**The five fields are not the same problem, and the reason differs by
+field:**
 
-**So the card is an allow-list, not a deny-list.** `KEEP` in
+- **`employer_info` is a leak.** It carries the board's own account manager —
+  an intermediary's internal staff data, **not in the advert, not addressed to
+  the candidate**. It has no business anywhere near a ledger.
+- **`contact_name`, `contact_email`, `contact_phone` and `contact_address` are
+  the contact the employer published so that candidates would use it.**
+  Applying through them is the intended use. They are excluded here for a
+  different reason: **proportion, not leakage** — a mass sweep records
+  hundreds of ads the person will never apply to, and a named recruiter's
+  direct line does not need to sit in a local file for each of them. The
+  person gets them at the ad, at the moment they apply.
+
+A rule written from the leak alone would strip exactly what the employer put
+there for the reader; a rule written from proportion alone would miss that one
+of the five was never addressed to anyone outside the board. **Both reasons
+land on the same card here, and they will not always.**
+
+*(Whether a pipeline ledger should hold a named recruiter's details at all,
+for ads nobody applies to, is a question for `shared/pipeline-format.md` and
+is not settled by this file.)*
+
+**And the card is an allow-list, not a deny-list — for a reason about failure
+modes rather than about these fields.** An allow-list that is too narrow
+produces a **missing field**: visible, and fixed in one line. A deny-list that
+is too narrow produces a **leak**: invisible, and found by somebody else. When
+two errors are possible, prefer the one that announces itself — the same
+asymmetry as `_robots.py` passing on an unreadable file rather than inventing
+a refusal.
+
+**So:** `KEEP` in
 `skills/job-scan/scripts/vieclam24h.py` names the sixteen fields the card may
 carry, and nothing else is copied out of the payload — **a field added
 tomorrow cannot leak through it**.
