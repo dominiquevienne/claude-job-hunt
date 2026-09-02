@@ -26,13 +26,13 @@ has gone stale before.
 | Workday | `workday.md` | **Shipped.** One employer at a time, by host + tenant + site. Public JSON, **no browser**. Where the large Swiss employers are |
 | Haufe / Abacus umantis | `umantis.md` | **Shipped.** One employer at a time, by host. Public HTML, **no browser**. The Swiss SMEs, communes, clinics and institutes **HiringCafe does not index at all**. No tenant resolution exists — the user supplies the careers URL |
 | LinkedIn | `linkedin.md` | **Shipped.** Search sweep, description reading, assisted Easy Apply |
-| jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading. No login needed to scan; the in-site apply flow is *not* supported |
+| jobup.ch | `jobup.md` | **Shipped.** Search sweep and description reading, and **no browser needed for either** — the file said otherwise until 2026-09-02, which left users without the extension with no Swiss sweep at all. Listing and ads answer plain `curl`; every ad carries a `JobPosting` in `ld+json` and the listing carries a full JSON record per card, city and coordinates included. **`baseSalary` is a shell with no amount**, and the ad page's `addressLocality` is empty — read the value, and take the geography from the listing. No login needed to scan; the in-site apply flow is *not* supported |
 | randstad.ch | `randstad.md` | **Shipped.** A staffing **agency** board, **no browser**, 985 ads over 33 pages. Pagination is a **path segment** (`/jobs/page-2/`), and past the last page it silently repeats page 1 — the stop condition is that repeat |
 | persigo.ch | `persigo.md` | **Shipped.** A staffing **agency** board, **no browser**, whole board (890 ads) in one request. **No `validThrough` and no date on the listing**, and it keeps ads for over a year — freshness needs `--with-detail` |
 | sozialinfo.ch | `sozialinfo.md` | **Shipped.** Switzerland's social-sector portal — a genuine multi-employer board, **no browser**, whole board in one request. **The only board here that names the employer**, so the ledger's employer dedup works on it |
 | fachkraft.ch | `fachkraft.md` | **Shipped.** A staffing **agency** board — the whole listing in one request (~3 500 ads), **no browser**. The umbrella for sta.jobs and stellenpartner.ch, whose numeric ids are disjoint from its own; the `<n>-STAxx` / `-SPxxx` reference is the only key that crosses |
 | Michael Page | `michaelpage.md` | **Shipped.** A recruitment **agency** board — one search across many employers, country-scoped, **no browser**. The employer is described and **never named**, so no dedup key crosses to their own ATS |
-| jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. Three times the national volume, thinner in Romandie: it does not replace jobup |
+| jobs.ch | `jobs-ch.md` | **Shipped.** jobup's German-language sibling on the same platform — **and the same ad ids**, so an ad on both boards is one row, matched by UUID. **No browser needed**, same measurement and same two traps as jobup. Three times the national volume, thinner in Romandie: it does not replace jobup |
 | Indeed | `indeed.md` | **Shipped.** Search sweep and description reading, country-scoped. **Serves anti-bot challenges** — the user solves them, never the plugin |
 | France Travail | `france-travail.md` | **Shipped.** France's public employment service (ex-Pôle emploi) — **no browser**, but the only adapter here that needs an API key, free from francetravail.io. A search that does not name `origineOffre` returns France Travail's own ads and **silently omits the partner ads that are 77% of the board**, finishing early enough to look complete — so the sweep runs both passes |
 | Meteojob | `meteojob.md` | **Shipped.** French generalist board, **no browser, no account**. Its robots.txt opens exactly one door — `Allow: /jobs?*` against a blanket `Disallow: /*?` — and pages 2+ live behind the disallowed API, so **one search is 20 ads and there is no second page**: a targeted probe, not a sweep. Names the employer on every ad, unlike its France Travail feed |
@@ -190,10 +190,11 @@ title-and-location screening, and nothing whatsoever is written to the ledger.**
 A re-check that quietly turned into a sweep would make dormancy expensive, which
 is the one thing it must not be.
 
-**Never re-check a browser board silently.** LinkedIn, jobup, jobs.ch and Indeed
-drive the user's own Chrome under their own account; for those, dormancy expiry
-means *offering* the re-check and waiting for a yes — never running one because
-a date passed.
+**Never re-check a browser board silently.** LinkedIn and Indeed drive the
+user's own Chrome under their own account; for those, dormancy expiry means
+*offering* the re-check and waiting for a yes — never running one because a
+date passed. (jobup and jobs.ch were in this sentence until 2026-09-02, when
+their sweep turned out to need no browser at all.)
 
 **A re-check that fails is not a re-check that found nothing**, and the two must
 never be reported the same way. A dormant board whose probe errors, 404s or hits
