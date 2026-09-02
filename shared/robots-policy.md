@@ -40,6 +40,47 @@ One permits and refuses; the other refuses nothing because it says nothing.
 own file** — "permissive file, 403 to a plain client, fine in a browser" is a
 finding; "robots.txt is open" is not.
 
+**And the two verdicts are fully independent, which one site settles on its
+own.** `nea.gov.kh` **blocks access while expressing no intention at all**: its
+file is the managed template, identical on three continents, so nobody there
+decided anything — and the pages are shut regardless. **Access without
+intention, and it is the fourth corner of the table.**
+
+The day's count, so the asymmetry is a number and not an impression:
+
+| | |
+| :-- | --: |
+| `403` to a plain client, **fine in a real browser** | **nine sites** |
+| refused at *both* layers — the operator means it | **two** |
+| a `200` with **no `robots.txt` at all** behind it | one, serving its home page on every path |
+| a **`202` with an empty body** | one |
+
+**Nine against two is why "curl got a 403" is never the finish.**
+
+### Test the apex and the `www` separately — it bites in both directions
+
+`www.findajob.dwp.gov.uk` leaves for a domain that `403`s while the apex
+answers 200; and the mirror image, `jobs.co.id/robots.txt` is a clean 30-byte
+rules file while `www.jobs.co.id/robots.txt` redirects and serves 171 888 bytes
+of HTML. **One host is not the other host**, and `104.com.tw` serves two
+different md5s across the pair.
+
+### A non-answer is not a refusal
+
+**"Did not respond" and "refused" are different facts and only one of them is a
+door.** Measured in one country: a board that timed out three times, one whose
+TLS fails on the name, and one returning `530` from a dead origin. **None of
+those is closed** — nobody refused anything; the request never arrived at
+something able to answer.
+
+A refusal is a **`403` with a body that came from the site**. A timeout, a TLS
+name mismatch and an origin error are the network failing to deliver a
+question, and recording them as refusals turns an outage into a policy.
+
+**And the reverse of the same rule**: `shared/robots-policy.md` already refuses
+to read an absent file as a refusal. This is that rule applied one layer down —
+**absence of an answer is not an answer.**
+
 ### A `robots.txt` that is not `text/plain` is not a `robots.txt`
 
 One check, and it catches three separate traps already in this repository:

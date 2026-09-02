@@ -18,6 +18,16 @@ question about one ad**. The two needs look similar and are not: a host can be
 useless for sweeping and excellent as an oracle, which is exactly the case for
 every entry below.
 
+
+**Before any of the per-vendor sections: a rules verdict is not an access
+verdict, and the two are independent.** A permissive `robots.txt` does not mean
+the pages are reachable, an unreachable page does not mean anybody refused, and
+one site in the survey **blocks access while expressing no intention at all** —
+its file is a CDN template served on three continents. Measured in one day:
+**nine `403`s that a real browser denies against two refusals that hold at both
+layers.** `shared/robots-policy.md` carries the method; the short form is
+**read the rules, then open a real page, and say which client worked.**
+
 ## Why a direct request beats every other route
 
 The board is the least reliable place to ask. A board will happily serve the
