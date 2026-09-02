@@ -1,5 +1,7 @@
 # Board adapter — SmartRecruiters
 
+<!-- verified: 2026-09-02 -->
+
 SmartRecruiters is an ATS, not a board. Each employer has its own board under a
 **tenant token**, and its postings are public JSON — the same feed that renders
 that employer's careers page. No key, no cookie, no browser.
@@ -64,6 +66,30 @@ one does not, and **there is no second request that separates the two cases**:
   public endpoint, so it proves nothing.
 - `careers.smartrecruiters.com/<tenant>` answers **200 for anything**, including
   `NOSUCHTENANTXYZ`.
+
+**Re-tested 2026-09-02, and it is now byte-proven rather than asserted.** An
+invented tenant and an employer that is not on this ATS return **the same 52
+bytes, same md5 `9cfa41d4…`**:
+
+```
+nosuchtenantxyz → 200, {"offset":0,"limit":100,"totalFound":0,"content":[]}
+bosch           → 200, byte-identical
+visa            → 200, byte-identical
+```
+
+And the endpoint that could have separated them still refuses everyone:
+`/v1/companies/<tenant>` answered **404 for `Nexthink` too** — a tenant whose
+`/postings` returns 172 KB of live vacancies the same minute. **The response
+headers carry nothing either**: no company or tenant field, and the only
+differences between a real and a fake tenant are `content-length` and `vary`,
+both artefacts of body size.
+
+*What was not tested: a genuine SmartRecruiters tenant with zero open
+postings. None was found to try. By construction it would return the same
+paged empty list, but that is reasoning, not a measurement — so the claim
+here is that **nothing distinguishes an unknown tenant from a non-tenant**,
+which is measured, and that no second request is known to separate either from
+a genuinely empty one.*
 
 So the script refuses on zero rather than reporting an empty board, and says
 both possibilities out loud. **Never report "they are not hiring" from this

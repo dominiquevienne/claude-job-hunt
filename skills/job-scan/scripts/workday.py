@@ -139,7 +139,14 @@ def card(a, j, detail=None):
         req = detail.get("jobReqId") or req
     out = {
         "id": req,
-        "ledger_id": f"workday:{a.tenant}:{a.site}:{req}",
+        # **The site name is case-insensitive at the API and case-preserving
+        # in the URL, so it must be folded here or the same vacancy gets two
+        # ledger keys.** `workday.py resolve "Swisscom"` returns
+        # `swisscomexternalcareers`; the configuration example and the
+        # employer's own URL say `SwisscomExternalCareers`; both list the same
+        # ads. Measured 2026-09-02. The URL below keeps the caller's spelling
+        # because that is what the employer publishes; the key does not.
+        "ledger_id": f"workday:{a.tenant}:{a.site.lower()}:{req}",
         "url": f"https://{a.host}/{a.site}{path}",
         "path": path,
         "title": j.get("title"),

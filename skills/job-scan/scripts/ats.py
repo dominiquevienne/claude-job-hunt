@@ -36,6 +36,7 @@ import html
 import json
 import re
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -706,12 +707,31 @@ def cmd_resolve(a):
     state = {"companyNames": [a.employer]}
     url = "https://hiringcafe.com/?" + urllib.parse.urlencode(
         {"searchState": json.dumps(state, separators=(",", ":"))})
-    try:
-        raw = urllib.request.urlopen(
-            urllib.request.Request(url, headers={"User-Agent": UA}),
-            timeout=60).read().decode("utf-8", "replace")
-    except Exception as e:  # noqa: BLE001
-        die(f"could not reach hiringcafe to resolve the tenant: {e}")
+    # HiringCafe throttles by 403 and the refusal is transient — issue #59.
+    # `hiringcafe.py` grew a timed backoff on 2026-09-02 and this call did not,
+    # which is how one board came to behave differently depending on which
+    # script asked. Same site, same remedy: wait, do not retry quickly.
+    raw, wait = None, 20.0
+    for attempt in range(1, 4):
+        try:
+            raw = urllib.request.urlopen(
+                urllib.request.Request(url, headers={"User-Agent": UA}),
+                timeout=60).read().decode("utf-8", "replace")
+            break
+        except urllib.error.HTTPError as e:
+            if e.code not in (403, 429) and e.code < 500:
+                die(f"hiringcafe answered HTTP {e.code} while resolving")
+            if attempt == 3:
+                die(f"hiringcafe refused three times (HTTP {e.code}) while "
+                    f"resolving. It throttles by volume and the refusal "
+                    f"passes; try again in a few minutes, or read the tenant "
+                    f"out of the employer's own careers URL.", code=6)
+            print(f"[ats] hiringcafe HTTP {e.code} — waiting {wait:.0f}s "
+                  f"(attempt {attempt} of 3)", file=sys.stderr)
+            time.sleep(wait)
+            wait *= 2
+        except Exception as e:  # noqa: BLE001
+            die(f"could not reach hiringcafe to resolve the tenant: {e}")
     m = re.search(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', raw, re.S)
     if not m:
         die("hiringcafe's page shape changed — resolve by hand instead: open "

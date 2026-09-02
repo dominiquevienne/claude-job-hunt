@@ -1,5 +1,7 @@
 # Board adapter — SAP SuccessFactors
 
+<!-- verified: 2026-09-02 -->
+
 An ATS, not a board: one employer per host, no search across employers.
 Employers front it with a vanity domain of their own (`jobs.<employer>.ch`,
 `www.carrieres-<employer>.com`), so **the host tells you nothing and the path
@@ -39,6 +41,12 @@ concluded the parameters did nothing.
 **A locale the tenant does not publish returns an EMPTY board with
 `error: null`.** On `jobs.bcv.ch`: `fr_FR` → 36 postings, `en_US` → **0**, no
 error, no warning. That is indistinguishable from an employer with nothing open.
+
+**Re-tested 2026-09-02, still silent, and now with the byte counts:** `fr_FR`
+answered 200 with 4 079 bytes and `totalJobs: 32`; `en_US` and `de_DE` both
+answered **200 with 15 bytes — `{"totalJobs":0}` — and `error: null`**. A
+fifteen-byte success is the whole warning this service gives, and it is not
+one.
 
 **Never guess it.** The tenant declares it in its own `/search/` page, and the
 script reads it from there:

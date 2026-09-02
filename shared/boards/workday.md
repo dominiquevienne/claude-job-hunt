@@ -1,5 +1,22 @@
 # Board adapter — Workday
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02 on `swisscom.wd103.myworkdayjobs.com`**, and it found
+a defect in the ledger key rather than in the fetch.
+
+**The `site` coordinate is case-insensitive at the API and case-preserving in
+the URL**, so the same vacancy could arrive under two ledger keys depending on
+where the caller got the spelling: `workday.py resolve "Swisscom"` returns
+`swisscomexternalcareers`, while the configuration example below and the
+employer's own careers URL say `SwisscomExternalCareers`. **Both list the same
+ads.** `R-0005958` was recorded twice, once per spelling.
+
+The key now folds the site name; the URL keeps the caller's spelling, because
+that is what the employer publishes. This is the Workable shape from the same
+day — `resolve` and `list` disagreeing about an identifier — in its quieter
+form: nothing errored, the rows simply duplicated.
+
 Workday is an ATS, not a board. Each employer runs its own career site at
 `<tenant>.wdN.myworkdayjobs.com/<site>`, backed by a public JSON endpoint that
 needs no key, no cookie and no browser.

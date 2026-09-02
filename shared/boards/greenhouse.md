@@ -1,5 +1,9 @@
 # Board adapter — Greenhouse
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: an unknown tenant still answers a clean **404**, which is what separates this family from SmartRecruiters — see `smartrecruiters.md`.
+
 Greenhouse is an ATS, not a board. Each employer has its own job board under a
 **tenant token**, and its postings are public JSON — the same feed that renders
 that employer's careers page.
