@@ -331,6 +331,14 @@ profile — that is fine.
 
 ## Updating
 
+**The plugin tells you when a release is out.** At the start of any skill it
+compares the installed version against the latest **published release** and
+prints one short block if you are behind — the version, and the two commands
+below. When you are current it prints **nothing at all**, not even a
+reassurance, and every failure to check (no network, a rate limit) is equally
+silent. It never updates anything itself: that is the host's action, and the
+answer is cached for a day so nothing is fetched on every run.
+
 **Two commands, in this order.** The first is the one that is easy to miss:
 
 ```

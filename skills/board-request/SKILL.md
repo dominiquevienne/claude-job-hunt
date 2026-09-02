@@ -37,6 +37,19 @@ every user's working scan.**
 So: work around it locally *and* report it. Never treat the local workaround as
 the resolution — say both happened, and give the issue URL as proof.
 
+**Then, once, quietly:**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
+```
+
+**It prints nothing when the workspace is current**, which is the normal case
+— no version line, no reassurance. When a newer release exists it prints one
+short block naming it and the host commands that fetch it. **Pass it on as it
+is and carry on**: updating is the host's action, the plugin changes nothing,
+and the user's task is not interrupted for a version number. Cached for a day;
+every failure is silence. Issue #79.
+
 ## Which mode are you in?
 
 | Situation | Mode | Section |

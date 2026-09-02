@@ -63,6 +63,20 @@ thousand.
 produces a wrong *status*, which means an ad silently re-proposed or silently
 buried. `ledger.py` handles it — an `awk` one-liner does not. Issue #77.
 
+**Then, once, quietly:**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
+```
+
+**It prints nothing when the workspace is current**, which is the normal case
+— no version line, no reassurance. When a newer release exists it prints one
+short block naming the release and the host commands that fetch it. **Pass it
+on as it is and carry on with the task**: updating is the host's action, the
+plugin changes nothing, and a job hunt is not interrupted for a version
+number. The answer is cached for a day, and every failure — no network, a rate
+limit, a timeout — is silence. Issue #79.
+
 **No `config.yml` → this is a first run.** Say so in one line, then follow
 `shared/setup.md` in full before scanning anything. Do not improvise a profile
 and do not scan with defaults: a scan built on guesses produces a ledger the

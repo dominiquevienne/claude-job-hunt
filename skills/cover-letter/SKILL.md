@@ -39,6 +39,19 @@ JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
 test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
 ```
 
+**Then, once, quietly:**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
+```
+
+**It prints nothing when the workspace is current**, which is the normal case
+— no version line, no reassurance. When a newer release exists it prints one
+short block naming it and the host commands that fetch it. **Pass it on as it
+is and carry on**: updating is the host's action, the plugin changes nothing,
+and the user's task is not interrupted for a version number. Cached for a day;
+every failure is silence. Issue #79.
+
 **No `config.yml` → first run.** Say so in one line, then follow
 `shared/setup.md` in full before drafting anything. A resume written from
 guesses is worse than no resume.
