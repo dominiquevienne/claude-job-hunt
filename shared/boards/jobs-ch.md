@@ -282,6 +282,20 @@ crossing to another board, and what step 1b needs to ask whether the ad is still
 open (`shared/ats-open-check.md`). Observed pointing at easyapply.jobs,
 onlyfy.jobs, abaservices.ch and contactrh.com.
 
+**Some of those are redirectors, and reading the host as published is wrong.**
+`sicpa.contactrh.com` answers **302 with a zero-byte body**, to
+`career012.successfactors.eu` and then to `jobs.sicpa.com` — a SuccessFactors
+tenant this repository has an adapter for. An implementation that reads the
+provider off the published host concludes *"contactrh, unknown provider"* and
+misses it.
+
+**And following to the very end is wrong in the other direction**: measured on
+2026-09-02, `boards.greenhouse.io/elastic` ends at `jobs.elastic.co/`, the
+employer's own vanity domain, which names no provider either — the provider was
+visible at the hop in between. **Identify at every hop and take the first that
+names one**; `skills/job-scan/scripts/tenant_offer.py` does exactly that
+(issue #83).
+
 **Anchor the match on `applicationOptions`.** A detail page contains **four or
 five** `"externalUrl"` keys, most of them empty strings belonging to other
 blocks, so an unanchored match is a match on whichever one happens to be

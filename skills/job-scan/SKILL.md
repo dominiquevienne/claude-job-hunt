@@ -540,6 +540,35 @@ report rather than passing the number on.
 "This board is poor in salaries" may be an artefact of the language queried:
 **a fill rate measured in one language is not the board's fill rate.**
 
+### Tenants seen in this run that the config does not sweep
+
+**An ad's apply URL often names an ATS the user already has enabled, under a
+tenant they never configured.** The provider is in the host, the tenant one
+path segment in — and until now nothing read either.
+
+```bash
+python3 "$S/tenant_offer.py" scan --probe --urls <one apply URL per line>
+```
+
+Offer only the rows whose `offer` is true — *"3 ads point at
+`smartrecruiters:Evooq`, not configured; add it?"* — folded into the run's
+closing report, **never written for them**. It is their file, and this is the
+same constraint as the board offer in `cover-letter`.
+
+**Why observation beats probing here, and it is the point of the feature:**
+`shared/boards/smartrecruiters.md` records that **a wrong tenant answers 200
+with zero ads**, indistinguishable from an employer that is not hiring. So a
+tenant cannot be guessed and confirmed — **the only safe way to add one is to
+have seen it on a real advert**, which is precisely what a sweep produces.
+
+**Both ends of a redirect chain lie.** jobup publishes SICPA's URL as
+`sicpa.contactrh.com`, a 302 with a zero-byte body; reading it as published
+says *unknown provider*. And `boards.greenhouse.io/elastic` ends at
+`jobs.elastic.co/`, a vanity domain that names no provider either. The script
+identifies at every hop and takes the first that names one — and `--probe`
+asks the host itself when none does, which is how a SuccessFactors tenant on an
+employer's own domain (`jobs.sicpa.com`) is found at all. Issue #83.
+
 ### A board that swept fine and yielded nothing: offer dormancy, don't just say it
 
 **When a board completed its sweep and produced no kept row, say so with the
