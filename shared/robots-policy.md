@@ -393,13 +393,18 @@ replicated byte for byte across four countries. Nobody's CDN did that.
 **And permissions, written on purpose.** JobKorea allows `ClaudeBot` on its
 advert pages by an explicit path whitelist. Trade Me gives it **four groups**
 and withholds only commerce. Magneto365 names `ClaudeBot` and `anthropic-ai`
-and publishes an `llms.txt`. And `qatarliving.com` writes **seven `Allow: /`
-lines where `*` already permitted everything** — a redundant permission nobody
-was obliged to write.
+and publishes an `llms.txt`. `qatarliving.com` writes **seven `Allow: /` lines
+where `*` already permitted everything** — a redundant permission nobody was
+obliged to write. And Tech in Asia (Singapore) and CareerViet (Vietnam) make
+six.
 
-**The honest count: eleven restrictive sites against six welcoming ones**
-(four named above), and the far end of the range is `pe.jobomas.com` — **the
-only site in the corpus to block `Claude-User`**, the human-driven agent.
+**The honest count: eleven restrictive sites against six welcoming ones**, and
+the far end of the range is `pe.jobomas.com` — **the only site in the corpus to
+block `Claude-User`**, the human-driven agent.
+
+**Both counts come from the same day's surveys and neither is a state of the
+web.** Eleven is where the block was *seen*, not where it *is*; six is where a
+permission was *written down*, not where we are welcome.
 
 ### `ClaudeBot` refused and `Claude-User` unnamed is not a permission
 
