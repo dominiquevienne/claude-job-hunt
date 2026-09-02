@@ -221,9 +221,6 @@ turned them into a false *open* with twenty pieces of evidence behind it.
 **Three silent failures on 2026-09-02 were found because the number looked
 odd — not one of them by a check.**
 
-- **Twelve zeros in a row** across twenty-seven countries. Every one was a
-  collection refusal written in the shape of an empty market. **Had it hit two
-  countries, nobody would have seen it.**
 - **Two collectors on one `.jsonl`**, noticed because the log showed **two line
   formats** — the data itself was still clean, and would have stayed clean
   until the first loss.
@@ -231,10 +228,42 @@ odd — not one of them by a check.**
   turned a script's "no Ge'ez characters found" into a measurement of nothing.
 
 **The lesson is not to add a check for each; it is that a plausible number
-deserves a second look when it arrives in an implausible quantity.** Twelve
-consecutive zeros, a rate of exactly 100%, a page whose size and content
-disagree by three orders of magnitude — **none of those is wrong on its face,
-and all three were.**
+deserves a second look when it arrives in an implausible quantity.** A rate of
+exactly 100%, a page whose size and content disagree by three orders of
+magnitude — **neither is wrong on its face, and both were.**
+
+### A value and its validity must travel in the same object
+
+**A third case looked like the two above and is not.** A triage over
+twenty-seven countries recorded **twelve zeros, none of them an empty market**.
+But the tool had not been silent — it printed, for each one:
+
+> `THE SWEEP IS PARTIAL: 0 of 1 page(s) read before the site refused (HTTP 403
+> after 4 attempts). … **Do not report this as a complete pass.**`
+
+…and exited non-zero. **The adapter had anticipated this exact error and named
+it.** The caller redirected stderr to a log, read stdout, and wrote `0`.
+
+**So the failure is not a missing warning — the warning was perfect. It is
+that the number and its validity travelled on different channels, and only one
+of them was read.**
+
+> **Separating a value from its validity is enough to lose the validity.** A
+> function that returns a figure on one channel and its caveat on another has
+> already lost: the caller need only read one, which is the ordinary case.
+
+That is a design argument, not a wording one, and it applies to everything this
+repository exposes — `check`, the probes, the counters. **Here the validity
+rides on the exit code**, which is why every refusal in these scripts exits 2,
+6 or 7 rather than returning an empty list: a consumer that ignores the exit
+code has thrown away the only part of the answer that says whether the rest
+means anything.
+
+**And the reason it was caught at all is not to be mistaken for a safeguard.**
+At twelve of twenty-seven the implausibility is obvious. **At two of
+twenty-seven — "these two countries have no ads in the international corpus" —
+it would have passed, because it is plausible for those two.** An error gets
+through when its result resembles what one already believed.
 
 ### Blind agreement
 

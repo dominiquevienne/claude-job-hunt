@@ -521,9 +521,17 @@ source.** Measured 2026-09-02: a triage over twenty-seven countries wrote
 refusals, recorded in the same shape as a genuine zero, on countries nobody
 would have had a reason to re-open.
 
-**That is an assertion of non-existence produced twelve times in one run,
-none of them carrying its search.** A wrong negative that nobody has a motive
-to revisit is precisely what "rots without announcing itself" means.
+**And the search had produced its own certificate of failure.** The adapter
+printed *"THE SWEEP IS PARTIAL … Do not report this as a complete pass"* for
+every one of the twelve, and exited non-zero. **The caller read stdout and
+logged stderr.**
+
+So the assertion of non-existence formed **not because nothing warned, but
+because the number and its validity travelled on different channels** — see
+*A value and its validity must travel in the same object* in
+`shared/never-fail-silently.md`. A wrong negative that nobody has a motive to
+revisit is precisely what "rots without announcing itself" means, and this one
+had a certificate attached that nobody was reading.
 
 So a table with a zero in it says **which zero it is** — *measured* against
 *not collected* — and a script that cannot tell them apart must exit non-zero
