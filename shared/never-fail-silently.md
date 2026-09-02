@@ -216,6 +216,26 @@ That second row is the one to read before adding a third: it took a check that
 **follows redirects and verifies structured data** — both good habits — and
 turned them into a false *open* with twenty pieces of evidence behind it.
 
+### Caught by the volume, not by the nature
+
+**Three silent failures on 2026-09-02 were found because the number looked
+odd — not one of them by a check.**
+
+- **Twelve zeros in a row** across twenty-seven countries. Every one was a
+  collection refusal written in the shape of an empty market. **Had it hit two
+  countries, nobody would have seen it.**
+- **Two collectors on one `.jsonl`**, noticed because the log showed **two line
+  formats** — the data itself was still clean, and would have stayed clean
+  until the first loss.
+- **A board serving 231 kB of HTML for 99 characters of visible text**, which
+  turned a script's "no Ge'ez characters found" into a measurement of nothing.
+
+**The lesson is not to add a check for each; it is that a plausible number
+deserves a second look when it arrives in an implausible quantity.** Twelve
+consecutive zeros, a rate of exactly 100%, a page whose size and content
+disagree by three orders of magnitude — **none of those is wrong on its face,
+and all three were.**
+
 ### Blind agreement
 
 **A check and its object can share a failure mode — and then agreement proves

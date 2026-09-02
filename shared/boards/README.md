@@ -512,6 +512,30 @@ exist"** — the difference is an observation against a claim nobody can
 support. `digitalrecruiters.md` and `talentsoft.md` carry the worked
 examples.
 
+### And a script must not write the same line for both
+
+**"Searched and found nothing" and "did not search" are two different facts,
+and a tool that emits one row for both manufactures the confusion at the
+source.** Measured 2026-09-02: a triage over twenty-seven countries wrote
+**twelve zeros, and none of them was an empty market** — twelve collection
+refusals, recorded in the same shape as a genuine zero, on countries nobody
+would have had a reason to re-open.
+
+**That is an assertion of non-existence produced twelve times in one run,
+none of them carrying its search.** A wrong negative that nobody has a motive
+to revisit is precisely what "rots without announcing itself" means.
+
+So a table with a zero in it says **which zero it is** — *measured* against
+*not collected* — and a script that cannot tell them apart must exit non-zero
+rather than write a row.
+
+*(The repository's adapters already work this way — `_zero.py` prints what a
+zero cannot distinguish, and a refusal exits 2, 6 or 7 rather than returning an
+empty list. **A static audit of that property was attempted and abandoned**: a
+check for handlers that swallow an error flagged 34, of which nearly all were
+returning a status code for the caller to read. The number was clean and
+useless, which is the class `shared/plausible-and-false.md` names.)*
+
 **This limits what the `verified:` header proves.** It records when a file was
 re-run; it does not record which assertions that run actually tested. Running
 an adapter's happy path re-tests nothing about something absent, so **a
