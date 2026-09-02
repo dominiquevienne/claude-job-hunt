@@ -26,6 +26,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import verdict as robots_verdict
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 PAGE = 20  # a limit above 20 is answered with HTTP 400
@@ -194,7 +196,45 @@ def cmd_facets(a):
                                      ensure_ascii=False))
 
 
+def cmd_sites(a):
+    """The career sites this tenant publishes, from its own robots.txt.
+
+    **Measured 2026-09-02**: every Workday tenant's `robots.txt` carries one
+    `Allow:` line per career site it has opened, plus a `Sitemap:` line for
+    each. Four tenants — swisscom, novartis, roche, adobe — all had that exact
+    shape, differing only in the site names, which is what a per-tenant file
+    should differ in.
+
+    So the `site` coordinate does not have to be guessed or looked up
+    elsewhere: **the tenant lists it**. Swisscom publishes three —
+    `SwisscomExternalCareers`, `cablexExternalCareers`, `FWVFJOBExternal` —
+    and `resolve` finds two of them through HiringCafe.
+    """
+    v = robots_verdict(a.host)
+    if not v["sweep"]:
+        die(f"{a.host}: {v['reason']}", 7)
+    req = urllib.request.Request(f"https://{a.host}/robots.txt",
+                                 headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            body = r.read().decode("utf-8", "replace")
+    except Exception as exc:  # noqa: BLE001
+        die(f"https://{a.host}/robots.txt: {exc}")
+    allows = re.findall(r"(?im)^\s*Allow:\s*/([^/\s]+)/\s*$", body)
+    maps = re.findall(r"(?im)^\s*Sitemap:\s*(\S+)", body)
+    print(json.dumps({"host": a.host, "sites": allows, "sitemaps": maps},
+                     ensure_ascii=False))
+    print(f"[workday] {len(allows)} career site(s) named by this tenant's own "
+          f"robots.txt. The `site` coordinate is case-insensitive at the API "
+          f"but case-preserving in the URL — use the spelling here.",
+          file=sys.stderr)
+
+
 def cmd_list(a):
+    v = robots_verdict(a.host)
+    if not v["sweep"]:
+        die(f"{a.host}: {v['reason']} A Workday tenant publishes its own "
+            f"robots.txt — this is this employer's answer, not Workday's.", 7)
     applied = {}
     if a.location:
         probe = post(cxs(a, "/jobs"),
@@ -310,6 +350,11 @@ def main():
     coords(f)
     f.add_argument("--like", help="only facet values containing this text")
     f.set_defaults(func=cmd_facets)
+
+    st = sub.add_parser("sites",
+                        help="career sites this tenant names in its robots.txt")
+    st.add_argument("--host", required=True)
+    st.set_defaults(func=cmd_sites)
 
     li = sub.add_parser("list", help="list postings")
     coords(li)

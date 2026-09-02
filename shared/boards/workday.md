@@ -2,6 +2,28 @@
 
 <!-- verified: 2026-09-02 -->
 
+**The tenant's own `robots.txt` lists its career sites — `workday.py sites`
+reads them.** Measured on four tenants 2026-09-02: swisscom, novartis, roche
+and adobe all publish one `Allow:` line and one `Sitemap:` line per career
+site they have opened, plus `Disallow: /refreshFacet/`. The files differ only
+in the site names, which is what a per-tenant file should differ in — **no
+divergence of policy, so nothing in this file needed correcting**, and the
+robots guard from issue #73 is wired anyway because nothing guarantees that
+stays true.
+
+```
+workday.py sites --host swisscom.wd103.myworkdayjobs.com
+→ SwisscomExternalCareers, cablexExternalCareers, FWVFJOBExternal
+```
+
+So the `site` coordinate does not have to be guessed: **the tenant names it**.
+`resolve` found two of Swisscom's three through HiringCafe.
+
+**Read the list before sweeping it.** Novartis names
+`Internal_Careers_for_Acquired_Entities` alongside its public site — a tenant
+lists the sites it has opened to crawlers, not the sites a jobseeker should be
+reading. Choose, rather than sweeping everything named.
+
 **Re-verified 2026-09-02 on `swisscom.wd103.myworkdayjobs.com`**, and it found
 a defect in the ledger key rather than in the fetch.
 

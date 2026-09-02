@@ -33,6 +33,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import verdict as robots_verdict
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 API = "/services/recruiting/v1/jobs"
@@ -173,6 +175,10 @@ def cmd_locale(a):
 
 
 def cmd_list(a):
+    _v = robots_verdict(a.host)
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On SuccessFactors the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's. Issue #73.", 7)
     locale = a.locale or discover_locale(a.host)
     if not locale:
         die(f"no --locale given and none could be read off {a.host}. Run "

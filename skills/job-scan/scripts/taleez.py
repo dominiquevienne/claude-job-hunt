@@ -35,6 +35,8 @@ import time
 import urllib.error
 import urllib.request
 
+from _robots import verdict as robots_verdict
+
 CAREEZ = "https://{}.taleez.com/api/careez"
 AD_URL = "https://taleez.com/apply/{}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -200,6 +202,10 @@ def ad_fields(slug, page):
 
 
 def cmd_jobs(a):
+    _v = robots_verdict(f"{a.tenant}.taleez.com")
+    if not _v["sweep"]:
+        die(f"{_v['host']}: {_v['reason']} On Taleez the host belongs to the employer, so this is that employer's "
+            f"answer and not the platform's. Issue #73.", 7)
     tenant = tenant_of(a)
     site = fetch(CAREEZ.format(tenant), as_json=True)
     jobs = site.get("jobs") or []
