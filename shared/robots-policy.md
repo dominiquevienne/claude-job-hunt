@@ -126,6 +126,40 @@ all three were live: `careerbuilder.vn` answers and redirects to CareerViet,
 request separates "expired identity" from "vanished service"** — make it
 before writing the board off.
 
+**What the rule costs when it is missing.** `doe.go.th`, Thailand's Department
+of Employment, probed with `curl`: **200, 1 674 bytes, no title, no text** —
+read as *"there is no service here"*, and a country's public employment service
+written off. The body is a **stub carrying a JavaScript redirect**, which is
+exactly what a plain client cannot follow. **Nobody caught it because the
+number was small and an empty body reads like an absent service.**
+
+And the rule pays in the other direction too: of four unreachable public
+services in one survey, **three failed below the layer** — silent TCP, absent
+DNS — so an instruction to *"re-test everything in a browser"* would have
+wasted three probes out of four. **Exactly one failed above it, and that one
+was the wrong verdict.**
+
+### A site permission is never a manual task
+
+**"Authorise these three domains in the browser extension" was handed to a user
+as a blocking task. The permission was never missing** — the extension had been
+set to all sites throughout. The cost was three entries published with no
+verdict, and one blocking task that did not exist.
+
+**If a browser probe fails, the cause is something else, and that cause is what
+to name.** Never *"the user must grant access"*.
+
+### A passive interstitial is re-read; a challenge that asks for a click is a stop
+
+`grabjobs.co` answered `403` even on `robots.txt`, **and cleared by itself
+within seconds** between two reads, with no interaction. **That is a wait, not
+a wall** — re-read before concluding.
+
+**A challenge that requires a click is the opposite**, and it is not something
+to work around: it is the answer, and it is recorded as such.
+
+> **Assuming an obstacle is a way of not looking.**
+
 ### The failure with no status code, which is on no axis at all
 
 `HTTP/2 stream not closed cleanly: INTERNAL_ERROR` on a cold request; a read
