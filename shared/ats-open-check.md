@@ -89,11 +89,31 @@ bare `<Employer> Careers`. **Neither string appears any more**, so the
 affirmative reading cannot be obtained on this host by a plain client, and a
 tool matching those titles now reads every ad as unknown.
 
-**What this is has not been established.** By the layer rule in
-`shared/robots-policy.md` a complete `200` carrying a page nobody asked for is
-*substituted*, and a substituted response is one a browser may change — this
-was not tried in a browser. Until someone does, treat the Jobvite oracle as
-unavailable rather than as a verdict about any ad.
+**Closed in the browser, same day.** The layer rule says a complete `200`
+carrying a page nobody asked for is *substituted*, and a substituted response
+is one a browser may change — so it was opened in Chrome rather than left as
+an open question. **Chrome renders exactly what the plain client gets**: the
+same support page. The oracle is dead, and that is now a verdict rather than
+an unknown.
+
+**And following the redirect by hand corrects the old claim twice over.**
+`curl -L` had been hiding the status:
+
+```
+GET jobs.jobvite.com/zscaler                     → 302
+GET jobs.jobvite.com/nonexistent-employer/job/abc → 302
+   both → http://search.jobvite.com/?invalid=1 → the support page
+```
+
+So **"Jobvite never returns an error status" is no longer true** — it returns
+a `302`, and the operator names the reason in the query string: `invalid=1`.
+That redirect is a *better* negative signal than the bare title this section
+used to match on, because it is unambiguous and it is the operator's own word.
+
+**The affirmative half remains untested**: no live Jobvite tenant was found
+among those tried, so nothing here establishes what a *listed* ad looks like
+today. Use the redirect to conclude "not listed"; do not use its absence to
+conclude anything.
 
 The table is kept below as the record of what it used to answer.
 
