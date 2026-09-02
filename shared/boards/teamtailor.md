@@ -2,7 +2,8 @@
 
 <!-- verified: 2026-09-02 -->
 
-**Re-verified 2026-09-02 against three tenants** — `investengine`, `polestar`
+**Re-verified 2026-09-02 against three tenants for the fetch, and against
+nine for the `robots.txt` question — see *There is no platform policy here*** — `investengine`, `polestar`
 and `oatly` — all three answering with live postings on the documented route.
 The repository's rule is two tenants minimum for an ATS family, because what
 does not vary at the first client is not a property of the API.
@@ -65,9 +66,49 @@ HTTP 200, `application/feed+json` (JSON Feed 1.1), unauthenticated, **no paging*
 `/jobs.rss` alongside it carrying an `xmlns:tt` locations namespace; unexamined,
 because the JSON feed answers everything the adapter needs.
 
-`robots.txt` disallows `/app/`, `/messages/`, `/messenger/` and `/jobs/internal/`.
-**`/jobs.json` is not disallowed**, and the file carries
-`Content-Signal: search=yes, ai-train=no, ai-input=yes`.
+## There is no platform policy here — there is a per-tenant answer
+
+**This file used to record one tenant's `Content-Signal` as Teamtailor's.**
+That was wrong, and it was wrong in the direction that matters. Measured on
+**nine live tenants, 2026-09-02**:
+
+| Tenants | `Content-Signal` |
+| :-- | :-- |
+| investengine, oatly, anyfin, centiro, firstcamp, brandimpact, ginatricotsverige | `search=yes, ai-train=no, **ai-input=yes**` |
+| **polestar, normative** | `search=no, ai-train=no, **ai-input=no**` |
+
+**Seven permit, two refuse.** Teamtailor gives every customer its own
+hostname, so each one answers for itself, and `ai-input=no` is an operator
+asking that its content not be read into an AI system — which is what a sweep
+that scores does. `shared/robots-policy.md` and issue #48 say a person-driven
+agent is not a harvester; that answers `ai-train`, and it does not answer
+`ai-input`.
+
+**So there is nothing here to quote as the platform's position.** The rule is
+the procedure, not the verdict:
+
+> **Read `https://<tenant>.teamtailor.com/robots.txt` before sweeping that
+> tenant.** `ats.py` does it now, through
+> `skills/job-scan/scripts/_robots.py`, and exits 7 naming the tenant when the
+> answer is no. Issue #73.
+
+Two practical notes from taking the measurement:
+
+- **A tenant that does not exist answers `robots.txt` with 1 076 bytes of
+  HTML and HTTP 404** — `volvocars`, `aiven`, `kry` and `epidemicsound` all
+  did. Counting `Disallow` lines in that reads as "zero rules, everything
+  allowed". The helper checks the `Content-Type` first, calls it unreadable,
+  and **passes** — a 404 is not a refusal, and inventing one would be the
+  symmetric error.
+- **Three tenants gave three different md5s** and looked like three policies.
+  Removing the `Sitemap:` lines — the rule in `shared/robots-policy.md` —
+  leaves two identical to the bit, and the real divergence is **one line**:
+  the `Content-Signal`. The hash said "three policies"; the diff said "one
+  exception, and which".
+
+Beyond that signal, the file disallows `/app/`, `/messages/`, `/messenger/`
+and `/jobs/internal/` on the tenants sampled, and **`/jobs.json` is not
+disallowed**.
 
 ## The id is in the JobPosting block, not in `id`
 
