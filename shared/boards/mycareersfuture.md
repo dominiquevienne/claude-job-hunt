@@ -46,9 +46,26 @@ and use the Services, and all Website Content therein").
 prints to stderr and the file says what the terms say: do not write it
 anywhere.
 
-§16 provides for written permission to go further. SWDA is a public agency and
-the request exists; **making it is the user's decision, not the plugin's**, and
-nothing here should be read as having made it.
+**§16 is titled "Restrictions on Use", and it is a prohibition, not a
+procedure.** It opens no counter and describes no process: except as otherwise
+provided, Website Content may not be reproduced, republished, uploaded, posted,
+transmitted, adapted, modified, displayed or distributed without SWDA's prior
+written permission, and its second paragraph extends that to images, video,
+audio and programs. **The written permission is the exception to a ban, not a
+facility on offer** — saying it "provides for permission to go further" reads
+the clause from the wrong end.
+
+**It has a twin at §38.** The document is written twice: clauses 3–21 bind
+*Visitors*, 22–42 bind Singpass/Corppass users — the same doubling this file
+already notes for §15/§37 and §11/§33. The adapter operates as a Visitor, so
+**§16 is the governing clause and §38 its mirror**.
+
+**And the terms name no written channel for the request.** Clauses 20 and 42,
+"For Additional Information", give a telephone number only — no address, no
+form. That does not make the request impossible; SWDA has other channels
+elsewhere. It does mean the document describes no route, so nothing here should
+suggest a signposted one. **Making the request is the user's decision, not the
+plugin's**, and nothing here should be read as having made it.
 
 *(This is a stricter reading than the one this repository applies to, say,
 France Travail, whose API terms carry no such clause. The difference is in the
