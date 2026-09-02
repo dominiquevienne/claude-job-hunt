@@ -1,5 +1,10 @@
 # Board adapter — Cegid Talentsoft
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02** on the tenant-directory question, with the search
+recorded below rather than its conclusion.
+
 Talentsoft, now part of **Cegid**, runs the careers sites of large French
 employers and public bodies — ministries, airports, energy, publishing,
 agencies. It is the **fifth and last** of the French ATS family here, after
@@ -60,8 +65,31 @@ boards:
 | `tenants` | yes | The careers host's **first label**. One employer each |
 | `lcid` | no | Locale id; `1036` is French, and the default |
 
-No login, no account, no API key. **No directory exists** — ask the user for the
-careers URL, as for every ATS here.
+No login, no account, no API key.
+
+**No tenant directory was found. Searched 2026-09-02:**
+
+| Looked at | Answer |
+| :-- | :-- |
+| `talentsoft.com/robots.txt`, `www.talentsoft.com/robots.txt` | **200 but 379 KB of `text/html`** — Cegid's product page, not a rules file |
+| `talent-soft.com/robots.txt` | 200, 268 KB of `text/html` — the same shape |
+| `www.talent-soft.com` | does not resolve |
+| `www.cegid.com/robots.txt` | a real file, 1 006 bytes — WordPress paths only, **no customer index, no sitemap of tenants** |
+| `<tenant>.talent-soft.com/robots.txt` | **200 `text/plain`, 0 bytes** — an empty file, so nothing is disallowed and nothing is advertised |
+| `<tenant>.talent-soft.com/sitemap.xml` | **404** |
+
+**Three of those are the trap this repository keeps meeting**: a `200` in
+`text/html` where `text/plain` was expected is not a `robots.txt`, and a
+vendor domain that redirects everything into a marketing page answers every
+question with the same page. Read the `Content-Type`.
+
+Nothing found is not the same as nothing existing — **this records the search,
+not a proof**. Ask the user for the careers URL, as for every ATS here.
+
+*(The vendor is Cegid, and `digitalrecruiters.md` is the other half of the
+same acquisition. Its own search turned up a `403` on a plausible listing
+endpoint, so if a directory ever surfaces it will probably be a Cegid one
+covering both products.)*
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/talentsoft.py" \

@@ -362,7 +362,43 @@ as anchoring on `[data-cy="…"]` instead of `ld+json` — a convention the next
 turn of phrase breaks. A field is a contract.
 
 It has a good side effect: **recording a verification is now deliberate**. A
-file cannot be refreshed by accident because somebody quoted a date in it. A file whose heading says it was **never verified against the
+file cannot be refreshed by accident because somebody quoted a date in it.
+
+**A file may also decline verification, and say so**: `<!-- verified: never -->`
+puts it in its own bucket, *Not verified by choice*. `softy.md` is the case —
+its `robots.txt` bans every AI agent, this repository obeys, and **there is no
+re-verification that would not itself be the violation**. Without the marker
+the gap reads as an oversight and somebody closes it by probing the site.
+
+## An assertion of non-existence carries the search that established it
+
+"No directory exists", "the site never returns an error status", "the browser
+is required" — **none of these can be checked by reading the file**, and each
+one has already rotted here: Jobvite's "never an error status" was a `302`,
+`jobup`'s browser prerequisite cost every extension-less user their Swiss
+sweep, and `jobsireland`'s "a dozen countries" was four.
+
+So a negative claim is written as **the search, dated**, not as the
+conclusion:
+
+> *No tenant directory was found. Searched 2026-09-02: the vendor domain
+> redirects `robots.txt` and `sitemap.xml` into a product page,
+> `/careers/v1/careers-sites` answers 404, `/public/v1/careers-sites` answers
+> 403 with a JSON refusal, and a tenant host serves an empty `robots.txt` and
+> a 404 sitemap.*
+
+That form is refutable by anyone in five minutes. *"No directory exists"* is
+not refutable at all, which is exactly what makes it dangerous. And where
+nothing turned up, write **"was not found"** rather than **"does not
+exist"** — the difference is an observation against a claim nobody can
+support. `digitalrecruiters.md` and `talentsoft.md` carry the worked
+examples.
+
+**This limits what the `verified:` header proves.** It records when a file was
+re-run; it does not record which assertions that run actually tested. Running
+an adapter's happy path re-tests nothing about something absent, so **a
+negation needs its own dated evidence, beside the header rather than inside
+it.** A file whose heading says it was **never verified against the
 live site** is pulled out of the age ranking entirely and listed under its own
 `[ !! ]` — a draft is not a stale adapter, and its drafting date is not a
 verification date. It changes nothing and always exits 0: **a stale adapter is

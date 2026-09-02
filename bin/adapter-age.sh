@@ -64,6 +64,7 @@ echo
 ROWS=""
 UNDATED=""
 UNVERIFIED=""
+BYCHOICE=""
 for f in "$ROOT"/shared/boards/*.md "$ROOT"/shared/ats-open-check.md; do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in README.md) continue ;; esac
@@ -73,6 +74,16 @@ for f in "$ROOT"/shared/boards/*.md "$ROOT"/shared/ats-open-check.md; do
   # misreading the file's own banner exists to prevent.
   if grep -qiE '^#{2,3} .*not yet verified against the live' "$f"; then
     UNVERIFIED="$UNVERIFIED$f
+"
+    continue
+  fi
+
+  # A file may declare that it will never be verified, and mean it: softy's
+  # robots.txt bans every AI agent and this repository obeys, so probing it
+  # would be the violation. That is a position, not a gap, and it gets its own
+  # bucket so nobody "fixes" it.
+  if grep -qE '<!--[[:space:]]*verified:[[:space:]]*never' "$f"; then
+    BYCHOICE="$BYCHOICE$f
 "
     continue
   fi
@@ -120,6 +131,15 @@ if [ -n "$UNVERIFIED" ]; then
   echo "file lists what one session with real access has to measure:"
   echo "$UNVERIFIED" | grep -v '^$' | while read -r f; do
     echo "  [ !! ] $(basename "$f" .md)"
+  done
+fi
+
+if [ -n "$BYCHOICE" ]; then
+  echo
+  echo "Not verified BY CHOICE — the file says why, and the reason is in it."
+  echo "Do not close this gap by probing the site:"
+  echo "$BYCHOICE" | grep -v '^$' | while read -r f; do
+    echo "  [ -- ] $(basename "$f" .md)"
   done
 fi
 

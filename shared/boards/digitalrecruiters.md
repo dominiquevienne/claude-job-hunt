@@ -1,5 +1,11 @@
 # Board adapter — DigitalRecruiters
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02** on the question that decides how this adapter is
+used: whether a tenant directory exists. The search is recorded below rather
+than its conclusion — a negative claim cannot be checked by reading it.
+
 A French ATS, part of **Cegid** since 2022, built for **multisite, multibrand**
 employers: retail, franchise networks, large service groups. Renault, Decathlon,
 Monoprix, O2 are named clients.
@@ -68,8 +74,32 @@ boards:
 | `domains` | yes | The **careers hostname**, no scheme, no path. One employer each |
 | `locale` | no | `fr_FR` by default |
 
-No login, no account, no API key. **No directory exists** — ask the user for the
-careers URL, exactly as for `umantis.md`, `taleez.md` and `flatchr.md`.
+No login, no account, no API key.
+
+**No tenant directory was found. Searched 2026-09-02:**
+
+| Looked at | Answer |
+| :-- | :-- |
+| `digitalrecruiters.com/robots.txt` | **301 → `www.cegid.com/fr/produits/cegid-hr/talent-acquisition/`**, 200 `text/html`, 384 KB — a product page, not a rules file |
+| `digitalrecruiters.com/sitemap.xml` | the same redirect, the same page |
+| `api.digitalrecruiters.com/robots.txt` | **404** `text/plain` — *"No context-path matches the request URI."* |
+| `api.digitalrecruiters.com/careers/v1/careers-sites` and `…/` | **404** |
+| `api.digitalrecruiters.com/public/v1/careers-sites` | **403** JSON — `{"message":"You're not allowed to access this resource"}` |
+
+**That last row is the interesting one, and it is why this says *not found*
+rather than *does not exist*.** A `403` on a path whose siblings `404` is an
+endpoint that **is there and is closed**, not one that is absent. A tenant
+listing may well exist behind it; it is simply not public, and nothing here
+would reveal it.
+
+So: ask the user for the careers URL, exactly as for `umantis.md`,
+`taleez.md` and `flatchr.md` — and if that 403 ever becomes a 200, this
+paragraph is the thing to re-read.
+
+*(The vendor is now Cegid: the whole `digitalrecruiters.com` domain redirects
+into Cegid's product pages, and `talentsoft.md` documents the other half of
+the same acquisition. If a directory ever appears it will probably be a Cegid
+one, covering both.)*
 
 ## The ad id and its URL
 

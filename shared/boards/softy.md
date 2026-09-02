@@ -1,5 +1,16 @@
 # Board adapter — Softy
 
+<!-- verified: never — see below -->
+
+**This file is deliberately `UNDECLARED` in `bin/adapter-age.sh`, and that is a
+position rather than an oversight.** Softy's `robots.txt` bans every AI agent,
+naming Anthropic's twice, and this repository obeys it — so **there is no
+re-verification that would not itself be the violation**. The adapter is
+driven in the user's own browser, as a person browsing, which is the only
+access this file claims.
+
+Do not "fix" the missing `<!-- verified: -->` header by probing the site.
+
 A French ATS for SMEs and mid-sized companies, and the third of the French ATS
 family here, after `taleez.md` and `flatchr.md`. One employer per careers site,
 at `https://<tenant>.softy.pro/offers`.
