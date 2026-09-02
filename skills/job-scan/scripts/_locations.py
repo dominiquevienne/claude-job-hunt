@@ -75,6 +75,24 @@ bound**, and the caveat belongs in the name rather than a footnote (#67, #85).
 *(The Taipei and Tel Aviv figures come from the country surveys of 2026-09-02
 and are recorded here, not measured here.)*
 
+AND THE PROBLEM IS BOUNDED MORE NARROWLY THAN IT LOOKS. Across **38 country
+samples and 13 750 city labels**, covering ten writing systems — Arabic,
+Cyrillic, Han, Hangul, Thai, Hebrew, Bengali, Georgian, Sinhala and Tamil,
+Urdu — there is **not one non-Latin alphabetic character**. Seoul is never
+서울; Moscow is never Москва.
+
+**That is a property of the field, not a pattern of some countries:
+romanisation is applied upstream, to the whole corpus.** *(Method note: Unicode
+classes `á`, `ü` and `ḩ` as Latin, so the test measures the writing system and
+not the diacritics — which is what makes the result usable.)*
+
+**So nothing here will ever have to transliterate.** No rule in this file needs
+to relate 서울 to *Seoul*. What it faces is only **Latin variants of a
+romanisation somebody else already did, and did several ways** — `Zhubei`
+against `Jhubei`, `Tel Aviv` against `Tel Aviv-Yafo`. Folding closes the first
+kind and no character rule closes the second, and that is the whole of it.
+*(Recorded from the country surveys of 2026-09-02.)*
+
 **One more reason this helper does not audit itself.** The metric that found
 the Israeli case had also *missed* it for weeks, because it grouped labels by
 first segment — **the same way this file compares them.** A check that shares

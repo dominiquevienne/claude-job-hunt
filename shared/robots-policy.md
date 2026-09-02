@@ -478,6 +478,155 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## Two families, and one conclusion: what counts is what you counted
+
+Everything below this line was measured on 2026-09-02, across the country
+surveys. **They divide into two families and they meet at one sentence.**
+
+### A. What answers is not a rules file — and no status code says so
+
+Five ways a request for `/robots.txt` returns something that is not one:
+
+| Shape | Where | What it looks like |
+| :-- | :-- | :-- |
+| **A `403` the browser denies** | eight sites in one day, incl. `104.com.tw` — two md5s for apex and `www`, and its search page loads fine in Chrome | a refusal |
+| **A `202` with an empty body** | `tanqeeb` | an answer |
+| **An application shell** | a Jordanian LMIS (Next.js), `kemnaker.go.id` (Angular, **825 kB**) | a large permissive file |
+| **The home page, on any path** | `topjobs.lk` — **1 133 363 bytes** of the site's own front page, *and an invented URL returns the same* | **a very rich rules file** |
+| **A `404`** | two Georgian government portals serving 116 kB and 174 kB of plain HTML elsewhere | a block |
+
+**A `404` on `/robots.txt` is not a refusal — it is the absence of a file**, and
+reading it the other way costs a country.
+
+**`topjobs.lk` is the sharpest of the five because it defeats both instincts at
+once**: a prober that checks the status sees `200`, and a prober that checks
+the *size* sees a megabyte and concludes the file is unusually thorough.
+
+### B. What is declared is not what is there
+
+**A `Sitemap:` that answers is not a `Sitemap:` that contains.** `jordanjobs.net`
+declares **twelve**; three were pulled and each returned `200`, `text/xml`,
+**413 bytes, zero `<loc>`** — a well-formed `<urlset>` with four namespaces and
+an XSL stylesheet, and nothing in it. Then an invented name at the same host
+returned **the same 413 bytes, same md5**. **It passes the status check, the
+MIME check, the XML validation and the existence check.** Only counting the
+`<loc>` elements catches it, and the site is alive — 96 kB of real pages.
+
+**And an identical declaration can mean opposite things.** Two families
+publish a sitemap URL carrying an entity id, in files of rigorously equal size
+differing by one identifier:
+
+- `hr.ge` / `cv.ge` / `career.ge` — pulled and compared: **39 287 URLs
+  strictly identical**, 1 112 ads in common at 100%, files of 5 383 203 bytes.
+  **Three brands, one corpus.**
+- `ar` / `pe` / `mx.jobomas.com` — `robots.txt` of 2 074 bytes each, one line
+  of `diff`, the 172nd: their own sitemap's domain. Pulled: **2 003, 2 796 and
+  5 067 `<loc>`**, 45 paths in common — the structural pages. **Three
+  countries, three corpora.**
+
+**A rule drawn from either refutes the other.** Together they permit exactly
+one sentence, and it is the same one as Taleez's 296-of-14 221:
+
+> **The declaration says nothing. Pull the files and count the URLs.**
+
+### Files nobody wrote, and the asymmetry that identifies them
+
+The managed-block section above assumes a CDN. **Two more routes produce a
+rules file that no operator wrote:**
+
+- **The CMS default.** `mlvt.gov.kh`, a labour ministry, serves the
+  `robots.txt` shipped with Joomla — installation comments included, still
+  explaining how to move it if the CMS sits in a subfolder, still linking
+  `robotstxt.org`. **Not one line is about the site.**
+- **The online generator.** `camhr.com`, 154 bytes stamped
+  `# robots.txt generated at …`, carrying an empty `Disallow:` followed by two
+  real ones.
+
+**What they share is not infrastructure — it is that a rules file exists
+without anybody having wanted one.**
+
+**Identify them by content, never by fingerprint, and the asymmetry is the
+point.** An identical md5 against a known default establishes it; **a different
+md5 establishes nothing**, because one line added by an administrator changes
+the hash without changing the nature of the file. **An equality concludes, an
+inequality only opens a check** — the same shape as *absent is not a refusal*
+in `_robots.py`.
+
+*(Fingerprint comparison failed in both directions on one day: two identical
+files that looked different because of a `Sitemap:` line, and a shared managed
+block that made two unrelated governments look like one decision.)*
+
+### Three files that mean the opposite of how they read
+
+**A tiny `Disallow: /` is not always a content policy.**
+`job.taiwanjobs.gov.tw` — the Taiwanese public employment service — is **34
+bytes**:
+
+```
+User-Agent: ZoomEye
+Disallow: /
+```
+
+There is **no `User-agent: *` group at all**, so nothing else has an
+applicable group and everything is permitted. **The named adversary is a
+network-asset scanner, not a crawler and not an AI**: this is a security
+posture, not a content policy, and **it is the only file in the corpus that
+misleads in the permissive→restrictive direction** while the others mislead the
+other way.
+
+**A welcoming file can close the one function that matters.**
+`labourdept.gov.lk` is fully commented in English, in four numbered sections,
+with a bandwidth-cost vocabulary — *"These bots drain bandwidth but don't bring
+you search traffic"* — and **names no AI agent at all**. Section 3 contains
+**`Disallow: /*?*`**, which forbids every URL carrying a query string. On a
+WordPress site, that is the job search. **Read the patterns, never the tone.**
+
+**And a file can say yes, on purpose, with a business reason and a date.**
+`ikman.lk`:
+
+```
+#AI Assistant Crawlers - explicitly allowed for AI/GEO visibility (added per Q3 2026 GEO OKR)
+```
+
+…followed by **nine agents in `Allow: /`** — ClaudeBot, anthropic-ai, GPTBot,
+ChatGPT-User, PerplexityBot, Perplexity-User, Google-Extended, OAI-SearchBot,
+meta-externalfetcher — **and `meta-externalagent` in `Disallow: /` right
+after**. Somebody separated two robots from the same publisher and decided
+differently for each; that is not a copy-paste.
+
+**Read it as what it is: the site describing itself in its own file.** What is
+verifiable is that its structure matches what it announces.
+
+**And it settles a question the file left open.** `akhtaboot.com` names nine
+agents to close them all; `ikman.lk` names nine to open them all — **same day,
+same corpus.** Two deliberate and opposite postures, **and neither is its
+market's default**: three Jordanian boards out of four have no AI policy at
+all. **A reference board does not represent its market on this question. Two
+boards suffice to check that; none suffices to assume it.**
+
+### An `llms.txt` says nothing about what is in it
+
+Both bounds are in the same corpus, on the same day: one is **7 637 bytes of
+real documentation** — category tree, URL template, district list, a note that
+the site renders server-side — and another is **a GoDaddy sales pitch**. **The
+directive is not evidence of content.** Open it or say you did not.
+
+### And the identity check has two holes
+
+Reading a page's `<title>` to confirm a domain is what it claims — a rule born
+from mistaking a personal portfolio for a job board — **fails twice**:
+
+- **A client-rendered application sets its title in the browser.**
+  `buscojobs.com.ar` has **no `<title>` at all** for a plain fetch and is a
+  perfectly real site; its identity is in `og:title`, `<html lang="es-AR">`
+  and the meta description.
+- **A site behind a WAF returns the challenge's title** — *"Just a moment…"*,
+  *"Security Check"*.
+
+**An absent title refutes nothing, and a WAF's title is not the site's.** Read
+`og:title`, `og:site_name`, `<html lang>` and the meta description before
+concluding. **An empty title is not an empty site.**
+
 ## The same file is a source of coordinates, and reading it only for permission leaves them
 
 Everything above is defensive: what may be fetched, what a refusal means, when
