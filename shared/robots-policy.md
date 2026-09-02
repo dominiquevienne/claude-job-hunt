@@ -16,6 +16,104 @@ Obeying costs coverage. Overriding costs the user's own access when an IP is
 blocked, and costs the project its standing the first time someone reads the
 code. **Default: obey.** What follows is the only route out.
 
+## Before the four questions: did you read a file, and does the door open?
+
+The four questions below assume two things — that you have read a
+`robots.txt`, and that you know what the site does. **Both assumptions fail
+routinely**, in ways that produce a confident wrong answer rather than an
+error. That is why this section comes first: it decides whether the four
+questions are being asked about anything real. Do not move it after them.
+
+### A `robots.txt` verdict is not an access verdict
+
+The file states the operator's wish. **It does not describe what the server
+does, and it is wrong in both directions.** Two boards on one page, measured
+2026-09-02:
+
+| Site | `robots.txt` says | The pages do |
+| :-- | :-- | :-- |
+| **Glints** | 200, 587 bytes, permissive — nothing blocks a listing crawl | **403 to `curl` on every page**, 1.3 MB of firewall HTML — while a real Chrome loads everything |
+| **Kemnaker** | 200, looks open | **825 KB of `text/html`** — an Angular skeleton. There were never any rules |
+
+One permits and refuses; the other refuses nothing because it says nothing.
+**Test two clients before concluding, and write the conclusion in the board's
+own file** — "permissive file, 403 to a plain client, fine in a browser" is a
+finding; "robots.txt is open" is not.
+
+### A `robots.txt` that is not `text/plain` is not a `robots.txt`
+
+One check, and it catches three separate traps already in this repository:
+
+| Fetched | Status | `Content-Type` | Bytes | What it really was |
+| :-- | --: | :-- | --: | :-- |
+| `my.indeed.com/robots.txt` | 200 | `text/html` | **126 015** | Indeed's sign-in page — `my.` is *my profile*, not Malaysia (issue #64) |
+| `kemnaker.go.id/robots.txt` | 200 | `text/html` | 825 204 | An Angular SPA skeleton |
+| `mycareersfuture.gov.sg/sitemap-5.xml` | 200 | `text/html` | 7 923 | The site's own React shell, named `.xml` |
+
+**The size is the second witness, and the gap is three orders of magnitude.**
+Real files: **58 bytes** (`jobth.com`), **59** (Kalibrr), **87**
+(MyCareersFuture), **275** (JOBBKK). The impostor: **126 015**. A `robots.txt`
+of 126 KB does not exist.
+
+The same test generalises: **a sitemap that is not XML is not a sitemap**, and
+an index that declares six sub-files two of which are HTML shells will
+overstate a corpus by a factor of three if you multiply instead of counting.
+
+### Decide by layer: a browser can only change what happens above it
+
+When only one client can be tested, or when a second test would tell you
+nothing, **locate the failure relative to the browser**:
+
+| A browser can change the result | A browser can change nothing |
+| :-- | :-- |
+| HTTP 403, client filtering, TLS fingerprinting | DNS record absent |
+| A CDN interstitial | TCP silent on 443 **and** 80 |
+| A stub carrying a JavaScript redirect | An honest 404 |
+| A login wall on the paths you need | The host answering as a different service |
+
+Two symmetrical mistakes follow, and both have been made here: **spending a
+browser on a failure that sits below it**, and **concluding "closed" from a
+single client that sits above it**.
+
+**TLS is a third category, and it is the one that produced wrong verdicts.**
+An expired or mismatched certificate stops every client that checks — a
+browser included — so it looks like the right-hand column. It is not: **the
+service underneath is often perfectly alive, and only its proof of identity
+has lapsed.** Three boards were written off as unreachable on that basis and
+all three were live: `careerbuilder.vn` answers and redirects to CareerViet,
+`jobs.id` to Karir.com, `bestjobs.ph` to BestJobs Network. **A plain HTTP
+request separates "expired identity" from "vanished service"** — make it
+before writing the board off.
+
+### The failure with no status code, which is on no axis at all
+
+`HTTP/2 stream not closed cleanly: INTERNAL_ERROR` on a cold request; a read
+timeout after a burst. Measured on the StepStone platform, both shapes, on
+hosts that answer 200 to the very next request.
+
+This is **not a response to interpret** — it is the absence of one, so it sits
+neither above nor below the browser. What makes it worth naming is its
+consequence: **it is the only category where a client that retries loops for
+ever**, because there is no status to read and nothing to decide on. Its
+remedy is the transport and the pace — HTTP/1.1, a warmed host, one slow retry
+and then a declared truncation — not another client.
+
+### Five words for the verdict, used identically in every board file
+
+| Word | Means |
+| :-- | :-- |
+| **open** | The door answers, the file permits, the content is there |
+| **refused** | The operator says no, in `robots.txt` or in the terms |
+| **inaccessible** | The infrastructure stops you: DNS, TCP, a WAF, a login wall |
+| **not sanctioned** | It answers and nothing forbids it, but nobody built it as an interface — `shared/boards/README.md` on Norway |
+| **substituted** | **A complete HTTP 200 answering a question nobody asked** |
+
+The last one is new and it earns its place. Kalibrr returns 818 unrelated ads
+for a country it does not serve and for a nonsense keyword, flagging it in one
+boolean; StepStone pads a thin result with `semantic` and `regional` ads that
+are indistinguishable in the markup. Neither is *open*, neither is *refused*,
+and calling either an error loses what actually happened.
+
 ## The four questions
 
 Answer all four **in the board's own file**, in writing, before any code. One
@@ -174,6 +272,43 @@ byte-identical elsewhere — before calling any single rule a policy.
 *(Measured and reported by claude-job-hunt-8e on the Mexico page, which had
 first described it as an explicit closure; re-verified here before being
 written down. The correction is the useful half.)*
+
+### The second instance, and it is much larger: Cloudflare Managed Content
+
+Measured 2026-09-02 on two unrelated Singaporean boards, `nodeflair.com`
+(tech) and `fastjobs.sg` (non-graduate). Both serve **the same preamble, word
+for word**, fenced by:
+
+```
+# BEGIN Cloudflare Managed content
+…
+# END Cloudflare Managed Content
+```
+
+Inside: `Content-Signal: search=yes, ai-train=no, use=reference` for
+`User-agent: *` followed by `Allow: /`; a citation of **Article 4 of EU
+Directive 2019/790** as an express reservation of rights; and then **ten named
+agents each given `Disallow: /`** — `Amazonbot`, `Applebot-Extended`,
+`Bytespider`, `CCBot`, **`ClaudeBot`**, `CloudflareBrowserRenderingCrawler`,
+`Google-Extended` and the rest.
+
+**Question 3 is where this gets interesting, and the earlier phrasing of it
+was not sharp enough.** This block *is* even-handed: ten AI vendors, one rule,
+no favourite. What it is not is **decided**. The operator of a Singaporean job
+board did not weigh Anthropic against Google; a checkbox in a CDN dashboard
+did, and the same bytes appear on sites with nothing else in common.
+
+**"Even-handed" and "decided" are two different tests, and a vendor default
+passes the first without passing the second.** That distinction belongs in
+question 1 as much as question 3: the refusal is aimed at a category, by
+somebody who is not the operator.
+
+**The conclusion is unchanged: obey.** No override is proposed here and none
+follows from this. What changes is only what we may write down about it —
+*"this operator refuses AI agents"* is not supported by the evidence, and
+*"this operator has a CDN default that refuses AI agents"* is. As with the
+CKAN case, the remedy that opens is **asking**, and the sentence that travels
+should be the true one.
 
 ## When a refused board's ads reach us through an open one
 

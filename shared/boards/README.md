@@ -369,6 +369,16 @@ own file before any code, and a default of *obey* that four of the five cases
 land on. Read it before concluding anything about a board that names AI agents;
 the answer stopped being binary at `leboncoin`, and the file records why.
 
+**Before any of that, `shared/robots-policy.md` now opens with the checks that
+decide whether there is anything to judge**: a `robots.txt` verdict is not an
+access verdict, a file that is not `text/plain` is not a file (58 to 275 bytes
+is what a real one weighs; 126 015 was a sign-in page), a browser only changes
+failures that sit above it — with TLS as its own case, because three live
+boards were written off over an expired certificate — and the failure with no
+status code at all. It closes with **five words every board file should use
+identically**: *open*, *refused*, *inaccessible*, *not sanctioned*,
+*substituted*.
+
 The one board decided the other way is the Austrian **AMS**, whose `robots.txt`
 grants `LinkedInBot` the employer pages and refuses every other agent. That
 override is **opt-in and off by default** (`override_robots: true`), it must
