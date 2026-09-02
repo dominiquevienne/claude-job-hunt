@@ -124,6 +124,15 @@ run conclude the market is empty before the query has been asked in the
 market's language. **Naming it does not find the ads; it stops the sweep
 concluding they do not exist**, which is where the damage is.
 
+**Where to go next on it:** `shared/search-language.md` holds the map, the
+table of measured terms and — the part that matters most — **what still is not
+covered**. Chiefly this: the trigger is a zero, and *a thin result misleads
+just as much*. `informaticien` returns 129 of the Swiss index's 81 516 ads, 1%
+of the market, and nothing fires. The same is true of a filter that quietly
+drops most of an index: `category=it-jobs` on Adzuna's Swiss board returns
+1 150 against 12 691 for one German keyword, because 70.7% of that index is
+unclassified. **Neither is zero, so neither trips the check on this page.**
+
 **Its corollary reaches every fill rate this repository publishes**: on 50
 German Adzuna ads, a salary appeared on 0 and `contract_type` on 0. *A fill
 rate measured in one language is not the board's fill rate.*

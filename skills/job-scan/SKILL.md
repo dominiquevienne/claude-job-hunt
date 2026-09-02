@@ -23,6 +23,7 @@ They live in this plugin, one level above this skill's folder
 | `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
 | `shared/boards/README.md` | Step 2 — which boards are supported and what an adapter owes the skill |
 | `shared/boards/<board>.md` | Steps 2–4 — the adapter for each board enabled under `boards:` in `config.yml` |
+| `shared/search-language.md` | Steps 2–4 — which language to ask a market in, and what a zero from a multilingual market does *not* prove |
 | `shared/scoring-rubric.md` | Step 5 — scoring, and the commute filter |
 | `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |
 | `shared/modules/*.md` | Step 6 — only those enabled in `config.yml` |
@@ -393,8 +394,47 @@ error.
 **So a zero from a multilingual market is not evidence of an empty board until
 the query has been asked in the market's own language.** Adapters now say this
 themselves (`_zero.py`), and the run must not turn such a zero into a dormancy
-offer without trying the other language first, or the board's own
-language-independent categories where it has them.
+offer without trying the other language first.
+
+### Pass the user's own languages down; the adapters cannot read the config
+
+**No adapter here reads `config.yml`, and none should.** The skill holds the
+profile, so the skill passes it — `languages.working`, on the boards that take
+a `--speaks` flag:
+
+```bash
+python3 skills/job-scan/scripts/adzuna.py search --country ch \
+    --what "développeur" --speaks "French, English"
+```
+
+It changes nothing until a search returns zero. Then the sweep can say which
+of the market's languages the person actually works in, what a measured term
+returns in each — and **what the languages they do not work in return.**
+
+**That last part is not a detail, it is the design.** A German search on a
+Swiss board returns German ads, which mostly require German: handing 12 691 of
+them to somebody who does not speak it replaces a misleading zero with a
+misleading flood. So the sweep says *your French search returns 0; the same
+index returns 12 691 in German, which you have not declared as a working
+language* — **and the person decides.** Not hiding that market, not pouring it
+out.
+
+The terms are in `shared/search-language.md`, which records **measurements and
+dates, never translations**: a guessed translation that also returns zero
+manufactures a second zero, and two zeros read as a certainty.
+
+### And the limit, so nobody mistakes this for solved
+
+**The trigger is a zero. A thin result misleads just as much, and nothing
+fires.** `informaticien` returns **129 of the Swiss index's 81 516 ads** — 1%
+of the market, and not zero. The same holds for a filter that silently drops
+most of an index: on Adzuna's Swiss board `category=it-jobs` returns **1 150**
+against **12 691** for one German keyword, because 70.7% of that index is
+unclassified.
+
+**Neither case will announce itself.** When a board comes back with a
+suspiciously thin count on a market you know to be large, say so in the run
+report rather than passing the number on.
 
 **And the same caution applies to any fill rate quoted from one language.** On
 50 German Adzuna ads a salary appeared on **0** and `contract_type` on **0**.

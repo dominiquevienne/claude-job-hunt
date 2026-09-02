@@ -29,13 +29,27 @@ Usage, at the end of any command that reports a count:
 
     from _zero import zero_note
     if kept == 0:
-        note(zero_note("adzuna", what=a.what, where=a.where))
+        note(zero_note("adzuna", what=a.what, where=a.where,
+                       market=a.country, speaks=a.speaks))
+
+`market` and `speaks` are optional and turn the general warning into a
+specific one: `_language.py` holds what has actually been measured on a
+market, and who the person is. Without them the sentence still says what a
+zero cannot distinguish; with them it can name the term that works and the
+market the person cannot see. **Adapters do not read the config** — the skill
+passes `--speaks` from `languages.working`.
 """
 
 __all__ = ["zero_note"]
 
+try:
+    from _language import language_note
+except ImportError:      # the module is optional; the general warning is not
+    language_note = None
 
-def zero_note(board, what=None, where=None, extra=None):
+
+def zero_note(board, what=None, where=None, extra=None, market=None,
+              speaks=()):
     """The sentence a sweep prints when it found nothing.
 
     It never claims the board is empty and never claims it is not: it says
@@ -58,9 +72,20 @@ def zero_note(board, what=None, where=None, extra=None):
         "`Entwickler` returns 12 666 and `développeur` returns 0 — the same "
         "market, asked in two languages (issue #70).",
         "Then the place, then the filters. A board's own category or "
-        "occupation codes, where it has them, are language-independent and "
-        "beat a translated keyword.",
+        "occupation codes, where it has them, are language-independent — "
+        "**but check how much of the index they actually classify before "
+        "trusting one**: on Adzuna's Swiss index 70.7% of ads are "
+        "`category=unknown`, so `it-jobs` returns 1 150 where the keyword "
+        "returns 12 691.",
     ]
+    # What has actually been measured on this market, for this person. It
+    # replaces the generic advice with a term and a number where one exists,
+    # and stays quiet where none does — see `_language.py`, which refuses to
+    # guess a translation on purpose.
+    if language_note and what and market:
+        specific = language_note(what, market, speaks)
+        if specific:
+            lines.append(specific)
     if extra:
         lines.append(extra)
     return " ".join(lines)

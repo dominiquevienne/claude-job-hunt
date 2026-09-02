@@ -118,14 +118,53 @@ not a fallback — which is a decency this repository does not always get (see
 
 Zero. A French-speaking user searching in French on the Swiss board of an
 aggregator gets nothing, and the board does not say why. **Search the language
-the ads are written in**, and for Switzerland that is mostly German. The
-`categories` endpoint (30 tags on CH, `it-jobs`, `engineering-jobs`, …) is the
-language-independent route.
+the ads are written in**, and for Switzerland that is mostly German.
 
 **Since 2026-09-02 the adapter says so on every empty result** (`_zero.py`,
 issue #70): a zero here is a finding, not an answer, and the run must not read
 it as an empty market before the query has been asked in the market's
-language.
+language. Pass **`--speaks`** and it says more — which of the market's
+languages the person actually works in, what a measured term returns in each,
+and what the languages they do not work in return. The table of measured terms
+is `shared/search-language.md`; it records counts and dates, never
+translations.
+
+## The categories are language-independent, and they classify a third of the board
+
+**The obvious escape from the language problem is the taxonomy, and it does not
+hold.** Measured 2026-09-02:
+
+| Index | Ads | `category=unknown` | `it-jobs` |
+| :-- | --: | --: | --: |
+| **ch** | 81 516 | **57 663 — 70.7%** | 1 150 |
+| fr | 965 545 | 477 585 — 49.5% | 13 293 |
+| de | 1 211 402 | 822 462 — 67.9% | 23 034 |
+
+Two things are true at once, and only one of them is good news.
+
+**The tags are genuinely language-independent.** Thirty of them, and the `ch`
+and `fr` sets are **identical**. A sample of `category=it-jobs` on `ch` with no
+keyword at all returns *Technicien Service Desk (H/F)*, *Ingénieur Système
+Infrastructure H/F* and *Backend Software Engineer* side by side — French,
+German and English together. A francophone reaches German-market ads without
+knowing a word of German.
+
+**And the classification is mostly empty.** `category=it-jobs` returns **1 150**
+on `ch` where `what=Entwickler` alone returns **12 691**. A sweep by category
+would report 1 150 IT jobs in Switzerland where there are twelve thousand:
+issue #70 again, in better manners, and **it never trips the zero check because
+1 150 is not zero**.
+
+So `--category` stays, and **`adzuna.py` now prints those percentages every
+time it is used**: the flag narrows a keyword search, it does not sweep a
+market. The count it returns is a count of what Adzuna classified.
+
+*(Nor is it clean: a `Lehrstelle Küchenangestellte/r` — a kitchen apprenticeship
+— sat in `it-jobs` in the sample.)*
+
+**The same caution applies to the `category` and `category_tag` fields on every
+row.** They are present, plausible, and empty on roughly seven Swiss rows in
+ten. Read one as *"Adzuna happened to classify this ad"*, never as a trade.
 
 **And the same caution attaches to the fill rates above.** A salary on **0 of
 50** German ads and `contract_type` on **0 of 50** were measured through
@@ -263,6 +302,8 @@ set -a; . ~/.adzuna.env; set +a
 S=skills/job-scan/scripts/adzuna.py
 python3 $S count  --country ch --what Entwickler            # 12 666
 python3 $S count  --country ch --what développeur           # 0 — see the language note
+python3 $S search --country ch --what développeur --speaks French   # 0, and what to try instead
+python3 $S search --country ch --category it-jobs --limit 1 # warns: 70.7% of ch is unclassified
 python3 $S search --country gb --what "python developer" --limit 2
 python3 $S count  --country ie --what x                     # 404, and it lists the nineteen
 ```

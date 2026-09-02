@@ -51,6 +51,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _language import speaks_codes
+
 from _zero import zero_note
 
 API = "https://api.adzuna.com/v1/api"
@@ -67,6 +69,23 @@ MAX_PER_PAGE = 50
 def die(msg, code=2):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(code)
+
+
+def speaks_of(a):
+    """`--speaks fr,en` as codes, complaining about what it cannot read.
+
+    **The script does not read `config.yml`** — no adapter here does. The
+    skill passes `languages.working` down, because the sweep needs to know
+    which of a market's languages the person can actually work in before it
+    suggests searching in one of them.
+    """
+    raw = [x.strip() for x in (a.speaks or "").split(",") if x.strip()]
+    codes, unread = speaks_codes(raw)
+    if unread:
+        note(f"--speaks: {', '.join(unread)} not recognised as a language "
+             f"name — ignored rather than guessed. Use a plain name "
+             f"(`French`) or a code (`fr`).")
+    return codes
 
 
 def note(msg):
@@ -180,6 +199,10 @@ def card(country, r):
         "location_area": loc.get("area"),
         "latitude": r.get("latitude"),
         "longitude": r.get("longitude"),
+        # **Present, plausible, and empty on most rows.** Adzuna classifies
+        # under a third of its Swiss index: expect `Unknown` / `unknown` on
+        # roughly seven Swiss rows in ten (measured 2026-09-02). Read it as
+        # "Adzuna happened to classify this one", never as a trade.
         "category": (r.get("category") or {}).get("label"),
         "category_tag": (r.get("category") or {}).get("tag"),
         "contract_type": r.get("contract_type"),
@@ -239,6 +262,22 @@ def cmd_search(a):
         q["salary_min"] = a.salary_min
     if a.category:
         q["category"] = a.category
+        # **A filter that discards most of the market, silently.** Measured
+        # 2026-09-02: 70.7% of the Swiss index is `category=unknown`
+        # (57 663 of 81 516), 67.9% of the German and 49.5% of the French.
+        # So `--category it-jobs` on `ch` returns 1 150 ads where
+        # `--what Entwickler` alone returns 12 691 — nine tenths of the
+        # development market gone, with a 200 and a plausible count. This is
+        # the same silence as a zero (issue #70) and it never trips the
+        # zero check, because 1 150 is not zero.
+        note(f"--category {a.category} filters on Adzuna's own classification, "
+             f"and that classification is mostly empty: 70.7% of the Swiss "
+             f"index, 67.9% of the German and 49.5% of the French are "
+             f"`unknown` (measured 2026-09-02). On `ch`, `it-jobs` returns "
+             f"1 150 ads against 12 691 for the keyword `Entwickler` alone. "
+             f"**Use it to narrow a keyword search, not to sweep a market** — "
+             f"the count it gives you is a count of what Adzuna classified, "
+             f"not of what exists.")
     kept, total, predicted, stated = 0, None, 0, 0
     for page in range(1, a.pages + 1):
         d = get(b, f"/jobs/{a.country}/search/{page}", app_id, app_key, **q)
@@ -265,7 +304,8 @@ def cmd_search(a):
             break
         time.sleep(a.delay)
     if kept == 0:
-        note(zero_note("adzuna", what=a.what, where=a.where))
+        note(zero_note("adzuna", what=a.what, where=a.where,
+                       market=a.country, speaks=speaks_of(a)))
     note(f"{kept} ads returned of {total} matching, in {b.spent} call(s) of "
          f"the 250/day allowance.")
     note(f"salary: {stated} stated by the advertiser, {predicted} estimated by "
@@ -312,6 +352,12 @@ def main():
             c.add_argument("--adref", required=True)
         else:
             c.add_argument("--what", help="keywords")
+            c.add_argument("--speaks", help="the languages you work in, "
+                                            "comma-separated (`fr,en`). Used "
+                                            "only when a search returns zero, "
+                                            "to say which of the market's "
+                                            "languages you could search in "
+                                            "and what the others return")
             c.add_argument("--where", help="place name; an unknown one is an "
                                            "honest count of 0")
             c.add_argument("--max-days-old", type=int, dest="max_days_old")
