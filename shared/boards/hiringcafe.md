@@ -33,6 +33,51 @@ Resolve the interpreter the portable way (`for c in python3 python py; do …`,
 see `shared/portability.md`) — the script imports nothing outside the standard
 library, on purpose.
 
+
+## `countries` is not a place of work
+
+**It lists the jurisdictions an employer is willing to hire from**, and on a
+remote ad that is **6.5 of them on average** against 1.9 on the rest. It is not
+where the work happens, and it is not even where the employer is.
+
+Measured on 200 Ghanaian cards, 2026-09-02 — of the 71 carrying a Gulf state
+in `countries`:
+
+| | |
+| :-- | --: |
+| also carrying a Gulf **city** | **2 of 71 — 3%** |
+| carrying **no city at all** | 45 |
+| remote | 66 of 71 — **93%** |
+| their actual cities | London 4 · San Francisco 4 · New York 3 · Singapore 3 |
+
+Recomputed on `cities` instead, the gap reaches a factor of thirty: Ghana 30%
+against **1%**, Tanzania 29% against **1%**, Nigeria 24% against **0%**.
+
+**The risk is not missing an ad — it is presenting one as local when it is
+not.** A remote ad open to six jurisdictions including Switzerland **is** worth
+finding; that is what this plugin is for. It is simply not a Swiss job, and
+**the commute rule has nothing to apply to.**
+
+**What the code does today, checked rather than assumed (2026-09-02):**
+`hiringcafe.py` emits `cities` and `countries` as separate raw fields, **the
+city filter reads `cities` alone** — a card with an empty `cities` is dropped
+by a city filter rather than matched on its country — and **nothing in
+`shared/scoring-rubric.md` or either SKILL scores on `countries`.** So this is
+a documentation fix, not a code one.
+
+**What it needs from a reader is one distinction**: a card with a country list
+and **no city** is *"remote, open to your country"*, never *"a job in your
+country"*. They are two different results and confusing them is what produced
+the error. Caveat 7 already says the right thing for `cities`; **it matters
+more here, because 63% of these cards have no city to fall back on.**
+
+*(A second property, of the instrument rather than the field: these cards are
+largely **the same cards** from one country to the next — 68 of the 71 Ghanaian
+ones appear in the Tanzanian sample, 65 in the Ugandan. **The thinner a market's
+own data, the more of the answer is non-local ads.** So on a small market the
+volume returned does not say what is covered; the number of cards carrying a
+city in that country does.)*
+
 ## Configuration
 
 ```yaml
@@ -130,7 +175,8 @@ One JSON object per line from `hiringcafe.py search`:
 | `id` | the 16-character `requisition_id`. **The ledger key** |
 | `ledger_id` | `hiringcafe:<id>`, ready for the pipeline |
 | `url` | `https://hiringcafe.com/job/<id>` — see below |
-| `title`, `company`, `cities`, `countries`, `workplace_type`, `commitment`, `seniority` | scoring inputs |
+| `title`, `company`, `cities`, `workplace_type`, `commitment`, `seniority` | scoring inputs |
+| **`countries`** | **the jurisdictions the employer will hire from — not a workplace.** See below before scoring on it |
 | `published_estimate` | HiringCafe's **estimate** of the posting date |
 | `ats`, `ats_tenant` | which ATS hosts it, and the employer's tenant on it |
 | `apply_url` | the employer's own application URL |

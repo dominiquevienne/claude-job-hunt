@@ -179,6 +179,26 @@ is not diagnostics — it is half the result**, and `successfactors.py`,
 legitimately want to follow. The rule is to notice when yours is not one of
 them.)*
 
+## Repetition corroborates only if the measurements are independent
+
+**A pattern published on five country pages and in a consolidated table was
+believed because it kept recurring.** Kenya, Egypt, Ghana, Uganda, Tanzania:
+five times the same two destinations at the top.
+
+**It was 65 identical cards counted five times.** The samples overlapped by
+92–96%, because a board with little local data answers with the same non-local
+ads everywhere.
+
+**Nothing in the procedure checked that the five measurements were
+independent** — and five agreeing samples feel like far more evidence than one,
+which is exactly the trap. It is *blind agreement* seen from the other side:
+there the check shared the object's blind spot, here five checks shared each
+other's input.
+
+**So before treating repetition as corroboration, ask what the samples have in
+common.** Two tenants of one vendor measured on different dates corroborate;
+five country queries served from one pool do not.
+
 ## The rules
 
 **1. Make the confusion impossible in the name, not in the documentation.** A

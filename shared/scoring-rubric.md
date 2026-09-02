@@ -129,6 +129,19 @@ tailoring writes around them:
   is where they wrote down the rules they do not want re-litigated every run;
   a rule stated there is not a preference to weigh, it is a stop.
 
+## A country list is not a workplace
+
+**A card carrying a list of countries and no city is "remote, open to your
+country" — never "a job in your country".** Some boards publish the
+jurisdictions an employer will hire from: **6.5 of them on average on a remote
+ad**, against 1.9 elsewhere, and on 200 measured cards **63% carried no city at
+all**. See `shared/boards/hiringcafe.md`.
+
+**Score it as what it is.** Such an ad is worth finding — a remote role open to
+Switzerland is exactly what this plugin should surface — but **the commute rule
+has nothing to apply to**, and ranking it beside a local ad misrepresents it.
+Say *remote, open to your country* in the row, and let the user weigh it.
+
 ## The right to work is not shaped like the commute, and must not be filtered like it
 
 `location.work_authorization` in `config.yml` lists the countries and zones
