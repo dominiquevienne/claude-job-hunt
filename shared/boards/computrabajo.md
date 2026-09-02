@@ -107,23 +107,39 @@ Worth saying plainly because two boards shipped this month do the opposite:
 JOBBKK repeats its last page for ever, and Kalibrr substitutes an unrelated
 set. Computrabajo simply stops.
 
-## Before building on this: it overlaps the Colombian public service
+## In Colombia the public API is not a rival source — it is the salary
 
-Colombia's public employment service publishes an open API — 262 275 offers,
-JSON, no key, the whole corpus reachable, **a salary figure on 83%** — and a
-measurement offer by offer through its `DETALLES_PRESTADOR` field, which names
-the accredited operator, puts **about 84% of it inside Computrabajo's
-inventory**.
+Colombia's public employment service publishes an open API: 262 275 offers,
+JSON, no key, the whole corpus reachable, **a salary figure on 83%**. Measured
+offer by offer through its `DETALLES_PRESTADOR` field, which names the
+accredited operator, **about 84% of it is Computrabajo's inventory**.
 
-**Enabling both in Colombia produces a large duplicate set**, and the ledger
-has no shared key to catch it: Computrabajo's id is a 32-hex string of its
-own, and no field crosses. The public service's record does carry the origin
-URL on every offer, which is the one thread that could tie them.
+**An earlier version of this section read that as a reason to choose one.**
+That framing was wrong, and the correction is worth stating because the
+numbers say the opposite:
 
-**So in Colombia, choose.** The public API is the better source on its own
-terms — a real salary on 83% against none here — and Computrabajo is the
-complement for what it does not carry. Nothing in this file decides that for
-the other seventeen countries, where no such measurement exists yet.
+| | Salary figure |
+| :-- | --: |
+| Computrabajo card | **0 of 80** |
+| The public API record | **83%** |
+
+**These are not two sources of the same content. They are the same advert,
+seen once without a salary and once with one.** An 84% overlap is therefore
+an argument *for* reading both — as **enrichment**, not as a second board.
+
+**What that needs, and does not yet have.** The join is not free: Computrabajo's
+id is a 32-hex string of its own and no field crosses. The public record
+carries **the origin URL on every offer**, which is the one thread that could
+tie the two, and matching on it has not been built or measured here. Until it
+is, enabling both in Colombia produces duplicate rows the ledger cannot catch
+— so the practical advice is unchanged even though the reasoning is not:
+**enable one until the join exists.**
+
+Nothing here decides anything for the other seventeen countries, where no such
+measurement exists.
+
+*(Reframed 2026-09-02 after the first version had been published. The
+measurement never changed; what it was taken to mean did.)*
 
 ## Configuration
 
