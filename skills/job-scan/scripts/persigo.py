@@ -24,7 +24,7 @@ import html as htmlmod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import urllib.error
 import urllib.request
@@ -107,7 +107,7 @@ def row(c, posting=None):
     }
     if posting is not None:
         out["published"] = posting.get("datePosted")
-        out["region"] = ((posting.get("jobLocation") or {})
+        out["region"] = (one(posting.get("jobLocation"))
                          .get("address") or {}).get("addressRegion")
         out["description"] = to_text(posting.get("description"))
     return out
@@ -169,7 +169,7 @@ def cmd_ad(a):
         die(f"ad {a.token} answered 200 but carries no JobPosting block. That is "
             f"a page-shape change, not a dead ad — report it with the "
             f"board-request skill rather than treating it as closed.", code=5)
-    addr = (j.get("jobLocation") or {}).get("address") or {}
+    addr = one(j.get("jobLocation")).get("address") or {}
     print(json.dumps({
         "id": a.token,
         "ledger_id": f"persigo:{a.token}",

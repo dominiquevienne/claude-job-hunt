@@ -32,7 +32,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import urllib.error
@@ -193,7 +193,7 @@ def ad_fields(page):
     # on the script tag, and strict=False on the parse. Issue #76.
     for d in postings(page):
         org = d.get("hiringOrganization") or {}
-        addr = (d.get("jobLocation") or {}).get("address") or {}
+        addr = one(d.get("jobLocation")).get("address") or {}
         sal = d.get("baseSalary") or {}
         val = sal.get("value") or {}
         emp = d.get("employmentType")

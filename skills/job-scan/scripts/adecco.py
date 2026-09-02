@@ -32,7 +32,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import urllib.error
@@ -191,8 +191,8 @@ def card(url, lastmod):
     if jp is None:
         return {"id": ident, "ledger_id": f"adecco:{ident}", "url": url,
                 "json_ld": False}
-    addr = (jp.get("jobLocation") or {}).get("address") or {}
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
+    addr = one(jp.get("jobLocation")).get("address") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
     return {
         "id": ident,
         "ledger_id": f"adecco:{ident}",
@@ -201,7 +201,7 @@ def card(url, lastmod):
         "title": clean(jp.get("title")),
         # Always the agency. Kept so nobody re-derives it, and flagged so
         # nobody mistakes it for the workplace.
-        "company": clean((jp.get("hiringOrganization") or {}).get("name")),
+        "company": clean(one(jp.get("hiringOrganization")).get("name")),
         "employer_is_the_agency": True,
         "locality": clean(addr.get("addressLocality")),
         # The department, spelled out. This is the only reliable one —
@@ -224,7 +224,7 @@ def card(url, lastmod):
         "salary_unit": clean(sal.get("unitText")),
         # `currency` holds **"France "** on every ad — the country, in the
         # currency field. Emitted under a name that says what it is.
-        "currency_field_holds_a_country": (jp.get("baseSalary") or {}).get(
+        "currency_field_holds_a_country": one(jp.get("baseSalary")).get(
             "currency"),
         "sector": clean(jp.get("industryTypeTitle")),
         "published": clean(jp.get("datePosted")),

@@ -34,7 +34,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import unicodedata
@@ -218,17 +218,17 @@ def card(url, lastmod):
                 "attributes before believing any count from this run.")
         return {"id": ident, "ledger_id": f"randstad-fr:{ident}", "url": url,
                 "json_ld": False}
-    addr = (jp.get("jobLocation") or {}).get("address") or {}
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
+    addr = one(jp.get("jobLocation")).get("address") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
     return {
         "id": ident,
         "ledger_id": f"randstad-fr:{ident}",
         "url": url,
-        "reference": (jp.get("identifier") or {}).get("value"),
+        "reference": one(jp.get("identifier")).get("value"),
         "title": jp.get("title"),
         # The agency, on every ad. Flagged rather than left to be mistaken for
         # the workplace — the client is described in the body and never named.
-        "company": (jp.get("hiringOrganization") or {}).get("name"),
+        "company": one(jp.get("hiringOrganization")).get("name"),
         "employer_is_the_agency": True,
         "locality": addr.get("addressLocality"),
         "region": addr.get("addressRegion"),
@@ -240,7 +240,7 @@ def card(url, lastmod):
         "salary_min": money(sal.get("minValue")),
         "salary_max": money(sal.get("maxValue")),
         "salary_unit": sal.get("unitText"),
-        "salary_currency": (jp.get("baseSalary") or {}).get("currency"),
+        "salary_currency": one(jp.get("baseSalary")).get("currency"),
         "sector": jp.get("industry"),
         "published": jp.get("datePosted"),
         # Absent on every ad, and that is the honest answer rather than

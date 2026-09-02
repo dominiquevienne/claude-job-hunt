@@ -27,7 +27,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import absent_reason, postings
+from _ldjson import absent_reason, one, postings
 import sys
 import time
 import unicodedata
@@ -161,12 +161,12 @@ def card(url, lastmod):
             die(f"{url}: {why.text}")
         return {"id": ident, "ledger_id": f"hays-fr:{ident}", "url": url,
                 "json_ld": False}
-    addr = (jp.get("jobLocation") or {}).get("address") or {}
+    addr = one(jp.get("jobLocation")).get("address") or {}
     # **The pay is in `baseSalary.value.value`, as prose** — not in `minValue`
     # / `maxValue`, where adecco, randstad-fr and crit all put theirs. Reading
     # only those sub-fields reports "no salary" on a board that states one on
     # every ad. `incentiveCompensation` repeats the same string.
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
     pay = sal.get("value") or jp.get("incentiveCompensation")
     post = addr.get("postalCode")
     return {
@@ -177,7 +177,7 @@ def card(url, lastmod):
         "title": jp.get("title"),
         # "Hays" on every ad. A specialist recruiter: the client is described
         # and never named.
-        "company": (jp.get("hiringOrganization") or {}).get("name"),
+        "company": one(jp.get("hiringOrganization")).get("name"),
         "employer_is_the_agency": True,
         # A town, a department or a region depending on the ad — "Paris",
         # "Loire-Atlantique", "Nord Pas-de-Calais". Not a granularity you can
@@ -195,7 +195,7 @@ def card(url, lastmod):
         # "Construction, Bâtiment & Travaux Publics".
         "industry": jp.get("industry"),
         "salary_text": pay,
-        "salary_currency": (jp.get("baseSalary") or {}).get("currency"),
+        "salary_currency": one(jp.get("baseSalary")).get("currency"),
         "published": jp.get("datePosted"),
         # datePosted + 90 days, measured at 89, 90 or 91 across 14 ads —
         # a formula, not a deadline.

@@ -31,7 +31,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import urllib.error
@@ -140,8 +140,8 @@ def card(url, lastmod):
                 "the markup changed. Do not trust any count from this run.")
         return {"id": ident, "ledger_id": f"crit:{ident}", "url": url,
                 "json_ld": False}
-    addr = (jp.get("jobLocation") or {}).get("address") or {}
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
+    addr = one(jp.get("jobLocation")).get("address") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
     ids = jp.get("identifier") or []
     if isinstance(ids, dict):
         ids = [ids]
@@ -160,7 +160,7 @@ def card(url, lastmod):
         # The **local branch** — CRIT LUNEL, CRIT CHAUMONT — not just "Crit",
         # which says roughly where the assignment is run from. Still the
         # agency: the client is described and never named.
-        "company": (jp.get("hiringOrganization") or {}).get("name"),
+        "company": one(jp.get("hiringOrganization")).get("name"),
         "employer_is_the_agency": True,
         "locality": addr.get("addressLocality"),
         "postcode": addr.get("postalCode"),
@@ -175,7 +175,7 @@ def card(url, lastmod):
         "salary_min": sal.get("minValue"),
         "salary_max": sal.get("maxValue"),
         "salary_unit": sal.get("unitText"),
-        "salary_currency": (jp.get("baseSalary") or {}).get("currency"),
+        "salary_currency": one(jp.get("baseSalary")).get("currency"),
         "published": jp.get("datePosted"),
         # Absent on every ad, which is the honest answer.
         "valid_through": jp.get("validThrough"),

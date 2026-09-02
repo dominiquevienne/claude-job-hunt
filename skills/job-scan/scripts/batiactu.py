@@ -33,7 +33,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import urllib.error
@@ -131,9 +131,9 @@ def card(ident, slug):
         t = TITLE_RE.search(page)
         return {"id": ident, "ledger_id": f"batiactu:{ident}", "url": url,
                 "title": strip(t.group(1)) if t else None, "json_ld": False}
-    addr = (jp.get("jobLocation") or {}).get("address") or {}
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
-    org = (jp.get("hiringOrganization") or {}).get("name")
+    addr = one(jp.get("jobLocation")).get("address") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
+    org = one(jp.get("hiringOrganization")).get("name")
     geo = jp.get("geo") or {}
     return {
         "id": ident,

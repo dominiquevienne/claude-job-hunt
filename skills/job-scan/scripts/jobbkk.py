@@ -53,7 +53,7 @@ import argparse
 import json
 import re
 
-from _ldjson import absent_reason, postings
+from _ldjson import absent_reason, one, postings
 import sys
 import time
 import urllib.error
@@ -251,13 +251,13 @@ def cmd_ad(a):
         die(f"{a.id}: no JobPosting JSON-LD — {why.text} It was on 12 of 12 "
             f"ads on 2026-09-02, so re-verify jobbkk.md.",
             2 if why.our_fault else 3)
-    addr = ((posting.get("jobLocation") or {}).get("address") or {})
+    addr = (one(posting.get("jobLocation")).get("address") or {})
     print(json.dumps({
         "id": a.id,
         "ledger_id": f"jobbkk:{a.id}",
         "url": BASE + AD.format(company=comp, job=job),
         "title": posting.get("title"),
-        "company": (posting.get("hiringOrganization") or {}).get("name"),
+        "company": one(posting.get("hiringOrganization")).get("name"),
         "employment_type": posting.get("employmentType"),
         "occupational_category": posting.get("occupationalCategory"),
         "posted": (posting.get("datePosted") or "")[:10] or None,

@@ -35,6 +35,8 @@ import argparse
 import html
 import json
 import re
+
+from _ldjson import one
 import sys
 import time
 import unicodedata
@@ -435,7 +437,7 @@ def teamtailor_list(tenant, _want_content=True, _a=None):
         # pasted back into a browser. Fall back to the slug when the JobPosting
         # block is absent.
         jp = i.get("_jobposting") or {}
-        ident = (jp.get("identifier") or {}).get("value")
+        ident = one(jp.get("identifier")).get("value")
         if ident is None:
             m = re.search(r"/jobs/(\d+)-", i.get("url") or "")
             ident = m.group(1) if m else i.get("id")
@@ -456,7 +458,7 @@ def teamtailor_card(tenant, j, with_description=False):
         # apply endpoint to link to.
         "apply_url": j.get("url"),
         "title": j.get("title"),
-        "company": (jp.get("hiringOrganization") or {}).get("name")
+        "company": one(jp.get("hiringOrganization")).get("name")
                    or j.get("_feed_title") or tenant,
         "tenant": tenant,
         "provider": "teamtailor",
@@ -594,7 +596,7 @@ def join_card(tenant, j, with_description=False):
         "published": j.get("createdAt"),
         "updated": j.get("updatedAt"),
         "department": (j.get("category") or {}).get("name"),
-        "employment_type": (j.get("employmentType") or {}).get("name"),
+        "employment_type": one(j.get("employmentType")).get("name"),
         "workplace_type": workplace,
         "remote": workplace == "REMOTE",
         # The ad's own language, which cover-letter needs before it writes a

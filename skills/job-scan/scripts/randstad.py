@@ -26,7 +26,7 @@ import html as htmlmod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import urllib.error
 import urllib.request
@@ -185,7 +185,7 @@ def cmd_ad(a):
     # split follows the region: 8 of 8 German-region ads carried one, 4 of 4
     # Geneva-area ads did not. So its absence is normal, never a verdict.
     j = job_posting(body) or {}
-    addr = (j.get("jobLocation") or {}).get("address") or {}
+    addr = one(j.get("jobLocation")).get("address") or {}
     description = re.sub(r"\|+", " ", to_text(j.get("description"))).strip()
     if not description:
         # Same container on every ad, and the only route on the ones without

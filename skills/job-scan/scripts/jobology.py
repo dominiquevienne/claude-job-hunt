@@ -42,7 +42,7 @@ import html as html_mod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import time
 import urllib.error
@@ -212,8 +212,8 @@ def card(site, ident, slug):
             "json_ld": False,
         }
     org = jp.get("hiringOrganization") or {}
-    loc = (jp.get("jobLocation") or {}).get("address") or {}
-    sal = (jp.get("baseSalary") or {}).get("value") or {}
+    loc = one(jp.get("jobLocation")).get("address") or {}
+    sal = one(jp.get("baseSalary")).get("value") or {}
     # Free text, not a number: '13.5 - 15.5 par heure', 'Selon expérience',
     # '13ème mois', and one seen as '2.486.62 EUR brut'. Filled on ~78% of ads
     # and saying nothing on a good share of those. Passed through verbatim

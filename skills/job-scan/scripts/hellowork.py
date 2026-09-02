@@ -32,7 +32,7 @@ import html
 import json
 import re
 
-from _ldjson import absent_reason, postings
+from _ldjson import absent_reason, label, one, postings
 import sys
 import time
 import urllib.error
@@ -185,11 +185,19 @@ def card_from_ad(ident, page):
             f"markup changed; report it with board-request rather than "
             f"guessing at selectors.", code=2 if why.our_fault else 3)
     org = d.get("hiringOrganization") or {}
-    addr = (d.get("jobLocation") or {}).get("address") or {}
-    sal = d.get("baseSalary") or {}
-    val = sal.get("value") or {}
-    exp = d.get("experienceRequirements") or {}
-    edu = d.get("educationRequirements") or {}
+    addr = one(d.get("jobLocation")).get("address") or {}
+    # **Four schema.org fields, four shapes, and this board uses several of
+    # them.** Measured 2026-09-01: `experienceRequirements` is a plain string
+    # on some ads and `educationRequirements` a list of credential objects on
+    # others, so reading either with `.get()` aborted the whole sweep with an
+    # AttributeError. `one()` takes the first object whatever arrived;
+    # `label()` keeps the text when the field is legitimately a sentence — and
+    # on this board it often is, so dropping it would trade a crash for a
+    # silent blank. Issue #57.
+    sal = one(d.get("baseSalary"))
+    val = one(sal.get("value"))
+    exp = one(d.get("experienceRequirements"))
+    edu = one(d.get("educationRequirements"))
     ind = d.get("industry")
     emp = d.get("employmentType")
     return {
@@ -216,7 +224,12 @@ def card_from_ad(ident, page):
         "category": clean(d.get("occupationalCategory")),
         "skills": d.get("skills"),
         "months_of_experience": exp.get("monthsOfExperience"),
-        "education": edu.get("credentialCategory"),
+        # The object form carries a credential; the string form carries the
+        # requirement in words. Both are the answer — keep whichever came.
+        "education": (edu.get("credentialCategory")
+                      or label(d.get("educationRequirements"),
+                               "credentialCategory")),
+        "experience_text": label(d.get("experienceRequirements")),
         "qualifications": to_text(d.get("qualifications")),
         "published": d.get("datePosted"),
         # Formulaic — datePosted + 30 days on every ad measured. Not an expiry.

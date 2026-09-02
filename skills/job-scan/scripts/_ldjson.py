@@ -57,13 +57,58 @@ Usage:
 import json
 import re
 
-__all__ = ["LD", "blocks", "objects", "postings", "absent_reason", "Absence"]
+__all__ = ["LD", "blocks", "objects", "postings", "absent_reason", "Absence",
+           "one", "label"]
 
 # **Attribute-agnostic, quote-agnostic, case-insensitive**, in that order of
 # importance. It matches `type="application/ld+json"`, `type='…'`, an unquoted
 # attribute, `LD+JSON`, and the attribute appearing after others on the tag.
 LD = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
                 re.S | re.I)
+
+
+def one(value):
+    """The first object of a schema.org field, whatever shape it arrived in.
+
+    **schema.org permits a value to be an object, a list of objects, or a bare
+    string, and boards use all three for the same field.** A reader that writes
+    `(d.get("jobLocation") or {}).get("address")` is correct until the day an
+    ad has two sites, and then it raises — or worse, on a string, it raises on
+    a field nobody was watching.
+
+    Measured 2026-09-01 on HelloWork: `experienceRequirements` arrives as a
+    plain string on some ads and `educationRequirements` as a **list**, and
+    `--with-detail` aborted the whole sweep with
+    `AttributeError: 'str' object has no attribute 'get'` (issue #57). The same
+    shape had already been fixed in `icims.py`, privately, when `jobLocation`
+    turned out to be a list — **the second time is what makes it a helper.**
+
+    Returns `{}` for a string, for `None`, and for a list with no object in it,
+    so `one(x).get("name")` is always legal. **A string is not silently turned
+    into a name**: use `label()` when the field may legitimately be text.
+    """
+    if isinstance(value, list):
+        value = next((x for x in value if isinstance(x, dict)), None)
+    return value if isinstance(value, dict) else {}
+
+
+def label(value, key="name"):
+    """The readable text of a field that may be a string, an object, or a list.
+
+    `employmentType` is `"FULL_TIME"` on one board and `{"name": "CDI"}` on the
+    next; `educationRequirements` is a sentence here and a credential object
+    there. **Returning the string when there is one is not a fallback, it is
+    the common case** — and it is the half `one()` deliberately drops.
+    """
+    if isinstance(value, list):
+        parts = [label(v, key) for v in value]
+        return ", ".join(p for p in parts if p) or None
+    if isinstance(value, dict):
+        v = value.get(key)
+        return v if isinstance(v, str) else (str(v) if v is not None else None)
+    if isinstance(value, str):
+        return value.strip() or None
+    return str(value) if value is not None else None
 
 
 def blocks(html):

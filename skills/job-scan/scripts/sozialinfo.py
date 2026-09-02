@@ -24,7 +24,7 @@ import html as htmlmod
 import json
 import re
 
-from _ldjson import postings
+from _ldjson import one, postings
 import sys
 import urllib.error
 import urllib.request
@@ -173,7 +173,7 @@ def cmd_ad(a):
             f"unknown token answers exactly this way, with an empty <title>. "
             f"Record it as discarded.", code=3)
     org = j.get("hiringOrganization") or {}
-    addr = (j.get("jobLocation") or {}).get("address") or {}
+    addr = one(j.get("jobLocation")).get("address") or {}
     print(json.dumps({
         "id": a.token,
         "ledger_id": f"sozialinfo:{a.token}",

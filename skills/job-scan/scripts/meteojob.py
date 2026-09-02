@@ -28,7 +28,7 @@ import html
 import json
 import re
 
-from _ldjson import absent_reason, postings
+from _ldjson import absent_reason, one, postings
 import sys
 import time
 import urllib.error
@@ -167,7 +167,7 @@ def card_from_ad(ident, page):
             f"changed; report it with board-request rather than guessing at "
             f"selectors.", code=2 if why.our_fault else 3)
     org = d.get("hiringOrganization") or {}
-    addr = (d.get("jobLocation") or {}).get("address") or {}
+    addr = one(d.get("jobLocation")).get("address") or {}
     sal = d.get("baseSalary") or {}
     val = sal.get("value") or {}
     ident_field = d.get("identifier") or {}

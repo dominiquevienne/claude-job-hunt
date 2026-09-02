@@ -62,6 +62,36 @@ job search; but the site does name the client, and that is worth knowing rather
 than discovering later. The script never rotates the User-Agent to get around a
 `403`.
 
+
+## The JSON-LD is polymorphic, and two fields crashed the sweep
+
+**schema.org lets a field be an object, a list of objects, or a bare string,
+and this board uses several of those for the same field.** Measured 2026-09-01:
+`experienceRequirements` arrives as a **plain string** on some ads and
+`educationRequirements` as a **list** of credential objects on others. Reading
+either with `.get()` raised `AttributeError` and **aborted the entire facet
+sweep** — seven facets, exit 1, on the setting the file itself documents as the
+one to use.
+
+**The fix is not local.** `_ldjson.one()` takes the first object whatever
+arrived, and fifteen adapters now read their schema.org fields through it —
+`jobLocation`, `baseSalary`, `hiringOrganization`, `identifier`,
+`employmentType` and the rest were all written assuming a single shape.
+
+**And `label()` keeps the string form**, which matters here more than
+elsewhere. Measured on 20 ads of one facet after the fix:
+
+| | ads |
+| :-- | --: |
+| `months_of_experience` only (the object form) | **16** |
+| `experience_text` only (the string form) | **4** |
+| both | 0 |
+| neither | 0 |
+
+**The two shapes are mutually exclusive and together cover every ad.** Dropping
+the string would have traded a crash for a silent blank on exactly the ads
+where it is the only answer. Issue #57.
+
 ## What this adapter can see
 
 **One facet page is 20 ads, and there is no page 2** — pagination is a

@@ -70,7 +70,7 @@ import gzip
 import json
 import re
 
-from _ldjson import blocks as ld_blocks, postings
+from _ldjson import blocks as ld_blocks, one, postings
 import sys
 import time
 import unicodedata
@@ -212,7 +212,7 @@ def address_of(jp):
         locs = [loc]
     else:
         locs = []
-    addrs = [(x.get("address") or {}) for x in locs]
+    addrs = [one(x.get("address")) for x in locs]
     return (addrs[0] if addrs else {}), len(addrs)
 
 
@@ -244,7 +244,7 @@ def card(url):
         "id": ident,
         "ledger_id": f"infoempleo:{ident}",
         "url": url,
-        "reference": (jp.get("identifier") or {}).get("value"),
+        "reference": one(jp.get("identifier")).get("value"),
         "title": jp.get("title"),
         # Named on 44 of 44 — but 32 of those 44 are staffing agencies, so
         # the name is often the intermediary rather than the workplace.
@@ -273,7 +273,7 @@ def card(url):
         "salary_unit": unit,
         # Always 0.0 when a salary is stated. Recorded, never used.
         "salary_value_field_literal": zero,
-        "salary_currency": (jp.get("baseSalary") or {}).get("currency"),
+        "salary_currency": one(jp.get("baseSalary")).get("currency"),
         "published": jp.get("datePosted"),
         # Real and per-ad — 20 to 283 days after datePosted across the sample,
         # not a formula. None had already passed.
