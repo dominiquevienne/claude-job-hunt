@@ -194,6 +194,50 @@ def cmd_due(a):
         note(f"{n} follow-up(s) due by {today} + {a.within} day(s).")
 
 
+def fingerprint(path):
+    """`<mtime_ns>:<size>` — enough to notice somebody else wrote."""
+    st = os.stat(path)
+    return f"{st.st_mtime_ns}:{st.st_size}"
+
+
+def cmd_stamp(a):
+    """Take a fingerprint before reading; check it before writing.
+
+    **`read it first, write it last, and never lose a row` is correct for one
+    session and is the row-loss mechanism when two run.** The second writer's
+    copy was read before the first writer's save, so its write drops every row
+    the first one added — no error, no warning, and the file stays
+    syntactically perfect. Issue #56.
+
+    This is not hypothetical on this machine: three live sessions were counted
+    on 2026-09-01 against one `$JOB_HUNT_HOME`, and the ledger was rewritten
+    about fifteen times in one of them.
+
+    **Detect, do not prevent.** No lock file, no daemon, nothing to clean up —
+    a lock nobody releases is worse than the problem. A changed fingerprint
+    means *re-read, re-apply, and say it happened*, which turns a silent loss
+    into a visible retry.
+
+        S=$(ledger.py stamp)          # before reading
+        …                             # do the work
+        ledger.py stamp --expect "$S" # before writing; exit 5 if it moved
+    """
+    if not os.path.exists(a.file):
+        die(f"{a.file}: no such file", 2)
+    now = fingerprint(a.file)
+    if not a.expect:
+        print(now)
+        return
+    if now == a.expect:
+        note(f"unchanged since it was read ({now}).")
+        return
+    die(f"**{a.file} changed under you.** It was {a.expect} when you read it "
+        f"and it is {now} now — another session has written to it since. "
+        f"**Do not write your copy**: it does not contain their rows, and "
+        f"writing it would drop them silently. Re-read the file, re-apply "
+        f"your changes, and tell the user this happened.", 5)
+
+
 def cmd_count(a):
     text = read(a.file)
     cols, rows = ads_table(text, a.file)
@@ -232,6 +276,8 @@ def main():
                         ("rows", cmd_rows, "whole rows, by status"),
                         ("count", cmd_count, "rows and section sizes"),
                         ("due", cmd_due, "follow-up dates that have arrived"),
+                        ("stamp", cmd_stamp,
+                         "fingerprint before reading, check before writing"),
                         ("verify", cmd_verify, "refuse a write that lost a row")):
         c = sub.add_parser(name, help=h)
         c.add_argument("--file", default=DEFAULT)
@@ -245,6 +291,10 @@ def main():
             c.add_argument("--within", type=int, default=3,
                            help="days ahead to include (default 3)")
             c.add_argument("--today", help="YYYY-MM-DD, for testing")
+        if name == "stamp":
+            c.add_argument("--expect",
+                           help="the fingerprint taken before reading. Exits 5 "
+                                "if the file moved since")
         if name == "verify":
             c.add_argument("--before", type=int, required=True)
         c.set_defaults(func=fn)

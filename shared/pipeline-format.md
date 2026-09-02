@@ -7,6 +7,26 @@
 preventing an ad the user already applied to — or already rejected — from being
 proposed again next week.
 
+> **That rule is correct for one session and is the row-loss mechanism when two
+> run.** The second writer read before the first one saved, so its write drops
+> every row the first added — no error, no warning, and the file stays
+> syntactically perfect. Three live sessions were counted against one workspace
+> on 2026-09-01, and a ledger is rewritten a dozen times in a single run.
+>
+> **So the discipline has a third clause: fingerprint it when you read it, and
+> check the fingerprint before you write.**
+>
+> ```bash
+> S=$(ledger.py stamp)            # before reading
+> …
+> ledger.py stamp --expect "$S"   # before writing — exit 5 if it moved
+> ```
+>
+> A changed fingerprint means **re-read, re-apply, and say it happened**. It
+> detects rather than prevents, on purpose: there is no lock file and nothing
+> to clean up, because **a lock nobody releases is worse than the problem**.
+> Issue #56.
+
 ## Format
 
 ```markdown

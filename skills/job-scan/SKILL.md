@@ -91,9 +91,18 @@ Then build the **exclusion set**: every `ID` in the ledger whose status is
 file and get refreshed in place rather than duplicated, and `rows --status
 todo` gives them in full because those are the ones a run rewrites.
 
-**Note the row count from `count` before you write anything.** Step 6 ends with
-`verify --before <n>`, which refuses a ledger that came back with fewer rows
-than it went in with.
+**Note the row count from `count` before you write anything, and take the
+file's fingerprint.** Step 6 checks both:
+
+```bash
+LEDGER_STAMP=$(python3 "$S/ledger.py" stamp)
+```
+
+`verify --before <n>` refuses a ledger that came back with fewer rows than it
+went in with, and `stamp --expect` refuses to write over **another session's
+work** — three live sessions were counted against one workspace on 2026-09-01,
+and the second writer's copy silently drops every row the first one added
+(issue #56).
 
 **Build a second index at the same time: company name → existing rows.** The id
 check alone is not enough, because **the same ad carries a different id on every
@@ -450,11 +459,17 @@ rows, which is the write-side twin of `cat`-ing the file — the same cost paid
 again, and the occasion for a lost row. Each new row goes where its match puts
 it, and the file stays sorted because it was never unsorted.
 
-**Then check the invariant instead of asserting it:**
+**Then check both invariants instead of asserting them:**
 
 ```bash
-python3 "$S/ledger.py" verify --before <the count from step 0>
+python3 "$S/ledger.py" stamp --expect "$LEDGER_STAMP"   # BEFORE writing
+python3 "$S/ledger.py" verify --before <the count from step 0>   # after
 ```
+
+**The stamp check runs before the write and the row count after**, because they
+catch different things: one says somebody else got there first, the other says
+your own merge lost something. **If the stamp moved, do not write** — re-read,
+re-apply, and tell the user it happened.
 
 It exits 5 if the ledger came back shorter. `shared/pipeline-format.md` opens
 with *read it first, write it last, and never lose a row*; this is the last
