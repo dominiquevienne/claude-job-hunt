@@ -635,7 +635,10 @@ Country-specific add-ons, off by default, in `shared/modules/`:
 
 - **`job-room-ch`** — Switzerland: captures the fields the ORP's *preuve de
   recherche d'emploi* form on job-room.ch requires, while the ad is still open,
-  and can help fill the form in your own logged-in session.
+  and can help fill the form in your own logged-in session. **It saves entries
+  into the open period and then tells you the period's deadline; transmitting
+  the period to the ORP stays yours, always.** Saving a row and declaring a
+  period are two different acts, and job-room itself separates them.
 
 Modules that touch an official declaration carry an explicit notice:
 **they assist, they do not replace your own check.** You are solely responsible

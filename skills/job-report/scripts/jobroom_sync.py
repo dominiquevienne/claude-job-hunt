@@ -262,18 +262,141 @@ def parse_jobroom_text(text: str) -> list[dict]:
     return entries
 
 
+# The period listing carries three things the check needs and used not to
+# read: which periods exist, how many entries job-room itself says each holds,
+# and when each one leaves the user's hands. Issue #49 and issue #51.
+#
+# **Measured in French, on a real page, 2026-09-01.** job-room also serves DE,
+# IT and EN, and the labels there have NOT been measured — so the parser is
+# label-agnostic wherever it can be (a heading is a word plus a year; a count
+# is a label followed by digits; a date is dd.mm.yyyy) and says `language:
+# "unrecognised"` rather than guessing when the French words are absent.
+MONTH_RE = re.compile(r"^([A-Za-zÀ-ÿ]{3,12})\s+(\d{4})$")
+COUNT_RE = re.compile(r"^[^:]{1,40}:\s*(\d+)\s*$")
+DATE_RE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
+# French, measured. Anything else is reported as an unclassified date rather
+# than assumed to be one kind or the other — the difference between "it leaves
+# on its own" and "you must send it" is not a detail to guess at.
+AUTO_RE = re.compile(r"automatique", re.I)
+MANUAL_RE = re.compile(r"manuelle", re.I)
+COUNT_LABEL_FR = "nombre saisi"
+
+
+def parse_periods(text: str) -> list[dict]:
+    """Every control period on the listing, with its count and its deadline.
+
+    A period block starts at a `<Month> <Year>` heading and runs to the next
+    one. Inside it:
+
+        Nombre saisi: 48
+        Transmission automatique le 06.09.2026 à 00 h 00
+
+    `count` is what job-room says the period holds — **the number that tells a
+    genuinely empty period from a listing this script failed to read**, which
+    used to be the same condition (issue #49).
+
+    `deadline` is the date after which a mistake stops being correctable
+    (issue #51). It is on the page; it was simply never read.
+    """
+    lines = [l.strip() for l in text.splitlines()]
+    starts = [i for i, l in enumerate(lines) if MONTH_RE.match(l)]
+    out = []
+    for n, i in enumerate(starts):
+        end = starts[n + 1] if n + 1 < len(starts) else len(lines)
+        block = lines[i:end]
+        month, year = MONTH_RE.match(lines[i]).groups()
+        count, count_seen, deadline, kind, lang = None, None, None, None, "fr"
+        for l in block[1:]:
+            m = COUNT_RE.match(l)
+            if m and count is None:
+                count = int(m.group(1))
+                count_seen = l
+                if COUNT_LABEL_FR not in l.lower():
+                    lang = "unrecognised"
+            d = DATE_RE.search(l)
+            if d and deadline is None:
+                y, mo, dd = d.group(3), d.group(2), d.group(1)
+                deadline = f"{y}-{mo}-{dd}"
+                kind = ("automatic" if AUTO_RE.search(l) else
+                        "manual" if MANUAL_RE.search(l) else "unclassified")
+                if kind == "unclassified":
+                    lang = "unrecognised"
+        # The line above a period sometimes qualifies it — "AVANT chômage" on
+        # the measured page, which is the user's own period name — and
+        # sometimes it is page chrome. **This script does not claim to know
+        # which**, so it reports it as the line above and lets the reader
+        # judge. Calling it a qualifier would be a small invented fact on a
+        # page about official declarations.
+        above = lines[i - 1] if i and lines[i - 1] and not MONTH_RE.match(lines[i - 1]) \
+            and not COUNT_RE.match(lines[i - 1]) else None
+        out.append({
+            "label": f"{month} {year}",
+            "line_above": above,
+            "count": count,
+            "count_line": count_seen,
+            "deadline": deadline,
+            "deadline_kind": kind,
+            "language": lang,
+        })
+    return out
+
+
 def run_check(plan: dict, text: str) -> dict:
     existing = parse_jobroom_text(text)
-    if not existing:
+    periods = parse_periods(text)
+    declared = sum(p["count"] for p in periods if p["count"] is not None)
+    counted = [p for p in periods if p["count"] is not None]
+
+    # **Three outcomes, not two.** "I could not read the page" and "the period
+    # is legitimately empty" used to be the same condition — zero entries
+    # parsed — so the first entry of every month was unreachable through the
+    # documented path (issue #49). job-room states its own count on every
+    # period, and reconciling the two numbers separates them.
+    if not counted:
         return {
             "usable": False,
             "reason": (
-                "no entry could be read from the job-room text. Either the period is "
-                "genuinely empty or the text is not the listing. Either way NOTHING is "
-                "written: an unverified write is the one outcome this check exists to "
-                "prevent."
+                "no control period could be read from this text — no `<Month> "
+                "<Year>` heading with a count under it. **This is a failure to "
+                "read the page, not an empty period**: an empty period still "
+                "prints its heading and `Nombre saisi: 0`. Capture the listing "
+                "again with get_page_text (never read_page — the list is "
+                "virtualised) and check it is the /work-efforts page."
             ),
             "existing_count": 0,
+            "periods": periods,
+        }
+    if declared != len(existing):
+        return {
+            "usable": False,
+            "reason": (
+                f"job-room says these periods hold {declared} entr(y/ies) and "
+                f"{len(existing)} could be read from the text. **A partial "
+                f"capture is exactly what this refusal is for** — five rows of "
+                f"forty-eight parse perfectly well and would clear duplicates "
+                f"that are plainly there. NOTHING is written. Re-capture with "
+                f"get_page_text and make the two numbers agree."
+            ),
+            "existing_count": len(existing),
+            "declared_count": declared,
+            "periods": periods,
+        }
+    if declared == 0:
+        # Positive evidence of emptiness: a period was read and it says zero.
+        return {
+            "usable": True,
+            "empty_period": True,
+            "existing_count": 0,
+            "declared_count": 0,
+            "periods": periods,
+            "safe_to_enter": list(plan["to_enter"]),
+            "blocked_as_duplicate": [],
+            "counts": {"safe": len(plan["to_enter"]), "blocked": 0},
+            "note": (
+                "the period is genuinely empty — job-room says so itself "
+                "(count 0) and the listing was read. No duplicate is possible, "
+                "so every planned entry is safe."
+            ),
         }
 
     index: dict[tuple[str, str], dict] = {}
@@ -300,7 +423,10 @@ def run_check(plan: dict, text: str) -> dict:
 
     return {
         "usable": True,
+        "empty_period": False,
         "existing_count": len(existing),
+        "declared_count": declared,
+        "periods": periods,
         "safe_to_enter": safe,
         "blocked_as_duplicate": blocked,
         "counts": {"safe": len(safe), "blocked": len(blocked)},
@@ -338,12 +464,52 @@ def print_plan(plan: dict) -> None:
                   f"{i['role'][:38]}{on}")
 
 
+def print_periods(periods: list[dict]) -> None:
+    """The deadline is printed whenever a period is touched — issue #51.
+
+    It is the one date that separates a mistake somebody can still fix from a
+    false declaration, and it was on the page all along.
+    """
+    if not periods:
+        return
+    print("periods on this listing:")
+    for p in periods:
+        n = "?" if p["count"] is None else p["count"]
+        print(f"  · {p['label']}: {n} entr(y/ies) saved")
+        if p.get("line_above"):
+            print(f"      line above it on the page: {p['line_above']!r} "
+                  f"(may be the period's own name, may be page chrome)")
+        if p["deadline"] and p["deadline_kind"] == "automatic":
+            print(f"      transmitted automatically on {p['deadline']} — "
+                  f"REVIEW THE PERIOD BEFORE THEN")
+        elif p["deadline"] and p["deadline_kind"] == "manual":
+            print(f"      manual transmission possible from {p['deadline']} — "
+                  f"the user sends it, nobody else")
+        elif p["deadline"]:
+            print(f"      a date is stated ({p['deadline']}) and this script "
+                  f"could not tell automatic from manual — read the line "
+                  f"yourself: {p['count_line'] or 'see the page'}")
+        else:
+            print("      no transmission date could be read on this period")
+        if p["language"] == "unrecognised":
+            print("      (the French labels were not found — this period was "
+                  "read structurally, so check the numbers against the page)")
+    print()
+
+
 def print_check(res: dict) -> None:
     if not res["usable"]:
         print("REFUSED — nothing may be written.")
         print(f"  {res['reason']}")
+        print()
+        print_periods(res.get("periods") or [])
         return
-    print(f"job-room entries read: {res['existing_count']}")
+    print_periods(res.get("periods") or [])
+    if res.get("empty_period"):
+        print(f"job-room entries read: 0 — {res['note']}")
+    else:
+        print(f"job-room entries read: {res['existing_count']} "
+              f"(job-room itself says {res.get('declared_count')})")
     print()
     print(f"safe to enter ({len(res['safe_to_enter'])}):")
     for i in res["safe_to_enter"]:
@@ -383,6 +549,12 @@ def main() -> int:
                    help="file holding the job-room period listing (get_page_text output; "
                         "use '-' for stdin)")
 
+    d = sub.add_parser("periods",
+                       help="the control periods and their transmission dates")
+    d.add_argument("--jobroom-text", required=True,
+                   help="file holding the job-room period listing "
+                        "(get_page_text output; use '-' for stdin)")
+
     m = sub.add_parser("mark-synced", help="record that job-room is now up to date")
     m.add_argument("--entries", type=int, default=None,
                    help="number of entries the period holds after the session")
@@ -404,6 +576,17 @@ def main() -> int:
         # Exit 2 when the listing could not be read: a caller that ignores the
         # output still cannot mistake this for "verified, nothing found".
         return 0 if res["usable"] else 2
+
+    if args.cmd == "periods":
+        text = sys.stdin.read() if args.jobroom_text == "-" else \
+            open(args.jobroom_text, encoding="utf-8").read()
+        periods = parse_periods(text)
+        if args.format == "json":
+            print(json.dumps(periods, indent=2, ensure_ascii=False))
+        else:
+            print_periods(periods)
+        # No period read is a failure to read the page, not an empty board.
+        return 0 if periods else 2
 
     if args.cmd == "mark-synced":
         state["last_sync"] = dt.datetime.now().astimezone().isoformat(timespec="seconds")

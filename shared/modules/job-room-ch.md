@@ -177,10 +177,27 @@ Output is three lists — `safe to enter`, `BLOCKED as duplicate`, and the
 employers already present under **another** role. **Enter only what it calls
 safe.**
 
-**If the listing cannot be read, it refuses and exits `2`.** An empty or
+**If the listing cannot be read, it refuses and exits `2`.** An
 unrecognised text is never read as "verified, no duplicate found": that is the
 one outcome the check exists to prevent, and it is the reason the refusal is an
 exit code rather than a printed remark.
+
+**An empty period is not that case, and used to be treated as it.** The check
+recognised entries only by their `Postulation du …` markers, so *"I could not
+read the page"* and *"this period is legitimately empty"* were the same
+condition — and **the first entry of every month was unreachable through the
+documented path** (issue #49). job-room states its own count on every period,
+so the two numbers are now reconciled and there are three outcomes:
+
+| job-room says | rows read | verdict |
+| --: | --: | :-- |
+| `0` | 0 | **genuinely empty** — safe to enter, no duplicate is possible |
+| `n > 0` | `n` | listing read; run the duplicate check |
+| `n > 0` | `0` or `≠ n` | **refused** — the capture is partial |
+| *no period at all* | — | **refused** — this is not the listing |
+
+The third row is stricter than what it replaces: five rows of forty-eight parse
+perfectly well and used to clear duplicates that were plainly there.
 
 ### Feed it `get_page_text`, never `read_page`
 
@@ -254,25 +271,74 @@ and ask.
 timestamp and no "I just looked at the list" replaces it — a saisie made
 manually by the user between two sessions appears in no state file.
 
-### The gate — the user submits, always
+### The gate — saving a row is not declaring a period
 
-**Never click the final submit button.** At the end:
+**job-room separates two acts, and so must this module.** Captured live on
+2026-09-01 from the period listing:
 
-1. Show every field and the exact value placed in it.
-2. Show what was **left blank** and why.
-3. Repeat the short responsibility line.
-4. Tell the user the form is ready **on screen** and that it is theirs to check
-   and submit.
+| Act | What it is | Whose |
+| :-- | :-- | :-- |
+| **Sauvegarder** an entry | one line added to an **open, still-editable** period. Reversible, correctable and deletable right up to the deadline | a data-entry step — **the plugin may do it** |
+| **Transmission** of the period | the **official declaration reaching the ORP** — automatic at a stated date, or manual from one | **the user's, irreducibly** |
 
-Then stop. Unlike a job application — where the user may delegate the click —
-an official declaration is submitted by the person it belongs to. Do not offer
-to press it.
+`Nombre saisi: 48` on a period that has not been transmitted is the proof:
+forty-eight rows saved, nothing declared.
+
+**So save the row.** Once the fields have been captured from the ad, `check`
+has cleared it and the values have been shown, the write is the plugin's to
+make. The August 2026 period held 48 entries; a rule that hands each one back
+as a manual click returns most of the module's value to the user as work, and
+the forty-eighth save is not reviewed more carefully than the first — it is
+reviewed less. *(Issue #51, open across thirty-six releases.)*
+
+**And never touch the transmission.** Do not trigger a manual one, do not
+confirm one, do not offer to. **Never describe a period as *declared* because
+entries were saved into it** — that sentence would be false in the one place
+where a false sentence costs the user an official declaration.
+
+### After saving: say what was written, where, and by when
+
+**The gate moves to the period.** The review that protects a declaration is the
+whole period read before its deadline, not each row at the moment of typing —
+so after saving, the module owes the user three things:
+
+```bash
+# re-capture the listing with get_page_text, then:
+python3 "<…>/jobroom_sync.py" periods --jobroom-text listing.txt
+```
+
+1. **What was written** — every field and its exact value, and what was left
+   blank and why.
+2. **Which period it went into**, with job-room's own count.
+3. **That period's deadline, always.** *"48 entries in Août 2026; automatic
+   transmission 06.09.2026 at 00:00 — review the period before then."*
+
+**The deadline is the one date that separates a correctable mistake from a
+false declaration**, and it is printed on the page already. Report it whenever
+a period is touched, even when nothing was written.
+
+### What stays the human's, whatever the automation
+
+- **The transmission.** Always.
+- **Any field where the answer is the user's judgement about themselves** — the
+  **sought occupation rate** above all. What an insured person declares there
+  bears on their fitness for placement, and it is not the plugin's to decide.
+- **A value that is not on the ad.** No invented postcode, no guessed legal
+  name — the existing rules on that do not move.
+
+### Confirming the write, and only then the marker
+
+The write is verifiable, so verify it rather than assuming it: re-capture the
+listing and check that job-room's own count rose by the number of rows saved.
+`check` refuses when its two numbers disagree, which is the same test.
+
+Only then update the ledger row marker to `` `JR:YYYY-MM-DD` ``. An
+unconfirmed write stays `` **`JR:missing`** ``: the value of that marker is
+that it never lies. **And it means *saved into the period*, never
+*transmitted*** — those are different facts and the ledger records the one it
+can verify.
 
 ### After
-
-Only once the user confirms the declaration went through, update the ledger row
-marker to `` `JR:YYYY-MM-DD` ``. An unconfirmed submission stays
-`` **`JR:missing`** ``: the value of that marker is that it never lies.
 
 Then record the synchronisation, so the next session starts from the delta
 rather than from the whole period:
@@ -281,6 +347,6 @@ rather than from the whole period:
 python3 "<…>/jobroom_sync.py" mark-synced --entries <count job-room now shows>
 ```
 
-**Only after the user has confirmed**, for the same reason as the marker: a
-timestamp written for a submission that did not happen makes the next run skip
-exactly the rows that still need attention.
+**Only after the write has been confirmed against job-room's own count**, for
+the same reason as the marker: a timestamp written for rows that did not land
+makes the next run skip exactly the ones that still need attention.
