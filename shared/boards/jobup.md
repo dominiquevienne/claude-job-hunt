@@ -95,11 +95,52 @@ selectors stay documented because the browser path still uses them and because
 they are what a human debugging a page will see.
 
 **What was not measured — do not extrapolate.** Rate limiting under a real
-sweep (this was ~12 requests at one per second), the behaviour of an expired
-ad, whether the `ld+json` `description` is character-for-character what the
-page shows, and whether other parasitic content rides in the payload — the AI
+sweep (this was ~12 requests at one per second), whether the `ld+json`
+`description` is character-for-character what the page shows, and whether other parasitic content rides in the payload — the AI
 matching widget documented in *Traps* below does not appear in it, which is
 one absence rather than a clean bill.
+
+## A closed ad: four states, and the block count decides none of them
+
+**Measured 2026-09-02, on four real ad URLs.** This is the whole of what an ad
+URL can answer, and no single signal separates them:
+
+| State | HTTP | redirect | `JobPosting` blocks | `isActive` |
+| :-- | --: | :-- | --: | :-- |
+| **live** | 200 | none | **1** | `true` |
+| **gone** | **410** | none | **1** | **`false`** |
+| **expired** | 200 | **301 → the category page** | **20** | `true` — of the *other* ads |
+| **never existed** | **404** | none | 0 | — |
+
+**The `410` is the one that breaks a naive check.** It returns **460 kB, its own
+JobPosting block, and the ad's own text** — with `isActive: false` and the page
+saying *"n'est plus… expirée… plus disponible"*. **A test that reads "one
+JobPosting block, therefore open" calls it open.**
+
+**And the `301` is the one that breaks a careful check.** An expired ad
+redirects to the category page of its own trade: 497 kB, a `<title>` reading
+*"102 offres d'emploi dans la catégorie…"*, **twenty JobPosting blocks**, and
+**zero occurrences of the job's own title**. Nothing on that page is false —
+the twenty ads exist and are genuinely open. **The more carefully a check
+follows the redirect and validates what it finds, the more confidently it is
+wrong.** Reproduced on `jobs.ch`, 22 blocks, same mechanism, same operator.
+
+**So the reading order is: status, then landing URL, then the ad's own
+`isActive` — and the block count last, if at all.**
+
+1. **`410`** → the board says gone. Believe it.
+2. **`404`** → this id never existed. Different fact, different action.
+3. **Any redirect** → **it is forbidden to conclude "open"**, whatever the
+   landing page contains. A `<title>` that starts with a count, more than one
+   `JobPosting`, or the job's own title absent all confirm a category page.
+4. **`200`, no redirect, `isActive: true`** → served.
+
+*(A third, independent corroboration for the expired case: an employer search on
+jobup showed that employer publishing seven other roles that day and not this
+one.)*
+
+**What is still not measured here**: whether a `410` can ever be served for an
+ad that is in fact open — no reason to think so, and it has not been tested.
 
 ## Building a search URL
 

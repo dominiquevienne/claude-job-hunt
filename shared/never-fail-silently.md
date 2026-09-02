@@ -210,7 +210,25 @@ carefully you read it.
 | :-- | :-- | :-- |
 | An ordinal read as a code | **anefa** — department `29` returns 24 real farm jobs in the **Eure-et-Loir**, 400 km from the Finistère, because Corsica takes two slots in the list and every department past 21 is shifted by one | every field agrees with every other. The ads are genuine, the department is genuine, the postcodes match the towns. Only the question was wrong, and the response has no way to know |
 
-That row is alone, and it should stay hard to add to. Two nearby cases that
+| A redirect answering for the ad | **jobup / jobs.ch** — an expired ad `301`s to its trade's **category page**: 497 kB, a `<title>` reading *"102 offres…"*, **twenty valid `JobPosting` blocks**, zero mention of the job | The twenty ads exist and are genuinely open. **Nothing in the response is false** — it answers a question nobody asked, and the more carefully a check validates what it finds, the more confidently it is wrong |
+
+That second row is the one to read before adding a third: it took a check that
+**follows redirects and verifies structured data** — both good habits — and
+turned them into a false *open* with twenty pieces of evidence behind it.
+
+**And it has a sibling worth naming, because it is what makes this family
+different from the one above: the verifier and the verified can share a failure
+mode.** A SuccessFactors control test compared an ad's page against a
+deliberately invented id and concluded *does not resolve* when the two matched —
+correct reasoning, and it matched because **both** requests had been built with
+a URL shape that tenant does not serve, so both landed on the same error page
+for different reasons. **The comparison that was meant to settle the question
+confirmed instead.** The same shape appeared twice more the same day: a
+concentration metric that audited a normalisation helper by grouping labels the
+way the helper did, and an emit audit that counted outbound request bodies as
+leaks. **When a check and its object fail alike, agreement proves nothing.**
+
+That first row is alone, and it should stay hard to add to. Two nearby cases that
 look like it are not: `batiactu`'s region filter matches the *employer's name*
 rather than the job's address, and `monster` echoes *"Lyon, France"* in its own
 heading while serving **Lyon, Mississippi** — both catchable by comparing the

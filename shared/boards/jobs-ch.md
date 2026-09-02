@@ -169,6 +169,14 @@ JSON.stringify([...document.querySelectorAll('[data-cy="serp-item"]')].map(c=>{
 Yields, per card: posting age, title, town, workload, contract type, company,
 `q` = in-site apply available, `promo` = paid placement (trap 2).
 
+**A closed ad answers in four different ways, and this board shares the
+mechanism with jobup** — same operator, measured on both: a `410` that still
+serves the ad's own `JobPosting` block, an expired ad that **redirects to its
+category page** (22 blocks here, 20 on jobup, and no mention of the job), a
+`404` for an id that never existed, and a plain `200` for the ad itself.
+**The table and the reading order live in `shared/boards/jobup.md`** — one
+place, so a corrected figure cannot survive in a second copy. Issue #88.
+
 **The posting age is the age of this listing, not of the ad.** *"Vor 3 Wochen"*
 on a re-listed ad is three weeks since the re-listing, and the card does not
 distinguish the two — jobup, the same operator, put a date seven weeks wrong

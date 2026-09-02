@@ -221,12 +221,38 @@ published it. Look for it before doing anything else:
 - **A deadline in the ad text**, which boards' structured data often carries
   even when their visible page does not.
 
-A date in the past means the ad is closed: mark the row `discarded` with the
-date and move on, without a verification request. A date in the future is not
-proof it is still open — the employer can fill the role early — but it is a
-genuine reason to lower the age weighting.
+**A date in the past is a reason to check, never a substitute for checking.**
+Measured 2026-09-02: an ad carrying *"Délai de postulation : 15.08.2026"* was
+still being served on **02.09 — eighteen days later** — present among the 32
+current roles in its ATS's own API, its page answering 200 with one
+`JobPosting` block against zero on a control id. **It had been discarded on
+2026-08-27 on exactly the reasoning this paragraph used to prescribe, without a
+request.**
 
-When either at-risk signal holds, verify **before drafting**:
+So a past deadline **triggers** the verification below. It never replaces it,
+and it is never on its own a reason to write `discarded`. A date in the future
+is likewise not proof the ad is open — the employer can fill the role early —
+but it is a genuine reason to lower the age weighting.
+
+**This was the only place in this file that authorised skipping the check, and
+it is the one that failed.** A rule that dispenses with verification is the
+only kind that can fail without leaving a trace. Issue #89.
+
+**And where a row was already discarded that way, flag it — do not silently
+re-open it.** `no-go` and `discarded` record a decision; **the plugin does not
+reverse a decision it did not take.** Say the ad appears to be open, and let
+the user decide.
+
+When either at-risk signal holds, verify **before drafting**.
+
+> **One rule covers both directions: the employer's ATS decides, and everything
+> else is a hint.** A board that keeps serving a description, a deadline that
+> has passed, a redirect, a status code — all of them are reasons to ask, and
+> none of them is an answer. The two failures measured on 2026-09-02 are
+> mirrors of each other: an ad that was **closed and looked open** (a redirect
+> to a category page carrying twenty valid `JobPosting` blocks) and an ad that
+> was **open and looked closed** (a deadline eighteen days past). Issues #88
+> and #89.
 
 1. **Find the employer's own posting, not their careers page.** Take the ad's
    external apply link, or search for the company and role plus their applicant
@@ -234,6 +260,17 @@ When either at-risk signal holds, verify **before drafting**:
    SmartRecruiters says so unambiguously — *"This job opening doesn't exist
    anymore"* — where a board keeps serving the description as if nothing
    happened.
+1b. **On a board URL, read the status before the body — and never conclude
+   "open" from a page reached by a redirect.** JobCloud's boards (jobup,
+   jobs.ch) answer with four different states and the body alone separates
+   none of them: a **`410`** serves the ad's own text and its own
+   `JobPosting` block with `isActive: false`; an **expired** ad **redirects**
+   to its trade's category page, which carries **twenty** valid blocks and not
+   one mention of the job; a **`404`** means the id never existed; and only a
+   plain `200` with no redirect is the ad. `shared/boards/jobup.md` has the
+   table. **A check that counts `JobPosting` blocks calls the first one open
+   and the second one open too.**
+
 2. **A role missing from the employer's careers page is a strong signal, not a
    weak one**, when that page is listing their other openings. Do not file it as
    a note and carry on. **The clause carries the whole rule: first confirm the
