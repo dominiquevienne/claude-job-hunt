@@ -130,6 +130,51 @@ Fold it into the go/no-go gate's `AskUserQuestion` call rather than raising it o
 its own — a second, separate prompt is the interruption the rule above exists to
 prevent.
 
+**And the third case, which is worth more to the user than either: the adapter
+exists and they never switched it on.** `job-scan` could have been sweeping
+this board every week; instead they are pasting URLs from it one at a time.
+Unlike a `board-request`, which gives them nothing today, this is **one line in
+their own config that changes their next scan** — and they have just proved
+their interest by handing you an ad from it.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/board_offer.py" \
+    check --board <adapter name>
+```
+
+**Offer only on `"state": "absent"`.** A board can be off for three different
+reasons and only one of them is an omission:
+
+| State | What it means | Offer? |
+| :-- | :-- | :--: |
+| **`absent`** | not in `boards:` at all — **nobody ever decided** | **yes** |
+| `enabled` | already swept | no |
+| `off` | `enabled: false`, no dormancy — *"never probed, never reported, never proposed"* | **no** |
+| `dormant` | a measured bet; `dormant.py` owns its re-check date | **no** |
+
+**Re-offering a board somebody switched off on purpose is nagging**, and it
+would cost the offer its credibility everywhere else. The script draws that
+line; do not redraw it by eye.
+
+**Name what the board needs, in the offer itself.** Offering to enable a board
+that fails on its next run for a missing key is worse than saying nothing —
+`requires` carries the adapter's own declared settings and `credentials_hint`
+the file it expects (`~/.adzuna.env`, say). When `requirements_declared` is
+`false`, say **"this adapter does not declare its settings"** rather than
+implying there are none: 49 of 67 adapters carry that table, and the other 18
+have not been asked.
+
+**Where it goes: one more option in the go/no-go gate's `AskUserQuestion`**, the
+same as the second-board case, and for the same reason. Two choices, not three:
+*enable it* (you write the `boards:` entry and say what still needs filling in)
+or *not now* (nothing is written, and nothing is remembered).
+
+**If they want it never proposed again, the vocabulary already has the word:**
+`enabled: false` with no `dormant_since` is the hard off, and the table above
+makes this silent from then on. Write it only if they ask for it — no
+`declined:` key is invented, because the state already exists and `dormant.py`
+already reads it.
+
 Then, in both cases: WebFetch the URL and extract **company**, **role**,
 **location**, **language of the ad**, key **responsibilities**, **required
 skills**, and any **must-haves**. LinkedIn URLs may 301 to a country host — if
@@ -281,6 +326,14 @@ stop, and — where it makes sense — an angle that would change the framing (p
 a lead role rather than the hands-on one advertised). **Only continue to step 4
 once the user says so.** Never soften a bad ratio — or a poor range — to make
 the application feel worth writing.
+
+**This gate is also where step 1's board questions ride.** It always fires on
+the URL path, which is what makes it the only place they may be asked: a
+`board-request` for a second board found through an apply link, and — when
+`board_offer.py` reported `"state": "absent"` — the offer to enable the board
+this ad came from. **One call, whatever it carries.** A separate prompt for
+either of them is the interruption step 1 forbids, and the user answering a
+go/no-go has not asked to be asked twice.
 
 **On a no-go:** update that ad's row to `no-go <YYYY-MM-DD>` with the reason
 in `Note` (one short clause — the unmet must-have, the language, the commute,

@@ -113,6 +113,16 @@ of the most recent one outside it** — that is usually the real question behind
 an empty result, and an unexplained zero is indistinguishable from a broken
 filter.
 
+### It does not offer to enable a board, and that is deliberate
+
+`cover-letter` offers to switch on an unconfigured board when the user pastes a
+URL from one (issue #80). **This skill does not, and should not be given the
+ability.** The offer's rule is that it rides in a question already being asked
+— and this skill asks none: it has no gate, and `AskUserQuestion` is not in its
+`allowed-tools`. A report on a past period is also the wrong moment: the ad is
+weeks old and the interest has cooled, where a pasted URL is interest proved a
+minute ago.
+
 ## When an unemployment-declaration module is enabled
 
 If `config.yml` sets `modules.unemployment_declaration`, read that module and
