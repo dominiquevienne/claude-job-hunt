@@ -52,11 +52,13 @@ Everything here was verified against the live sites on **2026-09-02**.
 """
 
 import argparse
+import collections
 import html as html_mod
 import json
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -250,6 +252,43 @@ def list_path(site, keyword, location=None, page=1):
     return path
 
 
+def flatten(text):
+    """Lowercase, strip accents, keep letters and digits — for comparing a
+    search term against a title the site wrote in its own language."""
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return " " + re.sub(r"[^a-z0-9]+", " ", text.lower()).strip() + " "
+
+
+def classify(row, keyword, location):
+    """Mark ONE card, from the card's own title and location.
+
+    The payload counts the padding but does not say which card is which
+    (`report_mix`), so this is the only per-row attribution available. It is a
+    literal test and it is wrong in known ways — see stepstone.md, *Marking a
+    card*: a Dutch title under an English search reads as padding, a keyword
+    that lives in the description and not the title reads as padding, and a
+    location field naming the region rather than the city reads as regional.
+    Hence `semantic?` and `regional?` keep their question marks; only
+    `literal` is asserted.
+    """
+    title = flatten(row.get("title"))
+    where = flatten(row.get("location_text"))
+    if location:
+        place = flatten(location).strip()
+        if place and place not in where:
+            return "regional?", ("the card's location does not contain "
+                                 f"'{location}'")
+    if keyword:
+        terms = [t for t in flatten(keyword).split() if len(t) > 2] \
+            or flatten(keyword).split()
+        missing = [t for t in terms if f" {t} " not in title]
+        if missing:
+            return "semantic?", ("the title does not contain "
+                                 + ", ".join(missing))
+    return "literal", None
+
+
 def card(site, ident, block):
     s = SITES[site]
     salary = inner(block, "job-item-salary-info")
@@ -284,7 +323,11 @@ def read_list(sess, site, keyword, location, page):
                     if page > 1 else None)
     if body is None:
         return [], {}
-    rows = [card(site, i, b) for i, b in CARD.findall(body)]
+    rows = []
+    for i, b in CARD.findall(body):
+        row = card(site, i, b)
+        row["match"], row["match_reason"] = classify(row, keyword, location)
+        rows.append(row)
     return rows, payload(body)
 
 
@@ -332,6 +375,7 @@ def cmd_search(a):
             f"page {a.pages}; see stepstone.md.")
     sess = Session(a.site, a.delay)
     seen, kept, meta = set(), 0, {}
+    marks = collections.Counter()
     for page in range(1, cap + 1):
         rows, m = read_list(sess, a.site, a.keyword, a.location, page)
         if page == 1:
@@ -344,6 +388,7 @@ def cmd_search(a):
             if c["id"] in seen:
                 continue
             seen.add(c["id"])
+            marks[c["match"]] += 1
             print(json.dumps(c, ensure_ascii=False))
             kept += 1
             if a.limit and kept >= a.limit:
@@ -351,9 +396,28 @@ def cmd_search(a):
         if a.limit and kept >= a.limit:
             break
     total = meta.get("total")
-    main = (meta.get("extension") or {}).get("main")
+    ext = meta.get("extension") or {}
+    main = ext.get("main")
     note(f"{kept} ads returned from {a.site}; the board reported {total} "
          f"({main} literal).")
+    note("marked per card: "
+         + ", ".join(f"{k} {v}" for k, v in marks.most_common()))
+    if kept and marks["literal"] < kept:
+        note(f"{kept - marks['literal']} of the {kept} rows written are "
+             f"flagged as padding rather than matches. The flag is a literal "
+             f"test on the card's own title and location — see stepstone.md, "
+             f"*Marking a card*, for the three ways it is wrong.")
+    # The payload's own split is the control: when the per-card share drifts
+    # far from what the site reports, the heuristic has, not the site.
+    if kept and main is not None and total:
+        site_share = main * 100 // total
+        mine = marks["literal"] * 100 // kept
+        if abs(site_share - mine) > 25:
+            note(f"the per-card marking ({mine}% literal) and the site's own "
+                 f"payload ({site_share}% main) disagree by more than 25 "
+                 f"points. Trust the payload for the shape of the board and "
+                 f"treat the per-card flags as suspect on this search — a "
+                 f"keyword in another language does exactly this.")
     if sess.truncated:
         note("THE SWEEP IS INCOMPLETE — the platform stopped answering. "
              "Re-run later at a slower --delay rather than immediately.")

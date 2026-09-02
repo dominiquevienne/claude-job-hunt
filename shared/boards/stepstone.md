@@ -113,10 +113,47 @@ The padding is worst exactly where the board is thinnest — the small national
 sites — and negligible on the big ones. **Adding a location adds a third
 axis**: `regional` is ads outside the place asked for, 796 of 1 862 on London.
 
-The payload gives counts, **not per-card attribution**, so an adapter cannot
-filter the padding out; it can only refuse to hide it. `count` and `search`
+The payload gives counts, **not per-card attribution**. `count` and `search`
 print the split on stderr and name the share that is not a literal match, and
 `count` returns `literal_matches` next to `reported`. Read `main`.
+
+### Marking a card
+
+The payload is not the only evidence: **the card carries its own title and its
+own town**, so each row can be marked without asking the site anything. Every
+row `search` writes carries `match` and `match_reason`:
+
+| `match` | Test |
+| :-- | :-- |
+| `regional?` | a location was asked for and the card's location text does not contain it |
+| `semantic?` | every significant keyword term is absent from the title |
+| `literal` | neither — the card says what was searched for |
+
+Accents and case are folded first, so *Softwareentwickler:in* and
+*softwareentwickler* compare equal. **Only `literal` is asserted; the other two
+keep their question marks**, because the test is wrong in three known ways:
+
+- **another language.** A Dutch title under an English search reads as padding
+  even when it is the job — *Medewerker Klantenservice* against "customer
+  service" is a real match this test rejects.
+- **the keyword is in the body, not the title.** A *Full Stack Engineer* ad
+  that mentions React only in its description is marked `semantic?` under a
+  React search.
+- **the location field names the region.** A card saying *County Dublin* under
+  a Dublin search, or *South West London (SW1)* under a Westminster one, reads
+  as regional.
+
+So the mark is a flag, not a filter — nothing is dropped, and a `semantic?` row
+is still written to the ledger, still scored, and still visible to the user.
+The alternative was writing 25 unmarked rows of padding into somebody's
+application log.
+
+**The payload is the control.** `search` compares its own per-card literal
+share against the site's `main` share and says so when they diverge by more
+than 25 points: on *chef in London* the site reported 80% `main` while the
+first page marked 50% literal, because that page was full of commuter towns.
+When they disagree, **the payload describes the board and the per-card mark
+has drifted** — read it that way round.
 
 ## The depth is a per-site field, not a platform constant
 
@@ -200,7 +237,8 @@ GET https://www.totaljobs.com/jobs/chef?page=2        # where robots allows it
 The keyword and the place are slugified into the path. The card is an
 `<article id="job-item-<id>">` and yields, verbatim from `data-at` attributes:
 **id, title, company, location text, salary text, posting age**, plus a
-work-from-home marker. Company and location are nested inside an icon span —
+work-from-home marker. Every row also carries `match` and
+`match_reason` — see *Marking a card*. Company and location are nested inside an icon span —
 anchoring on the first `</span>` returns nothing, so the parse walks the tag
 depth.
 
@@ -309,6 +347,8 @@ pages in one run.
 
 ```bash
 S=skills/job-scan/scripts/stepstone.py
+python3 $S search --site totaljobs --keyword chef --location london --limit 8
+#   → 4 literal, 4 regional? — and the payload/per-card divergence warning
 python3 $S count  --site stepstone-nl --keyword "software developer"   # 26 reported, 1 literal
 python3 $S count  --site totaljobs --keyword "software developer" --location london
 python3 $S search --site stepstone-de --keyword softwareentwickler --limit 3
