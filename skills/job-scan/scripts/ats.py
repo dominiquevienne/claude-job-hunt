@@ -156,8 +156,44 @@ def lever_card(tenant, j, with_description=False):
         "remote": (j.get("workplaceType") or "").lower() == "remote" or None,
     }
     if with_description:
-        out["description"] = (j.get("descriptionPlain")
-                              or to_text(j.get("description")))
+        # **`descriptionPlain` is the intro, not the posting.** Lever splits an
+        # ad across three top-level fields and the adapter read one of them:
+        #
+        #   description / descriptionPlain   the company blurb and the intro
+        #   lists[] {text, content}          every real section
+        #   additional / additionalPlain     the closing boilerplate
+        #
+        # Measured on sonarsource/8490348a, 2026-09-01: 2 435 characters came
+        # back and 2 608 more sat in three `lists` sections — *What you will
+        # do*, *Experience and qualifications* (six bullets), *Additional
+        # comments* — plus 985 in `additional`.
+        #
+        # **The dropped half is the one the rubric reads.** From the intro the
+        # role scored ~60% as a generic engineering-manager post; with its
+        # stated qualifications it is an SRE/Cloud Operations role and scores
+        # 52% with a hard zero on a must-have. The two numbers describe
+        # different jobs, and nothing in the response looked wrong: a valid,
+        # self-consistent 200 answering a question nobody asked. Issue #54.
+        parts, sections = [], []
+        intro = j.get("descriptionPlain") or to_text(j.get("description"))
+        if intro:
+            parts.append(intro)
+        for block in (j.get("lists") or []):
+            head = (block.get("text") or "").strip()
+            body = to_text(block.get("content"))
+            if not body:
+                continue
+            sections.append(head or "(untitled section)")
+            parts.append(f"{head}\n{body}" if head else body)
+        closing = j.get("additionalPlain") or to_text(j.get("additional"))
+        if closing:
+            sections.append("(additional)")
+            parts.append(closing)
+        out["description"] = "\n\n".join(parts) or None
+        # The count carries the caveat: a posting with no sections either has
+        # none, or is being read the old way again (#67 — put it in the field,
+        # not in prose somebody skips).
+        out["description_sections"] = sections
     return out
 
 

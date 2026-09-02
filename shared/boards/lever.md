@@ -92,9 +92,40 @@ typed — `Apeldoorn, Netherlands`, `Remote - European Region`. A string the
 employer does not use keeps nothing, and the script says the board was not
 empty rather than reporting zero as an answer.
 
-**5. `descriptionPlain` exists — use it.** Lever ships a plain-text description
-alongside the HTML one. There is no reason to strip tags on this board, and
-doing so loses the paragraph breaks the plain version keeps.
+**5. `descriptionPlain` is the intro, not the posting — and reading it alone
+delivered the wrong job.** Lever splits an advert across three top-level
+fields:
+
+| Field | What is in it |
+| :-- | :-- |
+| `description` / `descriptionPlain` | the company blurb and the intro |
+| **`lists[]`** — `{text, content}` | **every real section**: what you will do, experience and qualifications, what we offer |
+| `additional` / `additionalPlain` | the closing boilerplate |
+
+Measured on `sonarsource/8490348a`, 2026-09-01: the adapter returned **2 435
+characters** and **2 608 more sat in three `lists` sections**, plus 985 in
+`additional`. **The dropped half is the one the scoring rubric reads.**
+
+From the intro alone the role reads as a generic engineering-manager post and
+scored **~60%**. Its stated qualifications — AWS at organisational scale, IAM
+and account vending, Terraform and CDK, Aurora and OpenSearch, FinOps — make it
+an SRE / Cloud Operations role: **52%, with a hard zero on a stated
+must-have.** The two numbers describe different jobs, and **nothing in the
+response looked wrong**: a valid, self-consistent 200 answering a question
+nobody asked.
+
+The card now concatenates `description`, each `lists[i]` under its own heading,
+and `additional` — 5 964 characters on that ad — and carries
+**`description_sections`**, the list of headings it assembled. An empty list
+means either a posting with no sections **or a reader that has regressed**, and
+the field is there so the difference is visible (#54, #67).
+
+*Plain text is still the right source per field*: Lever ships it alongside the
+HTML, and stripping tags loses the paragraph breaks it keeps.
+
+**Measured 2026-09-02: this is Lever's shape and not the family's.** Greenhouse
+(4 756 characters) and Ashby (8 923) each return the whole advert in one field.
+Three providers checked, one splits.
 
 **6. `commitment` carries contract detail worth reading.** Values seen:
 `Full-time`, `Full Time - 12 Month Contract (NL)`. That parenthesis is the
