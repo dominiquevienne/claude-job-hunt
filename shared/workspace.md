@@ -19,6 +19,7 @@ into the plugin directory — a plugin update replaces it.
 | `config.yml` | **yes** | Machine-readable settings: identity, geography, languages, search sweep, thresholds, modules | `/job-setup` |
 | `candidate.md` | **yes** | Prose the config cannot hold: target role families, hard blockers, contact block, standing resume content, corrections to the exports | `/job-setup`, then edited by hand |
 | `profile/` | **yes** | The user's source documents (LinkedIn exports or a CV). The factual record every claim is checked against | `sync-sources.sh` |
+| `profile/.text/` | built | Every `profile/` PDF as plain text, written by `sync-sources.sh`. **This is what makes a skill check cheap enough to actually run** — `grep -ril '<term>' profile/.text/`. Rebuilt when an export is newer; delete it and re-run to force it |
 | `job-pipeline.md` | created on first scan | The shared ledger: one row per ad, the memory of the whole workflow | `job-scan`, updated by `cover-letter` |
 | `commute.md` | optional | Travel times from the home base, validated by the user | `/job-setup` |
 | `repos.md` | optional | Technologies verified in the user's own repositories, with their real depth and an explicit "never claim these" list | `/job-setup` |

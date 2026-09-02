@@ -289,13 +289,33 @@ settled it.** Two earlier ads in the same ledger died the same way at 77 % and
    from `shared/setup.md`.
 3. `repos.md`, if it exists.
 
+**Then make the record searchable, once:**
+
+```bash
+test -d "$JOB_HUNT_HOME/profile/.text" || \
+  "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>"
+```
+
+**`candidate.md` and `repos.md` are not a skills inventory** — the inventory is
+in the `profile/` PDFs, and `.text/` is those PDFs as plain text. Step 3 needs
+it for every must-have the ad names, in both directions, and doing that from
+the PDFs directly is what made the wrong answer cheaper than the right one.
+Issue #63.
+
 ## 3 — Score the fit, then STOP for a go/no-go
 
 **Do not draft anything before this gate.** Writing a tailored application for a
 job the user cannot plausibly get wastes their time and their credibility — the
 honest answer is sometimes "don't apply".
 
-Score with `shared/scoring-rubric.md`. Then report, **before drafting**:
+Score with `shared/scoring-rubric.md`, and read *Before a score is written*
+there first — **it is a check with two directions and both are required**:
+every must-have the ad names is matched against `profile/.text/`, and every gap
+you are about to assert is proven there. One measured session produced both
+errors at once: a false GraphQL gap (65% → 80%) and a stated CMS must-have
+simply left out of the scoring (63% → 72%).
+
+Then report, **before drafting**:
 
 1. The **ratio**, with its band label.
 2. **Two or three sentences** on why — the genuine matches, then the blockers,

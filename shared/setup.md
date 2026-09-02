@@ -131,6 +131,8 @@ Then collect them:
 "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>" "$JOB_HUNT_HOME/profile"
 ```
 
+**It also writes `profile/.text/`** — every PDF as plain text. That is not a convenience: the skills check a claimed skill against the record before scoring, and while that check cost a PDF extraction it was skipped in favour of grepping `candidate.md`, which is not an inventory. A candidate was told Confluence was not in their file; it is, with eight experiences behind it. Issue #63.
+
 The script looks in Downloads and on the Desktop, accepts both naming shapes
 LinkedIn produces, and reports one line per file: `✓ found` or `– missing`.
 

@@ -58,6 +58,54 @@ The user's own `thresholds.apply_from` in `config.yml` overrides where the
 
 ## What overrides the number
 
+## Before a score is written: both directions, against `profile/`
+
+**Every must-have the ad names is matched against `profile/`, and every gap
+asserted is proven there.** Two halves, and the rule needs both — they are the
+same omission running in opposite directions, and both were measured in one
+session on 2026-09-02:
+
+| | What went wrong | Cost |
+| :-- | :-- | --: |
+| **A gap asserted that is false** | GraphQL called missing; `profile/skills.pdf` contradicts it | **65% → 80%** |
+| **A must-have never checked** | CMS experience stated by the ad, simply absent from the scoring — and a strong point of the record | **63% → 72%** |
+
+**One error cost the candidate and the other flattered the ad, and both come
+from scoring against the ad's description without opening the record.** A
+requirement the ad states and the scorer never checks is the same failure as a
+false gap, and it is the quieter of the two.
+
+### The record is `profile/`, and it is now greppable
+
+`candidate.md` and `repos.md` are not a skills inventory. The inventory is in
+the `profile/` PDFs — which is why the wrong answer used to be cheaper than the
+right one, and why the cheap one won. **`sync-sources.sh` now extracts every
+PDF to `profile/.text/`**, so the check is one command:
+
+```bash
+grep -ril "confluence" "$JOB_HUNT_HOME/profile/.text/"
+```
+
+**Not finding a term there is evidence. Not having looked is not.** Where the
+search cannot be run at all — no `pdftotext`, no `profile/` — **the honest
+output is a question to the user, never an assertion of absence.**
+
+### A gap in a ledger `Note` is a lead, not a proof
+
+It was written by an earlier run, possibly against sources that did not include
+the inventory. Re-prove it or drop it.
+
+**And a gap that is disproved does not simply vanish — it becomes an evidence
+line.** The candidate needs to know they can answer that question well, which
+is the opposite of what a false gap does to them: a briefing once told somebody
+Confluence was *"not documented in the file"* and handed them a sentence to
+deflect it with. They use it daily, it is in `skills.pdf` with eight
+experiences behind it, and they concluded their own record was incomplete.
+
+**A false positive gets caught in the room; a false negative never does.**
+Claim an experience the candidate lacks and the interviewer probes it. Concede
+a requirement they meet, and nobody present knows to correct it. Issue #63.
+
 **A `0` on a stated must-have caps the score, whatever the total.** Say so in
 the headline. In practice these are automatic filters, and no amount of
 tailoring writes around them:

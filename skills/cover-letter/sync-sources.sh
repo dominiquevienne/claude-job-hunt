@@ -251,5 +251,54 @@ A missing Profile.pdf is not: it is the backbone of the factual record.
 HOWTO
 fi
 
+# ------------------------------------------------------------------------------
+# Searchable text, so that checking profile/ costs no more than not checking it
+# ------------------------------------------------------------------------------
+# **The inventory of what this candidate can do lives in the PDFs**, and until
+# now reading it meant extracting a PDF while `candidate.md` and `repos.md` sat
+# there greppable. So the cheap path and the correct path were different paths,
+# and the cheap one won: on 2026-09-02 a briefing told a candidate Confluence
+# was "not documented in the file" — it is in `skills.pdf` with eight
+# experiences behind it, and they walked away believing their own record was
+# incomplete. The same day, a score asserted a GraphQL gap that `skills.pdf`
+# contradicts (65% -> 80%) and another silently skipped a stated must-have the
+# candidate is strong on (63% -> 72%).
+#
+# A rule alone loses to a cost gradient. This removes the gradient: after this
+# script runs, `grep -ri confluence "$DEST/.text/"` answers in one command.
+# Issue #63.
+if command -v pdftotext >/dev/null 2>&1; then
+  mkdir -p "$DEST/.text"
+  made=0; fresh=0
+  for pdf in "$DEST"/*.pdf; do
+    [ -e "$pdf" ] || continue
+    base="$(basename "$pdf" .pdf)"
+    txt="$DEST/.text/$base.txt"
+    # Regenerate when the export is newer: a stale extract is a wrong answer
+    # given confidently, which is the failure this whole cache exists to stop.
+    if [ -f "$txt" ] && [ "$txt" -nt "$pdf" ]; then
+      fresh=$((fresh + 1)); continue
+    fi
+    if pdftotext -layout "$pdf" "$txt" 2>/dev/null; then
+      made=$((made + 1))
+    else
+      rm -f "$txt"
+      echo "  ! could not extract text from $(basename "$pdf") — searches of"
+      echo "      profile/ will not see it. Re-print that page as a PDF."
+    fi
+  done
+  echo
+  echo "Searchable text: $made extracted, $fresh already current, in $DEST/.text/"
+  echo "  Search the factual record with:"
+  echo "      grep -ril '<term>' \"$DEST/.text/\""
+  echo "  **Not finding a term there is evidence; not having looked is not.**"
+else
+  echo
+  echo "NOTE: pdftotext is missing, so profile/.text/ was not built. Every check"
+  echo "  of the candidate's real skills then costs a PDF extraction, which is"
+  echo "  how a skill they have gets reported as a gap. Install poppler-utils"
+  echo "  (Linux) or poppler (brew) and re-run."
+fi
+
 echo
 echo "Done. The skills read from $DEST"
