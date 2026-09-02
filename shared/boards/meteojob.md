@@ -1,5 +1,9 @@
 # Board adapter — meteojob.com
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: one search still returns **exactly 20 ads and no second page**, with the run stating that this is the ceiling rather than the market.
+
 A French generalist board, around 2 million visitors a month. It also **feeds
 France Travail**: 30 of 150 sampled partner ads in Paris came from Meteojob
 (`france-travail.md` trap 11), so some of this board already reaches the ledger

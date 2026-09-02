@@ -1,5 +1,7 @@
 # Board adapter — France Travail
 
+<!-- verified: 2026-09-02 -->
+
 France's **public employment service**, ex-Pôle emploi. It publishes its whole
 vacancy database through a free REST API, and it is the largest single source of
 French ads there is. Employers post to it directly, and a dozen partner boards
@@ -19,11 +21,11 @@ the bottom with what actually happened — three of its five traps were wrong.
 **A search that does not name `origineOffre` returns France Travail's own ads
 and nothing else.** Measured on department 75:
 
-| Query | Matches |
-| :-- | --: |
-| `departement=75` | 13 295 |
-| `departement=75&origineOffre=1` | 3 079 |
-| `departement=75&origineOffre=2` | **10 216** |
+| Query | Matches, 2026-08-30 | Re-measured 2026-09-02 |
+| :-- | --: | --: |
+| `departement=75` | 13 295 | — |
+| `departement=75&origineOffre=1` | 3 079 | **3 275** |
+| `departement=75&origineOffre=2` | **10 216** | **9 744** |
 
 The unfiltered search reports 13 295 — and then serves only origine 1. Sampling
 the result window at offsets 0, 500, 1500 and 2900 returned **150 origine-1 ads
@@ -34,6 +36,19 @@ And the miss is undetectable from inside. The reachable window is 3 150 rows
 (below); department 75 has 3 079 origine-1 ads. **A sweep runs out of origine-1
 ads just before it runs out of window**, so it terminates naturally, reports a
 complete-looking pass, and has seen 23% of the board.
+
+**Re-verified 2026-09-02, and the behaviour is unchanged**: an unfiltered
+`--size 50` returned **100 rows — 50 with an alphanumeric France Travail id and
+50 with a numeric partner id, all 50 carrying `partner`** — because the script
+runs both passes. The counts drifted in opposite directions (origine 1 up 196,
+origine 2 down 472) and the 3 150-row ceiling still fires on both, which the
+run says out loud:
+
+```
+[france-travail] origine 2: 9744 offers match (HTTP 206)
+[france-travail] origine 2: only the first 3150 of 9744 are reachable —
+                 this sweep cannot be complete
+```
 
 So `francetravail.py search` **runs both passes by default** and says so on
 stderr. `--origine-offre` restricts it to one, deliberately. This is the

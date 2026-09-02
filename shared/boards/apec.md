@@ -1,5 +1,9 @@
 # Board adapter — apec.fr
 
+<!-- verified: 2026-09-02 -->
+
+**Re-verified 2026-09-02**: a `--mots-cles developpeur` search returned **50 cards of 3 286 matching**, and every card still carries a teaser rather than the ad — the constraint this file is built on.
+
 The **Association pour l'emploi des cadres** — France's public-interest agency
 for management and senior professional roles, and the reference board for that
 segment. **77 023 ads** nationally on the day this was written; 6 063 in Paris,
