@@ -144,6 +144,69 @@ boolean; StepStone pads a thin result with `semantic` and `regional` ads that
 are indistinguishable in the markup. Neither is *open*, neither is *refused*,
 and calling either an error loses what actually happened.
 
+## How a file splits into groups — and why `grep` gives a wrong, convincing answer
+
+**The four questions below are answered "in the board's own file". This is how
+to read that file**, because the splitting is not what it looks like.
+
+`secretcv.com`, in full order: `User-agent: *` / `Allow: /`, then the same for
+`GPTBot`, then the same for `OAI-SearchBot`, **then nineteen `Disallow:` lines
+after a blank line.**
+
+Read by eye, the site is closed to everyone. **Read by the standard, a blank
+line does not end a group** — so those nineteen lines belong to the last
+declared agent. Resolved with `urllib.robotparser` rather than asserted:
+
+| agent | `/is-ilanlari/ara` |
+| :-- | :-- |
+| `OAI-SearchBot` | **refused** |
+| `*`, `GPTBot`, `ClaudeBot` | allowed |
+
+**The only agent that file restricts is OpenAI's**, which is almost certainly an
+authoring accident.
+
+**Here the eyeball reading errs on the cautious side.** Inverted — an `Allow: /`
+written under one named agent and read as global — **it produces a false
+permission**, and that is the direction that costs this project its standing.
+
+### The three rules
+
+1. **Group boundaries are `User-agent` lines, not blank lines.** A rule after a
+   blank line still belongs to the group above it.
+2. **Consecutive `User-agent` lines share one rule set.**
+3. **Resolve with a parser, then quote the result.** `urllib.robotparser` is in
+   the standard library and takes three lines. **`grep` on `Disallow` is wrong
+   and convincing on any file with more than one group** — and multi-group
+   files are the norm: 65 groups on `tr.indeed.com`, 20 on `hh.ru`, 17 on
+   `youthall.com`.
+
+### Repeated groups for the same agent are merged, not discarded
+
+`yes123.com.tw` serves **eight consecutive `User-agent: *` groups**, one
+directive each; `jobscentral.sg` served nine. **The tempting reading is that a
+conforming client obeys the first and the other seven apply to nobody. That is
+wrong**, and it is wrong in the permissive direction.
+
+Measured with the standard-library parser on eight groups of one `Disallow`
+each — and this is what RFC 9309 prescribes, records bearing the same product
+token being combined:
+
+```
+/p1 refused   /p4 refused   /p8 refused   /elsewhere allowed
+```
+
+**All eight bind.** A reader who applied the first group only would have
+concluded that seven paths were open.
+
+### And a group with no directive forbids nothing
+
+`cake.me` serves `User-agent: *` **with nothing under it**. Verified: every
+path is allowed. **An orphan group is not a refusal** — nothing is written, so
+nothing is forbidden, and *"it has a `User-agent: *`"* is not a finding.
+
+*(All three verdicts on this page were computed with `urllib.robotparser`, not
+read off the file — which is rule 3 applied to this page itself.)*
+
 ## The four questions
 
 Answer all four **in the board's own file**, in writing, before any code. One
