@@ -241,6 +241,29 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**Say what a date measures, not just where it comes from.** A relative label —
+*"Il y a 3 semaines"*, *"Posted 30+ Days Ago"*, *"il y a 2 heures"* — reads as
+the age of the ad. **On a re-listed ad it is the age of the re-listing**, and
+nothing on the card distinguishes the two. So an adapter that exposes one must
+say which of the two it is, and name the absolute field where the board has one.
+
+Measured on jobup, 2026-09-02: a ledger row carried `2026-09-01` for an ad
+whose real `datePosted` is `2026-07-14` — **seven weeks out**. Two ads were
+tied at 62% and the tie was broken by the most recent date, so **the older one
+came out on top of a ranking that decides what gets drafted**. The adapter had
+already said to prefer the ad page's date; it had not said what the card's date
+*was*, and that is the sentence that would have prevented it. Issue #84.
+
+**`jobbkk` is the same phenomenon from the other side**, and its treatment is
+the model: an ad created in 2010 and refreshed yesterday would be aged by
+sixteen years by a scorer reading `created_at`, so the card carries **both**
+dates named for what they are — `created` and `refreshed` — and the file says
+which to read.
+
+**When only a relative date exists, say so and leave the ledger's date empty**
+rather than deriving one: an empty field is a question, a wrong date is an
+answer.
+
 **Name what the card emits, never what it drops.** A deny-list is a bet that
 you enumerated the problem correctly; an allow-list is a bet that you
 enumerated the *need* correctly, and **the two failure modes are not

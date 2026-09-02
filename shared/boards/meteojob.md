@@ -102,6 +102,9 @@ Measured across one 20-ad search:
 | `salary` — as displayed, e.g. `27 000 € - 33 000 € par an` | 17/20 |
 | `posted_age` — *"Il y a 4 jours"* | 20/20 |
 
+**What that age measures.** A relative label is the age of **this listing**, and on a re-listed ad that is the age of the re-listing, not of the ad. **This board publishes no absolute date at all** — the file already says `posted_within` is unsupported for that reason — so `posted_age` orders ads and dates none of them. Never write a date derived from it into the ledger — an empty date is a question, a wrong one is an answer (issue #84, measured on jobup: seven weeks out, and it changed which ad topped a ranking).
+
+
 **The employer is named on every ad** — 20/20 on the listing, 12/12 on the ad
 pages read in full. That is the reason to sweep Meteojob directly rather than
 relying on its France Travail feed, where 23% of partner ads carry no employer

@@ -216,9 +216,31 @@ above removes it; do not simplify the snippet back to a plain `innerText`.
 labelled *"Estimation salariale de jobup.ch"* on the page. Never report it to
 the user as the advertised range — say it is jobup's estimate, or leave it out.
 
-**3. The posting date is exact, so use it.** `info-publication` gives a real
-date where the card gives "Il y a 3 semaines". Prefer the ad page's date in the
-ledger.
+**3. The card's date is not the posting date, and on a re-listed ad it is
+wrong by weeks.** `info-publication` gives a real date — *"18 août 2026"* —
+where the card gives *"Il y a 3 semaines"*.
+
+**Say what each one measures, because that is what the preference rests on:**
+
+| | What it is |
+| :-- | :-- |
+| `info-publication`, on the ad page | **when the ad was published.** The only date that means that |
+| *"Il y a 3 semaines"*, on the card | **how long ago this listing last appeared** — which on a re-listed ad is the age of the re-listing, not of the ad |
+
+**Nothing on the card distinguishes the two**, and a relative label reads as an
+age. Measured 2026-09-02: a ledger row carried `2026-09-01` for an ad whose
+real `datePosted` is **`2026-07-14`** — seven weeks out, because the card was
+showing a re-listing.
+
+**And it was not a cosmetic field.** Two ads were tied at 62% in the `todo`
+pool and the tie was broken by the most recent date, so **the older ad came
+out on top of a ranking that decides what gets drafted**. The cost of this one
+is a dossier written for the wrong ad. Issue #84.
+
+**So: never write the card's date to the ledger.** Read `info-publication` from
+the ad page, and if the ad page was not opened, leave the date empty rather
+than filling it from the card — an empty field is a question, a wrong date is
+an answer.
 
 **4. `info-homeoffice` reads "Possible", not a work mode.** It means home office
 is allowed, not that the role is remote. Judge the work mode from the ad text

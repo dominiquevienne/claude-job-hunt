@@ -132,6 +132,19 @@ Last scan: YYYY-MM-DD
     from a mailbox, from memory — where the ad is gone. Such a row cannot be
     deduplicated, so say so in `Note`. It still belongs in the ledger: an
     application that happened counts whether or not its ad still exists.
+- **`Posted`** is when the ad was **published**, and only ever that. **Never
+  fill it from a card's relative label** — *"Il y a 3 semaines"*, *"Posted 30+
+  Days Ago"* — because on a re-listed ad that is the age of the re-listing, and
+  nothing on the card says so. Take the board's absolute date where one exists
+  (`info-publication` on jobup, `startDate` on Workday, `refreshed` on JOBBKK,
+  which names both) and **leave the cell empty where none does**.
+
+  **Two ads tied at 62% were separated by this column on 2026-09-02**, and the
+  date that won was seven weeks wrong — `2026-09-01` written from a card whose
+  ad was really published `2026-07-14`. The older ad topped the ranking, and
+  the ranking decides what gets drafted. **An empty date is a question; a wrong
+  one is an answer.** Issue #84.
+
 - **`Match`** carries a `~` prefix while the score is provisional — read from
   the card only. `cover-letter` replaces it with the deep score.
 - **`Pay`** is the compensation range for the ad, with the **tier letter that

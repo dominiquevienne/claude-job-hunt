@@ -129,6 +129,9 @@ Measured across one 20-ad facet page — every field on every card:
 | `contract` — `CDI`, `CDD`, `Alternance` | 20/20 |
 | `posted_age` — *"il y a 2 heures"* | 20/20 |
 
+**What that age measures.** A relative label is the age of **this listing**, and on a re-listed ad that is the age of the re-listing, not of the ad. **No absolute date was measured on this board**, so treat `posted_age` as an ordering signal and nothing more. Never write a date derived from it into the ledger — an empty date is a question, a wrong one is an answer (issue #84, measured on jobup: seven weeks out, and it changed which ad topped a ranking).
+
+
 The card hooks are `data-cy` attributes — `serpCard`, `offerTitle`,
 `localisationCard`, `contractCard`. Those are test hooks, which is exactly why
 they are the right thing to anchor on: they survive the styling churn that

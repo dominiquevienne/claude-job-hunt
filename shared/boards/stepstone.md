@@ -249,6 +249,11 @@ work-from-home marker. Every row also carries `match` and
 anchoring on the first `</span>` returns nothing, so the parse walks the tag
 depth.
 
+**The posting age is a relative string, and it measures this listing.** A
+re-listed ad shows the age of the re-listing and the card says nothing about
+it, so the value orders ads and dates none of them — do not turn it into a
+ledger date (issue #84).
+
 The id is the ledger key: `totaljobs:107921946`, `stepstone-de:14330848`.
 
 ## The ad URL is rebuilt from the id, and the slug is decorative

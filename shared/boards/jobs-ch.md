@@ -169,6 +169,13 @@ JSON.stringify([...document.querySelectorAll('[data-cy="serp-item"]')].map(c=>{
 Yields, per card: posting age, title, town, workload, contract type, company,
 `q` = in-site apply available, `promo` = paid placement (trap 2).
 
+**The posting age is the age of this listing, not of the ad.** *"Vor 3 Wochen"*
+on a re-listed ad is three weeks since the re-listing, and the card does not
+distinguish the two — jobup, the same operator, put a date seven weeks wrong
+into a ledger that way and changed which ad topped a ranking. Read the ad
+page's own date, and where it was not opened leave the ledger's `Posted` empty
+rather than deriving it. Issue #84.
+
 Sample output, verbatim from a real run:
 
 ```

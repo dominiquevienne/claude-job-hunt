@@ -142,6 +142,12 @@ HTTP 400 — not truncated, refused. Pagination is by `offset`.
 So a sweep that needs real dates costs one request per posting; a sweep that
 only needs an ordering can use the relative text and say so.
 
+**And it measures this listing, not the role.** A re-posted requisition shows
+its re-posting age, and nothing in the string says so — which is why
+`startDate` is worth the request when the date will be written anywhere. Never
+derive a ledger date from `postedOn`: an empty date is a question, a wrong one
+is an answer (issue #84).
+
 **4. `remoteType` does not mean what it says.** Swisscom fills it with
 `80-100%` and `100%` — a *workload*, not a work mode. It is a free-text field
 each employer configures. The adapter records it as `remote_type_raw` and never
