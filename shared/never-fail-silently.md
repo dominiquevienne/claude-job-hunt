@@ -151,6 +151,15 @@ this is.** "No JobPosting here" and "we could not read what is here" are
 different sentences, and only one of them should make somebody go and measure
 the board.
 
+**3e. And the layer below this page: a value that parses cleanly and is
+wrong.** Nothing on this page reaches it — there is no error, no empty result,
+no zero to interrogate. `PHP 22962.742977478316` is an Indonesian salary
+converted without its label; `amount: 2035` is 20.35; a ledger date seven weeks
+out was a re-listing; `totalPages: 5637` overstates a corpus by 390 pages; and
+two of the eight recorded mechanisms were produced by tooling written to hunt
+this exact failure. **`shared/plausible-and-false.md` holds them, and its rule
+is that plausibility cannot be the test — provenance is.**
+
 **4. When you write an adapter, ask wrongly on purpose.** A wrong tenant, a
 wrong case, a missing accent, an oversized page, an id that does not exist. That
 is where every entry in the tables above came from, and none of them would have

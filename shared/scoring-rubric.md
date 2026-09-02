@@ -58,6 +58,13 @@ The user's own `thresholds.apply_from` in `config.yml` overrides where the
 
 ## What overrides the number
 
+**Before scoring on a number, ask where it came from.** A salary may be a
+conversion whose label did not travel with it, an estimator's output wearing
+the employer's name, or minor units read as whole ones — wrong by 100 or by
+250, and plausible either way. `shared/plausible-and-false.md` lists the
+mechanisms; the short form is that a figure this rubric weighs must be one the
+advertiser stated, and the adapter's field name says which it is.
+
 ## Before a score is written: both directions, against `profile/`
 
 **Every must-have the ad names is matched against `profile/`, and every gap

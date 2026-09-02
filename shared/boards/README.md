@@ -241,6 +241,13 @@ segment **with diacritics folded 100%**. The helper does both, and
 `drop_report` names what a filter excluded, so a city filter that drops rows
 says how many. Issue #65.
 
+**A field whose meaning depends on a caveat gets a name that carries the
+caveat** — `shared/plausible-and-false.md` holds the class and its rules. A
+converted salary is not `salary_min`, an estimate is not a quoted figure, and a
+fill rate counts values rather than keys. Eight mechanisms have produced a
+value that parses cleanly and is false, and **two of them came from tooling
+written to hunt exactly that**: plausibility is not a check, provenance is.
+
 **Say what a date measures, not just where it comes from.** A relative label —
 *"Il y a 3 semaines"*, *"Posted 30+ Days Ago"*, *"il y a 2 heures"* — reads as
 the age of the ad. **On a re-listed ad it is the age of the re-listing**, and
