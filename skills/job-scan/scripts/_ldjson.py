@@ -132,11 +132,33 @@ def objects(html):
         except ValueError:
             continue
         for obj in (d if isinstance(d, list) else [d]):
-            if isinstance(obj, dict) and isinstance(obj.get("@graph"), list):
-                out += [x for x in obj["@graph"] if isinstance(x, dict)]
-            elif isinstance(obj, dict):
-                out.append(obj)
+            out += _unwrap(obj)
     return out
+
+
+def _unwrap(obj):
+    """One block may hold many objects, in three standard containers.
+
+    `@graph` is the usual one. **`ItemList` / `itemListElement` is the one a
+    listing page uses** — jobup's search results carry twenty `JobPosting`
+    objects that way, and a reader that only unwrapped `@graph` saw **zero**
+    on a page holding twenty. Both are schema.org containers, so unwrapping
+    them belongs here rather than in whichever adapter meets them first.
+    """
+    if not isinstance(obj, dict):
+        return []
+    if isinstance(obj.get("@graph"), list):
+        out = []
+        for x in obj["@graph"]:
+            out += _unwrap(x)
+        return out
+    if isinstance(obj.get("itemListElement"), list):
+        out = []
+        for entry in obj["itemListElement"]:
+            if isinstance(entry, dict):
+                out += _unwrap(entry.get("item") if "item" in entry else entry)
+        return out
+    return [obj]
 
 
 def postings(html):

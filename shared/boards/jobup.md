@@ -89,6 +89,34 @@ and false:**
    An adapter that reads only ad pages loses the city — so the sweep goes
    through the listing, which is open anyway.
 
+### The adapter that does it: `jobup.py`
+
+```bash
+python3 "$S/jobup.py" search --site jobup --term developpeur --pages 2
+python3 "$S/jobup.py" search --site jobs-ch --term entwickler --location Bern
+python3 "$S/jobup.py" ad --url "https://www.jobup.ch/fr/emplois/detail/<uuid>/"
+```
+
+**One request per page of twenty**, both boards, no browser. Verified
+2026-09-02: 40 unique ads over two jobup pages, 21 over one jobs.ch page.
+
+**The listing's `JobPosting` blocks are wrapped in an `ItemList`**, and
+`_ldjson.py` had to learn to unwrap `itemListElement` — before that it saw
+**zero postings on a page carrying twenty.** That unwrapping is in the shared
+reader rather than here, because `ItemList` is a schema.org container and the
+next board to use it should not have to rediscover it.
+
+**A promoted card is repeated across pages.** One ad sat at **position 13 of
+page 1 and position 1 of page 2**. `search` deduplicates on the UUID and says
+how many repeated — **and it distinguishes that from a pagination failure**: a
+page whose ids are *entirely* contained in what came before has not advanced
+and exits 6, while a handful of repeats is paid placement.
+
+**`ad` reads the state before the body**, per the four-state table above:
+`410` and `404` exit 3 with which of the two it is, **a redirect exits 3
+refusing to conclude anything**, and only a plain `200` is parsed. Verified on
+all four.
+
 **Prefer `ld+json` to the DOM selectors below.** Both work; the structured
 block does not move when the site is redesigned, and `[data-cy="…"]` does. The
 selectors stay documented because the browser path still uses them and because

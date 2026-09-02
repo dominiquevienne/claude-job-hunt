@@ -169,6 +169,11 @@ JSON.stringify([...document.querySelectorAll('[data-cy="serp-item"]')].map(c=>{
 Yields, per card: posting age, title, town, workload, contract type, company,
 `q` = in-site apply available, `promo` = paid placement (trap 2).
 
+**The plain-HTTP sweep works here too, through the same adapter**:
+`jobup.py search --site jobs-ch`. Verified 2026-09-02 — 21 ads from one
+listing page, no browser, no cookie. The measurement and the traps live in
+`shared/boards/jobup.md`; only the host and the path differ.
+
 **A closed ad answers in four different ways, and this board shares the
 mechanism with jobup** — same operator, measured on both: a `410` that still
 serves the ad's own `JobPosting` block, an expired ad that **redirects to its
