@@ -386,3 +386,42 @@ say the assisted flow is not supported yet.
 Pace it like a person reading ads. Pagination makes it tempting to pull ten
 pages at once; do not. A few dozen page views per run is the shape of a scan
 that does not get throttled.
+
+## The bare listing carries no structured data; a filtered search does
+
+Measured 2026-09-03, and stated narrowly because a wider reading of the same
+numbers was published and had to be retracted:
+
+```
+/fr/emplois/                          275 kB    0 JobPosting
+/fr/emplois/?page=1                   275 kB    0
+/fr/emplois/?term=developpeur         534 kB   22
+/fr/emplois/?location=Lausanne        517 kB   22
+
+/de/stellenangebote/                  288 kB    0
+/de/stellenangebote/?term=entwickler  546 kB   21
+/de/stellenangebote/?location=Bern    288 kB    0
+```
+
+**The unfiltered listing renders client-side.** A filtered one is served with
+its cards in the markup. Both boards behave this way, and **`location` alone
+is honoured by jobup and not by jobs.ch** — one platform, two behaviours,
+which is worth knowing before reading a zero.
+
+**So `search` refuses a call with no filter** (#126). Without one it fetched
+the bare listing and returned zero every time, and a zero from a board reads
+as a board with no jobs — it was reported as one, and an Atlas page was
+published saying these boards had broken. **A tool that accepts an invocation
+which cannot succeed manufactures false results.**
+
+Two faults in the same command made that worse and are fixed: `--location`
+never entered the query string — it was applied afterwards, to rows fetched
+from the *unfiltered* listing — and `drop_report` returns `(kept, dropped,
+labels)` where the call site unpacked two, so `--location` alone raised
+`ValueError` after the sweep had been paid for.
+
+**And the empty-result message named two causes of three.** It offered *a
+reading failure or the end of the results* and omitted the one that was
+happening: **a query this site does not answer with structured data.** Naming
+two of three is not a false statement and it had the same effect as one — it
+pointed at *the board is broken*.

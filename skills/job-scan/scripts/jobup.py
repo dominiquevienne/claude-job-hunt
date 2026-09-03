@@ -130,13 +130,36 @@ def card(site, p):
 
 
 def cmd_search(a):
+    # **An invocation that cannot return anything must not be accepted.**
+    # `search` with no filter fetches the bare listing, which serves no
+    # structured data at all — measured 2026-09-03: `/fr/emplois/` is 275 kB
+    # with **zero** `JobPosting`, while `?term=developpeur` is 534 kB with
+    # **22**. So a filterless run returned zero, reliably, and the zero was
+    # read as the board being empty. **A tool that accepts a call which cannot
+    # succeed manufactures false results.** Issue #126.
+    if not (a.term or a.location):
+        die("give --term, or --location, or both. **Without a filter this "
+            "command fetches the bare listing, which carries no structured "
+            "data on either site** — 275 kB and zero `JobPosting`, against "
+            "534 kB and 22 for `?term=developpeur`. It would return zero "
+            "every time, and a zero from here is indistinguishable from an "
+            "empty board. No request was made.", 2)
     site = SITES[a.site]
     v = robots_verdict(site["host"])
     if not v["sweep"]:
         die(f"{site['host']}: {v['reason']}", 8 if v["sweep"] is None else 7)
     seen, rows, repeats = set(), [], 0
     for page in range(1, a.pages + 1):
-        q = {"term": a.term} if a.term else {}
+        # **`location` goes into the URL.** It used to be applied only after
+        # the fetch, by `drop_report`, so `--location Lausanne` alone
+        # requested the *unfiltered* listing — zero results — and then
+        # filtered nothing. The site accepts it: `?location=Lausanne` answers
+        # with 22 `JobPosting` on jobup. Issue #126.
+        q = {}
+        if a.term:
+            q["term"] = a.term
+        if a.location:
+            q["location"] = a.location
         if page > 1:
             q["page"] = page
         url = f"https://{site['host']}{site['path']}?" + urllib.parse.urlencode(q)
@@ -145,10 +168,25 @@ def cmd_search(a):
             die(f"{url}: HTTP {status}")
         found = postings(body)
         if not found:
-            note(f"page {page} carried no JobPosting — stopping. **This is a "
-                 f"reading failure or the end of the results, and they are not "
-                 f"the same**: a listing page with results carries one block "
-                 f"per card.")
+            # **Three causes, and the message used to name two.** The one
+            # it left out is the one that produced a false report of a dead
+            # board: a query this site does not answer with structured data.
+            # Naming two of three is not a false statement, and it had the
+            # same effect as one — it pointed at "the board is broken".
+            # Issue #126.
+            asked = ", ".join(f"{k}={v!r}" for k, v in
+                              (("term", a.term), ("location", a.location))
+                              if v) or "nothing"
+            note(f"page {page} carried no JobPosting — stopping. **Three "
+                 f"things look like this and they are not the same.** (1) The "
+                 f"end of the results. (2) A reading failure — the markup "
+                 f"changed and a page with cards is being misread. (3) **A "
+                 f"query this site does not answer with structured data**: "
+                 f"you asked for {asked}, and the bare listing carries none "
+                 f"at all, while `?term=` carries 22. On {site['host']}, "
+                 f"`location` alone is honoured by jobup and **not** by "
+                 f"jobs.ch — measured 2026-09-03. Try a `--term` before "
+                 f"reading this as an empty board.")
             break
         ids = {one(p.get("identifier")).get("value") for p in found}
         # Entirely repeated → the pagination did not advance. A few repeats →
@@ -167,9 +205,14 @@ def cmd_search(a):
             rows.append(row)
         time.sleep(a.delay)
     if a.location:
-        rows, dropped = drop_report(rows, a.location)
+        # Three values, not two — `(kept, dropped, labels)`. Unpacking two
+        # raised `ValueError` on every `--location` run, after the sweep had
+        # already been paid for.
+        rows, dropped, labels = drop_report(rows, a.location)
         if dropped:
-            note(dropped)
+            note(f"{dropped} row(s) dropped by the `{a.location}` filter, "
+                 f"applied again here on the text the cards carry: "
+                 f"{dict(sorted(labels.items(), key=lambda kv: -kv[1])[:5])}")
     for row in rows[:a.limit] if a.limit else rows:
         print(json.dumps(row, ensure_ascii=False))
     if not rows:

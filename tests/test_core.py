@@ -1452,5 +1452,75 @@ class EmbeddedIntermediate(unittest.TestCase):
                                     "see `_tls.check()` for what to do")
 
 
+class AnInvocationThatCannotSucceed(unittest.TestCase):
+    """`jobup.py search` accepted a call that could only return zero. #126.
+
+    **Measured 2026-09-03**, and the numbers are the whole argument:
+
+        /fr/emplois/                    275 kB    0 JobPosting
+        /fr/emplois/?term=developpeur   534 kB   22 JobPosting
+        /fr/emplois/?location=Lausanne  517 kB   22 JobPosting
+
+    The bare listing renders client-side and carries no structured data. **A
+    filterless run therefore returned zero, reliably** — and a zero from a
+    board reads as a board with no jobs. It was reported as one, and an Atlas
+    page was published saying the board had broken.
+
+    Two further faults in the same command made it worse: **`--location` never
+    entered the URL** (it was applied afterwards, to rows fetched from the
+    *unfiltered* listing), and `drop_report` returns three values where the
+    call site unpacked two — so `--location` alone raised `ValueError` after
+    paying for the sweep.
+
+    **A tool that accepts an invocation which cannot succeed manufactures
+    false results.**
+    """
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import jobup
+        self.jobup = jobup
+
+    def _args(self, **kw):
+        import argparse
+        base = dict(site="jobup", term=None, location=None, pages=1,
+                    limit=None, delay=0.0)
+        base.update(kw)
+        return argparse.Namespace(**base)
+
+    def test_a_filterless_search_is_refused_before_any_request(self):
+        with self.assertRaises(SystemExit) as caught:
+            self.jobup.cmd_search(self._args())
+        self.assertEqual(caught.exception.code, 2)
+
+    def test_drop_report_returns_three_values(self):
+        """The contract the call site got wrong. `(kept, dropped, labels)`."""
+        import _locations
+        got = _locations.drop_report(
+            [{"location_text": "Lausanne"}, {"location_text": "Bern"}],
+            "Lausanne")
+        self.assertEqual(len(got), 3)
+        kept, dropped, labels = got
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(dropped, 1)
+        self.assertEqual(labels, {"Bern": 1})
+
+    def test_location_reaches_the_query_string(self):
+        """It was filtered after the fetch, so the fetch was unfiltered."""
+        src = open(os.path.join(SCRIPTS, "jobup.py"), encoding="utf-8").read()
+        self.assertIn('q["location"] = a.location', src)
+
+    def test_the_empty_message_names_three_causes(self):
+        """Naming two of three is not a false statement, and it had the same
+        effect as one: it pointed at *the board is broken*."""
+        src = open(os.path.join(SCRIPTS, "jobup.py"), encoding="utf-8").read()
+        i = src.index("carried no JobPosting")
+        window = src[i:i + 1200]
+        self.assertIn("(1)", window)
+        self.assertIn("(2)", window)
+        self.assertIn("(3)", window)
+        self.assertIn("does not answer with structured data", window)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

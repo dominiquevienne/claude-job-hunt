@@ -24,9 +24,17 @@ and it is the kind of data an adapter has no business collecting.
 ## Ajeer (أجير) — labour transfer between establishments
 
 A Remix single-page application whose landing page is 86 lines of text and 45
-asset links, with no content routes. Ajeer exists so establishments can **lend
-or transfer** workers to one another; the party who signs in is an employer,
-not a candidate. **No vacancy listing exists to read**, public or otherwise.
+asset links. **What that landing page does *not* establish is the absence of
+content routes** — a Remix application splits them and loads them client-side,
+so they are invisible from the landing page by construction. That is the trap
+`umantis.md` documents two files away, and the earlier wording here — *"with no
+content routes … no vacancy listing exists to read, public or otherwise"* —
+inferred it from a page. **Corrected 2026-09-03.**
+
+**The verdict stands on a different argument, and it never needed the page:**
+Ajeer exists so establishments can **lend or transfer** workers to one another;
+**the party who signs in is an employer, not a candidate.** That is what it is
+for, not what a page happened to show — and it is why there is no adapter.
 
 ## The rule this stops on
 
