@@ -259,6 +259,41 @@ undated facts in a file where two carried their date on a wrapped line. **That
 one cries wolf, and its failure mode is being switched off** — after which the
 real ones go unseen. So the exception ends in the same place as the rule.
 
+### The false full, which is rare and therefore worse
+
+**Everything above says a defect errs towards emptiness. The exception is not
+symmetrical, and knowing why is what makes it findable.**
+
+A page past the end of a listing that answers `200` **with page one's contents**
+does not make a sweep loop. **It makes volume.** A sweep that never terminates
+gets noticed; a sweep that returns the same twenty advertisements for ever
+under rising page numbers **looks like it is working**, and its output is
+plausible at every row.
+
+**And it is almost never a bug of ours.** That is the whole force of the rule
+above: a broken request yields an emptiness, a broken count a zero. **Nothing
+in our own code fabricates content** — so a full result that is false came from
+the outside, from a server answering badly on purpose or out of indifference.
+
+| Measured 2026-09-03 | What it did |
+| :-- | :-- |
+| `encuentra24`, page 31 of 30 | `200`, and **page one's twenty ads**. Pages 50 and 500 too |
+| `hr.ge`, `/jobs/today` | 8 pages × **100 links = 800**, for **281 distinct ads** — and **page 4 returned a full hundred and zero new ones** |
+| `jobology`, page 9999 | twenty plausible on-topic ads, a different twenty on each call |
+
+**The same gesture on two boards on the same day, and only one of them is
+honest**: hr.ge's page 50 returns nothing; encuentra24's returns page one.
+
+**It is caught by a pair, like everything else here** — *links fetched* against
+*distinct ids kept*. 800 against 281 is the finding; 800 alone is a good day's
+work. So a sweep reports **what it counted, never what it fetched**, and the
+two numbers travel together:
+
+> `281 distinct advertisement(s) from 800 link(s) over 8 pages — a factor of
+> 2.85.`
+
+**A single number cannot disagree with itself.**
+
 ### The direction depends on what carries the number, not on what it is about
 
 **A hand that copies is not a tool that runs, and they lean opposite ways.**
