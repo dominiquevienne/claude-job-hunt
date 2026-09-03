@@ -68,7 +68,24 @@ The states a fetch can end in, and they are not interchangeable:
     unreachable  timeout, DNS, TLS, a persistent 5xx, **or a 2xx that is
                  not 200** — unknown, and the only honest answer is that we
                  do not know
-    unreadable   200 with something that is not a rules file
+    unrecognised 200 with something that is not a rules file — **unknown**,
+                 because a body nobody could recognise establishes nothing
+
+**AND A BODY WE DID NOT RECOGNISE IS NOT AN ABSENCE OF RULES.** Until #128 a
+`Content-Type` containing `text/plain` skipped the body check entirely, so
+`maliemploi.org`'s Apache *"Access forbidden! / Error 403"* page — served
+under that label — was parsed as rules, yielded no `Disallow`, and came back
+`allowed: True`, `group: *`, **`certain: True`**. A group invented out of an
+error page and then certified.
+
+**The issue read it as the verdict depending on body size**: 976 bytes
+accepted, a 5 132-byte React shell rejected. **It is not the size.** The short
+one was labelled `text/plain` and never examined; the long one was labelled
+`text/html` and was. **The header decided and the body never got a look.**
+
+`certain` exists to say *this is an established absence of rules*. **A guard
+that errs by doubting is repairable; a guard that errs by asserting gets
+itself believed.**
 
 **A 404 AND A 202 WITH AN EMPTY BODY ARE NOT THE SAME FACT**, and they shared
 a verdict until #125. `algerie.tanqeeb.com` answers **HTTP 202 with zero
@@ -239,11 +256,28 @@ def _fetch_once(url, host, timeout):
                         "why": f"HTTP {status}, no Content-Type, and the "
                                f"{len(body)} bytes are not a rules file "
                                f"either"}
-            if "text/plain" not in ctype:
-                return {"state": "unreadable", "final": final,
+            # **The body decides, and the header does not.** Until #128 a
+            # `Content-Type` containing `text/plain` skipped the body check
+            # entirely, so an Apache *"Access forbidden! / Error 403"* page
+            # served under that label was parsed as rules, yielded no
+            # `Disallow`, and became `allowed: True` with `group: *` and
+            # **`certain: True`** — a group invented out of an error page and
+            # then certified.
+            #
+            # The issue read it as the verdict depending on body size: 976
+            # bytes accepted, a 5 132-byte React shell rejected. **It is not
+            # the size** — the short one was labelled `text/plain` and never
+            # examined, the long one was labelled `text/html` and was. Same
+            # defect, one branch earlier.
+            if not _looks_like_rules(body):
+                return {"state": "unrecognised", "final": final,
                         "status": status, "bytes": len(body),
                         "why": f"HTTP {status}, Content-Type {ctype!r}, "
-                               f"{len(body)} bytes — not a rules file"}
+                               f"{len(body)} bytes, and **no `User-agent`, "
+                               f"`Disallow` or `Allow` line anywhere in it** "
+                               f"— this is not a rules file, whatever it is "
+                               f"labelled. A body nobody could recognise is "
+                               f"not an absence of rules."}
             return {"state": "read", "body": body, "final": final,
                     "status": status, "bytes": len(body)}
     except urllib.error.HTTPError as e:
@@ -422,6 +456,18 @@ def verdict(host):
             f"rotate, do not retry with another agent string. Read the file "
             f"by hand in the user's own browser and record what it says.")
         return _keep(out)
+    if got["state"] == "unrecognised":
+        # **The distinction #128 turns on.** `certain` exists to say *this is
+        # an established absence of rules*; a body we could not recognise
+        # establishes nothing. **A guard that errs by doubting is repairable;
+        # a guard that errs by asserting gets itself believed.**
+        out["sweep"] = None
+        out["certain"] = False
+        out["reason"] = (
+            f"{got.get('why')} **Not a permission and not a refusal** — the "
+            f"host answered with something, and it was not its rules. Read "
+            f"the file by hand and record what it says.")
+        return out
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not
         # a refusal and emphatically not a permission: `nea.gov.kh` closes

@@ -1808,5 +1808,117 @@ class LdJsonMalformations(unittest.TestCase):
         self.assertIn("\n", got[0]["description"])
 
 
+class ABodyNobodyRecognisedIsNotAnAbsence(unittest.TestCase):
+    """#128, the seventh defect in this guard and the seventh towards
+    *allowed* — but the first that **asserts** rather than merely permits.
+
+    `maliemploi.org` served an Apache *"Access forbidden! / Error 403"* page
+    as its `robots.txt`, and the guard answered:
+
+        allowed: True   group: *   sweep: True   certain: True
+
+    **A `*` group invented out of an error page, and then certified.**
+
+    **The issue read it as the verdict depending on body size** — 976 bytes
+    accepted, a 5 132-byte React shell rejected. **It is not the size.** The
+    short one was labelled `text/plain` and **its body was never examined**;
+    the long one was labelled `text/html` and was. Same defect, one branch
+    earlier: the header decided, and the body never got a look.
+
+    `certain` exists to say *this is an established absence of rules*. **A
+    guard that errs by doubting is repairable; a guard that errs by asserting
+    gets itself believed.**
+    """
+
+    class _Resp:
+        def __init__(self, body, ctype):
+            self._b, self._c = body, ctype
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def getcode(self):
+            return 200
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def read(self):
+            return self._b.encode()
+
+        @property
+        def headers(self):
+            return {"Content-Type": self._c}
+
+    def _verdict(self, body, ctype):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body, ctype))
+        try:
+            return _robots.verdict("h.example"), _robots.allowed(
+                "h.example", "/jobs")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    APACHE = ('<!DOCTYPE HTML><html><head><title>403 Forbidden</title></head>'
+              '<body><h1>Access forbidden!</h1><p>Error 403</p></body></html>')
+    SPA = ('<!doctype html><html><body>You need to enable JavaScript to run '
+           'this app.</body></html>')
+
+    def test_a_short_error_page_labelled_text_plain_is_not_rules(self):
+        """**The specimen.** Labelled `text/plain`, so the old code never
+        looked at it."""
+        v, a = self._verdict(self.APACHE, "text/plain")
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertIsNone(a["allowed"])
+        self.assertFalse(v["certain"])
+
+    def test_a_long_spa_shell_is_not_rules_either(self):
+        """Same verdict for the case that was already caught — **the two must
+        not depend on which header they carried.**"""
+        v, a = self._verdict(self.SPA, "text/html")
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertIsNone(a["allowed"])
+
+    def test_an_empty_body_establishes_nothing(self):
+        """A zero-byte body carries no directive either. RFC 9309 would read
+        it as *no rules*; **we cannot tell it from a broken response**, and
+        after #125 the empty answer is an unknown."""
+        v, _a = self._verdict("", "text/plain")
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertFalse(v["certain"])
+
+    def test_a_real_rules_file_still_permits_and_is_certain(self):
+        """**The other half.** A file with no `Disallow` is a real absence of
+        restriction, and `certain` is exactly what it is for."""
+        v, a = self._verdict("User-agent: *\nAllow: /\n", "text/plain")
+        self.assertEqual(v["state"], "read")
+        self.assertIs(a["allowed"], True)
+        self.assertTrue(v["certain"])
+
+    def test_certain_is_never_true_on_a_body_we_did_not_recognise(self):
+        """The requirement that separates this from #125, as one assertion."""
+        for body, ctype in ((self.APACHE, "text/plain"),
+                            (self.SPA, "text/html"), ("", "text/plain")):
+            v, _a = self._verdict(body, ctype)
+            self.assertFalse(v["certain"], f"{ctype}: {body[:30]!r}")
+
+    def test_the_reason_quotes_what_was_seen_not_an_invented_group(self):
+        v, a = self._verdict(self.APACHE, "text/plain")
+        self.assertIn("not a rules file", v["reason"])
+        self.assertIn("200", v["reason"])
+        self.assertNotIn("the group that applies to everyone",
+                         a["reason"] or "")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

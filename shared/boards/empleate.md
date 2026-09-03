@@ -290,3 +290,30 @@ solr("speStateId:1 AND checkVisible:1")         # → dies, does not send it
 check_live_filter({"fq": "checkVisible:1"}, "")  # → dies, filter not injected
 solr("comunidadF:CASTILLA LEON")                # → dies on the FAIL! body
 ```
+
+## Stopped 2026-09-03: this host no longer serves a rules file
+
+`empleate.gob.es/robots.txt` and `www.empleate.gob.es/robots.txt` both return
+**8 450 bytes of the SEPE home page** — `Content-Type: text/html`, `<title>SEPE
+</title>`, and **zero `User-agent`, `Disallow` or `Allow` lines anywhere in
+it**.
+
+This card previously recorded *"`Allow: /`, six private paths closed"*, so the
+file was real when it was written. **The site drifted; the reading did not.**
+
+**The adapter now stops with exit 8** — the rules could not be read, and #128
+established that **a body nobody could recognise is not an absence of rules**.
+Before that fix this host was `unreadable` and *permitted*, which is how a
+board came to be swept on the strength of somebody's home page.
+
+**Fixing #128 cost this board, and that is the trade the fix was for.** The
+alternative was a guard that reads an error page as an empty `*` group and
+marks it certain. The route back is not code:
+
+- the file may return — one request tells you, and the adapter says so on
+  every run rather than failing quietly;
+- or the operator can be told, since a `robots.txt` that answers with the
+  home page is very plausibly a misconfiguration.
+
+**What must not happen is a special case for this host.** The measurement is
+the same one that protects every other board.
