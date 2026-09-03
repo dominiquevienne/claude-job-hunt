@@ -204,3 +204,50 @@ board is about 500, which is not something to sweep in one go.
 
 Everything is fetched from the browse paths, never from the search page the
 `robots.txt` closes.
+
+## Refused since the plugin declared `Claude-User` — and the body does not say why
+
+Measured 2026-09-03, after #120. **This board now fails at the gate**, because
+`emploi.batiactu.com` returns 403 for its own `robots.txt`.
+
+```
+robots.txt, browser string   200, 289 bytes   (measured in the same minute)
+robots.txt, our declaration  403, 18 887 bytes
+```
+
+**So the response is conditional on the agent string.** What it is not is
+identifiable as a bot wall. The 403 body was tested against every marker this
+repository has measured on a real wall, and **none matches**:
+
+```
+Attention Required (bayt.com, 5 507 b)             no
+cf-mitigated header (hiringcafe.com)               no
+Sucuri / Imperva / Incapsula                       no
+"Request is Blocked by Firewall"
+        (barbadosjobregister.gov.bb, 30 b)         no
+captcha / robot / bot                              no
+```
+
+What it says instead, under `Server: Apache` with no CDN header at all:
+
+> **sorry, site under maintenance** — We'll be back soon…
+
+**A maintenance page is not a consent decision, and it is not proof of a
+wall.** So the strict default holds: **the verdict stays `False`, the board is
+not swept, and no exception was written.** A 403 becomes *a wall* only on
+positive proof in the body — a board is gained by showing the refusal was not
+one, never by failing to show that it was.
+
+**And the degraded mode does not apply here.** #124's trigger is a fetch
+failure on a host that *permits*; the guard says `False`, so the browser is
+not reached for. That is the rule working, not a gap in it.
+
+**What remains available is what any visitor has**: the site opens normally in
+a browser, and reading it there is the user's own access, not the plugin's.
+The other route is to write to the operator — a 403 on `robots.txt`,
+conditional on the user-agent and carrying a maintenance page, is very
+plausibly a misconfiguration they would want to know about.
+
+**Not verified, and deliberately:** whether the same body is served to other
+agent strings today. `robots-policy.md` forbids retrying under another name,
+and that holds when the retry would suit us.
