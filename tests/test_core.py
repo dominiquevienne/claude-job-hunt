@@ -2308,5 +2308,49 @@ class LineEndingsAreDeclared(unittest.TestCase):
                                   + ", ".join(bad[:5]))
 
 
+class SourceCompilesWithoutWarning(unittest.TestCase):
+    """`\\&` sat in a docstring in this file until #107's work compiled the
+    tree and Python said so.
+
+    **An invalid escape sequence is not a style complaint.** `"\\&"` is
+    currently `"\\\\&"` by accident — Python leaves an unrecognised escape
+    alone and warns — and that behaviour is scheduled to become a
+    `SyntaxError`. The specimens this suite quotes are *made of* backslashes:
+    `d\\&#039;Atelier` from jobivoire, the JSON escapes in `_ldjson`, the
+    `\\r` this class's neighbour is about. **A file that documents escaping
+    is the likeliest place to escape something wrongly**, and the warning
+    goes to stderr where a green `OK` hides it.
+
+    Compiling is not importing: this reads every tracked `.py` without
+    running any of it.
+    """
+
+    def test_no_invalid_escapes_or_other_syntax_warnings(self):
+        import glob
+        import warnings
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        found = []
+        seen = 0
+        for path in glob.glob(os.path.join(root, "**", "*.py"),
+                              recursive=True):
+            if os.sep + ".git" + os.sep in path:
+                continue
+            seen += 1
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                try:
+                    compile(src, path, "exec")
+                except SyntaxWarning as exc:      # raised, not warned
+                    found.append(f"{os.path.relpath(path, root)}: {exc}")
+                for item in caught:
+                    if issubclass(item.category, SyntaxWarning):
+                        found.append(f"{os.path.relpath(path, root)}: "
+                                     f"{item.message}")
+        self.assertGreater(seen, 50, "found almost no python to compile")
+        self.assertEqual(found, [], "; ".join(found[:3]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
