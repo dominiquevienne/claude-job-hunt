@@ -2145,5 +2145,86 @@ class TheLossyFallbackSpeaks(unittest.TestCase):
                          "declaration: " + ", ".join(offenders))
 
 
+class NoSignalIsOrphaned(unittest.TestCase):
+    """#129: a signal that exists and nobody reads. **The scan overcounted.**
+
+    A first pass reported **11 of 16 keys in the guard's result read by
+    nobody** — and it was wrong, because it looked only at adapter files. A
+    signal reaches its reader by **three** routes, not one:
+
+    - the field, read by a caller (`allowed`, `sweep`, `reason`, `kind`);
+    - the field, read by the module's own CLI (`sweep_disagrees`, `differ`)
+      or by this suite (`certain`, `group`, `groups`, `rule`, `disallow`);
+    - **the sentence** — `content_signal`'s value is quoted verbatim in the
+      `reason` that every `die()` prints, and so are the status and the byte
+      count.
+
+    **A scan that counts only the first route reports the other two as
+    absences** — the same shape as `45 of 61`, where the complement of a
+    stronger check was read as a gap. It is the eighth time in two days that
+    a probe defined its own population, **and the first where the wrong
+    answer was the alarming one**, which is why it nearly shipped.
+
+    The one real orphan was `decode_body`'s second value — 60 of 61 callers
+    discarding it with `[0]` — and that module speaks now.
+    """
+
+    def _verdict(self, body):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda h: {"state": "read", "body": body,
+                                    "final": h, "attempts": 1}
+        try:
+            return _robots.verdict("h.example")
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_the_reason_carries_what_the_orphan_keys_hold(self):
+        """**The sentence is the route that reaches a caller.** No adapter
+        reads `content_signal`; every one of them prints `reason`."""
+        v = self._verdict("User-agent: *\n"
+                          "Content-Signal: search=yes,ai-input=no\nAllow: /\n")
+        self.assertEqual(v["content_signal"], ["search=yes,ai-input=no"])
+        self.assertIn("ai-input=no", v["reason"])
+
+    def test_the_status_and_size_reach_the_caller_through_the_reason(self):
+        """#125's requirement, restated as a route: an adapter that prints
+        only `reason` still learns what was observed."""
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda h: {
+            "state": "unrecognised", "final": h, "attempts": 1,
+            "status": 200, "bytes": 976,
+            "why": "HTTP 200, Content-Type 'text/plain', 976 bytes, and no "
+                   "`User-agent` line anywhere in it"}
+        try:
+            v = _robots.verdict("h.example")
+            self.assertIn("200", v["reason"])
+            self.assertIn("976", v["reason"])
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_decode_body_is_the_one_signal_that_had_no_route(self):
+        """It reported its method in a return value that 60 of 61 callers
+        threw away, and no route replaced it. **So the source speaks.**"""
+        import io
+        import contextlib
+        _decode._WARNED.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            _decode.decode_body(b"ok \x81\x8d text")
+        self.assertIn("[decode]", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
