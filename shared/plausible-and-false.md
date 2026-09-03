@@ -259,6 +259,47 @@ undated facts in a file where two carried their date on a wrapped line. **That
 one cries wolf, and its failure mode is being switched off** — after which the
 real ones go unseen. So the exception ends in the same place as the rule.
 
+### The direction depends on what carries the number, not on what it is about
+
+**A hand that copies is not a tool that runs, and they lean opposite ways.**
+
+The rule above holds because a tool is *mechanically* constrained: a broken
+request yields an emptiness, a broken count a zero, a broken read an absence.
+**A person transcribing a figure has no such constraint** — and what gets
+transcribed wrongly tends to be the flattering version.
+
+Measured the same day, on this repository's own Atlas: **36 counters could be
+checked against their pages and 16 were wrong.** The nine untouched by that
+day's work **overstated coverage, all nine** — one country by nineteen points.
+**The opposite direction from the seven above**, and the difference is not the
+subject, it is the carrier: those seven went through a script, these nine were
+copied by hand.
+
+**And the mechanism was not a typing slip, which is what makes it worth
+writing.** The pages had *improved* afterwards — rows describing the same
+refusal were merged, the denominator fell — and the summary kept the figure
+from before the merge.
+
+> **A number goes stale because the work behind it got better**, and nothing in
+> it looks abnormal. There is no run of twelve zeros to raise an eyebrow.
+
+**Two rules, then, and they do not simplify into one:**
+
+| The carrier | Which way it errs | What catches it |
+| :-- | :-- | :-- |
+| **A script** | towards *"there is nothing"* | a value that looks impossible — twelve zeros, 0 `<loc>` beside 3 193 `<lastmod>` |
+| **A hand transcribing** | towards *the flattering reading* | **nothing looks wrong** — only re-deriving it does |
+
+**The second is the more dangerous, because a dashboard makes it credible**,
+and the first is the one that gets noticed. So a figure that was copied rather
+than computed needs re-deriving **on a schedule**, not on suspicion — there
+will be no suspicion.
+
+**And the parade that worked was the same one as below**: two numbers that must
+agree, counted separately — the rows in each page, and then the visible
+markers. They agreed on the 36, and that agreement is what authorised the
+correction.
+
 ### What follows, and it is a habit rather than a check
 
 **Nine of eleven tooling defects found in three days were caught because a
