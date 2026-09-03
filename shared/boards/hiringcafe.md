@@ -432,3 +432,13 @@ rewrite:**
 
 **Until both are settled: no requests to this host, on any path.** The permitted
 route being documented is not a decision to resume.
+
+## Why this adapter does not call the guard — by design, and it is not an omission
+
+`_hiringcafe.py` refuses **from the record**, without asking. The reason is in
+that module: **a guard call is a request to the host like any other**, and
+collection from this host is suspended. Interrogating the guard in order to
+justify not interrogating the host would be circular.
+
+The verdict it carries is dated 2026-09-03 and says so. **Re-measuring means
+lifting the suspension first, which is a decision rather than a code path.**

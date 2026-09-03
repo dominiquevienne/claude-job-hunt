@@ -320,3 +320,18 @@ generalising a plausible mechanism one step past what anyone had observed.
 Two of its predictions held: 206 as the success case, and 204 for an empty
 result. One thing nobody predicted — the origine split — turned out to be the
 only finding that changed the code.
+
+## Why this adapter does not call the guard — HELD, not decided
+
+`api.francetravail.io` publishes **`User-agent: * / Disallow: /`** on the very
+host this adapter reads with the user's own key. (`candidat.francetravail.fr`
+permits; the API host does not.)
+
+**Whether an issued key is a more specific instrument than a generic file is
+in arbitration with the user, and it is not settled.** Wiring the guard would
+decide it — and **so would quietly leaving this alone**, which is the defect
+met on SmartRecruiters in `ats.py`, where the exception existed nowhere.
+
+**Four boards, one arbitration**: this, `adzuna.md`, `arbeitsagentur.md` and
+`labonnealternance.md`. It was first framed on two hosts; measuring the other
+four network readers without a guard showed the class is wider.

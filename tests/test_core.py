@@ -1606,15 +1606,20 @@ class EveryNetworkReaderAsksOrSaysWhyNot(unittest.TestCase):
 
     # Each entry is a decision, not an oversight, and the text is the reason.
     NOT_ASKING = {
-        "adzuna.py": "keyed API under the user's own credentials — and "
-                     "api.adzuna.com publishes `Disallow: /`. OPEN QUESTION",
-        "francetravail.py": "keyed API — api.francetravail.io publishes "
-                            "`Disallow: /`. OPEN QUESTION",
-        "labonnealternance.py": "keyed API; its host permits. OPEN QUESTION",
-        "platsbanken.py": "keyed API; its host publishes no robots.txt "
-                          "(404 — absent). OPEN QUESTION",
-        "arbeitsagentur.py": "keyed API; the docstring carries a human's "
-                             "reading of the file, not a call. OPEN QUESTION",
+        "adzuna.py": "documented public API — and api.adzuna.com publishes "
+                     "`Disallow: /`. HELD: arbitration with the user",
+        "francetravail.py": "documented public API — api.francetravail.io "
+                            "publishes `Disallow: /`. HELD: same arbitration",
+        "labonnealternance.py": "documented public API — and "
+                                "api.apprentissage.beta.gouv.fr serves 145 kB "
+                                "of its own SPA as robots.txt, so the guard "
+                                "reads `unrecognised`. HELD: same class",
+
+        "arbeitsagentur.py": "documented public API — and "
+                             "rest.arbeitsagentur.de answers its robots.txt "
+                             "with a 1-byte 403. The docstring's human "
+                             "reading was of www.arbeitsagentur.de, a "
+                             "different host. HELD: same class",
         "hiringcafe.py": "refuses from the record by design (#123): a guard "
                          "call is itself a request, and collection from this "
                          "host is suspended",

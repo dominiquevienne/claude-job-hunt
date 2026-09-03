@@ -308,3 +308,18 @@ python3 $S search --country ch --category it-jobs --limit 1 # warns: 70.7% of ch
 python3 $S search --country gb --what "python developer" --limit 2
 python3 $S count  --country ie --what x                     # 404, and it lists the nineteen
 ```
+
+## Why this adapter does not call the guard — HELD, not decided
+
+`api.adzuna.com` publishes **`User-agent: * / Disallow: /`** on the very host
+this adapter reads with the user's own key.
+
+**Whether an issued key is a more specific instrument than a generic file is
+in arbitration with the user, and it is not settled.** Wiring the guard would
+decide it — and **so would quietly leaving this alone**, which is the defect
+met on SmartRecruiters in `ats.py`, where the exception existed nowhere and
+was a silence.
+
+So: nothing wired, and the hold written here. The same question covers
+`francetravail.md`, `arbeitsagentur.md` and `labonnealternance.md` — **four
+boards, one arbitration**, not the two it was first framed on.

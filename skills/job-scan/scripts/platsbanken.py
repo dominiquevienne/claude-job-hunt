@@ -76,6 +76,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import allowed as robots_allowed
 from _decode import decode_body
 
 API = "https://jobsearch.api.jobtechdev.se/search"
@@ -101,6 +102,17 @@ def note(msg):
 def api(**params):
     params = {k: v for k, v in params.items() if v not in (None, "")}
     url = API + "?" + urllib.parse.urlencode(params)
+    # **Asked, like every other network reader.** This was one of six that
+    # never called the guard (#100). It is the only one of the six with no
+    # question of principle attached: `jobsearch.api.jobtechdev.se` publishes
+    # no `robots.txt` at all — a 404, which is an absence and therefore
+    # knowledge — and `arbetsformedlingen.se` permits. So the call costs
+    # nothing and closes a real gap, rather than deciding an arbitration.
+    parts = urllib.parse.urlsplit(url)
+    gate = robots_allowed(parts.netloc, parts.path or "/")
+    if gate["allowed"] is not True:
+        die(f"{parts.netloc}{parts.path}: {gate['reason']}",
+            8 if gate["allowed"] is None else 7)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "application/json"})
     for attempt in range(3):

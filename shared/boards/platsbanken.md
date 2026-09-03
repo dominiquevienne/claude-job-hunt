@@ -197,3 +197,18 @@ surfacing from the middle of a sweep:
 ```bash
 python3 $S search --kommun 0180     # → must ERROR before paging, not mid-run
 ```
+
+## This adapter now calls the guard
+
+It was one of six network readers that never did (#100). **It is the only one
+of the six with no question of principle attached:**
+
+```
+jobsearch.api.jobtechdev.se   404 — no robots.txt published, which is an
+                              absence and therefore knowledge
+arbetsformedlingen.se         permits
+```
+
+So the call costs nothing and closes a real gap, rather than deciding an
+arbitration. It asks per host **and per path**, and exits 7 on a refusal or 8
+on an unknown, with the guard's own words.

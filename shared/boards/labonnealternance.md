@@ -142,3 +142,15 @@ board here after `taleez.md`.
 The site's `robots.txt` closes its own UI search paths and says nothing about
 `/api/`; this uses the documented API, under the user's own registered key, at
 the volume one person's job search needs.
+
+## Why this adapter does not call the guard — HELD, same class
+
+`api.apprentissage.beta.gouv.fr` answers `/robots.txt` with **145 778 bytes of
+its own single-page application** — `text/html`, no directive line anywhere.
+Since #128 the guard reads that as `unrecognised`: **a body nobody could
+recognise is not an absence of rules**, so the verdict is `None` and an
+adapter calling it would stop.
+
+**Not wired, because it is the same class as `adzuna.md`** — a documented
+public API whose host does not serve usable rules — and that class is in
+arbitration with the user. **Four boards, one arbitration.**

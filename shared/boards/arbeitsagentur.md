@@ -202,3 +202,29 @@ mode is a large confident number:
 ```bash
 python3 $S search --wo Berlin      # → must ERROR, not return 10 000 quietly
 ```
+
+## Why this adapter does not call the guard — HELD, and the docstring read the wrong host
+
+This file's docstring says *"`arbeitsagentur.de/robots.txt` is four lines and
+opens everything"*. That is true, **and it is not the host this adapter
+reads.**
+
+```
+www.arbeitsagentur.de    permits
+rest.arbeitsagentur.de   HTTP 403, text/plain, 1 byte, no Server header
+```
+
+**The API host answers its own rules file with a one-byte 403.** A bare 403 is
+no proof of a wall — `batiactu.md` records that a 403 becomes *a wall* only on
+positive evidence in the body — so under this repository's rule it is a
+refusal.
+
+**This is exactly what a human's one-time reading costs**: the file was read
+once, by a person, for a host, and applied to another. `_robots.py` exists to
+replace that practice, and this adapter is one of the places it had not
+reached.
+
+**Not wired, because it is the same class as `adzuna.md`** — a documented
+public API whose host does not serve usable rules — and that class is in
+arbitration with the user. Wiring it would settle the question for a fourth
+board without asking.
