@@ -1920,5 +1920,105 @@ class ABodyNobodyRecognisedIsNotAnAbsence(unittest.TestCase):
                          a["reason"] or "")
 
 
+class RulesNothingHadEverTested(unittest.TestCase):
+    """Four rules `_robots.py` implements and the suite never checked. #119.
+
+    **Found by mutation, not by reading.** Each of this guard's seven defects
+    was put back one at a time and the suite asked; six were caught. Then the
+    same battery was run against rules that had never failed in production —
+    and four of them nothing noticed.
+
+    **Three of the four err towards `allowed` when broken**, which is the
+    direction all seven real defects took. A suite that tests only the
+    defects that have already happened describes a history; these pin the
+    rules.
+
+    **Two of the eight mutations proved nothing and were discarded**: one
+    changed only which token name is quoted, one added an unused constant.
+    **A mutation that does not change behaviour is not evidence about the
+    tests**, and the first was very nearly reported as a hole.
+    """
+
+    def _with_body(self, body, host="h.example"):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda h: {"state": "read", "body": body,
+                                    "final": h, "attempts": 1}
+        try:
+            return _robots.verdict(host), _robots.allowed(host, "/a/b/c/d")
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_tie_between_allow_and_disallow_goes_to_allow(self):
+        """RFC 9309: *if an allow and a disallow are equivalent, the allow
+        SHOULD be used.* **Nothing paired them on one path**, so `>=` could
+        have been `>` for ever."""
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        self.assertEqual(_robots._match_len("/a/b", "/a/b/c/d"),
+                         _robots._match_len("/a/b", "/a/b/c/d"))
+        _v, a = self._with_body(
+            "User-agent: *\nDisallow: /a/b\nAllow: /a/b\n")
+        self.assertIs(a["allowed"], True)
+        self.assertEqual(a["kind"], "allow")
+
+    def test_the_longest_match_decides_not_the_first(self):
+        """**Breaking this permits a path the file refuses.** With
+        `Disallow: /a`, `Disallow: /a/b/c` and `Allow: /a/b`, a first-match
+        reader compares `/a` (2) against `/a/b` (4) and **allows**; the
+        longest match is `/a/b/c` (6) and refuses."""
+        _v, a = self._with_body(
+            "User-agent: *\nDisallow: /a\nDisallow: /a/b/c\nAllow: /a/b\n")
+        self.assertIs(a["allowed"], False)
+        self.assertEqual(a["rule"], "/a/b/c")
+
+    def test_content_signal_ai_input_no_is_a_refusal(self):
+        """**The most consent-critical rule in the module, and `ai-input`
+        appeared nowhere in the suite.** Disabling the check flips `sweep`
+        from False to True and nothing failed. Issue #98."""
+        v, _a = self._with_body(
+            "User-agent: *\nContent-Signal: search=yes,ai-input=no\n"
+            "Allow: /\n")
+        self.assertIs(v["sweep"], False)
+        self.assertIn("ai-input", v["reason"])
+
+    def test_every_content_signal_is_read_not_only_the_first(self):
+        """A refusal in the second line is still a refusal — the CDN's copy
+        and the origin's can disagree, and no convention says which wins."""
+        v, _a = self._with_body(
+            "User-agent: *\nContent-Signal: search=yes\n"
+            "Content-Signal: ai-input=no\nAllow: /\n")
+        self.assertIs(v["sweep"], False)
+        self.assertTrue(v["content_signal_conflict"])
+
+    def test_the_verdict_is_cached_on_the_host_that_answered(self):
+        """#99: `ss.ge` redirects to `jobs.ss.ge`, which publishes a different
+        file. **Caching on the name that was typed would hand one host's
+        rules to another**, and nothing asserted `requested_host`."""
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda h: {
+            "state": "read", "body": "User-agent: *\nDisallow: /x\n",
+            "final": "answered.example", "attempts": 1}
+        try:
+            v = _robots.verdict("asked.example")
+            self.assertEqual(v["host"], "answered.example")
+            self.assertEqual(v["requested_host"], "asked.example")
+            self.assertIn("answered.example", _robots._CACHE)
+            self.assertNotIn("asked.example", _robots._CACHE)
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
