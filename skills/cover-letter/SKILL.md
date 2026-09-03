@@ -238,6 +238,14 @@ but it is a genuine reason to lower the age weighting.
 it is the one that failed.** A rule that dispenses with verification is the
 only kind that can fail without leaving a trace. Issue #89.
 
+**And a gap you are about to write into the `Note` is proven against
+`profile/.text/` first.** This is where the chain starts: a gap asserted here
+becomes a received truth downstream — `interview-prep` reads this `Note` and
+tells the candidate about themselves minutes before they repeat it to an
+employer, **and nobody catches a false negative, because the candidate has no
+reason to doubt their own file.** Breaking the chain at the reading end is too
+late; it breaks at the writing end. Issues #63 and #50.
+
 **And where a row was already discarded that way, flag it — do not silently
 re-open it.** `no-go` and `discarded` record a decision; **the plugin does not
 reverse a decision it did not take.** Say the ad appears to be open, and let
@@ -340,17 +348,15 @@ it for every must-have the ad names, in both directions, and doing that from
 the PDFs directly is what made the wrong answer cheaper than the right one.
 Issue #63.
 
-## 2b — If the user is reporting back on a meeting, not preparing one
+## 2b — If the user is talking about a meeting, this is not the skill
 
-**A user who says "I had the interview" is not asking for a letter.** Follow
-`shared/interview-debrief.md` and stop there: it asks what happened, what was
-**not** answered, what the next step is and by when, and — separately, because
-it exists nowhere else — **the candidate's own read of the room**.
+**A user who says "I have an interview for X" or "I had the interview" is not
+asking for a letter.** Hand over to **`interview-prep`**, which covers both
+halves: the briefing sheet before, and the debrief after. It exists because the
+most useful column of a debrief — which prepared questions came back
+unanswered — only exists if one object holds both.
 
-Two things from that page matter more than the format: **the read is collected
-and never inferred**, and **an interview question they could not answer is not
-a gap in their profile** (issue #63 — prove it against `profile/.text/` first,
-and a disproved gap becomes an evidence line).
+Do not build a sheet here, and do not run the debrief here.
 
 ## 3 — Score the fit, then STOP for a go/no-go
 

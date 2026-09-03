@@ -18,9 +18,14 @@ to end, honestly.
   telling you whether the job is actually worth applying to **and roughly what
   it pays for someone with your record**. Needs no adapter and no browser: a URL
   is enough.
-- **`job-report`** — how many applications you actually sent over a period, and
-  which ones are still undeclared to an unemployment office. Counts what went
-  out, not what you looked at.
+- **`interview-prep`** — the briefing sheet for an interview you have booked,
+  built from what the employer actually received, **and the debrief
+  afterwards**: what was answered, what was **not**, the next step and its
+  date, and your own read of the room. One skill for both, because the useful
+  half of a debrief is which of your prepared questions came back unanswered.
+- **`job-report`** — how many applications you actually sent over a period,
+  which ones reached an interview, and which are still undeclared to an
+  unemployment office. Counts what went out, not what you looked at.
 
 The unusual part is what it *refuses* to do: it will not claim a skill you do
 not have, will not answer a screening question by guessing, will not report an
@@ -459,7 +464,10 @@ comes back with the reason and the fix rather than a shrug.
 /job-setup orientation           # what you're looking for changed — re-picks the boards
 /job-setup boards                # enable or configure a board
 /board-request <board URL>       # note a board that has no adapter yet
+/interview-prep <company>        # briefing sheet for a booked interview
+/interview-prep                  # …or the debrief, after the meeting
 /job-report                      # applications sent this month
+/job-report --interviews         # the ones that reached a meeting
 /job-report --from 2026-07-01 --to 2026-07-31
 ```
 
