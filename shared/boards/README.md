@@ -462,6 +462,24 @@ renders a complete advertisement that expires *later* and is not listed.
 **Membership tracks neither expiry nor recency**, so the adapter reports the
 listing's count as the listing's and does not call it the board.
 
+**Two different requests must produce two different bodies.** Before trusting
+any listing route, ask for something that cannot exist and compare. It is the
+check `melr-gh.md` turns on — `/index.php/99/99/complete-nonsense-xyzzy` is
+line-for-line identical to the real page — and `employtt.md` needs the same one
+in another form, where a missing advertisement answers 200 with the listing.
+**Neither the status code nor the response size separates them.** A router that
+ignores the path, a CDN error page, an SPA shell and a real answer all return
+200 with plausible bytes; **something answered, so it feels measured.** The
+comparison is cheap, it can fail, and on two boards in one day it did.
+
+**`mihnati.md` is where the platform underneath shows through the data.** Ten
+of ten Saudi advertisements publish `baseSalary.currency: "PKR"` — the
+Pakistani platform's default, on Jeddah and Riyadh salaries — and ten of ten
+put the **employer's name** in schema.org's `identifier`. The adapter passes
+both through under names that say what they hold, flags the currency, and
+**converts nothing**: guessing the intended currency would be a second
+invention on top of the first.
+
 **`skillingpakistan.md` is a board that is empty and says so.** Its `/jobs`
 table contains the words `No jobs available` under every filter, including
 values drawn from its own occupation vocabulary — **a zero the board states,
