@@ -1519,7 +1519,16 @@ class AnInvocationThatCannotSucceed(unittest.TestCase):
         self.assertIn("(1)", window)
         self.assertIn("(2)", window)
         self.assertIn("(3)", window)
-        self.assertIn("does not answer with structured data", window)
+        # **The substance, not the tense — and not the line wrapping.**
+        # This asserted the exact phrase "does not answer with structured
+        # data"; it broke on "did not", which is the more accurate claim,
+        # and then broke again because the phrase spans an f-string
+        # continuation in the source. **A case that reads source text is
+        # matching the author's line breaks, not the program's behaviour**,
+        # so the continuations are stitched before matching.
+        flat = re.sub(r'"\s*\n\s*f?"', "", window)
+        self.assertIn("answer with structured data", flat)
+        self.assertIn("measured both ways within a day", flat)
 
 
 class OneDeclaredIdentity(unittest.TestCase):

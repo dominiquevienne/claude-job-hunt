@@ -403,10 +403,31 @@ numbers was published and had to be retracted:
 /de/stellenangebote/?location=Bern    288 kB    0
 ```
 
-**The unfiltered listing renders client-side.** A filtered one is served with
-its cards in the markup. Both boards behave this way, and **`location` alone
-is honoured by jobup and not by jobs.ch** — one platform, two behaviours,
-which is worth knowing before reading a zero.
+**Re-measured 2026-09-04, and the first line of that table is no longer
+true.** The same unfiltered URLs now carry **20 `JobPosting` each**, on both
+boards:
+
+```
+/fr/emplois/            was 0   now 20
+/fr/emplois/?page=1     was 0   now 20
+/de/stellenangebote/    was 0   now 20
+```
+
+**Two observations a day apart, opposite, and nothing here can tell a
+deployment from an intermittency.** That is the same shape as
+`maliemploi.org`, whose Apache error page had gone back to a real 115-byte
+file by the time it was investigated — **a behaviour measured once is dated,
+and this one dated in under twenty-four hours.**
+
+**What still holds:** `location` alone is honoured by jobup and **not** by
+jobs.ch — `?location=Bern` and the bare URL return byte-identical pages there.
+One platform, two behaviours.
+
+**And what the refusal now stands on.** `search` still requires a filter, but
+not because the listing is always empty — **because a zero taken from that URL
+means one thing today and another yesterday**, and a zero from it was already
+read once as a dead board, on this board, in this repository (#122). A filter
+makes the answer interpretable.
 
 **So `search` refuses a call with no filter** (#126). Without one it fetched
 the bare listing and returned zero every time, and a zero from a board reads

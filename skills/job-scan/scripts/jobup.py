@@ -137,12 +137,20 @@ def cmd_search(a):
     # read as the board being empty. **A tool that accepts a call which cannot
     # succeed manufactures false results.** Issue #126.
     if not (a.term or a.location):
-        die("give --term, or --location, or both. **Without a filter this "
-            "command fetches the bare listing, which carries no structured "
-            "data on either site** — 275 kB and zero `JobPosting`, against "
-            "534 kB and 22 for `?term=developpeur`. It would return zero "
-            "every time, and a zero from here is indistinguishable from an "
-            "empty board. No request was made.", 2)
+        die("give --term, or --location, or both.\n"
+            "  **A zero from the unfiltered listing cannot be read**, and "
+            "that is the reason — not that it is always empty.\n"
+            "  Measured 2026-09-03: `/fr/emplois/` was 275 kB with **zero** "
+            "`JobPosting`, against 534 kB and 22 for `?term=developpeur`. "
+            "**Measured again 2026-09-04, the same URL carried 20** — and so "
+            "did `jobs.ch`'s. **Two observations a day apart, opposite, and "
+            "nothing here can tell a deployment from an intermittency.**\n"
+            "  So the refusal stands on what holds either way: **a count "
+            "taken from this URL means one thing today and another "
+            "yesterday**, and a zero from it was already read once as a dead "
+            "board — this board, this repository, #122. A filter makes the "
+            "answer interpretable. No request was made.", 2)
+
     site = SITES[a.site]
     v = robots_verdict(site["host"])
     if not v["sweep"]:
@@ -176,16 +184,18 @@ def cmd_search(a):
             asked = ", ".join(f"{k}={v!r}" for k, v in
                               (("term", a.term), ("location", a.location))
                               if v) or "nothing"
-            note(f"page {page} carried no JobPosting — stopping. **Three "
-                 f"things look like this and they are not the same.** (1) The "
-                 f"end of the results. (2) A reading failure — the markup "
-                 f"changed and a page with cards is being misread. (3) **A "
-                 f"query this site does not answer with structured data**: "
-                 f"you asked for {asked}, and the bare listing carries none "
-                 f"at all, while `?term=` carries 22. On {site['host']}, "
-                 f"`location` alone is honoured by jobup and **not** by "
-                 f"jobs.ch — measured 2026-09-03. Try a `--term` before "
-                 f"reading this as an empty board.")
+            note(f"page {page} carried no JobPosting — stopping. "
+                 f"**Three things look like this and they are not the "
+                 f"same.** (1) The end of the results. (2) A reading failure "
+                 f"— the markup changed and a page with cards is being "
+                 f"misread. (3) **A query this site did not answer with "
+                 f"structured data**: you asked for {asked}. On "
+                 f"{site['host']}, `location` alone is honoured by jobup and "
+                 f"**not** by jobs.ch — `?location=` and the bare URL return "
+                 f"byte-identical pages there. **And the unfiltered listing "
+                 f"has been measured both ways within a day** (#126), so a "
+                 f"zero from it dates faster than a card can record it. Try "
+                 f"a `--term` before reading this as an empty board.")
             break
         ids = {one(p.get("identifier")).get("value") for p in found}
         # Entirely repeated → the pagination did not advance. A few repeats →
