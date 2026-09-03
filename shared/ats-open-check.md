@@ -443,6 +443,32 @@ and absent on others, and the split follows the *region*: 8 of 8 German-region
 ads sampled carried one, 4 of 4 Geneva-area ads did not. Its absence says
 nothing about the ad. Swept by `shared/boards/randstad.md`.
 
+### Applifly — it confirms both ways, and only if you keep the query string
+
+- **Recognise it by the path**, not the host: `/job/view-job.php?id=<n>` on an
+  employer's own `jobs.<employer>.ch`. **The host never says Applifly.**
+
+| Response | Reading |
+| :-- | :-- |
+| `200` with an `itemtype=".../JobPosting"` block | **Listed** |
+| `3xx` | **Not listed** — an unknown id redirects |
+| `200`, ~718 bytes, `document.referrer` in a `<script>` | **Nothing.** Your URL was under-specified — see below |
+
+**The URL must carry `language` and `source`.** Without them the same id
+answers `200` with a script that reloads the page with
+`?source=<referrer>` — so **a browser always sees the ad and a script never
+does**, and the status line says `200` either way. `source`'s value is
+irrelevant; its presence is not.
+
+**This is not client-side rendering and it does not need a browser.** The first
+reading of this host called it a shell and treated the ad as unverifiable by
+its ATS. It is verifiable, at the cost of one query parameter — *decide by
+layer*, and the layer is above the browser.
+
+**And do not strip the query string to normalise the URL.** The id is in it,
+and so is the parameter that renders the page. Swept by
+`shared/boards/applifly.md`.
+
 ### The ones already named in step 1b
 
 Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition

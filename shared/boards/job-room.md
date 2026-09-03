@@ -132,7 +132,15 @@ the longest one and report the tag as-is.
 `80\%`. Unescape before scoring, or the resume matcher reads backslashes.
 
 **6. `externalUrl` carries affiliate tracking**, a `utm_campaign` blob 200
-characters long. Strip the query string before storing or comparing.
+characters long. **Strip the query string for comparing — never for
+fetching**, and keep the two forms apart in whatever you store.
+
+That distinction was added after it broke something. On an Applifly host the
+**id is in the query string** and a parameter that reads exactly like
+attribution — `source=` — is what renders the page: stripped, the same URL
+answers **`200` with 718 bytes** of referrer-capture JavaScript and no ad. So
+the stripped form is a **dedup key and not an address**; see
+`shared/boards/applifly.md`.
 
 **6b. And it is not always the URL of an ad.** Measured 2026-08-29: **6 of 6**
 `okjob.ch` external URLs led to a *category* page — `<title>` = *"Toutes les
