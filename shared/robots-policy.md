@@ -65,6 +65,28 @@ rules file while `www.jobs.co.id/robots.txt` redirects and serves 171 888 bytes
 of HTML. **One host is not the other host**, and `104.com.tw` serves two
 different md5s across the pair.
 
+**And a third host is not a variant of the first two.** `ss.ge` redirects to
+`home.ss.ge`, whose jobs section redirects again to `jobs.ss.ge` — **three
+hosts, three `robots.txt` files, three different sets of refusals**, measured
+2026-09-03:
+
+| Host | Size | Refuses |
+| :-- | --: | :-- |
+| `ss.ge` | 478 B | `/en/jobs`, `/ru/jobs`, and eight `/user/…` paths |
+| `home.ss.ge` | 105 B | three `/…/user` paths — **and none of the job refusals** |
+| `jobs.ss.ge` | 62 B | nothing: `Allow: /` |
+
+**The host every request is redirected to has the more permissive file**, and
+the one that governs the board says `Allow: /` while the board itself answers
+`403` behind a challenge. **Which file applies depends on where the redirect
+chain leaves you**, so read the file for the host you will actually fetch —
+not for the name you typed. `shared/boards/ss-ge.md`.
+
+*(Its apex file also opens with `sitemap: Disallow: /sitemap.xml` behind a BOM
+— a `Sitemap:` directive whose value is a `Disallow:`. Read as either it is
+nothing, which is one more reason to fetch the path rather than parse the
+line.)*
+
 **And the third mechanism in the pair is TLS, which fails before any status
 code exists.** `trabajo.gob.ec` resolves and answers nothing a client will
 accept — `curl: (60) SSL: no alternative certificate subject name matches
