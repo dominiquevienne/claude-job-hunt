@@ -155,10 +155,36 @@ an ad: a `JobPosting` block, or a title that is not a listing heading. Reporting
 plugin exists to avoid.
 
 **7. This is the board most likely to duplicate the ledger, by construction.**
-98 of 100 fresh VD/GE ads had an `externalUrl`; the hosts were jobup.ch 32,
-carrieres-rolex.com 17, michaelpage.ch 10, successfactors 7, jobs.ch 3,
-offres-emploi.vd.ch 2, smartrecruiters 2. So roughly a third of what this board
-returns for Romandie is a jobup ad the ledger may already hold.
+
+**The share was measured wrong until 2026-09-03, and by this adapter.**
+job-room sends `externalUrl` in two shapes — 100 of 300 Vaud cards carry
+`https://www.jobup.ch/...` and **193 carry `www.jobs.ch/de/...` with no
+scheme** — and `urlparse("www.jobs.ch/x").netloc` is `""`. So `external_host`
+was empty on 193 of 300 and a count made on it reported **`jobs.ch` once where
+the sample holds 194**.
+
+Re-measured on 300 Vaud cards after the fix:
+
+```
+www.jobs.ch          194   64.7%
+www.jobup.ch          89   29.7%
+ohws.prospective.ch    9    3.0%
+no externalUrl         7    2.3%
+live.solique.ch        1    0.3%
+```
+
+**jobup and jobs.ch are one platform, so 283 of 300 — 94.3% — of what this
+board returns for Vaud comes from a single upstream.** That is not a third,
+and it is not two sources: it is one, and reading it as two understates the
+concentration by the whole of it.
+
+`duplicate_of` was blind on exactly the same rows: filled on 90 of 300 before
+the fix, **283 of 300 after**. Every jobs.ch advertisement already in the
+ledger under a jobs.ch id was being recorded again as new.
+
+*(The earlier reading — jobup.ch 32, jobs.ch 3 of 100 fresh VD/GE ads — is
+superseded. It was not a sampling difference; the field it counted was
+empty on two rows in three.)*
 
 **A wider sweep, 2026-08-29 — 2 800 ads across all 25 cantons — adds two facts
 the 100-ad sample could not show.**

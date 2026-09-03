@@ -46,3 +46,6 @@ Thumbs.db
 .vscode/
 __pycache__/
 *.pyc
+
+# Règles locales, non partagées avec le plugin
+CLAUDE.md

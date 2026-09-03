@@ -1027,5 +1027,85 @@ class SalaryCarriesItsUnit(unittest.TestCase):
                             for v in adzuna.INDEX_CURRENCY.values()))
 
 
+class UrlWithoutAScheme(unittest.TestCase):
+    """`urlparse("www.jobs.ch/x").netloc` is `""`. Found on job-room.
+
+    **A general trap, not a job-room quirk**, which is why it is pinned here
+    rather than described in a card. job-room sends `externalUrl` in two
+    shapes — measured on 300 Vaud cards, 2026-09-03: **100 with a scheme, 193
+    without** — and two fields read the host off it. Both went quiet rather
+    than wrong:
+
+    - `external_host` was `""` on 193 of 300, so a count of origins made on it
+      reported `www.jobs.ch` **once** where the sample holds **194**. Three
+      published figures came from that.
+    - `duplicate_of` was `None` on all 193 — **the advertisement already swept
+      under a jobs.ch id was recorded again as new.** Filled on 90 of 300
+      before, 283 of 300 after.
+
+    **The empty string did not say "I do not know", it said "no external
+    host"** — the third missing third value in this repository in one day,
+    after `allowed` and the three HTTP outcomes.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import jobroom
+        self.jobroom = jobroom
+
+    def test_a_bare_host_gets_the_scheme_it_needs(self):
+        self.assertEqual(
+            self.jobroom.with_scheme("www.jobs.ch/de/stellenangebote/detail/x/"),
+            "https://www.jobs.ch/de/stellenangebote/detail/x/")
+
+    def test_a_url_that_has_one_is_untouched(self):
+        for url in ("https://www.jobup.ch/fr/emplois/detail/x/",
+                    "http://example.com/a"):
+            self.assertEqual(self.jobroom.with_scheme(url), url)
+
+    def test_a_path_is_not_a_host(self):
+        """**A leading slash or a dotless first segment is a path.** Turning
+        `/jobs/1` into `https:///jobs/1` would invent a host."""
+        self.assertEqual(self.jobroom.with_scheme("/jobs/1"), "/jobs/1")
+        self.assertEqual(self.jobroom.with_scheme("jobs/1"), "jobs/1")
+        self.assertIsNone(self.jobroom.with_scheme(""))
+        self.assertIsNone(self.jobroom.with_scheme(None))
+
+    def test_the_host_is_readable_from_a_scheme_less_url(self):
+        """The assertion that fails without the fix, on the exact shape the
+        board sends."""
+        import urllib.parse
+        bare = "www.jobs.ch/de/stellenangebote/detail/fdb4a6bd/"
+        self.assertEqual(urllib.parse.urlparse(bare).netloc, "",
+                         "if this ever stops being empty the trap is gone")
+        self.assertEqual(
+            urllib.parse.urlparse(self.jobroom.with_scheme(bare)).netloc,
+            "www.jobs.ch")
+
+    def test_duplicate_of_sees_a_scheme_less_advertisement(self):
+        """The consequence that costs a ledger row, not a statistic."""
+        # A **whole** UUID: `UUID_RE` wants all five groups, and the first
+        # draft of this case truncated it — the test failed for its own
+        # fixture rather than for the defect, which is the shape of vacuous
+        # negative this suite already carries a lesson about.
+        bare = ("www.jobs.ch/de/stellenangebote/detail/"
+                "fdb4a6bd-97c7-4ff0-97d3-0d2cb63f9153/")
+        self.assertEqual(self.jobroom.duplicate_of(bare),
+                         "jobs.ch:fdb4a6bd-97c7-4ff0-97d3-0d2cb63f9153")
+        self.assertEqual(self.jobroom.duplicate_of(bare),
+                         self.jobroom.duplicate_of("https://" + bare))
+
+    def test_clean_url_and_the_host_agree_about_the_same_url(self):
+        """**Two functions normalising the same thing differently is how this
+        survived.** They share one normaliser now."""
+        bare = "www.jobs.ch/de/x/?utm_source=jobroom"
+        import urllib.parse
+        cleaned = self.jobroom.clean_url(bare)
+        self.assertEqual(cleaned, "https://www.jobs.ch/de/x/")
+        self.assertEqual(urllib.parse.urlparse(cleaned).netloc,
+                         urllib.parse.urlparse(
+                             self.jobroom.with_scheme(bare)).netloc)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -173,8 +173,48 @@ BOARD_REF = {
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
+def with_scheme(url):
+    """job-room sends `externalUrl` in two shapes; only one has a scheme.
+
+    **Measured on 300 Vaud cards, 2026-09-03: 100 arrive as
+    `https://www.jobup.ch/...` and 193 as `www.jobs.ch/de/...`, bare.** And
+    `urlparse("www.jobs.ch/de/x").netloc` is **`""`** — with no scheme the
+    whole string is a path, so every host read off one of those rows came back
+    empty.
+
+    Two fields were read that way and both went quiet rather than wrong:
+
+    - `external_host` was `""` on **193 of 300**, and a count of origins made
+      on it reported `www.jobs.ch` **once** where the sample holds **194**.
+      Three published figures came from that.
+    - `duplicate_of` was `None` on **all 193**, against 90 of the 100 rows
+      that did carry a scheme — so **the ad already swept under a jobs.ch id
+      was recorded again as new.**
+
+    **An empty string here does not say "I do not know", it says "no external
+    host".** That is the third missing third value found in this repository in
+    one day, after `allowed` and the three HTTP outcomes.
+
+    The scheme is **supplied here, not published** — `https` because it is the
+    only one these hosts answer on. A leading `/` or a first segment with no
+    dot is a path, not a host, and is left alone.
+    """
+    if not url:
+        return None
+    if "://" in url:
+        return url
+    head = url.split("/", 1)[0]
+    return "https://" + url if "." in head and not url.startswith("/") else url
+
+
 def clean_url(url):
-    """Drop the affiliate tracking query job-room appends to every externalUrl."""
+    """Drop the affiliate tracking query job-room appends to every externalUrl.
+
+    **Normalises the scheme first**, so this and every host read below agree
+    about the same URL — two functions normalising the same thing differently
+    is how the defect above survived.
+    """
+    url = with_scheme(url)
     if not url:
         return None
     p = urllib.parse.urlsplit(url)
@@ -187,6 +227,7 @@ def duplicate_of(url):
     A third of job-room's Romandie ads are syndicated from jobup, so the same
     posting is very often already in the ledger under a jobup id.
     """
+    url = with_scheme(url)
     if not url:
         return None
     host = urllib.parse.urlparse(url).netloc
@@ -228,7 +269,8 @@ def card(ad, with_description=False):
         "language_tag": lang,
         "source_system": ad.get("sourceSystem"),
         "external_url": clean_url(external),
-        "external_host": urllib.parse.urlparse(external).netloc if external else None,
+        "external_host": (urllib.parse.urlparse(with_scheme(external)).netloc
+                          or None) if external else None,
         "duplicate_of": duplicate_of(external),
         "avam_number": ad.get("stellennummerAvam"),
         "reporting_obligation": ad.get("reportingObligation"),
