@@ -22,6 +22,16 @@ The consequence goes past the name: **a card describing the access policy of
 `talent-soft.com` describes a host that no longer serves anything.** The rules
 that apply are the receiving platform's, and nobody has read them.
 
+**AND WHAT DRIFTED IS `/robots.txt`, NOT THE HOST.** This tool reads one path,
+so a `MOVED` line says *that host's rules file now lives elsewhere* and
+**nothing about any other path on it**. Measured while updating the cards:
+`entreprise.francetravail.fr/robots.txt` lands on `pro.francetravail.fr`, and
+the OAuth endpoint the adapter actually calls **answers under the old name
+without redirecting**. The operator is moving its portal and has left the
+partner API where it was. **Generalising from one path to a host is the same
+step as generalising from one ad to a board**, and it was taken here before it
+was caught.
+
 **AND A REDIRECT CAN BE INTERMITTENT, SO READ THE TWO OUTCOMES DIFFERENTLY.**
 `my.indeed.com` sent this repository to `secure.indeed.com` in the afternoon
 and answered under its own name an hour later. **One observation of drift is a
@@ -153,11 +163,18 @@ def main():
               f"name. **The rules that apply are the receiving host's**, and "
               f"a card describing the first describes a host that no longer "
               f"serves anything.", file=sys.stderr)
+        print("   **This is drift of `/robots.txt` and of nothing else.** "
+              "Check the endpoint the adapter calls before writing that a "
+              "host has moved: one path is not a host.", file=sys.stderr)
         for r in drift:
             if r["state"] != "read":
-                print(f"   {r['card']}: {r['answered']} answers "
-                      f"`{r['state']}` — **that reads as a server accident "
-                      f"and it is an acquisition.**", file=sys.stderr)
+                print(f"   {r['card']}: the request for {r['declared']}'s "
+                      f"rules landed on {r['answered']} as `{r['state']}` — "
+                      f"**that reads as a server accident when it is a "
+                      f"redirect to a marketing page.** The receiving "
+                      f"platform may publish rules at its own root; look "
+                      f"there rather than concluding it has none.",
+                      file=sys.stderr)
     return 0
 
 

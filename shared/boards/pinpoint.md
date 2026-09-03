@@ -1,6 +1,11 @@
 # Board adapter — Pinpoint (ATS)
 
-<!-- hosts: pinpointhq.com -->
+*(The platform's own site answers as `www.pinpointhq.com`; the bare apex
+redirects there. **Not a change of operator** — recorded because the card
+should name the host that answers, and `bin/host-drift.py` lists a `www.`
+difference without raising it.)*
+
+<!-- hosts: www.pinpointhq.com -->
 
 One employer at a time, by tenant. Pinpoint is a UK-origin ATS, and **the fifth
 most common provider in a 360-card HiringCafe sample** — 24 ads, ahead of ADP,

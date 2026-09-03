@@ -1,5 +1,27 @@
 # Board adapter — DigitalRecruiters
 
+**Talentsoft and DigitalRecruiters are Cegid, and the old domains no longer
+publish rules of their own.** Measured 2026-09-03:
+
+```
+talent-soft.com/robots.txt        → https://www.cegid.com/global/      (HTML)
+digitalrecruiters.com/robots.txt  → https://www.cegid.com/fr/produits/… (HTML)
+www.cegid.com/robots.txt          → 200, 1 006 bytes, text/plain
+```
+
+**A request for the old host's rules file lands on a marketing page**, so it
+reads `unreadable` — and *"unreadable" reads as a server accident when it is an
+acquisition.* **The rules that apply are Cegid's, they exist, and they are at
+that platform's own root**, which nothing pointed at: the redirect goes to a
+product page, not to the equivalent path.
+
+Cegid's file is a WordPress default extended by hand — two `User-agent: *`
+records, `/wp-admin`, `/*?s=`, feeds — and **refuses nothing this adapter
+reads**. `api.digitalrecruiters.com` answers for itself and is unaffected.
+
+*(Two `User-agent: *` records in one file is the case `_robots.py` merges per
+RFC 9309, rather than letting the first win.)*
+
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: api.digitalrecruiters.com -->

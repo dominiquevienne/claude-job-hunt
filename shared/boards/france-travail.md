@@ -71,6 +71,22 @@ GET  https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search
   Content-Range: offres 0-149/13295
 ```
 
+**`entreprise.francetravail.fr` now redirects its site root, and this endpoint
+does not.** Checked 2026-09-03: `/robots.txt` on that host lands on
+`pro.francetravail.fr`, while the OAuth path above answers **under the old
+name, without redirecting** — a `400` for a request with no credentials, which
+is the endpoint replying.
+
+**So the operator is moving its portal and has left the partner API where it
+was.** The distinction matters because a drift report reads one path:
+`bin/host-drift.py` observes `/robots.txt` and **that is not evidence about
+any other path on the host.**
+
+*(`pro.francetravail.fr` publishes 24 bytes — `User-agent: *`, empty
+`Disallow:` — and its own OAuth path redirects on again to
+`authentification-pro.francetravail.fr`. Neither is the address this adapter
+uses.)*
+
 `api_offresdemploiv2 o2dsoffre` was the scope that worked; the
 `application_<client_id>` variant was not needed.
 

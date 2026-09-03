@@ -1,6 +1,17 @@
 # Board adapter — Recruitee (European ATS)
 
-<!-- hosts: jobs.recruitee.com -->
+**Recruitee is Tellent, and the tenant hosts have not moved with it.**
+Measured 2026-09-03: `jobs.recruitee.com/robots.txt` answers from
+**`careers.tellent.com`** — 81 bytes, `Disallow: /v/`, one sitemap — while a
+tenant host such as `tellent.recruitee.com` **still serves its own 31-byte
+file under `recruitee.com`**, with the same `Disallow: /v/`.
+
+**So the rebrand has reached the generic entry point and not the tenants**,
+which is the half that matters here: this adapter reads
+`<tenant>.recruitee.com/api/offers/`, and that address answers for itself.
+Nothing in either file refuses it.
+
+<!-- hosts: jobs.recruitee.com, tellent.recruitee.com -->
 
 One employer at a time, by tenant. Recruitee is a Dutch-origin ATS, now part of
 Tellent, used across the Netherlands, Belgium, Germany, Poland and beyond. Each
