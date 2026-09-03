@@ -20,6 +20,17 @@
 #
 # Reported as a missing guard against a known behaviour, not as an observed
 # failure — no Windows machine was available to reproduce it. Issue #107.
+#
+# **What has since been checked, and what still has not.** `git check-attr`
+# confirms the rule reaches every `bin/*.sh` and both LaTeX templates, and
+# `git ls-files --eol` reports **`i/lf` for all 228 tracked files** — so
+# nothing was already stored with a carriage return, which the rule alone
+# would not have undone. `tests/test_core.py::LineEndingsAreDeclared` pins all
+# three, and goes red against a tree that has a `i/crlf` blob in its index.
+#
+# **None of that is a Windows test.** It says the declaration is present,
+# applies, and has nothing to repair — not that a Windows clone now works.
+# That still needs somebody on Windows running `bin/doctor.sh`.
 
 # Let git decide what is text, and normalise it to LF in the repository.
 * text=auto eol=lf
@@ -33,6 +44,7 @@
 *.json  text eol=lf
 *.txt   text eol=lf
 *.xml   text eol=lf
+*.tex   text eol=lf
 
 # Binary, so git never rewrites a byte of it.
 *.png   binary

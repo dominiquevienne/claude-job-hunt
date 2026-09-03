@@ -1784,7 +1784,7 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
 
 
 class LdJsonMalformations(unittest.TestCase):
-    """One case per specimen, each named with the site it came from. #127.
+    r"""One case per specimen, each named with the site it came from. #127.
 
     **Two occurrences on two continents suggest a class, not an accident**: a
     publisher that escapes one layer too many. Michael Page and Chile's
@@ -2233,6 +2233,79 @@ class NoSignalIsOrphaned(unittest.TestCase):
         with contextlib.redirect_stderr(err):
             _decode.decode_body(b"ok \x81\x8d text")
         self.assertIn("[decode]", err.getvalue())
+
+
+class LineEndingsAreDeclared(unittest.TestCase):
+    """#107: `bin/doctor.sh` is the first thing `README.md` asks a user to run.
+
+    **Git for Windows sets `core.autocrlf=true` by default**, converting line
+    endings on the way *out* of the repository. A shell script checked out
+    that way fails under Git Bash with
+
+        /usr/bin/env: 'bash\r': No such file or directory
+
+    — which names an interpreter that exists, with an invisible character on
+    the end. **The first gesture the project asks for is the one that
+    breaks**, and it looks like the user's fault.
+
+    **No Windows machine was available to reproduce it**, and this suite does
+    not pretend otherwise. What it checks is what is checkable anywhere: that
+    the rule is declared, that Git agrees it applies, and that nothing in the
+    index already carries a carriage return.
+    """
+
+    def _root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def test_the_rule_exists(self):
+        self.assertTrue(os.path.exists(os.path.join(self._root(),
+                                                    ".gitattributes")))
+
+    def test_git_applies_lf_to_the_script_the_readme_names_first(self):
+        """**Declared is not applied.** `git check-attr` is the one that
+        answers, and it answers on this machine as it would on any other —
+        the attribute is in the repository, not in the checkout."""
+        import subprocess
+        r = subprocess.run(["git", "check-attr", "eol", "--", "bin/doctor.sh"],
+                           capture_output=True, text=True, cwd=self._root())
+        self.assertIn("eol: lf", r.stdout)
+
+    def test_every_shell_script_is_covered(self):
+        import glob
+        import subprocess
+        root = self._root()
+        scripts = [os.path.relpath(p, root)
+                   for p in glob.glob(os.path.join(root, "bin", "*.sh"))]
+        self.assertGreater(len(scripts), 0)
+        for rel in scripts:
+            r = subprocess.run(["git", "check-attr", "eol", "--", rel],
+                               capture_output=True, text=True, cwd=root)
+            self.assertIn("eol: lf", r.stdout, rel)
+
+    def test_nothing_in_the_index_already_carries_a_carriage_return(self):
+        """The declaration fixes the boundary; it does not rewrite history.
+        **If a CRLF file were already committed, the rule would not undo it**
+        — somebody would need `git add --renormalize .` `git ls-files --eol`
+        reports the index (`i/`) and working-tree (`w/`) endings of every
+        tracked file in one pass; anything but `i/lf` on a text file is a
+        carriage return already in the repository."""
+        import subprocess
+        root = self._root()
+        out = subprocess.run(["git", "ls-files", "--eol"], capture_output=True,
+                             text=True, cwd=root).stdout.splitlines()
+        self.assertGreater(len(out), 50)
+        bad = []
+        for line in out:
+            fields = line.split("\t", 1)
+            if len(fields) != 2:
+                continue
+            index_eol = fields[0].split()[0]
+            # i/-text marks a binary blob, which has no line endings to get
+            # wrong; i/mixed and i/crlf are the two that break Git Bash.
+            if index_eol not in ("i/lf", "i/-text", "i/none"):
+                bad.append(f"{fields[1].strip()} ({index_eol})")
+        self.assertEqual(bad, [], "stored with a carriage return: "
+                                  + ", ".join(bad[:5]))
 
 
 if __name__ == "__main__":
