@@ -462,6 +462,15 @@ renders a complete advertisement that expires *later* and is not listed.
 **Membership tracks neither expiry nor recency**, so the adapter reports the
 listing's count as the listing's and does not call it the board.
 
+**`skillingpakistan.md` is a board that is empty and says so.** Its `/jobs`
+table contains the words `No jobs available` under every filter, including
+values drawn from its own occupation vocabulary — **a zero the board states,
+not one a parser inferred**. The same page prints `Total Jobs 302,613` above
+that empty table, under an *Employment Trends* heading: **a labour-market
+statistic that reads as an advertisement count.** No adapter yet, because no
+row has ever been available to parse and a parser written on column headers
+alone would ship unverified.
+
 **`jobs-gov-pk.md` is where two counts of the same thing disagree.** The
 board's own header says `1511 total` on one page and `5 total` on another,
 while the markup carries 1 511 cards — and `5 total` beside `1506 expired` is
