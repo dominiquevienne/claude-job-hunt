@@ -455,6 +455,14 @@ read, exits **7** on a refusal with the module's own words, and keeps its
 Cloudflare stop **separate** — because that host says `Allow: /` and answers
 `403`, so **the stop is not a robots verdict** and must not be written as one.
 
+**Not every portal becomes an adapter, and the ones that do not are worth a
+card.** `chile-public-sector.md` records five Chilean government portals
+assessed on 2026-09-03 and **why none of them yields one** — a training service
+that is not a board, two publishing `Disallow: /`, one answering 403 on its own
+rules file, and one whose data belongs to a host that refuses. **Without the
+card, "no adapter" reads as "nobody looked"**, and the next person spends the
+same day.
+
 **Decode a response with `skills/job-scan/scripts/_decode.py`, not with
 `utf-8`.** `decode("utf-8", "replace")` was this repository's house pattern —
 32 adapters used it and none read the declared charset. **It is wired now**:
