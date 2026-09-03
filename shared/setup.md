@@ -109,11 +109,62 @@ work, and it must not invent a career.
 Offer three routes, in this order, and let the user pick with
 `AskUserQuestion`:
 
-### Route A — LinkedIn exports (best, and what the skills are tuned for)
+### Route A — read the pages in the user's own browser
 
-Five files. The first is one click; the other four are browser prints. Give the
-user this block verbatim, with `<handle>` replaced by their own LinkedIn handle
-once known:
+**This is the nominal route, and it used to be the fallback.** Printing five
+pages to PDF is the first place people stop — `README.md` says so — and three
+things made it expensive:
+
+- **The truncation was silent.** A page not scrolled to the bottom prints a
+  valid, incomplete PDF: no error, a poorer record, and a resume missing jobs.
+- **The print dialog is a real wall.** A native window; no automation crosses
+  it, here or anywhere.
+- **And the PDF was never what is used.** Only the text is consumed, from
+  `profile/.text/`. The PDF was an imposed intermediate whose useful content
+  gets extracted afterwards. Issue #111.
+
+**So: open each page in the user's browser, take its text, save it.** Same
+content, no printing, no dialog — **and the truncation disappears, because
+nothing depends on a manual scroll.**
+
+**In their browser, with their session. Never log in for them**, and never
+fetch these URLs from a script: `shared/robots-policy.md` records that
+LinkedIn refuses this project by name, the user-driven agent included. What is
+being read is a page the person is looking at.
+
+Ask them to open their profile, then for each of the five sections:
+
+| Section | Page |
+| :-- | :-- |
+| `profile` | `linkedin.com/in/<handle>/` |
+| `experience` | `linkedin.com/in/<handle>/details/experience/` |
+| `projects` | `linkedin.com/in/<handle>/details/projects/` |
+| `certifications` | `linkedin.com/in/<handle>/details/certifications/` |
+| `skills` | `linkedin.com/in/<handle>/details/skills/` |
+
+Read the page's text, then save it under the name the pipeline knows:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/save-profile-text.py" \
+  experience --stdin <<'TEXT'
+…the page text…
+TEXT
+```
+
+**A `.text/` written this way is indistinguishable from one `sync-sources.sh`
+built**, so every downstream check works unchanged —
+`grep -ril '<term>' profile/.text/`.
+
+**The script says when a section came back thin**, and that warning is the
+truncation risk in its new shape: *a short record and a truncated one look
+identical afterwards*, so say which you think it is rather than saving it
+quietly.
+
+### Route A-bis — the five PDFs, when the browser is not available
+
+**The old nominal route, kept because it works and some people prefer it.**
+Give the user this block verbatim, with `<handle>` replaced by their own
+LinkedIn handle once known:
 
 > **1. The whole profile** — one click:
 > open <https://www.linkedin.com/in/> your profile → the **More** button under
@@ -144,8 +195,22 @@ LinkedIn produces, and reports one line per file: `✓ found` or `– missing`.
 
 ### Route B — an existing CV
 
-Any PDF or DOCX. Ask for the **absolute path**, copy it to
-`$JOB_HUNT_HOME/profile/`, and extract the history from it. Say plainly that a
+Any PDF or DOCX. **Do not ask for an absolute path.** It was the fallback for
+the most important step and it was harder than the thing it was rescuing —
+*"give me the absolute path"* asks for a notion, where the step it backs up
+asks for a click. Issue #111.
+
+**Ask to be shown the file**, in this order:
+
+1. **A file dropped into the conversation** — the shortest route, and the one
+   that works everywhere.
+2. **What is already in the workspace or a connected folder.** List what you
+   find and let them pick: `ls "$JOB_HUNT_HOME"/*.pdf "$JOB_HUNT_HOME"/*.docx`,
+   plus wherever they have said their documents live.
+3. **A path, if they offer one** — accept it, do not require it, and accept a
+   relative one or a `~` as readily as an absolute one.
+
+Then copy it to `$JOB_HUNT_HOME/profile/` and extract the history from it. Say plainly that a
 CV is a *summary*: it will under-represent the user's stack compared with the
 LinkedIn exports, and they can add Route A later with `/job-setup`.
 
@@ -162,7 +227,7 @@ Run all four on every file, and apply the prime directive on any failure:
 
 | Check | Command | If it fails, tell the user |
 | :-- | :-- | :-- |
-| The file exists | `test -f` | Which name was looked for, in which two folders, and that the export probably landed elsewhere — ask them to drag it into Downloads, or give the absolute path instead |
+| The file exists | `test -f` | Which name was looked for, in which folders, and that the export probably landed elsewhere — **ask them to drop it into the conversation, or name where it is.** A path is accepted, not required |
 | It is really a PDF | `file <f>` | What it turned out to be (an HTML page saved instead of printed, a `.webarchive`, a zero-byte file), and to redo the print with *Save as PDF* as the **destination**, not *Save page as* |
 | It has selectable text | `pdftotext -layout <f> - \| head` | That it came out as an image (a scan or a screenshot), so nothing can be read from it, and to re-print from the browser rather than photographing the screen |
 | It is the right section | the extracted text contains the section heading | Which section the file actually contains — users routinely print `experience` twice — and give the URL of the missing one again |

@@ -456,10 +456,17 @@ export JOB_HUNT_HOME="$HOME/OneDrive/Documents/job_applications"
 ## First run
 
 Just use it. The first invocation of either skill notices there is no
-configuration and walks you through setup — about five minutes, most of it
-spent locating your LinkedIn exports. **Every question comes with the exact URL
-or command that produces the answer**, and anything that does not look right
-comes back with the reason and the fix rather than a shrug.
+configuration and walks you through setup — about five minutes. **Every
+question comes with the exact URL or command that produces the answer**, and
+anything that does not look right comes back with the reason and the fix
+rather than a shrug.
+
+**Your profile is read from your own browser, in your own session — no printing
+to PDF.** That used to be five hand-printed files and it was where people
+stopped: the print dialog is a wall no automation crosses, and a page you had
+not scrolled to the bottom printed a valid, incomplete file **with no error at
+all**. Only the text was ever used. So the text is what is taken now, and the
+five PDFs remain as a fallback for anyone who prefers them.
 
 ```
 /job-scan                        # sweep the boards you enabled, fill the ledger
@@ -683,7 +690,7 @@ Adding a module for your country is the most useful contribution you can make.
 | The scan says LinkedIn is showing the signed-out page | You are not logged in **in that Chrome** | Log in yourself, then tell Claude to continue. It will not sign in for you |
 | The scan only ever sees ~7 ads per search | Expected — the results list is virtualized and the automated tab is hidden | Run more, narrower searches. See [`shared/boards/linkedin.md`](shared/boards/linkedin.md) |
 | `sync-sources.sh` reports "missing" for files you exported | They landed somewhere other than Downloads or the Desktop | Move them there, or set `JOB_HUNT_DOWNLOADS` / `JOB_HUNT_DESKTOP` |
-| An export has "no selectable text" | It was saved as an image, or via *Save page as* instead of *Print → Save as PDF* | Re-print it from the browser |
+| An export has "no selectable text" | It was saved as an image, or via *Save page as* instead of *Print → Save as PDF* | Re-print it — or skip the PDF entirely and let the page be read in your browser, which is now the nominal route |
 | A resume is missing jobs | The detail page was printed before it finished loading | Scroll the LinkedIn page to the bottom, re-print, re-run `sync-sources.sh` |
 | PDFs are huge | An oversized signature image, not the text | Resize `signature.png`. **Never** compress the PDF with Ghostscript — it silently corrupts the extracted text an ATS reads |
 
