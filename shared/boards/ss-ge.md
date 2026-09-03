@@ -95,6 +95,13 @@ argument for not doing that.** Three hosts, three files: a constant in one
 Python file cannot track that, and `_robots.py` is keyed on the host that
 answers precisely so it can.
 
+**And it does not keep a copy of the refusals either.** The first version
+hard-coded `("/en/jobs", "/ru/jobs")` — a transcription of the operator's file
+that cannot notice the day it changes, and one that **got the scope wrong
+once already**, calling the English *advertisement* families refused when only
+the English *listing* families are. Every fetch now asks
+`allowed(host, path)`, which reads the file.
+
 `check_robots()` runs on the host about to be read — `ss.ge` for the sitemaps,
 `jobs.ss.ge` for an ad — and **a `sweep: False` stops the command with exit 7
 and the module's own words.** Nothing here decides what a refusal means.

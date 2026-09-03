@@ -63,6 +63,7 @@ import time
 import urllib.error
 import urllib.request
 
+from _robots import allowed as robots_allowed
 from _robots import verdict as robots_verdict
 from _sitemap import count as sitemap_count
 from _sitemap import count_says, locs as sitemap_locs
@@ -75,9 +76,6 @@ EXIT_BROKEN, EXIT_REFUSED, EXIT_PARTIAL = 2, 7, 6
 
 AD_RE = re.compile(r"https://jobs\.ss\.ge/(?P<lang>[a-z]{2})/details/"
                    r"(?P<slug>[^\"<&]*?)-(?P<id>\d+)")
-# Paths the apex refuses by name. Checked before every fetch, because a
-# refusal that only exists in a comment is not a refusal.
-FORBIDDEN = ("/en/jobs", "/ru/jobs")
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -111,11 +109,19 @@ def check_robots(host):
 
 
 def get(url, timeout=90):
-    if any(f in url for f in FORBIDDEN):
-        die(f"{url}: `ss.ge/robots.txt` disallows this path by name. **The "
-            f"jobs sitemap advertises files under it anyway** — that is a "
-            f"conflict between two of the operator's own files, and a "
-            f"`Sitemap:` line is not a permission. Not fetched.", EXIT_REFUSED)
+    # **Ask the module for this exact path, do not keep a list here.** The
+    # first version hard-coded `("/en/jobs", "/ru/jobs")`, which is a copy of
+    # the operator's file that cannot notice the day it changes — and which
+    # got the scope wrong once already, calling the English *advertisement*
+    # families refused when only the English *listing* families are.
+    parts = urllib.parse.urlsplit(url)
+    if parts.netloc and parts.netloc != "jobs.ss.ge":
+        verd = robots_allowed(parts.netloc, parts.path)
+        if not verd["allowed"]:
+            die(f"{url}: {verd['reason']} **The jobs sitemap advertises files "
+                f"under this path anyway** — a conflict between two of the "
+                f"operator's own files, and a `Sitemap:` line is not a "
+                f"permission. Not fetched.", EXIT_REFUSED)
     if "jobs.ss.ge" in url:
         die(f"{url}: `jobs.ss.ge` answers 403 behind a Cloudflare challenge — "
             f"and its `robots.txt` says `Allow: /`, so **this stop is not a "
@@ -173,7 +179,9 @@ def cmd_families(a):
     # `/ru/jobs`. The English *advertisement* families are at `/en/ads/<n>`
     # and are **not** refused; the English *listing* families are at
     # `/en/jobs/sitemap-listing-N.xml` and **are**.
-    refused = [u for u in f["all"] if any(x in u for x in FORBIDDEN)]
+    refused = [u for u in f["all"]
+               if not robots_allowed("ss.ge",
+                                     urllib.parse.urlsplit(u).path)["allowed"]]
     note(f"{len(refused)} of the {len(f['all'])} sub-sitemaps sit under a "
          f"path `ss.ge/robots.txt` refuses by name — the **English listing** "
          f"families under `/en/jobs/`. The English *advertisement* families "

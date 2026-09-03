@@ -248,22 +248,127 @@ def verdict(host):
             return _keep(out)
 
     # The `*` group only: a rule aimed at one named crawler is not aimed here.
-    star, current = [], None
-    for line in body.splitlines():
+    dis, allow = _star_group(body)
+    out["disallow"] = dis
+    out["allow"] = allow
+    if "/" in dis:
+        out["sweep"] = False
+        out["reason"] = ("this host's robots.txt is `User-agent: * / "
+                         "Disallow: /` — everything closed, evenly. Not swept.")
+    elif dis:
+        # **`sweep` answers "is this host closed in one block". It cannot
+        # answer for a path, and it must not look as though it does.**
+        # `empleate.gob.hn` refuses `/Vacantes/` and `/Candidatos/` to `*` —
+        # the vacancies themselves — while `"/"` is absent, so `sweep` is
+        # True and used to be the whole answer. Issue #101.
+        out["reason"] = (
+            f"this host refuses {len(dis)} path(s) to `*` and not the site as "
+            f"a whole: {', '.join(dis[:4])}. **`sweep: True` means it is not "
+            f"closed in one block; it does not mean the path you want is "
+            f"open.** Call `allowed(host, path)` before fetching one.")
+    return _keep(out)
+
+
+def _star_group(body):
+    """The `Disallow` and `Allow` rules that bind `*`, as written.
+
+    **Consecutive `User-agent` lines form one group**, and the previous
+    version overwrote the agent on each of them — so
+
+        User-agent: *
+        User-agent: Googlebot
+        Disallow: /x
+
+    lost the `*` rule entirely, and **the error went towards permitted.** It
+    is the mirror of the defect that produced 41 false positives out of 143
+    files elsewhere on the same day by reading those runs as separate groups:
+    **the same ignorance of the grammar, erring in opposite directions
+    depending on which way it is misread.** Issue #101.
+
+    **Repeated `*` records merge** rather than the first winning — RFC 9309 —
+    which this repository measured on eight consecutive `User-agent: *`
+    groups.
+    """
+    dis, allow, agents, in_group = [], [], set(), False
+    for line in (body or "").splitlines():
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
         k, _, v = line.partition(":")
         k, v = k.strip().lower(), v.strip()
         if k == "user-agent":
-            current = v
-        elif k == "disallow" and current == "*":
-            star.append(v)
-    if "/" in star:
-        out["sweep"] = False
-        out["reason"] = ("this host's robots.txt is `User-agent: * / "
-                         "Disallow: /` — everything closed, evenly. Not swept.")
-    return _keep(out)
+            if in_group:            # a new group begins after a directive
+                agents = set()
+                in_group = False
+            agents.add(v)
+        elif k in ("disallow", "allow"):
+            in_group = True
+            if "*" in agents:
+                (dis if k == "disallow" else allow).append(v)
+    return dis, allow
+
+
+def _match_len(pattern, path):
+    """How many characters of `path` a robots pattern matches, or -1.
+
+    Prefix matching with `*` and `$`, which is what the specification asks of
+    a rule and all this needs. An **empty `Disallow:`** matches nothing — it
+    is the way a file says *nothing is closed* — so it returns -1 rather than
+    matching everything at length zero.
+    """
+    if pattern == "":
+        return -1
+    rx = re.escape(pattern).replace(r"\*", ".*")
+    if rx.endswith(r"\$"):
+        rx = rx[:-2] + "$"
+    m = re.match(rx, path)
+    return len(m.group(0)) if m else -1
+
+
+def allowed(host, path):
+    """May `path` be fetched on `host`? **Longest match wins, `Allow` on a tie.**
+
+    `verdict()` answers *is this host closed in one block*. **A path needs its
+    own question**, and until #101 there was no way to ask it: the `*` group's
+    rules were computed and thrown away.
+
+    Returns a dict, never a bare bool, because *why* matters as much as *no*:
+    `allowed`, `rule` (the directive that decided), `kind`, and the host that
+    actually answered.
+    """
+    v = verdict(host)
+    out = {"host": v["host"], "requested_host": v.get("requested_host"),
+           "path": path, "allowed": True, "rule": None, "kind": None,
+           "sweep": v["sweep"]}
+    if not v["sweep"]:
+        out.update(allowed=False, kind="host-closed", rule="/")
+        out["reason"] = v["reason"]
+        return out
+    if v["state"] != "read":
+        out["reason"] = (f"no rules were read ({v['state']}) — **absence of a "
+                         f"file is not a refusal**, and it is not a permission "
+                         f"either. Proceed at a human pace and say so.")
+        return out
+    best_d = max(((_match_len(p, path), p) for p in v.get("disallow") or []),
+                 default=(-1, None))
+    best_a = max(((_match_len(p, path), p) for p in v.get("allow") or []),
+                 default=(-1, None))
+    if best_d[0] < 0:
+        out["reason"] = "no `Disallow` in the `*` group matches this path."
+        return out
+    # A tie goes to `Allow`: the specification's rule, and the direction that
+    # respects an operator who wrote both.
+    if best_a[0] >= best_d[0]:
+        out.update(rule=best_a[1], kind="allow")
+        out["reason"] = (f"`Allow: {best_a[1]}` matches at least as much of "
+                         f"this path as `Disallow: {best_d[1]}`.")
+        return out
+    out.update(allowed=False, rule=best_d[1], kind="disallow")
+    out["reason"] = (f"`{v['host']}` refuses this path to `User-agent: *` — "
+                     f"`Disallow: {best_d[1]}`. **This is a refusal aimed at "
+                     f"everyone, not at a named crawler**, and the intention "
+                     f"behind it does not change its effect.")
+    return out
 
 
 def _main():

@@ -897,7 +897,7 @@ is worth more than a third example confirming it.
 
 ### Files nobody wrote, and the asymmetry that identifies them
 
-The managed-block section above assumes a CDN. **Four more routes produce a
+The managed-block section above assumes a CDN. **Five more routes produce a
 rules file that no operator wrote:**
 
 - **The CMS default.** `mlvt.gov.kh`, a labour ministry, serves the
@@ -916,6 +916,28 @@ rules file that no operator wrote:**
 - **The CMS plugin.** `www.trabajo.gob.ec`, the Ecuadorian labour ministry —
   **176 bytes** fenced by `# START YOAST BLOCK` and `# END YOAST BLOCK`, an
   empty `Disallow:`, one `Sitemap:` that is real (below). Verified 2026-09-03.
+
+- **The documentation itself.** `empleate.gob.hn`, Honduras's public
+  employment service — **394 bytes that are Google's own help page, verbatim**,
+  including the headings:
+
+  ```
+  # Example 1: Block only Googlebot
+  # Example 2: Block Googlebot and Adsbot
+  # Example 3: Block all crawlers except AdsBot …
+  ```
+
+  Somebody copied the three worked examples, replaced the paths, and shipped
+  the comments with them — including example 3's, which describes a case the
+  file does not implement.
+
+  **And it is the only one of the six that produces an enforceable refusal.**
+  The others leave a neutral file or a third party's block; this one carries
+  `User-agent: * / Disallow: /Vacantes/` — valid, applicable, and aimed
+  precisely at the vacancies. **The intention behind a directive does not
+  change its effect**, which is the rule this file already applies to
+  `akhtaboot` and to the Cloudflare blocks, here in the direction that costs
+  us. Issue #101.
 
 **The five look nothing alike, and that is the finding.** One is the same
 Cloudflare block byte-for-byte across eleven sites in eight countries; another

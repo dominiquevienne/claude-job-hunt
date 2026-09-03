@@ -329,8 +329,15 @@ and it binds**, as does a rate limit, a login wall, and any `robots.txt`
 refusal — the position changes how an ambiguous clause is read, it never
 creates permission a board withheld. Issues #48 and #81.
 
-**Ask `skills/job-scan/scripts/_robots.py` before you fetch, and say what you
-do with a refusal.** Counted 2026-09-03 across 61 adapters: **16 ask, 45 do
+**Ask `skills/job-scan/scripts/_robots.py` before you fetch, and ask it about
+the path — `verdict()` answers *is this host closed in one block*, and
+`allowed(host, path)` answers the question an adapter actually has.** They are
+different questions, and until #101 only the first existed:
+`empleate.gob.hn` refuses `/Vacantes/` and `/Candidatos/` to `User-agent: *`
+while `/` is absent, so `sweep` is **True** and every vacancy on it is
+refused. **A green light on the host is not a green light on the path.**
+
+**And say what you do with a refusal.** Counted 2026-09-03 across 61 adapters: **16 ask, 45 do
 not.** The module was corrected three times that week — #96, #98, #99 — and
 those corrections reach the sixteen.
 
