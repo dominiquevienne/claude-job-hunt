@@ -294,9 +294,18 @@ them for the same reason — they look like what was being searched for.
 | :-- | :-- | :-- |
 | `…/jobs-job-offers` on Encuentra24 | a **guessed URL that answers** — an existence check succeeds | a redirect to the site root |
 | *"All Job Ads on a Single Page"* on jobs.ge | a **string that names the feature** being looked for | the caption of a banner advertisement |
+| `rd.computrabajo.com` | a **guessed host that answers `200` with 33 730 bytes of the right operator's site** | the **global** portal — the Dominican one is `do.` |
 
 **A guessed name that does not resolve disqualifies itself**; one that answers
-does not. **A string that describes a capability is not the capability.** Both
+does not. **A string that describes a capability is not the capability.**
+
+**And the third is the hardest, because even a brand check passes it.**
+`rd` is what a Spanish speaker abbreviates *República Dominicana* to, and
+`rd.computrabajo.com` answers `200` with a real Computrabajo page. *Is it
+reachable?* yes. *Is it the right operator?* yes. **Only the `<title>`
+separates the global portal from the Dominican site**, which is `do.` — so the
+check that works is the one for the thing you actually wanted, not for the
+thing you would have accepted. Both
 were accepted by plausibility and refuted only by looking at what came back —
 which is the same discipline as counting distinct ids instead of links.
 

@@ -96,6 +96,51 @@ card carries the displayed name and the company page's own hex id, and dedup
 uses those. Reading the slug as the employer would merge and split companies
 in ways nobody could audit.
 
+## Seven countries, four measurements, and the corpora are distinct
+
+**The `robots.txt` is identical on all eighteen sites, so it cannot say
+anything about the network's shape.** On this board there is nothing to read:
+the intersection test is the only instrument. Measured 2026-09-03 across
+`ec co pe mx cr pa do`:
+
+| | |
+| :-- | :-- |
+| Cross-country **id** overlap | **0**, over 21 pairs and 140 ads |
+| Cross-country **title + employer** overlap | **0**, over 6 pairs, once blank employers are excluded |
+
+**Seven markets, seven corpora.** That is the **fourth** resolution of *one
+platform, many countries* in this repository, and it agrees with none of the
+other three: Bumeran gave distinct corpora under a shared filename marker,
+Encuentra24 gave **one** corpus under two language prefixes, and hr.ge gave two
+identical brands out of six. **A pattern that resolves four ways is not
+predictive** — measure it every time.
+
+### Half of every id is the same sixteen characters
+
+```
+C49824F7E83E82A4 61373E686DCF3405
+1E48827D9AC02D50 61373E686DCF3405
+```
+
+**`61373E686DCF3405` is on every id, on all seven countries and on three
+different keywords.** So the "32-hex id" is a 16-hex id followed by a
+platform-wide constant. It is harmless — the ids stay unique, and the ledger
+key needs no country — but **a reader who takes the tail for a site or tenant
+marker is reading noise**, and two ads from one country are enough to suggest
+that and not enough to refute it.
+
+### And the comparison that found four matches was matching blanks
+
+The first pass of the test above joined on `(title, employer)` and reported
+**four cross-country matches**. Every one of them was a pair of ads with **no
+employer name**, matching each other on the empty string.
+
+**An empty field equals an empty field.** The employer is absent on **3 of 20
+Mexican cards and 14 of 20 Peruvian ones** — 15% against 70% — so a join on
+that column produces matches in proportion to how anonymous a market is, and
+none of them are real. **Exclude the blanks before comparing, and report how
+many you excluded.**
+
 ## Pagination ends honestly
 
 `?q=programador&p=<n>` was distinct at pages 2, 5 and 40, and **page 200
