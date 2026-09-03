@@ -435,22 +435,33 @@ check the field against something it should correlate with, as
 `oposiciones.md` does by comparing `estadoPlazoF` with the closing date it
 claims to describe.
 
-## An empty result deserves a second reading. A full one does not
+## An empty result deserves a second reading. A full one deserves a different one
 
 **Everything above is about a board lying to you. This is about your own
-scripts**, and it has a direction: a defect that breaks a request makes an
-emptiness, one that breaks a count makes a zero, one that breaks a read makes
-an absence. **There is almost no bug that fabricates content.**
+scripts**, and the direction of the error is set by **which layer broke**:
 
-So **a plugin whose tooling decays does not become noisy — it goes quiet, and
-it looks like it did a good job.** Which is this file's own failure, arriving
-through the tooling instead of through the site.
+> **A tool that breaks *retrieval* impoverishes the world. A tool that breaks
+> *reading* can enrich it with things that are not there.**
+
+A broken request, a stale file, a lost redirect, a discarded `stderr` — those
+can only produce an emptiness. **A broken pattern usually produces one too,
+and it is the only layer that can invent one.**
+
+So **a plugin whose retrieval decays does not become noisy: it goes quiet and
+looks like it did a good job** — this file's own failure, arriving through the
+tooling instead of through the site. **And a plugin whose parsing decays can
+publish a finding that was never there**, which is worse in a different way,
+because an invented pathology reads like a discovery.
 
 **Before writing down that something is empty, gone, or not found: re-derive it
-a second way.** `shared/plausible-and-false.md`, *A tooling defect has a
-direction*, holds the seven measured cases and the four habits — the strongest
-being: **compare two numbers that must agree**, because a single number cannot
-disagree with itself.
+a second way. Before writing down that you found a pattern: look at the names,
+not the count.** A frequency of malformed files that includes `indeed.com` and
+`hays.fr` is a parser bug, not a finding — measured, and 41 of 143 turned out
+to be 6 of 76.
+
+`shared/plausible-and-false.md`, *A tooling defect has a direction*, holds the
+cases and the habits — the strongest still being: **compare two numbers that
+must agree**, because a single number cannot disagree with itself.
 
 ## Errors
 

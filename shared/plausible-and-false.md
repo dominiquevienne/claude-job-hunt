@@ -224,24 +224,63 @@ is not diagnostics — it is half the result**, and `successfactors.py`,
 legitimately want to follow. The rule is to notice when yours is not one of
 them.)*
 
-## A tooling defect has a direction, and it points at "there is nothing"
+## A tooling defect has a direction, and the direction is set by the layer that broke
 
 **This is a claim about our own scripts, not about boards, and it changes what
 deserves a second look.**
 
-**A defect that breaks a request produces an emptiness. A defect that breaks a
-count produces a zero. A defect that breaks a read produces an absence. There
-is almost no bug that fabricates content.** So when the tooling is wrong, it is
-wrong in one direction — and that direction is *giving up*.
+> **A tool that breaks *retrieval* impoverishes the world. A tool that breaks
+> *reading* can enrich it with things that are not there.**
 
-**A plugin whose tooling decays does not get noisy. It goes quiet, and it looks
-like it did a good job.**
+| The broken layer | Which way it errs |
+| :-- | :-- |
+| **Retrieval** — the request, a stale file, a compression nobody asked for, a redirect lost, `stderr` discarded | **emptiness, always.** There is nothing else it can produce |
+| **Interpretation** — a grammar, a pattern, a way of splitting | **usually emptiness too — but it is the only layer that can invent** |
 
-> **A tooling error almost always errs towards "there is nothing", so an empty
-> result deserves a second reading that a full result does not.**
+**So an empty result still deserves a second reading that a full one does not**,
+because both layers can produce it. What changed is the other half: **a full
+result is no longer safe by construction**, only rarer.
+
+### How this file got the rule too wide, and it is the same fault it warns about
+
+The first version read *"a tooling error almost always errs towards there is
+nothing"*, full stop. **It was written from eighteen measurements that were
+almost all retrieval defects** — a sample of one half of the phenomenon,
+presented as the whole.
+
+**That is this file's own rule on independence, broken on this file's own
+doctrine.** Eighteen agreeing cases felt like strong evidence; they were
+eighteen instances of one mechanism.
+
+**The counter-example arrived the same day.** A counter of malformed
+`User-agent` groups reported **41 files of 143**; the true figure is **6 of 76
+— 8%**. A factor of seven, **in the direction of invention**, because it
+treated consecutive `User-agent:` lines as separate groups when they form one.
+`indeed.com`, `totaljobs.com`, `hays.fr`, `hellowork.com`, `infoempleo.com` and
+`vieclam24h.vn` were all false positives.
+
+**And an invented pathology looks like a discovery.** The false 41 presented
+itself as a publishable result: a frequent pattern, a percentage, a list of
+large boards. **An emptiness invites doubt; a fullness invites writing it up.**
+
+**It was not caught by a number.** Every earlier defect announced itself with
+an absurd figure — twelve zeros, 0 `<loc>` beside 3 193 `<lastmod>`. This one
+was caught by **the names**: `indeed.com` and `hays.fr` do not belong in a list
+of badly written files.
+
+> **For a retrieval defect, the tell is a number that cannot be true. For an
+> interpretation defect, it is a name that does not belong.**
+
+*(Six of 76, incidentally, is not a curiosity to collect: `mtss.go.cr`'s `www`,
+`ikman.lk`, `jobsireland.ie`, `mtps.gob.sv` and `apec.fr`'s `www` — **an
+ordinary way to write a malformed file**, and reason enough for a parser to
+handle it rather than to note it.)*
+
+### The eighteen, which are all still true — and all of one half
 
 **Measured on this repository's own scripts, 2026-09-03**, each verified rather
-than recalled:
+than recalled. **Read them now as what they are: retrieval and pattern defects
+that impoverished**, not as evidence about the other direction:
 
 | The defect | What it produced |
 | :-- | :-- |
@@ -253,11 +292,13 @@ than recalled:
 | `employers.py` reading the file's own preamble as employers | would report a company's **absence of decisions as fact** |
 | `--compressed` on a host with broken chunked framing | `200`, **0 bytes**, or a network error depending on what you recorded |
 
-**And the counter-example, because "almost always" is the honest form.** The
-undated-fact check in `employers.py` erred the *other* way: it reported four
-undated facts in a file where two carried their date on a wrapped line. **That
-one cries wolf, and its failure mode is being switched off** — after which the
-real ones go unseen. So the exception ends in the same place as the rule.
+**And one of them already pointed the other way, which should have been the
+warning.** The undated-fact check in `employers.py` reported four undated facts
+in a file where two carried their date on a wrapped line — **an interpretation
+defect, inventing a fault that was not there.** It was filed as an exception
+that "ends in the same place as the rule" because it gets switched off. **That
+was true and it was not the point**: it was the second half of the phenomenon,
+already measured, and read as a footnote to the first.
 
 ### The false full, which is rare and therefore worse
 
@@ -319,14 +360,15 @@ two numbers travel together:
 
 **A single number cannot disagree with itself.**
 
-### The direction depends on what carries the number, not on what it is about
+### And a third case, which is neither layer: a number nobody recomputed
 
-**A hand that copies is not a tool that runs, and they lean opposite ways.**
+**A hand that copies is not a tool that runs.**
 
-The rule above holds because a tool is *mechanically* constrained: a broken
-request yields an emptiness, a broken count a zero, a broken read an absence.
-**A person transcribing a figure has no such constraint** — and what gets
-transcribed wrongly tends to be the flattering version.
+Retrieval is *mechanically* constrained: a broken request can only yield an
+emptiness. **A person transcribing a figure has no such constraint** — and what
+gets transcribed wrongly tends to be the flattering version. This is not the
+interpretation layer either: nothing was misread, a correct figure simply
+stopped being true.
 
 Measured the same day, on this repository's own Atlas: **36 counters could be
 checked against their pages and 16 were wrong.** The nine untouched by that
@@ -347,7 +389,8 @@ from before the merge.
 
 | The carrier | Which way it errs | What catches it |
 | :-- | :-- | :-- |
-| **A script** | towards *"there is nothing"* | a value that looks impossible — twelve zeros, 0 `<loc>` beside 3 193 `<lastmod>` |
+| **Broken retrieval** | towards *"there is nothing"* | a value that cannot be true — twelve zeros, 0 `<loc>` beside 3 193 `<lastmod>` |
+| **Broken interpretation** | usually the same, **but it can invent** | **a name that does not belong** — `indeed.com` in a list of malformed files |
 | **A hand transcribing** | towards *the flattering reading* | **nothing looks wrong** — only re-deriving it does |
 
 **The second is the more dangerous, because a dashboard makes it credible**,
