@@ -213,6 +213,32 @@ class RobotsPaths(unittest.TestCase):
         self.assertEqual(_robots._match_len("/x$", "/x"), 2)
         self.assertEqual(_robots._match_len("/x$", "/xy"), -1)
 
+    def test_an_empty_disallow_is_not_a_refused_path_in_the_verdict(self):
+        """`_match_len` knew this; `verdict()` did not, and counted it.
+
+        **`employtt.gov.tt` publishes 26 bytes** — `User-agent: *` and a bare
+        `Disallow:` — the most permissive file there is. The sentence came out
+        *"this host refuses 1 path(s) to `*` ... :"* with nothing after the
+        colon. **The permission was right and the account of it was wrong**,
+        which is its own kind of wrong: a reader deciding whether to write an
+        adapter reads the sentence.
+        """
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda host: {
+            "state": "read", "final": host, "attempts": 1,
+            "body": "User-agent: *\nDisallow:\n"}
+        try:
+            v = _robots.verdict("employtt.gov.tt")
+            self.assertIs(v["sweep"], True)
+            self.assertEqual(v["disallow"], [])
+            self.assertIsNone(v["reason"])
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
     def test_an_empty_disallow_matches_nothing(self):
         # It is how a file says *nothing is closed*. Matching everything at
         # length zero would close the site instead.

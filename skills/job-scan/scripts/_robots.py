@@ -423,6 +423,14 @@ def verdict(host):
     # opened `*` and closed `ClaudeBot` was reported open, and the error went
     # towards permitted on the one kind of file that addresses us by name.
     token, dis, allow, matched = group_for(body)
+    # **An empty `Disallow:` is not a refused path — it is how a file says
+    # *nothing is closed*.** `_match_len` has known that since #101, and a
+    # test pins it; `verdict()` did not, and counted the empty string as a
+    # rule. `employtt.gov.tt` publishes 26 bytes — `User-agent: *` and a bare
+    # `Disallow:` — and the sentence came out "**this host refuses 1 path(s)
+    # to `*` ... : **" with nothing after the colon. The permission was right
+    # and the account of it was wrong, on the most permissive file there is.
+    dis = [d for d in dis if d]
     out["disallow"] = dis
     out["allow"] = allow
     out["group"] = token
