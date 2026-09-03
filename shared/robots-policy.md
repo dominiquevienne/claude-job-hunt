@@ -738,6 +738,42 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## When the same operator's data is reachable through a host that says nothing
+
+Decided 2026-09-03, on Chile's `practicasparachile.cl`. **It is the mirror
+image of the section above, and the two must not be confused.**
+
+`www.practicasparachile.cl` passes the guard: its `/robots.txt` returns the
+site's own HTML shell, no rules were read, and **an unreadable file is not a
+refusal.** Its offers are not in the page — they are fetched from
+`apisqa.empleospublicos.cl`, an API host that publishes **no robots.txt at
+all**, so that host permits too.
+
+**And `empleospublicos.cl` — the operator of those records — publishes
+`User-agent: * / Disallow: /`.**
+
+**The rule.** When the data behind an open host belongs to an operator whose
+own host refuses, **the refusal governs.** Reading the same records through an
+API host that merely omits a rules file is **choosing the host that says yes**,
+and the omission is a deployment detail rather than a decision. `icims.py`
+already warns aloud when an employer's two hosts disagree, precisely so the
+convenient one is never picked quietly; this says the same thing about an API
+subdomain, a CDN origin, a staging host, or anything else the same operator
+runs.
+
+**How this differs from the Empléate case, which is the whole distinction.**
+There, a public register serves ads **a third party chose to supply it**: two
+operators, and the one we read is the one that published to us. Here there is
+**one operator**, and the second host is its own plumbing. *Supplied to
+somebody else* and *left unlabelled on my own second machine* are not the same
+act, and only the first is a publication.
+
+**The test to apply.** Ask **whose** records these are, not **which host**
+answered. If the answer names an operator that refuses anywhere it has spoken
+plainly, stop — and record the refusal as the reason, so nobody later reads the
+absence of an adapter as an oversight. `chile-public-sector.md` is the worked
+example.
+
 ## The group that binds you is not always `*`
 
 **`_robots.py` evaluated `*` and never consulted a record naming this

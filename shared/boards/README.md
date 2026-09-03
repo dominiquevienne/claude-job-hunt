@@ -455,6 +455,13 @@ read, exits **7** on a refusal with the module's own words, and keeps its
 Cloudflare stop **separate** — because that host says `Allow: /` and answers
 `403`, so **the stop is not a robots verdict** and must not be written as one.
 
+**`employtt.md` (Trinidad and Tobago) is the worked example of a listing that
+looks complete.** Its `/jobs/list` serves 21 advertisements in one request; two
+of them expired the day before and are still there, while `/jobs/view/2618`
+renders a complete advertisement that expires *later* and is not listed.
+**Membership tracks neither expiry nor recency**, so the adapter reports the
+listing's count as the listing's and does not call it the board.
+
 **Not every portal becomes an adapter, and the ones that do not are worth a
 card.** `chile-public-sector.md` records five Chilean government portals
 assessed on 2026-09-03 and **why none of them yields one** — a training service
