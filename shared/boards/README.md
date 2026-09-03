@@ -462,6 +462,14 @@ renders a complete advertisement that expires *later* and is not listed.
 **Membership tracks neither expiry nor recency**, so the adapter reports the
 listing's count as the listing's and does not call it the board.
 
+**`melr-gh.md` is the other shape of the same lesson.** Ghana's labour
+ministry answers **200 with its home page under every URL** — including
+`/index.php/99/99/complete-nonsense-xyzzy`, which is line-for-line identical to
+`/index.php/6/7/job-seekers`. An adapter written there would have parsed the
+home page's navigation as job data and reported a steady count for ever.
+**The check that settles it is not the status and not the size: it is whether
+two different requests produce two different bodies.**
+
 **Not every portal becomes an adapter, and the ones that do not are worth a
 card.** `chile-public-sector.md` records five Chilean government portals
 assessed on 2026-09-03 and **why none of them yields one** — a training service
