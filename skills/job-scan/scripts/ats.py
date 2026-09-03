@@ -60,6 +60,11 @@ def die(msg, code=2):
 
 
 def fetch(url):
+    # **The choke point.** Every SmartRecruiters request goes through here —
+    # the listing, the ad, and the description fetch — so the override is
+    # checked once per host rather than once per call site. Issue #121.
+    if url.startswith(SR_API):
+        smartrecruiters_gate()
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=60)
@@ -239,6 +244,70 @@ def ashby_card(tenant, j, with_description=False):
 SR_API = "https://api.smartrecruiters.com/v1/companies"
 SR_PAGE = 100        # asking for more is silently clamped, never refused
 SR_MAX_PAGES = 30    # 3000 postings; boards this large need --country anyway
+
+
+SR_HOST = "api.smartrecruiters.com"
+
+# **Set once, from the CLI, and read at the only place every SmartRecruiters
+# request passes.** Gating `list` alone left `ad` and the description fetch
+# open — three call sites, which is how `hiringcafe.com` came to be built in
+# three places. A new call site cannot miss this one.
+_SR_OVERRIDE = False
+_SR_ANNOUNCED = False
+
+
+def smartrecruiters_gate(a=None):
+    """Ask, and then either stop or say the override is on. Issue #121.
+
+    **`api.smartrecruiters.com` publishes `User-agent: * / Disallow: /`, open
+    only to `LinkedInBot`** — 72 bytes, measured 2026-09-03. That is the AMS
+    shape exactly, which `shared/robots-policy.md` handles under its own
+    question and its own procedure.
+
+    **Until now this file simply did not ask.** Line 418 gated teamtailor and
+    nothing gated this, so the adapter read a host that refuses it and **the
+    exception existed nowhere** — not as a decision, not as a note, not as a
+    silence anybody could see. That is the defect, more than the reading.
+
+    **The reasoning is in `shared/boards/smartrecruiters.md` and it has
+    borders**: the `llms.txt` that was first cited turned out to sit on other
+    hosts and index marketing and documentation pages, and the most specific
+    declaration for this host is its own file, which refuses. **It does not
+    generalise** — Greenhouse, Workable and both Lever hosts permit, and are
+    read without any of this.
+
+    So the override is the repository's documented one: **a key that is absent
+    by default, an onboarding step with nothing pre-ticked, and a sentence on
+    every run.**
+    """
+    global _SR_ANNOUNCED
+    v = robots_verdict(SR_HOST)
+    if v["sweep"]:
+        return                      # nothing to override; say nothing
+    allowed = _SR_OVERRIDE or getattr(a, "override_robots", False)
+    if not allowed:
+        die(f"{SR_HOST}: {v['reason']}\n"
+            f"  **This board is skipped, not silently obeyed.** Reading it "
+            f"needs `boards.smartrecruiters.override_robots: true` in "
+            f"config.yml, which `shared/setup.md` sets only after telling you "
+            f"what it costs — and what it costs is **your own address**, not "
+            f"this project's: the block lands on the machine making the "
+            f"requests.\n"
+            f"  **It does not generalise.** Greenhouse, Workable and Lever "
+            f"publish files of the same kind that permit, and are read "
+            f"without any of this.", code=7)
+    # **Every run, in the output the user reads.** An override nobody is
+    # reminded of is an override nobody consented to twice. Once per run, not
+    # once per request — a line repeated 103 times is noise, not consent.
+    if _SR_ANNOUNCED:
+        return
+    _SR_ANNOUNCED = True
+    print(f"[smartrecruiters] robots.txt override ACTIVE — {SR_HOST} "
+          f"disallows everything to all agents but LinkedInBot. **You "
+          f"enabled this**, and the address that gets blocked is yours. One "
+          f"request at a time, and this run stops on the first block rather "
+          f"than retrying. See shared/robots-policy.md and "
+          f"shared/boards/smartrecruiters.md.", file=sys.stderr)
 
 
 def smartrecruiters_list(tenant, _want_content=True, a=None):
@@ -818,6 +887,15 @@ def main():
     def common(sp):
         sp.add_argument("--provider", required=True, choices=PROVIDERS)
         sp.add_argument("--tenant", required=True)
+        sp.add_argument(
+            "--override-robots", action="store_true",
+            dest="override_robots",
+            help="SmartRecruiters only. **Never pass this by hand.** It "
+                 "carries `boards.smartrecruiters.override_robots` from "
+                 "config.yml, which `shared/setup.md` sets only after the "
+                 "user has been told what it costs — and it costs their own "
+                 "address, not ours. Absent means the board is skipped and "
+                 "says so.")
 
     li = sub.add_parser("list", help="list an employer's postings")
     common(li)
@@ -847,6 +925,8 @@ def main():
     rs.set_defaults(func=cmd_resolve)
 
     a = p.parse_args()
+    global _SR_OVERRIDE
+    _SR_OVERRIDE = bool(getattr(a, "override_robots", False))
     if getattr(a, "country", None) and a.provider != "smartrecruiters":
         die(f"--country is a SmartRecruiters server-side filter; {a.provider} "
             f"has no equivalent. Use --location, which filters locally.")
