@@ -353,12 +353,25 @@ nothing calls it.**
 | :-- | :-- | :-- |
 | **1 — a published API with its own terms** | `adzuna`, `labonnealternance` (both load a key), `francetravail`, `arbeitsagentur`, `platsbanken` | The operator publishes the interface for programmatic use, through a developer portal or a state open-data programme. **`robots.txt` governs crawling a website; it does not govern an API published to be called.** Write that reason in the card — do not merely omit the call |
 | **2 — public pages, and the host's file applies** | the bulk: `computrabajo`, `hellowork`, `hiringcafe`, `randstad`, `randstadfr`, `stepstone`, `turijobs`, `wttj`, `jobstore`, `kalibrr`, `infoempleo`, `jobbkk`, `swissdevjobs`, `sozialinfo`, `fachkraft`, `freework`, `oposiciones`, `empleate`, `mycareersfuture`, `jobroom`, `apec`, `adecco`, `anefa`, `batiactu`, `crit`, `emploiterritorial`, `fhf`, `hays`, `jobology`, `jobsireland`, `meteojob`, `michaelpage`, `persigo` | **A keyless JSON endpoint on a site's own domain is the site's backend, not a published API.** `mycareersfuture` and `jobroom` are in this class for that reason |
-| **3 — a family of tenants, one verdict each** | `flatchr`, `recruitee`, `talentsoft`, `pinpoint`, `digitalrecruiters`, `solique`, `persigo` | **The verdict is per tenant**, which is the module's stated reason for existing — and `icims` and `taleez` already do it. Two Teamtailor tenants set `ai-input=no` while the repository recorded the permissive one as platform policy (#73) |
+| **3 — a family of tenants, one verdict each** — **wired** | `flatchr`, `recruitee`, `talentsoft`, `pinpoint`, `digitalrecruiters`, `solique`, `persigo` | **The verdict is per tenant**, which is the module's stated reason for existing — and `icims` and `taleez` already did it. Two Teamtailor tenants set `ai-input=no` while the repository recorded the permissive one as platform policy (#73) |
 
 **Do not wire all forty-five at once.** A call added without the adapter
 knowing what to do with the answer **is worse than no call: it looks like a
 control.** Every wiring says what a `sweep: False` does — stop, and exit with a
 code the caller reads.
+
+**Class 3 is done, and the shape each of the seven took is the one to copy.**
+A `_robots_gate(url, tag)` sits inside the adapter's own fetch function, so
+**every request is covered rather than the first one**, and it asks
+`allowed(host, path)` — per tenant *and* per path, because a careers site that
+refuses its ad path while leaving its root open passes a host-level check and
+refuses every advertisement. A refusal exits **7** with the module's words.
+
+Measured after wiring: none of the seven platforms refuses today, and one
+reports a cross-host redirect — `jobs.recruitee.com` answers from
+**`careers.tellent.com`**. **A tenant platform that has been bought reaches an
+adapter as a redirect before it reaches it as a rename**, and the gate prints
+that rather than swallowing it.
 
 `ssge.py` is the worked example, and it was the argument: it hard-coded its
 refusals while `ss.ge`, `home.ss.ge` and `jobs.ss.ge` publish **three

@@ -34,6 +34,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import allowed as robots_allowed
+
 BASE = "https://{}.talent-soft.com"
 LIST = "/offre-de-emploi/liste-offres.aspx?page={}&LCID={}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -99,7 +101,36 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+def check_robots(url):
+    """Per tenant, and per path — because on this platform both vary.
+
+    **A Talentsoft careers site is the employer's host**, so the rules file is
+    the employer's decision and not the vendor's: two tenants of one platform
+    have already been found declaring opposite things (#73). `icims` and
+    `taleez` have asked per tenant for weeks; these seven did not. Issue #100.
+
+    **And it asks about the path, not only the host.** `verdict()` answers *is
+    this host closed in one block*; a careers site that refuses `/offre-de-`
+    to `*` while leaving its root open would pass that and refuse every ad.
+    Issue #101.
+
+    A refusal **stops the command** with exit 7 and the module's own words.
+    """
+    parts = urllib.parse.urlsplit(url)
+    a = robots_allowed(parts.netloc, parts.path or "/")
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
+    if a.get("requested_host") and a["host"] != a["requested_host"]:
+        print(f"[talentsoft] robots.txt for {a['requested_host']} was read "
+              f"from {a['host']} — this platform has been rebranded to Cegid "
+              f"and its own domain redirects there, so the file governing a "
+              f"tenant is worth checking rather than assuming.",
+              file=sys.stderr)
+    return a
+
+
 def fetch(url):
+    check_robots(url)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml",

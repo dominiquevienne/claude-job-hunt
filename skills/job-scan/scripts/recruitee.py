@@ -72,7 +72,10 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+
+from _robots import allowed as robots_allowed
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
@@ -85,6 +88,36 @@ TENANT_RE = re.compile(r"https?://([a-z0-9][a-z0-9-]*)\.recruitee\.com", re.I)
 def die(msg, code=2):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(code)
+
+
+def _robots_gate(url, tag, exit_code=7):
+    """Ask per tenant and per path before fetching. Issues #100 and #101.
+
+    **On a tenant platform the rules file is the employer's, not the vendor's**
+    — two Teamtailor tenants declared opposite things while this repository
+    recorded the permissive one as platform policy (#73). `icims` and `taleez`
+    have asked per tenant for weeks; this adapter did not.
+
+    **And it asks about the path.** `verdict()` answers *is this host closed in
+    one block*; a careers site that refuses its ad path while leaving its root
+    open passes that check and refuses every advertisement.
+
+    A refusal **stops the command** with exit 7 and the module's own words —
+    nothing here decides what a refusal means.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return None
+    a = robots_allowed(parts.netloc, parts.path or "/")
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", exit_code)
+    if a.get("requested_host") and a["host"] != a["requested_host"]:
+        print(f"[{tag}] robots.txt for {a['requested_host']} was read from "
+              f"{a['host']} — a redirect crossed hosts, and a platform that "
+              f"has been renamed reaches us this way before it reaches us as "
+              f"a rename.", file=sys.stderr)
+    return a
+
 
 
 def note(msg):
@@ -101,6 +134,7 @@ def host(tenant):
 
 def api(tenant, retries=2):
     url = f"https://{host(tenant)}.recruitee.com/api/offers/"
+    _robots_gate(url, "recruitee")
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "application/json"})
     for attempt in range(retries + 1):

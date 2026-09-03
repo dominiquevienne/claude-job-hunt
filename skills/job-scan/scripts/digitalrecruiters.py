@@ -39,6 +39,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import allowed as robots_allowed
+
 API = ("https://api.digitalrecruiters.com/public/v1/careers-site/job-ads")
 SITE = "https://api.digitalrecruiters.com/careers/v1/careers-sites/{}"
 AD_URL = "https://{}/{}/annonce/{}"
@@ -65,6 +67,36 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+def _robots_gate(url, tag, exit_code=7):
+    """Ask per tenant and per path before fetching. Issues #100 and #101.
+
+    **On a tenant platform the rules file is the employer's, not the vendor's**
+    — two Teamtailor tenants declared opposite things while this repository
+    recorded the permissive one as platform policy (#73). `icims` and `taleez`
+    have asked per tenant for weeks; this adapter did not.
+
+    **And it asks about the path.** `verdict()` answers *is this host closed in
+    one block*; a careers site that refuses its ad path while leaving its root
+    open passes that check and refuses every advertisement.
+
+    A refusal **stops the command** with exit 7 and the module's own words —
+    nothing here decides what a refusal means.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return None
+    a = robots_allowed(parts.netloc, parts.path or "/")
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", exit_code)
+    if a.get("requested_host") and a["host"] != a["requested_host"]:
+        print(f"[{tag}] robots.txt for {a['requested_host']} was read from "
+              f"{a['host']} — a redirect crossed hosts, and a platform that "
+              f"has been renamed reaches us this way before it reaches us as "
+              f"a rename.", file=sys.stderr)
+    return a
+
+
+
 def _read(r):
     body = r.read()
     if r.headers.get("Content-Encoding", "").lower() == "gzip":
@@ -73,6 +105,7 @@ def _read(r):
 
 
 def call(url, post=False):
+    _robots_gate(url, "digitalrecruiters")
     data = b"{}" if post else None
     headers = {
         "User-Agent": UA,
