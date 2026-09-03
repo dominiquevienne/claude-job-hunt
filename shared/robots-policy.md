@@ -778,6 +778,19 @@ differing by one identifier:
 - `hr.ge` / `cv.ge` / `career.ge` — pulled and compared: **39 287 URLs
   strictly identical**, 1 112 ads in common at 100%, files of 5 383 203 bytes.
   **Three brands, one corpus.**
+
+  **Two brands, and a third that was reading someone else's file.** Re-measured
+  2026-09-03 through the tenant numbers those sitemaps are served under:
+  `hr.ge` is tenant 1 and `cv.ge` tenant 2, both **1 062 advertisements** —
+  genuinely one corpus. **`career.ge` is tenant 3 and has none at all**, and it
+  appeared here because **its own `robots.txt` declares `tenant/1`**, which is
+  hr.ge's sitemap. The comparison was of files, and the files agreed because
+  two of the three brands pointed at the same one.
+
+  **And the file was never the ad count**: of those 39 247 `<loc>`, **36 593
+  are `/customer/` employer pages** and 1 505 are search landing pages. The
+  platform has six tenants, three of which publish ads —
+  `shared/boards/hr-ge.md` has the table.
 - `ar` / `pe` / `mx.jobomas.com` — `robots.txt` of 2 074 bytes each, one line
   of `diff`, the 172nd: their own sitemap's domain. Pulled: **2 003, 2 796 and
   5 067 `<loc>`**, 45 paths in common — the structural pages. **Three
