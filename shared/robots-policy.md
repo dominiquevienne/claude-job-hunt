@@ -65,6 +65,20 @@ rules file while `www.jobs.co.id/robots.txt` redirects and serves 171 888 bytes
 of HTML. **One host is not the other host**, and `104.com.tw` serves two
 different md5s across the pair.
 
+**And the third mechanism in the pair is TLS, which fails before any status
+code exists.** `trabajo.gob.ec` resolves and answers nothing a client will
+accept — `curl: (60) SSL: no alternative certificate subject name matches
+target host name` — while **`www.trabajo.gob.ec` serves the file normally**,
+`200`, 176 bytes. Verified 2026-09-03.
+
+**Which of the two names works is not predictable**, and that is the whole
+point: `philjobnet.gov.ph` is this case running the other way — there the
+**apex** is the service and `www` presents Azure's default certificate. Two
+labour ministries, opposite answers, and a probe that tries one name and stops
+writes off a live national service either way. **Try both, and record which one
+you used**, because a certificate that does not cover the name is an outage of
+identity, not a policy — see *A non-answer is not a refusal* below.
+
 ### A non-answer is not a refusal
 
 **"Did not respond" and "refused" are different facts and only one of them is a
@@ -202,6 +216,26 @@ no checksum would have found it.
 
 So: **hash when the file carries nothing host-specific, diff when it does, and
 read the filenames either way.**
+
+**And before any of that, establish that what you hashed is the file.** Re-run
+on 2026-09-03, this time with a bare `curl`:
+
+```
+ec.computrabajo.com   403   118 bytes   bad2e8579dcdb79399aac2064216a37d
+co.computrabajo.com   403   118 bytes   bad2e8579dcdb79399aac2064216a37d
+pe.computrabajo.com   403   118 bytes   bad2e8579dcdb79399aac2064216a37d
+```
+
+**Three hosts, one hash, and the right conclusion for the wrong reason.** Those
+118 bytes are a refusal page; the file is 874 bytes and appears only for a
+request carrying an ordinary `User-Agent` and `Accept-Language` — at which
+point all four hosts, `.com.mx` included, return `cfcbd02061ac…` as recorded
+above. **A hash comparison agrees perfectly when nothing answered**, which is
+`shared/plausible-and-false.md`'s *blind agreement* in its cheapest form: the
+check shares its object's failure mode, because the failure is identical
+everywhere. **Assert the family on responses you have confirmed are the file —
+status `200`, `text/plain`, and a size that is not the size of an error
+page.**
 
 ### Five words for the verdict, used identically in every board file
 
@@ -744,9 +778,42 @@ one sentence, and it is the same one as Taleez's 296-of-14 221:
 
 > **The declaration says nothing. Pull the files and count the URLs.**
 
+**And the counter-example belongs here too, or the rule reads as cynicism.**
+`www.trabajo.gob.ec` declares `sitemap_index.xml` from inside its Yoast block,
+and it is **real**: `200`, `text/xml`, 1 585 bytes, **seven sub-sitemaps**.
+Verified 2026-09-03. Against the three ghosts already catalogued — `mol.gov.om`
+in `404`, `jordanjobs.net` valid and empty, `lmis.mol.gov.jo` an application
+shell — that is **three ways of lying and one of telling the truth**. The rule
+was never "sitemaps are worthless"; it is **"you do not know until you count"**,
+and a corpus with no true case cannot say that honestly.
+
+**Then the second half, which the count alone does not give you: real is not
+relevant.** The seven files are `post`, `page`, `ads_banner`, `ps_promotion`,
+`category`, `ads_banner_cat`, `author` — **a WordPress content sitemap, and not
+one of them is vacancies.** Counting `<loc>` here returns a confident number
+about a ministry's news articles. **A count answers "is anything there"; only
+the filenames answer "is it the thing you came for"** — the same arithmetic
+that would have reported Vieclam24h five times over by counting its occupation
+and province families as ads.
+
+**A fourth brand for the `_bum` filename evidence**, measured the same day:
+`multitrabajos.com` (Ecuador) declares five sitemaps and **all five end in
+`_bum`** — `sitemap_avisos_bum.xml`, `sitemap_core_bum.xml`,
+`sitemap_empresas_bum.xml`, `sitemap_listados_ubicacion_bum.xml`,
+`sitemap_tags_bum.xml`. The Bumeran marker survives under a brand whose name
+shares nothing with it, exactly as it did under Laborum and Konzerta. **And the
+files are real**: `avisos` is 1 158 822 bytes and carries **5 771 `<loc>`**.
+
+**The pair on one market is the instructive part.** On Ecuador,
+`multitrabajos` betrays its group in its own filenames and `computrabajo`
+declares **no `Sitemap:` at all** — same country, same trade, and only one of
+them can be settled this way. **A method that decided `hr.ge` and Jobomas has a
+domain of validity, and this is its edge.** A non-result that bounds a method
+is worth more than a third example confirming it.
+
 ### Files nobody wrote, and the asymmetry that identifies them
 
-The managed-block section above assumes a CDN. **Two more routes produce a
+The managed-block section above assumes a CDN. **Four more routes produce a
 rules file that no operator wrote:**
 
 - **The CMS default.** `mlvt.gov.kh`, a labour ministry, serves the
@@ -756,9 +823,28 @@ rules file that no operator wrote:**
 - **The online generator.** `camhr.com`, 154 bytes stamped
   `# robots.txt generated at …`, carrying an empty `Disallow:` followed by two
   real ones.
+- **The framework module.** `hahu.jobs` — **114 bytes** fenced by
+  `# START nuxt-robots (indexable)` and `# END nuxt-robots`, an empty
+  `Disallow:`, and a `Sitemap:` the module derived from the site's own base
+  URL. Verified 2026-09-03 — **and only over a redirect**: the apex answers
+  `301`, and a fetch without `-L` returns 178 bytes of nginx HTML, which is a
+  `robots.txt` in neither content nor type.
+- **The CMS plugin.** `www.trabajo.gob.ec`, the Ecuadorian labour ministry —
+  **176 bytes** fenced by `# START YOAST BLOCK` and `# END YOAST BLOCK`, an
+  empty `Disallow:`, one `Sitemap:` that is real (below). Verified 2026-09-03.
 
-**What they share is not infrastructure — it is that a rules file exists
-without anybody having wanted one.**
+**The five look nothing alike, and that is the finding.** One is the same
+Cloudflare block byte-for-byte across eleven sites in eight countries; another
+is 176 bytes that shout their origin in comments at both ends. **The plugin
+route is the most verbose of the five**, which inverts the intuition that a
+default is terse: a generator that signs its work leaves *more* text than an
+administrator would have written, not less. A reader looking for "short and
+generic" finds three of the five and misses two.
+
+**What they share is not infrastructure, not size and not tone — it is that a
+rules file exists without anybody having wanted one.** That is visible only
+with the five side by side, which is why the list is kept and not just the
+rule.
 
 **Identify them by content, never by fingerprint, and the asymmetry is the
 point.** An identical md5 against a known default establishes it; **a different
@@ -841,6 +927,34 @@ from mistaking a personal portfolio for a job board — **fails twice**:
 **An absent title refutes nothing, and a WAF's title is not the site's.** Read
 `og:title`, `og:site_name`, `<html lang>` and the meta description before
 concluding. **An empty title is not an empty site.**
+
+### A guessed hostname is a hypothesis, and confirming the concept does not confirm the address
+
+**The failure of #72 has a form that survives the check meant to catch it.**
+Ecuador's public employment service was looked for at **`socioempleo.gob.ec`**
+— a name assembled from what the programme is called. It has **no DNS record**
+(verified 2026-09-03). The obvious next step is to confirm the concept, and the
+concept confirms: *Socio Empleo* is real, it is the name of the deployed
+application, and it is served — at
+**`encuentraempleo.trabajo.gob.ec/socioEmpleo-war/paginas/index.jsf`**, 73 761
+bytes, `200`.
+
+**So the search returns evidence that you are looking for the right thing, and
+none that you are looking in the right place** — and the natural reading of the
+two together is *the right service, at a domain that has died*. It has not; it
+never had that name.
+
+| Guess | What answered | Why it misleads |
+| :-- | :-- | :-- |
+| `hirejordan.com` | A site, and not the one claimed | A name that resolves is not a name that is right |
+| `sajil` / `sajjil` | Nothing | A spelling slip — caught by re-reading |
+| **`socioempleo.gob.ec`** | **Nothing, while the concept checks out** | **The concept check succeeds and is mistaken for an address check** |
+
+**This one is not caught by re-reading, because there is nothing misspelt.** It
+is caught one way only: **read the official site's outbound links**, which is
+where `encuentraempleo` was found. A hostname that was never observed is a
+hypothesis until a link from an authority carries it — and *"the domain is
+dead"* is a claim about the world that needs the same evidence as any other.
 
 ## The same file is a source of coordinates, and reading it only for permission leaves them
 

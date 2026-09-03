@@ -153,6 +153,47 @@ default for measuring**, and neither raises anything.
 | `--compressed`, again | **3 255 reported against 5 582 counted** — on a WAF page whose *size was the signature* | a second occurrence, on a measurement that used size as its tell |
 | `-L` | **a `302` reported as "never returns an error status"** | Jobvite: both a real and an invented token `302` to `?invalid=1`, and the operator names the reason in the query. The file had built an oracle on two title strings that no longer exist |
 | `-L` | **a redirect loop read as a dead site** — `curl` gives up at the fiftieth hop | two hosts, where the truth is a trailing-slash loop and not a failure |
+| `--compressed`, a third time | **it did not distort a measurement — it manufactured a failure** | `www.trabajo.gob.ec`: `curl: (56) chunk hex-length char not a hex digit: 0x1f`. Without the flag, `200` and **74 622 bytes** |
+
+### The third one is a different kind, and it deserves its own name
+
+The first four entries **distort a measurement of something that worked**. The
+last one is not that. Verified 2026-09-03:
+
+```
+curl --compressed  https://www.trabajo.gob.ec/   → exit 56, http=200, bytes=0
+curl               https://www.trabajo.gob.ec/   → exit  0, http=200, bytes=74622
+```
+
+**`0x1f` is gzip's first magic byte.** The server sends gzip while breaking the
+chunked framing around it, so the transfer dies mid-body — **and only if the
+client asked for compression.** The site is not blocking, not challenging, not
+absent and not refusing. **It works.**
+
+**A prober that always sends `--compressed` records this host as a network
+error**, and every conclusion drawn from that — the country page, the "no
+adapter possible" note, the absence in a survey — is downstream of a flag.
+
+**And note what the transport failure did not do**: `%{http_code}` still says
+**200**. A probe that records the status and not the byte count reads it as a
+success with an empty body — the application shell of `lmis.mol.gov.jo` by
+another road. **Which of the two wrong answers you get depends on what your
+probe writes down**, and neither of them is the site.
+
+**Where it sits against the responses that lie:**
+
+| Shape | What it lies about |
+| :-- | :-- |
+| `202` with an empty body (tanqeeb) | what the server **did** |
+| A `200` shell with no content (topjobs, LMIS) | what the server **did** |
+| **Broken chunking under gzip** | what the server **can do** |
+
+**It is the first case that belongs to both this file and the taxonomy of
+misleading responses**, and the only one of the three where the client is a
+participant: change one flag and the lie disappears. `shared/robots-policy.md`,
+*A non-answer is not a refusal*, is the neighbouring rule — a transport that
+fails to deliver a question is not a policy — with the addition that here **you
+chose the transport.**
 
 **The rules:**
 
@@ -165,6 +206,10 @@ default for measuring**, and neither raises anything.
    reproducible — and *both* errors above were caught only by a second
    measurement disagreeing with a first, which requires the method to be
    written down.
+5. **A transport error is a claim about your request, not about the site.**
+   Before recording a host as unreachable, retry it with the flags removed.
+   Exit 56 under `--compressed` and exit 0 without it is the same server,
+   answering.
 
 **And the same trap is the default in `urllib`, not only in `curl`.** It
 follows redirects silently: of 63 fetch sites in this repository, **four record

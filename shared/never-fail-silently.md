@@ -204,6 +204,16 @@ carefully you read it.
 | `200` + a field contradicting its neighbours — `country: SG` on **90 ads of 90**, beside `region: United Arab Emirates` (54), Saudi Arabia (8), and `location: Dubai` (34), Abu Dhabi (11), Riyadh (8) | **michaelpage.ae** | **not in any field — between two of them.** Compare two that must agree, rather than trusting one |
 | `200` + twenty plausible on-topic ads past the last page, a different twenty on each call | **jobology** — page 9999 answers like page 9 | the same URL twice does not return the same thing |
 
+**And one that is not on either axis: a failure the client asked for.**
+`www.trabajo.gob.ec` sends gzip while breaking the chunked framing around it,
+so `curl --compressed` dies at exit 56 on `0x1f` — gzip's magic byte — while
+the same URL without the flag returns **74 622 bytes** and `200`. The status
+line still reads `200` either way. **The two rows above lie about what the
+server did; this one lies about what it can do**, and the lie is undone by
+changing one flag on our side. It is written up in
+`shared/plausible-and-false.md`, *The flag is part of the measurement*, which
+is where the rule to probe without flags first already lives.
+
 **Right body, wrong question** — nothing in the response is wrong:
 
 | Signature | Where | Why it cannot betray itself |
