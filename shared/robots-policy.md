@@ -1283,6 +1283,54 @@ look alike and do not bind alike. **`shared/reading-terms.md` holds that rule**
 board's terms say about resale, and no reading of a prose document is a reason
 to revisit the four questions above.
 
+## A third party's broken infrastructure is not ours to fix — with one exception
+
+Decided 2026-09-03, on `empleate.gob.es`. **The general rule is the short
+one: an operator's infrastructure faults are the operator's.** The plugin
+reports them and moves on; it does not carry workarounds for other people's
+servers, and every one it carried would be a thing to maintain for ever.
+
+**The exception is narrow and it turns on who feels the fault.** When the
+defect is **masked for ordinary web users** — so the operator has no symptom,
+no complaint and no reason to correct it — **and an alternative exists that
+keeps verification intact**, take the alternative.
+
+`empleate.gob.es` sends its leaf certificate and no intermediate. Browsers
+never notice: they cache intermediates from other sites and fetch the missing
+one from the `AuthorityInformationAccess` extension. Every verifying client
+refuses it, so the plugin is the only thing that breaks, and **waiting for a
+fix means waiting for a symptom that will not appear.**
+
+**The alternative taken: supply the intermediate the leaf's own AIA names**, for
+those two hosts only. The same chain is verified, to the same root, out of the
+same store. `skills/job-scan/scripts/_tls.py`.
+
+**Three conditions, and they are what make it an alternative rather than a
+shortcut:**
+
+1. **Verify before embedding, and not by the name on it.** Fetch from the AIA
+   URL, confirm the subject is the leaf's issuer, and check that it actually
+   verifies the leaf against a root the default store already holds
+   (`openssl verify -untrusted`). All four were done and recorded in the
+   module.
+2. **Carry it narrowly.** A store augmented for the named hosts. `context_for()`
+   returns `None` for every other host, which means *use the default*. Nothing
+   is trusted more widely, and the host list is a set — not a suffix match.
+3. **Plan for its expiry, out loud.** An embedded certificate lapses. On that
+   day the failure must **name itself** — *"the intermediate embedded for … 
+   expired on …"*, with the AIA URL to fetch a fresh one — rather than
+   returning as an opaque `CERTIFICATE_VERIFY_FAILED` and making somebody
+   repeat the whole investigation. The date is read **from the certificate**,
+   never from a constant beside it.
+
+**And the boundary, which no wording of a request moves: `verify=False` is
+never the alternative.** It does not fix the connection in front of you; it
+removes the check from **every** connection the plugin makes, including the
+ones nobody was asking about. A repository-wide test fails if `CERT_NONE`,
+`_create_unverified_context`, `check_hostname=False`, `verify=False` or
+`--insecure` appears anywhere in the code — **pinned, because a sentence in a
+document waits for a reader.**
+
 ## What this file does not license
 
 Not credentials, not paywalls, not consent walls, not anything a login guards,

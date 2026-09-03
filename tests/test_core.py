@@ -1264,7 +1264,10 @@ class WhatTheStatusMeans(unittest.TestCase):
         import _robots
         real = _robots.urllib.request.urlopen
 
-        def fake(req, timeout=None):
+        def fake(req, timeout=None, **kw):
+            # `**kw` because `_fetch_once` now passes `context=` for the two
+            # hosts that need a supplied intermediate (#104). A stub with a
+            # narrower signature than the real call fails for its own shape.
             if error:
                 raise error
             return response
@@ -1329,6 +1332,124 @@ class WhatTheStatusMeans(unittest.TestCase):
             _robots._fetch = real
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
+
+
+class VerificationIsNeverDisabled(unittest.TestCase):
+    """Issue #104. **The boundary, pinned rather than promised.**
+
+    `empleate.gob.es` sends its leaf and no intermediate, so every verifying
+    client refuses it while browsers do not notice — they cache intermediates
+    and fetch the missing one from the AIA extension. **The operator therefore
+    has no symptom to fix.**
+
+    The rule: a third party's infrastructure problem is not the plugin's to
+    fix. **The exception is narrow** — when the fault is masked for web users
+    and an alternative exists *that keeps verification intact*, take it.
+    Supplying the missing intermediate keeps it intact entirely.
+
+    **`verify=False` is never that alternative.** It does not fix the
+    connection, it removes the check from every connection the plugin makes.
+    So it is a test, not a sentence in a document.
+    """
+
+    @staticmethod
+    def _code_only(src, path):
+        """Source with comments and string literals removed.
+
+        **The first draft of this scan matched `_tls.py`'s own docstring**,
+        which exists to forbid the thing — a checker that reads prose about a
+        ban as the ban itself. `tokenize` gives the code and nothing else.
+        """
+        import io
+        import tokenize
+        if not path.endswith(".py"):
+            return "\n".join(l.split("#", 1)[0] for l in src.splitlines())
+        out = []
+        try:
+            for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+                if tok.type in (tokenize.COMMENT, tokenize.STRING):
+                    continue
+                out.append(tok.string)
+        except (tokenize.TokenError, IndentationError):
+            return src
+        return " ".join(out)
+
+    def _sources(self):
+        import glob
+        here = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.dirname(here)
+        out = []
+        for pattern in ("skills/**/*.py", "bin/**/*.py", "bin/*.sh"):
+            for path in glob.glob(os.path.join(root, pattern), recursive=True):
+                rel = os.path.relpath(path, root)
+                src = open(path, encoding="utf-8").read()
+                out.append((rel, self._code_only(src, path)))
+        return out
+
+    def test_there_are_sources_to_scan(self):
+        self.assertGreater(len(self._sources()), 30)
+
+    def test_nothing_turns_certificate_verification_off(self):
+        banned = ("CERT_NONE", "_create_unverified_context", "--insecure")
+        hits = []
+        for name, src in self._sources():
+            for token in banned:
+                if token in src:
+                    hits.append(f"{name}: {token}")
+            # `verify=False` and `check_hostname=False` survive tokenising as
+            # three tokens, so they are matched on the token stream.
+            flat = src.replace(" ", "")
+            for token in ("verify=False", "check_hostname=False"):
+                if token in flat:
+                    hits.append(f"{name}: {token}")
+        self.assertEqual(hits, [], "verification is disabled here: "
+                                   + "; ".join(hits))
+
+
+class EmbeddedIntermediate(unittest.TestCase):
+    """It is narrow, it is read from itself, and it names its own expiry."""
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import _tls
+        self._tls = _tls
+
+    def test_it_applies_to_two_hosts_and_no_others(self):
+        """**A set, not a suffix match.** `notempleate.gob.es` must not pick
+        this up, and neither must anything else."""
+        self.assertIsNotNone(self._tls.context_for("empleate.gob.es"))
+        self.assertIsNotNone(self._tls.context_for("www.empleate.gob.es"))
+        for other in ("example.com", "notempleate.gob.es",
+                      "empleate.gob.es.evil.test", "gob.es"):
+            self.assertIsNone(self._tls.context_for(other), other)
+
+    def test_the_expiry_is_read_from_the_certificate(self):
+        """**Not from a constant beside it.** A second source of truth is how
+        a field drifts away from what it describes."""
+        end = self._tls.expires()
+        self.assertGreater(end.year, 2024)
+        self.assertEqual(self._tls.check()["expires"], f"{end:%Y-%m-%d}")
+
+    def test_expiry_fails_by_name_and_never_suggests_disabling(self):
+        """The day it lapses, the failure must say so — not come back as an
+        opaque `CERTIFICATE_VERIFY_FAILED` and make somebody repeat the whole
+        investigation. `never-fail-silently.md`."""
+        import datetime
+        later = self._tls.expires() + datetime.timedelta(days=1)
+        with self.assertRaises(self._tls.Expired) as caught:
+            self._tls.context_for("empleate.gob.es", now=later)
+        text = str(caught.exception)
+        self.assertIn("expired on", text)
+        self.assertIn(self._tls.AIA_URL, text)
+        self.assertIn("Do not disable", text)
+
+    def test_it_is_still_valid_today(self):
+        """A reminder with a date on it, rather than a surprise."""
+        import datetime
+        left = (self._tls.expires()
+                - datetime.datetime.now(datetime.timezone.utc)).days
+        self.assertGreater(left, 0, "the embedded intermediate has expired — "
+                                    "see `_tls.check()` for what to do")
 
 
 if __name__ == "__main__":

@@ -77,6 +77,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import _tls
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
@@ -170,7 +171,13 @@ def fetch(url, retries=2):
     })
     for attempt in range(retries + 1):
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            # This host sends its leaf and no intermediate; `_tls` supplies
+            # the one its own AIA names, for these two hosts only, with
+            # verification fully intact. Issue #104.
+            with urllib.request.urlopen(
+                    req, timeout=60,
+                    context=_tls.context_for(
+                        urllib.parse.urlsplit(req.full_url).netloc)) as r:
                 return decode_body(r.read(), r.headers)[0]
         except (urllib.error.URLError, OSError) as exc:
             if attempt == retries:

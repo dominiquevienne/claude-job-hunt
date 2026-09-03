@@ -117,6 +117,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import _tls
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
@@ -185,7 +187,13 @@ _BACKOFF = (1.5, 4.0)
 def _fetch_once(url, host, timeout):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        # **The guard has to reach the file before it can read it.** Two hosts
+        # send their leaf without the issuing intermediate, so verification
+        # fails here first and the rules become unreadable for a reason that
+        # has nothing to do with rules. `_tls` returns `None` for every other
+        # host, which means "use the default". Issue #104.
+        with urllib.request.urlopen(req, timeout=timeout,
+                                    context=_tls.context_for(host)) as r:
             final = urllib.parse.urlsplit(r.geturl()).netloc or host
             ctype = r.headers.get("Content-Type")
             body = r.read().decode("utf-8", "replace")
