@@ -75,12 +75,21 @@ three and is unreadable a month later.
 and the CV that produced the meeting. That is where somebody looks before the
 second conversation.
 
-**And a date on the ledger row**, which is the part that has to survive without
-being read:
+**And two marks on the ledger row**, which are the part that has to survive
+without being read:
 
 ```
-`FU:2026-09-11` réponse promise · présentation interne, sans date
+`IV:2026-09-02 phone` `FU:2026-09-11` réponse promise · présentation interne, sans date
 ```
+
+`` `IV:<date> <kind>` `` records **that the meeting happened** — repeatable,
+one per meeting, the qualifier short. It is what makes an application countable
+as one that *landed*, and `job-report --interviews` is where it is read.
+**Neither marker changes the status**: the row stays `applied`, and a later
+`rejected` carrying an `IV:` says *refused after an interview*, which is worth
+keeping.
+
+`` `FU:<date>` `` records **what was promised**, which is the other half.
 
 `shared/pipeline-format.md` records `` `FU:` `` as a marker no run strips.
 **`ledger.py due` lists the rows whose date has arrived**, so a promise made in
@@ -92,11 +101,11 @@ python3 "$S/ledger.py" due --within 3
 
 ## What this deliberately does not do
 
-**It does not change the row's status.** A row carrying `FU:` is still
-`applied`. **Whether the ledger should record that an application reached an
-interview is issue #52's decision**, it is explicitly held open there, and
-nothing on this page pre-empts it — which is exactly what makes the date
-shippable before that question is settled.
+**It does not change the row's status**, and that is now a settled decision
+rather than a deferral. Issue #52 chose the marker over a new status word: a
+row carrying `IV:` or `FU:` is still `applied`, **because an application that
+reached an interview must never stop counting as an application sent.** The
+markers add facts to a row; they never replace the one it already carries.
 
 **It does not interpret.** It asks, it records, and it puts a date somewhere a
 week from now can find it.

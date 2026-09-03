@@ -21,6 +21,10 @@ JOB_HUNT_HOME = os.environ.get(
 )
 DEFAULT_PIPELINE = os.path.join(JOB_HUNT_HOME, "job-pipeline.md")
 
+# The statuses that mean an application actually left. `no-go` never did, and
+# `todo`/`discarded` carry no date — the same set the ledger's own format fixes.
+SENT_KINDS = ("applied", "rejected", "postulé", "refusé")
+
 # "applied 2026-08-04", "rejected 2026-08-04", "no-go 2026-08-04".
 # The date is what we filter on. The older French form ("postulé le 2026-08-04")
 # is still accepted so a ledger that has not been migrated keeps working.
@@ -95,6 +99,11 @@ def is_separator(cells: list[str]) -> bool:
     return all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c)
 
 
+# `IV:2026-09-02 phone`, `IV:2026-09-11 on-site` — repeatable, the qualifier
+# optional and short. The date is the meeting's, never the application's.
+IV_RE = re.compile(r"\bIV:(\d{4}-\d{2}-\d{2})(?:\s+([A-Za-z][\w -]{0,18}))?")
+
+
 def load_rows(path: str) -> list[dict]:
     try:
         with open(path, encoding="utf-8") as fh:
@@ -123,10 +132,100 @@ def load_rows(path: str) -> list[dict]:
         row["kind"] = m.group("kind").lower() if m else row["statut"].lower()
         row["url"] = ad_url(row.get("id", ""))
         row["jr_missing"] = "JR:missing" in row.get("note", "")
+        # **`IV:` is the third use of a convention, not a second convention.**
+        # `JR:` records a declaration, `FU:` a promised date, `IV:` a meeting
+        # that happened — all three live in the Note, none of them touches the
+        # status, and no run strips any of them. Issue #52.
+        row["interviews"] = [
+            {"date": m.group(1), "kind": (m.group(2) or "").strip() or None}
+            for m in IV_RE.finditer(row.get("note", ""))
+        ]
         rows.append(row)
     if columns is None:
         raise SystemExit(f"error: no table header found in {path} (expected a row starting with '| ID |')")
     return rows
+
+
+def report_interviews(rows, start, end, args) -> int:
+    """Applications that reached a meeting — the outcome metric.
+
+    **Volume sent is an effort metric; interviews obtained is the outcome
+    one**, and until `IV:` existed the ledger could count the first and not the
+    second. An `applied` row that produced a meeting looked exactly like one
+    sent into silence three weeks ago.
+
+    **Two numbers, two denominators, both named** — because they answer
+    different questions and averaging them would answer neither:
+
+    * meetings that *happened* in the window, whenever the application went
+      out;
+    * applications *sent* in the window that have since produced one — which
+      is systematically low near the end of a window, since an application
+      sent yesterday has had a day to bear fruit.
+    """
+    with_iv = [r for r in rows if r["interviews"]]
+    in_window = [
+        r for r in with_iv
+        if any(start <= dt.date.fromisoformat(iv["date"]) <= end
+               for iv in r["interviews"])
+    ]
+    # **Only `applied` rows here, and the reason is in the ledger's own
+    # format**: `applied → rejected` is a legitimate transition, so a
+    # `rejected` row's date is the employer's *answer*, not the day the
+    # application left — the send date is overwritten and gone. Counting those
+    # as "sent in the window" would date an application by the day it was
+    # refused. `SENT_KINDS` is still right for the main report, which counts
+    # applications that left at all; it is wrong for a denominator about *when*
+    # they left.
+    sent = [r for r in rows
+            if r["date"] and r["kind"] in ("applied", "postulé")
+            and start <= dt.date.fromisoformat(r["date"]) <= end]
+    sent_with_iv = [r for r in sent if r["interviews"]]
+
+    if args.format == "json":
+        print(json.dumps({
+            "meta": {"from": start.isoformat(), "to": end.isoformat(),
+                     "meetings_in_window": len(in_window),
+                     "applications_sent_in_window": len(sent),
+                     "of_those_with_a_meeting": len(sent_with_iv),
+                     "rows_with_any_interview": len(with_iv)},
+            "applications": in_window,
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"Interviews between {start} and {end}")
+    print()
+    if not in_window:
+        print("  No meeting recorded in this window.")
+        print()
+        print("  **Which of the two silences this is matters**: a row only "
+              "appears here if somebody wrote an `IV:` marker on it after a "
+              "meeting. No marker is not the same fact as no meeting.")
+        if with_iv:
+            print(f"  ({len(with_iv)} row(s) in the ledger carry an interview "
+                  f"marker outside this window.)")
+        return 0
+
+    for r in sorted(in_window, key=lambda x: x["interviews"][0]["date"]):
+        meetings = ", ".join(
+            f"{iv['date']}{' ' + iv['kind'] if iv['kind'] else ''}"
+            for iv in r["interviews"])
+        print(f"  {r['societe']} — {r['poste']}")
+        print(f"      {r['statut']}   ·   met: {meetings}")
+        if r["url"]:
+            print(f"      {r['url']}")
+    print()
+    print(f"  {len(in_window)} application(s) had a meeting in this window.")
+    print(f"  Of the {len(sent)} application(s) still marked `applied` and "
+          f"dated between {start} and {end}, {len(sent_with_iv)} has/have "
+          f"produced a meeting so far.")
+    print("  **Those two numbers have different denominators and neither is a "
+          "conversion rate**: a meeting here may belong to an application sent "
+          "months ago, an application sent yesterday has had a day — and a row "
+          "that reached `rejected` carries the employer's answer date, not the "
+          "day it was sent, so it is left out of the second number rather than "
+          "dated wrongly.")
+    return 0
 
 
 def _warn(meta: dict) -> None:
@@ -166,6 +265,12 @@ def main() -> int:
     )
     ap.add_argument("--file", default=DEFAULT_PIPELINE, help=f"pipeline file (default: {DEFAULT_PIPELINE})")
     ap.add_argument("--format", choices=("table", "json", "md"), default="table")
+    ap.add_argument(
+        "--interviews", action="store_true",
+        help="applications that reached an interview. Filters on the MEETING "
+             "date, not the application date — the question is 'how many of "
+             "my applications led to a meeting?', and the two dates are "
+             "different facts")
     args = ap.parse_args()
 
     start = parse_date(args.start) if args.start else today.replace(day=1)
@@ -178,6 +283,10 @@ def main() -> int:
         wanted = {s.strip().lower() for s in args.status.split(",") if s.strip()}
 
     rows = load_rows(args.file)
+
+    if args.interviews:
+        return report_interviews(rows, start, end, args)
+
     kept = []
     for row in rows:
         if not row["date"]:

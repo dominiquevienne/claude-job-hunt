@@ -126,6 +126,28 @@ of the most recent one outside it** — that is usually the real question behind
 an empty result, and an unexplained zero is indistinguishable from a broken
 filter.
 
+### Applications that reached an interview
+
+```bash
+python3 "<this skill's folder>/scripts/list_applications.py" --interviews
+```
+
+**Volume sent is an effort metric; interviews obtained is the outcome one** —
+and it is the answer to a question the unemployment office asks and the
+candidate asks themselves. A row carries `` `IV:YYYY-MM-DD` `` per meeting and
+**keeps its status**, so an application that reached an interview never stops
+counting as an application sent.
+
+**Report both numbers with their denominators, never a conversion rate.**
+Meetings *held* in the window can belong to applications sent months earlier,
+and applications *sent* in the window have had less time the later they went
+out. The script prints both and says so; pass that on rather than dividing one
+by the other.
+
+**And when nothing comes back, say which silence it is** — no row carries a
+marker, or none falls in the window. A meeting nobody recorded looks exactly
+like a meeting that did not happen.
+
 ### Follow-ups whose date has arrived
 
 **Run this whenever a report is produced**, and put the result at the top:

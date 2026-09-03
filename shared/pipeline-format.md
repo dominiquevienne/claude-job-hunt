@@ -222,6 +222,21 @@ column, the log and everything you say to the user follow the user's
 - **Build the exclusion set first**, from every row whose status is `applied`,
   `rejected`, `no-go` or `discarded`. Those ads are never proposed again.
 - **Append one `Log` line per run** — date, what was searched, what came back.
+- **Never strip an `` `IV:YYYY-MM-DD` `` marker.** It records **a meeting that
+  happened** — `` `IV:2026-09-02 phone` ``, `` `IV:2026-09-11 on-site` `` —
+  repeatable, the qualifier short and optional, **and the date is the
+  meeting's, never the application's**.
+
+  **It does not change the status, and that is the whole design.** A row
+  carrying `IV:` is still `applied`; a `rejected 2026-09-20` row carrying
+  `IV:2026-09-02` says **refused after an interview**, which is a different
+  fact from refused in silence and is worth keeping for good. **The bug this
+  avoids is the one the status vocabulary would have caused**: an application
+  that reached an interview must never stop counting as an application sent.
+
+  `job-report --interviews` is the view — **without it the marker is legible
+  only to somebody who already knows it exists.** Issue #52.
+
 - **Never strip a `` `FU:YYYY-MM-DD` `` marker.** It is a **follow-up date the
   employer or the candidate named** — *"they will reply by the end of next
   week"*, *"relance le 14.09"* — and it is the one thing a chat transcript
