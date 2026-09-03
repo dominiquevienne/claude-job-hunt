@@ -63,6 +63,7 @@ import time
 import urllib.error
 import urllib.request
 
+from _robots import verdict as robots_verdict
 from _sitemap import count as sitemap_count
 from _sitemap import count_says, locs as sitemap_locs
 
@@ -88,6 +89,27 @@ def note(msg):
     print(f"[ss.ge] {msg}", file=sys.stderr)
 
 
+def check_robots(host):
+    """Ask the module, on the host that will actually be fetched.
+
+    **This adapter hard-coded its refusals and was the argument for not doing
+    that.** `ss.ge`, `home.ss.ge` and `jobs.ss.ge` publish **three different
+    files**, so a verdict is only meaningful per host — which is what
+    `_robots.py` now keys on, and what a constant in this file can never
+    track. Issue #100.
+
+    A `sweep: False` **stops this command**, with exit 7 and the module's own
+    reason. Nothing here decides on its own what a refusal means.
+    """
+    v = robots_verdict(host)
+    if not v["sweep"]:
+        die(f"{host}: {v['reason']}", EXIT_REFUSED)
+    if v.get("requested_host") and v["host"] != v["requested_host"]:
+        note(f"robots.txt for {v['requested_host']} was read from "
+             f"{v['host']} — on this site that difference is the whole point.")
+    return v
+
+
 def get(url, timeout=90):
     if any(f in url for f in FORBIDDEN):
         die(f"{url}: `ss.ge/robots.txt` disallows this path by name. **The "
@@ -95,7 +117,9 @@ def get(url, timeout=90):
             f"conflict between two of the operator's own files, and a "
             f"`Sitemap:` line is not a permission. Not fetched.", EXIT_REFUSED)
     if "jobs.ss.ge" in url:
-        die(f"{url}: `jobs.ss.ge` answers 403 behind a Cloudflare challenge. "
+        die(f"{url}: `jobs.ss.ge` answers 403 behind a Cloudflare challenge — "
+            f"and its `robots.txt` says `Allow: /`, so **this stop is not a "
+            f"robots verdict**. "
             f"**A challenge that asks for a click is a stop, not an "
             f"obstacle** — it belongs to the person, in their browser. Not "
             f"fetched.", EXIT_REFUSED)
@@ -114,6 +138,7 @@ def get(url, timeout=90):
 
 
 def families():
+    check_robots("ss.ge")
     code, body = get(JOBS_SITEMAP, timeout=45)
     if code != 200:
         die(f"{JOBS_SITEMAP}: HTTP {code}. This file is declared **only by "
@@ -213,6 +238,11 @@ def cmd_sitemap(a):
 
 
 def cmd_ad(a):
+    # **The refusal below is not this file's opinion, it is the module's.**
+    # `jobs.ss.ge` says `Allow: /` and answers 403 behind a challenge: the
+    # verdict is permissive and the door is shut, which is why the stop is
+    # written separately from the check rather than folded into it.
+    check_robots("jobs.ss.ge")
     m = AD_RE.search(a.url or "")
     if not m:
         die(f"{a.url!r}: not an ss.ge advertisement URL. Expected "

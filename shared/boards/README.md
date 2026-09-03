@@ -329,6 +329,37 @@ and it binds**, as does a rate limit, a login wall, and any `robots.txt`
 refusal — the position changes how an ambiguous clause is read, it never
 creates permission a board withheld. Issues #48 and #81.
 
+**Ask `skills/job-scan/scripts/_robots.py` before you fetch, and say what you
+do with a refusal.** Counted 2026-09-03 across 61 adapters: **16 ask, 45 do
+not.** The module was corrected three times that week — #96, #98, #99 — and
+those corrections reach the sixteen.
+
+**And the first thing to establish was whether it mattered today.** It does
+not, yet: `verdict()` was run against the **40 public hosts** those adapters
+read, and **0 refuse the sweep**. *So this is about knowing, not about a
+breach* — and it is the shape of #82 and #91 once more: **the rule exists and
+nothing calls it.**
+
+**Three classes, and which one an adapter is in belongs in its board card:**
+
+| Class | Adapters | Why |
+| :-- | :-- | :-- |
+| **1 — a published API with its own terms** | `adzuna`, `labonnealternance` (both load a key), `francetravail`, `arbeitsagentur`, `platsbanken` | The operator publishes the interface for programmatic use, through a developer portal or a state open-data programme. **`robots.txt` governs crawling a website; it does not govern an API published to be called.** Write that reason in the card — do not merely omit the call |
+| **2 — public pages, and the host's file applies** | the bulk: `computrabajo`, `hellowork`, `hiringcafe`, `randstad`, `randstadfr`, `stepstone`, `turijobs`, `wttj`, `jobstore`, `kalibrr`, `infoempleo`, `jobbkk`, `swissdevjobs`, `sozialinfo`, `fachkraft`, `freework`, `oposiciones`, `empleate`, `mycareersfuture`, `jobroom`, `apec`, `adecco`, `anefa`, `batiactu`, `crit`, `emploiterritorial`, `fhf`, `hays`, `jobology`, `jobsireland`, `meteojob`, `michaelpage`, `persigo` | **A keyless JSON endpoint on a site's own domain is the site's backend, not a published API.** `mycareersfuture` and `jobroom` are in this class for that reason |
+| **3 — a family of tenants, one verdict each** | `flatchr`, `recruitee`, `talentsoft`, `pinpoint`, `digitalrecruiters`, `solique`, `persigo` | **The verdict is per tenant**, which is the module's stated reason for existing — and `icims` and `taleez` already do it. Two Teamtailor tenants set `ai-input=no` while the repository recorded the permissive one as platform policy (#73) |
+
+**Do not wire all forty-five at once.** A call added without the adapter
+knowing what to do with the answer **is worse than no call: it looks like a
+control.** Every wiring says what a `sweep: False` does — stop, and exit with a
+code the caller reads.
+
+`ssge.py` is the worked example, and it was the argument: it hard-coded its
+refusals while `ss.ge`, `home.ss.ge` and `jobs.ss.ge` publish **three
+different files**. It now calls `check_robots()` on the host it is about to
+read, exits **7** on a refusal with the module's own words, and keeps its
+Cloudflare stop **separate** — because that host says `Allow: /` and answers
+`403`, so **the stop is not a robots verdict** and must not be written as one.
+
 **Read `<loc>` through `skills/job-scan/scripts/_sitemap.py`, never with a
 pattern of your own** — and the reason is the same failure, one file later.
 Three ways a populated sitemap reads as empty, all measured:

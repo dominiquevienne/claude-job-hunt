@@ -88,6 +88,23 @@ conflict between two of the operator's own files, and **a `Sitemap:` line is
 not a permission**: the refusal governs, and `get()` refuses those URLs before
 any request.
 
+## It asks the module, per host — and the stop is not a verdict
+
+**This adapter hard-coded its refusals in its first version, and it was the
+argument for not doing that.** Three hosts, three files: a constant in one
+Python file cannot track that, and `_robots.py` is keyed on the host that
+answers precisely so it can.
+
+`check_robots()` runs on the host about to be read — `ss.ge` for the sitemaps,
+`jobs.ss.ge` for an ad — and **a `sweep: False` stops the command with exit 7
+and the module's own words.** Nothing here decides what a refusal means.
+
+**And the Cloudflare stop is kept separate on purpose.** `jobs.ss.ge` says
+`Allow: /` and answers `403`: **the verdict is permissive and the door is
+shut**, so writing the challenge as a robots refusal would misattribute it —
+the same mistake as citing `secure.indeed.com`'s login page under the name
+that was typed.
+
 ## Zero-shaped answers
 
 **1. Three `robots.txt` files with different refusals**, the permissive one on

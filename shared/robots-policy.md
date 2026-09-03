@@ -65,6 +65,13 @@ rules file while `www.jobs.co.id/robots.txt` redirects and serves 171 888 bytes
 of HTML. **One host is not the other host**, and `104.com.tw` serves two
 different md5s across the pair.
 
+**Three rebrands surfaced in one afternoon by reporting the answering host**,
+2026-09-03: `my.indeed.com` → `secure.indeed.com`, `jobs.recruitee.com` →
+**`careers.tellent.com`** (Recruitee is Tellent), and `talent-soft.com` →
+**`www.cegid.com`** (Talentsoft is Cegid), whose 268 KB of HTML makes the file
+`unreadable`. **A board that has been bought reaches us as a redirect long
+before it reaches us as a rename**, and only the answering host shows it.
+
 **And the host you name is not always the host that answers.** `_robots.py`
 now reports both, and the first thing it corrected was one of this file's own
 examples: the **126 KB of sign-in HTML** cited here as `my.indeed.com`'s reply
