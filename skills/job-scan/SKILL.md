@@ -28,6 +28,7 @@ They live in this plugin, one level above this skill's folder
 | `shared/search-language.md` | Steps 2–4 — which language to ask a market in, and what a zero from a multilingual market does *not* prove |
 | `shared/scoring-rubric.md` | Step 5 — scoring, and the commute filter |
 | `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |
+| `shared/new-achievements.md` | Step 6b — the monthly question, and why it is never a repository scan |
 | `shared/modules/*.md` | Step 6 — only those enabled in `config.yml` |
 
 **When a board with an adapter fails to sweep, invoke the `board-request` skill**
@@ -686,6 +687,36 @@ fact that no issue was filed and why — the user declined, `gh` was unavailable
 a duplicate was already open. *"jobup returned nothing"* on its own is the
 silent failure this whole rule exists to refuse: the user cannot tell a broken
 adapter from an empty market, and those call for opposite reactions.
+
+## 6b — Once a month, ask what they have done since last time
+
+**At the end of the run, after the accounting, before the handoff** — and only
+when the schedule says so:
+
+```bash
+python3 "$S/achievements.py" due
+```
+
+`due: false` → **say nothing at all.** Not a mention, not a "not this time".
+
+`due: true` → one open question, in the candidate's own vocabulary:
+
+> **Depuis un mois : de nouvelles réalisations, formations, certifications,
+> responsabilités ?**
+
+**Never a technical one.** *"Have you pushed any new repositories?"* answers
+itself for one trade and excludes every other — a cabinetmaker's three fitted
+kitchens, a nurse's palliative-care qualification and a designer's rebranding
+are invisible to every export this plugin reads, **and only the question makes
+them exist.** `shared/new-achievements.md` holds the whole behaviour: where the
+answer goes by trade, why `repos.md` is never the default, the approval rule
+before anything is written, and the LinkedIn text that the candidate posts
+themselves.
+
+**"No" is a complete answer** — `achievements.py asked --outcome none`, and
+nothing more. **"Stop asking" must work** — `--outcome paused`.
+
+**And never scan the disk for work to claim.** Issue #42.
 
 ## 7 — Hand off to `cover-letter`
 
