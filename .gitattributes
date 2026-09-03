@@ -1,0 +1,43 @@
+# Line endings, declared rather than left to the client.
+#
+# **Git for Windows sets `core.autocrlf=true` by default**, which converts line
+# endings *on the way out of the repository* — shell scripts included. A
+# `bin/doctor.sh` checked out that way fails under Git Bash and WSL with:
+#
+#     /usr/bin/env: 'bash\r': No such file or directory
+#
+# **That is the least legible error of the family**: it names an interpreter
+# that exists, with an invisible character on the end. And `README.md` sends a
+# Windows user to `bin/doctor.sh` first, so **the first gesture the project
+# asks for is the one that breaks**.
+#
+# The files in this repository are LF; the problem is not here, it is at the
+# boundary — which is why it is invisible to anyone developing on macOS or
+# Linux and systematic for anyone cloning on Windows with the defaults.
+#
+# **This changes nothing for an existing clone.** Somebody already installed
+# needs `git add --renormalize .` or a fresh clone.
+#
+# Reported as a missing guard against a known behaviour, not as an observed
+# failure — no Windows machine was available to reproduce it. Issue #107.
+
+# Let git decide what is text, and normalise it to LF in the repository.
+* text=auto eol=lf
+
+# Executables and anything an interpreter reads by shebang: never CRLF.
+*.sh    text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.xml   text eol=lf
+
+# Binary, so git never rewrites a byte of it.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.ico   binary

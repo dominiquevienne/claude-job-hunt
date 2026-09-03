@@ -497,8 +497,9 @@ the user asks what else exists.
 | Flatchr | The employers they would work for, **as careers URLs** — `<tenant>.flatchr.io`. **No login, no browser, no key**, and no detail option: one request returns the ads with their full text. Like Taleez there is **no resolver** — its sitemap belongs to the marketing site and lists no vacancies at all — so ask for the URL and never guess a tenant |
 | Taleez | The employers they would work for, **as careers URLs** — `<tenant>.taleez.com`. **No login, no browser, no key.** The French SME/ETI ATS, and like umantis there is **no resolver**: no directory, no cross-tenant search, and the sitemaps carry no job URLs. Ask for the URL and never guess a tenant. Warn them the listing has **no description**, so reading the ads costs one request each |
 | Greenhouse / Lever / Ashby / SmartRecruiters | A list of **employers** they would actually work for. **No login, no browser.** These answer "is my target employer hiring?", never "who is hiring near me?" — a user with nobody in mind gains nothing, so offer them only when the user names employers. Resolve each tenant token with `ats.py resolve "<employer>"`; never ask the user to guess it. **On SmartRecruiters that resolution is not optional**: a wrong tenant answers `200` with zero postings there, so a guessed token looks exactly like an employer with nothing open |
-| France Travail | Their **departments** (`"75"`, `"69"` — strings, leading zero kept) or an **INSEE commune code** plus a radius. **No login, no browser** — but the only board here that needs an API key, free from francetravail.io. Walk them through it with section 5c; do not ask for the key before they have enabled the board. France only |
+| France Travail | Their **departments** (`"75"`, `"69"` — strings, leading zero kept) or an **INSEE commune code** plus a radius. **No login, no browser** — but it needs an API key, free from francetravail.io. Walk them through it with section 5c; do not ask for the key before they have enabled the board. France only |
 | job-room.ch | The cantons they would work in (official uppercase codes), or a point and a radius of at least 10 km. **No login, no browser.** Switzerland only. Reaches the SMEs, foundations and staffing agencies HiringCafe misses |
+| Adzuna | Their ISO-2 country, from the nineteen it serves. **No login, no browser** — but it needs a free key from developer.adzuna.com, and its budget is the smallest here: **250 calls a day for every country together**. Walk them through it with section 5e |
 | HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
 | LinkedIn | Their own profile URL, and they must be logged in themselves, in the Chrome the Claude extension is connected to |
 | jobup.ch | Nothing — **no login needed to scan.** Swiss ads, French-speaking Switzerland |
@@ -544,7 +545,7 @@ immediately** — a board switched on with an empty required key is skipped at
 scan time, which reads as a bug. Read the adapter's own *Configuration* section
 for the exact keys and how the user obtains each one.
 
-## 5c — France Travail: the one board that needs a key, and how to get it
+## 5c — France Travail: a key the user creates, and how to get it
 
 **Skip this section entirely unless the user enabled `france-travail`.**
 
@@ -581,6 +582,13 @@ assume the opposite, and the assumption stops them.
 write it into `config.yml`.** That file is read aloud, copied into issues and
 backed up; a secret does not belong in it, and `francetravail.py` deliberately
 cannot read one from there.
+
+**Every command in this section is bash**, here and in 5e: `export`,
+`chmod 600` and `set -a; . file; set +a` are bash, not PowerShell. On Windows
+that means WSL or Git Bash — `README.md` documents both routes and this file
+does not repeat them. **Say which shell you are asking for before you ask**: a
+Windows user reading this page on its own runs these in PowerShell and gets
+errors that name nothing.
 
 Give them these two lines and ask them to run them **themselves**, with the `!`
 prefix so the shell is theirs:
@@ -766,6 +774,58 @@ part of building the adapter, not something to assume in a setup conversation.
 So say the true thing: today AMS is not swept, and if they have an AMS ad in
 hand, **pasting its text into `cover-letter` works and raises no question at
 all.**
+
+## 5e — Adzuna: a second key, and the smallest budget here
+
+**It was missing from this guide entirely.** `adzuna.py` documents its own
+convention and a user following these pages never learned the adapter existed
+or that it needed a key — they found out by running it and reading the error.
+Issue #106.
+
+**Say what it is.** Adzuna aggregates vacancies across nineteen countries and
+publishes them through a developer API. The key identifies the application, not
+the person, and creating one tells no employer anything.
+
+### The click path
+
+1. Go to **<https://developer.adzuna.com>** and register. Any email works.
+2. The dashboard shows an **Application ID** and an **Application Key**. Both
+   are needed; neither is a password.
+
+### Storing it — a file, not the config, and not the conversation
+
+**Do not ask the user to paste the key into the conversation, and never write
+it into `config.yml`.** Same reason as 5c: that file is read aloud, pasted into
+issues and backed up.
+
+Adzuna's convention here is a file of its own, because two values that belong
+together are easier to keep than two exports:
+
+```bash
+printf 'ADZUNA_APP_ID=%s\nADZUNA_APP_KEY=%s\n' '<app id>' '<app key>' \
+  > ~/.adzuna.env
+chmod 600 ~/.adzuna.env
+```
+
+**And it has to be sourced into the shell that runs the sweep** — the file is
+not read by the script:
+
+```bash
+set -a; . ~/.adzuna.env; set +a
+```
+
+**That last line is the one people lose.** A shell that has not sourced it gets
+the adapter's own message naming both variables, which is the intended
+behaviour and not a failure.
+
+### The budget is the constraint, and it is small
+
+**250 calls a day, for all nineteen countries together.** That is not a rate
+limit to pace around; it is a daily ceiling. Say it while enabling the board,
+because a user who configures five countries has divided it by five.
+
+*(And nothing measured through Adzuna goes into a country page or the Atlas —
+a separate rule, recorded where those are written.)*
 
 ## 6 — Thresholds and document preferences
 
