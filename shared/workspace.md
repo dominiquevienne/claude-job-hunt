@@ -47,7 +47,7 @@ question itself.)*
 
 | File | Required | What it holds | Written by |
 | :-- | :-- | :-- | :-- |
-| `config.yml` | **yes** | Machine-readable settings: identity, geography, languages, search sweep, thresholds, modules | `/job-setup` |
+| `config.yml` | **yes** | Machine-readable settings: identity, geography, languages, search sweep, thresholds, modules. **Written by the setup conversation, not by hand** — see below | `/job-setup`, or just saying what changed |
 | `candidate.md` | **yes** | Prose the config cannot hold: target role families, hard blockers, contact block, standing resume content, corrections to the exports | `/job-setup`, then edited by hand |
 | `profile/` | **yes** | The user's source documents (LinkedIn exports or a CV). The factual record every claim is checked against | `sync-sources.sh` |
 | `profile/.text/` | built | Every `profile/` PDF as plain text, written by `sync-sources.sh`. **This is what makes a skill check cheap enough to actually run** — `grep -ril '<term>' profile/.text/`. Rebuilt when an export is newer; delete it and re-run to force it |
@@ -80,6 +80,22 @@ test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
 Read `candidate.md` in full, every run. It is where the user records decisions
 that must not be re-litigated — role families that are on-profile, blockers that
 are real, corrections that override the exports.
+
+## `config.yml` is generated, not authored
+
+**It is three hundred lines of YAML with distinctions that bite.**
+`driving_licence: []` means *declared none* and a missing key means *never
+asked* — the same shape as `work_authorization`, and neither is guessable from
+looking at the file. Issue #113.
+
+**So the announced route is the conversation**: *"I've moved"*, *"add that
+board"*, *"raise my commute limit"* all reach `job-setup`, which changes the
+one thing and leaves the rest alone. **Editing it by hand still works** and
+nothing rejects a hand-edited file — but it is the fallback, and a reader
+should not be told otherwise.
+
+*(`templates/config.example.yml` is the reference for what a key means. Read it
+to understand a value, not as a form to fill in.)*
 
 ## Two files, two subjects, and which one wins
 

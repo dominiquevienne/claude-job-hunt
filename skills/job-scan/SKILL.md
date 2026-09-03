@@ -1,6 +1,6 @@
 ---
 name: job-scan
-description: Sweep the job boards the user has enabled (HiringCafe, job-room.ch, France Travail, Workday, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Teamtailor, JOIN, SwissDevJobs, SuccessFactors, Solique, umantis, Taleez, Flatchr, Softy, DigitalRecruiters, Cegid Talentsoft, Emploi Territorial, FHF Emploi, La Bonne Alternance, Michael Page, fachkraft.ch, sozialinfo.ch, persigo.ch, randstad.ch, Meteojob, HelloWork, APEC, Cadremploi, Free-Work, Figaro Emploi, Jobology, Batiactu, ANEFA, Welcome to the Jungle, Adecco, Randstad France, Crit, Hays France, Empléate (SEPE, Spain), Oposiciones (Spanish public sector), Infoempleo, Turijobs, Bundesagentur für Arbeit (Germany), JobsIreland, Platsbanken (Sweden), Personio, Recruitee, Pinpoint, Oracle Recruiting Cloud, StepStone (Totaljobs, Jobsite, Caterer, IrishJobs, NIJobs, Jobs.ie, StepStone DE/AT/BE/NL), MyCareersFuture (Singapore), Kalibrr (Indonesia and the Philippines), JOBBKK (Thailand), Adzuna (19 countries, own API key), Computrabajo (18 Latin American countries), Jobstore (26 countries, hybrid), iCIMS, Vieclam24h (Vietnam), PhilJobNet (Philippines), LinkedIn, jobup.ch, jobs.ch, Indeed) in their own Chrome, score each ad against their real profile, and maintain the shared pipeline ledger at $JOB_HUNT_HOME/job-pipeline.md. Ads already in the ledger are skipped, so each run only surfaces what is new. No board is scanned until it is explicitly enabled. Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "scan LinkedIn", "scan jobup", "find me some jobs", "look for roles that fit me", "refresh my job list", or before running the cover-letter skill.
+description: Look for jobs that fit this person and keep the shortlist up to date. Sweeps the job boards they have switched on, scores every ad against what their own documents actually say, and records what it found so the same ad is never proposed twice. Use when the user says "find me some jobs", "trouve-moi des offres", "look for roles that fit me", "cherche des postes pour moi", "scan the boards", "refresh my job list", "quoi de neuf cette semaine ?", "any new openings?", "scan LinkedIn", "scan jobup", names any single job site, or before writing a cover letter. Around seventy boards are supported across some forty countries — public employment services, employers' own career sites, national and sector boards; the list is in this skill's own § Which boards, and none is ever scanned until the user switches it on.
 user-invocable: true
 allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---
@@ -52,6 +52,26 @@ in the middle of it.**
 Follow `shared/prerequisites.md`: name what it blocks, give the exact command
 for the user's platform, offer to run it, verify, and fall back gracefully if
 they decline.
+
+## Which boards
+
+**The list lives here and not in the description**, because the description is
+two things at once: **the card a public catalogue shows, and what decides
+whether this skill is reached at all.** Seventy site names were illegible in
+the first and diluted the second. Issue #113.
+
+**`shared/boards/README.md` is the register** — one row per adapter, what it
+needs, and what it costs. The short version, by kind:
+
+| Kind | Examples |
+| :-- | :-- |
+| **Public employment services** | France Travail, job-room.ch, Bundesagentur für Arbeit, Empléate, Platsbanken, MyCareersFuture, PhilJobNet, BNE Chile, LMIS Jamaica |
+| **Employers' own career sites** (one per employer) | Workday, Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Teamtailor, SuccessFactors, iCIMS, Personio, Recruitee, Pinpoint, umantis, Taleez, Flatchr, Softy, DigitalRecruiters, Cegid Talentsoft, Solique, Applifly, Oracle Recruiting Cloud, JOIN |
+| **Aggregators and meta-boards** | HiringCafe, Adzuna, Jobstore, LinkedIn, Indeed, StepStone's family |
+| **National and regional** | jobup.ch, jobs.ch, SwissDevJobs, fachkraft.ch, sozialinfo.ch, persigo.ch, randstad.ch, Meteojob, HelloWork, APEC, Cadremploi, Free-Work, Figaro Emploi, Jobology, Batiactu, ANEFA, Welcome to the Jungle, Adecco, Randstad France, Crit, Hays France, Emploi Territorial, FHF Emploi, La Bonne Alternance, Michael Page, Oposiciones, Infoempleo, Turijobs, JobsIreland, Computrabajo, Bumeran's eight brands, Encuentra24, Kalibrr, JOBBKK, Vieclam24h, hr.ge and its siblings, jobs.ge, ss.ge |
+
+**No board is scanned until the user switches it on**, and `/job-setup boards`
+is where that happens.
 
 ## 0 — Load the workspace, then the ledger (always first)
 

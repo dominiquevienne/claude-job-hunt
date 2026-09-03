@@ -553,6 +553,25 @@ that when you ask — it explains why they are being asked at all.
 what each board on it needs — not a menu to read out. Show the full list only if
 the user asks what else exists.
 
+**And ask in their language, not the column's.** The *Needs* column is the
+board's vocabulary — tenant, slug, facet, ISO-2, an INSEE commune code that is
+not a postcode, a pre-2016 region map, a city *and* its coordinates. **Seven
+developer notions to answer "where do you want to work?"** Issue #113.
+
+**The resolvers already exist**; the design is fine and it was the writing that
+exposed the plumbing. So:
+
+| Ask this | Then resolve it |
+| :-- | :-- |
+| *"Which towns or areas would you actually work in?"* | Into cantons, departments, regions, ISO-2 — each board's own shape |
+| *"Which employers would you like to work for?"* | Into tenants and careers hosts, with the adapter's `resolve` where it has one |
+| *"What kind of work?"* | Into the board's facets or occupation codes, and **check how much of the index they classify before trusting one** |
+
+**Never read a code out and never ask for one.** If a value cannot be resolved,
+say what you tried and what you need — *"I could not find a commune code for
+that name; is it the one in <department>?"* — rather than asking for the code
+itself.
+
 | Board | Needs |
 | :-- | :-- |
 | Workday | The employers they would work for. **No login, no browser.** Where the large Swiss employers are — Swisscom, Swiss Life, Roche, Lindt. Each board needs three coordinates (host, tenant, site); resolve them with `workday.py resolve "<employer>"`, and ask which site when an employer runs several |

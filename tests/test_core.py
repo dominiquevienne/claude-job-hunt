@@ -310,6 +310,50 @@ class Secrets(unittest.TestCase):
         self.assertIn("config.yml", note)
 
 
+class NoDependencies(unittest.TestCase):
+    """The README promises a zero-install path. **This is what makes it true.**
+
+    *"Every Python script in this plugin uses the standard library and nothing
+    else"* is a claim about every file, so it is checked rather than asserted
+    — and it is the kind of claim that rots on the first convenient `import`.
+    Issue #113.
+    """
+
+    def test_nothing_outside_the_standard_library_is_imported(self):
+        import ast
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        std = set(sys.stdlib_module_names)
+        local = {os.path.basename(f)[:-3] for f in
+                 glob.glob(os.path.join(root, "skills", "job-scan",
+                                        "scripts", "*.py"))}
+        offenders = {}
+        files = (glob.glob(os.path.join(root, "skills", "**", "*.py"),
+                           recursive=True)
+                 + glob.glob(os.path.join(root, "bin", "*.py"))
+                 + glob.glob(os.path.join(root, "tests", "*.py")))
+        for f in files:
+            with open(f, encoding="utf-8") as fh:
+                try:
+                    tree = ast.parse(fh.read())
+                except SyntaxError:
+                    continue
+            for node in ast.walk(tree):
+                mods = []
+                if isinstance(node, ast.Import):
+                    mods = [a.name.split(".")[0] for a in node.names]
+                elif (isinstance(node, ast.ImportFrom) and node.level == 0
+                      and node.module):
+                    mods = [node.module.split(".")[0]]
+                for m in mods:
+                    if m in std or m in local or m.startswith("_"):
+                        continue
+                    offenders.setdefault(m, set()).add(os.path.basename(f))
+        self.assertEqual(
+            offenders, {},
+            f"a dependency would break the zero-install path: {offenders}")
+
+
 class Locations(unittest.TestCase):
     """Folding. A regression here is invisible and falsifies every place."""
 

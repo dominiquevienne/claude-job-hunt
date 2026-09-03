@@ -1,7 +1,29 @@
 # claude-job-hunt
 
-[Claude Code](https://claude.com/claude-code) skills that run a job search end
-to end, honestly.
+Skills that run a job search end to end, honestly.
+
+---
+
+**Start here, and pick the line that describes you.**
+
+**In an app — Claude in your browser or on your desktop.** Install the plugin
+and say *"find me some jobs"*. **Nothing else to install.** The board sweeps,
+the scoring, the ledger and the documents-as-markdown all work with what is
+already there: **every Python script in this plugin uses the standard library
+and nothing else.** Two things, and only two, need software on your machine —
+**a rendered PDF** and **the boards that need a browser** — and both are
+optional. Without them you get markdown files and the boards that answer plain
+HTTP, which is most of them, **and the plugin tells you which it skipped**.
+
+**In the Claude Code terminal.** Same thing, plus the shell commands in this
+file. If something looks wrong, `bin/doctor.sh` says what is missing and what
+it blocks — **it is a diagnostic, not a first step**, and nothing needs to be
+green before you begin.
+
+**Either way, your files are plain files in a folder you choose**, and the
+plugin says which folder before it writes anything in it.
+
+---
 
 - **`job-scan`** — sweeps the job boards you switch on, in *your own* Chrome,
   scores every ad against your real profile, and keeps a ledger so the same ad
@@ -377,14 +399,24 @@ claude plugin update claude-job-hunt
 "already installed" and leaves the version pointer where it was, even once the
 new version has been fetched.
 
-## Check that it works
+## If something looks wrong
 
-**The short way — one command**, in the shell Claude Code uses (Git Bash on
-native Windows, Ubuntu in WSL, your terminal elsewhere):
+**This is a diagnostic and not a step.** Nothing here has to be green before
+you start: the plugin degrades on purpose and says what it skipped. Reach for
+this when a run tells you something is missing, or when you want to know in
+advance what a rendered PDF will cost you.
+
+**One command**, in the shell Claude Code uses (Git Bash on native Windows,
+Ubuntu in WSL, your terminal elsewhere):
 
 ```bash
 bin/doctor.sh
 ```
+
+**Its output is a data source, not an interface.** `[ ok ]` / `[MISS]` rows and
+`install: sudo apt…` lines are precise and unreadable; in an app, ask for it to
+be **run and translated** — *"what is missing and does it matter for me?"* —
+rather than shown.
 
 It detects your platform, checks every tool, and for anything missing tells you
 what it blocks and the exact install command **for that platform**. It changes
@@ -525,7 +557,13 @@ removing the plugin never touches your data:
     └── cover-letter.md  →  Lovelace_Ada_Acme_CoverLetter.pdf
 ```
 
-Plain files. Read them, edit them, grep them, back them up, delete them.
+Plain files. Read them, grep them, back them up, delete them.
+
+**One of them is generated rather than written: `config.yml`.** Say what
+changed — *"I've moved"*, *"add that board"* — and it is edited for you, one
+thing at a time. Hand-editing works and is the fallback; some of its
+distinctions bite quietly (an empty list is not a missing key), which is why
+it is not the announced route.
 
 ---
 
