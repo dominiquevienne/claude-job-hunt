@@ -83,6 +83,7 @@ has gone stale before.
 | jobs.ge | `jobs-ge.md` | **Shipped.** Georgia's independent generalist — **the whole board in one request**, 308 live ads and **no pagination at all**. **No key, no cookie, no browser**, and `robots.txt` publishes `Crawl-delay: 5`, which the adapter uses as a value read rather than chosen. **The site declares its own stub**: 11 English pages in 12 carry one sentence pointing at the Georgian text — **and the twelfth is the mirror**, so the adapter follows the pointer instead of trusting a language |
 | ss.ge | `ss-ge.md` | **Shipped, enumeration only — on purpose.** Georgia's largest classifieds: **1 705 job ads found without fetching one advertisement page.** **Three hosts and three different `robots.txt` files**, the permissive one on the host you are redirected to; the board itself answers `403` behind a Cloudflare challenge, **and a challenge that asks for a click is a stop**. Discovery runs on the unchallenged apex, through a jobs sitemap declared only by the subdomain's robots.txt and absent from the apex's own index |
 | LMIS Jamaica | `lmis-jm.md` | **Shipped.** Jamaica's public employment service — **the whole board in one request**, 16 ads, no key and no browser. **The first in this series whose access is not refused, and the permission is accidental**: its `robots.txt` is Drupal's shipped default and says nothing about vacancies — the mirror of `empleate.gob.hn`, where a file copied from Google's documentation forbids them. **And its endpoint accepts every filter and applies none**, so the adapter offers none |
+| BNE Chile | `bne-cl.md` | **Shipped.** Chile's national employment service — **7 928 ads, and a sitemap in which every entry is one**. **No key, no cookie, no browser**: the search renders client-side, the ad pages do not and carry a `JobPosting`. **And the board is not UTF-8** — `decode("utf-8", "replace")` loses 37 to 93 characters an ad without failing, which is why `_decode.py` exists |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
@@ -409,6 +410,22 @@ different files**. It now calls `check_robots()` on the host it is about to
 read, exits **7** on a refusal with the module's own words, and keeps its
 Cloudflare stop **separate** — because that host says `Allow: /` and answers
 `403`, so **the stop is not a robots verdict** and must not be written as one.
+
+**Decode a response with `skills/job-scan/scripts/_decode.py`, not with
+`utf-8`.** `decode("utf-8", "replace")` is this repository's house pattern —
+**32 adapters use it and none reads the declared charset** — and it has not
+bitten only because every board measured so far served UTF-8.
+
+**Chile's national employment service does not.** `bne.gob.cl` declares
+`ISO-8859-1` in its header and `windows-1252` in its markup, and the house
+pattern **loses 37 to 93 characters per advertisement, on eight of eight
+sampled, without failing.** `errors="replace"` cannot fail: it returns
+plausible text with holes, which is `shared/plausible-and-false.md`'s class
+arriving in the transport layer.
+
+`decode_body(raw, headers)` follows the header, then the markup, then **strict**
+UTF-8, then a total fallback — **and returns which one it used**, so a run that
+had to guess says so.
 
 **Read `<loc>` through `skills/job-scan/scripts/_sitemap.py`, never with a
 pattern of your own** — and the reason is the same failure, one file later.
