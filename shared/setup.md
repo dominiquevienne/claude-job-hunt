@@ -588,6 +588,31 @@ write it into `config.yml`.** That file is read aloud, copied into issues and
 backed up; a secret does not belong in it, and `francetravail.py` deliberately
 cannot read one from there.
 
+**There are two places a credential can live, and the file is the one that
+works everywhere.** Outside a terminal the shell is reset between calls, so an
+exported variable does not survive from one to the next — *"from the
+environment, and from nowhere else"* was not merely tedious there, it **could
+not work**. Issue #110.
+
+```
+<workspace>/credentials.env
+    FRANCE_TRAVAIL_CLIENT_ID=…
+    FRANCE_TRAVAIL_CLIENT_SECRET=…
+    ADZUNA_APP_ID=…
+    ADZUNA_APP_KEY=…
+    LBA_API_KEY=…
+```
+
+**The environment still wins**, so nothing changes for a terminal. And the
+security rule does not move: **never in `config.yml`** — read aloud, pasted
+into issues, backed up — **never in git**, and **never pasted into the
+conversation.** The workspace is the user's data directory, not a repository.
+
+**Ask which situation they are in before prescribing.** Telling somebody with
+no shell to run `export` is not help, and neither is prescribing a file to
+somebody holding a terminal. The adapters' own messages give both routes and
+label them.
+
 **Every command in this section is bash**, here and in 5e: `export`,
 `chmod 600` and `set -a; . file; set +a` are bash, not PowerShell. On Windows
 that means WSL or Git Bash — `README.md` documents both routes and this file

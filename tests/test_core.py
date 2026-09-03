@@ -28,6 +28,7 @@ import _ldjson            # noqa: E402
 import _locations         # noqa: E402
 import _match             # noqa: E402
 import _robots            # noqa: E402
+import _secrets           # noqa: E402
 import _sitemap           # noqa: E402
 
 
@@ -235,6 +236,78 @@ class LdJson(unittest.TestCase):
         html = ('<script type="application/ld+json">'
                 '{"@type":"JobPosting","description":"a\nb"}</script>')
         self.assertEqual(len(_ldjson.postings(html)), 1)
+
+
+class Secrets(unittest.TestCase):
+    """Credentials from a file as well as the environment. Issue #110."""
+
+    def _write(self, text):
+        import tempfile
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "credentials.env"), "w",
+                  encoding="utf-8") as f:
+            f.write(text)
+        return d
+
+    def test_reads_key_equals_value(self):
+        d = self._write("A_KEY=abc\n")
+        old = os.environ.get("JOB_HUNT_HOME")
+        os.environ["JOB_HUNT_HOME"] = d
+        try:
+            _secrets._CACHE.clear()
+            self.assertEqual(_secrets.get("A_KEY"), "abc")
+        finally:
+            _secrets._CACHE.clear()
+            if old is None:
+                del os.environ["JOB_HUNT_HOME"]
+            else:
+                os.environ["JOB_HUNT_HOME"] = old
+
+    def test_ignores_comments_strips_quotes_and_export(self):
+        d = self._write('# c\nexport B_KEY="xy"\n\nC_KEY=\'z\'\n')
+        old = os.environ.get("JOB_HUNT_HOME")
+        os.environ["JOB_HUNT_HOME"] = d
+        try:
+            _secrets._CACHE.clear()
+            got = _secrets.load()
+            self.assertEqual(got.get("B_KEY"), "xy")
+            self.assertEqual(got.get("C_KEY"), "z")
+        finally:
+            _secrets._CACHE.clear()
+            if old is None:
+                del os.environ["JOB_HUNT_HOME"]
+            else:
+                os.environ["JOB_HUNT_HOME"] = old
+
+    def test_the_environment_wins(self):
+        d = self._write("D_KEY=from-file\n")
+        old_ws, old_d = os.environ.get("JOB_HUNT_HOME"), os.environ.get("D_KEY")
+        os.environ["JOB_HUNT_HOME"] = d
+        os.environ["D_KEY"] = "from-env"
+        try:
+            _secrets._CACHE.clear()
+            self.assertEqual(_secrets.get("D_KEY"), "from-env")
+        finally:
+            _secrets._CACHE.clear()
+            for k, v in (("JOB_HUNT_HOME", old_ws), ("D_KEY", old_d)):
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    def test_printing_the_container_shows_no_value(self):
+        # The accident a plain dict invites. Not a substitute for not printing
+        # what `get()` returns — see the class docstring.
+        m = _secrets.Masked({"K": "supersecret"})
+        self.assertNotIn("supersecret", repr(m))
+        self.assertNotIn("supersecret", f"{m}")
+        self.assertIn("11 chars", repr(m))
+
+    def test_the_message_gives_both_routes(self):
+        note = _secrets.missing_note(["X_KEY"], "svc", "Service", "example.com")
+        self.assertIn("credentials.env", note)
+        self.assertIn("set -a", note)
+        self.assertIn("config.yml", note)
 
 
 class Locations(unittest.TestCase):

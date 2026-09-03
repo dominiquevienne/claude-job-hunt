@@ -40,6 +40,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _secrets import get as secret_get
+from _secrets import missing_note
+
 TOKEN_URL = ("https://entreprise.francetravail.fr/connexion/oauth2/"
              "access_token?realm=%2Fpartenaire")
 API = "https://api.francetravail.io/partenaire/offresdemploi/v2"
@@ -80,18 +83,19 @@ def die(msg, code=2):
 
 
 def creds():
-    """client_id / client_secret, from the environment only.
+    """client_id / client_secret: the environment, then the workspace file.
 
     Deliberately not a config.yml key. config.yml is a plain file in the user's
     workspace that gets read aloud, copied into issues and backed up; an OAuth
     secret does not belong in it.
     """
-    cid, secret = os.environ.get(ENV_ID), os.environ.get(ENV_SECRET)
+    cid = secret_get(ENV_ID, "francetravail")
+    secret = secret_get(ENV_SECRET, "francetravail")
     if not cid or not secret:
-        die(f"set {ENV_ID} and {ENV_SECRET} in the environment. Create them "
-            "for free at https://francetravail.io — an account, an "
-            "application, then subscribe it to 'Offres d'emploi v2'. They are "
-            "never read from config.yml.")
+        die(missing_note([ENV_ID, ENV_SECRET], "francetravail",
+                         "France Travail",
+                         "francetravail.io — an account, an application, then "
+                         "subscribe it to 'Offres d'emploi v2'"))
     return cid, secret
 
 

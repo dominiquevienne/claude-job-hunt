@@ -53,6 +53,8 @@ import urllib.request
 
 from _language import speaks_codes
 
+from _secrets import get as secret_get
+from _secrets import missing_note
 from _zero import zero_note
 
 API = "https://api.adzuna.com/v1/api"
@@ -93,22 +95,22 @@ def note(msg):
 
 
 def credentials():
-    """From the environment, and from nowhere else.
+    """The environment first, then a credentials file in the workspace.
 
-    `config.yml` is read aloud, pasted into issues and backed up; an API key
-    has no business in it. The convention here is `~/.adzuna.env`, chmod 600,
-    sourced explicitly because a non-interactive shell does not read a profile:
+    **"From the environment, and from nowhere else" was unworkable outside a
+    terminal.** In CoWork the shell is reset between calls, so an exported
+    variable does not survive from one to the next: `set -a; . ~/.adzuna.env;
+    set +a` is not merely tedious there, it **cannot work**. Issue #110.
 
-        set -a; . ~/.adzuna.env; set +a
+    The environment still wins. `config.yml` still never holds a key — that
+    file is read aloud, pasted into issues and backed up — and the file lives
+    in the user's workspace, which is not a repository.
     """
-    app_id = os.environ.get("ADZUNA_APP_ID")
-    app_key = os.environ.get("ADZUNA_APP_KEY")
+    app_id = secret_get("ADZUNA_APP_ID", "adzuna")
+    app_key = secret_get("ADZUNA_APP_KEY", "adzuna")
     if not app_id or not app_key:
-        die("ADZUNA_APP_ID and ADZUNA_APP_KEY are not in the environment. "
-            "They live in ~/.adzuna.env; source it first:\n"
-            "    set -a; . ~/.adzuna.env; set +a\n"
-            "A key is free and self-service at developer.adzuna.com/signup — "
-            "the plugin does not create accounts.")
+        die(missing_note(["ADZUNA_APP_ID", "ADZUNA_APP_KEY"], "adzuna",
+                         "Adzuna", "developer.adzuna.com/signup"))
     return app_id, app_key
 
 

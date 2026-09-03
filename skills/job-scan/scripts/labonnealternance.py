@@ -38,6 +38,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _secrets import get as secret_get
+from _secrets import missing_note
+
 API = "https://api.apprentissage.beta.gouv.fr/api/job/v1/search"
 ENV_KEY = "LBA_API_KEY"
 
@@ -67,17 +70,17 @@ def die(msg, code=2):
 
 
 def key():
-    """The API key, from the environment only.
+    """The API key: the environment, then the workspace file.
 
     Not a config.yml key: that file is read aloud, pasted into issues and
     backed up, and a bearer token has no business in it.
     """
-    k = os.environ.get(ENV_KEY)
+    k = secret_get(ENV_KEY, "labonnealternance")
     if not k:
-        die(f"set {ENV_KEY} in the environment. The key is free and "
-            "self-service: create an account at "
-            "https://api.apprentissage.beta.gouv.fr and generate a token. It "
-            "is never read from config.yml.")
+        die(missing_note([ENV_KEY], "labonnealternance",
+                         "La Bonne Alternance",
+                         "api.apprentissage.beta.gouv.fr — create an account "
+                         "and generate a token"))
     return k
 
 
