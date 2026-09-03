@@ -65,6 +65,38 @@ rules file while `www.jobs.co.id/robots.txt` redirects and serves 171 888 bytes
 of HTML. **One host is not the other host**, and `104.com.tw` serves two
 different md5s across the pair.
 
+**And the host you name is not always the host that answers.** `_robots.py`
+now reports both, and the first thing it corrected was one of this file's own
+examples: the **126 KB of sign-in HTML** cited here as `my.indeed.com`'s reply
+is served by **`secure.indeed.com`**, after a cross-host redirect. The guard
+was right and the attribution was not — and nothing could show that while the
+result carried only the name that had been typed. Issue #99.
+
+**How often do the two forms really differ? Measured, because the answer
+decides whether it is worth two requests a host.** Across **55 comparable
+hosts** already known here, 2026-09-03:
+
+| | |
+| :-- | --: |
+| raw md5 difference | **5 of 55** |
+| **two real rules files that differ** | **2 of 55** |
+
+**Three of the five were not two rules files at all** — `job-room.ch`'s apex
+redirects to its home page, `job.id`'s `www` answers 59 KB of HTML, and
+`digitalrecruiters.com` sends both forms to `www.cegid.com`. **Comparing bytes
+without asking whether a rules file came back inflated the finding by more than
+double**, which is this page's own `text/plain` guard skipped by the
+measurement that was checking it.
+
+**And the residue is not harmless.** `jobindex.dk` serves **47 bytes of
+`User-agent: * / Disallow: /`** on the apex and **4 218 bytes of detailed
+permissions** on the `www`. An adapter written against the `www` never sees the
+refusal, and `_robots.py --siblings` says so in one line.
+
+**So: a diagnostic run once when a board is written, not two requests on every
+sweep.** Four per cent does not justify doubling every run; one blanket refusal
+hidden behind a `www` justifies looking once.
+
 **And a third host is not a variant of the first two.** `ss.ge` redirects to
 `home.ss.ge`, whose jobs section redirects again to `jobs.ss.ge` — **three
 hosts, three `robots.txt` files, three different sets of refusals**, measured
