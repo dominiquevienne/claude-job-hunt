@@ -22,9 +22,13 @@ applications whose status date falls inside a period.
 ## Run it
 
 ```bash
-JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
-python3 "<this skill's folder>/scripts/list_applications.py" [options]
+JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/list_applications.py" [options]
 ```
+
+*(`<this skill's folder>` used to stand where that path is — **a literal
+placeholder, not a variable**, in the one skill that already used
+`${CLAUDE_PLUGIN_ROOT}` twice elsewhere in this same file. Issue #112.)*
 
 **Then, once, quietly:**
 
@@ -129,7 +133,7 @@ filter.
 ### Applications that reached an interview
 
 ```bash
-python3 "<this skill's folder>/scripts/list_applications.py" --interviews
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/list_applications.py" --interviews
 ```
 
 **Volume sent is an effort metric; interviews obtained is the outcome one** —
@@ -194,7 +198,7 @@ between the status date and the `JR:` date finds it. When the user is heading
 for a declaration session, hand them both lists:
 
 ```bash
-python3 "<this skill's folder>/scripts/jobroom_sync.py" plan
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/jobroom_sync.py" plan
 ```
 
 The same script carries the **duplicate gate** that any writing into job-room

@@ -4,6 +4,12 @@ argument-hint: "[section: profile | orientation | commute | languages | searches
 allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion
 ---
 
+**The same work is also a skill**, `skills/job-setup/SKILL.md`, so that *"I've
+moved"* or *"add a job board"* reaches it — a slash command is never triggered
+by a sentence. This command stays because typing `/job-setup` is faster when
+you already know it. **Prefer the skill's own instructions if you are reading
+that file too; they do not diverge.** Issue #112.
+
 Run the setup procedure in `${CLAUDE_PLUGIN_ROOT}/shared/setup.md`. Read that
 file in full first — it is the procedure, including the rule that **every input
 you ask for must come with the exact URL or command that produces it, and every

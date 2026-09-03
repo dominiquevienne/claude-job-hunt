@@ -178,7 +178,15 @@ def main():
     latest = (s["latest"] or "").lstrip("v")
     print(f"claude-job-hunt {latest} is out; this workspace runs "
           f"{s['installed']}.")
-    print("  To update — it is the host's action, not the plugin's:")
+    # **Say it for where it is being read.** Two slash-style CLI commands are
+    # Claude Code's syntax and exist nowhere else; prescribing them to somebody
+    # in an app is directions to a door that is not there. Name the action
+    # first, then give the terminal form as the terminal form. Issue #112.
+    print("  Updating is the host's action, not the plugin's — it installs "
+          "plugins and it updates them.")
+    print("  **In an app:** update `claude-job-hunt` from wherever you "
+          "installed it, through the plugin or marketplace view.")
+    print("  **In the Claude Code terminal:** two commands, in this order —")
     print("      claude plugin marketplace update claude-job-hunt")
     print("      claude plugin update claude-job-hunt")
     # **Both lines, in this order, and the first is the one people miss.**
@@ -189,7 +197,8 @@ def main():
     # looks exactly like a broken plugin. README.md § Updating records that;
     # this file measured the stale half on 2026-09-02, with the clone sitting
     # at `chore: release 1.85.1` five releases after the fact.
-    print("  A restart applies it. Nothing has been changed for you.")
+    print("  A restart applies it. **Nothing has been changed for you**, and "
+          "nothing here is broken: this is a version number, not a fault.")
     return 0
 
 
