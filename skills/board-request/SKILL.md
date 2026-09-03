@@ -1,11 +1,16 @@
 ---
 name: board-request
-description: Report a board problem upstream so the fix reaches every user, not just this machine. Two modes — a board with no adapter yet (records what an adapter would need), and an adapter that has stopped working (records the symptom, what changed and the evidence). Invoked automatically by cover-letter when an ad URL comes from an unknown board, by job-scan when a board's sweep fails, or directly when the user says "add support for <board>", "this board isn't supported", "the LinkedIn scan is broken", "jobup stopped working", "submit jobs.ch as a board".
+description: Report a board problem upstream so the fix reaches every user, not just this machine. Three modes — a board with no adapter yet (records what an adapter would need), an adapter that has stopped working (records the symptom, what changed and the evidence), and a finding that is not a board failure at all (an adapter that answered with the wrong data, a trap in a site's behaviour, a defect in one of the scripts, a method that turned out wrong). Invoked automatically by cover-letter when an ad URL comes from an unknown board, by job-scan when a board's sweep fails, whenever a run learns something that would be true for another user of this plugin, or directly when the user says "add support for <board>", "this board isn't supported", "the LinkedIn scan is broken", "jobup stopped working", "submit jobs.ch as a board".
 user-invocable: true
 allowed-tools: Bash(*), Read, Write, Edit, WebFetch, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---
 
-# Reporting a board problem upstream
+# Reporting upstream
+
+**The skill is called `board-request` and two of its three modes are not about a
+board.** The name is historical and kept because it is referenced from the other
+skills; what it does is take anything one user learned that would be true for
+another and turn it into an issue.
 
 Read `shared/never-fail-silently.md` first — it governs this skill more than any
 other, because a request that quietly goes nowhere is exactly the failure it
@@ -29,7 +34,9 @@ Both modes below end in the same place: an issue on the plugin repository.
 
 **That is the whole point, and it is worth being explicit about.** A board that
 cannot be swept, or an adapter that has stopped working, is almost never one
-user's problem — the site changed for everybody. Fixing it locally helps the
+user's problem — the site changed for everybody. **And neither is a board that
+swept perfectly and returned the wrong ads**, which is the same fact with the
+warning removed. Fixing it locally helps the
 person in front of you and nobody else, and the next plugin update overwrites
 the fix. **The issue is the only route by which one user's broken scan becomes
 every user's working scan.**
@@ -56,9 +63,13 @@ every failure is silence. Issue #79.
 | :-- | :-- | :-- |
 | The board has **no adapter** in `shared/boards/` — a URL from a site `job-scan` cannot sweep | **New board** | 1 → 2 → 3 → 4 |
 | The board **has** an adapter and it **no longer works** — the sweep returns nothing, the selectors miss, the site redesigned, a login appeared, anti-bot escalated | **Broken adapter** | **2b** → 3 → 4 |
+| **Nothing failed** — the sweep finished and you learned something anyway: the adapter answered with the **wrong** data, a site behaves in a way that will fool the next reader, a script has a defect, a method turned out to be wrong | **Finding** | **2c** → 3 → 4 |
 
 A broken adapter **skips section 1 entirely**: whether the site is a board was
 settled when the adapter was written. Do not re-litigate it.
+
+**So does a finding.** Section 1 asks whether a *site* deserves an adapter; a
+finding is often not about a site at all.
 
 ## 1 — Is this actually a board?
 
@@ -125,6 +136,7 @@ from the outside and need different fixes, or no fix at all:
 | Adapter broken | **The user is logged out**, or the session expired | The adapter's prerequisites block; the logged-out layout is usually obvious in a screenshot |
 | Adapter broken | **The run was on stale code** — the fix already shipped | `bin/version-check.py --print-version`, then compare against the closed issues. **See below: this one is not a symptom of the board at all.** |
 | Adapter broken | **Anti-bot challenge** (`indeed.md` documents this as expected behaviour) | A challenge page. This is the *user's* to solve, and the adapter already says so — not an issue unless the challenge is new or now unsolvable |
+| Adapter broken | **The adapter answered, and the answer was wrong** | Nothing to tell apart — this is not a broken adapter and it is not nothing. It is **worse than a failure, because it does not announce itself**. Go to **2c** |
 
 ### A failure observed on stale code is not evidence about the board
 
@@ -211,6 +223,83 @@ If you do patch it to unblock the user, say plainly that it is temporary, and
 **put the patch in the issue** — a working fix in the report is the fastest path
 to it reaching everyone.
 
+## 2c — When nothing failed and you learned something anyway
+
+**This is the mode that did not exist**, and by count it is the common one. Of
+this repository's 46 issues recording a field finding, **10** are "a board did
+not sweep" and **36** are this. See
+`shared/never-fail-silently.md`, *What you learn belongs to the next user too*,
+for the rule and for the measurement.
+
+You are here when the run **succeeded** and produced knowledge that outlives it:
+
+| Shape | Example from this repository |
+| :-- | :-- |
+| The adapter answered with the **wrong** data | LinkedIn returned seven suggestion-block ads for a search with no results (#46); jobup wrote a re-listing date to the ledger, seven weeks off (#84) |
+| A site behaves in a way that will fool the next reader | An expired ad answering `200` with twenty `JobPosting` blocks, none of them the ad (#88) |
+| A method is wrong | "A date in the past means the ad is closed" — false against a live BCV vacancy 18 days past its printed deadline (#89) |
+| A script carries a defect | `lists[]` dropped, so every requirement of a Lever posting was silently lost (#54) |
+| A capability nobody had noticed | jobup and jobs.ch need no browser at all — plain `curl` returns the full payload (#68) |
+
+**Apply the test before writing anything**, because this mode has no failure to
+justify it and is therefore the easy one to file noise into:
+
+> Would this still be true on another machine, for another person, tomorrow?
+
+If it turns on this user's config, credentials, profile, or one search that
+genuinely had no results, **it is not a finding — it is a line in the run's own
+output**, and it stops there.
+
+**And measure before you assert.** A finding filed from one observation is a
+guess with a ticket number. Say how many times you saw it, on what, and on which
+date — `shared/plausible-and-false.md` on why repetition corroborates only when
+the measurements are independent, and #72 on why an assertion of non-existence
+must carry the search that established it.
+
+```markdown
+# <One line: what is true, not what you did>
+
+- **Kind:** wrong data · site behaviour · method · script defect · capability
+- **Where:** <adapter, script, or shared doc that carries the wrong thing — or "nowhere yet">
+- **Plugin version:** <version>
+- **Observed:** <YYYY-MM-DD>
+
+## What the run did
+
+<The command, the site, the search. What it returned, and that it returned it
+cleanly — no error, no warning. This is the point: it looked like a success.>
+
+## What is actually true
+
+<The measurement. Numbers with their denominator: "two of 71", "0 of 300",
+"18 days past the printed deadline". Never a number without what it is out of.>
+
+## How it was established
+
+<The commands, in full, so a maintainer re-runs them rather than trusting you.
+If a convenience flag changed the answer, say which — `--compressed` and `-L`
+have each destroyed a finding here (#71).>
+
+## Who else it hits
+
+<Every user of board X · every adapter reading JSON-LD · every run that scores
+on a posted date. If the answer is "only this user", you are in the wrong
+section.>
+
+## What was done for this user
+
+<Local workaround, or "none — the run was correct once the finding was applied".>
+
+Reported <YYYY-MM-DD> from claude-job-hunt <version>.
+```
+
+**Say where the knowledge should live, not only that it is true.** Most of these
+end in a `shared/` doctrine file or an adapter's *Zero-shaped answers* section
+rather than in code, and naming the destination is half the fix. #46's own
+lesson was that `shared/never-fail-silently.md` **already catalogued the trap**
+and the LinkedIn adapter did not carry it — a finding recorded in a place the
+next run does not read is barely recorded at all.
+
 ## 3 — Save it locally
 
 ```bash
@@ -220,7 +309,10 @@ mkdir -p "$JOB_HUNT_HOME/board-requests"
 
 Write it to `$JOB_HUNT_HOME/board-requests/<board-slug>.md` for a **new board**,
 or `$JOB_HUNT_HOME/board-requests/<board-slug>-broken-<YYYY-MM-DD>.md` for a
-**broken adapter**. The date is in the filename because a board can break more
+**broken adapter**, and
+`$JOB_HUNT_HOME/board-requests/finding-<slug>-<YYYY-MM-DD>.md` for a **finding**
+— dated for the same reason a break is, and slugged on what is true rather than
+on a board, because a finding often spans several. The date is in the filename because a board can break more
 than once, and each break is its own event with its own window — collapsing them
 into one file destroys the *last known working* evidence that makes them fixable.
 
@@ -233,8 +325,15 @@ overwrites a new-board one.
 break.** If the user has `gh`:
 
 ```bash
+# A board — the prefix is the match
 gh issue list --repo dominiquevienne/claude-job-hunt \
   --state open --search "<board> in:title" 2>/dev/null
+
+# A finding — no prefix to match, so search the claim's own words, and
+# **include closed issues**: a finding is usually closed by the fix that
+# records it, and filing it twice is filing a solved problem.
+gh issue list --repo dominiquevienne/claude-job-hunt \
+  --state all --search "<two or three words of the claim>" 2>/dev/null
 ```
 
 An open issue for the same symptom → **do not file a duplicate.** Say it is
@@ -299,11 +398,25 @@ gh issue create \
   --title "Board broken: <board name> — <one-line symptom>" \
   --body-file "$JOB_HUNT_HOME/board-requests/<slug>-broken-<YYYY-MM-DD>.md" \
   --label board-request --label bug
+
+# Finding — no prefix, and the title states what is true
+gh issue create \
+  --repo dominiquevienne/claude-job-hunt \
+  --title "<the claim itself, in one line>" \
+  --body-file "$JOB_HUNT_HOME/board-requests/finding-<slug>-<YYYY-MM-DD>.md" \
+  --label bug
 ```
 
-**Keep the title prefixes exact** — `Board request:` and `Board broken:`. They
-are what the duplicate search in step 3 matches on, and what lets a maintainer
-tell a missing adapter from a regression at a glance.
+**Keep the two board prefixes exact** — `Board request:` and `Board broken:`.
+They are what the duplicate search in step 3 matches on, and what lets a
+maintainer tell a missing adapter from a regression at a glance.
+
+**A finding takes no prefix, and its title is the claim, not the activity.**
+`"A date in the past means the ad is closed" is false — a BCV ad open 18 days
+past its printed deadline` tells a maintainer what changed in the world;
+*Investigated jobup dates* tells them nothing and is unsearchable six months
+later. It is also why a finding's duplicate check cannot match on a board name:
+search the **claim's own words** instead, across open **and** closed issues.
 
 If it fails because a label does not exist in the repo, retry once without
 `--label`. Any other failure: report it verbatim and fall back to Route B.

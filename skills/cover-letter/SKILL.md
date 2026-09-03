@@ -21,7 +21,7 @@ the documents and flag the gap to them at the end.
 
 | File | When |
 | :-- | :-- |
-| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported |
+| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported — and nothing learned that would be true for another user stays local |
 | `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
 | `shared/workspace.md` | Step 0 — locating and loading the user's data |
 | `shared/setup.md` | Step 0 — only when the workspace is not configured |
@@ -126,6 +126,15 @@ decides whether the site is really a board and, if so, records what an adapter
 would need. Do this **without interrupting the application**: mention it in one
 clause at the end, never as a question in the middle. A user who asked for a
 cover letter did not ask to file a feature request.
+
+**The same clause carries anything else this run learned about the wider world.**
+An ad that answers `200` while being gone, an apply link that reveals an ATS the
+adapter does not know, a description that parses to nothing on a shape other
+adapters share — `shared/never-fail-silently.md`, *What you learn belongs to the
+next user too*, is the rule and `board-request` **2c** is the route. One test
+decides it: *would this still be true on another machine, for another person,
+tomorrow?* **The timing rule above is unchanged and binds harder here** — the
+application ships first, the finding is one line after it.
 
 **One board leading to another is the exception — there you ask.** The rule above
 is about the URL the *user* handed you, and it stays silent because they did not

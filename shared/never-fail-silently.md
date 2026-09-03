@@ -445,3 +445,75 @@ The plugin is *built* to keep working with less: no browser, no LaTeX, no
 be taken rather than stopping the user's work.
 
 **The only thing that is forbidden is taking one without saying so.**
+
+## What you learn belongs to the next user too
+
+Everything above is about not being silent toward **the person in front of
+you**. This section points the same rule at everybody else who runs this plugin,
+and it is the one that gets skipped, because **nothing in the run fails when you
+skip it**.
+
+**Anything you learn that would be true for another user of this plugin goes
+upstream.** Not only *a board did not sweep*: a trap in a site's behaviour, a
+response shape that lies, a defect in one of the scripts, an adapter that
+returns the **wrong** data rather than none, a method that turned out to be
+wrong, a capability nobody had noticed.
+
+### The test, and it is not "is this about a board"
+
+> **Would this still be true on another machine, for another person, tomorrow?**
+
+| Answer | Where it goes |
+| :-- | :-- |
+| **Yes** — the site behaves that way for everyone, the script carries that defect, the method was wrong | **Upstream**, through `board-request` |
+| **No** — this user's config, their credentials, their profile, one search that genuinely has no results, a network blip that did not reproduce | **Local.** Say it in the run's output and stop there |
+
+**A local workaround reaches nobody and does not survive.** The plugin runs from
+a version-pinned cache
+(`~/.claude/plugins/cache/claude-job-hunt/claude-job-hunt/<version>/`) and the
+next update overwrites it. The issue is the only route by which one user's
+finding becomes every user's fix.
+
+### The narrow trigger was not enough, and the repository's own history says so
+
+The rule used to fire on one shape — *a board with an adapter failed to sweep*,
+plus `cover-letter`'s *a URL from a board with no adapter*. Of this repository's
+**46 issues that record a field finding**, that trigger names **10**. The other
+**36** became issues because somebody thought to file them.
+
+*How that was counted, so it can be disagreed with:* 54 issues on 2026-09-03,
+less the eight the user asked for as capabilities rather than found in the field
+(#33, #34, #40, #42, #47, #50, #52, #69), leaves 46. The ten the old trigger
+names are #5, #7, #31, #32 and #35 — a URL from a board with no adapter — and
+#55, #57, #59, #64 and #76, where the sweep crashed or returned nothing.
+Classified by title against the trigger's own wording; **the borderline calls
+were all resolved in the old rule's favour**, so 10 is its ceiling.
+
+The five most recent are the clearest case. #85 to #89, all closed, all from
+field measurement, and **not one of them is a board that failed to sweep**:
+
+| # | What it recorded | What the sweep did |
+| :-- | :-- | :-- |
+| #85 | Character folding does not reconcile `Tel Aviv` and `Tel Aviv-Yafo` | Worked |
+| #86 | `countries` is not a workplace — 71 Ghanaian cards labelled Gulf, two of them actually there | Worked |
+| #87 | The SuccessFactors tell is the `JobPosting` block, not the `<title>` | Worked |
+| #88 | An expired ad answers `200` with twenty `JobPosting` blocks, none of them the ad | Worked, and returned an ad that is gone |
+| #89 | "A date in the past means the ad is closed" is false — a BCV ad open 18 days past its printed deadline | Worked, and would have closed a live vacancy |
+
+**Every one of them is worse than a failed sweep, because a failed sweep
+announces itself.** These returned a clean, plausible, wrong answer — the
+failure mode the whole of *HTTP 200 is not a yes* exists to catch. It would be
+a strange file that catalogues that failure for forty-two adapters and then
+lets each new instance of it die in one session's memory.
+
+### What this does not change
+
+- **It is not a prompt on every run.** `board-request` §4 still asks once, still
+  needs an explicit yes, and §3's duplicate check still runs first — including
+  against **closed** issues.
+- **The privacy pass is unchanged, and matters more here rather than less.**
+  Findings about scripts carry paths, queries and sometimes the user's own data.
+  §4's rules on search URLs, page dumps and session identifiers apply to the
+  wider set exactly as written.
+- **It never interrupts.** The finding is filed after the user's task finishes,
+  in one clause at the end — never as a question in the middle of it.

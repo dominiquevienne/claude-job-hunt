@@ -17,7 +17,7 @@ They live in this plugin, one level above this skill's folder
 
 | File | When |
 | :-- | :-- |
-| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported |
+| `shared/never-fail-silently.md` | **Always.** The rule that outranks the others: nothing skipped, partial or guessed goes unreported — and nothing learned that would be true for another user stays local |
 | `shared/workspace.md` | Step 0 — locating and loading the user's data |
 | `shared/setup.md` | Step 0 — only when the workspace is not configured |
 | `shared/prerequisites.md` | Any step whose tool is missing — how to help the user fix it |
@@ -34,6 +34,17 @@ They live in this plugin, one level above this skill's folder
 (broken-adapter mode, its section 2b) before the run ends — the fix belongs
 upstream, where it reaches every user, not in a local workaround that the next
 plugin update overwrites.
+
+**And a failed sweep is not the only thing that goes upstream — it is the rarest
+of them.** `shared/never-fail-silently.md`, *What you learn belongs to the next
+user too*, holds the standing rule: **anything this run learns that would be
+true for another user of this plugin goes upstream**, through `board-request`
+section **2c**. An adapter that returned the *wrong* ads, a site whose `200`
+means no, a date that turned out to be a re-listing, a script defect, a method
+that was wrong. Apply its one test — *would this still be true on another
+machine, for another person, tomorrow?* — and if the answer is no, it belongs in
+this run's output and nowhere else. **File it after the scan is reported, never
+in the middle of it.**
 
 **When a prerequisite is missing at any point, do not stop at saying so.**
 Follow `shared/prerequisites.md`: name what it blocks, give the exact command
