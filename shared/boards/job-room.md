@@ -188,6 +188,53 @@ is the same posting: record it `discarded` naming the row, and do **not** apply
 the fuzzy employer-name check from `skills/job-scan/SKILL.md`, which is for
 cases where no such key exists.
 
+**And the duplication is not only against `jobup`'s rows — it is within
+job-room itself.** The same vacancy can arrive as **two** job-room
+advertisements, under two `job-room:` ids, sharing one `duplicate_of`. Left
+alone both enter the ledger as separate rows for one job. See **7b**.
+
+**7b. The same vacancy arrives twice, with a different title on each copy —
+and the truncated one is the employer's own.** Measured 2026-09-03 on four
+Infomaniak records:
+
+| `duplicate_of` | The employer's API feed | Jobup's syndicated copy |
+| :-- | :-- | :-- |
+| `jobup:478b69aa` | `Backend Software Engineer` | **`Backend Software Engineer (Hosting)`** |
+| `jobup:4302da20` | `Software Engineer PHP` | **`Software Engineer PHP (Médias)`** |
+
+**Two of two: the employer's feed drops the parenthesis and the syndicated
+record keeps it.** With `(kDrive)`, `(Hosting)`, `(Médias)` and `(Core DevOps)`
+open at one employer, that is the difference between four roles and one string
+— **and the ledger's duplicate check reads the title**: *"same company and a
+comparable role"*. It came within one read of a second application to a post
+already applied for on 19.08.
+
+**The orphan separator is the tell.** `Software Engineer -` keeps the dash the
+parenthesis used to follow. The card carries `title_looks_truncated` when a
+title ends that way and there is no second record to repair it from.
+
+**And the company is wrong on the other copy.** The syndicated record names
+**`Jobup`** — the syndicator — where the API one names the employer. **So the
+duplicate check's two halves are broken on opposite records of the same ad**:
+the copy with the usable role has the wrong company, and the copy with the
+right company has the amputated role. Neither is complete, and joining them is
+what makes either half work.
+
+**`duplicate_of` is the join key, and the repair is inside job-room** — no
+other board is needed. `jobroom.py`'s `merge()` groups a page's cards by it,
+takes the **longest** title and the **non-syndicator** company, and says which
+record each came from in `title_source`, `company_source` and `merged_note`.
+On the measured page: **12 records → 10 vacancies.**
+
+**Where no pair exists it flags and does not repair.** `company_is_syndicator`
+on a record that only reached job-room through Jobup; `title_looks_truncated`
+on an unpaired API record ending in a separator. There is no second value to
+take, and inventing one is the guess this file exists to prevent.
+
+*(`pick_description` was the suspect and is exonerated: **all four records
+carry exactly one `jobDescriptions` entry**, so its `max()` had nothing to
+choose between. The truncation is in the feed.)* Issue #97.
+
 **8. Read the detail endpoint before scoring.** One ad returned a 325-character
 description from `_search` and 5 185 characters from the detail endpoint; five
 others matched exactly. The discrepancy is not systematic and its cause was not

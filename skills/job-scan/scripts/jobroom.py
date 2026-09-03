@@ -104,6 +104,12 @@ def pick_description(descriptions):
 
     languageIsoCode is unreliable: a French ad is routinely tagged 'de'. So the
     language is reported, never used to choose.
+
+    **And it is not where truncated titles come from** — measured 2026-09-03
+    on the four Infomaniak records that raised the question: **every one of
+    them carries exactly one `jobDescriptions` entry**, so this `max()` has
+    nothing to choose between. The truncation is in the feed, and `merge()`
+    below is where it is repaired. Issue #97.
     """
     if not descriptions:
         return None, None, ""
@@ -199,6 +205,93 @@ def card(ad, with_description=False):
     return out
 
 
+# A title the feed cut mid-phrase leaves its separator behind:
+# `'Software Engineer -'`. It is a tell, not a proof.
+ORPHAN_TAIL = re.compile(r"[\s]*[-–—:|/]\s*$")
+
+# Names that appear in `company` and are the syndicator, not the employer.
+SYNDICATORS = {"jobup", "jobs.ch", "jobcloud"}
+
+
+def merge(cards):
+    """One vacancy, one card — and the title from whichever record has it.
+
+    **THE MEASUREMENT, 2026-09-03.** The same jobup ad reaches job-room twice:
+    once through the **employer's own API feed** and once through **Jobup's
+    syndication**, both carrying the same `duplicate_of`. They do not carry
+    the same title:
+
+        duplicate_of        API feed (employer)          EXTERN (Jobup)
+        jobup:478b69aa      'Backend Software Engineer'  '… (Hosting)'
+        jobup:4302da20      'Software Engineer PHP'      '… (Médias)'
+
+    **Two of two: the employer's feed drops the parenthesis and the
+    syndicated record keeps it.** With `(kDrive)`, `(Hosting)`, `(Médias)`
+    and `(Core DevOps)` open at one employer, that is the difference between
+    four roles and one string — and the ledger's duplicate check reads the
+    title (*"same company and a comparable role"*). It nearly produced a
+    second application to a post already applied for.
+
+    **AND THE COMPANY IS WRONG ON THE OTHER RECORD.** The syndicated one names
+    `Jobup` — the syndicator — where the API one names the employer. So the
+    duplicate check's two halves are broken on **opposite records of the same
+    ad**: the one with the usable role has the wrong company, and the one with
+    the right company has the amputated role. Merging is what makes either
+    half work.
+
+    **A second defect it fixes on the way**: without this, both records enter
+    the ledger, under two `job-room:` ids, as two rows for one vacancy.
+
+    Nothing is chosen silently — `title_source` and `company_source` say which
+    record each field came from, and `records` says how many were joined.
+    """
+    by_dup, out = {}, []
+    for c in cards:
+        key = c.get("duplicate_of")
+        if not key:
+            out.append(c)          # nothing to join on; emit as it came
+            continue
+        by_dup.setdefault(key, []).append(c)
+
+    for key, group in by_dup.items():
+        if len(group) == 1:
+            c = group[0]
+            # Unpaired, so nothing corroborates it. Flag rather than repair:
+            # there is no second record to take a better value from, and
+            # inventing one is the guess this whole file exists to avoid.
+            if c.get("title") and ORPHAN_TAIL.search(c["title"]):
+                c["title_looks_truncated"] = True
+            if (c.get("company") or "").strip().lower() in SYNDICATORS:
+                c["company_is_syndicator"] = True
+            c["records"] = 1
+            out.append(c)
+            continue
+        # **Longest title wins**, which is the honest form of "the one that was
+        # not cut": on both measured pairs the fuller title is also the longer.
+        # Two pairs is a small sample and the rule says what it is.
+        best_title = max(group, key=lambda c: len(c.get("title") or ""))
+        # The employer's name over a syndicator's: prefer the record whose
+        # company differs from the external host's brand.
+        employer = next(
+            (c for c in group
+             if (c.get("company") or "").strip().lower()
+             not in SYNDICATORS), group[0])
+        base = dict(employer)
+        base["title"] = best_title.get("title")
+        base["title_source"] = best_title.get("source_system")
+        base["company_source"] = employer.get("source_system")
+        base["records"] = len(group)
+        base["merged_ids"] = sorted(c.get("id") for c in group)
+        if best_title is not employer:
+            base["merged_note"] = (
+                f"title from the {best_title.get('source_system')} record and "
+                f"company from the {employer.get('source_system')} one — the "
+                f"same vacancy reaches job-room twice and neither copy is "
+                f"complete.")
+        out.append(base)
+    return out
+
+
 def cmd_search(a):
     body = build_body(a)
     size = min(a.size, MAX_PAGE_SIZE)
@@ -215,9 +308,16 @@ def cmd_search(a):
                       file=sys.stderr)
         if not ads:
             break
-        for x in ads:
-            print(json.dumps(card(x.get("jobAdvertisement") or x),
-                             ensure_ascii=False))
+        page_cards = [card(x.get("jobAdvertisement") or x) for x in ads]
+        merged = merge(page_cards)
+        if len(merged) < len(page_cards):
+            print(f"[job-room] {len(page_cards)} records → {len(merged)} "
+                  f"vacancies: the same ad arrives through the employer's "
+                  f"feed and through Jobup's syndication, with different "
+                  f"titles and different company names. Merged; see "
+                  f"`merged_note`.", file=sys.stderr)
+        for c in merged:
+            print(json.dumps(c, ensure_ascii=False))
             rows += 1
         if len(ads) < size:
             break
