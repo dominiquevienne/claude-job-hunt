@@ -891,6 +891,58 @@ So say the true thing: today AMS is not swept, and if they have an AMS ad in
 hand, **pasting its text into `cover-letter` works and raises no question at
 all.**
 
+## 5e — Adzuna: a second key, and the smallest budget here
+
+**It was missing from this guide entirely.** `adzuna.py` documents its own
+convention and a user following these pages never learned the adapter existed
+or that it needed a key — they found out by running it and reading the error.
+Issue #106.
+
+**Say what it is.** Adzuna aggregates vacancies across nineteen countries and
+publishes them through a developer API. The key identifies the application, not
+the person, and creating one tells no employer anything.
+
+### The click path
+
+1. Go to **<https://developer.adzuna.com>** and register. Any email works.
+2. The dashboard shows an **Application ID** and an **Application Key**. Both
+   are needed; neither is a password.
+
+### Storing it — a file, not the config, and not the conversation
+
+**Do not ask the user to paste the key into the conversation, and never write
+it into `config.yml`.** Same reason as 5c: that file is read aloud, pasted into
+issues and backed up.
+
+Adzuna's convention here is a file of its own, because two values that belong
+together are easier to keep than two exports:
+
+```bash
+printf 'ADZUNA_APP_ID=%s\nADZUNA_APP_KEY=%s\n' '<app id>' '<app key>' \
+  > ~/.adzuna.env
+chmod 600 ~/.adzuna.env
+```
+
+**And it has to be sourced into the shell that runs the sweep** — the file is
+not read by the script:
+
+```bash
+set -a; . ~/.adzuna.env; set +a
+```
+
+**That last line is the one people lose.** A shell that has not sourced it gets
+the adapter's own message naming both variables, which is the intended
+behaviour and not a failure.
+
+### The budget is the constraint, and it is small
+
+**250 calls a day, for all nineteen countries together.** That is not a rate
+limit to pace around; it is a daily ceiling. Say it while enabling the board,
+because a user who configures five countries has divided it by five.
+
+*(And nothing measured through Adzuna goes into a country page or the Atlas —
+a separate rule, recorded where those are written.)*
+
 ## 5f — SmartRecruiters: the second override, and the adapter already exists
 
 **Run this whenever SmartRecruiters is in scope** — it is a global ATS, so
@@ -959,58 +1011,6 @@ rule, saying the key is missing and what it would cost.
 > `[smartrecruiters] robots.txt override ACTIVE — api.smartrecruiters.com
 > disallows everything to all agents but LinkedInBot. You enabled this, and
 > the address that gets blocked is yours.`
-
-## 5e — Adzuna: a second key, and the smallest budget here
-
-**It was missing from this guide entirely.** `adzuna.py` documents its own
-convention and a user following these pages never learned the adapter existed
-or that it needed a key — they found out by running it and reading the error.
-Issue #106.
-
-**Say what it is.** Adzuna aggregates vacancies across nineteen countries and
-publishes them through a developer API. The key identifies the application, not
-the person, and creating one tells no employer anything.
-
-### The click path
-
-1. Go to **<https://developer.adzuna.com>** and register. Any email works.
-2. The dashboard shows an **Application ID** and an **Application Key**. Both
-   are needed; neither is a password.
-
-### Storing it — a file, not the config, and not the conversation
-
-**Do not ask the user to paste the key into the conversation, and never write
-it into `config.yml`.** Same reason as 5c: that file is read aloud, pasted into
-issues and backed up.
-
-Adzuna's convention here is a file of its own, because two values that belong
-together are easier to keep than two exports:
-
-```bash
-printf 'ADZUNA_APP_ID=%s\nADZUNA_APP_KEY=%s\n' '<app id>' '<app key>' \
-  > ~/.adzuna.env
-chmod 600 ~/.adzuna.env
-```
-
-**And it has to be sourced into the shell that runs the sweep** — the file is
-not read by the script:
-
-```bash
-set -a; . ~/.adzuna.env; set +a
-```
-
-**That last line is the one people lose.** A shell that has not sourced it gets
-the adapter's own message naming both variables, which is the intended
-behaviour and not a failure.
-
-### The budget is the constraint, and it is small
-
-**250 calls a day, for all nineteen countries together.** That is not a rate
-limit to pace around; it is a daily ceiling. Say it while enabling the board,
-because a user who configures five countries has divided it by five.
-
-*(And nothing measured through Adzuna goes into a country page or the Atlas —
-a separate rule, recorded where those are written.)*
 
 ## 6 — Thresholds and document preferences
 
