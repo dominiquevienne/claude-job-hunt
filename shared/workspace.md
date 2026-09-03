@@ -23,6 +23,7 @@ into the plugin directory — a plugin update replaces it.
 | `job-pipeline.md` | created on first scan | The shared ledger: one row per ad, the memory of the whole workflow | `job-scan`, updated by `cover-letter` |
 | `commute.md` | optional | Travel times from the home base, validated by the user | `/job-setup` |
 | `repos.md` | optional | Technologies verified in the user's own repositories, with their real depth and an explicit "never claim these" list | `/job-setup` |
+| `employers.md` | optional | **What is true of an employer rather than of an ad** — legal name, address as a declaration expects it, standing decisions with their lifting dates, which ATS they run. **References ledger rows, never copies them** | `/job-setup`, then edited by hand |
 | `signature.png` | optional | Handwritten signature, transparent background | `make-signature.sh` |
 | `YYYYMMDD_Company-Role/` | per application | One dossier per application: `job-ad.md`, `resume.md`, `cover-letter.md`, the PDFs | `cover-letter` |
 
@@ -48,6 +49,46 @@ test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
 Read `candidate.md` in full, every run. It is where the user records decisions
 that must not be re-litigated — role families that are on-profile, blockers that
 are real, corrections that override the exports.
+
+## Two files, two subjects, and which one wins
+
+**The ledger is authoritative about advertisements. `employers.md` is
+authoritative about the employer. They never speak about the same thing.**
+
+That rule is written down rather than hoped for, because a file that adds a
+second place to look must say which one wins **before** they contradict each
+other. In practice it means: no score, no application status and no ad title in
+`employers.md`; no standing decision about a company recorded only on one ad's
+row.
+
+**The incident it comes from.** A freeze on an employer was declared on
+2026-08-19 and lifted on 2026-08-27, each on a different ad's row, eighteen
+rows apart. On 2026-09-02 a scan discarded three of that employer's ads citing
+*"the freeze of 2026-08-19, a standing decision in force"*; **two of them were
+live, and the decision no longer existed.**
+
+`job-scan` already said to read a row's notes before proposing it, **and that
+was done — one note was read.** The fact that cancelled it lived elsewhere and
+nothing said to go and look. **A fact that holds for the employer, filed on an
+ad's row, is found only by luck.** Issue #94.
+
+**So read the directory before the row's notes**, mechanically:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/employers.py" \
+  lookup --name "<the employer>"
+```
+
+It returns every standing decision **with its lifting date beside it**, so a
+lifted freeze cannot be read as a live one. **No file is not an error** — it is
+an absence of record, which is not an absence of decisions, and it is said in
+those words rather than treated as a clean bill.
+
+**And what belongs there is the user's data, not the plugin's.** Which ATS a
+company runs is theirs; **how that ATS behaves is `shared/ats-open-check.md`**,
+indexed by host and true for every user. `jobs.sicpa.com` answers `401` to
+everybody — that is not one candidate's fact. The *ATS* field is the bridge
+between the two and carries only the tenant's name.
 
 ## Precedence when sources disagree
 

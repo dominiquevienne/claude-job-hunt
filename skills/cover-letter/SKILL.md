@@ -472,6 +472,29 @@ the job was worth wanting, and it is what makes a B2B approach worth
 attempting. **With no `work_authorization` key, this section does not apply** —
 say nothing.
 
+### What is already known about this employer
+
+**Read the directory before the row's notes, and before drafting.**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/employers.py" \
+  lookup --name "<the employer>"
+```
+
+Standing decisions come back **with their lifting dates**, which is the whole
+point: a freeze declared on one ad's row and lifted on another was cited eight
+days after it ended, and discarded two live ads. **A lifted decision is not a
+current one — do not cite it, and do not reinstate it from memory.**
+
+**An active decision reaches the user here, at the gate, and it is theirs to
+override.** The plugin does not overturn a decision the candidate took, and it
+does not enforce one they have already ended.
+
+**Two sections matching one employer is a finding, not a detail.** Two legal
+names for the same company have already blocked an official declaration in this
+workspace — resolve which one this ad is; never merge them silently.
+Issue #94.
+
 ### A driving licence or a vehicle, when the ad states one
 
 **Same gate, same moment, and a different field from the one above.** Run it on

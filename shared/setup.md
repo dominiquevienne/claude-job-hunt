@@ -12,6 +12,7 @@ $JOB_HUNT_HOME/                 # default: ~/Documents/job_applications
 ├── candidate.md                # prose: identity, target roles, blockers, contact
 ├── commute.md                  # travel times from home base (optional)
 ├── repos.md                    # evidence from the user's own code (optional)
+├── employers.md                # what is true of an employer, not of an ad (optional)
 ├── signature.png               # optional
 ├── profile/                    # the user's source documents
 └── job-pipeline.md             # the shared ledger
@@ -218,6 +219,29 @@ scan time, which is where a wrong guess costs a real opportunity.
 Write, at the top of that file, that the times are **estimates the user
 validated**, with the date — so a later run knows they were confirmed, not
 invented.
+
+**Then offer `employers.md`, and offer it rather than assume it.** It is the
+fifth workspace file and it holds what the ledger structurally cannot: a fact
+about a *company* rather than about an advertisement — the exact legal name, the
+address an official declaration expects, standing decisions with their lifting
+dates, which ATS they run.
+
+```bash
+cp "${CLAUDE_PLUGIN_ROOT:-.}/templates/employers.example.md" \
+   "$JOB_HUNT_HOME/employers.md"
+```
+
+**Say what it is for in one sentence and let them decline.** A user with no
+standing decisions and one employer does not need it yet; a user who has ever
+said *"not this company again"* does.
+
+**And say the rule that comes with it**, because a second place to look is only
+safe if the authority is settled: **the ledger is authoritative about
+advertisements, this file about the employer, and they never speak about the
+same thing.** No score and no application status go in it; ledger rows are
+**referenced**, never copied. `shared/workspace.md` carries the incident that
+established it — two live ads discarded on a freeze that had been lifted eight
+days earlier, because the two notes sat eighteen rows apart. Issue #94.
 
 **One country changes what happens later in this flow.** If the home base, the
 commute table or the search perimeter reaches **Austria**, note it now and run

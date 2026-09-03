@@ -29,6 +29,7 @@ They live in this plugin, one level above this skill's folder
 | `shared/scoring-rubric.md` | Step 5 — scoring, and the commute filter |
 | `shared/pipeline-format.md` | Steps 0 and 6 — the ledger's format and merge rules |
 | `shared/new-achievements.md` | Step 6b — the monthly question, and why it is never a repository scan |
+| `shared/workspace.md` | Steps 0 and 7 — the workspace files, and which one is authoritative about what |
 | `shared/modules/*.md` | Step 6 — only those enabled in `config.yml` |
 
 **When a board with an adapter fails to sweep, invoke the `board-request` skill**
@@ -725,8 +726,24 @@ Propose the top `todo` rows in match order. When the user picks one, invoke the
 in depth, gates on go/no-go, and writes the resulting status back into the
 ledger.
 
-**Read each row's `Note` before proposing it — match order is not the whole
-ranking.** The rows you are about to recommend include ones written weeks ago by
+**Read `employers.md` before the row's `Note`, not after.** A decision about a
+company does not live on an ad's row, and looking for it there finds it only by
+luck:
+
+```bash
+python3 "$S/employers.py" lookup --name "<the employer>"
+```
+
+It returns every standing decision **with its lifting date beside it**. A
+freeze declared on one row and lifted on another eighteen rows away discarded
+two live ads on 2026-09-02 — the note that was read was real, and the fact that
+cancelled it was elsewhere. **No file is not a clean bill**: say *"nothing
+recorded about this employer"*, which is an absence of record and not an
+absence of decisions. Issue #94, and `shared/workspace.md` holds the authority
+rule.
+
+**Then read each row's `Note` before proposing it — match order is not the
+whole ranking.** The rows you are about to recommend include ones written weeks ago by
 earlier runs, and a `todo` row can carry a verdict its status never received: a
 blocker found when its description was read, a hold on that employer, an
 application already open there.
