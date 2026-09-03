@@ -78,21 +78,37 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 EXIT_BROKEN, EXIT_PARTIAL, EXIT_REFUSED = 2, 6, 7
 
-# host → (country, ads measured 2026-09-03). **The count is dated because it
-# is a measurement, not a property**: re-run `sites --check` rather than
-# quoting it.
+# host → (country, ads measured 2026-09-03, sitemap tag).
+#
+# **The tag is per site, and the first version of this file assumed it was
+# `bum` everywhere.** That assumption cost a member: `zonajobs.com.ar` serves
+# `sitemap_avisos_zj.xml` and answers **404** on the `_bum` name — 2 832
+# Argentine ads left outside an adapter that already served 6 804 on the
+# neighbouring domain.
+#
+# **And the reason it was missed is worth more than the site.** The family was
+# identified by grepping robots.txt for `_bum`, then its members were looked
+# for by that same marker. **A membership test that searches for the family's
+# own signature cannot find the member that renamed it** — the check shared
+# the property it was checking. `discover` below tests the *shape* instead.
+#
+# The counts are dated measurements, not properties: run `sites --check`.
 SITES = {
-    "bumeran.com.pe": ("Peru", 34809),
-    "laborum.cl": ("Chile", 15901),
-    "bumeran.com.ar": ("Argentina", 6804),
-    "multitrabajos.com": ("Ecuador", 5771),
-    "konzerta.com": ("Panama", 2814),
-    "bumeran.com.mx": ("Mexico", 1795),
-    "bumeran.com.ve": ("Venezuela", 757),
+    "bumeran.com.pe": ("Peru", 34809, "bum"),
+    "laborum.cl": ("Chile", 15901, "bum"),
+    "bumeran.com.ar": ("Argentina", 6804, "bum"),
+    "multitrabajos.com": ("Ecuador", 5771, "bum"),
+    "konzerta.com": ("Panama", 2814, "bum"),
+    "zonajobs.com.ar": ("Argentina", 2832, "zj"),
+    "bumeran.com.mx": ("Mexico", 1795, "bum"),
+    "bumeran.com.ve": ("Venezuela", 757, "bum"),
 }
 
-ADS_SITEMAP = "/sitemap_avisos_bum.xml"
-FACETS_SITEMAP = "/sitemap_listados_ubicacion_bum.xml"
+ADS_SITEMAP = "/sitemap_avisos_{tag}.xml"
+FACETS_SITEMAP = "/sitemap_listados_ubicacion_{tag}.xml"
+# Any tag, for the structural test — this is what `_bum` should have been.
+ANY_ADS_SITEMAP = re.compile(
+    r"(?im)^\s*sitemap\s*:\s*(\S*/sitemap_avisos_([a-z0-9]+)\.xml)\s*$")
 
 # **`[^/]+`, and the alternative was measured.** A slug pattern of
 # `[a-z0-9-]+` silently dropped **1 160 of 5 771 ad URLs on one site — 20% of
@@ -144,6 +160,18 @@ def fold(s):
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
+def tag_of(site):
+    return SITES[host_of(site)[4:]][2]
+
+
+def ads_url(site):
+    return f"https://{host_of(site)}" + ADS_SITEMAP.format(tag=tag_of(site))
+
+
+def facets_url(site):
+    return f"https://{host_of(site)}" + FACETS_SITEMAP.format(tag=tag_of(site))
+
+
 def host_of(site):
     s = (site or "").strip().lower().replace("https://", "").strip("/")
     s = s[4:] if s.startswith("www.") else s
@@ -177,12 +205,14 @@ def check_robots(host):
 
 
 def cmd_sites(a):
-    for host, (country, ads) in sorted(SITES.items(),
-                                       key=lambda kv: -kv[1][1]):
-        row = {"site": host, "country": country, "ads_measured_2026_09_03": ads}
+    for host, (country, ads, tag) in sorted(SITES.items(),
+                                            key=lambda kv: -kv[1][1]):
+        row = {"site": host, "country": country, "sitemap_tag": tag,
+               "ads_measured_2026_09_03": ads}
         if a.check:
             check_robots("www." + host)
-            code, body = get(f"https://www.{host}{ADS_SITEMAP}")
+            code, body = get(f"https://www.{host}"
+                             + ADS_SITEMAP.format(tag=tag))
             if code != 200:
                 row["live"] = None
                 row["note"] = f"HTTP {code} on the ads sitemap"
@@ -200,12 +230,15 @@ def cmd_sites(a):
 def cmd_search(a):
     host = host_of(a.site)
     check_robots(host)
-    code, body = get(f"https://{host}{ADS_SITEMAP}")
+    code, body = get(ads_url(a.site))
     if code != 200:
-        die(f"{host}{ADS_SITEMAP}: HTTP {code}")
+        die(f"{ads_url(a.site)}: HTTP {code}. **The sitemap tag is per site** "
+            f"— this one is {tag_of(a.site)!r}; `zonajobs` uses `zj` and "
+            f"404s on `bum`. Run `discover --host {host[4:]}` to re-read it "
+            f"from robots.txt.")
     urls = sitemap_locs(body)
     if not urls:
-        die(f"{host}{ADS_SITEMAP}: {count_says(body)}")
+        die(f"{ads_url(a.site)}: {count_says(body)}")
     want = fold(a.keyword) if a.keyword else None
     kept, seen = 0, set()
     for u in urls:
@@ -257,12 +290,12 @@ def cmd_search(a):
 def cmd_facets(a):
     host = host_of(a.site)
     check_robots(host)
-    code, body = get(f"https://{host}{FACETS_SITEMAP}")
+    code, body = get(facets_url(a.site))
     if code != 200:
-        die(f"{host}{FACETS_SITEMAP}: HTTP {code}")
+        die(f"{facets_url(a.site)}: HTTP {code}")
     urls = sitemap_locs(body)
     if not urls:
-        die(f"{host}{FACETS_SITEMAP}: {count_says(body)}")
+        die(f"{facets_url(a.site)}: {count_says(body)}")
     places, tails, read = {}, {}, 0
     for u in urls:
         m = FACET_URL.search(u)
@@ -296,6 +329,58 @@ def cmd_facets(a):
     note("these facets are the board's own vocabulary and are "
          "language-independent, which a keyword is not — see "
          "`shared/search-language.md` and issue #70.")
+
+
+def cmd_discover(a):
+    """Is this host a member — by shape, not by marker.
+
+    **The marker test is what missed zonajobs**, and it could only ever miss
+    that way round: looking for `_bum` finds the sites that kept the name and
+    is blind to the one that changed it. So this reads whatever
+    `sitemap_avisos_<tag>.xml` robots.txt declares, counts it, and checks the
+    ad URL grammar. **Three positives, and a host is a member.**
+    """
+    host = (a.host or "").strip().lower().replace("https://", "").strip("/")
+    host = host if host.startswith("www.") else "www." + host
+    out = {"host": host, "member": False, "checks": {}}
+
+    code, body = get(f"https://{host}/robots.txt", timeout=25)
+    txt = body.decode("utf-8", "replace") if isinstance(body, bytes) else body
+    if code != 200:
+        out["checks"]["robots"] = f"HTTP {code}"
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        note("no robots.txt read, so nothing was tested. **That is an absence "
+             "of evidence, not evidence of absence** — say which.")
+        return
+    m = ANY_ADS_SITEMAP.search(txt)
+    out["checks"]["ads_sitemap_declared"] = m.group(1) if m else None
+    out["checks"]["tag"] = m.group(2) if m else None
+    # The leftover marker is a finding, not the test: zonajobs renamed four of
+    # its five sitemaps and left `sitemap_tags_bum.xml` behind, which is the
+    # rebrand showing through.
+    out["checks"]["bum_left_behind"] = [
+        ln.strip() for ln in txt.splitlines() if "_bum" in ln]
+    if not m:
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        note("robots.txt declares no `sitemap_avisos_<tag>.xml`. On the "
+             "evidence of the file itself — not of a missing marker — this "
+             "is not the same platform.")
+        return
+
+    code, sm = get(m.group(1))
+    out["checks"]["ads_sitemap_http"] = code
+    if code == 200:
+        urls = sitemap_locs(sm)
+        matched = [u for u in urls if AD_URL.search(u)]
+        out["checks"]["locs"] = len(urls)
+        out["checks"]["ad_url_grammar"] = f"{len(matched)} of {len(urls)}"
+        out["member"] = bool(urls) and len(matched) == len(urls)
+        out["ads"] = len(matched)
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+    if out["member"] and host[4:] not in SITES:
+        note(f"**{host} matches the family shape and is not in `SITES`.** "
+             f"Add it with its tag {out['checks']['tag']!r} and its country "
+             f"read from `facets`, not guessed from the domain.")
 
 
 def cmd_ad(a):
@@ -342,6 +427,11 @@ def main():
     f.add_argument("--site", required=True)
     f.add_argument("--limit", type=int)
     f.set_defaults(func=cmd_facets)
+
+    dc = sub.add_parser("discover",
+                        help="is a host a member? by shape, not by marker")
+    dc.add_argument("--host", required=True)
+    dc.set_defaults(func=cmd_discover)
 
     d = sub.add_parser("ad", help="what is knowable from an ad URL, and what "
                                   "is not")

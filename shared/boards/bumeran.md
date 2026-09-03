@@ -12,18 +12,19 @@ hybrid shape, like `jobstore.md`.
 
 **Everything below was verified against all seven live sites on 2026-09-03.**
 
-## Seven brands, 68 651 ads
+## Eight brands, 71 483 ads
 
-| Site | Country | Ads |
-| :-- | :-- | --: |
-| `bumeran.com.pe` | Peru | **34 809** |
-| `laborum.cl` | Chile | 15 901 |
-| `bumeran.com.ar` | Argentina | 6 804 |
-| `multitrabajos.com` | Ecuador | 5 771 |
-| `konzerta.com` | **Panama** | 2 814 |
-| `bumeran.com.mx` | Mexico | 1 795 |
-| `bumeran.com.ve` | Venezuela | 757 |
-| | | **68 651** |
+| Site | Country | Sitemap tag | Ads |
+| :-- | :-- | :-- | --: |
+| `bumeran.com.pe` | Peru | `bum` | **34 809** |
+| `laborum.cl` | Chile | `bum` | 15 901 |
+| `bumeran.com.ar` | Argentina | `bum` | 6 804 |
+| `multitrabajos.com` | Ecuador | `bum` | 5 771 |
+| `konzerta.com` | **Panama** | `bum` | 2 814 |
+| `zonajobs.com.ar` | Argentina | **`zj`** | 2 832 |
+| `bumeran.com.mx` | Mexico | `bum` | 1 795 |
+| `bumeran.com.ve` | Venezuela | `bum` | 757 |
+| | | | **71 483** |
 
 **The countries are read from the board's own place vocabulary, not assumed
 from the domain** — `konzerta.com` is Panama (`bocas-del-toro`, `chiriqui`),
@@ -31,12 +32,57 @@ which a `.com` says nothing about, and Chile numbers its regions
 (`region-i`…). `sites --check` re-counts every site live rather than quoting
 this table: **these are dated measurements, not properties.**
 
+## The member the marker could not find
+
+**`zonajobs.com.ar` serves `sitemap_avisos_zj.xml` and answers `404` on the
+`_bum` name.** It was missing from the first version of this adapter — 2 832
+Argentine ads left outside a file that already served 6 804 on the neighbouring
+domain.
+
+**And the reason it was missed matters more than the site.** The family was
+identified by finding `_bum` in a `robots.txt`, and then its members were
+looked for **by that same marker**. *A membership test that searches for the
+family's own signature cannot find the member that renamed it.* The check
+shared the property it was checking — this repository's *blind agreement*, in
+a discovery method rather than in a verification.
+
+**The rebrand is still visible, and it is the tell.** zonajobs renamed four of
+its five sitemaps and left one behind:
+
+```
+Sitemap: https://www.zonajobs.com.ar/sitemap_avisos_zj.xml
+Sitemap: https://www.zonajobs.com.ar/sitemap_core_zj.xml
+Sitemap: https://www.zonajobs.com.ar/sitemap_empresas_zj.xml
+Sitemap: https://www.zonajobs.com.ar/sitemap_listados_ubicacion_zj.xml
+Sitemap: https://www.zonajobs.com.ar/sitemap_tags_bum.xml    ← forgotten
+```
+
+**So `discover --host` tests the shape, not the marker**: whatever
+`sitemap_avisos_<tag>.xml` the file declares, then the count, then the ad URL
+grammar. On zonajobs: `zj`, 2 832 `<loc>`, **2 832 of 2 832 matching the
+grammar**. It also reports any `_bum` left behind — as a finding about the
+rebrand, never as the test.
+
+**Use it before adding a site**, and read the country from `facets` rather than
+from the domain.
+
 ## A name that looks like the family and is not
 
-**`laborum.pe` is not in this adapter.** Its `robots.txt` is a different
-vocabulary altogether — `/myprofile`, `/wishlist`, `/postulations` — and it
-declares **no `_bum` sitemap at all**. It is named here so nobody adds it on
-the strength of its name.
+**`laborum.pe` is not in this adapter, and the reason is positive evidence
+rather than a missing marker** — which is the correction zonajobs forced. Its
+own `robots.txt` describes a different stack in its own comments:
+
+```
+Sitemap: https://laborum.pe/api/v1/sitemaps/index
+# ... see server/v1/sitemap/index.js for the pattern
+# For other tenants (e.g. bolsasuniversitarias.com) ...
+```
+
+A Node application serving sitemaps from an API path, multi-tenant under an
+unrelated brand. **Every other path there answers `403`, and that on its own
+would prove nothing** — four identical refusals are agreement produced by
+nothing having answered. The `robots.txt` is what settles it. It is named here
+so nobody adds it on the strength of its name.
 
 **And the tenants are not identical.** `bumeran.com.mx` and `bumeran.com.ve`
 declare **four** sitemaps where the other five declare five: no
@@ -157,6 +203,8 @@ cheap in requests and heavy in bytes. No `429` seen.
 ```bash
 S=skills/job-scan/scripts/bumeran.py
 python3 $S sites --check
+python3 $S discover --host zonajobs.com.ar      # member: true, tag `zj`
+python3 $S discover --host laborum.pe           # no avisos sitemap declared
 python3 $S search --site multitrabajos.com --keyword contador --limit 3
 python3 $S facets --site konzerta.com --limit 10
 ```
