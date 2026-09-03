@@ -16,6 +16,7 @@ Run: `python3 -m unittest discover -s tests -v`
 """
 
 import os
+import re
 import sys
 import unittest
 
@@ -960,6 +961,70 @@ class SuiteRuns(unittest.TestCase):
                              "anything after it is invisible to `python3 "
                              "tests/test_core.py`, which will still print OK")
         self.assertEqual(after, [])
+
+
+SCRIPTS = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "skills", "job-scan", "scripts")
+
+
+class SalaryCarriesItsUnit(unittest.TestCase):
+    """**A number in an unknown unit is worse than a number absent, because it
+    compares.** `shared/plausible-and-false.md`, mechanism 1.
+
+    Found by auditing the fields adapters trust, after `mihnati.com` published
+    `baseSalary.currency: "PKR"` on Saudi jobs. Two ways of losing the unit
+    turned up, neither of which involves a board lying:
+
+    **Descending past it.** In schema.org's `MonetaryAmount`, `currency` is a
+    **sibling** of `value`, not a child — so `one(jp["baseSalary"])["value"]`,
+    the shape eight adapters use to reach `minValue`, walks straight past it.
+    `batiactu.py` did, and a ledger got `42000.00` with no unit while the page
+    published `{"currency": "EUR", "value": {"minValue": "42000.00", ...}}`.
+
+    **Knowing it too well to write it down.** Three single-country boards
+    omitted the currency because it was obvious to whoever wrote the adapter,
+    and absent from the row a ledger keeps. `adzuna.py` was the sharp case:
+    **nineteen country indexes through one code path, and no currency field
+    anywhere in the API's response**, so `salary_min: 90000` was CHF, GBP,
+    BRL or ZAR depending on a flag.
+    """
+
+    def _emitters(self):
+        import glob
+        out = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            if re.search(r'"salary_(?:min|max)[a-z_]*"', src):
+                out.append((name, src))
+        return out
+
+    def test_there_are_numeric_salary_emitters_to_check(self):
+        """**A guard that checks nothing passes.** If these field names ever
+        change, this fails first and says so, instead of the check below
+        quietly succeeding over an empty list."""
+        self.assertGreater(len(self._emitters()), 10)
+
+    def test_every_numeric_salary_emitter_names_its_currency(self):
+        missing = [name for name, src in self._emitters()
+                   if not re.search(r'"[a-z_]*currency[a-z_]*"', src)]
+        self.assertEqual(
+            missing, [],
+            "these emit a salary figure with no field naming its unit: "
+            + ", ".join(missing))
+
+    def test_adzunas_table_covers_every_index_it_serves(self):
+        """Nineteen countries, one code path. **A country added without a
+        currency would emit bare numbers again**, which is how this started."""
+        sys.path.insert(0, SCRIPTS)
+        import adzuna
+        self.assertEqual(sorted(adzuna.INDEX_CURRENCY),
+                         sorted(adzuna.COUNTRIES))
+        self.assertTrue(all(len(v) == 3 and v.isupper()
+                            for v in adzuna.INDEX_CURRENCY.values()))
 
 
 if __name__ == "__main__":

@@ -200,6 +200,12 @@ def card(r):
         # The board's own display honours the flag; a plugin that published
         # what the site hides would be reading past a request, not reading a
         # public field.
+        # **The unit travels with the number.** This board is single-country,
+        # so the currency is knowable — and that is exactly why it was missing:
+        # obvious to whoever wrote the adapter, absent from the row a ledger
+        # keeps. *A number in an unknown unit is worse than a number absent,
+        # because it compares* — `shared/plausible-and-false.md`, mechanism 1.
+        "salary_currency_of_the_board": "THB",
         "salary_min": None if withheld else (lo or None),
         "salary_max": None if withheld else (hi or None),
         "salary_withheld": withheld,

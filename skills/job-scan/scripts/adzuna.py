@@ -66,6 +66,27 @@ UA = "claude-job-hunt (personal job search; one user, own API key)"
 COUNTRIES = ("gb", "us", "at", "au", "be", "br", "ca", "ch", "de", "es", "fr",
              "in", "it", "mx", "nl", "nz", "pl", "sg", "za")
 
+# **The currency of the index, because the payload has none.** Measured
+# 2026-09-03: an Adzuna result object carries `id`, `title`, `company`,
+# `location`, `category`, `created`, `description`, `redirect_url`, `adref`,
+# `contract_time` and `salary_is_predicted` — and **no currency field
+# anywhere in the response**. The amounts in `salary_min` / `salary_max` are
+# in the local currency of the country index that was queried, and that is a
+# fact about *our own request*, not an inference about the advertisement.
+#
+# **Emitting the numbers without it was a defect, not a shortcut.** This
+# adapter serves nineteen countries from one code path; `salary_min: 90000`
+# is CHF, GBP, USD, BRL or ZAR depending on a flag, and a ledger that merges
+# two countries and sorts by pay is comparing units. *A number in the wrong
+# unit is worse than a number absent, because it compares* —
+# `shared/plausible-and-false.md`, mechanism 1.
+INDEX_CURRENCY = {
+    "at": "EUR", "au": "AUD", "be": "EUR", "br": "BRL", "ca": "CAD",
+    "ch": "CHF", "de": "EUR", "es": "EUR", "fr": "EUR", "gb": "GBP",
+    "in": "INR", "it": "EUR", "mx": "MXN", "nl": "EUR", "nz": "NZD",
+    "pl": "PLN", "sg": "SGD", "us": "USD", "za": "ZAR",
+}
+
 MAX_PER_PAGE = 50
 
 
@@ -214,6 +235,10 @@ def card(country, r):
         # **The advertiser's figure, or nothing.**
         "salary_min_stated": None if predicted else lo,
         "salary_max_stated": None if predicted else hi,
+        # **Named for where it comes from.** The API publishes no currency;
+        # this is the currency of the index that was queried, and the field
+        # says so rather than passing for something the board declared.
+        "salary_currency_of_the_index": INDEX_CURRENCY.get(country),
         # **Adzuna's Jobsworth estimate.** Never merge these two.
         "salary_min_adzuna_estimate": lo if predicted else None,
         "salary_max_adzuna_estimate": hi if predicted else None,

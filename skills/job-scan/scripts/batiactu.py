@@ -193,10 +193,17 @@ def card(ident, slug):
         "lon": geo.get("longitude"),
         "employment_type": jp.get("employmentType"),
         # Structured when present — minValue/maxValue/unitText — but present on
-        # roughly a fifth of ads.
+        # roughly a fifth of ads (6 of 40, measured 2026-09-03).
         "salary_min": sal.get("minValue"),
         "salary_max": sal.get("maxValue"),
         "salary_unit": sal.get("unitText"),
+        # **`currency` is a sibling of `value`, not a child**, so descending to
+        # the number to read `minValue` walks past it. This adapter did, and a
+        # ledger got `42000.00` with no unit while the page published
+        # `{"currency": "EUR", "value": {"minValue": "42000.00", ...}}`.
+        # **A number in an unknown unit is worse than no number, because it
+        # compares** — see `shared/plausible-and-false.md`, mechanism 1.
+        "salary_currency": one(jp.get("baseSalary")).get("currency"),
         "published": jp.get("datePosted"),
         # 90 days on most ads but ten different values across a sample, so it
         # is a default rather than a formula — and not verified as an expiry.

@@ -207,6 +207,12 @@ def card(r):
         "hiring_company": hiring,
         "employer_named": bool(hiring),
         # 997 of 997 carried a salary, and 997 of 997 of those were monthly.
+        # **The unit travels with the number.** This board is single-country,
+        # so the currency is knowable — and that is exactly why it was missing:
+        # obvious to whoever wrote the adapter, absent from the row a ledger
+        # keeps. *A number in an unknown unit is worse than a number absent,
+        # because it compares* — `shared/plausible-and-false.md`, mechanism 1.
+        "salary_currency_of_the_board": "SGD",
         "salary_min": sal.get("minimum"),
         "salary_max": sal.get("maximum"),
         "salary_type": (sal.get("type") or {}).get("salaryType"),

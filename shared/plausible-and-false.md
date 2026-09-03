@@ -26,6 +26,33 @@ typed by an employer; **the twelve-decimal floats are a conversion**, and the
 label says PHP either way — wrong by a factor of ~250. `join.com` writes
 `amount: 2035` for **20.35**: wrong by 100, and 2 035 reads like a salary.
 
+**Two more instances of mechanism 1, both found 2026-09-03, and neither is
+the board lying.** `mihnati.com` publishes `baseSalary.currency: "PKR"` on ten
+Saudi advertisements of ten — Pakistani rupees on Jeddah and Riyadh salaries,
+from the Pakistani platform underneath. **That one is the board's.** The other
+two are ours:
+
+- **`currency` is a sibling of `value`, not a child.** The shape eight
+  adapters use to reach `minValue` — `one(jp["baseSalary"])["value"]` —
+  **walks straight past it**. `batiactu.py` did, and a ledger carried
+  `42000.00` with no unit while the page published `{"currency": "EUR",
+  "value": {"minValue": "42000.00", …}}`.
+- **Knowing the currency too well to write it down.** `adzuna.py` serves
+  **nineteen country indexes through one code path**, and the API publishes
+  **no currency field anywhere in its response** — so `salary_min: 90000` was
+  CHF, GBP, BRL or ZAR depending on a flag. Three single-country boards
+  omitted it for the opposite reason: obvious to whoever wrote the adapter,
+  absent from the row a ledger keeps.
+
+**The harm is the same in all three, and it is not that the number is wrong.**
+`identifier` holding an employer name — mihnati's other defect — collides
+*visibly*: two jobs at one company conflict and somebody notices. **A salary in
+the wrong unit produces nothing visible at all.** It enters a ranking and comes
+out as an exceptional offer, arriving filed under a field with the right name.
+
+A repository-wide check now fails if any adapter emits a salary figure with no
+field naming its unit.
+
 **2. A machine field contradicted by the human field beside it.**
 `michaelpage.ie` publishes `addressCountry: "GB"` on **21 Irish ads of 21**, in
 the same block that says `addressRegion: "Republic of Ireland"`. Three of ten

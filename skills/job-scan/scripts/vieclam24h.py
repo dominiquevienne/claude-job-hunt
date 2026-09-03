@@ -136,6 +136,12 @@ def card(item):
     out["url"] = (f"{BASE}/{slug}id{ident}.html" if slug else None)
     # Values, not keys: the pair is present on every ad and filled on almost
     # every one.
+    # **The unit travels with the number.** Vieclam24h is Vietnamese and
+    # quotes VND; the currency is knowable, which is exactly why it was
+    # missing — obvious to whoever wrote the adapter, absent from the row a
+    # ledger keeps. *A number in an unknown unit is worse than a number
+    # absent, because it compares* (`shared/plausible-and-false.md`, 1).
+    out["salary_currency_of_the_board"] = "VND"
     out["salary_stated"] = bool((out.get("salary_min") or 0) > 0)
     return out
 

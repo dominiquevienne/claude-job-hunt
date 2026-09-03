@@ -471,6 +471,22 @@ totals published in one view — header `5.8K`, prose `6 876`, and facet counts
 that differ from the prose city by city — so **whichever number a person
 quotes, the page contains two that contradict it.**
 
+**When a page carries more than one `JobPosting`, say which one you take and
+why.** Measured across seven boards' own advertisement pages on 2026-09-03:
+six carry exactly one, and `mihnati.com` carries **two, byte-identical**. But
+the adapters do not agree on which to take — nine use
+`(postings(page) or [None])[-1]` and the rest take the first, four of them
+written as a `for … return` loop. **Nobody wrote down why**, and on a page
+holding two *different* postings — a main advertisement beside a related one —
+the two choices are different jobs.
+
+**Nothing doubles a total**: every `for d in postings(...)` loop in this
+repository returns on its first iteration, so the duplicate is dropped rather
+than counted twice. That was checked, not assumed. **The first-versus-last
+split is left as it is** — changing twenty adapters on a difference that is
+inconsequential on every page measured would be a rewrite in search of a
+defect. A new adapter should take the first and say so.
+
 **Two different requests must produce two different bodies.** Before trusting
 any listing route, ask for something that cannot exist and compare. It is the
 check `melr-gh.md` turns on — `/index.php/99/99/complete-nonsense-xyzzy` is
