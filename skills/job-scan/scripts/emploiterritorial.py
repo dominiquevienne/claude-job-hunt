@@ -41,6 +41,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://www.emploi-territorial.fr"
@@ -132,7 +133,7 @@ def call(op, url, data=None, ajax=False):
             raw = r.read()
             if r.headers.get("Content-Encoding", "").lower() == "gzip":
                 raw = gzip.decompress(raw)
-            return raw.decode("utf-8", errors="replace")
+            return decode_body(raw, r.headers)[0]
     except urllib.error.HTTPError as e:
         die(f"emploi-territorial returned HTTP {e.code}")
     except Exception as e:  # noqa: BLE001 - network shape varies by platform

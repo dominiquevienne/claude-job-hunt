@@ -32,6 +32,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one, postings
 import sys
 import time
@@ -101,7 +102,7 @@ def _read(r):
     body = r.read()
     if r.headers.get("Content-Encoding", "").lower() == "gzip":
         body = gzip.decompress(body)
-    return body.decode("utf-8", errors="replace")
+    return decode_body(body, r.headers)[0]
 
 
 def call(url, post=False):

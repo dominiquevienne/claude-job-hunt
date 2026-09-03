@@ -27,6 +27,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import absent_reason, one, postings
 import sys
 import time
@@ -113,7 +114,7 @@ def get(url, gone_is_ok=False, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return r.read().decode("utf-8", errors="replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
             if gone_is_ok and e.code in (404, 410):
                 # Retired ads answer an honest 410. Seven of the 3 193 in the

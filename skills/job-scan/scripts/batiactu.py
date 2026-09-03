@@ -33,6 +33,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one, postings
 import sys
 import time
@@ -110,7 +111,7 @@ def get(path, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=45) as r:
-                return r.read().decode("utf-8", errors="replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
             die(f"batiactu returned HTTP {e.code} for {path}")
         except Exception as e:  # noqa: BLE001 - network shape varies

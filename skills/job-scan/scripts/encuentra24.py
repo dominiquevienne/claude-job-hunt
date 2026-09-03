@@ -61,6 +61,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _ldjson import label, one, postings
 from _robots import verdict as robots_verdict
 from _zero import zero_note
@@ -113,7 +114,7 @@ def get(path, timeout=45):
     })
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.getcode(), r.read().decode("utf-8", "replace"), r.geturl()
+            return r.getcode(), decode_body(r.read(), r.headers)[0], r.geturl()
     except urllib.error.HTTPError as e:
         if e.code == 403:
             die(f"{url}: HTTP 403. This host refuses a request without "

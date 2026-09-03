@@ -68,6 +68,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 from _sitemap import count as sitemap_count
 from _sitemap import count_says, locs as sitemap_locs
@@ -346,7 +347,7 @@ def cmd_discover(a):
     out = {"host": host, "member": False, "checks": {}}
 
     code, body = get(f"https://{host}/robots.txt", timeout=25)
-    txt = body.decode("utf-8", "replace") if isinstance(body, bytes) else body
+    txt = decode_body(body)[0]
     if code != 200:
         out["checks"]["robots"] = f"HTTP {code}"
         print(json.dumps(out, ensure_ascii=False, indent=2))

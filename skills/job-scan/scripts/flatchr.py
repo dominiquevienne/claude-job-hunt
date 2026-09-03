@@ -32,6 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 TENANT_URL = "https://{}.flatchr.io/"
@@ -99,7 +100,7 @@ def fetch(url):
             body = r.read()
             if r.headers.get("Content-Encoding", "").lower() == "gzip":
                 body = gzip.decompress(body)
-            return body.decode("utf-8", errors="replace")
+            return decode_body(body, r.headers)[0]
     except urllib.error.HTTPError as e:
         if e.code == 404:
             die("nothing at that URL (HTTP 404). For a tenant, check the slug "

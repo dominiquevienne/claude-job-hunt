@@ -29,7 +29,9 @@ WHAT THIS DOES, IN ORDER:
 
 1. The HTTP header's charset, when the server states one.
 2. A `<meta charset>` or `<meta http-equiv>` in the first 2 kB, when it does
-   not — the markup's own claim.
+   not — the markup's own claim. **An XML prolog counts as markup too**:
+   `<?xml version="1.0" encoding="ISO-8859-1"?>` is how a sitemap declares
+   itself, and this repository reads sitemaps on almost every board.
 3. UTF-8, **strictly**, which either succeeds or tells us it is not UTF-8.
 4. cp1252 as the last resort, because it maps every byte and therefore never
    raises: **the fallback is chosen for being total, not for being right**, and
@@ -43,6 +45,12 @@ import re
 
 __all__ = ["decode_body", "charset_of"]
 
+# `<?xml … encoding="…"?>`, which must be the very first thing in the file.
+# A sitemap is the one document this repository reads on nearly every board,
+# and it declares its encoding here rather than in a `<meta>`.
+_PROLOG = re.compile(rb"""^\s*<\?xml[^>]*?encoding\s*=\s*["']([\w\-]+)["']""",
+                     re.I)
+
 _META = re.compile(
     rb"""<meta[^>]+charset\s*=\s*["']?\s*([a-zA-Z0-9_\-]+)"""
     rb"""|<meta[^>]+content\s*=\s*["'][^"']*charset\s*=\s*([a-zA-Z0-9_\-]+)""",
@@ -52,7 +60,8 @@ _META = re.compile(
 def charset_of(headers=None, raw=b""):
     """What the response says it is — header first, then the markup.
 
-    Returns `(name, where)` with `where` in `header` / `meta` / `None`, so a
+    Returns `(name, where)` with `where` in `header` / `xml` / `meta` /
+    `None`, so a
     caller can report **which claim it followed** rather than only the result.
     """
     if headers is not None:
@@ -67,7 +76,11 @@ def charset_of(headers=None, raw=b""):
             cs = m.group(1) if m else None
         if cs:
             return cs.lower(), "header"
-    m = _META.search(raw[:2048] if isinstance(raw, bytes) else b"")
+    head = raw[:2048] if isinstance(raw, bytes) else b""
+    m = _PROLOG.match(head)
+    if m:
+        return m.group(1).decode("ascii", "ignore").lower(), "xml"
+    m = _META.search(head)
     if m:
         return (m.group(1) or m.group(2)).decode("ascii", "ignore").lower(), \
             "meta"

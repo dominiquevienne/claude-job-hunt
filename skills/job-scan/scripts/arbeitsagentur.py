@@ -78,6 +78,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
+
 ROOT = "https://rest.arbeitsagentur.de/jobboerse/jobsuche-service"
 JOBS = ROOT + "/pc/v6/jobs"
 DETAIL = ROOT + "/pc/v4/jobdetails/{}"
@@ -114,7 +116,7 @@ def api(url, retries=2, missing_ok=False):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return json.loads(r.read().decode("utf-8"))
+                return json.loads(decode_body(r.read(), r.headers)[0])
         except urllib.error.HTTPError as exc:
             if exc.code in (404, 410) and missing_ok:
                 return None

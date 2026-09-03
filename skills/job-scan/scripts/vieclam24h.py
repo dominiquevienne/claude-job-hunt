@@ -60,6 +60,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _zero import zero_note
 
 from _sitemap import locs as sitemap_locs
@@ -100,7 +101,7 @@ def get(path):
     })
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
-            return r.getcode(), r.read().decode("utf-8", "replace")
+            return r.getcode(), decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         if e.code == 403:
             die(f"{url}: HTTP 403. This site refuses a request with no "

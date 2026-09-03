@@ -77,6 +77,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 import zlib
 
@@ -148,6 +149,7 @@ def get(url, retries=2):
             with urllib.request.urlopen(req, timeout=60) as r:
                 raw = r.read()
                 enc = (r.headers.get("Content-Encoding") or "").lower()
+                hdrs = r.headers
             if enc == "gzip":
                 raw = gzip.decompress(raw)
             elif enc in ("deflate", "zlib"):
@@ -155,7 +157,7 @@ def get(url, retries=2):
                     raw = zlib.decompress(raw)
                 except zlib.error:
                     raw = zlib.decompress(raw, -zlib.MAX_WBITS)
-            return raw.decode("utf-8", "replace")
+            return decode_body(raw, hdrs)[0]
         except (urllib.error.URLError, OSError) as exc:
             if attempt == retries:
                 die(f"{url}: {exc}")

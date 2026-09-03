@@ -52,6 +52,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _zero import zero_note
 
 from _robots import verdict as robots_verdict
@@ -98,7 +99,7 @@ class Session:
     def get(self, url):
         try:
             with self.op.open(url, timeout=45) as r:
-                self.last_html = r.read().decode("utf-8", "replace")
+                self.last_html = decode_body(r.read(), r.headers)[0]
                 return r.getcode(), self.last_html
         except urllib.error.HTTPError as e:
             return e.code, ""
@@ -127,7 +128,7 @@ class Session:
             headers={"Content-Type": "application/x-www-form-urlencoded"})
         try:
             with self.op.open(req, timeout=45) as r:
-                self.last_html = r.read().decode("utf-8", "replace")
+                self.last_html = decode_body(r.read(), r.headers)[0]
                 return r.getcode(), self.last_html
         except urllib.error.HTTPError as e:
             return e.code, ""

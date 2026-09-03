@@ -456,9 +456,10 @@ Cloudflare stop **separate** — because that host says `Allow: /` and answers
 `403`, so **the stop is not a robots verdict** and must not be written as one.
 
 **Decode a response with `skills/job-scan/scripts/_decode.py`, not with
-`utf-8`.** `decode("utf-8", "replace")` is this repository's house pattern —
-**32 adapters use it and none reads the declared charset** — and it has not
-bitten only because every board measured so far served UTF-8.
+`utf-8`.** `decode("utf-8", "replace")` was this repository's house pattern —
+32 adapters used it and none read the declared charset. **It is wired now**:
+every remaining site reads the declaration, and `hiringcafe.py` is the one
+exception, left alone because #102 is the user's decision. Issue #115.
 
 **Chile's national employment service does not.** `bne.gob.cl` declares
 `ISO-8859-1` in its header and `windows-1252` in its markup, and the house
@@ -467,9 +468,24 @@ sampled, without failing.** `errors="replace"` cannot fail: it returns
 plausible text with holes, which is `shared/plausible-and-false.md`'s class
 arriving in the transport layer.
 
-`decode_body(raw, headers)` follows the header, then the markup, then **strict**
-UTF-8, then a total fallback — **and returns which one it used**, so a run that
-had to guess says so.
+`decode_body(raw, headers)` follows the header, then the markup — **an XML
+prolog counts, which is how a sitemap declares itself** — then **strict** UTF-8,
+then a total fallback, **and returns which one it used**, so a run that had to
+guess says so.
+
+**Measured before editing fifty-one files, on the 70 declared hosts,
+2026-09-03**: 59 declare UTF-8, **3 declare something else**, 8 were
+unreachable. `bne.cl` and `www.bne.gob.cl` say `ISO-8859-1`; `www.cadremploi.fr`
+says **`ISO-8859-15`**, which is not the same thing — 8859-15 puts the euro
+sign where 8859-1 has the generic currency mark, on a French board that quotes
+salaries.
+
+**And `www.cadremploi.fr` serves two charsets on two paths.** Its root declares
+`ISO-8859-15` and loses **327 characters** when read as UTF-8; its listing page
+declares UTF-8 and loses none. **So a per-site constant is wrong by
+construction** — the declaration belongs to the response, and that is the
+argument for reading it every time rather than fixing the three sites that
+looked Latin-1 today.
 
 **Read `<loc>` through `skills/job-scan/scripts/_sitemap.py`, never with a
 pattern of your own** — and the reason is the same failure, one file later.

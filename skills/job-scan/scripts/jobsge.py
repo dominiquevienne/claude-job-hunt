@@ -47,6 +47,7 @@ import time
 import urllib.error
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 from _zero import zero_note
 
@@ -106,7 +107,7 @@ def get(path, lang="ge", timeout=45):
     })
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.getcode(), r.read().decode("utf-8", "replace"), url
+            return r.getcode(), decode_body(r.read(), r.headers)[0], url
     except urllib.error.HTTPError as e:
         return e.code, "", url
     except (urllib.error.URLError, OSError) as e:

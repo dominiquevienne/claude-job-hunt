@@ -63,6 +63,7 @@ import time
 import urllib.error
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 from _robots import verdict as robots_verdict
 from _sitemap import count as sitemap_count
@@ -199,7 +200,7 @@ def cmd_sitemap(a):
         if code != 200:
             note(f"{u.split('/')[-1]}: HTTP {code} — skipped.")
             continue
-        text = body.decode("utf-8", "replace")
+        text = decode_body(body)[0]
         c = sitemap_count(body)
         locs_total += c["locs"]
         found = 0

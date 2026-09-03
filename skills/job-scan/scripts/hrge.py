@@ -79,6 +79,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 from _sitemap import count_says, locs as sitemap_locs
 from _zero import zero_note
@@ -133,10 +134,15 @@ def get(url, timeout=90, as_json=False):
         with urllib.request.urlopen(req, timeout=timeout) as r:
             raw = r.read()
             if as_json:
-                return r.getcode(), json.loads(raw.decode("utf-8", "replace"))
-            return r.getcode(), raw
+                return (r.getcode(),
+                        json.loads(decode_body(raw, r.headers)[0]), r.headers)
+            # **The headers travel with the bytes.** The caller is the one
+            # that decodes, and it cannot read a declaration it never got —
+            # which is how a body ends up decoded as UTF-8 by default on a
+            # host that said something else. Issue #115.
+            return r.getcode(), raw, r.headers
     except urllib.error.HTTPError as e:
-        return e.code, (None if as_json else b"")
+        return e.code, (None if as_json else b""), None
     except (urllib.error.URLError, OSError, ValueError) as e:
         die(f"{url}: {e}")
 
@@ -169,7 +175,7 @@ def cmd_tenants(a):
     for n, (host, ads) in sorted(TENANTS.items()):
         row = {"tenant": n, "host": host, "announcements_2026_09_03": ads}
         if a.check:
-            code, body = get(f"{API.format(tenant=n)}/seo/sitemap")
+            code, body, _h = get(f"{API.format(tenant=n)}/seo/sitemap")
             if code != 200:
                 row["live"] = None
                 row["note"] = f"HTTP {code}"
@@ -194,7 +200,7 @@ def cmd_sitemap(a):
     n = tenant_of(a.tenant)
     host, _ = TENANTS[n]
     check_robots(host)
-    code, body = get(f"{API.format(tenant=n)}/seo/sitemap")
+    code, body, _h = get(f"{API.format(tenant=n)}/seo/sitemap")
     if code != 200:
         die(f"tenant {n} sitemap: HTTP {code}")
     urls, ads = ad_urls(body)
@@ -224,11 +230,12 @@ def cmd_search(a):
     check_robots(host)
     seen, links, page = set(), 0, 1
     while True:
-        code, raw = get(f"https://{host}/jobs/today?p={page}", timeout=60)
+        code, raw, hdrs = get(f"https://{host}/jobs/today?p={page}",
+                              timeout=60)
         if code != 200:
             note(f"page {page}: HTTP {code} — stopping.")
             break
-        html = raw.decode("utf-8", "replace")
+        html = decode_body(raw, hdrs)[0]
         ids = set(ANN_RE.findall(html))
         if not ids:
             note(f"page {page} carried no advertisement link — that is this "
@@ -291,8 +298,8 @@ def cmd_ad(a):
     n = tenant_of(n)
     host, _ = TENANTS[n]
     check_robots(host)
-    code, d = get(f"{API.format(tenant=n)}/announcement/{ident}",
-                  timeout=45, as_json=True)
+    code, d, _h = get(f"{API.format(tenant=n)}/announcement/{ident}",
+                      timeout=45, as_json=True)
     if code != 200 or not d:
         die(f"announcement {ident} on tenant {n}: HTTP {code}", EXIT_GONE)
     ann = ((d.get("data") or {}).get("announcement")) or {}

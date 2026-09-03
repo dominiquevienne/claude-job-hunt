@@ -34,6 +34,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://{}.talent-soft.com"
@@ -142,7 +143,7 @@ def fetch(url):
             body = r.read()
             if r.headers.get("Content-Encoding", "").lower() == "gzip":
                 body = gzip.decompress(body)
-            return body.decode("utf-8", errors="replace")
+            return decode_body(body, r.headers)[0]
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             die(f"nothing at that URL (HTTP {e.code}). For a tenant, check the "

@@ -42,6 +42,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://www.welcometothejungle.com"
@@ -119,7 +120,7 @@ def get(url, retries=2):
                         "The sitemaps are normally served without challenge — "
                         "if this persists, the site has tightened and the "
                         "discovery half needs the browser too.")
-                raw = r.read()
+                raw, hdrs = r.read(), r.headers
         except urllib.error.HTTPError as e:
             die(f"welcometothejungle returned HTTP {e.code} for {url}")
         except Exception as e:  # noqa: BLE001 - network shape varies
@@ -128,9 +129,9 @@ def get(url, retries=2):
             time.sleep(2.0)
             continue
         try:
-            return gzip.decompress(raw).decode("utf-8", errors="replace")
+            return decode_body(gzip.decompress(raw), hdrs)[0]
         except Exception:  # noqa: BLE001 - not every file is gzipped
-            return raw.decode("utf-8", errors="replace")
+            return decode_body(raw, hdrs)[0]
     return ""
 
 

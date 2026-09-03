@@ -70,6 +70,7 @@ import gzip
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import blocks as ld_blocks, one, postings
 import sys
 import time
@@ -169,13 +170,14 @@ def get(url, retries=2):
             with urllib.request.urlopen(req, timeout=60) as r:
                 raw = r.read()
                 enc = r.headers.get("Content-Encoding")
+                hdrs = r.headers
             try:
                 body = decode(raw, enc)
             except Exception as exc:  # noqa: BLE001 - name it, do not swallow
                 die(f"{url}: Content-Encoding was {enc!r} and the body would "
                     f"not decompress ({exc}). Reading it raw would yield a "
                     "page that looks structurally empty rather than an error.")
-            return body.decode("utf-8", "replace")
+            return decode_body(body, hdrs)[0]
         except (urllib.error.URLError, OSError) as exc:
             if attempt == retries:
                 die(f"{url}: {exc}")

@@ -69,6 +69,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _microdata import items as md_items
 from _robots import verdict as robots_verdict
 from _zero import zero_note
@@ -133,7 +134,7 @@ class Client:
         })
         try:
             with self._opener.open(req, timeout=45) as r:
-                body = r.read().decode("utf-8", "replace")
+                body = decode_body(r.read(), r.headers)[0]
                 return r.getcode(), body, u
         except urllib.error.HTTPError as e:
             return e.code, "", u

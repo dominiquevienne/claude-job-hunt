@@ -48,6 +48,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -161,7 +162,7 @@ def get(url: str, params: dict | None = None):
     })
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode("utf-8", "replace"), r.status
+            return decode_body(r.read(), r.headers)[0], r.status
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return None, 404

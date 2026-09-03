@@ -51,6 +51,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _language import speaks_codes
 
 from _secrets import get as secret_get
@@ -141,7 +142,7 @@ def get(budget, path, app_id, app_key, retry=True, **params):
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
             ctype = r.headers.get("Content-Type", "")
-            body = r.read().decode("utf-8", "replace")
+            body = decode_body(r.read(), r.headers)[0]
             if "json" not in ctype:
                 die(f"{shown}: HTTP 200 but Content-Type {ctype!r}. This API "
                     f"answers errors with an HTML page, so a non-JSON 200 is "
@@ -149,7 +150,7 @@ def get(budget, path, app_id, app_key, retry=True, **params):
             return json.loads(body)
     except urllib.error.HTTPError as exc:
         ctype = exc.headers.get("Content-Type", "")
-        body = exc.read().decode("utf-8", "replace")
+        body = decode_body(exc.read(), exc.headers)[0]
         if "json" in ctype:
             try:
                 msg = json.loads(body).get("display") or body[:200]

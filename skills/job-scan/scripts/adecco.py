@@ -32,6 +32,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one, postings
 import sys
 import time
@@ -116,7 +117,7 @@ def get(url, retries=2, gone_is_ok=False):
                 if waf:
                     die(f"a WAF challenged {url}: HTTP {r.status}, "
                         f"x-amzn-waf-action: {waf}. A 2xx carrying no ad.")
-                return r.read().decode("utf-8", errors="replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
             if gone_is_ok and e.code in (404, 410):
                 # The sitemap lists ads the site has since retired, and it

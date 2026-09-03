@@ -44,6 +44,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://www.lagriculture-recrute.org"
@@ -112,7 +113,7 @@ def get(url, params=None, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=45) as r:
-                return r.read().decode("utf-8", errors="replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
             die(f"anefa returned HTTP {e.code} for {url}")
         except Exception as e:  # noqa: BLE001 - network shape varies

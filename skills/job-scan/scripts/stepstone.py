@@ -57,6 +57,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import absent_reason, postings
 
 from _match import classify as mark, share
@@ -208,7 +209,7 @@ class Session:
                     k, _, v = raw.split(";")[0].partition("=")
                     self.jar[k.strip()] = v.strip()
                 self.last = time.time()
-                return r.read().decode("utf-8", "replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as exc:
             self.last = time.time()
             if exc.code == 404:

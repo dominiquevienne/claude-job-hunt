@@ -34,6 +34,7 @@ import html as html_mod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one, postings
 import sys
 import time
@@ -125,7 +126,7 @@ def get(url, gone_is_ok=False, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return r.read().decode("utf-8", errors="replace")
+                return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
             if gone_is_ok and e.code in (404, 410):
                 # An ad the sitemap still lists and the site has retired. One

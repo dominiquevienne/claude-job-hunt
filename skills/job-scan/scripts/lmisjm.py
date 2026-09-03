@@ -63,6 +63,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 from _zero import zero_note
 
@@ -112,7 +113,7 @@ def fetch(offset=0, limit=100):
     })
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
-            return json.loads(r.read().decode("utf-8", "replace"))
+            return json.loads(decode_body(r.read(), r.headers)[0])
     except urllib.error.HTTPError as e:
         die(f"{BASE}{API}: HTTP {e.code}", EXIT_GONE)
     except (urllib.error.URLError, OSError, ValueError) as e:

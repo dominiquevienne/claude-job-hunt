@@ -56,6 +56,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 from _zero import zero_note
@@ -118,7 +119,7 @@ def get(url):
         "User-Agent": UA, "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
-            return json.loads(r.read().decode("utf-8", "replace"))
+            return json.loads(decode_body(r.read(), r.headers)[0])
     except urllib.error.HTTPError as exc:
         die(f"{url}: HTTP {exc.code}")
     except (urllib.error.URLError, OSError) as exc:

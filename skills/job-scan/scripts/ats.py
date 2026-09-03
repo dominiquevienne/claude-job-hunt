@@ -36,6 +36,7 @@ import html
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one
 import sys
 import time
@@ -503,7 +504,7 @@ def join_state(url):
     try:
         r = urllib.request.urlopen(urllib.request.Request(
             url, headers={"User-Agent": UA, "Accept": "text/html"}), timeout=60)
-        page = r.read().decode("utf-8", "replace")
+        page = decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             return None
@@ -766,9 +767,10 @@ def cmd_resolve(a):
     raw, wait = None, 20.0
     for attempt in range(1, 4):
         try:
-            raw = urllib.request.urlopen(
-                urllib.request.Request(url, headers={"User-Agent": UA}),
-                timeout=60).read().decode("utf-8", "replace")
+            with urllib.request.urlopen(
+                    urllib.request.Request(url, headers={"User-Agent": UA}),
+                    timeout=60) as r:
+                raw = decode_body(r.read(), r.headers)[0]
             break
         except urllib.error.HTTPError as e:
             if e.code not in (403, 429) and e.code < 500:

@@ -55,6 +55,7 @@ import argparse
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import postings
 import sys
 import urllib.error
@@ -92,10 +93,10 @@ def get(url):
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
             return r.getcode(), r.headers.get("Content-Type", ""), \
-                r.read().decode("utf-8", "replace")
+                decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         return e.code, e.headers.get("Content-Type", ""), \
-            e.read().decode("utf-8", "replace")
+            decode_body(e.read(), e.headers)[0]
     except (urllib.error.URLError, OSError) as e:
         die(f"{url}: {e}")
 

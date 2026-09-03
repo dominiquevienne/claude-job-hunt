@@ -50,6 +50,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 from _zero import zero_note
@@ -135,7 +136,7 @@ def get(host, path):
             ctype = r.headers.get("Content-Type", "")
             if "text/html" not in ctype:
                 die(f"{url}: Content-Type {ctype!r} — this board serves HTML.")
-            return r.read().decode("utf-8", "replace")
+            return decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None

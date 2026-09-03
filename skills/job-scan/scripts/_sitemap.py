@@ -47,6 +47,8 @@ what it could not read. `count_says` is the sentence for that.
 import gzip
 import re
 
+from _decode import decode_body
+
 __all__ = ["LOC_RE", "locs", "count", "count_says", "maybe_gunzip"]
 
 # `<loc>` or `<ns:loc>`, CDATA-wrapped or not, across newlines, and not
@@ -78,9 +80,10 @@ def maybe_gunzip(raw):
 
 
 def _text(body):
+    """**A sitemap declares its own encoding, in its prolog.** Issue #115."""
     body = maybe_gunzip(body)
     if isinstance(body, bytes):
-        return body.decode("utf-8", "replace")
+        return decode_body(body)[0]
     return body or ""
 
 

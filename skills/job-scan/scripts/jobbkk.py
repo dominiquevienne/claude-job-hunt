@@ -53,6 +53,7 @@ import argparse
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import absent_reason, one, postings
 import sys
 import time
@@ -123,7 +124,7 @@ def get(path):
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             ctype = r.headers.get("Content-Type", "")
-            body = r.read().decode("utf-8", "replace")
+            body = decode_body(r.read(), r.headers)[0]
             if "text/html" not in ctype:
                 die(f"{url}: Content-Type {ctype!r} — this board serves HTML. "
                     f"A different type means a different page.")

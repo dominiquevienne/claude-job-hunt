@@ -26,6 +26,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -217,7 +218,7 @@ def cmd_sites(a):
                                  headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
-            body = r.read().decode("utf-8", "replace")
+            body = decode_body(r.read(), r.headers)[0]
     except Exception as exc:  # noqa: BLE001
         die(f"https://{a.host}/robots.txt: {exc}")
     allows = re.findall(r"(?im)^\s*Allow:\s*/([^/\s]+)/\s*$", body)

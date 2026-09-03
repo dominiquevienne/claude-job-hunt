@@ -31,6 +31,7 @@ import html
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import absent_reason, postings
 import sys
 import time
@@ -77,7 +78,7 @@ def fetch(url, as_json=False):
             body = r.read()
             if r.headers.get("Content-Encoding", "").lower() == "gzip":
                 body = gzip.decompress(body)
-            raw = body.decode("utf-8", errors="replace")
+            raw = decode_body(body, r.headers)[0]
             return json.loads(raw) if as_json else raw
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -265,7 +266,7 @@ def cmd_sitemap(a):
     # `fmudc`, and the rest are long descriptive ones ending in the contract
     # type. Both forms answer `ad`. Matching only the short shape found 2% of
     # the board — measured while writing this.
-    text = raw if isinstance(raw, str) else raw.decode("utf-8", "replace")
+    text = decode_body(raw)[0]
     slugs = [u.split("/apply/", 1)[1]
              for u in sitemap_locs(text, contains="taleez.com/apply/")]
     seen, out = set(), []

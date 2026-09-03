@@ -76,6 +76,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
+
 API = "https://jobsearch.api.jobtechdev.se/search"
 AD_URL = "https://arbetsformedlingen.se/platsbanken/annonser/{}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -106,9 +108,9 @@ def api(**params):
     for attempt in range(3):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return json.loads(r.read().decode("utf-8"))
+                return json.loads(decode_body(r.read(), r.headers)[0])
         except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", "replace")[:300]
+            body = decode_body(exc.read(), exc.headers)[0][:300]
             if exc.code == 400:
                 die(f"HTTP 400 from the API.\n  {url}\n  {body}\n"
                     f"offset stops at {MAX_OFFSET} and limit at {MAX_LIMIT} — "

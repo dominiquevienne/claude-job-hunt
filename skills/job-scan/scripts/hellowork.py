@@ -32,6 +32,7 @@ import html
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import absent_reason, label, one, postings
 import sys
 import time
@@ -113,7 +114,7 @@ def fetch(url):
     })
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read().decode("utf-8", errors="replace")
+            return decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             die(f"nothing at that URL (HTTP {e.code}). For an ad, record it as "

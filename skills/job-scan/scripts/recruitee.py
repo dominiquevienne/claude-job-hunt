@@ -75,6 +75,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -140,7 +141,7 @@ def api(tenant, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return json.loads(r.read().decode("utf-8")), url
+                return json.loads(decode_body(r.read(), r.headers)[0]), url
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 die(f"{url} answered 404. Recruitee returns JSON "

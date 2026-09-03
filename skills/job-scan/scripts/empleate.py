@@ -77,6 +77,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://empleate.gob.es"
@@ -170,7 +171,7 @@ def fetch(url, retries=2):
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
-                return r.read().decode("utf-8", "replace")
+                return decode_body(r.read(), r.headers)[0]
         except (urllib.error.URLError, OSError) as exc:
             if attempt == retries:
                 die(f"{url}: {exc}")

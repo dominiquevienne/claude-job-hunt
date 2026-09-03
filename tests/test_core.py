@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(
 
 import importlib.util     # noqa: E402
 
+import _decode           # noqa: E402
 import _language          # noqa: E402
 import _ldjson            # noqa: E402
 import _locations         # noqa: E402
@@ -704,3 +705,68 @@ class RobotsThreeFormulations(unittest.TestCase):
         # reason has to say that, because it looks wrong at a glance.
         self.assertIs(a["allowed"], True)
         self.assertIn("names this project", a["reason"])
+
+
+class Decode(unittest.TestCase):
+    """Read the declared charset. Issue #115.
+
+    **`decode("utf-8", "replace")` cannot fail**, which is the whole problem:
+    it returns plausible text with holes in it and nothing raises.
+    """
+
+    class _Headers(dict):
+        def get_content_charset(self):
+            ct = self.get("Content-Type", "")
+            import re as _re
+            m = _re.search(r"charset=([\w\-]+)", ct)
+            return m.group(1).lower() if m else None
+
+    def test_the_header_is_believed_first(self):
+        h = self._Headers({"Content-Type": "text/html;charset=ISO-8859-1"})
+        text, enc = _decode.decode_body(b"Pudahuel \xa1Comisiones", h)
+        self.assertEqual(text, "Pudahuel ¡Comisiones")
+        self.assertEqual(enc, "iso-8859-1")
+
+    def test_utf8_replace_is_what_this_replaces(self):
+        """The `bne.gob.cl` bytes, and the two readings side by side."""
+        raw = b"Pudahuel \xa1Comisiones"
+        self.assertIn("\ufffd", raw.decode("utf-8", "replace"))
+        self.assertNotIn("\ufffd", raw.decode("cp1252"))
+
+    def test_a_meta_charset_is_read_when_the_header_is_silent(self):
+        raw = b'<html><head><meta charset="windows-1252"><body>caf\xe9'
+        name, where = _decode.charset_of(None, raw)
+        self.assertEqual((name, where), ("windows-1252", "meta"))
+
+    def test_an_xml_prolog_counts_as_a_declaration(self):
+        """**Sitemaps declare here and nowhere else**, and this repository
+        reads a sitemap on nearly every board. Issue #115."""
+        raw = b'<?xml version="1.0" encoding="ISO-8859-1"?><loc>caf\xe9</loc>'
+        self.assertEqual(_decode.charset_of(None, raw), ("iso-8859-1", "xml"))
+        self.assertTrue(_decode.decode_body(raw)[0].endswith(
+            "<loc>café</loc>"))
+
+    def test_a_prolog_must_be_first_a_mention_later_is_not_a_declaration(self):
+        raw = b'<urlset><note><?xml encoding="ISO-8859-1"?></note></urlset>'
+        self.assertEqual(_decode.charset_of(None, raw), (None, None))
+
+    def test_strict_first_then_a_total_fallback_and_it_says_which(self):
+        # Not valid UTF-8 and nothing declared: cp1252 maps every byte, so it
+        # is chosen for being total rather than for being right — and the
+        # second value is how the caller learns that.
+        text, enc = _decode.decode_body(b"caf\xe9 \x93x\x94")
+        self.assertEqual(enc, "cp1252")
+        self.assertNotIn("\ufffd", text)
+
+    def test_valid_utf8_stays_utf8_when_nothing_is_declared(self):
+        text, enc = _decode.decode_body("café €".encode("utf-8"))
+        self.assertEqual((text, enc), ("café €", "utf-8"))
+
+    def test_a_string_passes_through_and_says_so(self):
+        self.assertEqual(_decode.decode_body("already text"),
+                         ("already text", "str"))
+
+    def test_an_unknown_charset_name_falls_through_instead_of_raising(self):
+        h = self._Headers({"Content-Type": "text/html;charset=x-nonesuch"})
+        text, enc = _decode.decode_body("café".encode("utf-8"), h)
+        self.assertEqual((text, enc), ("café", "utf-8"))

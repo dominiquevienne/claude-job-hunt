@@ -52,6 +52,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _ldjson import label, one, postings
 
 from _locations import drop_report
@@ -91,9 +92,9 @@ def get(url):
     })
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
-            return r.getcode(), r.read().decode("utf-8", "replace"), r.geturl()
+            return r.getcode(), decode_body(r.read(), r.headers)[0], r.geturl()
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace"), getattr(e, "url", url)
+        return e.code, decode_body(e.read(), e.headers)[0], getattr(e, "url", url)
     except (urllib.error.URLError, OSError) as e:
         die(f"{url}: {e}")
 
