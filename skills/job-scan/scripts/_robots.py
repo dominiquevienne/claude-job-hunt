@@ -65,9 +65,25 @@ The states a fetch can end in, and they are not interchangeable:
                  "Request is Blocked by Firewall". A server that says
                  *blocked* has replied. Neither a permission nor an absence.
                  **This departs from RFC 9309 on purpose — see below**
-    unreachable  timeout, DNS, TLS, a persistent 5xx — **unknown**, and the
-                 only honest answer is that we do not know
+    unreachable  timeout, DNS, TLS, a persistent 5xx, **or a 2xx that is
+                 not 200** — unknown, and the only honest answer is that we
+                 do not know
     unreadable   200 with something that is not a rules file
+
+**A 404 AND A 202 WITH AN EMPTY BODY ARE NOT THE SAME FACT**, and they shared
+a verdict until #125. `algerie.tanqeeb.com` answers **HTTP 202 with zero
+bytes**; that landed in `unreadable`, `unreadable` was read as an absence, and
+the guard returned `allowed: True` giving the reason *"a 404 is an absence"* —
+**a status that never occurred, quoted as the justification.**
+
+A `202 Accepted` says the request was taken and processing is not finished. It
+is not a representation of `robots.txt`, and an empty body states nothing. **A
+404 is knowledge — the host looked and there is no file.** The three-valued
+output added in #118 was right; this branch was not using it.
+
+**Every reason now quotes the status and the byte count actually observed.** A
+silent verdict invites suspicion; **a falsely-motivated one reads like a
+verification**, which is worse.
 
 **THE 403 RULE IS A DELIBERATE DEPARTURE FROM RFC 9309, AND SAYING SO IS PART
 OF THE FIX.** §2.3.1.3 is explicit: on a status in the 400-499 range a crawler
@@ -173,6 +189,24 @@ def _fetch_once(url, host, timeout):
             final = urllib.parse.urlsplit(r.geturl()).netloc or host
             ctype = r.headers.get("Content-Type")
             body = r.read().decode("utf-8", "replace")
+            status = r.getcode()
+            # **A 2xx that is not 200 is not the document.** `202 Accepted`
+            # means the request was taken and processing is not finished — it
+            # is not a representation of `robots.txt`, and neither is `204`.
+            # `algerie.tanqeeb.com` answers **202 with zero bytes**, which
+            # used to land in `unreadable` and be reported as *"a 404 is an
+            # absence"*: a status that never occurred, quoted as the reason.
+            # **A 404 says there are no rules. A 202 with an empty body says
+            # nothing at all**, and the two must not share a verdict. #125.
+            if status != 200:
+                return {"state": "unreachable", "final": final,
+                        "status": status, "bytes": len(body),
+                        "why": f"HTTP {status} with a {len(body)}-byte body — "
+                               f"a 2xx that is not 200 is not the document, "
+                               f"and an empty body states nothing. **This is "
+                               f"not an absence**: a 404 would say there are "
+                               f"no rules, and this says only that something "
+                               f"answered."}
             # A robots.txt that is not text/plain is not a robots.txt — see
             # shared/robots-policy.md. 126 KB of sign-in HTML answered 200 on
             # my.indeed.com, and an Angular shell did the same on kemnaker.
@@ -189,19 +223,28 @@ def _fetch_once(url, host, timeout):
             if ctype is None:
                 if _looks_like_rules(body):
                     return {"state": "read", "body": body, "final": final,
-                            "why": "no Content-Type; the body is a rules file"}
+                            "status": status, "bytes": len(body),
+                            "why": "no Content-Type; the body is a rules "
+                                   "file"}
                 return {"state": "unreadable", "final": final,
-                        "why": f"no Content-Type, and the {len(body)} bytes "
-                               f"are not a rules file either"}
+                        "status": status, "bytes": len(body),
+                        "why": f"HTTP {status}, no Content-Type, and the "
+                               f"{len(body)} bytes are not a rules file "
+                               f"either"}
             if "text/plain" not in ctype:
                 return {"state": "unreadable", "final": final,
-                        "why": f"Content-Type {ctype!r}, {len(body)} bytes — "
-                               f"not a rules file"}
-            return {"state": "read", "body": body, "final": final}
+                        "status": status, "bytes": len(body),
+                        "why": f"HTTP {status}, Content-Type {ctype!r}, "
+                               f"{len(body)} bytes — not a rules file"}
+            return {"state": "read", "body": body, "final": final,
+                    "status": status, "bytes": len(body)}
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
-            return {"state": "absent",
-                    "why": f"HTTP {e.code} — no robots.txt published"}
+            return {"state": "absent", "status": e.code,
+                    "why": f"HTTP {e.code} — no robots.txt published. **This "
+                           f"is knowledge**: the host looked and there is no "
+                           f"file, which is not the same as a host that did "
+                           f"not answer with one."}
         if e.code in (401, 403, 429, 451):
             # **The host answered, and it answered no.** Measured on
             # `barbadosjobregister.gov.bb`: 403 and thirty bytes, "Request is
@@ -346,7 +389,8 @@ def verdict(host):
 
     out = {"host": final, "requested_host": host, "sweep": True,
            "reason": None, "content_signal": None, "state": got["state"],
-           "attempts": got.get("attempts"), "certain": True}
+           "attempts": got.get("attempts"), "certain": True,
+           "status": got.get("status"), "bytes": got.get("bytes")}
     if final != host:
         out["reason"] = (f"read from {final!r}, not {host!r} — the request "
                          f"was redirected, and the two hosts do not "
@@ -709,11 +753,25 @@ def allowed(host, path):
         out["reason"] = v["reason"]
         return out
     if v["state"] != "read":
-        out["certain"] = False
-        out["reason"] = (f"no rules were read ({v['state']}) — **a 404 is an "
-                         f"absence, and an absence is not a refusal**. It is "
-                         f"not a permission either. Proceed at a human pace "
-                         f"and say so.")
+        # **Name what happened, not what would have been convenient.** This
+        # branch used to read *"a 404 is an absence"* whatever the state was,
+        # so `algerie.tanqeeb.com` — HTTP 202, zero bytes — was permitted with
+        # a citation of a status it never returned. **A silent verdict invites
+        # suspicion; a verdict that gives a false reason reads like a
+        # verification.** Issue #125.
+        out["certain"] = v["state"] == "absent"
+        seen = (f"HTTP {v['status']}" if v.get("status") else "no HTTP status")
+        if v.get("bytes") is not None:
+            seen += f", {v['bytes']} bytes"
+        out["reason"] = (
+            f"no rules were read — the host answered {seen} and the state is "
+            f"`{v['state']}`. "
+            + ("**A 404 is knowledge**: there is no file, so there are no "
+               "rules, and that is not a refusal."
+               if v["state"] == "absent" else
+               "**That is not an absence and not a permission** — a file that "
+               "cannot be read says nothing either way. Proceed at a human "
+               "pace and say so, or read it by hand."))
         return out
     best_d = max(((_match_len(p, path), p) for p in v.get("disallow") or []),
                  default=(-1, None))

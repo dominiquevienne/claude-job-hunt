@@ -1218,5 +1218,118 @@ class HiringCafeIsBuiltInOnePlace(unittest.TestCase):
         self.assertIn("No request was made", text)
 
 
+class WhatTheStatusMeans(unittest.TestCase):
+    """One case per shape, because they had been sharing a verdict. #125.
+
+    `algerie.tanqeeb.com` answers **HTTP 202 with a zero-byte body**, and the
+    guard returned `allowed: True` giving the reason *"a 404 is an absence"* —
+    **a status that never occurred, quoted as the justification.**
+
+    **A 404 says there are no rules. A 202 with an empty body says nothing.**
+    Melting both into `unreadable`, and reading `unreadable` as an absence,
+    gave a host that did not answer the same verdict as a host that has no
+    file. The three-valued output added in #118 was right; **this branch was
+    not using it.**
+
+    And the reason mattered as much as the verdict: **a silent verdict invites
+    suspicion, a falsely-motivated one reads like a verification.** Every
+    reason now quotes the status and the byte count actually observed.
+    """
+
+    class _Resp:
+        def __init__(self, status, body, ctype="text/plain"):
+            self._s, self._b, self._c = status, body, ctype
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def getcode(self):
+            return self._s
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def read(self):
+            return self._b.encode()
+
+        @property
+        def headers(self):
+            return {"Content-Type": self._c}
+
+    def _fetch_with(self, response=None, error=None):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        real = _robots.urllib.request.urlopen
+
+        def fake(req, timeout=None):
+            if error:
+                raise error
+            return response
+        _robots.urllib.request.urlopen = fake
+        try:
+            return _robots._fetch_once("https://h.example/robots.txt",
+                                       "h.example", 5)
+        finally:
+            _robots.urllib.request.urlopen = real
+
+    def test_404_is_an_absence_and_an_absence_permits(self):
+        import urllib.error
+        got = self._fetch_with(error=urllib.error.HTTPError(
+            "u", 404, "Not Found", {}, None))
+        self.assertEqual(got["state"], "absent")
+        self.assertIn("404", got["why"])
+
+    def test_202_with_an_empty_body_is_an_unknown(self):
+        """**The case that started this.** Not an absence: nothing was said."""
+        got = self._fetch_with(self._Resp(202, "", "text/html; charset=UTF-8"))
+        self.assertEqual(got["state"], "unreachable")
+        self.assertEqual(got["bytes"], 0)
+        self.assertIn("202", got["why"])
+        self.assertIn("not an absence", got["why"])
+
+    def test_a_500_is_an_unknown(self):
+        import urllib.error
+        got = self._fetch_with(error=urllib.error.HTTPError(
+            "u", 500, "Server Error", {}, None))
+        self.assertEqual(got["state"], "unreachable")
+
+    def test_a_403_is_a_refusal(self):
+        import urllib.error
+        got = self._fetch_with(error=urllib.error.HTTPError(
+            "u", 403, "Forbidden", {}, None))
+        self.assertEqual(got["state"], "refused")
+
+    def test_200_with_a_rules_file_is_read(self):
+        got = self._fetch_with(self._Resp(
+            200, "User-agent: *\nDisallow: /x\n"))
+        self.assertEqual(got["state"], "read")
+        self.assertEqual(got["status"], 200)
+
+    def test_no_reason_cites_a_status_that_did_not_happen(self):
+        """The defect in one assertion: the word `404` may appear only where
+        a 404 actually occurred."""
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda host: {
+            "state": "unreachable", "final": host, "attempts": 1,
+            "status": 202, "bytes": 0,
+            "why": "HTTP 202 with a 0-byte body"}
+        try:
+            a = _robots.allowed("algerie.tanqeeb.com", "/jobs")
+            self.assertIsNone(a["allowed"])
+            self.assertNotIn("404", a["reason"])
+            self.assertIn("202", a["reason"])
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
