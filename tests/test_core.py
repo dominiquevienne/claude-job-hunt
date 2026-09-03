@@ -770,3 +770,53 @@ class Decode(unittest.TestCase):
         h = self._Headers({"Content-Type": "text/html;charset=x-nonesuch"})
         text, enc = _decode.decode_body("café".encode("utf-8"), h)
         self.assertEqual((text, enc), ("café", "utf-8"))
+
+
+class RobotsStorage403(unittest.TestCase):
+    """A 403 that carries an object-storage error document. Issue #118.
+
+    **The hint is allowed; the conclusion is not.** On S3 a missing key
+    answers 403 because listing is not granted, so a static site with no
+    robots.txt can answer 403 where the identical site with a custom error
+    page answers 200 — measured on two Chilean government portals.
+    """
+
+    class _Err:
+        def __init__(self, body):
+            self._body = body
+
+        def read(self, n=None):
+            return self._body[:n] if n else self._body
+
+    def test_an_s3_error_document_is_named_as_a_hint(self):
+        note = _robots._storage_note(self._Err(
+            b'<?xml version="1.0"?><Error><Code>AccessDenied</Code></Error>'))
+        self.assertIn("object-storage error document", note)
+        self.assertIn("hint, not a finding", note)
+
+    def test_a_firewall_page_gets_no_such_note(self):
+        note = _robots._storage_note(
+            self._Err(b"Request is Blocked by Firewall"))
+        self.assertEqual(note, "")
+
+    def test_a_body_that_cannot_be_read_tells_us_nothing(self):
+        class Broken:
+            def read(self, n=None):
+                raise OSError("connection reset")
+        self.assertEqual(_robots._storage_note(Broken()), "")
+
+    def test_the_hint_never_turns_the_refusal_into_a_permission(self):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots._fetch
+        _robots._fetch = lambda host: {
+            "state": "refused", "final": host, "attempts": 1,
+            "why": "HTTP 403 — the host refuses to serve its rules file. "
+                   "**The body is an object-storage error document**"}
+        try:
+            v = _robots.verdict("www.trabajaenelestado.cl")
+            self.assertIs(v["sweep"], False)
+        finally:
+            _robots._fetch = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()

@@ -63,10 +63,35 @@ The states a fetch can end in, and they are not interchangeable:
     refused      401/403/429/451 — **the host answered, and it said no.**
                  `barbadosjobregister.gov.bb` returns 403 and thirty bytes of
                  "Request is Blocked by Firewall". A server that says
-                 *blocked* has replied. Neither a permission nor an absence
+                 *blocked* has replied. Neither a permission nor an absence.
+                 **This departs from RFC 9309 on purpose — see below**
     unreachable  timeout, DNS, TLS, a persistent 5xx — **unknown**, and the
                  only honest answer is that we do not know
     unreadable   200 with something that is not a rules file
+
+**THE 403 RULE IS A DELIBERATE DEPARTURE FROM RFC 9309, AND SAYING SO IS PART
+OF THE FIX.** §2.3.1.3 is explicit: on a status in the 400-499 range a crawler
+"MAY access any resources", *as if no robots.txt existed*. **By the letter, a
+403 means open.** This module refuses instead, because the letter answers a
+question about file availability and a firewall answering *blocked* is
+answering a different one — and the cost of being wrong is not symmetric. The
+5xx rule is followed as written: unreachable means refuse.
+
+**But that departure has a price, and it was measured the day it shipped.**
+Two Chilean government portals, the same CloudFront-over-S3 static hosting,
+**neither publishing a robots.txt**:
+
+    www.trabajaenelestado.cl/robots.txt   403, 111 bytes of S3 `AccessDenied`
+    www.practicasparachile.cl/robots.txt  200, 16 kB of the site's own SPA
+
+**Same absence, opposite verdicts** — refused and permitted — decided by
+whether the distribution has a custom error page. On object storage a 403 is
+routinely what a *missing key* returns, because listing is not granted; there
+is no 404 to give. So `refused` names when a 403 carries a storage-layer error
+document, and the sentence says the file may simply not exist. **It still
+refuses**: this module does not get to conclude *absent* from a body that
+resembles an absence, and `shared/plausible-and-false.md` is about exactly that
+inference. It hands a person something to decide with.
 """
 
 import random
@@ -183,12 +208,41 @@ def _fetch_once(url, host, timeout):
             # Blocked by Firewall". This used to be filed under `unreadable`,
             # whose reason reads *absence of a file is not a refusal* — true
             # of a 404 and false here. Issue #118.
-            return {"state": "refused", "why": f"HTTP {e.code} — the host "
-                                               f"refuses to serve its rules "
-                                               f"file"}
+            return {"state": "refused",
+                    "why": f"HTTP {e.code} — the host refuses to serve its "
+                           f"rules file" + _storage_note(e)}
         return {"state": "unreachable", "why": f"HTTP {e.code}"}
     except (urllib.error.URLError, OSError) as e:
         return {"state": "unreachable", "why": str(e)}
+
+
+def _storage_note(err):
+    """Does this 403 look like object storage refusing a **missing** key?
+
+    **A hint for a person, never a conclusion for the module.** On S3 and the
+    CDNs in front of it a missing object answers 403 rather than 404, because
+    listing the bucket is not granted — so a static site with no robots.txt
+    can answer 403 where the identical site with a custom error page answers
+    200. Measured on two Chilean government portals the day the 403 rule
+    shipped.
+
+    The verdict does not change. **Concluding "absent" from a body that
+    resembles an absence is the inference this repository keeps catching**,
+    and one error document is not a fact about consent.
+    """
+    try:
+        head = err.read(400).decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 - a body we cannot read tells us nothing
+        return ""
+    if "AccessDenied" not in head and "NoSuchKey" not in head:
+        return ""
+    return (". **The body is an object-storage error document** "
+            f"({len(head)} bytes, `AccessDenied`/`NoSuchKey`), and on S3 a "
+            f"*missing* file answers 403 rather than 404 — so this host may "
+            f"simply publish no robots.txt. **That is a hint, not a "
+            f"finding**: the refusal stands, because an absence inferred "
+            f"from a body that resembles one is not an absence. Read the "
+            f"file by hand and record what you saw")
 
 
 def siblings(host):
