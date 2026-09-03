@@ -160,7 +160,10 @@ def _robots_gate(url, tag, exit_code=7):
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", exit_code)
     if a.get("requested_host") and a["host"] != a["requested_host"]:
-        print(f"[hellowork] robots.txt for {a['requested_host']} was read from "
+        # **The tag, not a name copied with the function.** Twelve
+        # adapters printed `[hellowork]` here, so a cross-host redirect on
+        # `stepstone.de` or `hays.fr` announced itself as another board.
+        print(f"[{tag}] robots.txt for {a['requested_host']} was read from "
               f"{a['host']} — a redirect crossed hosts. A platform that has "
               f"been renamed reaches an adapter this way before it reaches it "
               f"as a rename.", file=__import__("sys").stderr)
