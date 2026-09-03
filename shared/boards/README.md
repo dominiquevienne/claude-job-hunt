@@ -462,6 +462,15 @@ renders a complete advertisement that expires *later* and is not listed.
 **Membership tracks neither expiry nor recency**, so the adapter reports the
 listing's count as the listing's and does not call it the board.
 
+**`bayt.md` is where three layers give three answers.** Its `robots.txt`
+permits the country listings and refuses the generic search — visible only per
+path; **Cloudflare 403s every scripted request** including `/`; and the browser
+renders the page in full. **A bot wall is not a refusal**, and the two are not
+recorded as the same thing. The same card carries three mutually inconsistent
+totals published in one view — header `5.8K`, prose `6 876`, and facet counts
+that differ from the prose city by city — so **whichever number a person
+quotes, the page contains two that contradict it.**
+
 **Two different requests must produce two different bodies.** Before trusting
 any listing route, ask for something that cannot exist and compare. It is the
 check `melr-gh.md` turns on — `/index.php/99/99/complete-nonsense-xyzzy` is
