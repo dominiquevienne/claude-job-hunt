@@ -1,0 +1,78 @@
+# The parsing core, on the three systems the README promises — and nothing else.
+#
+# **Sixty-one adapters depend on third-party sites. Testing them here would
+# mean sweeping the web on every commit**, which is precisely what this project
+# teaches people not to do. So this runs `tests/`, which touches no network.
+#
+# **What it is for is the promise, not the coverage.** `README.md` says Windows,
+# Linux and macOS; until now nothing tried any of them but the developer's
+# macOS. Issue #108.
+name: core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} · python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the floor, and it is measured rather than chosen: it is the
+        # oldest version that runs this code, set by `str.removeprefix` in
+        # bin/host-drift.py. See CONTRIBUTING.md.
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: The core parses the same way everywhere
+        run: python -m unittest discover -s tests -v
+
+  shell-scripts:
+    # **The `.gitattributes` guard, checked rather than assumed.** A CRLF
+    # checkout makes `bin/doctor.sh` fail with `bash\r`, and that error names
+    # an interpreter that exists. Issue #107 could not be reproduced without a
+    # Windows machine; this is the machine.
+    name: bin/*.sh survive a Windows checkout
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: No CR in any shell script
+        run: |
+          if grep -rlU $'\r' bin/*.sh; then
+            echo "A shell script arrived with CRLF — .gitattributes did not hold."
+            exit 1
+          fi
+          echo "bin/*.sh are LF after a Windows checkout."
+      - name: They parse
+        run: for f in bin/*.sh; do bash -n "$f"; done
+
+  every-module-imports:
+    # An adapter that does not import cannot be run, and that failure needs no
+    # network to find. **It is not a test of the adapter** — it is the floor.
+    name: every script imports · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Compile every script
+        run: python -m compileall -q skills bin tests
