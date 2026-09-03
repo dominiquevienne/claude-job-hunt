@@ -42,6 +42,11 @@ mode this plugin is built against. See
 
 ---
 
+
+**Python 3.9 or newer, and nothing outside the standard library.** The floor is
+measured, not chosen — see `CONTRIBUTING.md`. The parsing core is tested on
+Linux, macOS and Windows on every push: `python3 -m unittest discover -s tests`.
+
 ## Table of contents
 
 - [What you need](#what-you-need)

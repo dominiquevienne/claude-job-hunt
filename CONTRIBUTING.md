@@ -102,6 +102,43 @@ step as generalising from one ad to a board.**
 
 ---
 
+## Python, and the floor is measured rather than chosen
+
+**The plugin needs Python 3.9.** That is not a preference: it is the oldest
+version this code runs on, established by looking. The binding call is
+`str.removeprefix` in `bin/host-drift.py`; the grammar alone would allow 3.7,
+and `fhf.py`'s `X | None` annotations are safe because it imports
+`annotations` from `__future__`.
+
+**Nothing outside the standard library is required, anywhere.** A dependency
+would be a decision, and none has been taken.
+
+## Tests, and what is deliberately not tested
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+**The perimeter is the parsing core that touches no network** — `_robots`,
+`_sitemap`, `_ldjson`, `_locations`, `_language`, `_match`. Sixty-one adapters
+depend on third-party sites, and **testing those in CI would mean sweeping the
+web on every commit**, which is the thing this project teaches people not to
+do.
+
+**Most of these cases already existed as prose.** `_robots.py`'s group grammar
+was corrected twice in one day against exactly these inputs, typed into a
+shell and then read afterwards. **A case that is not executed is a comment**,
+and a comment does not fail when someone changes the function under it.
+
+`.github/workflows/core.yml` runs them on **Linux, macOS and Windows**, on 3.9
+and 3.12 — because `README.md` promises three systems and nothing had tried
+any but the developer's macOS. It also checks that `bin/*.sh` survive a
+Windows checkout as LF, which is the only place the `.gitattributes` guard can
+actually be exercised.
+
+**Add a case when you fix a parser.** The rule is not coverage; it is that a
+defect found once should not be findable twice.
+
 ## Where the rest is written
 
 This file holds what governs the repository. **What governs the work is in
