@@ -296,9 +296,30 @@ When either at-risk signal holds, verify **before drafting**.
    SuccessFactors does exactly this — and reading that emptiness as closure
    concludes from a page you never saw. `shared/ats-open-check.md` gives the
    detection rule and the vacancy URL that does answer.
-3. **Report the result at the gate as a finding**, naming the route you used. If
-   you could not verify, say that in those words — never let silence imply the
-   ad is live.
+3. **Report the result at the gate as a finding**, naming the route you used **and
+   how many witnesses spoke**. If you could not verify, say that in those words
+   — never let silence imply the ad is live.
+
+   **A single-source verification is legitimate and must not be written like a
+   corroborated one.** Sometimes the board is all there is. But *"verified"* on
+   its own reads as agreement, and this file spent two issues establishing that
+   one source repeated looks exactly like two sources agreeing (#86, #89).
+
+   > *"verified live — jobup answers `200` with no redirect. **One witness**:
+   > the employer's ATS returns the same shell for any id, so it could not be
+   > asked."*
+
+   **And say it louder when the one witness has a known failure mode.** jobup
+   is the source #88 established **lies by redirection** when an ad expires —
+   so "jobup alone" is the weakest verification available here, not a neutral
+   one.
+
+   **Before recording a host as mute, change one thing in the request.** A
+   `200` with a tiny body is our own request until proven otherwise: an
+   Applifly host was written off as client-rendered and unverifiable when it
+   was missing one query parameter, and it confirms in both directions.
+   `shared/ats-open-check.md`, *the host that cannot confirm*, holds the four
+   states and which of them is ours.
 
 Do not guess a careers-page URL beyond a single attempt; the board's own search
 and a web search for the ATS posting are the routes that work.

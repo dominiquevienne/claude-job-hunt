@@ -475,6 +475,75 @@ Factorial, Workday, Greenhouse, Lever and SmartRecruiters close a requisition
 with unambiguous prose — *"This job opening doesn't exist anymore"*. Step 1b has
 always said so; no table needed, because the page tells you in words.
 
+## The host that cannot confirm, and it is not the same as a host that says no
+
+**This file classifies hosts by what they answer. It had no category for a host
+that cannot answer** — and a shell was therefore read the way an unresolved id
+is read: as a weak negative. **It is not a weak negative. It is an absence of
+signal**, and the two lead to opposite decisions.
+
+| What the ATS returns | About the ad | What 1b does |
+| :-- | :-- | :-- |
+| A `JobPosting` block, or an unambiguous status | **served** | **corroborated** — two witnesses agree |
+| An error shell, no block — *the id does not resolve* | **not proof of closure** (see SuccessFactors above) | second witness, **mute in the negative direction** |
+| **A shell for every id, valid or not** | **nothing** | **one witness only — and say so** |
+| **A shell because the request was under-specified** | **nothing yet** | **fix the request; this one is ours** |
+
+### The instance is Ostendis, and it was already in this file under the wrong heading
+
+`link.ostendis.com` answers `200` with 1 850 bytes and `<title>` = *Publikation*
+— **and a bogus token answers `200` with the same shell.** There is nothing to
+match on, in either direction. It sits below under *investigated and rejected*,
+which conflates two different judgements: **not worth an adapter** and **cannot
+serve as a witness**. The second is what 1b needs and it is what this table now
+says.
+
+### Applifly is **not** in this category, and the difference is instructive
+
+It looks identical from one request — `200`, a small body, no block — and it is
+the opposite case: **the request was missing a parameter.** With `language` and
+`source` the same URL returns the ad, and an unknown id returns `3xx`. **It
+confirms in both directions.** The first reading called it client-rendered and
+recorded the ad as verified by one witness; it had two.
+
+**So the fourth row is a category about us, not about the host** — a `200` with
+no content that our own request produced. It is the third shape of that failure
+found in two days, after `curl --compressed` manufacturing a transport error
+and `-L` turning a redirect loop into a dead site (`shared/plausible-and-false.md`,
+*The flag is part of the measurement*). **Before filing a host as mute, change
+one thing in the request and ask again.**
+
+### "One witness" is a state to declare, not a defect to fix
+
+**There is nothing wrong with a single-source verification.** Sometimes the
+board is all there is, and the ad is genuinely open. **What is wrong is writing
+it the same way as a corroborated one.**
+
+This repository spent two days establishing that a single source repeated looks
+like agreement — five country queries served from one pool (#86), a check that
+shares its object's blind spot (*blind agreement*). **This is the symmetric
+duty: knowing, and saying, when you only have one.**
+
+So step 1b names its witnesses:
+
+> *"verified live — jobup answers 200 with no redirect. **One witness**: the
+> employer's ATS could not be asked (Ostendis returns the same shell for any
+> id)."*
+
+**Never *"verified"* on its own** when only one source spoke. And note what the
+single witness costs here: **jobup is the source #88 established lies by
+redirection** when an ad expires. A single witness with a known failure mode is
+the weakest verification in this file, and it must read as such.
+
+### What this file does *not* hold
+
+**What an ATS can confirm about an ad is not what a user has decided about an
+employer.** A freeze, a "never again", a pay range refused — those are the
+user's own facts, they age, and they belong beside `commute.md` in the
+workspace, not in a repository file that ships to everybody. This file is
+indexed by host and is true for every user of the plugin; that boundary is the
+whole reason it can ship.
+
 ## Rules
 
 - **A stated expiry date in the past is the one exception, and it outranks
@@ -492,6 +561,10 @@ always said so; no table needed, because the page tells you in words.
 - **Report the route at the gate**, naming host and response: *"verified live —
   employer's umantis posting answers 200 with the job title"* is a finding a
   user can weigh. *"Looks open"* is not.
+- **Count your witnesses and name them.** *"Verified"* without a number is the
+  claim this file cannot support; *"one witness, and it is the board"* is.
+- **A `200` with no content is our request until proven otherwise.** Change one
+  parameter and ask again before recording a host as mute.
 - **A host that is not listed here is not a failure.** Say you could not verify
   and why, then carry on. Adding a host means testing its **closed** state, not
   just its open one — that is the whole difference between the two entries above.
