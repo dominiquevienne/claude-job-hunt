@@ -462,6 +462,13 @@ renders a complete advertisement that expires *later* and is not listed.
 **Membership tracks neither expiry nor recency**, so the adapter reports the
 listing's count as the listing's and does not call it the board.
 
+**`jobs-gov-pk.md` is where two counts of the same thing disagree.** The
+board's own header says `1511 total` on one page and `5 total` on another,
+while the markup carries 1 511 cards — and `5 total` beside `1506 expired` is
+not arithmetic. **The adapter counts the cards and prints the header next to
+them**, saying when they differ rather than picking one. Merging them would
+have hidden it.
+
 **`melr-gh.md` is the other shape of the same lesson.** Ghana's labour
 ministry answers **200 with its home page under every URL** — including
 `/index.php/99/99/complete-nonsense-xyzzy`, which is line-for-line identical to
