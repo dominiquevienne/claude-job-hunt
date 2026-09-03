@@ -35,6 +35,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _robots import allowed as robots_allowed
+
 SEARCH = "https://www.meteojob.com/jobs"
 AD_URL = "https://www.meteojob.com/jobs/{}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -69,7 +71,36 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+def _robots_gate(url, tag, exit_code=7):
+    """Ask before fetching — per host and **per path**. Issues #100, #101.
+
+    `verdict()` answers *is this host closed in one block*. **A site that
+    refuses its ad path while leaving its root open passes that and refuses
+    every advertisement** — `empleate.gob.hn` does exactly that, closing
+    `/Vacantes/` to `User-agent: *` with `/` absent.
+
+    It sits **inside the fetch function**, so every request is covered rather
+    than the first one, and a refusal **stops the command** with exit 7 and the
+    module's own words. **This adapter decides nothing about what a refusal
+    means** — deciding is what turns a check into a decoration.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return None
+    a = robots_allowed(parts.netloc, parts.path or "/")
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", exit_code)
+    if a.get("requested_host") and a["host"] != a["requested_host"]:
+        print(f"[meteojob] robots.txt for {a['requested_host']} was read from "
+              f"{a['host']} — a redirect crossed hosts. A platform that has "
+              f"been renamed reaches an adapter this way before it reaches it "
+              f"as a rename.", file=__import__("sys").stderr)
+    return a
+
+
+
 def fetch(url):
+    _robots_gate(url, 'meteojob')
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml",
