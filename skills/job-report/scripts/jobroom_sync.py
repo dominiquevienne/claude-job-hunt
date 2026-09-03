@@ -203,6 +203,18 @@ def build_plan(rows: list[dict], state: dict) -> dict:
             "status": r["kind"],
             "status_date": r["date"],
             "declared": r["jr_declared"],
+            # **On a `rejected` row this date is the employer's ANSWER, not
+            # the day the application went out.** `applied -> rejected` is a
+            # legitimate transition in `shared/pipeline-format.md`, and it
+            # overwrites the send date — which is the one the PRE form asks
+            # for ("the day the send is confirmed"). An application sent on
+            # 20 August and refused on 2 September would otherwise be declared
+            # in the September period, while August transmits on a fixed date.
+            #
+            # The send date is not recoverable from the row, so this does not
+            # invent one: it says the date cannot be used as a send date and
+            # leaves the answer to the person who sent it.
+            "date_is_answer": r["kind"] in ("rejected", "refusé", "refuse"),
         }
         if r["jr_waived"]:
             # Counted as an application, never proposed for entry again. It is
@@ -443,7 +455,17 @@ def print_plan(plan: dict) -> None:
     print()
     print(f"to declare ({len(plan['to_enter'])}):")
     for i in plan["to_enter"] or []:
-        print(f"  · {i['status_date']}  {i['company'][:44]:44}  {i['role'][:46]}")
+        flag = "  <- NOT the send date" if i.get("date_is_answer") else ""
+        print(f"  · {i['status_date']}  {i['company'][:44]:44}  {i['role'][:46]}{flag}")
+    answered = [i for i in plan["to_enter"] or [] if i.get("date_is_answer")]
+    if answered:
+        print()
+        print(f"  ** {len(answered)} of these carry the employer's ANSWER date, "
+              f"not the day they were sent.** `applied -> rejected` overwrites")
+        print("     the send date, and the PRE form asks for the send. Ask the")
+        print("     user for it — do not declare these on the date shown, and do")
+        print("     not guess: an application sent in August and refused in")
+        print("     September would land in the wrong period.")
     if not plan["to_enter"]:
         print("  (none)")
     print()

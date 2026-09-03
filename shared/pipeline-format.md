@@ -215,6 +215,14 @@ column, the log and everything you say to the user follow the user's
   **`\|` inside a cell is an escaped pipe rather than a column break** — ten
   of those 474 rows carry one, and splitting on `|` shifts their columns and
   corrupts their status silently.
+- **The transition to `rejected` costs the send date, and nothing recovers
+  it.** `applied 2026-08-20` becoming `rejected 2026-09-02` leaves one date on
+  the row, and it is the employer's answer. **So the same set of statuses is
+  right for asking *whether* an application left and wrong for asking *when*** —
+  a window, a period, a declaration date. Anything that dates an application
+  must either restrict itself to `applied` rows or say that it could not.
+  Issues #52 and the job-room module.
+
 - **Never rewrite an `applied`, `rejected` or `no-go` row.** Those record what
   actually happened. A later scan may add to the note; it may not change the
   verdict. The one legitimate transition is `applied` → `rejected`, when the

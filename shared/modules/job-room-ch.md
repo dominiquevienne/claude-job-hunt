@@ -39,7 +39,7 @@ Write a `## Job-room data (PRE)` block at the end of the dossier's `job-ad.md`:
 
 | Job-room field | Required | Where to find it |
 | :-- | :-- | :-- |
-| Application date | yes | the day the send is confirmed |
+| Application date | yes | the day the send is confirmed — **and on a `rejected` row the ledger no longer holds it, see below** |
 | **Company** — exact legal name | yes | the ad. For a recruitment agency, the declarable employer is **the agency**, not the unnamed end client |
 | Street and number | no | the ad, the site footer, or the commercial register |
 | Country | yes (Switzerland by default) | the ad |
@@ -126,6 +126,24 @@ declaration, and a total that hides an undeclared application is worse than no
 total.
 
 ---
+
+### A `rejected` row does not carry the date this form asks for
+
+**`applied → rejected` is a legitimate transition, and it overwrites the send
+date with the employer's answer.** The form asks for the send. So an
+application that went out on 20 August and was refused on 2 September appears
+in the plan dated **2 September** — and declaring it there **puts it in the
+wrong period**, while August transmits on a fixed date.
+
+**`plan` flags those rows** — `<- NOT the send date` — and it **does not invent
+a send date**, because the ledger no longer has one. **Ask the user when it
+went out**, and enter that. A guess here is a false entry in an official
+declaration.
+
+*(Found on 2026-09-03 while checking whether a wrinkle in `job-report
+--interviews` was local to that view. It was not: the same set of statuses is
+right for asking **whether** an application left and wrong for asking
+**when**.)*
 
 ## Work out what job-room actually needs — `jobroom_sync.py plan`
 
