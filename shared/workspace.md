@@ -3,14 +3,45 @@
 Both skills read the same workspace. It sits **outside the plugin**, so
 updating, reinstalling or deleting the plugin never touches the user's data.
 
-## Resolving it
+## Resolving it — and saying where, before writing there
 
 ```bash
-JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
 ```
 
-Use that line in every snippet. Never hardcode a path, and never write anything
-into the plugin directory — a plugin update replaces it.
+**`$HOME` is not the user's folder outside a terminal.** In CoWork it belongs
+to a container, so a resume, a letter, a PDF and the ledger land somewhere the
+person will never find in their file manager.
+
+**And the expensive failure is not a crash, it is a silent success.** The scan
+runs, the letters are written, the ledger fills, nothing errors — and
+`README.md`'s *"Plain files. Read them, edit them, back them up"* has quietly
+become false. Issue #109.
+
+**The cascade, and each step is evidence rather than a guess:**
+
+| | |
+| :-- | :-- |
+| `--prefer <path>` | A folder the user named or connected. **The caller passes it; nothing invents one** |
+| `JOB_HUNT_HOME` | The explicit override, unchanged — **the terminal path works exactly as before** |
+| `<home>/Documents/job_applications` | Only if `<home>/Documents` **exists and is writable**. On a Mac or a Linux desktop it does, which is why nothing changes there |
+| **nothing** | **No fallback is invented.** Exit `3`, and one question to the person |
+
+**That last row is the point.** The old line defaulted into
+`$HOME/Documents/job_applications` whether or not `Documents` existed —
+**creating a directory in a container and reporting success.** Refusing to
+guess turns an invisible failure into one sentence:
+
+> *"I'll put your job-search files in `<path>`. Is that where you want them?"*
+
+**A sentence, not an environment variable.** `export JOB_HUNT_HOME` in a shell
+profile is exactly what a CoWork user will not do.
+
+**Say where the files go before writing any**, and never hardcode a path or
+write into the plugin directory — a plugin update replaces it.
+
+*(`--json` gives `{path, source, ask}` for a caller that wants to phrase the
+question itself.)*
 
 ## What is in it
 

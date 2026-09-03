@@ -17,7 +17,20 @@ set -euo pipefail
 PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
 export PATH
 
-JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+# **Not `$HOME/Documents` by default.** Outside a terminal that home belongs
+# to a container, and writing there succeeds silently. `workspace-path.py`
+# resolves it or refuses to guess. Issue #109.
+# `|| true`: under `set -e` a non-zero command substitution kills the script
+# before the check below can speak. The resolver exits 3 on purpose when it
+# refuses to guess, and that is a message to deliver, not a crash.
+_ws="$(python3 "$(dirname "$0")/../../bin/workspace-path.py" 2>/dev/null || true)"
+JOB_HUNT_HOME="${JOB_HUNT_HOME:-$_ws}"
+if [ -z "$JOB_HUNT_HOME" ]; then
+  echo "ERROR: no workspace. This machine's \$HOME ($HOME) has no Documents" >&2
+  echo "  folder, which usually means it is not yours. Name a folder:" >&2
+  echo "    JOB_HUNT_HOME=/path/to/folder $(basename "$0") ..." >&2
+  exit 2
+fi
 SRC="${1:?usage: make-signature.sh <scan.pdf|scan.png|scan.jpg> [output.png]}"
 OUT="${2:-$JOB_HUNT_HOME/signature.png}"
 mkdir -p "$(dirname "$OUT")"

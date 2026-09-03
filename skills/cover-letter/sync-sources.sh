@@ -11,7 +11,20 @@
 # resume with holes in it. Failures are reported with the reason and the fix.
 set -euo pipefail
 
-JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+# **Not `$HOME/Documents` by default.** Outside a terminal that home belongs
+# to a container, and writing there succeeds silently. `workspace-path.py`
+# resolves it or refuses to guess. Issue #109.
+# `|| true`: under `set -e` a non-zero command substitution kills the script
+# before the check below can speak. The resolver exits 3 on purpose when it
+# refuses to guess, and that is a message to deliver, not a crash.
+_ws="$(python3 "$(dirname "$0")/../../bin/workspace-path.py" 2>/dev/null || true)"
+JOB_HUNT_HOME="${JOB_HUNT_HOME:-$_ws}"
+if [ -z "$JOB_HUNT_HOME" ]; then
+  echo "ERROR: no workspace. This machine's \$HOME ($HOME) has no Documents" >&2
+  echo "  folder, which usually means it is not yours. Name a folder:" >&2
+  echo "    JOB_HUNT_HOME=/path/to/folder $(basename "$0") ..." >&2
+  exit 2
+fi
 CANDIDATE="${1:-}"
 DEST="${2:-$JOB_HUNT_HOME/profile}"
 
@@ -63,10 +76,19 @@ if [ -n "${JOB_HUNT_DESKTOP:-}" ]; then add_dir "$JOB_HUNT_DESKTOP"; else
   add_dir "$HOME/OneDrive/Bureau"
 fi
 
+# The workspace itself is a search directory, and on a machine whose `$HOME`
+# is a container's it is the ONLY one that means anything: `~/Downloads` and
+# `~/Desktop` are the container's too, so probing them reports "missing" on all
+# five files and blames the user for not having exported them. Issue #109.
+WS_GUESS="$(python3 "$(dirname "$0")/../../bin/workspace-path.py" 2>/dev/null || true)"
+[ -n "$WS_GUESS" ] && add_dir "$WS_GUESS" && add_dir "$WS_GUESS/exports"
+
 if [ ${#SEARCH_DIRS[@]} -eq 0 ]; then
-  echo "ERROR: neither a Downloads nor a Desktop folder was found under $HOME." >&2
-  echo "  Point the script at the right places:" >&2
-  echo "    JOB_HUNT_DOWNLOADS=/path/to/downloads JOB_HUNT_DESKTOP=/path/to/desktop \\" >&2
+  echo "ERROR: no folder to look in. \$HOME is $HOME, and neither a Downloads" >&2
+  echo "  nor a Desktop folder was found under it — **which usually means this" >&2
+  echo "  \$HOME is not yours**, not that you have no downloads." >&2
+  echo "  Put the five exports anywhere and name the folder:" >&2
+  echo "    JOB_HUNT_DOWNLOADS=/path/to/that/folder \\" >&2
   echo "      sync-sources.sh \"$CANDIDATE\"" >&2
   exit 2
 fi

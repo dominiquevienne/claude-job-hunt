@@ -21,8 +21,13 @@ $JOB_HUNT_HOME/                 # default: ~/Documents/job_applications
 Resolve the workspace in every command, never hardcode it:
 
 ```bash
-JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
 ```
+
+**And if it exits `3`, ask before creating anything.** Outside a terminal
+`$HOME` belongs to a container, and the old default wrote there and reported
+success. The script prints the sentence to put to the user; `shared/workspace.md`
+has the cascade. Issue #109.
 
 ---
 

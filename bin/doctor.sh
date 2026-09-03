@@ -149,8 +149,17 @@ check "Pillow"    have_pillow     "keying a scanned signature"               pil
 echo
 
 # ------------------------------------------------------------- workspace ----
-WS="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
+# **Ask the resolver, so the diagnostic sees what a run would see.** Hardcoding
+# the old default here would report a path the plugin no longer uses, and would
+# report it as fine. Issue #109.
+WS="$(python3 "$(dirname "$0")/workspace-path.py" 2>/dev/null || true)"
 echo "Workspace"
+if [ -z "$WS" ]; then
+  echo "  ✗ not resolved — this machine's home has no Documents folder, so"
+  echo "    the plugin will ask you where your files should go instead of"
+  echo "    creating them somewhere you would not find. Nothing is broken."
+  MISSING=$((MISSING+1))
+else
 echo "  path: $WS"
 if [ -n "${JOB_HUNT_HOME:-}" ]; then
   echo "        (from \$JOB_HUNT_HOME)"
@@ -169,6 +178,7 @@ else
     echo "        export JOB_HUNT_HOME=\"\$HOME/job-search\""
     MISSING=$((MISSING+1))
   fi
+fi
 fi
 
 # OneDrive redirection is the classic Windows surprise: $HOME/Documents exists
