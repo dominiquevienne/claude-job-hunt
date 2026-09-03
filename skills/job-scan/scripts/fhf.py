@@ -51,8 +51,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
+from _ua import UA
 SITE = "https://emploi.fhf.fr"
 SEARCH = SITE + "/emploi/search"
 AD = SITE + "/emploi/{}"

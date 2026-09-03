@@ -36,11 +36,7 @@ from _hiringcafe import refusal
 from _locations import drop_report, matches_city
 
 BASE = "https://hiringcafe.com/"
-UA = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"
-)
-
+from _ua import UA
 # dateFetchedPastNDays is an ENUM, not a number of days. An unlisted value is
 # silently accepted and WIDENS the result set. Verified live on 2026-08-27.
 POSTED_WITHIN = {

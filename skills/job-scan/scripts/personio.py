@@ -78,9 +78,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import verdict as robots_verdict
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 POSITION_RE = re.compile(r"(?s)<position>(.*?)</position>")
 # Issue #55's tolerant pattern, carried to a new element: every <value> in this
 # feed is CDATA-wrapped, and a `<value>([^<]*)` extractor returns nothing.

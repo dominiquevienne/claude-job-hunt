@@ -57,8 +57,7 @@ from _zero import zero_note
 
 COUNTRIES = ("co", "cl", "pe", "mx", "ar", "ec", "ve", "cr", "pa", "gt",
              "bo", "do", "uy", "sv", "hn", "ni", "py", "pr")
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 # The query parameters the shared robots.txt disallows on the listing path.
 # Named here so the refusal can quote them.

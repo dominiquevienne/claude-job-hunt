@@ -39,9 +39,7 @@ from _robots import allowed as robots_allowed
 API = "https://www.apec.fr/cms/webservices/rechercheOffre"
 AD_URL = ("https://www.apec.fr/candidat/recherche-emploi.html"
           "/emploi/detail-offre/{}")
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # Measured: range=100 returns 100, range=200 silently returns 20. An
 # over-large page is not refused, it is quietly downgraded — so clamp rather
 # than pass the caller's number through.

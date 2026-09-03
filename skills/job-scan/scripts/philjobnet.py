@@ -59,8 +59,7 @@ from _robots import verdict as robots_verdict
 
 BASE = "https://philjobnet.gov.ph"
 LIST = BASE + "/job-vacancies/"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 GRID = "ctl00$BodyContentPlaceHolder$GridView1"
 CARD = re.compile(r'<div class="jobcard".*?(?=<div class="jobcard"|\Z)', re.S)

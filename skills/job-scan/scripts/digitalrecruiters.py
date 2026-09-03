@@ -45,9 +45,7 @@ from _robots import allowed as robots_allowed
 API = ("https://api.digitalrecruiters.com/public/v1/careers-site/job-ads")
 SITE = "https://api.digitalrecruiters.com/careers/v1/careers-sites/{}"
 AD_URL = "https://{}/{}/annonce/{}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 DOMAIN_RE = re.compile(r"^[a-z0-9.-]+\.[a-z]{2,}$", re.I)
 HOST_RE = re.compile(r"https?://([a-z0-9.-]+)", re.I)
 

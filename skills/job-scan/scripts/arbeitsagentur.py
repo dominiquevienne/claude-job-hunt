@@ -86,9 +86,7 @@ DETAIL = ROOT + "/pc/v4/jobdetails/{}"
 SPEC = "https://jobsuche.api.bund.dev/openapi.yaml"
 # Printed in the operator's own OpenAPI description, for third parties.
 API_KEY = "jobboerse-jobsuche"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # page=101 answers 400. 100 pages of 100 is the whole window.
 PAGE_SIZE = 100
 MAX_PAGE = 100

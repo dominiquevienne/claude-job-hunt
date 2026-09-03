@@ -40,8 +40,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
+from _ua import UA, browser_fallback
 API = "https://swissdevjobs.ch/api/jobsLight"
 SITE = "https://swissdevjobs.ch"
 
@@ -89,6 +88,8 @@ def get_json(url):
                 "User-Agent": UA, "Accept": "application/json"}), timeout=60)
         return json.load(r)
     except urllib.error.HTTPError as e:
+        if e.code in (403, 429):
+            die(*browser_fallback("swissdevjobs.ch", True, e.code, url))
         die(f"{url} returned HTTP {e.code}")
     except Exception as e:  # noqa: BLE001 - network shape varies by platform
         die(f"could not reach {urllib.parse.urlparse(url).netloc}: {e}")

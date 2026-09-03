@@ -40,9 +40,7 @@ from _robots import allowed as robots_allowed
 
 SEARCH = "https://www.meteojob.com/jobs"
 AD_URL = "https://www.meteojob.com/jobs/{}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # One search page serves exactly this many, and there is no allowed way to ask
 # for more. See the module docstring.
 PAGE_ADS = 20

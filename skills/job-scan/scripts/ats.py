@@ -49,7 +49,7 @@ from datetime import datetime, timedelta, timezone
 
 from _robots import verdict as robots_verdict
 
-UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
+from _ua import UA
 PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable",
              "teamtailor", "join")
 

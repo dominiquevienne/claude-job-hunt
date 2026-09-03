@@ -68,8 +68,7 @@ from _sitemap import locs as sitemap_locs
 from _robots import verdict as robots_verdict
 
 BASE = "https://vieclam24h.vn"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 NEXT = re.compile(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 
 # **The allow-list.** Every field the card may carry, and nothing else is

@@ -68,8 +68,7 @@ KJS = "https://www.kalibrr.com/kjs/job_board/search"
 # is the place to go for `salary_currency_orig`.
 API = "https://www.kalibrr.com/api/job_board/search"
 AD = "https://www.kalibrr.com/c/{code}/jobs/{id}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA, browser_fallback
 
 # The two markets the board actually serves. Anything else is answered with
 # the fallback set rather than a zero.
@@ -121,6 +120,8 @@ def get(url):
         with urllib.request.urlopen(req, timeout=45) as r:
             return json.loads(decode_body(r.read(), r.headers)[0])
     except urllib.error.HTTPError as exc:
+        if exc.code in (403, 429):
+            die(*browser_fallback("www.kalibrr.com", True, exc.code, url))
         die(f"{url}: HTTP {exc.code}")
     except (urllib.error.URLError, OSError) as exc:
         die(f"{url}: {exc}")

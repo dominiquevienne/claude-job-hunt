@@ -44,9 +44,7 @@ from _sitemap import locs as sitemap_locs
 
 CAREEZ = "https://{}.taleez.com/api/careez"
 AD_URL = "https://taleez.com/apply/{}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.taleez\.com", re.I)
 

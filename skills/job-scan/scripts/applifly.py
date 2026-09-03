@@ -74,8 +74,7 @@ from _microdata import items as md_items
 from _robots import verdict as robots_verdict
 from _zero import zero_note
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 # The value never mattered on the measured tenant; the presence did. This one
 # is honest about who is asking rather than impersonating a referrer.

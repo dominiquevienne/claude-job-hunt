@@ -37,9 +37,7 @@ from _robots import allowed as robots_allowed
 
 TENANT_URL = "https://{}.flatchr.io/"
 AD_URL = "https://careers.flatchr.io/vacancy/{}/"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.flatchr\.io", re.I)
 COMPANY_PATH_RE = re.compile(r"/company/([a-z0-9-]+)", re.I)

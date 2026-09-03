@@ -39,9 +39,7 @@ from _robots import allowed as robots_allowed
 
 BASE = "https://{}.talent-soft.com"
 LIST = "/offre-de-emploi/liste-offres.aspx?page={}&LCID={}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.talent-soft\.com", re.I)
 

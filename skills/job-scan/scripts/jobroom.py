@@ -28,7 +28,7 @@ from _robots import allowed as robots_allowed
 
 API = "https://api.job-room.ch/jobadservice/api/jobAdvertisements"
 AD_URL = "https://www.job-room.ch/job-search/{}"
-UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
+from _ua import UA
 
 # A canton code the API does not know returns 0 ads and no error — as does a
 # lowercase one. Both verified on 2026-08-28, hence this list.

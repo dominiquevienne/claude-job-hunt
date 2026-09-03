@@ -32,9 +32,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 REF = re.compile(r'/ref/(jn-\d{6}-\d+)', re.I)
 PAGE_HINT = 30      # observed on .ch and .de; .fr served 20 and .co.uk 17
 

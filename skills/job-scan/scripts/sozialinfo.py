@@ -32,8 +32,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
+from _ua import UA
 BASE = "https://www.sozialinfo.ch/arbeitsmarkt/stellenportal"
 # The links are RELATIVE and the trailing token is MIXED CASE. A lowercase-only
 # pattern finds nothing and reads as an empty board.

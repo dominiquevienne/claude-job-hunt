@@ -85,9 +85,7 @@ BASE = "https://empleate.gob.es"
 API = BASE + "/empleate/open/offersearch/selectBuscador"
 MASTER = BASE + "/empleate/open/master/"
 AD_URL = BASE + "/empleo/#/oferta/{}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # Trap 3. The server's own ceiling; asking for more is answered with 100 and
 # an echoed `"rows":"100"`, never an error.
 ROWS = 100

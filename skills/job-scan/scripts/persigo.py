@@ -32,8 +32,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
+from _ua import UA
 BASE = "https://www.persigo.ch/stelle-finden"
 ITEM = re.compile(r'<div class="row listitem listitem-([A-Za-z0-9]+)">(.*?)'
                   r'(?=<div class="row listitem |</section|\Z)', re.S)

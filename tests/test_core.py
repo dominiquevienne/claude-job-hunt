@@ -1522,5 +1522,71 @@ class AnInvocationThatCannotSucceed(unittest.TestCase):
         self.assertIn("does not answer with structured data", window)
 
 
+class OneDeclaredIdentity(unittest.TestCase):
+    """One user-agent, in one module, imported by all of them. #120, #124.
+
+    The repository **obeyed `Claude-User`'s rules and announced Chrome** — 63
+    files carried a browser string while `_robots.OUR_AGENTS` already bound
+    the guard to `claude-user`, and `job-room.md` argued its position in the
+    language of that very class. Three files declared themselves honestly and
+    sixty-three did not; the split is how a project comes to plead one thing
+    and send another.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import _ua
+        self._ua = _ua
+
+    def test_the_declaration_carries_the_token_and_says_what_it_is(self):
+        """**Both readings must be true.** An operator matching the token in a
+        robots group gets the intended behaviour; an operator reading the
+        string sees a personal tool, not Anthropic's fleet — which matters,
+        because `claude.com/crawling/bots.json` publishes IP prefixes for
+        verification and this runs from the user's own address."""
+        ua = self._ua.UA
+        self.assertIn("Claude-User", ua)
+        self.assertIn("claude-job-hunt", ua)
+        self.assertIn("github.com/dominiquevienne/claude-job-hunt", ua)
+
+    def test_no_adapter_declares_its_own_agent(self):
+        import glob
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))
+                           + glob.glob(os.path.join(
+                               os.path.dirname(SCRIPTS.rstrip("/")),
+                               "..", "..", "bin", "*.py"))):
+            name = os.path.basename(path)
+            if name in ("_ua.py", "adzuna.py"):
+                continue          # adzuna is keyed API access, not a crawl
+            src = open(path, encoding="utf-8").read()
+            if "Mozilla/5.0 (Macintosh" in src:
+                offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "these still announce a browser: "
+                         + ", ".join(offenders))
+
+    def test_the_browser_is_never_the_answer_to_a_refusal(self):
+        """**The whole worth of declaring rests on this.** Declaring the token
+        and then reaching for a browser at every refusal is worse than not
+        declaring: it hands operators a way to recognise us and makes it
+        ineffective. #124."""
+        msg, code = self._ua.browser_fallback("h.example", True, 403)
+        self.assertEqual(code, self._ua.EXIT_NEEDS_BROWSER)
+        self.assertIn("permit", msg)
+        for refused_or_unknown in (False, None):
+            with self.assertRaises(ValueError):
+                self._ua.browser_fallback("h.example", refused_or_unknown, 403)
+
+    def test_a_block_says_the_declaration_might_be_why(self):
+        """Measured the day it shipped: `emploi.batiactu.com` serves 289 bytes
+        of `robots.txt` to a browser string and 403s ours. **A declaration can
+        manufacture a refusal**, and a run that quietly returned less would
+        hide it."""
+        note = self._ua.blocked_note("emploi.batiactu.com", 403)
+        self.assertIn("Claude-User", note)
+        self.assertIn("cannot tell them apart", note)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

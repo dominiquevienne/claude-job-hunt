@@ -44,9 +44,7 @@ import urllib.request
 from _robots import allowed as robots_allowed
 
 BASE = "https://emploi.batiactu.com"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA, browser_fallback
 PER_PAGE = 20
 
 # The site's own region vocabulary, read from its footer on 2026-08-31. It is
@@ -116,6 +114,9 @@ def get(path, retries=2):
             with urllib.request.urlopen(req, timeout=45) as r:
                 return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as e:
+            if e.code in (403, 429):
+                die(*browser_fallback("emploi.batiactu.com", True, e.code,
+                                      path))
             die(f"batiactu returned HTTP {e.code} for {path}")
         except Exception as e:  # noqa: BLE001 - network shape varies
             if attempt == retries:

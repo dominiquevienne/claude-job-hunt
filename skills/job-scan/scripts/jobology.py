@@ -52,9 +52,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # The nine, read from jobology.fr's own "nos sites emploi spécialisés" page and
 # each one verified live. `ads` is what the home page announced on 2026-08-31 —
 # a scale marker, not a target: no listing page states a total (trap 5).

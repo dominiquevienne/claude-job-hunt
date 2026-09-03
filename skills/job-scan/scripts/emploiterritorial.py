@@ -48,9 +48,7 @@ BASE = "https://www.emploi-territorial.fr"
 SEARCH = BASE + "/rechercher"
 PAGE = BASE + "/recherche_emploi_mobilite/"
 AD = BASE + "/offre/{}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 ROW_RE = re.compile(r"<tr[^>]*>.*?</tr>", re.S)
 LINK_RE = re.compile(r"href='(/offre/(o\d+)-[^']*)'")
 TITLE_RE = re.compile(

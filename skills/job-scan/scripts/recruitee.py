@@ -78,9 +78,7 @@ from _child import run as child_run
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 TAG_RE = re.compile(r"<[^>]+>")
 WS_RE = re.compile(r"\s+")
 TENANT_RE = re.compile(r"https?://([a-z0-9][a-z0-9-]*)\.recruitee\.com", re.I)

@@ -118,9 +118,9 @@ import urllib.parse
 import urllib.request
 
 import _tls
+import _ua
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 # Keyed on the host **that answered**, never on the string a caller typed —
 # see `verdict()`. `_ALIAS` maps what was asked to what answered, so a repeat
@@ -412,7 +412,15 @@ def verdict(host):
         out["reason"] = (
             f"{got.get('why')}. **This is not an absent file and not an "
             f"unreadable one — the host replied, and the reply was no.** "
-            f"Nothing here permits a sweep. Not swept.")
+            f"Nothing here permits a sweep. Not swept.\n"
+            f"  **And since #120 this plugin declares `{_ua.TOKEN}`, so the "
+            f"refusal may be a wall reacting to that rather than a policy the "
+            f"operator wrote.** Measured on `emploi.batiactu.com` the day the "
+            f"declaration shipped: 289 bytes of `robots.txt` to a browser "
+            f"string, 403 to ours. **This module will not find out by asking "
+            f"again under another name** — `shared/robots-policy.md`: do not "
+            f"rotate, do not retry with another agent string. Read the file "
+            f"by hand in the user's own browser and record what it says.")
         return _keep(out)
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not

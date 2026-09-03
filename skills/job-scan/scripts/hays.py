@@ -40,9 +40,7 @@ from _robots import allowed as robots_allowed
 
 BASE = "https://www.hays.fr"
 SITEMAP = BASE + "/sitemap/fr-FR/job-sitemap.xml"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA, browser_fallback
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 # **A `<loc>` can be wrapped in CDATA**, and this one is:
 #
@@ -123,6 +121,8 @@ def get(url, gone_is_ok=False, retries=2):
                 # Retired ads answer an honest 410. Seven of the 3 193 in the
                 # sitemap were pre-2026 and every one tested was gone.
                 return None
+            if e.code in (403, 429):
+                die(*browser_fallback("www.hays.fr", True, e.code, url))
             die(f"hays.fr returned HTTP {e.code} for {url}")
         except Exception as e:  # noqa: BLE001 - network shape varies
             if attempt == retries:

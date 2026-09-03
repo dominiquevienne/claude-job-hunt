@@ -57,8 +57,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from dormant import read_boards            # noqa: E402  the config parser
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 DEFAULT_CONFIG = os.path.join(
     os.environ.get("JOB_HUNT_HOME",
                    os.path.expanduser("~/Documents/job_applications")),

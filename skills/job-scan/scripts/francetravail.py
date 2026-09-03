@@ -47,7 +47,7 @@ TOKEN_URL = ("https://entreprise.francetravail.fr/connexion/oauth2/"
              "access_token?realm=%2Fpartenaire")
 API = "https://api.francetravail.io/partenaire/offresdemploi/v2"
 AD_URL = "https://candidat.francetravail.fr/offres/recherche/detail/{}"
-UA = "Mozilla/5.0 (compatible; claude-job-hunt/1.x; +personal job search)"
+from _ua import UA
 
 SCOPE = "api_offresdemploiv2 o2dsoffre"
 

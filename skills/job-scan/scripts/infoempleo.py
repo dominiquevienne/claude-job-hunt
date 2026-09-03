@@ -88,9 +88,7 @@ SITEMAP = BASE + "/sitemap-ofertas-activas.xml"
 SITEMAP_INDEX = BASE + "/sitemap-index.xml"
 # Declared in robots.txt, absent from the index, and 0 bytes on every request.
 EMPTY_SITEMAP = BASE + "/sitemap-ofertas-activas-recientes.xml"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # Reads `<loc>https://…</loc>` and the CDATA-wrapped form both. hays.fr serves
 # the second, where the first non-space character after the tag is `<`, and the
 # strict pattern `<loc>\s*([^<\s]+)` matches nothing at all — 0 URLs from a

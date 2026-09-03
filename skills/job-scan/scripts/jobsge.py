@@ -52,8 +52,7 @@ from _robots import verdict as robots_verdict
 from _zero import zero_note
 
 BASE = "https://www.jobs.ge"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 # **Published in robots.txt, so it is the default and not a suggestion.**
 CRAWL_DELAY = 5.0

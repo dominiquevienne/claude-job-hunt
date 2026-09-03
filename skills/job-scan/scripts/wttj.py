@@ -47,9 +47,7 @@ from _robots import allowed as robots_allowed
 
 BASE = "https://www.welcometothejungle.com"
 INDEX = BASE + "/sitemaps/index.xml.gz"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both, and
 # no longer requires `</loc>` to follow the URL directly — that extra
 # strictness made this the tightest of the four naive readers, failing on a

@@ -44,9 +44,7 @@ from _robots import allowed as robots_allowed
 
 BASE = "https://www.hellowork.com/fr-fr"
 AD_URL = BASE + "/emplois/{}.html"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # A facet page serves exactly this many, and pagination is a query string,
 # which robots.txt forbids. See the module docstring.
 PAGE_ADS = 20

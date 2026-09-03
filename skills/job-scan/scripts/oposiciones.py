@@ -90,9 +90,7 @@ API = BASE + "/empleate/open/publicoffersearch/selectBuscador"
 # per-ad page on empleate.gob.es for an oposición — the card links straight
 # out to the partner.
 AD_URL = BASE + "/empleo/#/trabajoPublico?search={}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 ROWS = 100
 
 # Ours to supply. This endpoint injects nothing — see the module docstring.

@@ -64,8 +64,7 @@ import urllib.request
 
 from _robots import verdict as robots_verdict
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 # The one reader — `_sitemap.py`. The pattern that used to live here
 # missed CDATA-wrapped and namespace-prefixed `<loc>`, which is issue

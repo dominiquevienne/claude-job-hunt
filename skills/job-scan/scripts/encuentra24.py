@@ -67,8 +67,7 @@ from _robots import verdict as robots_verdict
 from _zero import zero_note
 
 BASE = "https://www.encuentra24.com"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA
 
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
 EXIT_REFUSED, EXIT_UNKNOWN = 7, 8

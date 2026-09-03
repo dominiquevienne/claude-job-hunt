@@ -54,8 +54,7 @@ import urllib.request
 from _robots import allowed as robots_allowed
 
 BASE = "https://www.jobstore.com"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+from _ua import UA, browser_fallback
 
 # The 26 country sites declared in robots.txt.
 COUNTRIES = ("my", "sg", "id", "ph", "hk", "au", "nz", "th", "vn", "us", "uk",
@@ -121,10 +120,10 @@ def get(path):
                 "utf-8", "replace")
     except urllib.error.HTTPError as exc:
         if exc.code == 403:
-            die(f"{url}: HTTP 403 — this is the bot interstitial, not a "
-                f"refusal of the sweep. Ad pages answer it; sitemaps and the "
-                f"search page do not. Read ads in the user's Chrome instead; "
-                f"see jobstore.md.", 5)
+            # This adapter wrote the right sentence by hand before there was
+            # a shared one. Same meaning, one voice, one exit code — and the
+            # helper refuses to fire unless the guard actually permitted.
+            die(*browser_fallback("www.jobstore.com", True, exc.code, url))
         die(f"{url}: HTTP {exc.code}")
     except (urllib.error.URLError, OSError) as exc:
         die(f"{url}: {exc}")

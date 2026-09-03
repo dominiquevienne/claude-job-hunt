@@ -84,9 +84,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import verdict as robots_verdict
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 REST = "/hcmRestApi/resources/latest/"
 # limit=200 was served in full; the whole board is reachable — offset 1 425 of
 # 1 428 returned the last 3 and 1 430 returned none. No window here.

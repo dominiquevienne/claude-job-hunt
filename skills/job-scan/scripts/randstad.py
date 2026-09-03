@@ -34,8 +34,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
+from _ua import UA
 BASE = "https://www.randstad.ch"
 # <slug>_<city>_<uuid>. The links are RELATIVE; the id is a UUID, not a number.
 CARD = re.compile(r'<a href="/jobs/([^"/]+_([0-9a-f]{8}-[0-9a-f-]{27,}))/"')

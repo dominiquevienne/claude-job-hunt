@@ -35,8 +35,7 @@ import urllib.request
 
 from _robots import verdict as robots_verdict
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
+from _ua import UA
 API = "/services/recruiting/v1/jobs"
 PAGE = 10          # fixed by the service; pageNumber is 0-indexed
 LOCALE_RE = re.compile(r"locale[=:]\s*['\"]?([a-z]{2}_[A-Z]{2})")

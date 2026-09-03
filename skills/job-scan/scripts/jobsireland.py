@@ -97,9 +97,7 @@ from _robots import allowed as robots_allowed
 BASE = "https://jobsireland.ie"
 API = BASE + "/Jobsireland.API/JobsIreland/BrowseJobs"
 AD_URL = BASE + "/en-US/job-Details?id={}"
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
-
+from _ua import UA
 # The common prefix of all four card classes. Anchoring on any one variant
 # selects one ad type — see the module docstring.
 CARD_SPLIT_RE = re.compile(r'(?=<div class="job-heading )')
