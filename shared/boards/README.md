@@ -487,6 +487,18 @@ split is left as it is** — changing twenty adapters on a difference that is
 inconsequential on every page measured would be a rewrite in search of a
 defect. A new adapter should take the first and say so.
 
+**`emploitic.md` and `jobivoire.md` are a pair, and the pair is the lesson.**
+Two neighbouring African boards, read in **opposite** ways, each for a reason
+measured on it. Emploitic's sitemap is **declared in its own `robots.txt` and
+current to the minute**, so the adapter uses it. JobIvoire's is undeclared,
+holds **227 advertisements of 3 884, and its freshest entry is five weeks
+old** — so that adapter paginates, and an adapter written on the sitemap would
+have missed **94% of the board with 200s all the way and no error to catch.**
+
+**Carrying the habit of one to the other is the only real risk in the pair**,
+which is why each card names the other. **A sitemap is a route when it is
+declared and fresh, not because it is a sitemap.**
+
 **Two different requests must produce two different bodies.** Before trusting
 any listing route, ask for something that cannot exist and compare. It is the
 check `melr-gh.md` turns on — `/index.php/99/99/complete-nonsense-xyzzy` is
