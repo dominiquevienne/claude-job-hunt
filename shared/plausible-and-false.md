@@ -325,6 +325,39 @@ the outside, from a server answering badly on purpose or out of indifference.
 **The same gesture on two boards on the same day, and only one of them is
 honest**: hr.ge's page 50 returns nothing; encuentra24's returns page one.
 
+### A refusal read as a fault, because the fault was the plausible reading
+
+**The false full is a server returning content that is wrong. This is a server
+returning a *refusal* that gets translated into a breakdown** — the same
+family, *what qualifies itself by resemblance*, and a different mechanism.
+
+**Measured, 2026-09-03.** One board answered **`403` to 226 of 524 requests —
+43%**. The rate was read as throttling, and two days went into adjusting the
+delay between requests. **The site's `robots.txt` refused the URL shape being
+built**, to `User-agent: *`, and the file had been on disk for forty minutes.
+
+**A repeated `403` genuinely is a rate limit sometimes**, which is why this is
+not a rule about `403`s. The reading was not absurd; **it was untested.** What
+was missing is not the right interpretation — it is any confrontation of the
+one already held with the source that could refute it.
+
+> **A plausible technical reading gets adopted without being put to the source
+> that would refute it.**
+
+**And the actionable form, which is worth more than the maxim:**
+
+> **A refusal rate that is high and stable triggers reading the `robots.txt`,
+> not tuning the delay.** 43% over 524 requests is not a badly set pace — a
+> badly set pace yields to slowing down, and this one did not.
+
+**That is the sign that was there and unread: the remedy did not cure, and a
+remedy that does not cure refutes the diagnosis.** It refuted it for two days.
+
+**And the two expressions of the refusal failed in different ways, which is
+worse than the same failure twice.** The file was never read; the `403`s were
+read and translated. **An absence of reading, then a misreading — and the
+second held because the first was missing.**
+
 ### And the same family without the volume: what qualifies itself by looking right
 
 A false full persuades by quantity. **Two things measured the same day persuade

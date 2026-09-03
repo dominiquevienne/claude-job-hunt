@@ -140,6 +140,23 @@ writes off a live national service either way. **Try both, and record which one
 you used**, because a certificate that does not cover the name is an outage of
 identity, not a policy — see *A non-answer is not a refusal* below.
 
+**And a certificate can be valid and still fail for you alone.**
+`empleate.gob.es` — Spain's SEPE board — **does not send its intermediate
+certificate**. `curl` succeeds with `200` because the system trust store
+happens to hold that intermediate; `openssl s_client` reports *"unable to
+verify the first certificate"*; **Python's `urllib` refuses outright**, and
+`empleate.py` and `oposiciones.py` both fail today with
+`CERTIFICATE_VERIFY_FAILED`.
+
+**So the site is fine in a browser, fine under `curl`, and broken for the
+adapter** — a failure that depends on **what the client trusts**, exactly as
+the broken gzip framing on `www.trabajo.gob.ec` depends on what the client
+asked for. **Test the fetch the adapter actually performs**: a `curl` that
+works proves the server is up and nothing about whether the code can reach it.
+
+*(Measured 2026-09-03, at the layer below both adapters — `curl` 200,
+`openssl` verify code 21, `urllib` refused.)*
+
 ### A non-answer is not a refusal
 
 **"Did not respond" and "refused" are different facts and only one of them is a
