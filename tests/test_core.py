@@ -1107,5 +1107,116 @@ class UrlWithoutAScheme(unittest.TestCase):
                              self.jobroom.with_scheme(bare)).netloc)
 
 
+class ChildProcessesAreChecked(unittest.TestCase):
+    """`subprocess.run` does not raise on a non-zero exit. Issue #123.
+
+    **Two adapters shelled out to `hiringcafe.py`; one checked and one did
+    not.** The one that did carried the reason in its own message — *an empty
+    tenant list from a failed sweep would read exactly like a provider nobody
+    uses* — and `recruitee.py` did not have it. On 2026-09-03, the day
+    `hiringcafe.py search` began refusing by design, it printed **"0 tenants
+    seen in HiringCafe's GB cards"** and exited 0: **a refusal presented as a
+    measurement.**
+
+    `capture_output=True` and then reading only `.stdout` is the whole
+    defect. The child's diagnosis goes to `.stderr`, which nobody read, and an
+    empty `.stdout` parses to an empty result perfectly well.
+
+    **This is not a third point fix.** A fourth caller written next month
+    would repeat it, so the check is here rather than in a card.
+    """
+
+    def _callers(self):
+        import glob
+        out = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))
+                           + glob.glob(os.path.join(
+                               os.path.dirname(SCRIPTS.rstrip("/")), "*.py"))):
+            src = open(path, encoding="utf-8").read()
+            if "subprocess.run(" in src:
+                out.append((os.path.basename(path), src))
+        return out
+
+    def test_there_are_callers_to_check(self):
+        """**A guard over an empty list passes.** If the shape ever changes
+        this fails first instead of the check below succeeding vacuously."""
+        self.assertGreater(len(self._callers()), 0)
+
+    def test_every_subprocess_caller_reads_the_exit_code(self):
+        missing = [name for name, src in self._callers()
+                   if "returncode" not in src]
+        self.assertEqual(
+            missing, [],
+            "these run a child process and never look at its exit code, so a "
+            "child that refused or crashed yields an empty result that reads "
+            "like a real absence: " + ", ".join(missing))
+
+    def test_the_helper_passes_a_refusal_upward_unchanged(self):
+        """7 and 8 mean something to a caller. **Flattening them into a
+        generic failure loses the one distinction the guard draws.**"""
+        sys.path.insert(0, SCRIPTS)
+        import _child
+        self.assertIn(7, _child.MEANINGFUL)
+        self.assertIn(8, _child.MEANINGFUL)
+
+        seen = {}
+
+        def fake_die(msg, code=2):
+            seen["msg"], seen["code"] = msg, code
+            raise SystemExit(code)
+
+        for child_code, expected in ((7, 7), (8, 8), (3, 2), (1, 2)):
+            seen.clear()
+            real = _child.subprocess.run
+            _child.subprocess.run = lambda *a, **k: type(
+                "R", (), {"returncode": child_code, "stdout": "",
+                          "stderr": "the child's own words"})()
+            try:
+                with self.assertRaises(SystemExit):
+                    _child.run(["x"], fake_die, "child.py")
+            finally:
+                _child.subprocess.run = real
+            self.assertEqual(seen["code"], expected,
+                             f"child exited {child_code}")
+            self.assertIn("the child's own words", seen["msg"])
+
+
+class HiringCafeIsBuiltInOnePlace(unittest.TestCase):
+    """Three commands built the same refused URL, each with its own client.
+
+    `hiringcafe.com/robots.txt` refuses `/*?searchState=*` to `User-agent: *`.
+    **#123 named `hiringcafe.py:119`; `ats.py` and `workday.py` were building
+    it too**, found by grepping for the URL rather than for the file — and two
+    further adapters inherit it by running `hiringcafe.py search`.
+
+    **The same shape as `jobroom.py`'s three URL parsers, fixed the same
+    evening**: several places doing one thing slightly differently, one of
+    them right by accident.
+    """
+
+    def test_no_adapter_assembles_the_refused_url_itself(self):
+        import glob
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            name = os.path.basename(path)
+            if name == "_hiringcafe.py":
+                continue
+            src = open(path, encoding="utf-8").read()
+            if re.search(r'"https://hiringcafe\.com/\?"', src):
+                offenders.append(name)
+        self.assertEqual(
+            offenders, [],
+            "these build the refused `?searchState=` URL by hand instead of "
+            "going through `_hiringcafe.py`: " + ", ".join(offenders))
+
+    def test_the_refusal_names_the_rule_and_the_open_route(self):
+        sys.path.insert(0, SCRIPTS)
+        import _hiringcafe
+        text = _hiringcafe.refusal("test")
+        self.assertIn("/*?searchState=*", text)
+        self.assertIn("/job/", text)
+        self.assertIn("No request was made", text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -31,6 +31,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import _hiringcafe
+from _hiringcafe import refusal
 from _locations import drop_report, matches_city
 
 BASE = "https://hiringcafe.com/"
@@ -116,7 +118,15 @@ def get(url, attempts=4, first_wait=20.0):
 
 
 def fetch_page_props(params):
-    url = BASE + "?" + urllib.parse.urlencode(params)
+    # **The refused shape, refused here rather than in three places.**
+    # `hiringcafe.com/robots.txt` closes `/*?searchState=*` to `User-agent:
+    # *`, and this is the URL that matches it. Issue #123 named this line; the
+    # same construction stood in `ats.py` and `workday.py` with their own
+    # clients, and `pinpoint.py` and `recruitee.py` inherit it by running this
+    # command. One constructor now — see `_hiringcafe.py`.
+    if "searchState" in params:
+        die(refusal("hiringcafe", "the `search` mode"), 7)
+    url = _hiringcafe.search_url(params)
     try:
         raw = get(url)
     except Throttled:

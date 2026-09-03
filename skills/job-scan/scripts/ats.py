@@ -36,6 +36,7 @@ import html
 import json
 import re
 
+from _hiringcafe import refusal
 from _decode import decode_body
 from _ldjson import one
 import sys
@@ -757,35 +758,14 @@ def cmd_resolve(a):
     """Ask HiringCafe which ATS an employer uses, and under which tenant."""
     # companyNames is the employer filter. searchQuery would search the ad text
     # instead and returns near-nothing for a company name.
-    state = {"companyNames": [a.employer]}
-    url = "https://hiringcafe.com/?" + urllib.parse.urlencode(
-        {"searchState": json.dumps(state, separators=(",", ":"))})
-    # HiringCafe throttles by 403 and the refusal is transient — issue #59.
-    # `hiringcafe.py` grew a timed backoff on 2026-09-02 and this call did not,
-    # which is how one board came to behave differently depending on which
-    # script asked. Same site, same remedy: wait, do not retry quickly.
-    raw, wait = None, 20.0
-    for attempt in range(1, 4):
-        try:
-            with urllib.request.urlopen(
-                    urllib.request.Request(url, headers={"User-Agent": UA}),
-                    timeout=60) as r:
-                raw = decode_body(r.read(), r.headers)[0]
-            break
-        except urllib.error.HTTPError as e:
-            if e.code not in (403, 429) and e.code < 500:
-                die(f"hiringcafe answered HTTP {e.code} while resolving")
-            if attempt == 3:
-                die(f"hiringcafe refused three times (HTTP {e.code}) while "
-                    f"resolving. It throttles by volume and the refusal "
-                    f"passes; try again in a few minutes, or read the tenant "
-                    f"out of the employer's own careers URL.", code=6)
-            print(f"[ats] hiringcafe HTTP {e.code} — waiting {wait:.0f}s "
-                  f"(attempt {attempt} of 3)", file=sys.stderr)
-            time.sleep(wait)
-            wait *= 2
-        except Exception as e:  # noqa: BLE001
-            die(f"could not reach hiringcafe to resolve the tenant: {e}")
+    # **Refused, and not by this file's judgement.** The URL below is the
+    # shape `hiringcafe.com/robots.txt` closes to `User-agent: *`. This used
+    # to be built here with its own client and its own backoff, which is how
+    # one board came to behave differently depending on which script asked —
+    # and how the refusal stayed invisible in two files after #123 named a
+    # third. One constructor now, and it refuses. Issue #123.
+    die(refusal("ats", "resolving an employer through HiringCafe"), code=7)
+
     m = re.search(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', raw, re.S)
     if not m:
         die("hiringcafe's page shape changed — resolve by hand instead: open "

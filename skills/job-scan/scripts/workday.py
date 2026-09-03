@@ -26,6 +26,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _hiringcafe import refusal
 from _decode import decode_body
 from _robots import verdict as robots_verdict
 
@@ -313,15 +314,11 @@ def cmd_ad(a):
 
 def cmd_resolve(a):
     """Find host/tenant/site for an employer, via HiringCafe's index."""
-    state = {"companyNames": [a.employer]}
-    url = "https://hiringcafe.com/?" + urllib.parse.urlencode(
-        {"searchState": json.dumps(state, separators=(",", ":"))})
-    try:
-        raw = urllib.request.urlopen(urllib.request.Request(
-            url, headers={"User-Agent": UA}), timeout=60).read().decode(
-            "utf-8", "replace")
-    except Exception as e:  # noqa: BLE001
-        die(f"could not reach hiringcafe to resolve the board: {e}")
+    # Same refused shape as `ats.py` built, with a third client. See
+    # `_hiringcafe.py`: one constructor, and it refuses. Issue #123.
+    die(refusal("workday", "resolving a Workday tenant through HiringCafe"),
+        7)
+
     m = re.search(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', raw, re.S)
     if not m:
         die("hiringcafe's page shape changed — resolve by hand: open the "

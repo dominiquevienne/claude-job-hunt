@@ -380,9 +380,55 @@ One request per search page, now spaced by `--delay`. A whole sweep is a few
 dozen — keep it that way, sequentially, and it stays indistinguishable from a
 person reading.
 
-`robots.txt` disallows `/*?searchState=*` and `/*?page=*` **for crawlers**. This
-adapter is not a crawler: it makes a handful of requests, on one user's behalf,
-at reading pace, for that user's own job search — the same pages that user would
-open by hand. The project's position is that this is equivalent to browsing.
-Keep the pace human, and if HiringCafe ever asks otherwise, this adapter goes
-rather than gets clever.
+`robots.txt` disallows `/*?searchState=*` and `/*?page=*`. **Those URLs are not
+ours to fetch, and the collection built on them is suspended.**
+
+**Three commands were building that URL, not one.** #123 named
+`hiringcafe.py:119`, found by reading this file. `ats.py` and `workday.py`
+assembled the same `?searchState=` URL with **their own clients** — and
+`pinpoint.py` and `recruitee.py` inherit it by running `hiringcafe.py search`
+as a subprocess. Two of the five were on the user's path, in `resolve`, which
+greenhouse, lever, ashby, workday and join all use. **Grepping for the file
+found one; grepping for the URL found three.**
+
+All three go through `skills/job-scan/scripts/_hiringcafe.py` now, and it
+**refuses**: it returns the reason instead of the URL, names the rule, names
+the open route, and says no request was made. Exit **7**, and the code
+survives the subprocess boundary so a refusal reaches the caller as a refusal.
+
+**The verdict is read from the record, not asked afresh.** A guard call is a
+request to the host like any other, and collection here is suspended — so
+`_hiringcafe.py` carries the verdict measured 2026-09-03 and says that it is
+dated. Re-measuring means lifting the suspension first, which is a decision
+rather than a code path.
+
+> **Retracted 2026-09-03.** This file previously argued: *"This adapter is not a
+> crawler … The project's position is that this is equivalent to browsing."*
+> **That position is withdrawn.** It is the argument this repository refuses
+> everywhere else — `shared/robots-policy.md`: *the intent behind a directive
+> does not change its effect* — and accepting it here, where it happened to
+> serve us, was relaxing a rule at the moment it cost something. The
+> `Disallow` binds. It is left visible rather than deleted so that no one
+> re-derives it.
+
+**There is a permitted door, and it is documented** — see issue #123. `robots.txt`
+allows the six sitemaps and `/job/`, and `/job/<slug>` serves the same
+`__NEXT_DATA__` as the refused URL plus a `JobPosting` block. So the data is
+reachable without touching a disallowed path.
+
+**Two things that route does not solve, and both must be settled before any
+rewrite:**
+
+- **The site answers 403 (`cf-mitigated: challenge`) to a scripted client on
+  *every* path, including the ones it allows.** A rewrite onto sitemaps will not
+  run without the browser fallback of issue #124 — and that fallback must
+  trigger on a *fetch failure*, **never on a refusal**: guard `False` or `None`
+  means stop, not open a browser. Otherwise the declared identity becomes the
+  appearance of compliance rather than compliance.
+- **Nothing already published from the refused route can be recomputed by it.**
+  Totals exist only in the search response; per-country proportions need a
+  country filter the per-ad route does not have. Those figures can be dated,
+  not redone.
+
+**Until both are settled: no requests to this host, on any path.** The permitted
+route being documented is not a decision to resume.

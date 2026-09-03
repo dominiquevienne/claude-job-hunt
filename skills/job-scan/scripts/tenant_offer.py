@@ -253,7 +253,23 @@ def probe(host):
     try:
         out = subprocess.run([sys.executable, script, "locale", "--host", host],
                              capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"[tenant-offer] the successfactors probe could not be run "
+              f"({exc}) — **that is not the same as this host not being a "
+              f"SuccessFactors tenant**, and nothing here can tell them "
+              f"apart.", file=sys.stderr)
+        return None
+    # **A probe that failed and a probe that found nothing both return None
+    # here**, because this is one hop among several and it must not stop the
+    # others. So the difference is said aloud rather than folded away:
+    # `subprocess.run` does not raise on a non-zero exit, and an empty stdout
+    # parses to "no locale" perfectly well. Issue #123.
+    if out.returncode != 0:
+        print(f"[tenant-offer] the successfactors probe exited "
+              f"{out.returncode} on {host}: "
+              f"{(out.stderr or '').strip()[:200]} — **treated as 'not "
+              f"identified', which is weaker than 'not a tenant'.**",
+              file=sys.stderr)
         return None
     try:
         d = json.loads(out.stdout.strip().splitlines()[-1])

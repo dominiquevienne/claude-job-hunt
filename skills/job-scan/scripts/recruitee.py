@@ -68,13 +68,13 @@ import collections
 import html as html_mod
 import json
 import re
-import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
+from _child import run as child_run
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
@@ -304,11 +304,12 @@ def cmd_tenants(a):
     root = a.plugin_root or "."
     cmd = [sys.executable, f"{root}/skills/job-scan/scripts/hiringcafe.py",
            "search", "--country", a.country, "--pages", str(a.pages)]
-    try:
-        out = subprocess.run(cmd, capture_output=True, text=True,
-                             timeout=300).stdout
-    except Exception as exc:  # noqa: BLE001 - report, do not swallow
-        die(f"could not run hiringcafe.py: {exc}")
+    # **This read `.stdout` and nothing else.** `subprocess.run` does not
+    # raise on a non-zero exit, so a child that refused, crashed or was never
+    # found produced an empty string here — and the loop below counted it into
+    # a tenant list that was then printed as a measurement. `pinpoint.py` had
+    # the check and this file did not; both use one helper now. Issue #123.
+    out = child_run(cmd, die, "hiringcafe.py")
     seen = collections.Counter()
     for line in out.splitlines():
         try:

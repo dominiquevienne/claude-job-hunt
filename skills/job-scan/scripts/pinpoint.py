@@ -86,13 +86,13 @@ import collections
 import html as html_mod
 import json
 import re
-import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
+from _child import run as child_run
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
@@ -307,17 +307,12 @@ def cmd_tenants(a):
     root = a.plugin_root or "."
     cmd = [sys.executable, f"{root}/skills/job-scan/scripts/hiringcafe.py",
            "search", "--country", a.country, "--pages", str(a.pages)]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    except Exception as exc:  # noqa: BLE001 - report, do not swallow
-        die(f"could not run hiringcafe.py: {exc}")
-    if r.returncode != 0:
-        die(f"hiringcafe.py exited {r.returncode}. Its own message:\n"
-            f"  {r.stderr.strip()[:400]}\n"
-            "An empty tenant list from a failed sweep would read exactly like "
-            "a provider nobody uses.")
+    # The check this file already had, moved into `_child.py` so the adapter
+    # beside it cannot be written without one — and so a refusal (7) reaches
+    # the caller as a refusal instead of a generic failure.
+    out = child_run(cmd, die, "hiringcafe.py")
     seen, cards, via = collections.Counter(), 0, collections.Counter()
-    for line in r.stdout.splitlines():
+    for line in out.splitlines():
         try:
             d = json.loads(line)
         except ValueError:
