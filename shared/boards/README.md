@@ -471,6 +471,14 @@ statistic that reads as an advertisement count.** No adapter yet, because no
 row has ever been available to parse and a parser written on column headers
 alone would ship unverified.
 
+**`saudi-labour-platforms.md` stops before an authentication wall, on purpose.**
+Musaned and Ajeer both permit reading and neither is a board: Musaned's
+marketplace lists **recruitment offices**, Ajeer exists so establishments can
+lend workers to each other. The assessment stops at *not a board* rather than
+at *needs a login*, because the second invites someone to make one — and the
+records behind Musaned's login are individual migrant domestic workers, which
+an adapter has no business collecting.
+
 **`jobs-gov-pk.md` is where two counts of the same thing disagree.** The
 board's own header says `1511 total` on one page and `5 total` on another,
 while the markup carries 1 511 cards — and `5 total` beside `1506 expired` is
