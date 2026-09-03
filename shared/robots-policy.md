@@ -738,6 +738,47 @@ an open third party. It says nothing about a mirror, a scraper's copy, or a
 cache — those are not the operator's act. And it never reaches a login, a
 paywall, or anything the refused site keeps behind one.
 
+## The group that binds you is not always `*`
+
+**`_robots.py` evaluated `*` and never consulted a record naming this
+project.** On the Cloudflare managed shape — which is the commonest file in
+this corpus —
+
+```
+User-agent: *
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+…
+User-agent: ClaudeBot
+Disallow: /
+```
+
+**it answered *allowed*.** Measured on `www.labour.gov.bb`, and **8 of 89 local
+files have that shape: `*` open, one of our tokens closed** — 9%, and all eight
+are managed blocks, so **any host adopting the template will be reported open
+while closing us by name.** The error went towards permitted, **on the one
+category of file that addresses us explicitly.** Issue #116.
+
+**The module betrayed its own assumption in its own message**: *"a refusal
+aimed at everyone, **not at a named crawler**"*. It knew named groups existed
+and did not look at them.
+
+**Selection now happens before evaluation**, per RFC 9309: a matching token
+beats `*`, the longest token wins among several, and records sharing a token
+merge. **Our tokens are declared in one place and never derived from a
+user-agent string** — a module that decides consent must not change its answer
+because an adapter changed its `UA`.
+
+**And the verdict says which group decided.** *"Refused to `ClaudeBot`"* and
+*"refused to `*`"* are not the same fact: the first is aimed at us, the second
+is a policy. This file makes that distinction everywhere else.
+
+**It finds permissions too, which is the half worth saying.** `taleez.com`
+publishes `User-agent: ClaudeBot / Allow: /` and `User-agent: Claude-Web /
+Allow: /` — **an operator who considered the question and said yes.** A
+selector that only looked for refusals would have missed that, and being named
+permissively is not the same as not being named at all.
+
 ## Being named has five values, not two
 
 **"Named" is not "blocked", and "allowed" without saying where is as misleading

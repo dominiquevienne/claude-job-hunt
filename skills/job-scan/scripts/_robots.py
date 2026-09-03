@@ -247,14 +247,23 @@ def verdict(host):
                              f"swept.{more}")
             return _keep(out)
 
-    # The `*` group only: a rule aimed at one named crawler is not aimed here.
-    dis, allow = _star_group(body)
+    # **The group that binds us, which may not be `*`.** Until #116 this read
+    # `*` and never consulted a record naming this project — so a file that
+    # opened `*` and closed `ClaudeBot` was reported open, and the error went
+    # towards permitted on the one kind of file that addresses us by name.
+    token, dis, allow = group_for(body)
     out["disallow"] = dis
     out["allow"] = allow
+    out["group"] = token
     if "/" in dis:
         out["sweep"] = False
-        out["reason"] = ("this host's robots.txt is `User-agent: * / "
-                         "Disallow: /` — everything closed, evenly. Not swept.")
+        out["reason"] = (
+            (f"this host closes everything to `User-agent: {token}` — "
+             f"**a refusal that names this project**, not a general policy. "
+             f"Not swept."
+             if token != "*" else
+             "this host's robots.txt is `User-agent: * / Disallow: /` — "
+             "everything closed, evenly. Not swept."))
     elif dis:
         # **`sweep` answers "is this host closed in one block". It cannot
         # answer for a path, and it must not look as though it does.**
@@ -262,11 +271,85 @@ def verdict(host):
         # the vacancies themselves — while `"/"` is absent, so `sweep` is
         # True and used to be the whole answer. Issue #101.
         out["reason"] = (
-            f"this host refuses {len(dis)} path(s) to `*` and not the site as "
-            f"a whole: {', '.join(dis[:4])}. **`sweep: True` means it is not "
-            f"closed in one block; it does not mean the path you want is "
-            f"open.** Call `allowed(host, path)` before fetching one.")
+            f"this host refuses {len(dis)} path(s) to `{token}` and not the "
+            f"site as a whole: {', '.join(dis[:4])}. **`sweep: True` means it "
+            f"is not closed in one block; it does not mean the path you want "
+            f"is open.** Call `allowed(host, path)` before fetching one.")
     return _keep(out)
+
+
+# **Our own tokens, declared here and nowhere else.** A module that decides
+# consent must not depend on a user-agent string assembled somewhere else: an
+# adapter that changes its `UA` would silently change which rules bind. These
+# are the names this project is addressed by, gathered from the files that name
+# them — `linkedin.com` refuses `Claude-User` by name, Cloudflare's managed
+# block names `ClaudeBot`. Issue #116.
+OUR_AGENTS = ("claudebot", "claude-web", "claude-user", "claude-searchbot",
+              "anthropicbot", "anthropic-ai")
+
+
+def _groups(body):
+    """Every record in the file: `(agents, [(kind, value), …])`.
+
+    Consecutive `User-agent` lines form one record; a record ends at the first
+    `User-agent` that follows a directive.
+    """
+    out, agents, rules = [], set(), []
+    for line in (body or "").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        k, _, v = line.partition(":")
+        k, v = k.strip().lower(), v.strip()
+        if k == "user-agent":
+            if rules:                       # a directive closed the last one
+                out.append((agents, rules))
+                agents, rules = set(), []
+            agents.add(v.lower())
+        elif k in ("disallow", "allow"):
+            rules.append((k, v))
+    if agents or rules:
+        out.append((agents, rules))
+    return out
+
+
+def group_for(body, agents=OUR_AGENTS):
+    """The record that binds **us**, and its token. RFC 9309's selection.
+
+    **This is the half `verdict()` never looked at.** It evaluated `*` and
+    never consulted the group that names us — so on a file reading
+
+        User-agent: *
+        Allow: /
+        …
+        User-agent: ClaudeBot
+        Disallow: /
+
+    it answered *allowed*, **on the one category of file that addresses us
+    explicitly**. And the error went towards permitted. Issue #116.
+
+    **Selection: a matching token beats `*`, and the longest token wins** when
+    several match. Records sharing a token merge, which this repository has
+    measured on a file with eight consecutive `*` groups.
+
+    Returns `(token, disallow, allow)` — **the token so the caller can say who
+    was refused.** *"Refused to `ClaudeBot`"* and *"refused to `*`"* are not
+    the same fact: the first is aimed at us, the second is a policy.
+    """
+    want = {a.lower() for a in agents}
+    best = None
+    for names, _rules in _groups(body):
+        for n in names:
+            if n in want and (best is None or len(n) > len(best)):
+                best = n
+    token = best or "*"
+    dis, allow = [], []
+    for names, rules in _groups(body):
+        if token not in names:
+            continue
+        for kind, value in rules:
+            (dis if kind == "disallow" else allow).append(value)
+    return token, dis, allow
 
 
 def _star_group(body):
@@ -289,22 +372,12 @@ def _star_group(body):
     which this repository measured on eight consecutive `User-agent: *`
     groups.
     """
-    dis, allow, agents, in_group = [], [], set(), False
-    for line in (body or "").splitlines():
-        line = line.split("#", 1)[0].strip()
-        if not line:
+    dis, allow = [], []
+    for names, rules in _groups(body):
+        if "*" not in names:
             continue
-        k, _, v = line.partition(":")
-        k, v = k.strip().lower(), v.strip()
-        if k == "user-agent":
-            if in_group:            # a new group begins after a directive
-                agents = set()
-                in_group = False
-            agents.add(v)
-        elif k in ("disallow", "allow"):
-            in_group = True
-            if "*" in agents:
-                (dis if k == "disallow" else allow).append(v)
+        for kind, value in rules:
+            (dis if kind == "disallow" else allow).append(value)
     return dis, allow
 
 
@@ -339,7 +412,7 @@ def allowed(host, path):
     v = verdict(host)
     out = {"host": v["host"], "requested_host": v.get("requested_host"),
            "path": path, "allowed": True, "rule": None, "kind": None,
-           "sweep": v["sweep"]}
+           "group": v.get("group"), "sweep": v["sweep"]}
     if not v["sweep"]:
         out.update(allowed=False, kind="host-closed", rule="/")
         out["reason"] = v["reason"]
@@ -363,11 +436,17 @@ def allowed(host, path):
         out["reason"] = (f"`Allow: {best_a[1]}` matches at least as much of "
                          f"this path as `Disallow: {best_d[1]}`.")
         return out
-    out.update(allowed=False, rule=best_d[1], kind="disallow")
-    out["reason"] = (f"`{v['host']}` refuses this path to `User-agent: *` — "
-                     f"`Disallow: {best_d[1]}`. **This is a refusal aimed at "
-                     f"everyone, not at a named crawler**, and the intention "
-                     f"behind it does not change its effect.")
+    token = v.get("group") or "*"
+    out.update(allowed=False, rule=best_d[1], kind="disallow", group=token)
+    out["reason"] = (
+        f"`{v['host']}` refuses this path to `User-agent: {token}` — "
+        f"`Disallow: {best_d[1]}`. "
+        + (f"**That group names this project**, so this refusal is aimed at "
+           f"us and not at crawlers in general."
+           if token != "*" else
+           f"**This is a refusal aimed at everyone, not at a named "
+           f"crawler**, and the intention behind it does not change its "
+           f"effect."))
     return out
 
 

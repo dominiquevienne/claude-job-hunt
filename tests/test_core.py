@@ -66,6 +66,72 @@ class RobotsGroups(unittest.TestCase):
         self.assertEqual(dis, ["/real"])
 
 
+class RobotsGroupSelection(unittest.TestCase):
+    """The group that binds **us**, which is not always `*`. Issue #116."""
+
+    CLOUDFLARE = (
+        "User-agent: *\n"
+        "Content-Signal: search=yes,ai-train=no,use=reference\n"
+        "Allow: /\n\n"
+        "User-agent: CCBot\nDisallow: /\n\n"
+        "User-agent: ClaudeBot\nDisallow: /\n\n"
+        "User-agent: GPTBot\nDisallow: /\n")
+
+    def test_a_named_refusal_is_found(self):
+        # The measured shape: `*` open, our token closed. Before #116 this
+        # answered *allowed*, on the one kind of file that names us.
+        token, dis, allow = _robots.group_for(self.CLOUDFLARE)
+        self.assertEqual(token, "claudebot")
+        self.assertEqual(dis, ["/"])
+
+    def test_the_star_group_still_reads_as_open(self):
+        # Both are true of the same file, which is why the group has to be
+        # selected before anything is evaluated.
+        dis, allow = _robots._star_group(self.CLOUDFLARE)
+        self.assertEqual(dis, [])
+        self.assertEqual(allow, ["/"])
+
+    def test_a_named_permission_is_found_too(self):
+        # The other direction, and it is real: taleez.com allows our tokens
+        # by name. Selection is not a refusal detector.
+        token, dis, allow = _robots.group_for(
+            "User-agent: *\nDisallow: /x\n\n"
+            "User-agent: ClaudeBot\nAllow: /\n")
+        self.assertEqual(token, "claudebot")
+        self.assertEqual(allow, ["/"])
+        self.assertEqual(dis, [])
+
+    def test_falls_back_to_star_when_we_are_not_named(self):
+        token, dis, _ = _robots.group_for(
+            "User-agent: *\nDisallow: /a\n\n"
+            "User-agent: GPTBot\nDisallow: /\n")
+        self.assertEqual(token, "*")
+        self.assertEqual(dis, ["/a"])
+
+    def test_the_longest_matching_token_wins(self):
+        # RFC 9309: the most specific match. `claude-web` is longer than
+        # `claudebot`, so a file naming both binds by the longer one.
+        token, dis, _ = _robots.group_for(
+            "User-agent: ClaudeBot\nDisallow: /a\n\n"
+            "User-agent: Claude-Web\nDisallow: /b\n")
+        self.assertEqual(token, "claude-web")
+        self.assertEqual(dis, ["/b"])
+
+    def test_our_tokens_are_declared_not_derived(self):
+        # A module that decides consent must not depend on a UA string built
+        # elsewhere: an adapter changing its `UA` would change which rules
+        # bind, silently.
+        self.assertIn("claudebot", _robots.OUR_AGENTS)
+        self.assertIn("claude-user", _robots.OUR_AGENTS)
+        self.assertTrue(all(a == a.lower() for a in _robots.OUR_AGENTS))
+
+    def test_repeated_named_records_merge(self):
+        token, dis, _ = _robots.group_for(
+            "User-agent: ClaudeBot\nDisallow: /a\n\n"
+            "User-agent: ClaudeBot\nDisallow: /b\n")
+        self.assertEqual((token, dis), ("claudebot", ["/a", "/b"]))
+
+
 class RobotsPaths(unittest.TestCase):
     """`_match_len`: prefix, `*`, `$`, and the empty `Disallow`."""
 
