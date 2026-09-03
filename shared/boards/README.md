@@ -324,6 +324,25 @@ and it binds**, as does a rate limit, a login wall, and any `robots.txt`
 refusal — the position changes how an ambiguous clause is read, it never
 creates permission a board withheld. Issues #48 and #81.
 
+**Read `<loc>` through `skills/job-scan/scripts/_sitemap.py`, never with a
+pattern of your own** — and the reason is the same failure, one file later.
+Three ways a populated sitemap reads as empty, all measured:
+
+- **CDATA.** `hays.fr` wraps its URLs, and `<loc>\s*([^<\s]+)` matches
+  **nothing at all** on a valid 200-OK 2.37 MB file. Issue #55.
+- **One line.** `grep -c '<loc>'` counts **lines**, not elements: a 91-URL
+  sitemap served without newlines reports **1**.
+- **A namespace prefix** — `<ns:loc>` — which a pattern anchored on `<loc>`
+  misses entirely.
+
+**And the audit is why it is a module rather than a fourth patch.** On
+2026-09-03, **13 scripts read `<loc>`: seven carried the corrected pattern —
+five of them with the same comment block copied verbatim — and five still
+carried the naive one.** #55 fixed four adapters and left the rest, because
+there was nowhere for the fix to live. Use `locs()`, and print `count_says()`
+on a zero: **a sitemap is never reported empty**, because a zero has four
+causes and only one of them is an empty sitemap.
+
 **Read `application/ld+json` through `skills/job-scan/scripts/_ldjson.py`,
 never with a pattern of your own.** Two independent deviations have already
 cost this repository whole boards, and each was patched where it was found and

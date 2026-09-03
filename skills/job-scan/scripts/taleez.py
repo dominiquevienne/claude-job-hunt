@@ -39,6 +39,8 @@ import urllib.request
 
 from _robots import verdict as robots_verdict
 
+from _sitemap import locs as sitemap_locs
+
 CAREEZ = "https://{}.taleez.com/api/careez"
 AD_URL = "https://taleez.com/apply/{}"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -245,17 +247,25 @@ def cmd_sitemap(a):
     It is the board, not a search: there is no keyword or location filter here,
     so this is for enumerating and then reading, not for targeting.
     """
-    _v = robots_verdict(f"{a.tenant}.taleez.com")
+    # **The platform's own host, because this command has no tenant.** It used
+    # to read `a.tenant`, which the `sitemap` subparser does not define and
+    # never did — so the one command whose help says *"no tenant needed"*
+    # crashed with an `AttributeError` before reaching the network. Found
+    # 2026-09-03 by running it.
+    _v = robots_verdict("taleez.com")
     if not _v["sweep"]:
-        die(f"{_v['host']}: {_v['reason']} On Taleez the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+        die(f"{_v['host']}: {_v['reason']} This is the platform's own file, "
+            f"not an employer's — a tenant host may answer differently, and "
+            f"the per-tenant check stays where it belongs, on `jobs` and "
+            f"`ad`. Issue #73.", 7)
     raw = fetch("https://taleez.com/sitemap-job.xml")
     # The slug is not always the short opaque id: 296 of the 14 221 look like
     # `fmudc`, and the rest are long descriptive ones ending in the contract
     # type. Both forms answer `ad`. Matching only the short shape found 2% of
     # the board — measured while writing this.
     text = raw if isinstance(raw, str) else raw.decode("utf-8", "replace")
-    slugs = re.findall(r"<loc>https://taleez\.com/apply/([^<]+)</loc>", text)
+    slugs = [u.split("/apply/", 1)[1]
+             for u in sitemap_locs(text, contains="taleez.com/apply/")]
     seen, out = set(), []
     for sl in slugs:
         if sl not in seen:

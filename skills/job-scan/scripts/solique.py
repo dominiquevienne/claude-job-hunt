@@ -30,6 +30,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
+from _sitemap import locs as sitemap_locs
+
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
 BASE = "https://live.solique.ch"
@@ -293,8 +295,12 @@ def cmd_tenants(a):
         die(f"{BASE}/sitemap.xml answered {code} as {ctype!r} — a sitemap that "
             f"is not XML is not a sitemap. The directory may have moved; fall "
             f"back to job-room, which indexes Solique ads.")
-    names = re.findall(rb"<loc>[^<]*/sitemap-([a-z0-9-]+)\.xml</loc>", body)
-    out = sorted({n.decode() for n in names})
+    # The one reader, then the name out of the URL — the old pattern needed
+    # `</loc>` on the heels of the filename and missed CDATA entirely.
+    names = [m.group(1) for m in
+             (re.search(r"/sitemap-([a-z0-9-]+)\.xml$", u)
+              for u in sitemap_locs(body)) if m]
+    out = sorted(set(names))
     print(f"[solique] {len(out)} tenant name(s) in the sitemap index. This "
           f"lists names, not boards: on 2026-09-02, 7 of 13 answered with zero "
           f"ads and three live tenants were absent from it. Run `list` on each "

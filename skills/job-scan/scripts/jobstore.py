@@ -59,7 +59,11 @@ COUNTRIES = ("my", "sg", "id", "ph", "hk", "au", "nz", "th", "vn", "us", "uk",
              "nl", "es", "ae", "in", "ca", "za", "ie", "ch", "no", "dk", "at",
              "se", "pt", "pl", "il")
 
-LOC = re.compile(r"<loc>([^<]+)</loc>")
+# The one reader — `_sitemap.py`. The pattern that used to live here
+# missed CDATA-wrapped and namespace-prefixed `<loc>`, which is issue
+# #55's fault repeated: it was fixed in four adapters by pasting, and
+# five kept the naive form until 2026-09-03.
+from _sitemap import locs as sitemap_locs
 AD = re.compile(r"/(?P<cc>[a-z]{2})/job/(?P<id>l\d+)/(?P<slug>[^/\"?#]+)")
 
 
@@ -121,7 +125,7 @@ def cmd_count(a):
     if "xml" not in ctype:
         die(f"the sitemap index answered {ctype!r} rather than XML — a "
             f"sitemap that is not XML is not a sitemap.")
-    files = LOC.findall(body)
+    files = sitemap_locs(body)
     ads = [f for f in files if re.search(r"/job-\d+\.xml$", f)]
     other = [f for f in files if f not in ads]
     note(f"{len(files)} sub-sitemaps declared; {len(ads)} carry ads. The "
@@ -130,7 +134,7 @@ def cmd_count(a):
     total = 0
     for f in ads:
         _, xml = get(f[len(BASE):])
-        n = len(LOC.findall(xml))
+        n = len(sitemap_locs(xml))
         total += n
         note(f"  {f.rsplit('/', 1)[-1]}: {n}")
         time.sleep(a.delay)
@@ -148,7 +152,7 @@ def cmd_search(a):
         if page > 1:
             q += f"&page={page}"
         ctype, body = get(f"/{a.country}/jobs/search{q}")
-        urls = [u for u in LOC.findall(body)] or re.findall(
+        urls = list(sitemap_locs(body)) or re.findall(
             r'"url"\s*:\s*"([^"]+/job/l\d+/[^"]+)"', body)
         if not urls:
             note(f"page {page}: no ad URL in the ItemList — stopping.")
@@ -176,11 +180,11 @@ def cmd_search(a):
 def cmd_corpus(a):
     """Every ad URL for a country, from job-*.xml. One request per 10 000."""
     ctype, body = get(f"/{a.country}/sitemap/sitemap_index.xml")
-    ads = [f for f in LOC.findall(body) if re.search(r"/job-\d+\.xml$", f)]
+    ads = [f for f in sitemap_locs(body) if re.search(r"/job-\d+\.xml$", f)]
     kept = 0
     for f in ads:
         _, xml = get(f[len(BASE):])
-        for u in LOC.findall(xml):
+        for u in sitemap_locs(xml):
             c = card(a.country, u)
             if not c:
                 continue

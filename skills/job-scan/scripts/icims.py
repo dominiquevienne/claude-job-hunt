@@ -66,7 +66,11 @@ from _robots import verdict as robots_verdict
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
-LOC = re.compile(r"<loc>([^<]+)</loc>")
+# The one reader — `_sitemap.py`. The pattern that used to live here
+# missed CDATA-wrapped and namespace-prefixed `<loc>`, which is issue
+# #55's fault repeated: it was fixed in four adapters by pasting, and
+# five kept the naive form until 2026-09-03.
+from _sitemap import locs as sitemap_locs
 JOB = re.compile(r"/jobs/(\d+)(?:/([^/?#]*))?")
 # A branded page names its platform host in its own markup — the only reliable
 # way to get it, because the prefix is not guessable.
@@ -166,7 +170,7 @@ def cmd_list(a):
         die(f"the sitemap answered {ctype!r}, not XML — a sitemap that is not "
             f"XML is not a sitemap. See shared/robots-policy.md.")
     rows, seen = [], set()
-    for loc in LOC.findall(body):
+    for loc in sitemap_locs(body):
         m = JOB.search(loc)
         if not m:
             continue          # /jobs/intro and other furniture

@@ -62,6 +62,8 @@ import urllib.request
 
 from _zero import zero_note
 
+from _sitemap import locs as sitemap_locs
+
 from _robots import verdict as robots_verdict
 
 BASE = "https://vieclam24h.vn"
@@ -209,14 +211,14 @@ def cmd_sitemap(a):
     code, idx = get("/file/sitemap/sitemap-index.xml")
     if code != 200:
         die(f"sitemap index: HTTP {code}")
-    families = re.findall(r"<loc>([^<]+)</loc>", idx)
+    families = sitemap_locs(idx)
     jobs = [f for f in families if "/job-" in f]
     urls = []
     for f in jobs:
         code, body = get(f)
-        for sub in re.findall(r"<loc>([^<]+)</loc>", body):
+        for sub in sitemap_locs(body):
             code2, body2 = get(sub)
-            urls += re.findall(r"<loc>([^<]+)</loc>", body2)
+            urls += sitemap_locs(body2)
             time.sleep(a.delay)
     note(f"{len(urls)} ad URL(s) across the job sitemaps. The index also "
          f"declares occupation, province and district families, which are "
