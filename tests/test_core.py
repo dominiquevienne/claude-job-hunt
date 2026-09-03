@@ -2352,5 +2352,54 @@ class SourceCompilesWithoutWarning(unittest.TestCase):
         self.assertEqual(found, [], "; ".join(found[:3]))
 
 
+class TlsHostsAreRoutedEverywhere(unittest.TestCase):
+    """#104 was fixed in one of the two adapters that read the host.
+
+    `_tls.py` exists because **`empleate.gob.es` serves its leaf certificate
+    and no intermediate**. Python's stdlib does not chase the AIA extension,
+    so verification fails with `unable to get local issuer certificate` —
+    while `curl` succeeds, because it does chase it. That is why the defect
+    survived a `curl` check.
+
+    `empleate.py` was given the context. **`oposiciones.py` was not**, and it
+    reads the same host through the same `urlopen`. Nothing failed loudly:
+    the robots guard refuses both adapters earlier, so the broken TLS path
+    was never reached and never reported.
+
+    **The fix is per-adapter and the host list is central**, which is the
+    shape that loses one call site. This binds them: a file naming a host in
+    `_tls.HOSTS` must route through `_tls`.
+    """
+
+    def test_every_adapter_reading_a_tls_host_imports_tls(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        sys.path.insert(0, scripts)
+        import _tls
+        hosts = {h for h in _tls.HOSTS if not h.startswith("www.")}
+        self.assertTrue(hosts, "_tls declares no hosts to check")
+
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            # only a file that actually opens a socket on the host counts
+            if not re.search(r"urlopen|http\.client", src):
+                continue
+            if not any(h in src for h in hosts):
+                continue
+            if not re.search(r"(^|\n)\s*import\s+_tls", src):
+                offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "these read a host in _tls.HOSTS over a raw stdlib "
+                         "context and will fail verification: "
+                         + ", ".join(offenders))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -16,6 +16,44 @@ neither announces which contract it is honouring.
 
 **The most useful thing this board taught is not the board.** See trap 1.
 
+## Status on 2026-09-04 — **the board is dark, and the remaining cause is a decision**
+
+**Do not read a zero from this adapter as a market.** It returns nothing today,
+and it stops before it reaches the index.
+
+`https://empleate.gob.es/robots.txt` answers **HTTP 200, `Content-Type:
+text/html`, ~8 456 bytes** — the SEPE error page, `<title>SEPE</title>`, *"Si el
+problema persiste, póngase en contacto con nosotros"*. It is not a rules file
+and it is not an absence of one. `_robots.py`'s `unrecognised` state (#128)
+refuses to guess in either direction, so **both adapters on this host exit
+refused**, this one and its sibling.
+
+Three things measured on 2026-09-04 that say what it is:
+
+| observation | reading |
+| :-- | :-- |
+| three consecutive reads, **identical length, three different md5s** | the body is generated per request — a fixed document does not do this |
+| the same length under `Claude-User` and under a browser token | **not** UA-conditional; this is not a bot wall, and must not be reported as one |
+| the page carries `<META NAME='ROBOTS' CONTENT='NOINDEX,NOFOLLOW'>` | the word *robots* is present with no directive behind it — a parser matching on the word alone would read this as rules |
+
+**What has been repaired, and what has not.** The TLS half is fixed: this host
+sends its leaf without the issuing intermediate, `empleate.py` was given
+`_tls.context_for` and **this adapter was not**, though both read the same host.
+Measured: bare stdlib gives `CERTIFICATE_VERIFY_FAILED — unable to get local
+issuer certificate`, the same URL through `_tls` gives HTTP 200. Fixed in
+v1.202.0, and a test now binds every reader of a `_tls.HOSTS` host to the
+module.
+
+**That repair lights nothing on its own**, and it was made anyway: a known
+defect is not held back because its fix is not sufficient, and when the
+remaining question is answered there will be one step left instead of two.
+
+**The remaining cause is not a bug.** What to do about a host whose
+`/robots.txt` is an error page is a policy decision — treat it as absent, treat
+it as refusal, record a hand-read exception — and the guard deliberately
+declines to take it. **Nobody should wire around this to make the board return
+rows.** Tracked in #104.
+
 ## Access
 
 ```
