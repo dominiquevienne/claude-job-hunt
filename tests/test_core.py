@@ -59,6 +59,9 @@ class RobotsGroups(unittest.TestCase):
         self.assertEqual(dis, ["/a", "/b"])
 
     def test_a_group_restarts_after_a_directive(self):
+        # Not only the grammar: **21 of 54 files in this repository's corpus
+        # carry more than one record**, so this is the shape of a real file
+        # and not a reading of §2.2.1.
         dis, _ = _robots._star_group(
             "User-agent: *\nDisallow: /a\nUser-agent: Bing\nDisallow: /b\n")
         self.assertEqual(dis, ["/a"])
@@ -145,11 +148,26 @@ class RobotsGroupSelection(unittest.TestCase):
         self.assertEqual(allow, ["/jobs"])
 
     def test_our_tokens_are_declared_not_derived(self):
-        # A module that decides consent must not depend on a UA string built
-        # elsewhere: an adapter changing its `UA` would change which rules
-        # bind, silently.
+        """A module that decides consent must not depend on a UA string built
+        elsewhere: an adapter changing its `UA` would silently change which
+        rules bind.
+
+        **Provenance, checked 2026-09-03 rather than assumed.** Anthropic's
+        own documentation names three — `ClaudeBot`, `Claude-User`,
+        `Claude-SearchBot`. Five are published by hosts in this corpus: those
+        three plus `Claude-Web` and `anthropic-ai`. `anthropicbot` is in
+        neither, and stays because **the two directions do not cost the same**:
+        a token we answer to needlessly only binds us to more refusals, while
+        a token we are missing loses a refusal aimed at us.
+
+        **That missing direction is the one to keep checking** — enumerate the
+        `User-agent` names across the corpus containing `claude` or
+        `anthropic` and compare with this tuple. Nothing was missing on
+        2026-09-03.
+        """
         self.assertIn("claudebot", _robots.OUR_AGENTS)
         self.assertIn("claude-user", _robots.OUR_AGENTS)
+        self.assertIn("claude-searchbot", _robots.OUR_AGENTS)
         self.assertTrue(all(a == a.lower() for a in _robots.OUR_AGENTS))
 
     def test_repeated_named_records_merge(self):
@@ -160,7 +178,27 @@ class RobotsGroupSelection(unittest.TestCase):
 
 
 class RobotsPaths(unittest.TestCase):
-    """`_match_len`: prefix, `*`, `$`, and the empty `Disallow`."""
+    """`_match_len`: prefix, `*`, `$`, and the empty `Disallow`.
+
+    **These cases came from reading RFC 9309, not from watching a host**, and
+    the audit that followed #117 asked what that is worth. One of them rests
+    on a genuine ambiguity: §2.2.2 says the winner is *"the match that has the
+    most octets"*, and its only worked example — `Allow: /example/page/`
+    against `Disallow: /example/page/disallowed.gif` — cannot separate **the
+    length of the rule** from **the length of the matched text**. This module
+    compares matched text; Google's own documentation describes rule length.
+
+    **So it was measured rather than argued.** 1 402 probe paths were derived
+    from the corpus's own rules — for every pattern in the group binding us on
+    70 hosts, a path that pattern matches — and the two readings picked the
+    same rule **every time**. 25 of 55 files use a wildcard, so the territory
+    is real; the disagreement is not, on this corpus.
+
+    **That is not a licence to leave it unexamined.** It is a belief with no
+    host behind it, recorded as such, and `/tmp` is the wrong place for the
+    probe — re-derive it when a file appears that pits a wildcard `Allow`
+    against a longer literal `Disallow`.
+    """
 
     def test_prefix_match_returns_its_length(self):
         self.assertEqual(_robots._match_len("/p", "/pq"), 2)
@@ -433,14 +471,26 @@ class Match(unittest.TestCase):
         self.assertTrue(_match.matches_city("Genève, Suisse", "Geneve"))
 
     def test_share_reports_both_numbers(self):
-        rows = [{"match": True}, {"match": False}, {"match": True}]
-        said = _match.share(rows)
-        self.assertIn("3", said)
-        self.assertIn("2", said)
+        """**This test used to feed `share()` booleans.** `classify()` returns
+        `literal` / `regional?` / `semantic?`, so `{"match": True}` is a row no
+        adapter ever produces — and the sentence came out *"3 of 3 rows (100%)
+        did not literally match — 2 True, 1 False"*, which the assertions
+        `assertIn("3")` and `assertIn("2")` accepted. A loose assertion over
+        the wrong vocabulary passes for the wrong reason."""
+        said = _match.share([{"match": "literal"}, {"match": "regional?"},
+                             {"match": "literal"}])
+        self.assertIn("1 of 3 rows (33%)", said)
+        self.assertIn("2 literal, 1 regional?", said)
 
+    def test_share_says_nothing_when_every_row_matched(self):
+        """**The behaviour that matters, and nothing covered it** — because
+        the old row shape could never produce it: with booleans, `literal` is
+        always 0 and the silent branch is unreachable."""
+        self.assertIsNone(_match.share([{"match": "literal"},
+                                        {"match": "literal"}]))
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    def test_share_says_nothing_about_nothing(self):
+        self.assertIsNone(_match.share([]))
 
 
 def _load_render_plain():
@@ -820,3 +870,71 @@ class RobotsStorage403(unittest.TestCase):
             _robots._fetch = real
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
+
+
+def guard_is_last(source):
+    """`(ok, classes_after)` — is the `__main__` guard the last statement?
+
+    **A free function so it can be tested on sources other than this file.**
+    The first attempt asserted the property only about `test_core.py` itself,
+    and the negative check — appending a class to a copy in a temp directory —
+    came back red for an import error rather than for the defect. **A check
+    whose failure is indistinguishable from an unrelated failure has not been
+    verified**, and it nearly went in as verified.
+    """
+    import ast
+    tree = ast.parse(source)
+    if not tree.body:
+        return False, []
+    last = tree.body[-1]
+    is_guard = (isinstance(last, ast.If) and any(
+        isinstance(n, ast.Name) and n.id == "__name__"
+        for n in ast.walk(last.test)))
+    idx = next((i for i, n in enumerate(tree.body)
+                if isinstance(n, ast.If) and any(
+                    isinstance(x, ast.Name) and x.id == "__name__"
+                    for x in ast.walk(n.test))), None)
+    after = ([n.name for n in tree.body[idx + 1:] if isinstance(n, ast.ClassDef)]
+             if idx is not None else [])
+    return is_guard, after
+
+
+class SuiteRuns(unittest.TestCase):
+    """**A green run that covered 59% of the suite.** Found by the test audit.
+
+    `python3 tests/test_core.py` ran **51 of 87** cases and printed OK: the
+    `if __name__ == "__main__"` block had drifted into the middle of the file,
+    so every class appended after it was defined only *after*
+    `unittest.main()` had already run and exited. The documented invocation
+    (`python3 -m unittest discover`) was unaffected, which is exactly why
+    nothing showed. **A clean run is not a clean state.**
+    """
+
+    GOOD = ('import unittest\n\n\nclass A(unittest.TestCase):\n'
+            '    def test_x(self):\n        pass\n\n\n'
+            'if __name__ == "__main__":\n    unittest.main()\n')
+    BROKEN = GOOD + '\n\nclass B(unittest.TestCase):\n    pass\n'
+
+    def test_the_check_accepts_a_well_formed_file(self):
+        self.assertEqual(guard_is_last(self.GOOD), (True, []))
+
+    def test_the_check_rejects_a_class_appended_after_the_guard(self):
+        """**The negative case, on a source built for it** — not on a copy of
+        this file in a temp directory, where a red result means the imports
+        failed."""
+        ok, after = guard_is_last(self.BROKEN)
+        self.assertFalse(ok)
+        self.assertEqual(after, ["B"])
+
+    def test_this_file_puts_its_guard_last(self):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "test_core.py")
+        ok, after = guard_is_last(open(path, encoding="utf-8").read())
+        self.assertTrue(ok, "the `__main__` guard is not the last statement: "
+                             "anything after it is invisible to `python3 "
+                             "tests/test_core.py`, which will still print OK")
+        self.assertEqual(after, [])
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
