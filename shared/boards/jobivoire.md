@@ -34,18 +34,30 @@ neighbouring boards, two opposite routes, each measured.**
 Pages 1, 2, 200 and 324: **12, 12, 12 and 8 links, zero overlap between any
 pair**, and page 325 returns none. `323 × 12 + 8 = 3 884` exactly.
 
-## The listing's own `ld+json` does not parse; the advertisement's does
+## The listing's `ld+json` arrives broken and is repaired by the shared reader
 
 The listing carries one block naming twelve `JobPosting`s, and it is invalid
 JSON — a title reads `d\&#039;Atelier`, a **backslash before an HTML entity**,
 which is not an escape. `json.loads` refuses it with or without
 `strict=False`.
 
-So the adapter takes the links from the markup and the fields from each
-advertisement page, where the block is well formed. **`_ldjson.absent_reason()`
-reports the listing block as `unparseable` with `our_fault=True`**, which is
-correct and is why nothing silently returns zero: *a page that says
-`JobPosting` and yields none has been misread.*
+`_ldjson` mends that one malformation (#127) and unwraps the `CollectionPage`
+→ `mainEntity` → `ItemList` it sits in, so `postings()` returns the twelve.
+**Two occurrences on two continents** — Michael Page's literal newline and
+this — **suggest a class rather than an accident: a publisher that escapes one
+layer too many.**
+
+**`absent_reason()` caught this before the repair existed**, reporting
+`unparseable` with `our_fault=True`, on two independent sessions the same
+evening. **The repair does not turn that off** — `repairs()` counts mended
+blocks so a run can say so, and anything it cannot fix is still reported.
+
+**The links still come from the markup and the fields from each advertisement
+page.** The listing's twelve postings carry **no `url`** — three `url` fields
+for twelve postings, none an advertisement — so pairing them to slugs would
+rest on the block's order matching the markup's. **That is not verified, so it
+is not done.** It would cut the board from 4 208 requests to 324, and it is
+the first thing to measure if that cost matters.
 
 ## Two fields that do not hold what their names say
 

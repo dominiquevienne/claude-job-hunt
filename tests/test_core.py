@@ -1725,5 +1725,88 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
         self.assertIn("does not generalise", src[i:i + 3000])
 
 
+class LdJsonMalformations(unittest.TestCase):
+    """One case per specimen, each named with the site it came from. #127.
+
+    **Two occurrences on two continents suggest a class, not an accident**: a
+    publisher that escapes one layer too many. Michael Page and Chile's
+    service put a **literal newline** inside a string, which is why
+    `strict=False` is passed at all; `jobivoire.ci` puts an **HTML entity
+    behind a backslash** — `d\&#039;Atelier`, an apostrophe HTML-escaped after
+    being JSON-escaped. `\&` is not an escape sequence and `strict=False` does
+    not forgive it.
+
+    **The repair does not silence the guard.** `absent_reason()` caught this
+    on two independent sessions the same evening and reported it
+    `our_fault=True`; a fix that recovered the twelve advertisements by
+    turning that warning off would be a regression, not a repair.
+    """
+
+    NEWLINE = ('<script type="application/ld+json">'
+               '{"@type":"JobPosting","description":"a\nb"}</script>')
+    BAD_ESCAPE = ('<script type="application/ld+json">'
+                  '{"@type":"JobPosting","title":"d\\&#039;Atelier"}</script>')
+    NESTED = ('<script type="application/ld+json">'
+              '{"@type":"CollectionPage","mainEntity":{"@type":"ItemList",'
+              '"itemListElement":[{"@type":"ListItem","position":1,'
+              '"item":{"@type":"JobPosting","title":"one"}},'
+              '{"@type":"ListItem","position":2,'
+              '"item":{"@type":"JobPosting","title":"two"}}]}}</script>')
+    BEYOND_REPAIR = ('<script type="application/ld+json">'
+                     '{"@type":"JobPosting", "title": }</script>')
+
+    def test_a_literal_newline_still_parses(self):
+        """Michael Page and `bne.gob.cl`. The reason `strict=False` is there."""
+        self.assertEqual(len(_ldjson.postings(self.NEWLINE)), 1)
+
+    def test_a_backslash_before_an_html_entity_is_repaired(self):
+        """`jobivoire.ci`. `strict=False` does not cover this one."""
+        import json
+        blk = _ldjson.blocks(self.BAD_ESCAPE)[0]
+        with self.assertRaises(ValueError):
+            json.loads(blk, strict=False)
+        got = _ldjson.postings(self.BAD_ESCAPE)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0]["title"], "d\\&#039;Atelier")
+
+    def test_the_repair_is_counted_and_can_be_reported(self):
+        """**A page whose structured data needs mending is a page to watch**,
+        and the number belongs in a run's output, not in this module's
+        silence."""
+        self.assertEqual(_ldjson.repairs(self.BAD_ESCAPE), 1)
+        self.assertEqual(_ldjson.repairs(self.NEWLINE), 0)
+
+    def test_mainentity_nests_an_itemlist(self):
+        """`jobivoire.ci` again: a `CollectionPage` whose `mainEntity` is an
+        `ItemList` of twelve. A reader unwrapping `itemListElement` only at
+        the top level saw **one** object on a page holding twelve."""
+        got = _ldjson.postings(self.NESTED)
+        self.assertEqual([p["title"] for p in got], ["one", "two"])
+
+    def test_what_the_repair_cannot_fix_is_still_reported(self):
+        """**The guard is not turned off by the fix.**"""
+        self.assertEqual(_ldjson.postings(self.BEYOND_REPAIR), [])
+        why = _ldjson.absent_reason(self.BEYOND_REPAIR)
+        self.assertEqual(why.kind, "unparseable")
+        self.assertTrue(why.our_fault)
+
+    def test_the_diagnosis_parses_the_same_way_the_reader_does(self):
+        """A diagnosis that parsed differently would report a page unreadable
+        while the reader was reading it."""
+        why = _ldjson.absent_reason(self.BAD_ESCAPE)
+        self.assertNotEqual(why.kind, "unparseable")
+
+    def test_the_repair_leaves_valid_json_untouched(self):
+        """**It must not be a general attempt to fix JSON.** A valid escape
+        is not a malformation."""
+        good = ('<script type="application/ld+json">'
+                '{"@type":"JobPosting","title":"a \\"quoted\\" word",'
+                '"description":"line\\nbreak"}</script>')
+        got = _ldjson.postings(good)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0]["title"], 'a "quoted" word')
+        self.assertIn("\n", got[0]["description"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

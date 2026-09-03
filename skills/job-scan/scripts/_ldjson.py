@@ -130,10 +130,67 @@ def objects(html):
         try:
             d = json.loads(b, strict=False)
         except ValueError:
-            continue
+            # **`strict=False` covers literal control characters and nothing
+            # else.** A lone backslash is a different malformation, and it
+            # needs its own repair. Issue #127.
+            try:
+                d = json.loads(_repair(b), strict=False)
+            except ValueError:
+                continue
         for obj in (d if isinstance(d, list) else [d]):
             out += _unwrap(obj)
     return out
+
+
+# A backslash that does not begin a valid JSON escape. The specimen:
+# `jobivoire.ci` publishes `d\&#039;Atelier` — an apostrophe HTML-escaped
+# **after** being JSON-escaped, so the JSON carries `\&`, which is not an
+# escape sequence and which `strict=False` does not forgive.
+_BAD_ESCAPE = re.compile(r'\\(?!["\\/bfnrtu])')
+
+
+def _repair(text):
+    """Make a lone backslash literal so the block parses. Issue #127.
+
+    **One malformation, named, with the site it was measured on** — not a
+    general attempt to fix JSON. Anything this does not repair still fails,
+    still reaches `absent_reason()`, and is still reported as `our_fault`.
+
+    **Two occurrences on two continents suggest a class rather than an
+    accident**: a publisher that escapes once too often. Michael Page and the
+    Chilean service put a literal newline inside a string, which is why
+    `strict=False` is passed at all; `jobivoire.ci` puts an HTML entity behind
+    a backslash. **Both are one escaping layer too many**, and the next one
+    will be seen faster for having a name.
+
+    **This does not silence anything.** A block recovered here is still a
+    block that arrived broken, and `repairs()` says how many so a caller can
+    report it. The guard that caught this — `absent_reason()` with
+    `our_fault=True` — did its job on two independent sessions the same
+    evening, and **a fix that recovered the twelve advertisements by turning
+    that warning off would be a regression, not a repair.**
+    """
+    return _BAD_ESCAPE.sub(r"\\\\", text)
+
+
+def repairs(html):
+    """How many `ld+json` blocks parsed only after repair.
+
+    For a caller that wants to say so. **A page whose structured data needs
+    mending is a page to watch**, and the number belongs in the run's output
+    rather than in this module's silence.
+    """
+    n = 0
+    for b in blocks(html):
+        try:
+            json.loads(b, strict=False)
+        except ValueError:
+            try:
+                json.loads(_repair(b), strict=False)
+                n += 1
+            except ValueError:
+                pass
+    return n
 
 
 def _unwrap(obj):
@@ -150,6 +207,17 @@ def _unwrap(obj):
     if isinstance(obj.get("@graph"), list):
         out = []
         for x in obj["@graph"]:
+            out += _unwrap(x)
+        return out
+    # **`mainEntity` is the third container, and it nests.** `jobivoire.ci`
+    # publishes a `CollectionPage` whose `mainEntity` is an `ItemList` of
+    # twelve `JobPosting`s — so a reader that unwraps `itemListElement` only
+    # at the top level sees **one** object on a page holding twelve. Issue
+    # #127, and the same shape as the `ItemList` case one level down.
+    if isinstance(obj.get("mainEntity"), (dict, list)):
+        inner = obj["mainEntity"]
+        out = []
+        for x in (inner if isinstance(inner, list) else [inner]):
             out += _unwrap(x)
         return out
     if isinstance(obj.get("itemListElement"), list):
@@ -187,12 +255,20 @@ def absent_reason(html):
     """Called only when `postings()` came back empty."""
     html = html or ""
     raw = blocks(html)
-    unreadable = []
+    unreadable, mended = [], 0
     for b in raw:
         try:
             json.loads(b, strict=False)
         except ValueError as e:
-            unreadable.append(str(e))
+            # **The same two attempts `objects()` makes, in the same order.**
+            # A diagnosis that parsed differently from the reader would
+            # report a page unreadable while the reader was reading it — the
+            # two must agree about the same block. Issue #127.
+            try:
+                json.loads(_repair(b), strict=False)
+                mended += 1
+            except ValueError:
+                unreadable.append(str(e))
     if unreadable:
         return Absence(
             "unparseable",
@@ -202,10 +278,14 @@ def absent_reason(html):
             f"data** — do not trust any count from this run.",
             True)
     if raw:
+        mend = (f" {mended} of them parsed only after repairing an invalid "
+                f"escape (#127), which is worth knowing about this page even "
+                f"though it did not stop the reading." if mended else "")
         return Absence(
             "no-jobposting",
             f"{len(raw)} ld+json block(s) parsed and none is a JobPosting. "
-            f"That is a real answer about this page, not a reading failure.",
+            f"That is a real answer about this page, not a reading "
+            f"failure.{mend}",
             False)
     if "JobPosting" in html:
         return Absence(
