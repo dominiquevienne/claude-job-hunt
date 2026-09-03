@@ -495,6 +495,27 @@ names for the same company have already blocked an official declaration in this
 workspace — resolve which one this ad is; never merge them silently.
 Issue #94.
 
+**And if no preference is recorded, ask — once for this employer, never once
+per ad.** `preference: null` means **never asked**, not neutral. Fold the
+question into the gate's own `AskUserQuestion`, where the user is already
+judging this employer, and write the answer to `employers.md` on a yes:
+
+> **Cet employeur, vous le privilégiez, vous l'écartez, ou ni l'un ni l'autre ?**
+
+**Boolean, and both signs in one field.** `preferred`, `excluded`, or nothing.
+A scale badly filled looks exactly like a scale well filled; a boolean can
+become a scale later and a scale does not come back down honestly.
+
+**Then show it beside the ratio and never inside it.** *"55%, and this is an
+employer you favour"* is information; *"68%"* for the same ad is a lie. What
+`preferred` changes is **the cadence, the effort and the order of work** — how
+many applications run there at once, how much research the letter gets, and a
+threshold lowered **knowingly**. `shared/scoring-rubric.md` holds the rule.
+
+**`preferred` and frozen are both true at once**, and only the freeze has a
+lifting date. Read them from the same `lookup` and report them as two facts,
+not one verdict. Issue #95.
+
 ### A driving licence or a vehicle, when the ad states one
 
 **Same gate, same moment, and a different field from the one above.** Run it on

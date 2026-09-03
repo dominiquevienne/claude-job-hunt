@@ -23,7 +23,7 @@ into the plugin directory — a plugin update replaces it.
 | `job-pipeline.md` | created on first scan | The shared ledger: one row per ad, the memory of the whole workflow | `job-scan`, updated by `cover-letter` |
 | `commute.md` | optional | Travel times from the home base, validated by the user | `/job-setup` |
 | `repos.md` | optional | Technologies verified in the user's own repositories, with their real depth and an explicit "never claim these" list | `/job-setup` |
-| `employers.md` | optional | **What is true of an employer rather than of an ad** — legal name, address as a declaration expects it, standing decisions with their lifting dates, which ATS they run. **References ledger rows, never copies them** | `/job-setup`, then edited by hand |
+| `employers.md` | optional | **What is true of an employer rather than of an ad** — legal name, address as a declaration expects it, standing decisions with their lifting dates, whether the user favours or excludes them, which ATS they run. **References ledger rows, never copies them** | `/job-setup`, then edited by hand |
 | `signature.png` | optional | Handwritten signature, transparent background | `make-signature.sh` |
 | `YYYYMMDD_Company-Role/` | per application | One dossier per application: `job-ad.md`, `resume.md`, `cover-letter.md`, the PDFs | `cover-letter` |
 
@@ -83,6 +83,15 @@ It returns every standing decision **with its lifting date beside it**, so a
 lifted freeze cannot be read as a live one. **No file is not an error** — it is
 an absence of record, which is not an absence of decisions, and it is said in
 those words rather than treated as a clean bill.
+
+**One field is not a decision and must not sit among them: the preference.**
+`preferred`, `excluded`, or the line absent — which means **never asked**, not
+neutral. Everything in the standing-decisions table carries a lifting date, and
+**a preference is not lifted**; filed there it would read as a decision nobody
+ended. **A freeze is bounded and goes in the table; "I do not want to work
+there" is stable and goes in the field.** An employer can be `preferred` and
+frozen at the same moment — two facts, one lifting date. And **a preference
+never touches a score**: `shared/scoring-rubric.md` holds that line.
 
 **And what belongs there is the user's data, not the plugin's.** Which ATS a
 company runs is theirs; **how that ATS behaves is `shared/ats-open-check.md`**,

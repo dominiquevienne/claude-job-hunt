@@ -129,6 +129,50 @@ tailoring writes around them:
   is where they wrote down the rules they do not want re-litigated every run;
   a rule stated there is not a preference to weigh, it is a stop.
 
+## A preference is not a score, and it must never enter the ratio
+
+**The plugin knows how well an ad *fits*. It knows nothing about what the user
+*wants*** — and `employers.md` now carries one field for it: `preferred`,
+`excluded`, or absent, which means **never asked** and not neutral.
+
+**The red line: a preference never adds a point.** This file already forbids
+inflating a line to reach a threshold and softening a bad ratio. **A favoured
+employer that quietly raises a score stops the score measuring fit** and turns
+it into a blend of fit and appetite — unreadable three weeks later, when the
+candidate rereads their own ledger and cannot tell which of the two they are
+looking at.
+
+> *"55%, and this is an employer you favour"* is information.
+> *"68%"* for the same ad is a lie.
+
+**What a favoured employer actually changes is the cadence, not the ranking**,
+and that is the counter-intuitive half. Measured on the case that produced the
+field: four ads open at one employer on the same day, and the candidate
+**froze** them — *not because the interest was low, because it was high enough
+not to spray*. Then lifted the freeze eight days later on a dated argument.
+Neither decision was a ranking.
+
+So a preference acts on:
+
+1. **Cadence** — how many applications run at once there, and what to wait
+   between them.
+2. **Effort** — deeper research, a more worked letter, and a threshold lowered
+   **knowingly**, which is not the same as a score raised silently.
+3. **The memory of the relationship** — former employer, earlier refusal,
+   application in flight.
+
+**And `excluded` does not silently drop anything.** Ads from an excluded
+employer are not proposed, **and the run says how many it withheld and why** —
+*"3 ads from Acme not proposed: employer excluded 2026-09-03"*. A filter with
+no counter is the silent cap `shared/never-fail-silently.md` forbids, and this
+one would hide exactly the ad that makes somebody change their mind.
+
+**A refusal is not a freeze.** A freeze is bounded and lives in the standing
+decisions with its lifting date; *"I do not want to work there"* is stable and
+lives in the preference field. **Confusing them reproduces the error of
+2026-09-02 in either direction** — a permanent refusal treated as temporary, or
+a freeze nobody ever lifts. Issues #94 and #95.
+
 ## A country list is not a workplace
 
 **A card carrying a list of countries and no city is "remote, open to your

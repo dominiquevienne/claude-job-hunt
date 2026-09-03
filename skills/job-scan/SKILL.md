@@ -742,6 +742,17 @@ recorded about this employer"*, which is an absence of record and not an
 absence of decisions. Issue #94, and `shared/workspace.md` holds the authority
 rule.
 
+**A `preferred` employer changes the cadence, not the ranking.** Do not move
+its rows up the list — say it beside the score, where the user can weigh it:
+*"55% — an employer you favour"*. A preference that quietly reorders is the
+same defect as one that quietly adds points, and
+`shared/scoring-rubric.md` refuses both.
+
+**An `excluded` employer's rows are not proposed — and the run says how many it
+withheld.** *"3 ads from Acme not proposed: employer excluded 2026-09-03."* A
+filter with no counter is the silent cap this plugin's first rule forbids, and
+this one would hide exactly the ad that changes somebody's mind.
+
 **Then read each row's `Note` before proposing it — match order is not the
 whole ranking.** The rows you are about to recommend include ones written weeks ago by
 earlier runs, and a `todo` row can carry a verdict its status never received: a

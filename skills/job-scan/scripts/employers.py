@@ -51,6 +51,12 @@ EXIT_NO_FILE = 0        # absent is not an error: the file is optional
 ROW = re.compile(r"^\|(?P<cells>.*)\|\s*$")
 DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 
+# **One field, three states, and the third is "not asked" rather than neutral.**
+# It is read from the header bullets and never from the decisions table: every
+# row of that table carries a lifting date, and a preference is not lifted.
+PREF = re.compile(r"^\s*-\s*\**preference\**\s*[—:-]\s*(?P<rest>.*)$", re.I)
+PREF_VALUES = ("preferred", "excluded")
+
 
 def fold(s):
     """Compare names without accents or case. `_locations.py` folds the same
@@ -61,9 +67,21 @@ def fold(s):
 
 
 def sections(text):
-    """`## <employer>` to the next `## `, keeping the heading."""
+    """`## <employer>` to the next `## `, keeping the heading.
+
+    **Only what follows the first `---` rule counts as an employer.** The
+    file's own preamble uses `##` headings too, and without this boundary
+    *"Authority"* and *"The two rules"* are listed as companies — which is not
+    a cosmetic defect: a lookup for an employer whose name happened to collide
+    would match a paragraph of prose and report its absence of decisions as
+    fact. A file with no `---` is read whole, and says so.
+    """
+    body = (text or "")
+    parts = re.split(r"(?m)^-{3,}\s*$", body, maxsplit=1)
+    if len(parts) == 2:
+        body = parts[1]
     out, name, buf = [], None, []
-    for line in (text or "").splitlines():
+    for line in body.splitlines():
         m = re.match(r"^##\s+(?!#)(.*\S)\s*$", line)
         if m:
             if name:
@@ -109,24 +127,61 @@ def decisions(body):
     return out
 
 
-def undated(body):
-    """Bullet facts carrying no date. A fact about an employer goes stale.
+def bullets(body):
+    """Top-level bullets, **joined across wrapped lines**.
 
-    **Bullets are joined across wrapped lines first.** The first version read
-    line by line and reported four undated facts in a file where two carried
-    their date on the continuation line — a check that cries wolf on a
-    well-kept file gets switched off, and then the real ones go unseen.
+    Both readers below need this. The first version of `undated()` read line
+    by line and reported four undated facts in a file where two carried their
+    date on the continuation line — a check that cries wolf on a well-kept
+    file gets switched off, and then the real ones go unseen.
     """
     out, cur = [], None
     for line in body.splitlines() + [""]:
         s = line.strip()
         if s.startswith("- ") or not s or s.startswith(("#", "|")):
-            if cur is not None and not DATE.search(cur):
-                out.append(re.sub(r"\s+", " ", cur)[:140])
+            if cur is not None:
+                out.append(re.sub(r"\s+", " ", cur).strip())
             cur = s[2:] if s.startswith("- ") else None
         elif cur is not None:
             cur += " " + s
+    return [b for b in out if b]
+
+
+def preference(body):
+    """`preferred`, `excluded`, or None for **never asked**.
+
+    Read from the header bullets only. A preference found inside the standing
+    decisions table is a misfiling and is reported as one: everything in that
+    table ends, and this does not.
+    """
+    out = {"value": None, "since": None, "reason": None, "misfiled": False}
+    for line in body.splitlines():
+        s = line.strip()
+        if s.startswith("|") and any(v in s.lower() for v in PREF_VALUES):
+            out["misfiled"] = True
+    for b in bullets(body):
+        m = PREF.match("- " + b)
+        if not m:
+            continue
+        rest = m.group("rest")
+        low = rest.lower()
+        for v in PREF_VALUES:
+            if v in low:
+                out["value"] = v
+                break
+        d = DATE.search(rest)
+        out["since"] = d.group(1) if d else None
+        # Everything after the first separator that is not the date.
+        r = re.split(r"[—·|]", rest)
+        out["reason"] = (re.sub(r"\s+", " ", r[-1]).strip(" *_`") or None) \
+            if len(r) > 1 else None
+        break
     return out
+
+
+def undated(body):
+    """Bullet facts carrying no date. A fact about an employer goes stale."""
+    return [b[:140] for b in bullets(body) if not DATE.search(b)]
 
 
 def cmd_lookup(a):
@@ -152,6 +207,7 @@ def cmd_lookup(a):
             d = decisions(body)
             hits.append({
                 "employer": name,
+                "preference": preference(body),
                 "decisions": d,
                 "active_decisions": [x for x in d if x["active"]],
                 "undated_facts": undated(body),
@@ -171,6 +227,25 @@ def cmd_lookup(a):
     if active:
         out["say"] = ("A standing decision is in force and it must reach the "
                       "user before an ad of theirs is proposed.")
+    prefs = [h["preference"] for h in hits if h["preference"]["value"]]
+    if prefs:
+        out["preference_says"] = (
+            "**This never touches the score.** A preference changes the "
+            "cadence, the effort and the order of work — it is shown beside "
+            "the ratio at the gate and never inside it. *'55%, and this is an "
+            "employer you favour'* is information; *'68%'* for the same ad is "
+            "a lie.")
+    if any(h["preference"]["misfiled"] for h in hits):
+        out["misfiled_preference"] = (
+            "A preference appears in the standing-decisions table. **It does "
+            "not belong there**: every row of that table carries a lifting "
+            "date and a preference is not lifted — filed there it reads as a "
+            "decision nobody ended.")
+    if not prefs and hits:
+        out["preference_says"] = (
+            "**No preference recorded — which means never asked, not "
+            "neutral.** Ask once at the go/no-go gate, then never again for "
+            "this employer.")
     lifted = [x for h in hits for x in h["decisions"] if x["lifted"]]
     if lifted:
         out["lifted"] = ("Decisions recorded here have been lifted. **A lifted "
@@ -191,8 +266,9 @@ def cmd_list(a):
     for name, body in sections(text):
         d = decisions(body)
         act = sum(1 for x in d if x["active"])
-        print(json.dumps({"employer": name, "decisions": len(d),
-                          "active": act,
+        print(json.dumps({"employer": name,
+                          "preference": preference(body)["value"],
+                          "decisions": len(d), "active": act,
                           "undated_facts": len(undated(body))},
                          ensure_ascii=False))
     return 0

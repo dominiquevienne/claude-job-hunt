@@ -38,6 +38,23 @@ them strays into the other's subject, the other wins.
   declaration expects it*
 - **ATS** — SmartRecruiters, tenant `Acme` · *the platform's own behaviour
   lives in `shared/ats-open-check.md`, not here*
+- **Preference** — `preferred` · *since 2026-08-19 — former employer, and the
+  product is one I know*
+
+**One value, three states, and it lives here rather than in the table below.**
+`preferred`, `excluded`, or the line absent — which means **not asked**, and is
+not the same as neutral. **A preference is not lifted**, which is exactly why it
+must not sit among the standing decisions: everything in that table carries a
+lifting date, and a field that never gets one would read as a decision nobody
+had ended.
+
+**Boolean, not a scale.** A badly filled scale looks exactly like a well filled
+one. A boolean can become a scale later; a scale does not come back down
+honestly.
+
+**And an employer can be `preferred` and frozen at the same time** — this one
+was, on 19.08. Two facts, both true, **and only one of them has a lifting
+date.**
 
 ### Standing decisions
 
@@ -48,6 +65,13 @@ them strays into the other's subject, the other wins.
 **A lifted decision stays in the table with its lifting date.** Deleting the
 row leaves the freeze looking current in anyone's memory, and leaves nothing to
 contradict it.
+
+**A refusal of an employer is not a freeze, and the difference decides where it
+goes.** A freeze is **bounded** — it belongs in this table, with the date it
+ended. *"I do not want to work there"* is **stable** — it belongs in
+`Preference` as `excluded`. Confusing them reproduces the 02.09 error in either
+direction: a permanent refusal treated as temporary, or a freeze that is never
+lifted.
 
 ### Behaviour observed
 
