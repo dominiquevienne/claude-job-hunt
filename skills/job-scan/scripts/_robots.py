@@ -368,10 +368,12 @@ def verdict(host):
     # `*` and never consulted a record naming this project — so a file that
     # opened `*` and closed `ClaudeBot` was reported open, and the error went
     # towards permitted on the one kind of file that addresses us by name.
-    token, dis, allow = group_for(body)
+    token, dis, allow, matched = group_for(body)
     out["disallow"] = dis
     out["allow"] = allow
     out["group"] = token
+    out["groups"] = matched
+    out["group_conflict"] = _records_disagree(body, matched)
     if "/" in dis:
         out["sweep"] = False
         out["reason"] = (
@@ -380,7 +382,8 @@ def verdict(host):
              f"Not swept."
              if token != "*" else
              "this host's robots.txt is `User-agent: * / Disallow: /` — "
-             "everything closed, evenly. Not swept."))
+             "everything closed, evenly. Not swept.")
+            + _named_note(matched, out.get("group_conflict")))
     elif dis:
         # **`sweep` answers "is this host closed in one block". It cannot
         # answer for a path, and it must not look as though it does.**
@@ -391,7 +394,28 @@ def verdict(host):
             f"this host refuses {len(dis)} path(s) to `{token}` and not the "
             f"site as a whole: {', '.join(dis[:4])}. **`sweep: True` means it "
             f"is not closed in one block; it does not mean the path you want "
-            f"is open.** Call `allowed(host, path)` before fetching one.")
+            f"is open.** Call `allowed(host, path)` before fetching one."
+            + _named_note(matched, out.get("group_conflict")))
+    elif matched:
+        # **The third formulation, and it had no words at all.** A host that
+        # names this project and permits it left `reason` at `None` —
+        # indistinguishable from a file where nothing matched. They are not
+        # the same fact: `taleez.com` writes `User-agent: ClaudeBot / Allow:
+        # /` under a `*` group that refuses twelve paths. **That is explicit
+        # consent, not the absence of a refusal**, and it is also the reason
+        # those twelve refusals do not apply here — which is worth saying
+        # before someone later "corrects" an adapter into obeying them.
+        # Issue #117.
+        star_dis = _star_group(body)[0]
+        others = (f" The `*` group refuses {len(star_dis)} path(s) — "
+                  f"{', '.join(star_dis[:3])} — and **those do not bind us**, "
+                  f"because a record naming us takes precedence over `*`."
+                  if star_dis else "")
+        out["reason"] = (
+            f"this host **names this project and permits it**: "
+            f"`User-agent: {token}` with no `Disallow`. That is consent "
+            f"written down, not silence.{others}"
+            + _named_note(matched, out.get("group_conflict")))
     return _keep(out)
 
 
@@ -430,8 +454,45 @@ def _groups(body):
     return out
 
 
+def _named_note(matched, conflict):
+    """What to add when more than one record of ours applies. Issue #117."""
+    if len(matched) < 2:
+        return ""
+    names = ", ".join(f"`{n}`" for n in matched)
+    if not conflict:
+        return (f" The file names {len(matched)} of this project's tokens "
+                f"({names}) and says the same thing to each.")
+    return (f" **The file names {len(matched)} of this project's tokens "
+            f"({names}) and does not answer them alike.** The refusals of all "
+            f"of them apply and only the permissions common to all of them "
+            f"do: a permission one record grants and another withholds is not "
+            f"one this project has.")
+
+
+def _records_disagree(body, matched):
+    """Do the records naming us say different things?
+
+    **Worth reporting rather than smoothing over.** `www.linkedin.com` refuses
+    this project in four records and permits it in a fifth; a caller that only
+    ever sees the merged answer cannot tell that from a file where every
+    record agrees. Issue #117.
+    """
+    if len(matched) < 2:
+        return False
+    seen = set()
+    for n in matched:
+        d, a = [], []
+        for names, rules in _groups(body):
+            if n not in names:
+                continue
+            for kind, value in rules:
+                (d if kind == "disallow" else a).append(value)
+        seen.add((tuple(sorted(set(d))), tuple(sorted(set(a)))))
+    return len(seen) > 1
+
+
 def group_for(body, agents=OUR_AGENTS):
-    """The record that binds **us**, and its token. RFC 9309's selection.
+    """The rules that bind **us** — across *every* record that names us.
 
     **This is the half `verdict()` never looked at.** It evaluated `*` and
     never consulted the group that names us — so on a file reading
@@ -445,28 +506,69 @@ def group_for(body, agents=OUR_AGENTS):
     it answered *allowed*, **on the one category of file that addresses us
     explicitly**. And the error went towards permitted. Issue #116.
 
-    **Selection: a matching token beats `*`, and the longest token wins** when
-    several match. Records sharing a token merge, which this repository has
-    measured on a file with eight consecutive `*` groups.
+    **THE FIRST FIX PICKED THE LONGEST TOKEN, AND THAT WAS WRONG TOO.**
+    Measured across 70 hosts, 2026-09-03: three name a token of ours, and
+    **`www.linkedin.com` names five and does not answer them alike** —
+    `ClaudeBot`, `Claude-Web`, `Claude-User` and `anthropic-ai` all get
+    `Disallow: /`, while `Claude-SearchBot` gets a path list and no blanket
+    refusal. `claude-searchbot` is the longest of the five, so the module
+    selected **the one permissive record out of five refusals** and answered
+    `sweep: True` on a host that closes itself to this project by name, four
+    times over. **The fifth defect in this module, and the fifth going towards
+    permitted.**
 
-    Returns `(token, disallow, allow)` — **the token so the caller can say who
-    was refused.** *"Refused to `ClaudeBot`"* and *"refused to `*`"* are not
-    the same fact: the first is aimed at us, the second is a policy.
+    RFC 9309 assumes a crawler has one product token. **This project answers to
+    six**, and which one it is depends on what it is doing — so there is no
+    honest way to pick one record and discard the others. **So none are
+    discarded**: the disallows of every matching record are unioned, and an
+    `Allow` survives only if *every* matching record grants it. A permission
+    one record gives and another withholds is not a permission this project
+    has.
+
+    Returns `(token, disallow, allow, groups)` — the token so the caller can
+    say who was refused. *"Refused to `ClaudeBot`"* and *"refused to `*`"* are
+    not the same fact: the first is aimed at us, the second is a policy.
+    `groups` is every token of ours the file names, so a caller can say when
+    they disagreed.
     """
     want = {a.lower() for a in agents}
-    best = None
+    matched = []
     for names, _rules in _groups(body):
         for n in names:
-            if n in want and (best is None or len(n) > len(best)):
-                best = n
-    token = best or "*"
-    dis, allow = [], []
+            if n in want and n not in matched:
+                matched.append(n)
+    if not matched:
+        dis, allow = [], []
+        for names, rules in _groups(body):
+            if "*" not in names:
+                continue
+            for kind, value in rules:
+                (dis if kind == "disallow" else allow).append(value)
+        return "*", dis, allow, []
+
+    per = {}
     for names, rules in _groups(body):
-        if token not in names:
-            continue
-        for kind, value in rules:
-            (dis if kind == "disallow" else allow).append(value)
-    return token, dis, allow
+        for n in names:
+            if n not in want:
+                continue
+            d, a = per.setdefault(n, ([], []))
+            for kind, value in rules:
+                (d if kind == "disallow" else a).append(value)
+
+    dis = []
+    for n in matched:
+        for value in per[n][0]:
+            if value not in dis:
+                dis.append(value)
+    # **Every record must grant it.** An `Allow` present in one and absent
+    # from another is exactly the LinkedIn shape, and taking the union there
+    # would resurrect the defect one level down.
+    allow = [v for v in per[matched[0]][1]
+             if all(v in per[n][1] for n in matched)]
+    # The token to name in a sentence: the shortest is the plainest, and where
+    # the records agree it makes no difference which is quoted.
+    token = sorted(matched, key=len)[0]
+    return token, dis, allow, matched
 
 
 def _star_group(body):
@@ -556,7 +658,17 @@ def allowed(host, path):
     best_a = max(((_match_len(p, path), p) for p in v.get("allow") or []),
                  default=(-1, None))
     if best_d[0] < 0:
-        out["reason"] = "no `Disallow` in the `*` group matches this path."
+        # **Name the group, because "no rule matched" means two things.** In
+        # the `*` group it is the general policy leaving this path alone; in a
+        # record that names us it is this operator having written a rule about
+        # this project and put nothing in our way. Issue #117.
+        g = v.get("group") or "*"
+        out["reason"] = (
+            f"no `Disallow` matches this path in `{g}` — "
+            + ("the group that **names this project**, so this is a decision "
+               "about us and not a policy we happen to fall under."
+               if g != "*" else "the group that applies to everyone, this "
+                                "project included."))
         return out
     # A tie goes to `Allow`: the specification's rule, and the direction that
     # respects an operator who wrote both.

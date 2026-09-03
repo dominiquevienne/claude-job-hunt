@@ -83,9 +83,10 @@ class RobotsGroupSelection(unittest.TestCase):
     def test_a_named_refusal_is_found(self):
         # The measured shape: `*` open, our token closed. Before #116 this
         # answered *allowed*, on the one kind of file that names us.
-        token, dis, allow = _robots.group_for(self.CLOUDFLARE)
+        token, dis, allow, matched = _robots.group_for(self.CLOUDFLARE)
         self.assertEqual(token, "claudebot")
         self.assertEqual(dis, ["/"])
+        self.assertEqual(matched, ["claudebot"])
 
     def test_the_star_group_still_reads_as_open(self):
         # Both are true of the same file, which is why the group has to be
@@ -97,7 +98,7 @@ class RobotsGroupSelection(unittest.TestCase):
     def test_a_named_permission_is_found_too(self):
         # The other direction, and it is real: taleez.com allows our tokens
         # by name. Selection is not a refusal detector.
-        token, dis, allow = _robots.group_for(
+        token, dis, allow, _m = _robots.group_for(
             "User-agent: *\nDisallow: /x\n\n"
             "User-agent: ClaudeBot\nAllow: /\n")
         self.assertEqual(token, "claudebot")
@@ -105,20 +106,42 @@ class RobotsGroupSelection(unittest.TestCase):
         self.assertEqual(dis, [])
 
     def test_falls_back_to_star_when_we_are_not_named(self):
-        token, dis, _ = _robots.group_for(
+        token, dis, _a, matched = _robots.group_for(
             "User-agent: *\nDisallow: /a\n\n"
             "User-agent: GPTBot\nDisallow: /\n")
+        self.assertEqual(matched, [])
         self.assertEqual(token, "*")
         self.assertEqual(dis, ["/a"])
 
-    def test_the_longest_matching_token_wins(self):
-        # RFC 9309: the most specific match. `claude-web` is longer than
-        # `claudebot`, so a file naming both binds by the longer one.
-        token, dis, _ = _robots.group_for(
+    def test_every_record_that_names_us_binds_us(self):
+        """**This test used to assert the opposite, and the opposite was
+        wrong.** It read `test_the_longest_matching_token_wins` and pinned
+        the rule that made `www.linkedin.com` readable: four records refusing
+        this project and one permitting it, and the longest name was the
+        permissive one. A case that pins the wrong behaviour defends it.
+        Issue #117."""
+        _t, dis, _a, matched = _robots.group_for(
             "User-agent: ClaudeBot\nDisallow: /a\n\n"
             "User-agent: Claude-Web\nDisallow: /b\n")
-        self.assertEqual(token, "claude-web")
-        self.assertEqual(dis, ["/b"])
+        self.assertEqual(sorted(dis), ["/a", "/b"])
+        self.assertEqual(sorted(matched), ["claude-web", "claudebot"])
+
+    def test_the_linkedin_shape_one_permission_among_four_refusals(self):
+        _t, dis, allow, matched = _robots.group_for(
+            "User-agent: ClaudeBot\nDisallow: /\n\n"
+            "User-agent: Claude-Web\nDisallow: /\n\n"
+            "User-agent: Claude-User\nDisallow: /\n\n"
+            "User-agent: Claude-SearchBot\nDisallow: /search\nAllow: /\n")
+        self.assertIn("/", dis)
+        # **The permission is not common to all four**, so it is not ours.
+        self.assertEqual(allow, [])
+        self.assertEqual(len(matched), 4)
+
+    def test_an_allow_survives_only_if_every_record_grants_it(self):
+        _t, _d, allow, _m = _robots.group_for(
+            "User-agent: ClaudeBot\nAllow: /jobs\nAllow: /x\n\n"
+            "User-agent: Claude-Web\nAllow: /jobs\n")
+        self.assertEqual(allow, ["/jobs"])
 
     def test_our_tokens_are_declared_not_derived(self):
         # A module that decides consent must not depend on a UA string built
@@ -129,7 +152,7 @@ class RobotsGroupSelection(unittest.TestCase):
         self.assertTrue(all(a == a.lower() for a in _robots.OUR_AGENTS))
 
     def test_repeated_named_records_merge(self):
-        token, dis, _ = _robots.group_for(
+        token, dis, _a, _m = _robots.group_for(
             "User-agent: ClaudeBot\nDisallow: /a\n\n"
             "User-agent: ClaudeBot\nDisallow: /b\n")
         self.assertEqual((token, dis), ("claudebot", ["/a", "/b"]))
@@ -610,3 +633,74 @@ class RobotsRetry(unittest.TestCase):
                 got = _robots._fetch("x.example")
                 self.assertEqual(len(self.calls), 1)
                 self.assertEqual(got["attempts"], 1)
+
+
+class RobotsThreeFormulations(unittest.TestCase):
+    """Named and refused, named and permitted, not named. Issue #117.
+
+    **The middle one had no words at all** — `reason` stayed `None`, which is
+    what a file that says nothing about us also produces. They are different
+    facts and the sentence has to say which one this is.
+    """
+
+    def setUp(self):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        self._real = _robots._fetch
+
+    def tearDown(self):
+        _robots._fetch = self._real
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def _body(self, body):
+        _robots._fetch = lambda host: {"state": "read", "body": body,
+                                       "final": host, "attempts": 1}
+
+    def test_named_and_permitted_says_so_and_says_why_star_does_not_bind(self):
+        # taleez.com's shape: `*` refuses a dozen paths, our token is granted
+        # everything by name.
+        self._body("User-agent: *\nDisallow: /api/\nDisallow: /u/\n\n"
+                   "User-agent: ClaudeBot\nAllow: /\n")
+        v = _robots.verdict("taleez.com")
+        self.assertIs(v["sweep"], True)
+        self.assertIn("names this project and permits it", v["reason"])
+        self.assertIn("do not bind us", v["reason"])
+
+    def test_named_and_refused_says_the_refusal_is_aimed_at_us(self):
+        self._body("User-agent: *\nAllow: /\n\n"
+                   "User-agent: ClaudeBot\nDisallow: /\n")
+        v = _robots.verdict("nea.gov.kh")
+        self.assertIs(v["sweep"], False)
+        self.assertIn("names this project", v["reason"])
+
+    def test_not_named_says_the_policy_is_general(self):
+        self._body("User-agent: *\nDisallow: /\n")
+        v = _robots.verdict("plain.example")
+        self.assertIs(v["sweep"], False)
+        self.assertIn("evenly", v["reason"])
+        self.assertEqual(v["groups"], [])
+
+    def test_records_that_disagree_are_reported_not_smoothed_over(self):
+        self._body("User-agent: ClaudeBot\nDisallow: /\n\n"
+                   "User-agent: Claude-SearchBot\nAllow: /\n")
+        v = _robots.verdict("www.linkedin.com")
+        self.assertIs(v["sweep"], False)
+        self.assertTrue(v["group_conflict"])
+        self.assertIn("does not answer them alike", v["reason"])
+
+    def test_records_that_agree_say_so_without_alarm(self):
+        self._body("User-agent: ClaudeBot\nAllow: /\n\n"
+                   "User-agent: Claude-Web\nAllow: /\n")
+        v = _robots.verdict("taleez.com")
+        self.assertFalse(v["group_conflict"])
+        self.assertIn("says the same thing to each", v["reason"])
+
+    def test_a_path_with_no_matching_rule_names_the_group_it_checked(self):
+        self._body("User-agent: *\nDisallow: /api/\n\n"
+                   "User-agent: ClaudeBot\nAllow: /\n")
+        a = _robots.allowed("taleez.com", "/api/x")
+        # Correct per RFC 9309 — a record naming us replaces `*` — and the
+        # reason has to say that, because it looks wrong at a glance.
+        self.assertIs(a["allowed"], True)
+        self.assertIn("names this project", a["reason"])

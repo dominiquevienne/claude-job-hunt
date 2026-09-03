@@ -414,6 +414,28 @@ needed. Exit **8** is the unknown, distinct from **7** because a host that
 could not be reached has not refused anything, and reporting it as a refusal
 puts words in an operator's mouth.
 
+**Every record that names us binds us, not the longest-named one.** Measured
+across 70 hosts, 2026-09-03: three name a token of this project, and
+`www.linkedin.com` names **five** and does not answer them alike — `ClaudeBot`,
+`Claude-Web`, `Claude-User` and `anthropic-ai` all get `Disallow: /`, while
+`Claude-SearchBot` gets a path list and no blanket refusal. The selector took
+the longest token, so it picked **the one permissive record out of five**, and
+the module answered `sweep: True` on a host that closes itself to this project
+by name four times over. **A test had pinned that rule.** RFC 9309 assumes one
+product token per crawler; this project answers to six, so no record is
+discarded: disallows are unioned and an `Allow` survives only where every
+matching record grants it. `groups` lists them and `group_conflict` says when
+they disagreed. Issue #117.
+
+**Three formulations, not one.** *Named and refused* — the refusal is aimed at
+this project. *Named and permitted* — `taleez.com` writes `User-agent:
+ClaudeBot / Allow: /` under a `*` group that refuses thirteen paths, and that
+is **consent written down, not the absence of a refusal**; the verdict now
+says so, and says why the `*` refusals do not apply, before someone later
+"corrects" an adapter into obeying them. *Not named* — the general policy.
+The middle one had `reason: None`, which is also what a file saying nothing
+about us produces.
+
 **And a 403 is not an absence.** `barbadosjobregister.gov.bb` answers its
 robots.txt with 403 and thirty bytes, "Request is Blocked by Firewall". That
 used to be filed as `unreadable`, whose reason reads *absence of a file is not
