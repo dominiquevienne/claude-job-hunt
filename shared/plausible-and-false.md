@@ -224,6 +224,63 @@ is not diagnostics — it is half the result**, and `successfactors.py`,
 legitimately want to follow. The rule is to notice when yours is not one of
 them.)*
 
+## A tooling defect has a direction, and it points at "there is nothing"
+
+**This is a claim about our own scripts, not about boards, and it changes what
+deserves a second look.**
+
+**A defect that breaks a request produces an emptiness. A defect that breaks a
+count produces a zero. A defect that breaks a read produces an absence. There
+is almost no bug that fabricates content.** So when the tooling is wrong, it is
+wrong in one direction — and that direction is *giving up*.
+
+**A plugin whose tooling decays does not get noisy. It goes quiet, and it looks
+like it did a good job.**
+
+> **A tooling error almost always errs towards "there is nothing", so an empty
+> result deserves a second reading that a full result does not.**
+
+**Measured on this repository's own scripts, 2026-09-03**, each verified rather
+than recalled:
+
+| The defect | What it produced |
+| :-- | :-- |
+| Five adapters read `<loc>` with a pattern blind to CDATA | **0 URLs** from a valid 2.37 MB sitemap |
+| `taleez.py sitemap` read an argument its parser never defined | the command **crashed before the network** — it had never worked |
+| A slug pattern of `[a-z0-9-]+` on Bumeran | **1 160 of 5 771 ads dropped, 20% of a board**, in silence |
+| A facet pattern demanding a city segment | **1 260 of 3 953 read — 32%** — while reporting the rest as "forms not measured" |
+| `_robots.py` treating an absent `Content-Type` as a wrong one | a valid `robots.txt` classed **unreadable without being looked at** |
+| `employers.py` reading the file's own preamble as employers | would report a company's **absence of decisions as fact** |
+| `--compressed` on a host with broken chunked framing | `200`, **0 bytes**, or a network error depending on what you recorded |
+
+**And the counter-example, because "almost always" is the honest form.** The
+undated-fact check in `employers.py` erred the *other* way: it reported four
+undated facts in a file where two carried their date on a wrapped line. **That
+one cries wolf, and its failure mode is being switched off** — after which the
+real ones go unseen. So the exception ends in the same place as the rule.
+
+### What follows, and it is a habit rather than a check
+
+**Nine of eleven tooling defects found in three days were caught because a
+number looked odd — not one by a control.** Twelve zeros in a row. Two byte
+counts identical to the byte. One `<loc>` in 7 864 bytes. 231 KB of HTML with
+99 characters of text. **Every control was working. They were correctly
+validating the wrong thing.**
+
+So:
+
+1. **A zero is a claim about your tooling before it is a claim about the
+   world.** Re-derive it a second way before writing it down.
+2. **Report the remainder.** *n of m*, always — a pattern that reads 32% while
+   saying *"forms not measured"* is a true sentence doing the work of a false
+   one.
+3. **Compare two numbers that must agree.** `<loc>` against `<url>`; bytes
+   against visible characters; ads found against the count the board states.
+   **A single number cannot disagree with itself**, which is why every one of
+   these was caught by a pair.
+4. **A full result needs none of this.** The asymmetry is the point: the effort
+   goes where the errors are.
+
 ## Repetition corroborates only if the measurements are independent
 
 **A pattern published on five country pages and in a consolidated table was

@@ -97,6 +97,16 @@ to read an absent file as a refusal. This is that rule applied one layer down â€
 
 ### A `robots.txt` that is not `text/plain` is not a `robots.txt`
 
+**And an absent header is not a declaration of HTML.** The guard was written as
+*"not `text/plain`"* against a default of `""`, so a server that declares
+nothing had its file rejected without being looked at: `hukoomi.gov.qa` serves
+a valid **468-byte** `robots.txt` with **no `Content-Type` at all**, and the
+plugin called it unreadable. **An absence of metadata is not negative
+metadata** â€” the same asymmetry as *an absent `robots.txt` is not a refusal*,
+one level further down. When the type is missing, **the first line decides and
+the size corroborates**: a rules file opens on a directive and runs to a few
+hundred bytes; the impostors open on `<` and run to 126 015. Issue #96.
+
 One check, and it catches three separate traps already in this repository:
 
 | Fetched | Status | `Content-Type` | Bytes | What it really was |

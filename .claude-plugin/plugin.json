@@ -1,6 +1,6 @@
 {
   "name": "claude-job-hunt",
-  "version": "1.134.0",
+  "version": "1.135.0",
   "description": "Scan job boards for ads that match your real profile, score them honestly, produce tailored ATS-compliant resumes and cover letters, and report what you actually sent — with a shared pipeline ledger so nothing is proposed twice.",
   "author": {
     "name": "Dominique Vienne",

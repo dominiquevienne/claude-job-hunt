@@ -435,6 +435,23 @@ check the field against something it should correlate with, as
 `oposiciones.md` does by comparing `estadoPlazoF` with the closing date it
 claims to describe.
 
+## An empty result deserves a second reading. A full one does not
+
+**Everything above is about a board lying to you. This is about your own
+scripts**, and it has a direction: a defect that breaks a request makes an
+emptiness, one that breaks a count makes a zero, one that breaks a read makes
+an absence. **There is almost no bug that fabricates content.**
+
+So **a plugin whose tooling decays does not become noisy — it goes quiet, and
+it looks like it did a good job.** Which is this file's own failure, arriving
+through the tooling instead of through the site.
+
+**Before writing down that something is empty, gone, or not found: re-derive it
+a second way.** `shared/plausible-and-false.md`, *A tooling defect has a
+direction*, holds the seven measured cases and the four habits — the strongest
+being: **compare two numbers that must agree**, because a single number cannot
+disagree with itself.
+
 ## Errors
 
 - **Never swallow a tool error.** If a call fails, say which one and what it

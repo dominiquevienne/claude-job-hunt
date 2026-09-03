@@ -39,16 +39,54 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 _CACHE = {}
 
 
+# The directives a rules file is made of. One of these, at the start of a
+# line, is what a `robots.txt` looks like from the inside.
+_DIRECTIVE = re.compile(
+    r"(?im)^\s*(user-agent|disallow|allow|sitemap|crawl-delay|host|"
+    r"content-signal)\s*:")
+
+
+def _looks_like_rules(body):
+    """Decide from the body when the server declined to declare a type.
+
+    **The first line settles it and the size corroborates.** Real files
+    measured here run 58 to a few hundred bytes and open on a directive; the
+    impostors open on `<` and run to 126 015. Markup is checked first because
+    a login page can perfectly well contain the word `sitemap`.
+    """
+    head = (body or "")[:400].lstrip().lower()
+    if head.startswith(("<!doctype", "<html", "<?xml", "<")):
+        return False
+    return bool(_DIRECTIVE.search(body or ""))
+
+
 def _fetch(host):
     url = f"https://{host}/robots.txt"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         with urllib.request.urlopen(req, timeout=20) as r:
-            ctype = r.headers.get("Content-Type", "")
+            ctype = r.headers.get("Content-Type")
             body = r.read().decode("utf-8", "replace")
             # A robots.txt that is not text/plain is not a robots.txt — see
             # shared/robots-policy.md. 126 KB of sign-in HTML answered 200 on
             # my.indeed.com, and an Angular shell did the same on kemnaker.
+            #
+            # **But an absent header is not a declaration of HTML.** The
+            # original test was `"text/plain" not in ctype` with `ctype`
+            # defaulting to `""`, so a server that declares nothing was
+            # rejected without its file being looked at:
+            # `hukoomi.gov.qa` serves a valid 468-byte robots.txt with **no
+            # `Content-Type` at all** and the plugin called it unreadable.
+            # Same asymmetry this module already applies one level up — an
+            # absent robots.txt is not a refusal — pushed one level down:
+            # **an absence of metadata is not negative metadata.** Issue #96.
+            if ctype is None:
+                if _looks_like_rules(body):
+                    return {"state": "read", "body": body,
+                            "why": "no Content-Type; the body is a rules file"}
+                return {"state": "unreadable",
+                        "why": f"no Content-Type, and the {len(body)} bytes "
+                               f"are not a rules file either"}
             if "text/plain" not in ctype:
                 return {"state": "unreadable",
                         "why": f"Content-Type {ctype!r}, {len(body)} bytes — "
