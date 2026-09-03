@@ -2,6 +2,7 @@
 
 <!-- verified: never — see below -->
 
+<!-- hosts: softy.pro -->
 **This file is deliberately `UNDECLARED` in `bin/adapter-age.sh`, and that is a
 position rather than an oversight.** Softy's `robots.txt` bans every AI agent,
 naming Anthropic's twice, and this repository obeys it — so **there is no

@@ -1,5 +1,7 @@
 # Board adapter — infoempleo.com (Spain)
 
+<!-- hosts: www.infoempleo.com -->
+
 **7 621 active ads.** The third Spanish adapter here and the first that is not
 a public register: `empleate.md` and `oposiciones.md` are both the SEPE's, and
 this one is a private generalist board covering the whole country.

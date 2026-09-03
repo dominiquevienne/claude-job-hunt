@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: taleez.com -->
 ## The directory this file said did not exist
 
 **Corrected 2026-09-02.** This file said there was no tenant directory and

@@ -1,5 +1,7 @@
 # Board adapter — Pinpoint (ATS)
 
+<!-- hosts: pinpointhq.com -->
+
 One employer at a time, by tenant. Pinpoint is a UK-origin ATS, and **the fifth
 most common provider in a 360-card HiringCafe sample** — 24 ads, ahead of ADP,
 Taleo, UltiPro and Avature. Each tenant publishes its board as public JSON.

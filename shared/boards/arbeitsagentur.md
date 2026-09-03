@@ -1,5 +1,7 @@
 # Board adapter — Bundesagentur für Arbeit (Germany)
 
+<!-- hosts: jobsuche.api.bund.dev, rest.arbeitsagentur.de -->
+
 **994 348 live ads.** Germany's federal employment agency, through the API the
 German state documents at `jobsuche.api.bund.dev`.
 

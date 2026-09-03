@@ -1,5 +1,7 @@
 # Board adapter — JobsIreland (Ireland)
 
+<!-- hosts: jobsireland.ie -->
+
 **4 934 live ads** from Ireland's public employment service, run by the
 Department of Social Protection. The **fifth national public employment
 service** here after `job-room.md` (CH), `france-travail.md` (FR),

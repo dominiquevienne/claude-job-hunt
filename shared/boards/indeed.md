@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: my.indeed.com -->
 **Re-tested 2026-09-02: the browser requirement holds.** `ch.indeed.com/robots.txt` answers 200 in `text/plain` (13 097 bytes), so the rules are readable — but `ch.indeed.com/jobs?q=…` answers **HTTP 403** to a plain client. The listing needs the user's own browser, exactly as this file says.
 
 Country-scoped: `ch.indeed.com`, `fr.indeed.com`, `www.indeed.com`… The search

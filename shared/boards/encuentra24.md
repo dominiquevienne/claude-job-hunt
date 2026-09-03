@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 
+<!-- hosts: www.encuentra24.com -->
 Central American and Caribbean classifieds with a real jobs section. **Not a
 country per domain: one host with a country-and-language prefix** —
 `/panama-es/`, `/costa-rica-en/` — so there is no host enumeration to do.

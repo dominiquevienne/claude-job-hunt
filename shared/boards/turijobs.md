@@ -1,5 +1,7 @@
 # Board adapter — turijobs.com (Spain, hospitality)
 
+<!-- hosts: www.turijobs.com -->
+
 **2 863 active ads** in tourism and hospitality — hotels, kitchens, front
 desk, spa, housekeeping. The fourth Spanish adapter here and **the first
 sector board**: `empleate.md` and `oposiciones.md` are the SEPE's registers,

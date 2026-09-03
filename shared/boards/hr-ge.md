@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 
+<!-- hosts: api.p.hr.ge -->
 **No key, no cookie, no browser.** Every brand's `robots.txt` is **109 bytes**,
 `Allow: /`, names no AI agent, and declares a sitemap **on the platform's API
 host**:

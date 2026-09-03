@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: api.job-room.ch, www.job-room.ch -->
 **Re-verified 2026-09-02**: a keyword search returned 50 cards on the documented route.
 
 Switzerland's **public employment service portal**, run by SECO. It carries the

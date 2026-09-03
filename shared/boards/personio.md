@@ -1,5 +1,7 @@
 # Board adapter — Personio (DACH ATS)
 
+<!-- hosts: jobs.personio.de -->
+
 Personio is the applicant-tracking system most German, Austrian and **Swiss**
 SMEs run their careers page on. Each tenant publishes a **documented XML feed**
 of its open positions, with the full description, and it needs nothing.

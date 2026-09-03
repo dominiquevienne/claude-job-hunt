@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: hiringcafe.com -->
 A **meta-board**: HiringCafe crawls employer career pages across some forty ATS
 platforms and republishes them under one search. Worldwide — every country
 tested returned local ads (see *Coverage*, below).

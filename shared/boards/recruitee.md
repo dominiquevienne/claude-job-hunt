@@ -1,5 +1,7 @@
 # Board adapter — Recruitee (European ATS)
 
+<!-- hosts: jobs.recruitee.com -->
+
 One employer at a time, by tenant. Recruitee is a Dutch-origin ATS, now part of
 Tellent, used across the Netherlands, Belgium, Germany, Poland and beyond. Each
 tenant publishes its **whole board as public JSON**.

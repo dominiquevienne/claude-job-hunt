@@ -1,5 +1,7 @@
 # Board adapter — join.com
 
+<!-- hosts: join.com -->
+
 One employer at a time, by tenant. **No browser, no account, no key.**
 
 JOIN (JOIN Solutions AG, Pfäffikon SZ) is the ATS of European SMB hiring —

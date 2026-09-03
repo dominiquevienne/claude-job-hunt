@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: apply.workable.com -->
 **Re-verified 2026-09-02.** `storyteq` still answers with live postings on the
 documented route. Three other tenants — `rasa`, `contentsquare`, `sylvera` —
 answered **`0 of 0 postings kept`**, which is this adapter's honest empty: the

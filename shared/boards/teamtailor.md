@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: teamtailor.com -->
 **Re-verified 2026-09-02 against three tenants for the fetch, and against
 nine for the `robots.txt` question — see *There is no platform policy here*** — `investengine`, `polestar`
 and `oatly` — all three answering with live postings on the documented route.

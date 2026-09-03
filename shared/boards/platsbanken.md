@@ -1,5 +1,7 @@
 # Board adapter — Platsbanken (Sweden)
 
+<!-- hosts: arbetsformedlingen.se, jobsearch.api.jobtechdev.se -->
+
 **39 865 live ads offering 67 109 posts**, from Arbetsförmedlingen — Sweden's
 public employment service — through the JobTech Dev open API. The **sixth
 national public employment service** here after `job-room.md` (CH),

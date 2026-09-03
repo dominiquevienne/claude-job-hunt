@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: umantis.com -->
 **No tenant directory was found. Searched 2026-09-02:**
 
 | Looked at | Answer |

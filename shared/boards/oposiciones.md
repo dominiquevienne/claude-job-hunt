@@ -1,5 +1,7 @@
 # Board adapter — Empléate, public sector (oposiciones)
 
+<!-- hosts: empleate.gob.es -->
+
 **1 558 live announcements**, ~3 438 posts, from the second Solr index behind
 `empleate.gob.es`. Spanish public-sector recruitment: *oposiciones*, *bolsas de
 trabajo*, *convocatorias* — the competitive examinations and standing lists

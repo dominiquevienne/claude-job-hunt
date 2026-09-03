@@ -329,6 +329,25 @@ and it binds**, as does a rate limit, a login wall, and any `robots.txt`
 refusal — the position changes how an ambiguous clause is read, it never
 creates permission a board withheld. Issues #48 and #81.
 
+**Declare the hosts your card is about**, on a line beside `verified:`:
+
+```
+<!-- hosts: www.example.com, api.example.com -->
+```
+
+`bin/host-drift.py` reads it and reports **the host that answered** against the
+one declared. **A card without the line is reported UNDECLARED — not skipped,
+and not guessed at**: `adapter-age.sh` already carries the reason a tool must
+read a field and not prose, and the first draft of this one repeated the
+mistake by pulling a hostname out of a regex literal.
+
+**It found four on its first run**, three of them acquisitions nobody had
+recorded — `jobs.recruitee.com` answering as `careers.tellent.com`,
+`talent-soft.com` as `www.cegid.com`, and `entreprise.francetravail.fr` as
+`pro.francetravail.fr`. **A card describing the access policy of a host that
+no longer serves anything describes nothing**; the rules that apply are the
+receiving host's.
+
 **Ask `skills/job-scan/scripts/_robots.py` before you fetch, and ask it about
 the path — `verdict()` answers *is this host closed in one block*, and
 `allowed(host, path)` answers the question an adapter actually has.** They are

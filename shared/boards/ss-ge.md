@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 
+<!-- hosts: ss.ge -->
 Georgia's largest classifieds site. Its jobs section holds **1 705 live
 advertisements**, and this adapter finds every one of them **without fetching a
 single advertisement page.**

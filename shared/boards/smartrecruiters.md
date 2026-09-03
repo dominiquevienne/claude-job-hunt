@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: api.smartrecruiters.com -->
 SmartRecruiters is an ATS, not a board. Each employer has its own board under a
 **tenant token**, and its postings are public JSON — the same feed that renders
 that employer's careers page. No key, no cookie, no browser.

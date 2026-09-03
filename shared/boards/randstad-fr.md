@@ -1,5 +1,7 @@
 # Board adapter — randstad.fr
 
+<!-- hosts: www.randstad.fr -->
+
 **6 755 ads** — the second French interim network here, after `adecco.md`. Half
 its sibling's volume, and **better data on every axis that matters**.
 

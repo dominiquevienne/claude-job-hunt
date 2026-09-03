@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: api.lever.co -->
 **Re-verified 2026-09-02**: an unknown tenant still answers **404 on both hosts**, US and EU.
 
 Lever is an ATS, not a board. Each employer has its own postings feed under a

@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: api.francetravail.io, candidat.francetravail.fr, entreprise.francetravail.fr -->
 France's **public employment service**, ex-Pôle emploi. It publishes its whole
 vacancy database through a free REST API, and it is the largest single source of
 French ads there is. Employers post to it directly, and a dozen partner boards

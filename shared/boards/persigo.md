@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
+<!-- hosts: www.persigo.ch -->
 A Swiss staffing **agency** board, like `michaelpage.md` and `fachkraft.md`:
 `hiringOrganization` is *Persigo AG* on every ad and **the client employer is
 never named**.
