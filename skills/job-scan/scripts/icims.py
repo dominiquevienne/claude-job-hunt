@@ -108,12 +108,18 @@ def check_host(host, sibling=None):
             f"This adapter does not resolve to another host to get around a "
             f"refusal. If this employer publishes the same board on a domain "
             f"of its own that permits reading, that is the person's call to "
-            f"make with that URL, not this script's to make silently.", 7)
+            f"make with that URL, not this script's to make silently.",
+                8 if v["sweep"] is None else 7)
     if sibling:
         sv = robots_verdict(sibling)
         if not sv["sweep"]:
+            # **Two different things are falsy here**, and saying "refuses"
+            # for both would put words in an operator's mouth: a host whose
+            # rules could not be read has not refused anything. Issue #118.
+            what = ("could not be read"
+                    if sv["sweep"] is None else "refuses")
             note(f"the host you gave ({host}) permits reading, and this "
-                 f"employer's other host ({sibling}) refuses: {sv['reason']} "
+                 f"employer's other host ({sibling}) {what}: {sv['reason']} "
                  f"Both serve the same board. Reading {host} obeys the origin "
                  f"you asked for — robots.txt is per origin — but you are "
                  f"being told, because choosing the host that says yes is not "

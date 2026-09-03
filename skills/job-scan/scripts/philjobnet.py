@@ -204,7 +204,8 @@ def cards(html):
 def cmd_search(a):
     v = robots_verdict("philjobnet.gov.ph")
     if not v["sweep"]:
-        die(f"philjobnet.gov.ph: {v['reason']}", 7)
+        die(f"philjobnet.gov.ph: {v['reason']}",
+            8 if v["sweep"] is None else 7)
     if v["state"] != "read":
         note(f"robots.txt: {v['reason']} — absent is not a refusal, so the "
              f"sweep proceeds at a human pace.")
@@ -259,7 +260,8 @@ def cmd_search(a):
 def cmd_ad(a):
     v = robots_verdict("philjobnet.gov.ph")
     if not v["sweep"]:
-        die(f"philjobnet.gov.ph: {v['reason']}", 7)
+        die(f"philjobnet.gov.ph: {v['reason']}",
+            8 if v["sweep"] is None else 7)
     s = Session()
     code, html = s.get(a.url)
     if code != 200:

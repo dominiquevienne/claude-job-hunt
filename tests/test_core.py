@@ -489,3 +489,124 @@ class RenderPlain(unittest.TestCase):
     def test_wrap_never_exceeds_the_width_it_was_given(self):
         for line in rp.wrap("alpha beta gamma delta epsilon zeta", 12):
             self.assertLessEqual(len(line), 12)
+
+
+class RobotsThirdState(unittest.TestCase):
+    """A failure to read must never come back as a permission. Issue #118.
+
+    **This is the case the module got wrong for its whole life**, so every
+    branch of it is pinned here: `nea.gov.kh` closes everything to `ClaudeBot`
+    by name, and a timed-out request used to return `allowed: True`.
+    """
+
+    def setUp(self):
+        self._real = _robots._fetch
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def tearDown(self):
+        _robots._fetch = self._real
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def _serve(self, result):
+        _robots._fetch = lambda host: dict(result, final=host, attempts=1)
+
+    def test_a_failed_fetch_is_never_a_permission(self):
+        self._serve({"state": "unreachable", "why": "timed out"})
+        v = _robots.verdict("nea.gov.kh")
+        self.assertIsNone(v["sweep"])
+        self.assertFalse(v["certain"])
+        self.assertIsNone(_robots.allowed("nea.gov.kh", "/jobs")["allowed"])
+
+    def test_the_unknown_is_falsy_so_a_naive_caller_fails_closed(self):
+        """**The whole design rests on this.** Thirty-six adapters write
+        `if not v["sweep"]: die(...)` and none of them had heard of a third
+        state; `None` makes both naive readings the safe one."""
+        self._serve({"state": "unreachable", "why": "timed out"})
+        v = _robots.verdict("example.invalid")
+        self.assertFalse(v["sweep"])          # `if not v["sweep"]` refuses
+        self.assertFalse(bool(v["sweep"]))    # `if v["sweep"]` does not fetch
+
+    def test_a_403_is_a_refusal_not_an_absence(self):
+        self._serve({"state": "refused",
+                     "why": "HTTP 403 — the host refuses to serve its rules "
+                            "file"})
+        v = _robots.verdict("barbadosjobregister.gov.bb")
+        self.assertIs(v["sweep"], False)
+        self.assertIn("the reply was no", v["reason"])
+        self.assertIs(
+            _robots.allowed("barbadosjobregister.gov.bb", "/x")["allowed"],
+            False)
+
+    def test_a_404_is_still_a_permission_because_it_is_knowledge(self):
+        """**The one silence that really is one.** Confusing the two
+        directions is how this defect started: the fix must not invent a
+        refusal out of a host that published nothing."""
+        self._serve({"state": "absent", "why": "HTTP 404"})
+        v = _robots.verdict("philjobnet.gov.ph")
+        self.assertIs(v["sweep"], True)
+        self.assertTrue(v["certain"])
+        self.assertIs(_robots.allowed("philjobnet.gov.ph", "/x")["allowed"],
+                      True)
+
+    def test_a_body_that_is_not_a_rules_file_permits_but_is_not_certain(self):
+        self._serve({"state": "unreadable", "why": "Content-Type 'text/html'"})
+        v = _robots.verdict("my.indeed.com")
+        self.assertIs(v["sweep"], True)
+        self.assertFalse(v["certain"])
+
+    def test_an_unknown_is_not_cached_a_transient_must_not_poison_a_run(self):
+        self._serve({"state": "unreachable", "why": "timed out"})
+        _robots.verdict("flaky.example")
+        self.assertNotIn("flaky.example", _robots._CACHE)
+        self._serve({"state": "read", "body": "User-agent: *\nAllow: /\n"})
+        self.assertIs(_robots.verdict("flaky.example")["sweep"], True)
+
+    def test_a_named_refusal_still_wins_when_the_file_arrives(self):
+        """`nea.gov.kh`'s actual file, trimmed. The verdict it should always
+        have given, and does whenever the fetch succeeds."""
+        self._serve({"state": "read", "body":
+                     "User-agent: *\nAllow: /\n\n"
+                     "User-agent: ClaudeBot\nDisallow: /\n"})
+        v = _robots.verdict("nea.gov.kh")
+        self.assertIs(v["sweep"], False)
+        self.assertEqual(v["group"], "claudebot")
+
+
+class RobotsRetry(unittest.TestCase):
+    """**Only an unknown is worth asking twice.** A slow host used to be a
+    permissive host; a host that has already answered is not asked again."""
+
+    def setUp(self):
+        self._real = _robots._fetch_once
+        # The backoff is real seconds on a real sweep and nothing here is
+        # testing the clock; a suite that sleeps five seconds gets run less.
+        self._sleep = _robots.time.sleep
+        _robots.time.sleep = lambda _s: None
+        self.calls = []
+
+    def tearDown(self):
+        _robots._fetch_once = self._real
+        _robots.time.sleep = self._sleep
+
+    def _answer(self, state):
+        def fake(url, host, timeout):
+            self.calls.append(timeout)
+            return {"state": state, "why": "x", "final": host}
+        _robots._fetch_once = fake
+
+    def test_an_unreachable_host_is_retried_with_widening_timeouts(self):
+        self._answer("unreachable")
+        got = _robots._fetch("slow.example")
+        self.assertEqual(self.calls, list(_robots._TIMEOUTS))
+        self.assertEqual(got["attempts"], len(_robots._TIMEOUTS))
+
+    def test_an_answer_is_not_repeated(self):
+        for state in ("read", "absent", "refused", "unreadable"):
+            with self.subTest(state=state):
+                self.calls = []
+                self._answer(state)
+                got = _robots._fetch("x.example")
+                self.assertEqual(len(self.calls), 1)
+                self.assertEqual(got["attempts"], 1)

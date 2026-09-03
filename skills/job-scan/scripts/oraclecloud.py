@@ -346,7 +346,8 @@ def cmd_search(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On Oracle Cloud the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's. Issue #73.", 7)
+            f"answer and not the platform's. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     emit(a, resolve_site(a), False)
 
 
@@ -354,7 +355,8 @@ def cmd_read(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On Oracle Cloud the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     emit(a, resolve_site(a), True)
 
 

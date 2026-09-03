@@ -396,7 +396,29 @@ A `_robots_gate(url, tag)` sits inside the adapter's own fetch function, so
 **every request is covered rather than the first one**, and it asks
 `allowed(host, path)` — per tenant *and* per path, because a careers site that
 refuses its ad path while leaving its root open passes a host-level check and
-refuses every advertisement. A refusal exits **7** with the module's words.
+refuses every advertisement. A refusal exits **7** with the module's words,
+and **a host whose rules could not be read exits 8** — see below.
+
+**`sweep` and `allowed` have three values, not two.** `True`, `False`, and
+`None` for *the rules could not be read*. **A failure to fetch used to come
+back as a permission**: `nea.gov.kh` serves Cloudflare's managed block with
+`User-agent: ClaudeBot / Disallow: /` — it closes everything to this project
+by name — and a timed-out request produced `allowed: True` with the reason
+*no rules were read*. Measured on the same host within the hour: when the
+fetch worked, `allowed: False`; when it timed out, `allowed: True`. **The
+permission was a function of the network, not of the policy.** Issue #118.
+
+`None` is falsy, so `if not v["sweep"]` and `if v["sweep"]` both fail closed;
+**the naive reading is the safe one**, which is what thirty-six call sites
+needed. Exit **8** is the unknown, distinct from **7** because a host that
+could not be reached has not refused anything, and reporting it as a refusal
+puts words in an operator's mouth.
+
+**And a 403 is not an absence.** `barbadosjobregister.gov.bb` answers its
+robots.txt with 403 and thirty bytes, "Request is Blocked by Firewall". That
+used to be filed as `unreadable`, whose reason reads *absence of a file is not
+a refusal* — true of a 404 and false here: **a server that says blocked has
+replied, and it replied no.** It is now its own state and exits 7.
 
 Measured after wiring: none of the seven platforms refuses today, and one
 reports a cross-host redirect — `jobs.recruitee.com` answers from

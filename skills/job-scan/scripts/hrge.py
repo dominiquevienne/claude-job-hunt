@@ -87,7 +87,8 @@ API = "https://api.p.hr.ge/public-portal/tenant/{tenant}/api/v3"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
-EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL, EXIT_REFUSED = 2, 3, 6, 7
+EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
+EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 
 # tenant → (host, announcements measured 2026-09-03). Dated measurements, not
 # properties: `tenants --check` re-counts them.
@@ -152,7 +153,8 @@ def tenant_of(n):
 def check_robots(host):
     v = robots_verdict(host)
     if not v["sweep"]:
-        die(f"{host}: {v['reason']}", EXIT_REFUSED)
+        die(f"{host}: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     return v
 
 

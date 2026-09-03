@@ -76,7 +76,7 @@ from _zero import zero_note
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
-EXIT_BROKEN, EXIT_PARTIAL, EXIT_REFUSED = 2, 6, 7
+EXIT_BROKEN, EXIT_PARTIAL, EXIT_REFUSED, EXIT_UNKNOWN = 2, 6, 7, 8
 
 # host → (country, ads measured 2026-09-03, sitemap tag).
 #
@@ -200,7 +200,8 @@ def get(url, timeout=120):
 def check_robots(host):
     v = robots_verdict(host)
     if not v["sweep"]:
-        die(f"{host}: {v['reason']}", EXIT_REFUSED)
+        die(f"{host}: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     return v
 
 

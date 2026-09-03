@@ -27,9 +27,51 @@ own hostname, so each tenant can answer differently, and two of six iCIMS
 hosts sampled served `Disallow: /` outright.
 
 Use `verdict(host)` and act on it. It fetches once per host per process.
+
+**`sweep` AND `allowed` HAVE THREE VALUES, NOT TWO** — `True`, `False` and
+`None` for *the rules could not be read*. That is issue #118, and it was the
+worst defect this module has had:
+
+    nea.gov.kh                  allowed=True   "no rules were read"
+    barbadosjobregister.gov.bb  allowed=True   "no rules were read"
+
+`nea.gov.kh` serves Cloudflare's managed block with `User-agent: ClaudeBot /
+Disallow: /` — **it closes everything to this project by name**. The module
+answered *yes* to it, not because it misread the file but **because it never
+got the file**: a timed-out request produced `state: unreadable`, and the
+reason said so honestly while the boolean said `True`.
+
+**Measured on the same host within the hour**: when the fetch succeeded,
+`allowed: False`, group `claudebot`. When it timed out, `allowed: True`.
+**The permission was a function of the network, not of the policy.**
+
+That is #72's pattern on the most sensitive object in the repository: *the
+value and its validity travel separately, and only the value crosses the
+function*. The value was "no rule matched"; the state was "I could not look";
+the caller read the boolean.
+
+**`None` is the fix and it is a small one, because `None` is falsy.** A caller
+that writes `if not v["sweep"]: refuse` fails closed, and so does one that
+writes `if v["sweep"]: fetch`. **Both naive readings become the safe one**,
+which is the only kind of default worth relying on across sixty adapters.
+
+The states a fetch can end in, and they are not interchangeable:
+
+    read         the rules are here
+    absent       404 — no file published. **Not a refusal**, and this is the
+                 one case where silence really is permission
+    refused      401/403/429/451 — **the host answered, and it said no.**
+                 `barbadosjobregister.gov.bb` returns 403 and thirty bytes of
+                 "Request is Blocked by Firewall". A server that says
+                 *blocked* has replied. Neither a permission nor an absence
+    unreachable  timeout, DNS, TLS, a persistent 5xx — **unknown**, and the
+                 only honest answer is that we do not know
+    unreadable   200 with something that is not a rules file
 """
 
+import random
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -76,9 +118,33 @@ def _fetch(host):
     wrong name. Issue #99.
     """
     url = f"https://{host}/robots.txt"
+    for attempt, timeout in enumerate(_TIMEOUTS, start=1):
+        got = _fetch_once(url, host, timeout)
+        got["attempts"] = attempt
+        # **Only an unknown is worth asking again.** `absent`, `refused` and
+        # `unreadable` are answers; repeating a question a host has already
+        # answered is not diligence, it is load.
+        if got["state"] != "unreachable" or attempt == len(_TIMEOUTS):
+            return got
+        # Spaced, and jittered so a sweep of many hosts does not retry in
+        # lockstep. A slow host used to be a permissive host (#118); it is now
+        # a host we wait for, and then decline to guess about.
+        time.sleep(_BACKOFF[attempt - 1] * (1 + random.random() * 0.3))
+    raise AssertionError("unreachable")
+
+
+# Three attempts, widening. **The point is not to defeat a firewall — it is
+# that a hiccup must not decide a consent question.** Worst case is about a
+# minute and a half, once per host per process, against a permission that
+# would otherwise be granted by a dropped packet.
+_TIMEOUTS = (15, 25, 40)
+_BACKOFF = (1.5, 4.0)
+
+
+def _fetch_once(url, host, timeout):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             final = urllib.parse.urlsplit(r.geturl()).netloc or host
             ctype = r.headers.get("Content-Type")
             body = r.read().decode("utf-8", "replace")
@@ -108,11 +174,21 @@ def _fetch(host):
                                f"not a rules file"}
             return {"state": "read", "body": body, "final": final}
     except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return {"state": "absent", "why": "404 — no robots.txt published"}
-        return {"state": "unreadable", "why": f"HTTP {e.code}"}
+        if e.code in (404, 410):
+            return {"state": "absent",
+                    "why": f"HTTP {e.code} — no robots.txt published"}
+        if e.code in (401, 403, 429, 451):
+            # **The host answered, and it answered no.** Measured on
+            # `barbadosjobregister.gov.bb`: 403 and thirty bytes, "Request is
+            # Blocked by Firewall". This used to be filed under `unreadable`,
+            # whose reason reads *absence of a file is not a refusal* — true
+            # of a 404 and false here. Issue #118.
+            return {"state": "refused", "why": f"HTTP {e.code} — the host "
+                                               f"refuses to serve its rules "
+                                               f"file"}
+        return {"state": "unreachable", "why": f"HTTP {e.code}"}
     except (urllib.error.URLError, OSError) as e:
-        return {"state": "unreadable", "why": str(e)}
+        return {"state": "unreachable", "why": str(e)}
 
 
 def siblings(host):
@@ -168,12 +244,17 @@ def siblings(host):
 def verdict(host):
     """What this host says about being read.
 
-    Returns a dict with `sweep` (bool), `reason`, and the raw signals. It is
-    deliberately conservative in one direction only: a blanket `Disallow: /`
-    for `*`, or a `Content-Signal` saying `ai-input=no`, returns
-    `sweep: False`. Everything else — including an unreadable or absent file —
-    returns True with the reason named, because an absent file is not a
-    refusal and this module must not invent one.
+    Returns a dict with **`sweep`, which is `True`, `False` or `None`**,
+    `reason`, and the raw signals. `None` means the rules could not be read —
+    see the module header and #118. It is falsy, so a caller that never heard
+    of the third state still fails closed.
+
+    Conservative in one direction only: a blanket `Disallow: /` for the group
+    that binds us, a `Content-Signal` saying `ai-input=no`, or **a host that
+    answered 403 to its own rules file**, returns `sweep: False`. An **absent**
+    file still returns True with the reason named — that is the one silence
+    that really is permission, and this module must not invent a refusal from
+    a 404.
 
     **That claim used to be false in the one place it mattered.** The
     `Content-Signal` was read with `re.search`, which stops at the first
@@ -210,12 +291,48 @@ def verdict(host):
         return result
 
     out = {"host": final, "requested_host": host, "sweep": True,
-           "reason": None, "content_signal": None, "state": got["state"]}
+           "reason": None, "content_signal": None, "state": got["state"],
+           "attempts": got.get("attempts"), "certain": True}
     if final != host:
         out["reason"] = (f"read from {final!r}, not {host!r} — the request "
                          f"was redirected, and the two hosts do not "
                          f"necessarily publish the same file.")
+    if got["state"] == "refused":
+        # **A reply, not a silence.** `barbadosjobregister.gov.bb` answers 403
+        # with "Request is Blocked by Firewall": a host that will not serve
+        # the document setting out what may be read has not granted anything,
+        # and a host blocking this request will block the next one. Issue #118.
+        out["sweep"] = False
+        out["reason"] = (
+            f"{got.get('why')}. **This is not an absent file and not an "
+            f"unreadable one — the host replied, and the reply was no.** "
+            f"Nothing here permits a sweep. Not swept.")
+        return _keep(out)
+    if got["state"] == "unreachable":
+        # **The third state, and the reason this module was rewritten.** Not
+        # a refusal and emphatically not a permission: `nea.gov.kh` closes
+        # everything to `ClaudeBot` by name and used to be swept whenever the
+        # request timed out. **A host we could not reach is a host we know
+        # nothing about.** Issue #118.
+        out["sweep"] = None
+        out["certain"] = False
+        out["reason"] = (
+            f"robots.txt could not be read after {got.get('attempts')} "
+            f"attempt(s): {got.get('why')}. **This is an unknown, not a "
+            f"permission and not a refusal.** A host that names this project "
+            f"and closes everything to it looks exactly like this from here "
+            f"— it did, on `nea.gov.kh`. Retry later, or read the file by "
+            f"hand and record what it says.")
+        # **Deliberately not cached.** Caching a transient failure poisons a
+        # whole run with an unknown that a second request would have resolved;
+        # the three attempts above have already paid for patience.
+        return out
     if got["state"] != "read":
+        # What is left is `absent` and `unreadable`, and they are not equally
+        # solid. **An absence is knowledge**: no file, no rules, nothing to
+        # respect. A body that is not a rules file is not — a login wall says
+        # nothing about consent, so the verdict stands but `certain` does not.
+        out["certain"] = got["state"] == "absent"
         out["reason"] = f"robots.txt {got['state']}: {got.get('why')}"
         return _keep(out)
 
@@ -408,19 +525,31 @@ def allowed(host, path):
     Returns a dict, never a bare bool, because *why* matters as much as *no*:
     `allowed`, `rule` (the directive that decided), `kind`, and the host that
     actually answered.
+
+    **`allowed` is `True`, `False` or `None`** — `None` when the rules could
+    not be read. It used to be `True` there, and the reason underneath said
+    *no rules were read*: honest about the state, wrong about the permission,
+    and it is the boolean that callers act on. Issue #118.
     """
     v = verdict(host)
     out = {"host": v["host"], "requested_host": v.get("requested_host"),
            "path": path, "allowed": True, "rule": None, "kind": None,
-           "group": v.get("group"), "sweep": v["sweep"]}
+           "group": v.get("group"), "sweep": v["sweep"],
+           "certain": v.get("certain", True)}
+    if v["sweep"] is None:
+        out.update(allowed=None, kind="unknown", certain=False)
+        out["reason"] = v["reason"]
+        return out
     if not v["sweep"]:
         out.update(allowed=False, kind="host-closed", rule="/")
         out["reason"] = v["reason"]
         return out
     if v["state"] != "read":
-        out["reason"] = (f"no rules were read ({v['state']}) — **absence of a "
-                         f"file is not a refusal**, and it is not a permission "
-                         f"either. Proceed at a human pace and say so.")
+        out["certain"] = False
+        out["reason"] = (f"no rules were read ({v['state']}) — **a 404 is an "
+                         f"absence, and an absence is not a refusal**. It is "
+                         f"not a permission either. Proceed at a human pace "
+                         f"and say so.")
         return out
     best_d = max(((_match_len(p, path), p) for p in v.get("disallow") or []),
                  default=(-1, None))
@@ -462,7 +591,12 @@ def _main():
                    help="also read the apex/www twin and compare — a "
                         "diagnostic for writing a board card, not for a sweep")
     a = p.parse_args()
-    print(json.dumps(verdict(a.host), ensure_ascii=False, indent=1))
+    v = verdict(a.host)
+    print(json.dumps(v, ensure_ascii=False, indent=1))
+    if v["sweep"] is None:
+        print("[robots] **the rules could not be read, so there is no "
+              "answer** — not a permission. Exit 8.", file=sys.stderr)
+        return 8
     if a.siblings:
         sib = siblings(a.host)
         print(json.dumps(sib, ensure_ascii=False, indent=1))
@@ -475,7 +609,7 @@ def _main():
             print("[robots] the two forms publish different files that agree "
                   "on the sweep. Record which host the adapter reads.",
                   file=sys.stderr)
-    return 0
+    return 0 if v["sweep"] else 7
 
 
 if __name__ == "__main__":

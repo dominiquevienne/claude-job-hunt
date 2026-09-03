@@ -219,7 +219,8 @@ def cmd_list(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On SuccessFactors the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's. Issue #73.", 7)
+            f"answer and not the platform's. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     locale = a.locale or discover_locale(a.host)
     if not locale:
         die(f"no --locale given and none could be read off {a.host}. Run "
@@ -345,7 +346,8 @@ def cmd_ad(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On SuccessFactors the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     locale = a.locale or discover_locale(a.host) or die(
         f"no locale for {a.host}; run `successfactors.py locale --host {a.host}`",
         code=4)
@@ -369,7 +371,8 @@ def cmd_check(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On SuccessFactors the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     locale = a.locale or discover_locale(a.host) or die(
         f"no locale for {a.host}", code=4)
     verdict, why, title, _ = verdict_for(a.host, locale, a.id)

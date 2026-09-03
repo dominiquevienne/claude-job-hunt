@@ -57,7 +57,7 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 # **Published in robots.txt, so it is the default and not a suggestion.**
 CRAWL_DELAY = 5.0
 
-EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED = 2, 3, 7
+EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
 
 AD_RE = re.compile(r"view=jobs&(?:amp;)?id=(\d+)")
 # `<title>` is `JOBS.GE - <role> - <employer>` in both languages, and it is the
@@ -122,7 +122,8 @@ def visible(html):
 def check_robots():
     v = robots_verdict("www.jobs.ge")
     if not v["sweep"]:
-        die(f"www.jobs.ge: {v['reason']}", EXIT_REFUSED)
+        die(f"www.jobs.ge: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     return v
 
 

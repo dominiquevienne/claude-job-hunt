@@ -101,7 +101,8 @@ def check_robots(host):
     """
     v = robots_verdict(host)
     if not v["sweep"]:
-        die(f"{host}: {v['reason']}", EXIT_REFUSED)
+        die(f"{host}: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     if v.get("requested_host") and v["host"] != v["requested_host"]:
         note(f"robots.txt for {v['requested_host']} was read from "
              f"{v['host']} — on this site that difference is the whole point.")

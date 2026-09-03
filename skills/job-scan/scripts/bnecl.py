@@ -61,7 +61,7 @@ SITEMAP = BASE + "/sitemap.xml"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
-EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED = 2, 3, 7
+EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
 
 AD_RE = re.compile(r"/oferta/(\d{4}-\d+)")
 

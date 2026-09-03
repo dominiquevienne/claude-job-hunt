@@ -417,7 +417,7 @@ def teamtailor_list(tenant, _want_content=True, _a=None):
     if not v["sweep"]:
         die(f"{tenant}.teamtailor.com: {v['reason']} Teamtailor lets each "
             f"customer set this, so it is this employer's answer and not the "
-            f"platform's.", code=7)
+            f"platform's.", code=8 if v["sweep"] is None else 7)
     # `<tenant>.teamtailor.com`, NOT the employer's own `careers.<company>.com`
     # vanity host, even though both answer this path. They do not serve the same
     # board: measured on one tenant the same day, the vanity domain was missing

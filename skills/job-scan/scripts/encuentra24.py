@@ -69,7 +69,8 @@ BASE = "https://www.encuentra24.com"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
 
-EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL, EXIT_REFUSED = 2, 3, 6, 7
+EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
+EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 
 # The offers category, by the prefix's language. **Not a translation pair** —
 # see the header; `jobs-job-offers` redirects to the site root.
@@ -184,7 +185,8 @@ def ids_on(html, prefix, cat):
 def cmd_prefixes(a):
     v = robots_verdict("www.encuentra24.com")
     if not v["sweep"]:
-        die(f"www.encuentra24.com: {v['reason']}", EXIT_REFUSED)
+        die(f"www.encuentra24.com: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     found, live = prefixes()
     print(json.dumps({"read_from_robots": live, "count": len(found),
                       "prefixes": found}, ensure_ascii=False, indent=2))
@@ -202,7 +204,8 @@ def cmd_prefixes(a):
 def cmd_search(a):
     v = robots_verdict("www.encuentra24.com")
     if not v["sweep"]:
-        die(f"www.encuentra24.com: {v['reason']}", EXIT_REFUSED)
+        die(f"www.encuentra24.com: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     prefix = a.prefix.strip().lower()
     known, _live = prefixes()
     if prefix not in known:
@@ -272,7 +275,8 @@ def cmd_search(a):
 def cmd_ad(a):
     v = robots_verdict("www.encuentra24.com")
     if not v["sweep"]:
-        die(f"www.encuentra24.com: {v['reason']}", EXIT_REFUSED)
+        die(f"www.encuentra24.com: {v['reason']}",
+            EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
     code, html, landed = get(a.url)
     if code != 200:
         die(f"{a.url}: HTTP {code}", EXIT_GONE)

@@ -142,7 +142,7 @@ def card(item):
 def cmd_search(a):
     v = robots_verdict("vieclam24h.vn")
     if not v["sweep"]:
-        die(f"vieclam24h.vn: {v['reason']}", 7)
+        die(f"vieclam24h.vn: {v['reason']}", 8 if v["sweep"] is None else 7)
     seen, kept, total, last = set(), 0, None, None
     for page in range(1, a.pages + 1):
         q = urllib.parse.urlencode({"q": a.keyword or "", "page": page})
@@ -183,7 +183,7 @@ def cmd_search(a):
 def cmd_ad(a):
     v = robots_verdict("vieclam24h.vn")
     if not v["sweep"]:
-        die(f"vieclam24h.vn: {v['reason']}", 7)
+        die(f"vieclam24h.vn: {v['reason']}", 8 if v["sweep"] is None else 7)
     code, html = get(a.url)
     if code != 200:
         die(f"{a.url}: HTTP {code}", 3)
@@ -207,7 +207,7 @@ def cmd_ad(a):
 def cmd_sitemap(a):
     v = robots_verdict("vieclam24h.vn")
     if not v["sweep"]:
-        die(f"vieclam24h.vn: {v['reason']}", 7)
+        die(f"vieclam24h.vn: {v['reason']}", 8 if v["sweep"] is None else 7)
     code, idx = get("/file/sitemap/sitemap-index.xml")
     if code != 200:
         die(f"sitemap index: HTTP {code}")

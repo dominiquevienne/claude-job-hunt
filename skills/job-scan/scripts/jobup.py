@@ -131,7 +131,7 @@ def cmd_search(a):
     site = SITES[a.site]
     v = robots_verdict(site["host"])
     if not v["sweep"]:
-        die(f"{site['host']}: {v['reason']}", 7)
+        die(f"{site['host']}: {v['reason']}", 8 if v["sweep"] is None else 7)
     seen, rows, repeats = set(), [], 0
     for page in range(1, a.pages + 1):
         q = {"term": a.term} if a.term else {}
@@ -189,7 +189,7 @@ def cmd_ad(a):
     host = urllib.parse.urlsplit(a.url).netloc
     v = robots_verdict(host)
     if not v["sweep"]:
-        die(f"{host}: {v['reason']}", 7)
+        die(f"{host}: {v['reason']}", 8 if v["sweep"] is None else 7)
     status, body, landed = get(a.url)
     # **Status, then where it landed, then the ad's own isActive — the block
     # count decides none of it.** jobup.md carries the four-state table (#88).

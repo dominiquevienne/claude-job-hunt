@@ -80,7 +80,7 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 # is honest about who is asking rather than impersonating a referrer.
 SOURCE = "applifly"
 
-EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED = 2, 3, 7
+EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
 
 # The shell, identified by what it *is* rather than by its length: a script
 # that reloads the page with a `source` parameter taken from the referrer.
@@ -143,7 +143,8 @@ class Client:
     def check_robots(self):
         v = robots_verdict(self.host)
         if not v["sweep"]:
-            die(f"{self.host}: {v['reason']}", EXIT_REFUSED)
+            die(f"{self.host}: {v['reason']}",
+                EXIT_UNKNOWN if v["sweep"] is None else EXIT_REFUSED)
         return v
 
 

@@ -212,7 +212,7 @@ def cmd_sites(a):
     """
     v = robots_verdict(a.host)
     if not v["sweep"]:
-        die(f"{a.host}: {v['reason']}", 7)
+        die(f"{a.host}: {v['reason']}", 8 if v["sweep"] is None else 7)
     req = urllib.request.Request(f"https://{a.host}/robots.txt",
                                  headers={"User-Agent": UA})
     try:
@@ -247,7 +247,8 @@ def cmd_list(a):
     v = robots_verdict(a.host)
     if not v["sweep"]:
         die(f"{a.host}: {v['reason']} A Workday tenant publishes its own "
-            f"robots.txt — this is this employer's answer, not Workday's.", 7)
+            f"robots.txt — this is this employer's answer, not Workday's.",
+                8 if v["sweep"] is None else 7)
     applied = {}
     if a.location:
         probe = post(cxs(a, "/jobs"),
@@ -285,7 +286,8 @@ def cmd_ad(a):
     _v = robots_verdict(a.host)
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On Workday the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     path = a.path
     if not path:
         payload = post(cxs(a, "/jobs"),

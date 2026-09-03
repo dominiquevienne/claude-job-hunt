@@ -302,7 +302,8 @@ def cmd_jobs(a):
     _v = robots_verdict(f"{a.tenant}.jobs.personio.de")
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On Personio the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's. Issue #73.", 7)
+            f"answer and not the platform's. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     body, url = feed(a.tenant, a.language)
     blocks = positions(body)
     note(f"{len(blocks)} open positions — {url}")
@@ -331,7 +332,8 @@ def cmd_check(a):
     _v = robots_verdict(f"{a.tenant}.jobs.personio.de")
     if not _v["sweep"]:
         die(f"{_v['host']}: {_v['reason']} On Personio the host belongs to the employer, so this is that employer's "
-            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.", 7)
+            f"answer and not the platform's — and it refuses the content, not just the sweep. Issue #73.",
+                8 if _v["sweep"] is None else 7)
     body, url = feed(a.tenant)
     blocks = positions(body)
     with_text, median = coverage(blocks)
