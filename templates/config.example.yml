@@ -50,6 +50,20 @@ location:
   # DELETE THE KEY to switch this off entirely: with no list, nothing is ever
   # flagged and the plugin behaves exactly as it did before.
   work_authorization: ["CH", "EU"]
+  # A DRIVING LICENCE AND A VEHICLE — two fields, because ads ask for one, the
+  # other, or both, and a single boolean loses the distinction that decides
+  # field roles: "permis B" is the legal capacity to drive, "véhicule
+  # personnel indispensable" is having a car.
+  #
+  # `driving_licence` is the list of categories held. An EMPTY LIST means you
+  # have declared you hold none — which is NOT the same as deleting the key.
+  # DELETE BOTH KEYS to switch this off: nothing is ever flagged, and an ad
+  # that asks becomes a question at the gate rather than a silence.
+  #
+  # Nothing is ever discarded for these. Absent from the file is not a no, and
+  # a false "they don't have it" costs an ad wrongly dropped.
+  driving_licence: ["B"]
+  own_vehicle: true
   # Location strings used in job-board searches, most specific first. These
   # are what the board itself understands, so use its own spelling.
   search_locations:

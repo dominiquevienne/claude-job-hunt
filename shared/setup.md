@@ -281,9 +281,9 @@ choice, and it is far cheaper to fix now than after a scan.
 line you are unsure about and mark it — `Secteurs — fintech (déduit d'un seul
 poste)`. A user corrects a hedged line; they skim past a confident one.
 
-### Then four questions, and they are closed on purpose
+### Then six questions, and they are closed on purpose
 
-Use `AskUserQuestion` — one call, all five, each with the consequence stated in
+Use `AskUserQuestion` — one call, all six, each with the consequence stated in
 the option text so nobody is choosing blind.
 
 | # | Question | Options | What it decides |
@@ -294,6 +294,8 @@ the option text so nobody is choosing blind.
 | 4 | **Quels types de contrat acceptez-vous ?** | CDI / permanent · CDD, mission, projet · Intérim · Freelance / indépendant · Alternance, stage, premier emploi | Whether the **agency boards** are worth enabling at all, and which sector boards apply |
 
 | 5 | **Où pouvez-vous travailler sans parrainage ?** *(offer a default built from `home_base` — for a Swiss base, `CH` + `EU`)* | The default · Add or remove countries · **Passer** | Whether an ad from elsewhere carries one sentence at the gate — see below |
+
+| 6 | **Permis de conduire, et disposez-vous d'un véhicule ?** | Permis + véhicule · Permis, pas de véhicule · Ni l'un ni l'autre · **Passer** | Whether an ad stating a licence as a must-have is answered once or re-asked every week — see below |
 
 **Question 5 asks for one list and nothing else.** Countries and zones where
 the person needs no sponsorship, written to `location.work_authorization`.
@@ -317,6 +319,44 @@ decides nothing** — it noticed a mismatch between two lists.
 whole ledger, and a complete dossier — CV, letter, rendered PDFs — was produced
 before the user closed it in one sentence: "pas éligible, permis de travail
 UK". Issue #82.)*
+
+**Question 6 is two fields, not one, and it is the same failure as question 5
+on another value.** `location.driving_licence` takes the categories held —
+`["B"]`, or `[]` for none — and `location.own_vehicle` is a boolean. **Ads ask
+for one, the other, or both**: *permis B* is the legal capacity to drive,
+*"véhicule personnel indispensable"* is having a car, and a single checkbox
+loses the distinction that decides field roles. **Ask for the category when
+they have one**, because ads name it (B, BE, C1, D).
+
+**And "Passer" is a real answer here.** With both keys absent, an ad that
+states a licence still raises a **question at the go/no-go gate** — it does not
+go silent, and it never discards. That is the difference from question 5: there
+silence costs nothing because the ad is scored anyway; here a stated must-have
+that nobody can answer is what produced the issue.
+
+**Absent from the file is not no**, and the asymmetry is why: a wrong "they do
+not have it" drops an ad silently, a wrong "they have it" fails in the room.
+
+*(This exists because an ESN ad printed "Permis de conduire obligatoire" in a
+list where ITIL was explicitly only *"un plus"*, and `candidate.md`, `repos.md`
+and five profile PDFs answered nothing at all. The run flagged it correctly and
+by hand — which is a stable fact turned into a weekly question. Issue #91.)*
+
+### Asking question 6 later, without redoing the onboarding
+
+**An existing `config.yml` has neither key**, and nobody should re-run setup to
+add two lines. When `_licence.py` returns `never-asked` at a gate, **ask there,
+once, and offer to write it**:
+
+```yaml
+location:
+  driving_licence: ["B"]     # [] if none
+  own_vehicle: true
+```
+
+**Write it only on an explicit yes**, and confirm what was written. A user who
+declines is not asked again in that run — and the ad still gets its question,
+which is what the gate was for.
 
 **Question 1 is the one people answer too fast.** If they pick *reconversion* or
 *élargir*, say plainly what changes: the searches stop being built from their

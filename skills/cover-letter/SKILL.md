@@ -451,6 +451,35 @@ the job was worth wanting, and it is what makes a B2B approach worth
 attempting. **With no `work_authorization` key, this section does not apply** —
 say nothing.
 
+### A driving licence or a vehicle, when the ad states one
+
+**Same gate, same moment, and a different field from the one above.** Run it on
+the ad's own text:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/_licence.py" \
+  --file <the ad> --licence "B" --vehicle yes
+```
+
+**It never refuses and never discards.** Three outcomes reach the gate:
+
+- **The ad asks and the config is silent** — put the question here, once, and
+  offer to write the answer to `location.driving_licence` /
+  `location.own_vehicle`. It is a stable fact: asking it every week is the
+  defect, not the question.
+- **The ad asks and the user declared they do not have it** — say it before the
+  letter is drafted. **There is no second route here.** The right-to-work
+  section above splits into *employment excluded, B2B perhaps open*; a licence
+  required is a licence required, and pretending otherwise wastes a dossier.
+- **The ad names a permit by letter** — `permis B`, `permis C`. **In
+  Switzerland that is a residence permit**, which belongs to the section above,
+  not this one. Read the sentence; do not resolve it by pattern.
+
+**With both keys absent this section still speaks** — that is the difference
+from `work_authorization`, and it is deliberate: there, silence costs nothing
+because the ad is scored anyway; here, a stated must-have that nobody can
+answer is exactly what produced #91. The question is asked, never the verdict.
+
 **This gate is also where step 1's board questions ride.** It always fires on
 the URL path, which is what makes it the only place they may be asked: a
 `board-request` for a second board found through an apply link, and — when

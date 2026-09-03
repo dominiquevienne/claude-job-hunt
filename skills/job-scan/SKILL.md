@@ -426,6 +426,40 @@ next section):
 mismatch between two lists, the user owns the paperwork and the decision.
 Issue #82.
 
+### A driving licence, when the ad states one — same shape, different field
+
+**Read the description for it, not the card**, and only when a description was
+actually opened:
+
+```bash
+python3 "$S/_licence.py" --file <ad text> --licence "B" --vehicle yes
+```
+
+`location.driving_licence` and `location.own_vehicle` are two fields on
+purpose: an ad asks for the capacity to drive, for a car, or for both.
+**Neither one ever discards an ad.** Absent from the config is *never asked*,
+not *no* — a false "they don't have it" drops an ad wrongly, and the script
+returns `ask` rather than a verdict.
+
+- `never-asked` → one line at step 7 and the question at the gate, plus the
+  offer to record it once in `config.yml` rather than re-ask it every week.
+- `declared-absent` → say it before a dossier is spent. **Unlike the right to
+  work there is no second route here** — a licence required is a licence
+  required, and there is no equivalent of *"employment excluded, B2B perhaps
+  open"*.
+- `ambiguous` → the ad named a permit by a letter. **In Switzerland `permis B`
+  is a residence permit, not driving category B.** Read the sentence; never
+  resolve it by pattern.
+
+**Do not grep for `permis` yourself.** Measured in one workspace: of 13
+`permis <word>` matches, **7 are the driving licence, 5 are the work permit —
+a different field entirely — and one is the ordinary French past participle**
+(*"la recherche a permis de conclure"*). `permis` is also the prefix of
+*permissions*, and bare `vehicle` matches this repository's own *employment
+vehicle* in 5 of 45 ad files with 0 of them a car. `_licence.py` is an
+allow-list of phrases for that reason; on those 45 ads it fires **once, on the
+one ad that says it**. Issue #91.
+
 ### A hard blocker found here changes the status, not just the `Note`
 
 Step 3 discards ads whose stack is foreign to the candidate — but it works from

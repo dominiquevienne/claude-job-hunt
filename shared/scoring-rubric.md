@@ -168,6 +168,47 @@ and remote working arrangements available".
 skipped that question gets exactly the previous behaviour. Issue #82, and
 `skills/job-scan/scripts/_workauth.py` holds the zone lists.
 
+## A driving licence is a must-have with no second route, and nobody was asked
+
+`location.driving_licence` (the categories held, `[]` for none) and
+`location.own_vehicle`. **Two fields, because ads ask for one, the other, or
+both** — the capacity to drive and having a car are different things, and the
+difference is what decides field roles.
+
+**This is #82's shape on another field: the rule above could always treat a
+stated must-have as a capping zero, and nothing ever collected the value.** A
+Meanquest ad on 2026-09-03 printed *"Permis de conduire obligatoire"* in a list
+where ITIL was explicitly only a plus; `candidate.md`, `repos.md` and five
+profile PDFs answered nothing, and the run wrote *"to verify before drafting"*
+into the ledger — the right reaction, and one that **turns a stable fact into a
+question re-asked at every ad**. Issue #91.
+
+**Three states, and the middle one is why it is never a filter.**
+
+| Config | Ad states it as a must-have | What the run does |
+| :-- | :-- | :-- |
+| **Key absent** — never asked | — | **Ask at the gate**, and offer to record it once. Never a discard: absent from the file is not a no |
+| `driving_licence: []` / `own_vehicle: false` | yes | **Say it before a dossier is spent.** The ad keeps its score and is not removed |
+| A category / `true` | yes | Nothing. It is satisfied |
+
+**And the asymmetry is the reason for that middle row.** A false *"they do not
+have it"* costs an ad wrongly dropped, silently; a false *"they have it"* costs
+an interview. Both are real, they land in different places, and only the first
+is invisible.
+
+**Unlike the right to work, there is no second route.** That section splits an
+ad into *employment excluded, service provision perhaps open*. **A licence
+required is a licence required** — there is no equivalent door, and offering
+one would be a comfort rather than an option.
+
+**Do not detect it by searching for `permis`.** In one workspace, 13
+`permis <word>` matches broke down as **7 driving licence, 5 work permit and 1
+past participle of *permettre***; `permis` is the prefix of *permissions*; and
+bare `vehicle` matched this repository's own *employment vehicle* in 5 of 45 ad
+files, none of them a car. `skills/job-scan/scripts/_licence.py` is an
+allow-list of phrases, and **`permis B` on a Swiss ad is a residence permit** —
+it raises a question and never a verdict.
+
 ## The commute is a filter, not a score line
 
 An ad requiring regular physical presence beyond `location.max_commute_minutes`
