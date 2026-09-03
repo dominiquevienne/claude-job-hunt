@@ -94,7 +94,8 @@ def get(url):
         with urllib.request.urlopen(req, timeout=45) as r:
             return r.getcode(), decode_body(r.read(), r.headers)[0], r.geturl()
     except urllib.error.HTTPError as e:
-        return e.code, decode_body(e.read(), e.headers)[0], getattr(e, "url", url)
+        return (e.code, decode_body(e.read(), e.headers)[0],
+                getattr(e, "url", url))
     except (urllib.error.URLError, OSError) as e:
         die(f"{url}: {e}")
 
