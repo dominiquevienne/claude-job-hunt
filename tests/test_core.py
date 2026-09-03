@@ -1636,14 +1636,58 @@ class EveryNetworkReaderAsksOrSaysWhyNot(unittest.TestCase):
     def test_there_are_network_readers_to_check(self):
         self.assertGreater(len(self._network_readers()), 50)
 
+    @staticmethod
+    def _calls_the_guard(src):
+        """**Imported is not called.** #100 worried that adapters might carry
+        the import and never use it — *the appearance of control*. Measured
+        2026-09-03: none did, 63 of 63. But a substring test could not have
+        told the difference, so this reads the syntax tree: a name bound from
+        `_robots` must appear as the function of an actual call."""
+        import ast
+        try:
+            tree = ast.parse(src)
+        except SyntaxError:
+            return False
+        bound = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.ImportFrom) and (n.module or "") == "_robots":
+                bound.update(a.asname or a.name for a in n.names)
+            if isinstance(n, ast.Import):
+                bound.update(a.asname or a.name for a in n.names
+                             if a.name == "_robots")
+        if not bound:
+            return False
+        for n in ast.walk(tree):
+            if not isinstance(n, ast.Call):
+                continue
+            f = n.func
+            if isinstance(f, ast.Name) and f.id in bound:
+                return True
+            if (isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name)
+                    and f.value.id in bound):
+                return True
+        return False
+
     def test_every_network_reader_asks_the_guard_or_is_listed_with_a_reason(self):
         silent = [name for name, src in self._network_readers()
-                  if "_robots" not in src and name not in self.NOT_ASKING]
+                  if not self._calls_the_guard(src)
+                  and name not in self.NOT_ASKING]
         self.assertEqual(
             silent, [],
-            "these touch the network, never ask the guard, and give no "
+            "these touch the network, never call the guard, and give no "
             "reason — an absent call reads the same as a decision not to "
             "call: " + ", ".join(silent))
+
+    def test_the_count_is_what_it_is_said_to_be(self):
+        """**The denominator #100 was written on was wrong**, so the real one
+        is pinned here. 74 scripts, 69 touching the network, 63 calling the
+        guard, 6 listed with a reason. *45* was never the number that did not
+        call — it is the number that call `allowed()`, the **per-path** check,
+        which is stronger than the per-host one the issue counted."""
+        readers = self._network_readers()
+        calling = [n for n, src in readers if self._calls_the_guard(src)]
+        self.assertEqual(len(readers) - len(calling), len(self.NOT_ASKING))
+        self.assertGreater(len(calling), 55)
 
     def test_the_list_carries_no_script_that_now_asks(self):
         """**A reason that has stopped applying is worse than none.** If one
