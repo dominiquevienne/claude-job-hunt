@@ -284,6 +284,22 @@ the outside, from a server answering badly on purpose or out of indifference.
 **The same gesture on two boards on the same day, and only one of them is
 honest**: hr.ge's page 50 returns nothing; encuentra24's returns page one.
 
+### And the same family without the volume: what qualifies itself by looking right
+
+A false full persuades by quantity. **Two things measured the same day persuade
+by resemblance alone**, and they belong beside it because the reader accepts
+them for the same reason — they look like what was being searched for.
+
+| What was found | Why it passed | What it was |
+| :-- | :-- | :-- |
+| `…/jobs-job-offers` on Encuentra24 | a **guessed URL that answers** — an existence check succeeds | a redirect to the site root |
+| *"All Job Ads on a Single Page"* on jobs.ge | a **string that names the feature** being looked for | the caption of a banner advertisement |
+
+**A guessed name that does not resolve disqualifies itself**; one that answers
+does not. **A string that describes a capability is not the capability.** Both
+were accepted by plausibility and refuted only by looking at what came back —
+which is the same discipline as counting distinct ids instead of links.
+
 **It is caught by a pair, like everything else here** — *links fetched* against
 *distinct ids kept*. 800 against 281 is the finding; 800 alone is a good day's
 work. So a sweep reports **what it counted, never what it fetched**, and the
