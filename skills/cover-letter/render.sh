@@ -3,6 +3,15 @@
 # xelatex is used for robust UTF-8 / French-accent handling.
 # Usage: render.sh <input.md> <output.pdf> [letter]
 #   Pass "letter" as the 3rd arg for the roomier cover-letter geometry.
+#
+# WHEN THE CHAIN IS MISSING, THIS FALLS BACK TO render-plain.py rather than
+# stopping (issue #114). That fallback DOUBLES this path, it does not replace
+# it: whenever pandoc and xelatex are here, they are what runs, with the
+# project's own template and Noto Sans, and nothing below changes.
+#
+# The install advice below is still printed when the fallback fires — a PDF
+# with no LaTeX is a way to send something today, not a reason to stop wanting
+# the real chain.
 set -euo pipefail
 
 IN="$1"
@@ -22,19 +31,77 @@ for texbin in /usr/local/texlive/*/bin/*/; do
 done
 export PATH
 
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Open the generated PDF in the default viewer (detached, non-blocking).
+# macOS ships `open`; Linux desktops ship `xdg-open` (with setsid to detach);
+# on Windows the script runs under Git Bash, where the opener is cmd's `start`
+# — reached as `cmd //c start` because Git Bash would otherwise rewrite the
+# single slash into a path. The empty "" is start's title argument: without it,
+# start treats a quoted path AS the title and opens nothing.
+open_pdf() {
+  case "$(uname -s)" in
+    Darwin)
+      command -v open >/dev/null 2>&1 && open "$1" >/dev/null 2>&1 &
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      command -v cmd >/dev/null 2>&1 && cmd //c start "" "$(cygpath -w "$1" 2>/dev/null || echo "$1")" >/dev/null 2>&1 &
+      ;;
+    *)
+      if command -v xdg-open >/dev/null 2>&1; then
+        setsid xdg-open "$1" >/dev/null 2>&1 < /dev/null &
+      fi
+      ;;
+  esac
+}
+
+# The route with no LaTeX, no pandoc and no dependency. Called only when the
+# nominal chain is absent — see render-plain.py, which states what it costs.
+#
+# **It exits 0 even when it dropped a character**, because the file is written
+# and readable and the user must be able to look at it; render-plain.py prints
+# what it could not print, by name and count, and that is the sentence to read
+# before sending. `set -e` would otherwise turn its exit 6 into a silent stop
+# with a PDF already on disk.
+plain_fallback() {
+  echo "" >&2
+  echo "Falling back to render-plain.py — $1." >&2
+  echo "**The ATS properties are what this preserves** —" >&2
+  echo "single column, real selectable text, reading order, a standard font." >&2
+  echo "What it cannot do is Noto Sans, the project template's typography, and" >&2
+  echo "any character outside WinAnsi. Install the chain above when you can." >&2
+  echo "" >&2
+  python3 "$DIR/render-plain.py" "$IN" "$OUT" --kind "${KIND:-resume}" || true
+  if [ ! -s "$OUT" ]; then
+    echo "ERROR: the fallback wrote nothing. **Send the markdown as it is** —" >&2
+    echo "a declared degraded deliverable beats a PDF nobody can vouch for." >&2
+    exit 3
+  fi
+  echo "Wrote $OUT"
+  open_pdf "$OUT"
+  exit 0
+}
+
+# **A fallback nobody can run is a fallback nobody has tested.** This is how
+# it gets exercised on a machine that does have the chain, and it is also the
+# escape hatch for an installation that is present but broken.
+if [ -n "${RENDER_PLAIN:-}" ]; then
+  plain_fallback "RENDER_PLAIN was set, so the nominal chain was skipped on purpose"
+fi
+
 if ! command -v pandoc >/dev/null 2>&1; then
   echo "ERROR: pandoc not found. Install:" >&2
   echo "  macOS:   brew install pandoc" >&2
   echo "  Debian:  sudo apt install -y pandoc" >&2
   echo "  Windows: winget install --id JohnMacFarlane.Pandoc -e" >&2
-  exit 3
+  plain_fallback "pandoc is missing, and installing it is not always possible"
 fi
 if ! command -v xelatex >/dev/null 2>&1; then
   echo "ERROR: xelatex not found. Install:" >&2
   echo "  macOS:   brew install --cask mactex-no-gui font-noto-sans" >&2
   echo "  Debian:  sudo apt install -y --no-install-recommends texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-xetex fonts-noto-core" >&2
   echo "  Windows: winget install --id MiKTeX.MiKTeX -e   (allow it to install packages on first use)" >&2
-  exit 3
+  plain_fallback "xelatex is missing, and installing it is not always possible"
 fi
 
 # Both templates do \setmainfont{Noto Sans}; without it xelatex aborts.
@@ -65,7 +132,6 @@ if [ "$font_found" -eq 0 ]; then
 fi
 
 # Geometry differs: resumes are dense (target 1 page), letters are roomier.
-DIR="$(cd "$(dirname "$0")" && pwd)"
 EXTRA=()
 if [ "$KIND" = "letter" ]; then
   GEOM="top=2.4cm,bottom=2.4cm,left=2.2cm,right=2.2cm"
@@ -119,22 +185,4 @@ pandoc "$SRC" -o "$OUT" \
 
 echo "Wrote $OUT"
 
-# Open the generated PDF in the default viewer (detached, non-blocking).
-# macOS ships `open`; Linux desktops ship `xdg-open` (with setsid to detach);
-# on Windows the script runs under Git Bash, where the opener is cmd's `start`
-# — reached as `cmd //c start` because Git Bash would otherwise rewrite the
-# single slash into a path. The empty "" is start's title argument: without it,
-# start treats a quoted path AS the title and opens nothing.
-case "$(uname -s)" in
-  Darwin)
-    command -v open >/dev/null 2>&1 && open "$OUT" >/dev/null 2>&1 &
-    ;;
-  MINGW*|MSYS*|CYGWIN*)
-    command -v cmd >/dev/null 2>&1 && cmd //c start "" "$(cygpath -w "$OUT" 2>/dev/null || echo "$OUT")" >/dev/null 2>&1 &
-    ;;
-  *)
-    if command -v xdg-open >/dev/null 2>&1; then
-      setsid xdg-open "$OUT" >/dev/null 2>&1 < /dev/null &
-    fi
-    ;;
-esac
+open_pdf "$OUT"

@@ -650,8 +650,9 @@ tracking systems:
   on keyword match.
 - **Standard, consistent date format** (`MM/YYYY – MM/YYYY`), `present` for
   current roles.
-- **Selectable text** — the pandoc/xelatex pipeline already emits real text.
-  Never embed the content as an image.
+- **Selectable text** — the pandoc/xelatex pipeline already emits real text,
+  and so does the `render-plain.py` fallback. Never embed the content as an
+  image. `pdftotext -layout <file> -` is how to check it rather than trust it.
 - Keep job titles, employers and dates on their own clearly-labelled lines so
   the parser can map role → employer → dates.
 
@@ -777,6 +778,28 @@ only, with no endpoints, internal names or ticket references.
 `config.yml` → `candidate`.) It uses pandoc + xelatex and opens each PDF when
 it is done. If it reports a missing tool it prints the install command for the
 platform — relay it and re-render; the markdown is already saved.
+
+**If the chain is not there, it renders anyway** (issue #114). `render-plain.py`
+writes the PDF with the standard library alone — no pandoc, no LaTeX, no font
+to install — and `render.sh` falls back to it. **That is a second path, not a
+replacement**: wherever pandoc and xelatex exist they are what runs, with the
+project's template and Noto Sans.
+
+What the fallback keeps is **what the ATS template is for**, measured with
+`pdftotext` rather than assumed: one column, real selectable text, reading
+order, a standard font, nothing in a header or footer, no tables and no
+images. What it loses is the typography and **any character outside WinAnsi**.
+It substitutes the ones that have an equivalent (`−`→`-`, `≈`→`~`, `…`→`...`)
+and **names the rest, with counts** — it never prints a silent `?`. Past 2% of
+the document it writes nothing at all and says to send the markdown, because a
+CV in a non-Latin script would come out as a page of punctuation.
+
+`RENDER_PLAIN=1 ./render.sh …` forces that route on a machine that has the
+chain — useful when the LaTeX install is present but broken.
+
+**Do not offer the fallback as an alternative to installing pandoc.** It is
+what to do when installing is out of reach; the install advice is still
+printed when it fires.
 
 **Always check the page count** — `pdfinfo <file>.pdf | grep Pages`. Do not
 trust Spotlight metadata (`mdls`): it serves a stale cache and reports the

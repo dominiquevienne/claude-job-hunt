@@ -23,6 +23,8 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts"))
 
+import importlib.util     # noqa: E402
+
 import _language          # noqa: E402
 import _ldjson            # noqa: E402
 import _locations         # noqa: E402
@@ -415,3 +417,75 @@ class Match(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+def _load_render_plain():
+    """The module's file name has a hyphen, so it cannot be imported by name."""
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "skills", "cover-letter", "render-plain.py")
+    spec = importlib.util.spec_from_file_location("render_plain", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+rp = _load_render_plain()
+
+
+class RenderPlain(unittest.TestCase):
+    """The no-LaTeX route: what it keeps, and what it must say it lost.
+
+    **The point of these is the loss, not the rendering.** A PDF that came out
+    beautiful and dropped the euro sign from a salary line is the failure; a
+    PDF that says which characters it could not print is not.
+    """
+
+    def test_typographic_variants_are_substituted_not_dropped(self):
+        text, dropped = rp.to_winansi("−15 % ≈ 40 k€ …")
+        self.assertEqual(text, "-15 % ~ 40 k€ ...")
+        self.assertEqual(dropped, {})
+
+    def test_french_accents_and_guillemets_survive(self):
+        text, dropped = rp.to_winansi("Élodie Müller — « à Genève », coût")
+        self.assertEqual(text, "Élodie Müller — « à Genève », coût")
+        self.assertEqual(dropped, {})
+
+    def test_a_character_with_no_glyph_is_named_never_a_question_mark(self):
+        text, dropped = rp.to_winansi("Ωmega")
+        self.assertNotIn("?", text)
+        self.assertEqual(text, "mega")
+        self.assertIn("Ω", dropped)
+        self.assertEqual(dropped["Ω"][0], "GREEK CAPITAL LETTER OMEGA")
+
+    def test_the_count_is_per_occurrence(self):
+        _text, dropped = rp.to_winansi("中中中")
+        self.assertEqual(dropped["中"][1], 3)
+
+    def test_the_pdf_declares_winansi_and_carries_no_image(self):
+        pdf, pages, dropped = rp.build("# Title\n\n- Coût : 40 k€\n")
+        self.assertTrue(pdf.startswith(b"%PDF-1.4"))
+        self.assertEqual(pages, 1)
+        self.assertEqual(dropped, {})
+        self.assertIn(b"/WinAnsiEncoding", pdf)
+        self.assertIn(b"/BaseFont /Helvetica", pdf)
+        # The ATS properties, asserted rather than described: no image, no
+        # form XObject, and a page tree of exactly one column of text.
+        self.assertNotIn(b"/Image", pdf)
+        self.assertNotIn(b"/XObject", pdf)
+        self.assertIn(b"startxref", pdf)
+
+    def test_headings_bullets_and_emphasis_reach_the_line_list(self):
+        lines = rp.lines_of("# N\n\n## Sec\n\n### Role\n\n- **a** *b*\n",
+                            "resume")
+        self.assertIn(("t", "N"), lines)
+        self.assertIn(("h", "SEC"), lines)
+        self.assertIn(("sh", "Role"), lines)
+        self.assertIn(("li", "• a b"), lines)
+
+    def test_a_letter_keeps_its_heading_case(self):
+        self.assertIn(("h", "Objet"), rp.lines_of("## Objet\n", "letter"))
+
+    def test_wrap_never_exceeds_the_width_it_was_given(self):
+        for line in rp.wrap("alpha beta gamma delta epsilon zeta", 12):
+            self.assertLessEqual(len(line), 12)
