@@ -57,6 +57,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from dormant import read_boards            # noqa: E402  the config parser
 
+from _robots import allowed as robots_allowed
 from _ua import UA
 DEFAULT_CONFIG = os.path.join(
     os.environ.get("JOB_HUNT_HOME",
@@ -119,6 +120,25 @@ def final_url(url, follow=True):
         if current in seen:
             break
         seen.add(current)
+        # **A HEAD is a request.** This script was one of ten that never
+        # mentioned `robots` (#100), and the assumption that grouped it with
+        # the ledger tools was wrong: it follows up to eight redirects with
+        # HEAD, reading no body but touching every hop.
+        #
+        # The tempting exemption is that it retrieves no content and follows a
+        # link the user supplied — the `Claude-User` class. **`www.linkedin.com`
+        # refutes it**: that file names `Claude-User` and closes everything to
+        # it, which is an operator using these rules to govern exactly this
+        # kind of access. Being user-directed is not an exemption; it is a
+        # class operators address. So this asks, per host and per path.
+        parts = urllib.parse.urlsplit(current)
+        gate = robots_allowed(parts.netloc, parts.path or "/")
+        if gate["allowed"] is not True:
+            note(f"stopping at {current} — {gate['reason']} **No HEAD was "
+                 f"sent to this hop.** The chain so far is reported; the "
+                 f"provider behind this URL is not identified, which is not "
+                 f"the same as there being none.")
+            break
         req = urllib.request.Request(current, headers={"User-Agent": UA},
                                      method="HEAD")
         try:

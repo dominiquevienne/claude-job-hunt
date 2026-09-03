@@ -1331,6 +1331,55 @@ ones nobody was asking about. A repository-wide test fails if `CERT_NONE`,
 `--insecure` appears anywhere in the code — **pinned, because a sentence in a
 document waits for a reader.**
 
+## Which scripts do not ask the guard, and why — written down, not deduced
+
+**An absent guard call is indistinguishable from a decision not to call.** That
+is what went wrong with SmartRecruiters in `ats.py`: the exception existed
+nowhere. So the list lives in the test suite (`EveryNetworkReaderAsksOrSaysWhyNot`)
+with a reason per entry, and a script that stops asking without being added
+fails.
+
+**#100 counted ten by grepping for `robots`, and that measure passes prose.**
+`arbeitsagentur.py` and `hiringcafe.py` mention the word in a docstring — one
+of them carrying **a human's one-time reading of the file**, which is the very
+practice `_robots.py` exists to replace — and neither calls the guard. **Six
+network readers do not ask, not four.**
+
+**Five tooling scripts make no network call at all**, verified rather than
+assumed: `achievements`, `board_offer`, `dormant`, `employers`, `ledger`. A
+test asserts it, because "it only reads the ledger" is the kind of claim that
+quietly stops being true.
+
+**And the assumption was wrong once.** `tenant_offer.py` was grouped with them
+and **sends HEAD requests through up to eight redirects.** The tempting
+exemption — it retrieves no content and follows a link the user supplied, the
+`Claude-User` class — **is refuted by `www.linkedin.com`**, whose file names
+`Claude-User` and closes everything to it. **Being user-directed is not an
+exemption; it is a class operators address.** It asks now, per host and per
+path, and reports *not identified* rather than *no provider*.
+
+### The open question: does a keyed API consult the guard?
+
+**Not decided here.** Both readings are defensible — a `robots.txt` is still
+the operator's will, and an issued key is a contract more specific than a
+generic file — and `adzuna.py` already carries the second argument in its own
+user-agent string.
+
+**What is decided is that the measurement is on the record:**
+
+```
+api.adzuna.com                                Disallow: /        REFUSES
+api.francetravail.io                          Disallow: /        REFUSES
+labonnealternance.apprentissage.beta.gouv.fr  6 paths closed     permits
+jobsearch.api.jobtechdev.se   (platsbanken)   404 — no file      permits
+arbeitsagentur.de                             opens everything   permits
+```
+
+**Two of the five publish `Disallow: /` on the very host the plugin reads with
+the user's key** — the same shape as `api.smartrecruiters.com`, which
+`robots-policy.md` treats under its own question. **That is an arbitration for
+the user, not a fix**, and nothing here has been changed on the strength of it.
+
 ## What this file does not license
 
 Not credentials, not paywalls, not consent walls, not anything a login guards,

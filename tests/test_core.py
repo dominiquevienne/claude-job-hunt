@@ -1588,5 +1588,89 @@ class OneDeclaredIdentity(unittest.TestCase):
         self.assertIn("cannot tell them apart", note)
 
 
+class EveryNetworkReaderAsksOrSaysWhyNot(unittest.TestCase):
+    """#100's last hole, and the answer written down rather than deduced.
+
+    **An absent guard call is indistinguishable from a decision not to call**,
+    which is exactly what went wrong with SmartRecruiters in `ats.py`: the
+    exception existed nowhere, it was a silence. So the scripts that do not
+    ask are listed here **with the reason**, and a script that stops asking
+    without being added fails this case.
+
+    **#100 counted ten by grepping for `robots`. That measure passes prose.**
+    `arbeitsagentur.py` and `hiringcafe.py` mention the word in a docstring —
+    one of them carrying *a human's one-time reading of the file*, which is
+    the very practice `_robots.py` was written to replace — and neither calls
+    the guard. Six network readers do not ask, not four.
+    """
+
+    # Each entry is a decision, not an oversight, and the text is the reason.
+    NOT_ASKING = {
+        "adzuna.py": "keyed API under the user's own credentials — and "
+                     "api.adzuna.com publishes `Disallow: /`. OPEN QUESTION",
+        "francetravail.py": "keyed API — api.francetravail.io publishes "
+                            "`Disallow: /`. OPEN QUESTION",
+        "labonnealternance.py": "keyed API; its host permits. OPEN QUESTION",
+        "platsbanken.py": "keyed API; its host publishes no robots.txt "
+                          "(404 — absent). OPEN QUESTION",
+        "arbeitsagentur.py": "keyed API; the docstring carries a human's "
+                             "reading of the file, not a call. OPEN QUESTION",
+        "hiringcafe.py": "refuses from the record by design (#123): a guard "
+                         "call is itself a request, and collection from this "
+                         "host is suspended",
+    }
+
+    def _network_readers(self):
+        import glob
+        out = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            if any(t in src for t in ("urllib.request", "urlopen",
+                                      "http.client")):
+                out.append((name, src))
+        return out
+
+    def test_there_are_network_readers_to_check(self):
+        self.assertGreater(len(self._network_readers()), 50)
+
+    def test_every_network_reader_asks_the_guard_or_is_listed_with_a_reason(self):
+        silent = [name for name, src in self._network_readers()
+                  if "_robots" not in src and name not in self.NOT_ASKING]
+        self.assertEqual(
+            silent, [],
+            "these touch the network, never ask the guard, and give no "
+            "reason — an absent call reads the same as a decision not to "
+            "call: " + ", ".join(silent))
+
+    def test_the_list_carries_no_script_that_now_asks(self):
+        """**A reason that has stopped applying is worse than none.** If one
+        of these starts calling the guard, the entry must go, or the file
+        will explain an exception that no longer exists."""
+        asking = {name for name, src in self._network_readers()
+                  if "_robots" in src}
+        stale = sorted(asking & set(self.NOT_ASKING))
+        self.assertEqual(stale, [], "these now ask the guard and should be "
+                                    "removed from NOT_ASKING: "
+                                    + ", ".join(stale))
+
+    def test_the_tooling_scripts_really_do_not_touch_the_network(self):
+        """Verified rather than assumed — **and the assumption was wrong
+        once.** `tenant_offer.py` was grouped with the ledger tools and sends
+        HEAD requests through up to eight redirects; it asks the guard now."""
+        import glob
+        names = {os.path.basename(p) for p, _ in
+                 [(x, None) for x in glob.glob(os.path.join(SCRIPTS, "*.py"))]}
+        for tool in ("achievements.py", "board_offer.py", "dormant.py",
+                     "employers.py", "ledger.py"):
+            self.assertIn(tool, names)
+            src = open(os.path.join(SCRIPTS, tool), encoding="utf-8").read()
+            for token in ("urllib.request", "urlopen", "http.client",
+                          "socket."):
+                self.assertNotIn(token, src, f"{tool} touches the network")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
