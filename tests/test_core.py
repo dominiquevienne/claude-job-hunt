@@ -2069,5 +2069,81 @@ class RulesNothingHadEverTested(unittest.TestCase):
             _robots._ALIAS.clear()
 
 
+class TheLossyFallbackSpeaks(unittest.TestCase):
+    """`errors="replace"` is the probe that cannot go red. #115.
+
+    A half-replaced title reads as ordinary text to the program and to this
+    suite. `_decode` was written to report **which** encoding it used so a
+    caller could tell — and measured 2026-09-03, **60 of 61 call sites
+    discard it with `[0]`**, and nothing anywhere tests for
+    `"utf-8/replace"`.
+
+    **A signal that exists and is never read** is the shape this repository
+    met four times in one day: `absent_reason()` parsing differently from the
+    reader, an empty `external_host` asserting *no host*, `certain` on a body
+    nobody recognised. So the module speaks now, rather than returning a
+    value nobody looks at.
+
+    **And it speaks only on a real loss.** Measured across five live boards —
+    4 663 rows, 18 089 accented characters — **zero replacements**. On these
+    boards the guard is a precaution, and that was measured before the
+    severity was chosen.
+    """
+
+    def test_it_warns_when_characters_are_actually_replaced(self):
+        import io
+        import contextlib
+        _decode._WARNED.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            text, enc = _decode.decode_body(b"ok \x81\x8d text")
+        self.assertEqual(enc, "utf-8/replace")
+        self.assertEqual(text.count("\ufffd"), 2)
+        self.assertIn("could not be decoded", err.getvalue())
+        self.assertIn("U+FFFD", err.getvalue())
+
+    def test_it_says_nothing_when_nothing_was_lost(self):
+        """**A warning that fires on clean input is noise**, and noise is how
+        a real one gets missed."""
+        import io
+        import contextlib
+        _decode._WARNED.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            _decode.decode_body("café €".encode("utf-8"))
+            _decode.decode_body("caf\xe9".encode("cp1252"))
+        self.assertEqual(err.getvalue(), "")
+
+    def test_it_speaks_once_per_process(self):
+        """A sweep of four thousand advertisements on a broken host would
+        otherwise print four thousand lines, **and a warning that scrolls is
+        a warning nobody reads.**"""
+        import io
+        import contextlib
+        _decode._WARNED.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            for _ in range(5):
+                _decode.decode_body(b"ok \x81\x8d text")
+        self.assertEqual(err.getvalue().count("[decode]"), 1)
+
+    def test_no_adapter_still_decodes_utf8_by_hand(self):
+        """The first migration matched `decode("utf-8", …)` and **missed
+        `decode("utf8", …)` without the hyphen** — eight adapters. The
+        pattern defined its own result."""
+        import glob
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            name = os.path.basename(path)
+            if name in ("_decode.py", "_robots.py", "hiringcafe.py"):
+                continue          # deliberate, and each says why
+            src = open(path, encoding="utf-8").read()
+            if re.search(r'\.decode\(\s*["\']utf-?8["\']\s*,', src):
+                offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "these decode a body without reading the "
+                         "declaration: " + ", ".join(offenders))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

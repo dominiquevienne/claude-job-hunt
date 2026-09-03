@@ -35,6 +35,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 
 from _ua import UA
@@ -58,7 +59,7 @@ def fetch(url):
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=45)
-        return r.getcode(), r.read().decode("utf8", "replace")
+        return r.getcode(), decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         return e.code, ""
     except Exception as e:  # noqa: BLE001 - network shape varies by platform

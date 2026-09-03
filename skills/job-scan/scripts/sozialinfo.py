@@ -24,6 +24,7 @@ import html as htmlmod
 import json
 import re
 
+from _decode import decode_body
 from _ldjson import one, postings
 import sys
 import urllib.error
@@ -80,7 +81,7 @@ def get(url):
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=120)
-        return r.getcode(), r.read().decode("utf8", "replace")
+        return r.getcode(), decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         return e.code, ""
     except Exception as e:  # noqa: BLE001 - network shape varies by platform

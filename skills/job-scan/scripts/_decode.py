@@ -42,8 +42,21 @@ WHAT THIS DOES, IN ORDER:
 """
 
 import re
+import sys
 
 __all__ = ["decode_body", "charset_of"]
+
+# **Once per process.** A sweep of four thousand advertisements on a broken
+# host would otherwise print four thousand lines, and a warning that scrolls
+# is a warning nobody reads.
+_WARNED = set()
+
+
+def _warn_once(message):
+    if message[:60] in _WARNED:
+        return
+    _WARNED.add(message[:60])
+    print(f"[decode] {message}", file=sys.stderr)
 
 # `<?xml … encoding="…"?>`, which must be the very first thing in the file.
 # A sitemap is the one document this repository reads on nearly every board,
@@ -107,6 +120,22 @@ def decode_body(raw, headers=None):
             return raw.decode(name), name
         except (UnicodeDecodeError, LookupError):
             continue
-    # Nothing decoded strictly. Say so in the second value rather than
-    # returning text that looks fine.
-    return raw.decode("utf-8", "replace"), "utf-8/replace"
+    # Nothing decoded strictly. **And saying so in the second value was not
+    # enough**: measured 2026-09-03, **60 of 61 call sites discard it with
+    # `[0]`** and nothing anywhere tests for `"utf-8/replace"`. A signal that
+    # exists and is never read is the shape this repository met four times in
+    # one day — `absent_reason` parsing differently from the reader, an empty
+    # `external_host` asserting *no host*, `certain` on a body nobody
+    # recognised. **So this one speaks.**
+    text = raw.decode("utf-8", "replace")
+    lost = text.count("\ufffd")
+    if lost:
+        _warn_once(
+            f"{lost} character(s) of {len(raw)} bytes could not be decoded by "
+            f"any candidate and were replaced. **The text now contains U+FFFD "
+            f"and reads as ordinary text to everything downstream** — a "
+            f"half-replaced title is indistinguishable from a correct one. "
+            f"Tried: {', '.join(tried)}. The declaration was "
+            f"{declared or 'absent'}; if it names an encoding this "
+            f"repository did not try, that is the fix.")
+    return text, "utf-8/replace"

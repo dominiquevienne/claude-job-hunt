@@ -33,6 +33,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import verdict as robots_verdict
 
 from _ua import UA
@@ -51,7 +52,7 @@ def get(url):
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=45)
-        return r.getcode(), r.read().decode("utf8", "replace")
+        return r.getcode(), decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         return e.code, ""
     except Exception as e:  # noqa: BLE001 - network shape varies by platform
@@ -68,7 +69,7 @@ def get_with_url(url):
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=45)
-        return r.getcode(), r.read().decode("utf8", "replace"), r.geturl()
+        return r.getcode(), decode_body(r.read(), r.headers)[0], r.geturl()
     except urllib.error.HTTPError as e:
         return e.code, "", getattr(e, "url", url)
     except Exception as e:  # noqa: BLE001 - network shape varies by platform
@@ -83,7 +84,7 @@ def post(host, body):
             url, data=data,
             headers={"User-Agent": UA, "Content-Type": "application/json"}),
             timeout=60)
-        return json.loads(r.read().decode("utf8", "replace"))
+        return json.loads(decode_body(r.read(), r.headers)[0])
     except urllib.error.HTTPError as e:
         if e.code == 404:
             die(f"{host} has no SuccessFactors job service at {API} (HTTP 404). "

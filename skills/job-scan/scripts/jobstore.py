@@ -51,6 +51,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 BASE = "https://www.jobstore.com"
@@ -116,8 +117,8 @@ def get(path):
         "Accept-Encoding": "identity"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            return r.headers.get("Content-Type", ""), r.read().decode(
-                "utf-8", "replace")
+            return (r.headers.get("Content-Type", ""),
+                    decode_body(r.read(), r.headers)[0])
     except urllib.error.HTTPError as exc:
         if exc.code == 403:
             # This adapter wrote the right sentence by hand before there was

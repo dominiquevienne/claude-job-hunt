@@ -30,6 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 
 from _ua import UA
@@ -83,7 +84,7 @@ def get(url):
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=90)
-        return r.getcode(), r.geturl(), r.read().decode("utf8", "replace")
+        return r.getcode(), r.geturl(), decode_body(r.read(), r.headers)[0]
     except urllib.error.HTTPError as e:
         return e.code, url, ""
     except Exception as e:  # noqa: BLE001 - network shape varies by platform

@@ -30,6 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _decode import decode_body
 from _robots import allowed as robots_allowed
 from datetime import datetime, timezone
 
@@ -190,7 +191,12 @@ def route_html(tenant, _lang):
     status, _ctype, raw = get(f"{BASE}/{tenant}/")
     if status != 200:
         return None
-    body = raw.decode("utf8", "replace")
+    # **No headers to pass**: `get()` returns the content-type as a string,
+    # not the header object, and threading it through would change a contract
+    # for one call site. `decode_body` without headers still reads the page's
+    # own `<meta charset>` — the right declaration for an HTML page — then
+    # strict UTF-8, then a total fallback that now says so aloud. #115.
+    body = decode_body(raw)[0]
     ids = list(dict.fromkeys(LINK.findall(body)))
     if not ids:
         return None
@@ -255,11 +261,16 @@ def cmd_ad(a):
             f"pulled. Record it as discarded.", code=3)
     if status != 200:
         die(f"tenant {a.tenant} answered HTTP {status} for ad {a.id}", code=4)
-    body = raw.decode("utf8", "replace")
+    # **No headers to pass**: `get()` returns the content-type as a string,
+    # not the header object, and threading it through would change a contract
+    # for one call site. `decode_body` without headers still reads the page's
+    # own `<meta charset>` — the right declaration for an HTML page — then
+    # strict UTF-8, then a total fallback that now says so aloud. #115.
+    body = decode_body(raw)[0]
     title = page_title(body)
     # Same control as `check`: not every tenant 404s an unknown id.
     _, _, landing = get(f"{BASE}/{a.tenant}/")
-    home = page_title(landing.decode("utf8", "replace") if landing else "")
+    home = page_title(decode_body(landing)[0] if landing else "")
     if home and title == home:
         die(f"ad {a.id} on tenant {a.tenant} answered HTTP 200 with the "
             f"tenant's own landing page — this id does not resolve. Some "
@@ -285,12 +296,17 @@ def cmd_check(a):
     it without knowing which tenants behave which way.
     """
     status, _ctype, raw = read_ad(a.tenant, a.id)
-    body = raw.decode("utf8", "replace") if raw else ""
+    # **No headers to pass**: `get()` returns the content-type as a string,
+    # not the header object, and threading it through would change a contract
+    # for one call site. `decode_body` without headers still reads the page's
+    # own `<meta charset>` — the right declaration for an HTML page — then
+    # strict UTF-8, then a total fallback that now says so aloud. #115.
+    body = decode_body(raw)[0] if raw else ""
     if status == 404:
         verdict, why = "closed", "HTTP 404 — the portal stopped serving it"
     elif status == 200:
         _, _, landing = get(f"{BASE}/{a.tenant}/")
-        home = page_title(landing.decode("utf8", "replace") if landing else "")
+        home = page_title(decode_body(landing)[0] if landing else "")
         if home and page_title(body) == home:
             verdict, why = ("closed",
                             "HTTP 200, but the page is the tenant's own landing "
