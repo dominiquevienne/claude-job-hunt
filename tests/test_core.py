@@ -4319,5 +4319,101 @@ class TheSiblingVerdictIsRecordedOrAbsent(unittest.TestCase):
                                       "the convention has been lost")
 
 
+class CitiesAreComparedThroughTheSharedFold(unittest.TestCase):
+    """Three adapters filtered locations by lowercasing and nothing else.
+
+    A user types `Zurich`, `Geneve`, `Neuchatel` — which is how people type
+    them — and the cards read `Zürich`, `Genève`, `Neuchâtel`. **The compare
+    was `wanted.lower() in city.lower()`, so every one of those returned
+    nothing at all.** `_locations.matches_city` exists for this (#65) and
+    folds diacritics and the administrative suffix as well as case. #132.
+
+    **The issue said thirteen adapters and it was seventeen, of which four
+    filter locally — and the four were three different cases.** `pinpoint`
+    and `recruitee` compared case-only. `swissdevjobs` had **its own** `fold`,
+    weaker than the shared one on punctuation and trailing space.
+    `workday` resolves the string against the board's own location facets and
+    dies when none matches — a different mechanism, and folding there would
+    change which facet is chosen. **The other thirteen pass the value to the
+    site, which does its own matching; imposing a fold on them would be a
+    regression, not a repair.**
+    """
+
+    ACCENTED = [("Zurich", "Zürich"), ("Geneve", "Genève"),
+                ("Neuchatel", "Neuchâtel"), ("Lausanne", "Lausanne")]
+
+    def test_an_ascii_spelling_finds_the_accented_city(self):
+        import _locations
+        for typed, on_card in self.ACCENTED:
+            with self.subTest(typed=typed):
+                self.assertTrue(
+                    _locations.matches_city(on_card, typed),
+                    f"a user typing {typed!r} gets nothing for {on_card!r}")
+
+    def test_the_case_only_compare_really_did_miss_them(self):
+        """**The witness for the defect**, kept so the case above is known to
+        be testing something. Without it, `matches_city` could be a no-op
+        improvement over a compare that already worked."""
+        missed = [t for t, c in self.ACCENTED if t.lower() not in c.lower()]
+        self.assertEqual(len(missed), 3,
+                         "the old compare no longer misses these, so this "
+                         "class is measuring the wrong thing")
+
+    def test_a_different_city_still_does_not_match(self):
+        """Generous is not indiscriminate."""
+        import _locations
+        for typed, on_card in [("Bern", "Zürich"), ("Lyon", "Lausanne")]:
+            with self.subTest(typed=typed):
+                self.assertFalse(_locations.matches_city(on_card, typed))
+
+    def test_no_local_filter_compares_cities_by_lowercasing(self):
+        """**The corpus half**, whose object is the text: the idiom that
+        caused this must not come back in a fourth adapter. Reading source is
+        right here — what is checked is that a form of words is absent from
+        every file, which no single exercised case can establish."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        bad = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            for m in re.finditer(
+                    r"a\.(city|location)\.lower\(\)\s+(?:not\s+)?in\s", src):
+                bad.append(f"{name}:{src[:m.start()].count(chr(10)) + 1}")
+        self.assertEqual(bad, [],
+                         "cities compared by lowercasing alone — accented "
+                         "spellings will not match: " + ", ".join(bad))
+
+    def test_the_text_fold_does_not_squeeze_punctuation(self):
+        """**A regression this nearly shipped.** Converging `swissdevjobs`
+        entirely onto `_locations.fold` looked tidy and would have broken its
+        keyword filter: that fold squeezes punctuation for city names, so
+        `C++` becomes `c` and `C#` becomes `c`, and a search for either would
+        match every row containing the letter.
+
+        **The two folds are for different jobs and must stay apart.** City
+        comparison goes through `matches_city`; text search keeps the local
+        fold.
+        """
+        import swissdevjobs
+        import _locations
+        for term in ("C++", "C#", ".NET", "Node.js", "CI/CD"):
+            with self.subTest(term=term):
+                kept = swissdevjobs.fold(term)
+                self.assertEqual(kept, term.lower(),
+                                 f"{term!r} lost its punctuation in the "
+                                 f"keyword fold")
+                self.assertNotEqual(
+                    kept, _locations.fold(term),
+                    f"the keyword fold now behaves like the city fold, and "
+                    f"{term!r} folds to {_locations.fold(term)!r}")
+        # and it still does the job it is kept for
+        self.assertEqual(swissdevjobs.fold("Zürich"), "zurich")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

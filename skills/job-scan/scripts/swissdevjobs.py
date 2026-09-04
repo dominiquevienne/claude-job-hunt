@@ -39,6 +39,7 @@ import urllib.parse
 import urllib.request
 
 from _robots import allowed as robots_allowed
+from _locations import matches_city
 
 from _ua import UA, browser_fallback
 API = "https://swissdevjobs.ch/api/jobsLight"
@@ -106,6 +107,14 @@ def head_status(url):
 
 
 def fold(s):
+    """Diacritics and case only — **and deliberately not `_locations.fold`.**
+
+    This is used for the keyword and technology filters, where the shared
+    fold would be wrong: it squeezes punctuation for city names, so `C++`
+    becomes `c` and `C#` becomes `c`, and a search for either would match
+    every row containing the letter. City comparison uses
+    `_locations.matches_city`; text search keeps this. #132.
+    """
     s = unicodedata.normalize("NFKD", str(s or ""))
     return "".join(c for c in s if not unicodedata.combining(c)).lower()
 
@@ -188,7 +197,7 @@ def keep(j, a):
         techs = [fold(t) for t in (j.get("technologies") or [])]
         if not any(fold(t) in techs for t in a.tech):
             return False
-    if a.city and fold(a.city) not in fold(j.get("actualCity")):
+    if not matches_city(j.get("actualCity"), a.city):
         return False
     if a.remote and j.get("workplace") != "remote":
         return False

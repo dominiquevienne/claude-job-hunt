@@ -93,6 +93,7 @@ import urllib.parse
 import urllib.request
 
 from _child import run as child_run
+from _locations import matches_city
 from _decode import decode_body
 from _robots import allowed as robots_allowed
 
@@ -276,7 +277,14 @@ def cmd_jobs(a):
         c = card(a.tenant, p)
         if a.paid_only and not (c["salary_min"] or c["salary_max"]):
             continue
-        if a.city and a.city.lower() not in (c["city"] or "").lower():
+        # **Case-only matching missed every accented city.** A user
+        # typing `Zurich`, `Geneve` or `Neuchatel` — which is how
+        # people type them — got zero rows against cards reading
+        # `Zürich`, `Genève`, `Neuchâtel`. `_locations.matches_city`
+        # is the shared comparison written for exactly this (#65),
+        # and it folds diacritics and the administrative suffix as
+        # well as case. Issue #132.
+        if not matches_city(c["city"], a.city):
             continue
         if c["salary_min"] or c["salary_max"]:
             paid += 1
