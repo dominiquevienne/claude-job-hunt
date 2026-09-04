@@ -5241,5 +5241,158 @@ class HostsAreDeclaredOrDeclaredInapplicable(unittest.TestCase):
                     f"now claims {got[name]}")
 
 
+class TheTenantIsAskedAboutNotThePlatform(unittest.TestCase):
+    """**#100 point 3, and the premise had already been met.**
+
+    The issue asked, on 2026-09-03, that seven multi-tenant ATS adapters call
+    the guard per tenant. Measured on 2026-09-04: all seven import `_robots`,
+    all seven gate, and all seven pass `urlsplit(url).netloc` and
+    `urlsplit(url).path` — so the verdict is already the tenant's and already
+    the path's. **The work named in the issue is done.**
+
+    **What was missing is the proof.** Not one of the seven had an exercised
+    case: the per-tenant behaviour was true by reading and unverified by
+    running, and the only two adapters exercised anywhere are the keyed-API
+    pair. **A regression to a vendor host — asking `flatchr.io` about a
+    question that belongs to `pokawa.flatchr.io` — would have changed nothing
+    a corpus scan can see.** The import is still there, the call is still
+    there, the gate function is still there; only the argument is wrong.
+
+    That is the shape this suite has already been bitten by twice: a guard
+    present and inert, and a scan that counts what obeys rather than what
+    escapes.
+
+    **The property asserted is uniform across all seven and does not assume
+    tenancy is by host.** Some of these platforms give each tenant a
+    subdomain, others a path on a shared host. Both are covered by the same
+    statement: *the gate asks about the URL it was given, never about a
+    constant.*
+    """
+
+    SEVEN = ("flatchr", "recruitee", "talentsoft", "pinpoint",
+             "digitalrecruiters", "solique", "persigo")
+
+    def _gate_name(self, module):
+        """The function that calls `robots_allowed`, found rather than named.
+
+        Six of them call it `_robots_gate` and one calls it `check_robots`.
+        **Hard-coding either would make this class quietly cover six of seven**
+        — and a scan that shrinks its own denominator reports health whatever
+        happens.
+        """
+        import ast
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "skills", "job-scan", "scripts",
+                            module + ".py")
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        for fn in ast.walk(tree):
+            if not isinstance(fn, ast.FunctionDef):
+                continue
+            for n in ast.walk(fn):
+                if isinstance(n, ast.Call) and \
+                        getattr(n.func, "id", "") == "robots_allowed":
+                    return fn.name
+        return None
+
+    def _ask(self, module, url, verdict=None):
+        """Call the gate on `url` and report what the guard was asked."""
+        import importlib
+        mod = importlib.import_module(module)
+        name = self._gate_name(module)
+        self.assertIsNotNone(name, f"{module} has no function calling "
+                                   f"robots_allowed; it is no longer gated")
+        gate = getattr(mod, name)
+        seen = {}
+
+        def fake(host, path="/"):
+            seen["host"], seen["path"] = host, path
+            return verdict or {"allowed": True, "certain": True, "reason": "ok",
+                               "host": host, "requested_host": host}
+
+        real = mod.robots_allowed
+        mod.robots_allowed = fake
+        try:
+            import contextlib
+            import inspect
+            import io
+            n = len(inspect.signature(gate).parameters)
+            args = (url, "test")[:max(1, min(n, 2))]
+            # the adapters print their own refusal to stderr on the way out
+            with contextlib.redirect_stderr(io.StringIO()):
+                gate(*args)
+        finally:
+            mod.robots_allowed = real
+        return seen
+
+    def test_the_gate_asks_about_the_url_it_was_given(self):
+        """A tenant host, and the guard must hear that host — not the vendor's.
+        """
+        for module in self.SEVEN:
+            with self.subTest(adapter=module):
+                seen = self._ask(module,
+                                 "https://tenant-x.example-ats.com/jobs/42")
+                self.assertEqual(
+                    seen.get("host"), "tenant-x.example-ats.com",
+                    f"{module} asked the guard about {seen.get('host')!r} "
+                    f"instead of the host in the URL; on a tenant platform the "
+                    f"rules file is the employer's, not the vendor's")
+
+    def test_it_asks_about_the_path_too(self):
+        """`verdict()` answers *is this host closed outright*. A careers site
+        that refuses its ad path while leaving its root open passes that and
+        refuses every advertisement."""
+        for module in self.SEVEN:
+            with self.subTest(adapter=module):
+                seen = self._ask(module,
+                                 "https://tenant-x.example-ats.com/jobs/42")
+                self.assertEqual(seen.get("path"), "/jobs/42",
+                                 f"{module} did not ask about the path")
+
+    def test_a_refusal_stops_that_command(self):
+        """**The decision of 2026-09-04**: a refused tenant is skipped and
+        named, and the others continue. Every one of these seven takes a single
+        required `--tenant`, so one command is one tenant and stopping *is*
+        skipping — there is nothing else in the run to continue.
+
+        What must not happen is the third possibility: reading on anyway.
+        """
+        refused = {"allowed": False, "certain": True,
+                   "reason": "robots.txt refuses /jobs/", "host": "h",
+                   "requested_host": "h"}
+        for module in self.SEVEN:
+            with self.subTest(adapter=module):
+                with self.assertRaises(SystemExit, msg=(
+                        f"{module} read on through a refusal")) as caught:
+                    self._ask(module, "https://tenant-x.example-ats.com/jobs/42",
+                              verdict=refused)
+                self.assertEqual(caught.exception.code, 7,
+                                 f"{module} exited {caught.exception.code}; a "
+                                 f"refusal by robots is exit 7 so a caller can "
+                                 f"tell it from a breakage")
+
+    def test_all_seven_are_covered(self):
+        """**The denominator.** Every check above is a loop, and a loop over an
+        empty or shortened list passes."""
+        self.assertEqual(
+            len(self.SEVEN), 7,
+            "the list itself was shortened. Every check in this class loops "
+            "over SEVEN, so comparing SEVEN to itself would pass on an empty "
+            "list — a guard that can shrink its own denominator reports "
+            "health whichever way it goes.")
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for m in self.SEVEN:
+            with self.subTest(adapter=m):
+                self.assertTrue(
+                    os.path.isfile(os.path.join(
+                        root, "skills", "job-scan", "scripts", m + ".py")),
+                    f"{m}.py does not exist, so its subTest passed by "
+                    f"never running")
+        found = [m for m in self.SEVEN if self._gate_name(m)]
+        self.assertEqual(sorted(found), sorted(self.SEVEN),
+                         f"only {len(found)} of {len(self.SEVEN)} multi-tenant "
+                         f"adapters have a gate: {sorted(found)}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
