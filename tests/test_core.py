@@ -4637,14 +4637,34 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
     """
 
     # every place a documented script may live
-    HOMES = ("skills/job-scan/scripts", "bin", "skills/cover-letter",
-             "skills/job-scan")
+    def _homes(self, root):
+        """Every place a documented script may live, **found not listed.**
+
+        This class shipped with a hard-coded tuple of four directories, and
+        widening `_docs` to read every skill immediately produced two false
+        accusations: `jobroom_sync.py` and `list_applications.py`, both of
+        which exist, in `skills/job-report/scripts/` — a directory the tuple
+        did not name.
+
+        **That is the third hard-coded population to be wrong in one day**, and
+        the direction is the dangerous one: the guard reported working code as
+        broken documentation.
+        """
+        import glob
+        homes = [os.path.join(root, "bin")]
+        homes += sorted(glob.glob(os.path.join(root, "skills", "*")))
+        homes += sorted(glob.glob(os.path.join(root, "skills", "*", "scripts")))
+        return [h for h in homes if os.path.isdir(h)]
 
     def _docs(self):
         import glob
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        out = [os.path.join(root, "skills", s, "SKILL.md")
-               for s in ("job-scan", "cover-letter")]
+        # **Every skill, found rather than named.** This class shipped
+        # reading two of them. Five others documented commands — including
+        # `job-report`, which names five scripts — and not one was checked.
+        # A guard that lists its own population cannot notice a new member,
+        # and the day this was written a new skill was added.
+        out = sorted(glob.glob(os.path.join(root, "skills", "*", "SKILL.md")))
         out += sorted(glob.glob(os.path.join(root, "shared", "*.md")))
         return root, [d for d in out if os.path.exists(d)]
 
@@ -4671,8 +4691,8 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
         return out
 
     def _resolve(self, root, script):
-        for home in self.HOMES:
-            path = os.path.join(root, home, script)
+        for home in self._homes(root):
+            path = os.path.join(home, script)
             if os.path.exists(path):
                 return path
         return None
@@ -5454,6 +5474,115 @@ class TheAgentGoesOutThroughAnOpenerToo(unittest.TestCase):
                       "measured nothing — the seam moved")
         self.assertEqual(seen["ua"], _ua.UA,
                          f"the opener sent {seen.get('ua')!r}")
+
+
+class ADrawIsSealedBeforeTheInterview(unittest.TestCase):
+    """**#150.** The rehearsal skill draws the interviewers' facets, plays them
+    without naming them, and reveals them in the debrief.
+
+    **The failure this prevents is not dishonesty, it is memory.** A debrief
+    revealing facets chosen *after* the interview reads exactly like one
+    revealing facets chosen *before* it — the candidate cannot tell, a reader
+    of the transcript cannot tell, and **the agent cannot tell either**, which
+    is the part that matters. An agent that reconstructs a plausible draw at
+    debrief time will believe it remembered one.
+
+    So `draw` prints a digest into the transcript and writes the facets to a
+    file. **A reconstruction cannot match a digest that was already
+    published.** This is not tamper-proofing against someone determined to
+    cheat; it removes the honest accident.
+    """
+
+    def _run(self, *args):
+        import subprocess
+        import sys as _sys
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        script = os.path.join(root, "skills", "interview-rehearsal",
+                              "rehearse.py")
+        return subprocess.run([_sys.executable, script, *args],
+                              capture_output=True, text=True, timeout=30)
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.path = os.path.join(self.tmp, "draw.json")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_the_draw_does_not_leak_the_facets_into_the_transcript(self):
+        """**The blind phase depends on this and on nothing else.** Whatever
+        `draw` prints is what the candidate can scroll back to."""
+        import json
+        out = self._run("draw", "--out", self.path, "--seed", "3")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        printed = (out.stdout + out.stderr).lower()
+        with open(self.path, encoding="utf-8") as fh:
+            drawn = json.load(fh)
+        values = {v.lower() for p in drawn["panel"]
+                  for v in p["facets"].values()}
+        leaked = sorted(v for v in values if v in printed)
+        self.assertEqual(leaked, [],
+                         f"the draw printed its own facets: {leaked}")
+
+    def test_a_reconstruction_cannot_match_the_published_digest(self):
+        """The case the mechanism exists for: the file is rewritten afterwards
+        with different facets, and the digest no longer agrees."""
+        import json
+        out = self._run("draw", "--out", self.path, "--seed", "3")
+        published = [w for w in out.stdout.split() if len(w) == 8
+                     and all(c in "0123456789abcdef" for c in w)]
+        self.assertTrue(published, f"no digest in {out.stdout!r}")
+        with open(self.path, encoding="utf-8") as fh:
+            rec = json.load(fh)
+        before = rec["panel"][0]["facets"]["warmth"]
+        after = "warm" if before != "warm" else "cold"
+        self.assertNotEqual(before, after, "the mutation would not apply")
+        rec["panel"][0]["facets"]["warmth"] = after
+        with open(self.path, "w", encoding="utf-8") as fh:
+            json.dump(rec, fh)
+        back = self._run("reveal", "--file", self.path)
+        self.assertNotEqual(back.returncode, 0,
+                            "a rewritten draw was revealed as if sealed")
+        self.assertIn("changed since it was sealed", back.stderr)
+
+    def test_an_intact_draw_reveals_and_verifies(self):
+        """**The negative half.** A guard that refuses everything is not a
+        guard, and this one would look identical from the failing side."""
+        import json
+        self._run("draw", "--out", self.path, "--seed", "3")
+        back = self._run("reveal", "--file", self.path)
+        self.assertEqual(back.returncode, 0, back.stderr)
+        self.assertEqual(json.loads(back.stdout)["kind"], "rehearsal",
+                         "a rehearsal must never be recorded as an interview")
+        check = self._run("verify", "--file", self.path)
+        self.assertEqual(check.returncode, 0)
+        self.assertTrue(json.loads(check.stdout)["intact"])
+
+    def test_a_missing_draw_refuses_rather_than_improvising(self):
+        """**The debrief's honest failure.** No file means the facets cannot be
+        revealed truthfully, and saying so is the only correct answer."""
+        back = self._run("reveal", "--file", os.path.join(self.tmp, "none.json"))
+        self.assertNotEqual(back.returncode, 0)
+        self.assertIn("cannot", back.stderr.lower())
+
+    def test_an_unforeseen_facet_is_kept(self):
+        """The request's list ends in "…". **A facet nobody anticipated must
+        not be lost in silence** — the open list is part of the spec."""
+        import json
+        self._run("draw", "--out", self.path, "--facet", "nepotism=strong")
+        with open(self.path, encoding="utf-8") as fh:
+            rec = json.load(fh)
+        self.assertEqual(rec["panel"][0]["facets"].get("nepotism"), "strong")
+
+    def test_it_will_not_overwrite_a_draw_by_accident(self):
+        """Two draws at one path would make the first unrevealable, and the
+        debrief would open a seal that belongs to a different rehearsal."""
+        self._run("draw", "--out", self.path)
+        again = self._run("draw", "--out", self.path)
+        self.assertNotEqual(again.returncode, 0)
+        self.assertIn("already holds a draw", again.stderr)
 
 
 if __name__ == "__main__":

@@ -45,6 +45,13 @@ plugin says which folder before it writes anything in it.
   afterwards**: what was answered, what was **not**, the next step and its
   date, and your own read of the room. One skill for both, because the useful
   half of a debrief is which of your prepared questions came back unanswered.
+- **`interview-rehearsal`** — **sit the interview before you sit it.** The
+  agent plays the people across the table, with facets you are not told:
+  technical depth, managerial and commercial instinct, warmth or hostility,
+  and **the fear of being replaced by you**. They are drawn and sealed before
+  the first question, so the debrief afterwards reveals what was actually
+  played rather than what would best explain how it went — and it scores you
+  against bases it names, never a bare percentage.
 - **`job-report`** — how many applications you actually sent over a period,
   which ones reached an interview, and which are still undeclared to an
   unemployment office. Counts what went out, not what you looked at.
@@ -510,6 +517,8 @@ five PDFs remain as a fallback for anyone who prefers them.
 /board-request <board URL>       # note a board that has no adapter yet
 /interview-prep <company>        # briefing sheet for a booked interview
 /interview-prep                  # …or the debrief, after the meeting
+/interview-rehearsal             # rehearse one, from your profile alone
+/interview-rehearsal <company>   # …or from the application in your ledger
 /job-report                      # applications sent this month
 /job-report --interviews         # the ones that reached a meeting
 /job-report --from 2026-07-01 --to 2026-07-31
