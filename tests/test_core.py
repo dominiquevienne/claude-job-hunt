@@ -6225,5 +6225,90 @@ class TheSearchLoopWasTheRefusedPath(unittest.TestCase):
                       "the per-path call is gone from get()")
 
 
+class TheSieveCarriesItsOwnControls(unittest.TestCase):
+    """`_overlap.py` — the fabricated-network check, made a tool. #157.
+
+    **Its positive control refuted its own first design, in the first run.**
+    That version split corpus A in two halves and compared them: same source,
+    so it must come out high. It returned 0.0 % — correctly, because two halves
+    of one corpus hold *different* advertisements and this sieve compares
+    advertisements. **A control that cannot come out high on a corpus that is
+    copying is not a control**, and it refused every run in the same breath as
+    it refuted itself. No re-reading would have found that; running it did.
+
+    The control now plants the phenomenon: A against a corpus that copied half
+    of A verbatim, which must find roughly that half.
+    """
+
+    def _mod(self):
+        import importlib
+        return importlib.import_module("_overlap")
+
+    A = ["senior railway operations manager", "digital content strategist",
+         "infrastructure project coordinator", "e commerce operations lead",
+         "clinical pharmacy supervisor", "warehouse logistics planner",
+         "civil structural site engineer", "regional sales account director",
+         "data quality assurance analyst", "human resources payroll officer",
+         "marine cargo survey inspector", "primary school mathematics teacher"]
+
+    def test_a_copied_corpus_is_seen(self):
+        """**Direction one.** Half of A, verbatim, inside B."""
+        m = self._mod()
+        b = self.A[:6] + ["totally unrelated hairdressing apprentice role"]
+        v = m.verdict(self.A, b)
+        self.assertEqual(v["state"], "measured", v.get("reason"))
+        self.assertGreaterEqual(v["observed"]["rate"], 50.0,
+                                "copying was planted and not found")
+
+    def test_an_unrelated_corpus_is_not(self):
+        """**Direction two, and without it the first proves nothing** — a sieve
+        that always says yes would pass the test above."""
+        m = self._mod()
+        b = ["boulanger patissier tourier", "chauffeur poids lourd regional",
+             "aide soignante de nuit", "menuisier agenceur atelier",
+             "technicienne de laboratoire", "agent de securite incendie"]
+        v = m.verdict(self.A, b)
+        self.assertLess(v["observed"]["rate"], 10.0)
+
+    def test_the_place_name_never_reaches_the_key(self):
+        """**The failure that produces a perfect and false negative.** A key
+        carrying the country returns 0.0 % on every pair, because the one token
+        guaranteed to differ decides the answer."""
+        m = self._mod()
+        k = m.key("Railway operations manager job vacancy in Mombasa Kenya")
+        for gone in ("kenya", "job", "vacancy"):
+            self.assertNotIn(gone, k, f"{gone!r} survived into the key")
+        self.assertIn("railway", k)
+
+        # **What is guaranteed, and what is not.** Country names are
+        # enumerable and are stripped. City names are not: `mombasa` survives
+        # this key, and it was this test that found it. A hand-kept list of
+        # every city on earth is not a thing to promise, so the module
+        # promises the countries, offers `--show-key` for the rest, and says
+        # so rather than implying a completeness it cannot hold.
+        self.assertIn("mombasa", k,
+                      "if city names are now stripped, say which and stop "
+                      "claiming only countries are")
+
+    def test_a_broken_instrument_refuses_to_report(self):
+        """**The state that matters most.** When the positive control fails,
+        the run must say `out-of-domain` rather than hand back a rate — the
+        result that has every appearance of a measurement and is not one."""
+        m = self._mod()
+        v = m.verdict(["one two three"], ["four five six"])
+        self.assertEqual(v["state"], "out-of-domain")
+        self.assertIn("control", v["reason"])
+
+    def test_the_positive_control_can_fail(self):
+        """**And the guard must be able to go the other way.** A control that
+        cannot fail is decoration: fed a corpus with no repeatable content, the
+        planted copy is still found, so failure has to come from a real
+        inability — here, too few labels to plant into."""
+        m = self._mod()
+        v = m.verdict(self.A[:3], self.A[:3])
+        self.assertEqual(v["state"], "out-of-domain")
+        self.assertIsNone(v["control_positive"]["rate"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
