@@ -68,8 +68,11 @@ The states a fetch can end in, and they are not interchangeable:
     unreachable  timeout, DNS, TLS, a persistent 5xx, **or a 2xx that is
                  not 200** — unknown, and the only honest answer is that we
                  do not know
-    unrecognised 200 with something that is not a rules file — **unknown**,
-                 because a body nobody could recognise establishes nothing
+    unrecognised 200 with something that is not a rules file — **an open
+                 door**, because the host answered and wrote no rule. Still
+                 `certain: False`: a body nobody could recognise establishes
+                 nothing, and this is a policy applied to that absence, not
+                 an absence established
 
 **AND A BODY WE DID NOT RECOGNISE IS NOT AN ABSENCE OF RULES.** Until #128 a
 `Content-Type` containing `text/plain` skipped the body check entirely, so
@@ -86,6 +89,13 @@ one was labelled `text/plain` and never examined; the long one was labelled
 `certain` exists to say *this is an established absence of rules*. **A guard
 that errs by doubting is repairable; a guard that errs by asserting gets
 itself believed.**
+
+**That `certain` survives the decision that opened `unrecognised`.** What
+changed is the conduct applied to a body without rules, not what is known
+about it — the two are separable, and #128 exists because they were once
+merged. **A verdict of `allowed: True` with `certain: False` is the honest
+shape here**: we are proceeding on a policy, not on a finding, and anything
+reading this module can tell the two apart.
 
 **A 404 AND A 202 WITH AN EMPTY BODY ARE NOT THE SAME FACT**, and they shared
 a verdict until #125. `algerie.tanqeeb.com` answers **HTTP 202 with zero
@@ -473,16 +483,35 @@ def verdict(host):
             f"by hand in the user's own browser and record what it says.")
         return _keep(out)
     if got["state"] == "unrecognised":
-        # **The distinction #128 turns on.** `certain` exists to say *this is
-        # an established absence of rules*; a body we could not recognise
-        # establishes nothing. **A guard that errs by doubting is repairable;
-        # a guard that errs by asserting gets itself believed.**
-        out["sweep"] = None
+        # **A body that says nothing does not say no.** The host answered, the
+        # answer was readable, and it expressed no rule — so there is nothing
+        # to obey, and refusing lends it a wish it never wrote. The owner's
+        # reasoning, quoted: *"l'absence de règle est une porte ouverte.
+        # Rappel : le fichier robots.txt est un souhait de l'hôte (qui bien
+        # souvent est autogénéré et non vérifié)"*.
+        #
+        # **This is the counterpart of a rule this repository already applies
+        # in the other direction**: `robots-policy.md` holds that a CMS
+        # default binds even when nobody meant it — Honduras, whose file is
+        # copied from Google's documentation. If an unmeant refusal binds,
+        # an unwritten one cannot.
+        #
+        # **`certain` stays False, and that is not a detail.** #128's whole
+        # point is that a body we could not recognise *establishes* nothing;
+        # what changed is the conduct applied to that absence, not the
+        # epistemics of it. Setting `certain: True` here would re-create the
+        # seventh defect — a group invented out of an error page and then
+        # certified — through the front door.
+        out["sweep"] = True
         out["certain"] = False
         out["reason"] = (
-            f"{got.get('why')} **Not a permission and not a refusal** — the "
-            f"host answered with something, and it was not its rules. Read "
-            f"the file by hand and record what it says.")
+            f"{got.get('why')} **The host answered and expressed no rule, so "
+            f"there is none to obey** — an absence of rules is an open door, "
+            f"and a `robots.txt` is a wish, often generated and never read by "
+            f"anyone. **This is a policy applied to an absence, not an "
+            f"absence established**: `certain` stays false. It is emphatically "
+            f"*not* \u201cwe proceed when we do not know\u201d — a fetch that "
+            f"failed and a 403 both still stop this module cold.")
         return out
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not
@@ -847,6 +876,11 @@ def allowed(host, path):
             + ("**A 404 is knowledge**: there is no file, so there are no "
                "rules, and that is not a refusal."
                if v["state"] == "absent" else
+               "**The host answered and wrote no rule**, so there is none to "
+               "obey — an absence of rules is an open door. `certain` is "
+               "false because this is a policy applied to an absence, not an "
+               "absence established."
+               if v["state"] == "unrecognised" else
                "**That is not an absence and not a permission** — a file that "
                "cannot be read says nothing either way. Proceed at a human "
                "pace and say so, or read it by hand."))

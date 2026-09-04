@@ -16,7 +16,7 @@ neither announces which contract it is honouring.
 
 **The most useful thing this board taught is not the board.** See trap 1.
 
-## Status on 2026-09-04 — **the board is dark, and the remaining cause is a decision**
+## Status on 2026-09-04 — **the board is dark, and the host is down**
 
 **Do not read a zero from this adapter as a market.** It returns nothing today,
 and it stops before it reaches the index.
@@ -48,11 +48,29 @@ module.
 defect is not held back because its fix is not sufficient, and when the
 remaining question is answered there will be one step left instead of two.
 
-**The remaining cause is not a bug.** What to do about a host whose
-`/robots.txt` is an error page is a policy decision — treat it as absent, treat
-it as refusal, record a hand-read exception — and the guard deliberately
-declines to take it. **Nobody should wire around this to make the board return
-rows.** Tracked in #104.
+**The robots question was settled on 2026-09-04, and it changed nothing
+here.** The owner decided that a host answering with no directive line has
+expressed no rule, so `unrecognised` opens the door (`robots-policy.md`, *"a
+body that says nothing does not say no"*). The guard now returns `allowed:
+True`. **Both adapters were run immediately afterwards and both still return
+no ads.**
+
+**Because `robots.txt` was never the illness — it was a symptom.** Measured
+the same minute:
+
+| path | status | bytes | `<title>` |
+| :-- | :-- | --: | :-- |
+| `/robots.txt` | 200 | 8 456 | SEPE |
+| `/` | 200 | 8 456 | SEPE |
+| the Solr endpoint | 200 | 8 456 | SEPE |
+
+**Every path on the host returns the same error page**, with a per-request id
+that changes the md5 while the length stays fixed. The adapter's own JSON
+guard now catches it — *"a 200 with an application/json content type and a body
+that is not JSON"* — which is the right refusal for the right reason.
+
+**Nothing to do here but wait for SEPE.** Do not wire around it. Tracked in
+#104.
 
 ## Access
 

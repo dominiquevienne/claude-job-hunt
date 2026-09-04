@@ -15,6 +15,7 @@ function under it.
 Run: `python3 -m unittest discover -s tests -v`
 """
 
+import io
 import os
 import re
 import sys
@@ -1934,23 +1935,34 @@ class ABodyNobodyRecognisedIsNotAnAbsence(unittest.TestCase):
 
     def test_a_short_error_page_labelled_text_plain_is_not_rules(self):
         """**The specimen.** Labelled `text/plain`, so the old code never
-        looked at it."""
+        looked at it.
+
+        **What #128 fixed is still fixed**, and that is what this asserts: the
+        page is not parsed into an empty `*` group, and it is not certified.
+        The conduct applied to that absence changed on 2026-09-04 — see
+        `AnEmptyBodyIsAnOpenDoor` — but the epistemics did not, and the two
+        were merged once already.
+        """
         v, a = self._verdict(self.APACHE, "text/plain")
         self.assertEqual(v["state"], "unrecognised")
-        self.assertIsNone(a["allowed"])
         self.assertFalse(v["certain"])
+        self.assertFalse(a["certain"])
+        self.assertIsNone(v.get("group"),
+                          "a group was invented out of an error page — this "
+                          "is #128 itself, and no policy change licenses it")
 
     def test_a_long_spa_shell_is_not_rules_either(self):
         """Same verdict for the case that was already caught — **the two must
         not depend on which header they carried.**"""
         v, a = self._verdict(self.SPA, "text/html")
         self.assertEqual(v["state"], "unrecognised")
-        self.assertIsNone(a["allowed"])
+        self.assertFalse(a["certain"])
 
     def test_an_empty_body_establishes_nothing(self):
         """A zero-byte body carries no directive either. RFC 9309 would read
-        it as *no rules*; **we cannot tell it from a broken response**, and
-        after #125 the empty answer is an unknown."""
+        it as *no rules*; **we cannot tell it from a broken response**, so the
+        state stays `unrecognised` and `certain` stays false — even though the
+        door now opens on it."""
         v, _a = self._verdict("", "text/plain")
         self.assertEqual(v["state"], "unrecognised")
         self.assertFalse(v["certain"])
@@ -2556,6 +2568,169 @@ class DeclaredAgentIsSentEverywhere(unittest.TestCase):
         self.assertEqual(offenders, [],
                          "these bind their own UA string, shadowing the one "
                          "declaration: " + ", ".join(offenders))
+
+
+class AnEmptyBodyIsAnOpenDoor(unittest.TestCase):
+    """Decided by the owner on 2026-09-04, on #104.
+
+    > *"l'absence de regle est une porte ouverte. Rappel : le fichier
+    > robots.txt est un souhait de l'hote (qui bien souvent est autogenere et
+    > non verifie)"*
+
+    **It is the counterpart of a rule this repository already applies in the
+    other direction.** `robots-policy.md` holds that a vendor default binds
+    even though nobody meant it — Honduras publishes a file copied out of
+    Google's documentation and we obey it. **If an unmeant refusal binds, an
+    unwritten one cannot.**
+
+    **The fragile thing is the boundary, not the state that moved.** *"A body
+    that says nothing does not say no"* sits one sentence away from *"we
+    proceed when we do not know"*, and the second would undo #118 — where a
+    host that closes everything to this project by name was swept whenever
+    the request timed out. So the neighbours are pinned as hard as the change.
+    """
+
+    def setUp(self):
+        """**The real ladder is three attempts with 1.5s and 4s of backoff.**
+        Two cases here end in `unreachable` on purpose, and paying the real
+        wait for them put twenty-five seconds on the suite. The retry
+        behaviour is pinned elsewhere; what these cases are about is the
+        verdict."""
+        import _robots
+        real = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        self.addCleanup(setattr, _robots, "_BACKOFF", real)
+
+    class _Resp:
+        def __init__(self, body, ctype, code=200):
+            self._b = body.encode("utf-8") if isinstance(body, str) else body
+            self._c, self._code = ctype, code
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def getcode(self):
+            return self._code
+
+        @property
+        def headers(self):
+            return {"Content-Type": self._c}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _verdict(self, body, ctype="text/html", code=200):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body, ctype, code))
+        try:
+            return (_robots.verdict("h.example"),
+                    _robots.allowed("h.example", "/jobs"))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    # ---- the state that moved -------------------------------------------
+
+    def test_a_body_with_no_directive_line_opens_the_door(self):
+        v, a = self._verdict("<html><title>SEPE</title>error</html>")
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertTrue(v["sweep"])
+        self.assertTrue(a["allowed"])
+
+    def test_it_opens_the_door_without_claiming_to_know(self):
+        """**`allowed: True` with `certain: False` is the honest shape.** We
+        proceed on a policy, not on a finding, and anything reading this
+        module must be able to tell those apart — #128 exists because they
+        were merged once."""
+        v, a = self._verdict("<html><title>SEPE</title>error</html>")
+        self.assertTrue(a["allowed"])
+        self.assertFalse(v["certain"])
+        self.assertFalse(a["certain"])
+
+    def test_the_reason_says_why(self):
+        """A verdict that gives no reason invites suspicion; one that gives a
+        false reason reads like a verification. The sentence carries the
+        status, the type, the size and the absence of directive lines."""
+        body = "<html><title>SEPE</title>no rules here</html>"
+        v, _a = self._verdict(body, "text/html")
+        why = v["reason"]
+        self.assertIn("200", why)
+        self.assertIn("text/html", why)
+        self.assertIn(str(len(body.encode("utf-8"))), why)
+        self.assertIn("User-agent", why)
+        self.assertIn("open door", why)
+
+    # ---- the two neighbours, which must not move -------------------------
+
+    def test_a_2xx_that_is_not_200_still_stops_us(self):
+        """`algerie.tanqeeb.com` answers **202 with zero bytes**. That is not
+        a body without rules — it is not a document at all. #125."""
+        v, a = self._verdict("", "text/plain", code=202)
+        self.assertEqual(v["state"], "unreachable")
+        self.assertIsNone(v["sweep"])
+        self.assertIsNone(a["allowed"])
+
+    def test_the_open_door_did_not_reach_the_unreachable_state(self):
+        """**The one that would undo #118.** A host we could not reach is a
+        host we know nothing about, and it looks exactly like a host that
+        closes everything to us by name — `nea.gov.kh` did."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+
+        def boom(*a, **k):
+            raise _robots.urllib.error.URLError("timed out")
+
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = boom
+        try:
+            v = _robots.verdict("h.example")
+            a = _robots.allowed("h.example", "/jobs")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertEqual(v["state"], "unreachable")
+        self.assertIsNone(v["sweep"], "a fetch failure became a permission — "
+                                      "this is #118, the worst defect this "
+                                      "module has had")
+        self.assertIsNone(a["allowed"])
+
+    def test_a_403_on_robots_txt_is_still_a_refusal(self):
+        """**The host answered, and it answered no.** Nothing about an
+        absence of rules reaches this row."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+
+        def refuse(*a, **k):
+            raise _robots.urllib.error.HTTPError(
+                "https://h.example/robots.txt", 403, "Forbidden", {},
+                io.BytesIO(b"nope"))
+
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = refuse
+        try:
+            v = _robots.verdict("h.example")
+            a = _robots.allowed("h.example", "/jobs")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertEqual(v["state"], "refused")
+        self.assertIsNot(v["sweep"], True)
+        self.assertIsNot(a["allowed"], True)
 
 
 if __name__ == "__main__":

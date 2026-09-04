@@ -722,6 +722,65 @@ decision, *some* are considered and about bandwidth rather than about AI, and
 to read this section as leverage should read the Ugandan file's traffic log
 first.
 
+## Its counterpart — a body that says nothing does not say no
+
+The section above holds that **a refusal nobody wrote still binds**: Honduras
+publishes a file copied out of Google's documentation, and we obey it anyway,
+because the wish we are honouring is the host's whether or not the host
+composed it.
+
+**The counterpart was owed, and it is this.** A host that answers, readably,
+with a body containing **no `User-agent`, `Disallow` or `Allow` line anywhere
+in it** has expressed no rule at all. There is nothing to obey. **Refusing it
+lends the host a wish it never wrote** — the mirror image of the error the
+vendor-default section warns against.
+
+The owner's reasoning, quoted rather than paraphrased:
+
+> *"l'absence de règle est une porte ouverte. Rappel : le fichier `robots.txt`
+> est un souhait de l'hôte (qui bien souvent est autogénéré et non vérifié)"*
+
+**Both halves are one position and must be read together.** Written apart, the
+first gets cited alone as *"defaults bind"* and the second alone as *"we
+proceed when unsure"* — and neither is what this says.
+
+### The three states, and only one of them moved
+
+| state | what the host did | conduct |
+| :-- | :-- | :-- |
+| **`unrecognised`** — 200, readable body, no directive line | **answered, and wrote no rule** | **open door** |
+| `unreachable` — timeout, DNS, TLS, 5xx, a 2xx that is not 200 | we could not look | **stop** — #118 |
+| `refused` — 401/403/429/451 on `/robots.txt` | answered, and answered no | **stop** |
+
+**The boundary is the whole rule.** *"A body that says nothing does not say
+no"* is not *"we proceed when we do not know"*. A fetch that failed and a 403
+both still stop this module cold, and they must, because **a host that names
+this project and closes everything to it looks exactly like a timeout from
+here** — `nea.gov.kh` did.
+
+### `certain` stays false, and that is not a detail
+
+`allowed: True` with **`certain: False`** is the honest shape. #128 exists
+because a body nobody could recognise was once parsed into an empty `*` group
+and then **certified**; what this decision changes is *the conduct applied to
+an absence*, not *what is known about it*. Those are separable, and the day
+they are merged again the seventh defect returns through the front door.
+
+**And this does not reach the keyed API hosts.** `api.francetravail.io`
+publishes `User-agent: * / Disallow: /` — an explicit refusal, not an absence —
+and `rest.arbeitsagentur.de` answers 403. **Those are the two rows this
+decision does not cover**, and the question about them stays open.
+
+### What it lit, measured rather than assumed
+
+**Nothing, on the day it was made** — and that is worth writing down. The two
+adapters it was expected to restore, `empleate.py` and `oposiciones.py`, still
+return no ads: `empleate.gob.es` serves **the same 8 456-byte SEPE error page
+on every path**, `/robots.txt`, `/` and the API alike. The unreadable
+`robots.txt` was never a robots quirk — it was one symptom of a host that is
+down. **A doctrine expected to relight a board is checked by running the
+adapter, never by reading the verdict.**
+
 ## When a refused board's ads reach us through an open one
 
 Decided 2026-09-01, on Empléate. It will recur, so it is written down.
