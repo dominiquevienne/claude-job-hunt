@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The parsing core, tested without touching the network.
 
-**Sixty-one adapters depend on third-party sites; testing those in CI would
-mean sweeping the web on every commit**, which is the thing this project
+**Sixty-five of the scripts open a socket on a third-party site; testing
+those in CI would mean sweeping the web on every commit**, which is the thing this project
 teaches people not to do. So the perimeter is the pure-parsing core, and every
 case here is synthetic. Issue #108.
 
@@ -11,6 +11,61 @@ afterwards.** `_robots.py`'s group grammar was corrected twice in one day
 (#101) against exactly these inputs, typed into a shell. **A case that is not
 executed is a comment**, and a comment does not fail when someone changes the
 function under it.
+
+## The access layer owes two instruments, not one
+
+**This is not a rule against reading source.** Several cases here read files
+and are right to: `DocumentedInvocationsAreReal` reads board cards because
+**a card is text**, and what it checks — that a documented subcommand exists —
+is a property of that text. `SourceCompilesWithoutWarning`, the import ban and
+the corpus scans are the same kind. **None of them is touched by what
+follows.** Anyone "correcting" them has misread this section.
+
+The rule is narrower:
+
+> **For any guard in the access-and-identity layer whose conclusion is
+> behavioural, an exercised case accompanies the corpus scan. The scan is not
+> replaced.**
+
+**Because the two instruments prove different things and neither implies the
+other.**
+
+  * A **corpus scan** proves an absence across every file — no adapter binds
+    its own agent, none assembles the refused URL. **Breadth without depth**:
+    it sees the token and never the intent.
+  * An **exercised case** proves the mechanism on one file — this request
+    carried a TLS context, this header held the declared agent. **Depth
+    without breadth**: it says nothing about the other sixty-four.
+
+**The demonstration, which is why the rule exists rather than the reasoning.**
+`TlsHostsAreRoutedEverywhere` scanned every adapter for an `import _tls` and
+was green while one of them passed `context=None` — the import present, the
+context absent, #104 back. An exercised case was added on `oposiciones.py`.
+**Twelve hours later `empleate.py` could do the same thing unnoticed** — the
+scan saw the import, the exercised case was looking at the other file. And
+`empleate.py` is the adapter #104 was opened for.
+
+**The temptation, once the exercised case exists, is to call the scan
+redundant.** It would have been, until somebody adds a third adapter. *A
+redundancy that only justifies itself at the third case is one that gets
+removed at the second.*
+
+**What it costs.** About four lines per case: the exercised ones written for
+this run run 19 lines to a source-reading case's 15, and none of them opens a
+socket — the opener is replaced by a function that captures the request. The
+cheapest two are 7 and 12 lines with no stub at all, because the code was made
+testable first: **a condition extracted into a function that returns its
+verdict is cheaper to test than the same condition read through text.**
+
+**And the cost falls at scale.** 53 of the 65 network readers share two names
+for their fetching function (`get`, `fetch`), so one generic harness covers
+82% of the corpus; on eight adapters sampled, seven exercised cleanly under
+fifteen lines. **A rule whose cost collapses at scale is not the rule it looks
+like when priced file by file.**
+
+Adopted 2026-09-04. **Nothing is owed retroactively**: all eleven cases in
+scope were brought up at the time, and each was mutated on the mutation that
+used to leave it green.
 
 Run: `python3 -m unittest discover -s tests -v`
 """
