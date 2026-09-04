@@ -64,6 +64,18 @@ location:
   # a false "they don't have it" costs an ad wrongly dropped.
   driving_licence: ["B"]
   own_vehicle: true
+  # BUSINESS TRAVEL IS A DEGREE, NOT A FACT — which is why this is a phrase
+  # and not a boolean. Measured on 49 advertisements, 2026-09-04: every real
+  # requirement stated an amount — "3–4 weeks per year", "on a limited basis",
+  # "déplacements inter-sites sont probables". **A yes does not meet any of
+  # them**: somebody who will travel three weeks a year and somebody who will
+  # travel monthly both say yes.
+  #
+  # Write what you will actually do, in your own words. It is read back to
+  # you beside what the ad asks; nothing compares them for you, and nothing
+  # is ever discarded for it — a travel requirement is a question at the
+  # gate. DELETE THE KEY if you would rather be asked each time.
+  travel: "a few weeks a year, Europe"
   # Location strings used in job-board searches, most specific first. These
   # are what the board itself understands, so use its own spelling.
   search_locations:

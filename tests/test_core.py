@@ -4415,5 +4415,174 @@ class CitiesAreComparedThroughTheSharedFold(unittest.TestCase):
         self.assertEqual(swissdevjobs.fold("Zürich"), "zurich")
 
 
+class TravelIsADegreeNotAFact(unittest.TestCase):
+    """The plugin had two configuration keys, a detector and written doctrine
+    for the driving licence, and **nothing at all for business travel**, which
+    advertisements ask for as often. Issue #137.
+
+    **The licence model does not copy across, and the corpus is why.**
+    Measured on 49 advertisements in a real workspace, 2026-09-04:
+
+        mention a travel word     8   (16%)
+        sentences matched        11
+          a real requirement      5
+          the employer's industry 3   "hospitality/travel/property domain"
+          a benefit               1   "prime mobilité douce" — a cycling
+                                      allowance, the opposite of business travel
+          the plugin's own prose  1   "International travel: confirmed
+                                      available by the candidate"
+
+    **Six of eleven matches were not a requirement.** So this is a whitelist
+    of phrasings, never a `grep` — the same shape #91 settled for `permis`,
+    which also names a residence permit.
+
+    **And every true match stated an amount**: *3–4 weeks per year*, *on a
+    limited basis*, *déplacements inter-sites sont probables*. A yes meets
+    none of them, which is why the configuration key is a phrase and the
+    verdict never blocks.
+    """
+
+    ASKS = [
+        ("Ability to travel 3-4 weeks per year to meet teammates in person",
+         "weeks-per-year"),
+        ("Willingness to travel internationally on a limited basis.",
+         "limited"),
+        ("mais des déplacements inter-sites sont probables.", "possible"),
+        ("International exposure and willingness to travel", None),
+    ]
+
+    # every one of these was matched by the word and is not a requirement
+    NOT_ASKS = [
+        "Hospitality, travel or property-management industry background",
+        "GCP, event-driven architectures, hospitality/travel/property",
+        "prime mobilité douce jusqu'à CHF 1 500/an",
+        "International travel: confirmed available by the candidate on "
+        "2026-09-04, and written to `config.yml`",
+        "Travel expenses reimbursed in full",
+        "frais de déplacement remboursés",
+    ]
+
+    def test_the_measured_requirements_are_detected_with_their_degree(self):
+        import _travel
+        for text, degree in self.ASKS:
+            with self.subTest(text=text[:40]):
+                req = _travel.requirement(text)
+                self.assertTrue(req["asks"], "a real requirement was missed")
+                self.assertEqual(req["degree"], degree)
+                self.assertTrue(req["quotes"], "the ad's own words are not "
+                                               "kept, so nothing can be shown")
+
+    def test_industry_product_benefit_and_our_own_prose_are_not_requirements(
+            self):
+        """**The last one is the trap `_licence.py` records too.** A run
+        writes its analysis into the workspace and the next read finds
+        *"International travel: confirmed available"* in a file it produced
+        itself — a detector that reads its own output agrees with itself."""
+        import _travel
+        for text in self.NOT_ASKS:
+            with self.subTest(text=text[:40]):
+                self.assertFalse(_travel.requirement(text)["asks"],
+                                 "matched something that is not a requirement")
+
+    def test_a_bare_word_search_would_have_taken_all_of_them(self):
+        """**The witness for the whitelist.** Without this, the case above
+        passes on a detector that matches nothing at all — and the point is
+        not that the noise is absent, it is that the noise is *there* and
+        rejected."""
+        import re
+        # the pattern the corpus was actually measured with — it included
+        # `mobilit`, which is how `prime mobilité douce` surfaced at all. A
+        # witness that used a narrower pattern than the measurement would
+        # have been testing a specimen the measurement never saw.
+        measured = r"travel|travell?ing|déplacement|mobilit"
+        caught = [t for t in self.NOT_ASKS if re.search(measured, t, re.I)]
+        self.assertEqual(len(caught), len(self.NOT_ASKS),
+                         "the specimens no longer contain the word, so they "
+                         "prove nothing about the whitelist")
+
+    def test_it_never_blocks(self):
+        """`_licence.py`'s `blocker` already means *say it before a dossier is
+        spent*, never *discard*. **Here even that is too strong**: a travel
+        requirement is a question at the gate."""
+        import _travel
+        for text, _d in self.ASKS:
+            req = _travel.requirement(text)
+            for declared in (None, "none", "a few weeks a year"):
+                with self.subTest(declared=declared):
+                    v = _travel.verdict(req, declared)
+                    self.assertFalse(v["blocker"],
+                                     "a travel requirement set an ad aside")
+                    self.assertTrue(v["ask"])
+
+    def test_silence_is_a_question_and_not_an_answer(self):
+        import _travel
+        req = _travel.requirement(self.ASKS[0][0])
+        v = _travel.verdict(req, None)
+        self.assertEqual(v["status"], "asked-user-silent")
+        self.assertIn("Nothing in the workspace says", v["text"])
+
+    def test_the_recorded_answer_is_shown_not_compared(self):
+        """**A degree is not met by a yes**, so the verdict puts both in front
+        of the reader rather than deciding between them."""
+        import _travel
+        req = _travel.requirement(self.ASKS[0][0])
+        v = _travel.verdict(req, "a few weeks a year, Europe")
+        self.assertIn("a few weeks a year, Europe", v["text"])
+        self.assertIn("weeks-per-year", v["text"])
+
+    def test_the_invocation_both_skills_document_actually_runs(self):
+        """**The doctrine promised a CLI that did not exist**, and I wrote
+        both at once: `python3 _travel.py --file <ad>` appeared in two
+        `SKILL.md` files while the module had no `__main__`.
+
+        The invocation guard reads `shared/boards/`, so a command documented
+        in a *skill* is checked by nothing. This is the narrow version of that
+        gap — the module the skills name must at least run the way they say.
+        """
+        import subprocess
+        import sys as _sys
+        import tempfile
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        script = os.path.join(root, "skills", "job-scan", "scripts",
+                              "_travel.py")
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
+                                         encoding="utf-8") as fh:
+            fh.write("Ability to travel 3-4 weeks per year to meet the team.")
+            path = fh.name
+        self.addCleanup(os.unlink, path)
+        out = subprocess.run([_sys.executable, script, "--file", path,
+                              "--json"], capture_output=True, text=True,
+                             timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr[:300])
+        import json
+        got = json.loads(out.stdout)
+        self.assertTrue(got["ask"])
+        self.assertFalse(got["blocker"])
+        self.assertEqual(got["degree"], "weeks-per-year")
+
+    def test_both_skills_name_the_same_invocation(self):
+        """Two files documenting one command is two places to drift."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for skill in ("job-scan", "cover-letter"):
+            with self.subTest(skill=skill):
+                text = open(os.path.join(root, "skills", skill, "SKILL.md"),
+                            encoding="utf-8").read()
+                self.assertIn("_travel.py", text)
+                self.assertIn("--file", text.split("_travel.py", 1)[1][:200])
+
+    def test_the_configuration_key_is_not_a_boolean(self):
+        """The template must not teach a yes/no, because the advertisements
+        do not ask one."""
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cfg = open(os.path.join(root, "templates", "config.example.yml"),
+                   encoding="utf-8").read()
+        m = re.search(r"^  travel: (.+)$", cfg, re.M)
+        self.assertIsNotNone(m, "the template no longer carries the key")
+        value = m.group(1).strip()
+        self.assertNotIn(value.lower(), ("true", "false", "yes", "no"))
+        self.assertTrue(value.startswith('"'), "the example is not a phrase")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

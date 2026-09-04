@@ -545,6 +545,34 @@ from `work_authorization`, and it is deliberate: there, silence costs nothing
 because the ad is scored anyway; here, a stated must-have that nobody can
 answer is exactly what produced #91. The question is asked, never the verdict.
 
+### Business travel, when the ad asks — a degree, not a fact
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/_travel.py" \
+  --file <the ad>
+```
+
+**`location.travel` is a phrase, not a boolean**, and that is the whole
+difference from the licence above. Measured on 49 advertisements, 2026-09-04:
+every real requirement stated an amount — *"3–4 weeks per year"*, *"on a
+limited basis"*, *"déplacements inter-sites sont probables"*. **A yes meets
+none of them.**
+
+- **The ad asks and the workspace is silent** — put the question here, at the
+  gate, before the letter is drafted. Do not guess an answer from a résumé.
+- **The ad asks and the user has recorded a phrase** — show both. **Nothing
+  compares them**, because a degree cannot be compared to a yes, and the
+  reader is the one who knows whether *"3–4 weeks a year"* fits *"a few weeks
+  a year, Europe"*.
+
+**And unlike a licence, this never stops a letter.** A licence required is a
+licence required; a travel expectation is something to say out loud and then
+write anyway.
+
+**Do not grep for `travel`.** Six of eleven matches in that corpus were not a
+requirement — the employer's industry, a cycling allowance, and **this
+plugin's own analysis prose read back from the workspace**. Issue #137.
+
 **This gate is also where step 1's board questions ride.** It always fires on
 the URL path, which is what makes it the only place they may be asked: a
 `board-request` for a second board found through an apply link, and — when

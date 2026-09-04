@@ -514,6 +514,36 @@ vehicle* in 5 of 45 ad files with 0 of them a car. `_licence.py` is an
 allow-list of phrases for that reason; on those 45 ads it fires **once, on the
 one ad that says it**. Issue #91.
 
+### Business travel, when the ad asks — the same shape, and one difference
+
+```bash
+python3 "$S/_travel.py" --file <ad text>          # or import requirement()
+```
+
+`location.travel` is **a phrase, not a boolean**, and that is the difference
+from the licence. Measured on 49 advertisements, 2026-09-04: **every real
+requirement stated an amount** — *"3–4 weeks per year"*, *"on a limited
+basis"*, *"déplacements inter-sites sont probables"*. **A yes meets none of
+them**: somebody who will travel three weeks a year and somebody who will
+travel monthly both answer yes.
+
+**So it never blocks, and not even in the licence's weakened sense.** There
+`blocker` means *say it before a dossier is spent*; here the verdict is a
+question at the gate and the advertisement is never set aside.
+
+- `asked-user-silent` → the ad asks and the workspace says nothing. **Put the
+  question, do not guess an answer.**
+- `asked-user-answered` → both are shown side by side. **Nothing compares them
+  for you** — a degree is not met by a yes, and the reader decides.
+
+**Do not grep for `travel` yourself.** Of 11 matches in that corpus, **six
+were not a requirement**: three the employer's *industry*
+(`hospitality/travel/property`), one a *benefit* (`prime mobilité douce`, a
+cycling allowance — the opposite of business travel), and **one this
+plugin's own analysis prose**, written into the workspace by an earlier run
+and read back as if an employer had said it. `_licence.py` records the
+identical trap. Issue #137.
+
 ### A hard blocker found here changes the status, not just the `Note`
 
 Step 3 discards ads whose stack is foreign to the candidate — but it works from
