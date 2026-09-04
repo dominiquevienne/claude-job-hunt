@@ -593,6 +593,76 @@ class RenderPlain(unittest.TestCase):
             self.assertLessEqual(len(line), 12)
 
 
+class WhichStatusMeansWhat(unittest.TestCase):
+    """**Nothing pinned the status tables, so either could shrink in
+    silence.**
+
+    Reducing `(401, 403, 429, 451)` to `(403,)` left the suite green, and so
+    did reducing `(404, 410)` to `(404,)` — every case exercised 403 and 404
+    and no other member of either set. **A table tested through one of its
+    entries is a table with one entry, as far as the suite is concerned.**
+
+    It matters because the two classes lead to opposite conduct. An `absent`
+    is knowledge — no file, therefore no rules, therefore an open door. A
+    `refused` stops this module cold. **A status sliding from one set to the
+    other moves a host between those two**, and after the 2026-09-04 decision
+    the door is genuinely open on the permissive side.
+    """
+
+    def _verdict(self, code):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+
+        def fail(*a, **k):
+            raise _robots.urllib.error.HTTPError(
+                "https://h.example/robots.txt", code, "x", {},
+                io.BytesIO(b""))
+
+        _robots.urllib.request.urlopen = fail
+        try:
+            return _robots.verdict("h.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_every_refusing_status_refuses(self):
+        """401, 429 and 451 are not decoration: a host that rate-limits or
+        answers *unavailable for legal reasons* **answered**, and it did not
+        answer yes."""
+        for code in (401, 403, 429, 451):
+            with self.subTest(code=code):
+                v = self._verdict(code)
+                self.assertEqual(v["state"], "refused",
+                                 f"HTTP {code} is no longer a refusal")
+                self.assertIsNot(v["sweep"], True)
+
+    def test_every_absent_status_is_an_absence(self):
+        """**410 is a stronger 404**, not a weaker one — the host says the
+        file was here and is deliberately gone."""
+        for code in (404, 410):
+            with self.subTest(code=code):
+                v = self._verdict(code)
+                self.assertEqual(v["state"], "absent",
+                                 f"HTTP {code} is no longer an absence")
+
+    def test_the_two_sets_do_not_overlap(self):
+        """A status in both would make the verdict depend on branch order."""
+        import re
+        src = open(os.path.join(SCRIPTS, "_robots.py"), encoding="utf-8").read()
+        got = re.findall(r"e\.code in \(([0-9, ]+)\)", src)
+        self.assertGreaterEqual(len(got), 2, "the status tables moved")
+        sets = [set(int(x) for x in g.replace(" ", "").split(",") if x)
+                for g in got[:2]]
+        self.assertEqual(sets[0] & sets[1], set(),
+                         "a status is in both the absent and refusing sets")
+
+
 class RobotsThirdState(unittest.TestCase):
     """A failure to read must never come back as a permission. Issue #118.
 
@@ -679,6 +749,27 @@ class RobotsThirdState(unittest.TestCase):
 class RobotsRetry(unittest.TestCase):
     """**Only an unknown is worth asking twice.** A slow host used to be a
     permissive host; a host that has already answered is not asked again."""
+
+    def test_the_ladder_keeps_more_than_one_rung(self):
+        """**The population this class stands on, which nothing asserted.**
+        Cutting `_TIMEOUTS` from three rungs to one left every case here green
+        — they pin *that* a retry happens and *when*, never *how many times*.
+
+        It matters in one direction only, and that direction is the module's
+        whole subject: **fewer attempts means more hosts filed `unreachable`**,
+        which stops the sweep. That errs safe and it errs silently, and on this
+        module every silent change has cost something.
+        """
+        self.assertGreaterEqual(len(_robots._TIMEOUTS), 3,
+                                "the retry ladder lost a rung without any "
+                                "case noticing")
+        self.assertEqual(len(_robots._BACKOFF), len(_robots._TIMEOUTS) - 1,
+                         "there must be one wait between each pair of "
+                         "attempts, no more and no fewer")
+        self.assertEqual(sorted(_robots._TIMEOUTS), list(_robots._TIMEOUTS),
+                         "the timeouts no longer increase — a retry that "
+                         "waits less than the attempt before it is not a "
+                         "second chance")
 
     def setUp(self):
         self._real = _robots._fetch_once
@@ -1760,6 +1851,43 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
         src = open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8").read()
         i = src.index("def fetch(url):")
         self.assertIn("smartrecruiters_gate()", src[i:i + 500])
+
+    def test_the_gate_actually_runs_and_not_merely_appears(self):
+        """**The case above reads a position and calls it a guarantee.**
+
+        `None and smartrecruiters_gate()` leaves the call text exactly where
+        that check looks, never runs it, and the whole suite stayed green —
+        while `fetch` would then reach `api.smartrecruiters.com`, which
+        publishes `User-agent: * / Disallow: /`. **A gate that is present and
+        inert is worse than one that is absent**, because the check that
+        should find it reports success.
+
+        So this one calls `fetch` and asserts the gate *fired*, rather than
+        asserting where it is written. No request is made: the gate refuses
+        first, which is the whole point.
+        """
+        import ats
+        calls = []
+        real_gate = ats.smartrecruiters_gate
+        real_open = ats.urllib.request.urlopen
+        ats.smartrecruiters_gate = lambda *a, **k: calls.append(1)
+
+        def offline(*a, **k):
+            # the gate has already decided by the time this could run; the
+            # request itself is not what this case is about.
+            raise ats.urllib.error.URLError("offline for this case")
+
+        ats.urllib.request.urlopen = offline
+        try:
+            ats.fetch("https://api.smartrecruiters.com/v1/companies/x")
+        except BaseException:      # SystemExit included — fetch dies loudly
+            pass
+        finally:
+            ats.smartrecruiters_gate = real_gate
+            ats.urllib.request.urlopen = real_open
+        self.assertEqual(len(calls), 1,
+                         "fetch() did not call the gate — it may still be "
+                         "written in the file and never reached")
 
     def test_the_run_says_it_out_loud_once(self):
         src = open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8").read()
