@@ -48,6 +48,32 @@ one-byte body**, which reads exactly like a rejected key. Every third-party
 write-up still shows v4. The adapter names this in its 403 handler so an hour
 is not lost hunting for a key that was never the problem.
 
+## The door beside the API — measured 2026-09-04
+
+**The file above is `arbeitsagentur.de`, the site. This adapter does not call
+the site.** It calls `rest.arbeitsagentur.de`, and that host answers
+differently:
+
+```
+GET https://rest.arbeitsagentur.de/robots.txt   ->  HTTP 403, 1 byte
+```
+
+**The host refuses to serve its own rules.** That is a `refused` state, not an
+absence and not a permission — it answered, and it answered no. **Citing the
+site's four permissive lines for this adapter was reading one host's answer as
+another's**, which is the error `_robots.py` exists to prevent.
+
+**Which rule covers it: the API rule** (`robots-policy.md`). The door is
+explicitly closed and the operator publishes a free API, so the API is the
+route.
+
+**But not the onboarding half.** `arbeitsagentur.py` needs **no credential from
+the user** — its `jobboerse-jobsuche` key is published in the specification and
+hard-coded. It is the one board of the four where this rule costs the user
+nothing.
+
+**Not the `unrecognised` rule.** A 403 is an answer.
+
 ## You cannot read this board
 
 ```

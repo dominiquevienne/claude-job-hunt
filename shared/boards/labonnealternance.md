@@ -147,9 +147,23 @@ the volume one person's job search needs.
 
 `api.apprentissage.beta.gouv.fr` answers `/robots.txt` with **145 778 bytes of
 its own single-page application** — `text/html`, no directive line anywhere.
-Since #128 the guard reads that as `unrecognised`: **a body nobody could
-recognise is not an absence of rules**, so the verdict is `None` and an
-adapter calling it would stop.
+Since #128 the guard reads that as `unrecognised`. **What that state means
+changed on 2026-09-04**: the owner decided an absence of rules is an open door,
+so the verdict is now `allowed: True` with **`certain: False`** — a policy
+applied to an absence, not an absence established. An adapter calling the guard
+would no longer stop here.
+
+**Which rule covers it: `unrecognised`**, not the API rule — and the
+distinction is the whole point. `api.apprentissage.beta.gouv.fr` **answered and
+expressed no rule.** It did not refuse. The other three keyed boards
+(`api.francetravail.io`, `api.adzuna.com`, `rest.arbeitsagentur.de`) were
+explicitly closed and fall under the API rule instead. **A host that refuses
+and opens a door beside it is not a host that says nothing.**
+
+*(The 145 778 is a byte count, measured on the wire. Until v1.203.0 the guard
+reported `len()` of the decoded string and called it bytes; the same page reads
+145 672 characters, and the two were once published as a size that changed
+between readings — #130.)*
 
 **Not wired, because it is the same class as `adzuna.md`** — a documented
 public API whose host does not serve usable rules — and that class is in

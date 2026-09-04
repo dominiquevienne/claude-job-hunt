@@ -230,7 +230,16 @@ key is missing the board is skipped with that reason named.
 `api.adzuna.com/robots.txt` is `User-agent: *` / `Disallow: /` — **26 bytes,
 `text/plain`, refusing every crawler evenly**. That is not a reason to
 override anything: the key *is* the sanctioned door, which is question 2 of
-`shared/robots-policy.md`. **The site is never swept**; only the documented
+`shared/robots-policy.md`.
+
+**Since 2026-09-04 that is binding rather than advisory.** Question 2 said
+*"if one exists the debate is moot"* and left *moot* to the reader; the owner's
+decision on #100 says **take the door**, on two cumulative conditions that both
+hold here — the refusal is explicit and covers us, and Adzuna publishes a free
+self-service API. **So the key is not a convenience: it decides whether this
+board lights at all**, and an onboarding that assumes a terminal fails the user
+who has none (#131). Measured 2026-09-04: `api.adzuna.com/robots.txt`, HTTP
+200, `text/plain`, 26 bytes, unchanged. **The site is never swept**; only the documented
 endpoints, under the user's own registered application.
 
 ## Configuration

@@ -82,6 +82,32 @@ was.** The distinction matters because a drift report reads one path:
 `bin/host-drift.py` observes `/robots.txt` and **that is not evidence about
 any other path on the host.**
 
+## The door beside the API — measured 2026-09-04
+
+**This card described the API and said nothing about the closed door next to
+it.** That was the defect: a reader could not tell whether the key was a
+convenience or the only lawful route.
+
+`api.francetravail.io/robots.txt` — the host this adapter actually calls:
+
+```
+HTTP 200, text/plain, 26 bytes
+User-Agent: *
+Disallow: /
+```
+
+**An explicit refusal, even-handed, covering every crawler including this
+one.** The passage above concerns `entreprise.francetravail.fr`, a *different*
+host read for drift; it is not this host's answer and must not be read as one.
+
+**Which rule covers it: the API rule** (`robots-policy.md`, *"question 2 is
+binding when the door is free"*). Both conditions hold — the door is
+explicitly closed to us, and francetravail.io publishes a free self-service
+API. **So the key is not a convenience here: it is the only lawful route**, and
+without one this board does not light.
+
+**Not the `unrecognised` rule.** This host said no; it did not stay silent.
+
 *(`pro.francetravail.fr` publishes 24 bytes — `User-agent: *`, empty
 `Disallow:` — and its own OAuth path redirects on again to
 `authentification-pro.francetravail.fr`. Neither is the address this adapter

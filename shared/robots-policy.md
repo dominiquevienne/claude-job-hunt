@@ -433,6 +433,72 @@ being inconvenient to us are not reasons.
 this file. An override the user cannot see in the run's own output is not
 allowed, however good the argument for it.
 
+## Question 2 is binding when the door is free — the rule that was missing
+
+Decided by the owner on 2026-09-04, on #100. Quoted rather than paraphrased:
+
+> *"Lorsque la porte nous est explicitement fermée et qu'un accès via API
+> gratuite est disponible, utiliser la voie API. Pour l'adaptateur concerné un
+> onboarding non technique à destination de l'utilisateur doit l'aider à
+> configurer son app_id ainsi que sa clef"*
+
+**This is not new doctrine. It is the rule that was missing from three
+identical precedents**, each decided on its own and none of them written down
+as a rule:
+
+| precedent | what was decided | what was missing |
+| :-- | :-- | :-- |
+| **Question 2** itself, above | *"If one exists the debate is moot"* | *moot* was left to the reader — it never said **take the door** |
+| **InfoJobs (ES)** | *"Obey. The API is the only route"* | decided for one board, on its own row |
+| **SmartRecruiters** | added by the owner on 2026-09-03, by this same procedure | the ground was restated each time instead of cited |
+
+**Three separate decisions were a preference. Written once, it is a rule.**
+
+### Two conditions, and both must hold
+
+1. **The door is explicitly closed to us** — the host published a refusal that
+   covers this project. Not an absence, not a failure to reach it.
+2. **A free API exists, sanctioned and self-service** — the operator publishes
+   it, and a user can obtain access themselves without negotiating.
+
+**The rule says nothing the moment either condition is missing.** In
+particular it does **not** authorise:
+
+- **a paid API**, anywhere, for any board;
+- **reading without the key** — no key, no route, and the adapter says so
+  rather than falling back to the pages;
+- **settling one host's `robots.txt` with another host's API.** A refusal on a
+  pages host is not answered by an API host's permission; they are different
+  hosts and each speaks only for itself.
+
+### It does not merge with the `unrecognised` decision
+
+The two arrived within hours of each other and they cover different rows.
+**A host that refuses and opens a door beside it is not a host that says
+nothing.**
+
+| host | what it did | which rule |
+| :-- | :-- | :-- |
+| `api.francetravail.io` | `User-agent: * / Disallow: /` | **this one** — an explicit refusal |
+| `api.adzuna.com` | `User-agent: * / Disallow: /`, 26 bytes | **this one** |
+| `rest.arbeitsagentur.de` | answers 403 | **this one** |
+| `api.apprentissage.beta.gouv.fr` | answered, expressed no rule | **`unrecognised`** — see *a body that says nothing does not say no* |
+
+### The onboarding is part of the rule, not a nicety
+
+**Since this decision the key is no longer a convenience: it decides whether
+the board lights at all.** A user who cannot obtain one has no route to that
+board, because the pages route is closed and this rule sends them to the API.
+
+Three adapters need a credential the user must obtain: **Adzuna, France
+Travail, La Bonne Alternance.** `arbeitsagentur.py` does **not** — its
+`jobboerse-jobsuche` key is published in the specification and hard-coded, so
+it falls under the access half of this rule and outside the onboarding half.
+
+**And the onboarding must not assume a terminal.** `README.md` promises *"in
+an app… nothing else to install"*, while `setup.md` documents this step in
+`printf`, `chmod 600` and `set -a`. Tracked as #131.
+
 ## The five cases, decided by the same rule
 
 | Board | Aimed at us? | Sanctioned door? | Even-handed? | Verdict |
