@@ -55,6 +55,19 @@ expired. This one at **22:31**: 588 and 27 402.
 changed.** Not a disagreement between two counts — a board running, and the
 conserved total is what shows it.
 
+**The precondition, and it must travel with the argument.** The sum is
+invariant *only because the partition is closed*: an advertisement leaves
+`vacancies` by entering `expired-vacancies`, and that is the only operation the
+site performs on the pair. Any other cause — a client served different content,
+a truncated file, a faulty read — **would break the sum**, which is exactly what
+makes it a witness.
+
+**`vacancies` / `expired` is closed. `jobs` / `companies` / `blog` is not.** A
+`/company/` page never becomes a `/jobs/` page, so a total across those files
+constrains nothing and invoking conservation there would be superstition.
+**Check the closure before invoking the conservation** — otherwise it is a
+coincidence being reused.
+
 **And the competing explanation was tested rather than dismissed.** The earlier
 figures were taken under a browser `User-Agent`; these under ours. *"The content
 depends on who asks"* predicts the same gap. A 2×2 square at 22:34 UTC — two
