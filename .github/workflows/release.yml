@@ -89,7 +89,12 @@ jobs:
                   --limit 1 --json conclusion,url \
                   --jq '.[0] | "\(.conclusion)\t\(.url)"' || true)
           concl="${got%%$'\t'*}"; url="${got#*$'\t'}"
-          if [ -z "$got" ] || [ "$concl" = "null" ]; then
+          # **Trois formes d'absence, pas une.** Un run en cours a été observé
+          # rendant `""` et non la chaîne `"null"` — l'empty est vrai pour jq,
+          # donc `// .status` ne se rabat pas non plus. Sans `-z "$concl"` le
+          # refus tombait dans la branche suivante et s'annonçait « core est `` »,
+          # sans nommer ce qui manquait. La direction était sûre, le message non.
+          if [ -z "$got" ] || [ "$concl" = "null" ] || [ -z "$concl" ]; then
             echo "::error::No \`core\` run for $GITHUB_SHA. **An absent verdict is not a pass** — see #143."
             exit 1
           fi
