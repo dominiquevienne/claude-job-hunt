@@ -4,6 +4,7 @@
 
 <!-- hosts: api.adzuna.com -->
 <!-- script: adzuna.py -->
+<!-- countries: CH FR DE AT BE NL IT ES PL GB US CA AU NZ IN SG ZA BR MX -->
 An aggregator with **one API for nineteen countries**, where the country is a
 path segment. One adapter reaches Switzerland, France, Germany, Austria,
 Belgium, the Netherlands, Italy, Spain, Poland, the United Kingdom, the United

@@ -7,6 +7,7 @@ difference without raising it.)*
 
 <!-- hosts: www.pinpointhq.com -->
 <!-- script: pinpoint.py -->
+<!-- countries: * -->
 
 One employer at a time, by tenant. Pinpoint is a UK-origin ATS, and **the fifth
 most common provider in a 360-card HiringCafe sample** — 24 ads, ahead of ADP,

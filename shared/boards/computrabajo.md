@@ -2,6 +2,7 @@
 
 <!-- script: computrabajo.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY US -->
 
 **Eighteen national sites, one adapter, and one rule file with no exception.**
 `co cl pe mx ar ec ve cr pa gt bo do uy sv hn ni py pr` — every one of them

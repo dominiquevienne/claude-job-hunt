@@ -2,6 +2,7 @@
 
 <!-- hosts: www.free-work.com -->
 <!-- script: freework.py -->
+<!-- countries: FR -->
 
 French **IT** roles, permanent and contract, on one public JSON API.
 **No browser, no account, no cookie.**

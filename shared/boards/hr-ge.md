@@ -4,6 +4,7 @@
 
 <!-- hosts: api.p.hr.ge -->
 <!-- script: hrge.py -->
+<!-- countries: GE -->
 **No key, no cookie, no browser.** Every brand's `robots.txt` is **109 bytes**,
 `Allow: /`, names no AI agent, and declares a sitemap **on the platform's API
 host**:

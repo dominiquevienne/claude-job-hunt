@@ -4,6 +4,7 @@
 
 <!-- hosts: umantis.com -->
 <!-- script: umantis.py -->
+<!-- countries: * -->
 **No tenant directory was found. Searched 2026-09-02:**
 
 | Looked at | Answer |

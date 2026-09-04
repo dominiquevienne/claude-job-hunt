@@ -2,6 +2,7 @@
 
 <!-- script: stepstone.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: DE AT BE NL GB IE -->
 
 **One platform, eleven domains, six inventories, six countries.** Totaljobs,
 Jobsite, Caterer, IrishJobs, NIJobs, Jobs.ie and StepStone DE/AT/BE/NL are the same

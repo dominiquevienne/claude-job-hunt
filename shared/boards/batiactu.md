@@ -2,6 +2,7 @@
 
 <!-- hosts: emploi.batiactu.com -->
 <!-- script: batiactu.py -->
+<!-- countries: FR -->
 
 **9 984 offres** of French construction and public works — the largest sector
 this repository had no coverage for at all. `jobology.md` reaches transport,

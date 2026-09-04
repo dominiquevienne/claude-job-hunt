@@ -4,6 +4,7 @@
 
 <!-- hosts: www.sozialinfo.ch -->
 <!-- script: sozialinfo.py -->
+<!-- countries: CH -->
 **Re-verified 2026-09-02**: 720 read against a stated 729, and the adapter still says it is nine short and that pagination is cumulative — the documented behaviour, working.
 
 **A real multi-employer board, and the only one here that names the employer.**

@@ -4,6 +4,7 @@
 
 <!-- hosts: www.encuentra24.com -->
 <!-- script: encuentra24.py -->
+<!-- countries: PA CR NI SV GT HN DO JM TT AW CW BQ -->
 Central American and Caribbean classifieds with a real jobs section. **Not a
 country per domain: one host with a country-and-language prefix** —
 `/panama-es/`, `/costa-rica-en/` — so there is no host enumeration to do.

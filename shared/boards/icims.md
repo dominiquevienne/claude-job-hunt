@@ -4,6 +4,7 @@
 
 <!-- hosts: careers.icims.com -->
 <!-- script: icims.py -->
+<!-- countries: * -->
 An ATS: **one employer per site, no search across employers.** It earns an
 adapter for a reason that is a repetition rather than a volume — **four country
 surveys named it as the commonest family with no adapter here**: Ireland 10

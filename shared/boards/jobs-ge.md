@@ -4,6 +4,7 @@
 
 <!-- hosts: www.jobs.ge -->
 <!-- script: jobsge.py -->
+<!-- countries: GE -->
 Georgia's independent generalist, unrelated to the HR.ge platform. **No key, no
 cookie, no browser — and no pagination.**
 

@@ -4,6 +4,7 @@
 
 <!-- hosts: api.mycareersfuture.gov.sg, www.mycareersfuture.gov.sg -->
 <!-- script: mycareersfuture.py -->
+<!-- countries: SG -->
 Singapore's national job portal, run by the **Skills and Workforce Development
 Agency (SWDA)** — Workforce Singapore renamed, which is why `wsg.gov.sg` now
 lands on `swda.gov.sg`. The **seventh national public employment service** here

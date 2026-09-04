@@ -2,6 +2,7 @@
 
 <!-- hosts: emploi.fhf.fr -->
 <!-- script: fhf.py -->
+<!-- countries: FR -->
 
 France's **public hospitals and medico-social sector**, on the Fédération
 Hospitalière de France's own board. **No browser, no account, no key.**

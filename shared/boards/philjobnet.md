@@ -4,6 +4,7 @@
 
 <!-- hosts: philjobnet.gov.ph -->
 <!-- script: philjobnet.py -->
+<!-- countries: PH -->
 The Philippines' public employment portal, run by the Department of Labor and
 Employment. **5 145 vacancies** on the day, ten to a page, employer named on
 every card. **No key, no account, no browser.**

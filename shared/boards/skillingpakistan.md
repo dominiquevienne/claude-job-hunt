@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: skillingpakistan.gov.pk -->
+<!-- countries: PK -->
 
 Pakistan's TVET portal (National Vocational and Technical Training
 Commission). `robots.txt` closes nothing — `sweep: True`, no rule matched.

@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.cadremploi.fr -->
+<!-- countries: FR -->
 **Re-tested 2026-09-02: the constraint holds.** `cadremploi.fr/robots.txt` still answers **HTTP 403** with 4 574 bytes of `text/html` to a scripted request — the rules themselves are unreadable to anything but a browser.
 
 The reference board for French **cadres** alongside the APEC — one of the oldest,

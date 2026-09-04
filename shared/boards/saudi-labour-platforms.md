@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: musaned.com.sa, ajeer.qiwa.sa -->
+<!-- countries: SA -->
 
 Both permit reading — `ajeer.qiwa.sa` publishes `User-agent: *` with a bare
 `Disallow:`, and `musaned.com.sa` serves markup for its `robots.txt`, so no

@@ -2,6 +2,7 @@
 
 <!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: CH -->
 
 Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud).
 **The sibling has now been verified** (`jobs-ch.md`, 2026-08-28): same DOM, same

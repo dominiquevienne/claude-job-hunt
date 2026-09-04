@@ -2,6 +2,7 @@
 
 <!-- hosts: www.infoempleo.com -->
 <!-- script: infoempleo.py -->
+<!-- countries: ES -->
 
 **7 621 active ads.** The third Spanish adapter here and the first that is not
 a public register: `empleate.md` and `oposiciones.md` are both the SEPE's, and

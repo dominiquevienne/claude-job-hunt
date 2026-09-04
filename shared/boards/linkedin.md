@@ -1,6 +1,7 @@
 # Driving LinkedIn through browser automation — hard-won constraints
 
 <!-- hosts: www.linkedin.com -->
+<!-- countries: * -->
 
 Read this **before improvising** any LinkedIn automation. Every line below was
 established by trial; ignoring one costs many wasted round-trips, and two of

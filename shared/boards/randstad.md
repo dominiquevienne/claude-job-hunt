@@ -4,6 +4,7 @@
 
 <!-- hosts: www.randstad.ch -->
 <!-- script: randstad.py -->
+<!-- countries: CH -->
 **Re-verified 2026-09-02**: **1 068 ads over 36 pages**, against the 1 059 recorded on 2026-08-29 — the page count is unchanged and the board drifted by nine.
 
 A staffing **agency** board, like `michaelpage.md`, `fachkraft.md` and

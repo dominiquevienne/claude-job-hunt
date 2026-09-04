@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: www.bayt.com -->
+<!-- countries: AE SA EG JO LB KW QA BH OM MA -->
 
 The largest job site in the Middle East and North Africa. **No adapter, and
 the reason is a layer, not a policy.**

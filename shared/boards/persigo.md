@@ -4,6 +4,7 @@
 
 <!-- hosts: www.persigo.ch -->
 <!-- script: persigo.py -->
+<!-- countries: CH -->
 A Swiss staffing **agency** board, like `michaelpage.md` and `fachkraft.md`:
 `hiringOrganization` is *Persigo AG* on every ad and **the client employer is
 never named**.

@@ -2,6 +2,7 @@
 
 <!-- script: workday.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: * -->
 
 **The tenant's own `robots.txt` lists its career sites — `workday.py sites`
 reads them.** Measured on four tenants 2026-09-02: swisscom, novartis, roche

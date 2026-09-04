@@ -4,6 +4,7 @@
 
 <!-- hosts: www.apec.fr -->
 <!-- script: apec.py -->
+<!-- countries: FR -->
 **Re-verified 2026-09-02**: a `--mots-cles developpeur` search returned **50 cards of 3 286 matching**, and every card still carries a teaser rather than the ad — the constraint this file is built on.
 
 The **Association pour l'emploi des cadres** — France's public-interest agency

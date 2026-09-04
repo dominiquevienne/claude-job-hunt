@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: melr.gov.gh -->
+<!-- countries: GH -->
 
 **There is nothing to read here, and the reason is stronger than "not a job
 board": the site serves one page under every URL.**

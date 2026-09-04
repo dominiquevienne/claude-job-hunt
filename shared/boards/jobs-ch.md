@@ -2,6 +2,7 @@
 
 <!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: CH -->
 
 Swiss board, German-speaking Switzerland. **Same platform as jobup.ch
 (JobCloud)**, and this file exists because "same platform" turned out to mean

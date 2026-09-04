@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-03 -->
 <!-- hosts: www.mihnati.com -->
 <!-- script: mihnati.py -->
+<!-- countries: SA -->
 
 A Saudi job board running on Rozee's platform, **and the platform shows
 through in ways that change the data.**

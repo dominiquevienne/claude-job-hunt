@@ -2,6 +2,7 @@
 
 <!-- script: bumeran.py -->
 <!-- verified: 2026-09-03 -->
+<!-- countries: AR CL PE MX EC VE PA -->
 
 **One platform wearing national brands, and the tell is a filename.** Every one
 of them serves `sitemap_avisos_bum.xml` at the same path — **`_bum` for

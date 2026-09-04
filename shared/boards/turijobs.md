@@ -2,6 +2,7 @@
 
 <!-- hosts: www.turijobs.com -->
 <!-- script: turijobs.py -->
+<!-- countries: ES -->
 
 **2 863 active ads** in tourism and hospitality — hotels, kitchens, front
 desk, spa, housekeeping. The fourth Spanish adapter here and **the first

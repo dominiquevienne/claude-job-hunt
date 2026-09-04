@@ -4,6 +4,7 @@
 
 <!-- hosts: taleez.com -->
 <!-- script: taleez.py -->
+<!-- countries: * -->
 ## The directory this file said did not exist
 
 **Corrected 2026-09-02.** This file said there was no tenant directory and

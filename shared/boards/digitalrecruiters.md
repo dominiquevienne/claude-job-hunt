@@ -26,6 +26,7 @@ RFC 9309, rather than letting the first win.)*
 
 <!-- hosts: api.digitalrecruiters.com -->
 <!-- script: digitalrecruiters.py -->
+<!-- countries: * -->
 **Re-verified 2026-09-02** on the question that decides how this adapter is
 used: whether a tenant directory exists. The search is recorded below rather
 than its conclusion — a negative claim cannot be checked by reading it.

@@ -2,6 +2,7 @@
 
 <!-- hosts: api.apprentissage.beta.gouv.fr -->
 <!-- script: labonnealternance.py -->
+<!-- countries: FR -->
 
 A French state service for **apprenticeship and alternance**, run by the
 Mission Apprentissage. One call returns two different things, and the second is

@@ -3655,5 +3655,112 @@ class PartialStillWritesWhatItKept(unittest.TestCase):
         self.assertEqual(len([l for l in out.splitlines() if l.strip()]), 1)
 
 
+class EveryCardDeclaresItsCountries(unittest.TestCase):
+    """Nothing in this repository said which country a board serves.
+
+    The Atlas publishes a coverage figure per country and was **held by
+    hand**, because there was no source to read: a card declared `verified`,
+    `hosts` and `script`, and never a country. Two countries were published at
+    0% while their adapter sat in `scripts/` — not a typo, an **absent link**.
+    Only 29 of 85 cards named a country in their opening, in prose.
+
+    **The pairing is the point, not the country.**
+
+      * `script` **and** `countries` — a board that is covered, and where.
+      * `countries` **without** `script` — assessed, no adapter. Ten cards,
+        and `chile-public-sector.md` is the model: *"Five Chilean portals were
+        assessed… none of them yields one."* **`CL` with no adapter is a fact
+        the Atlas needs**, and publishing Chile as uncovered is then correct
+        rather than an oversight.
+      * `script` **without** `countries` — the hole this guard closes.
+
+    **`*` is not a country and not a blank.** It says the adapter is not
+    country-scoped: an ATS where the tenant decides, or a global board.
+    Twenty-three cards carry it, and inventing a country for them would be
+    exactly the error this replaces.
+
+    **Every value was read off its own card**, one by one — a title or an
+    opening sentence. A first pass tried to extract them from the first 1200
+    characters and produced seven countries for Singapore's national portal
+    and eight for the Philippines', because a card's opening compares it to
+    other boards. **A map written by hand is not evidence either**; that is
+    how `<!-- script: icims.py -->` came to sit on a card with no adapter.
+    Both failures are why this is card-by-card and paired with a check.
+    """
+
+    # ISO 3166-1 alpha-2, the codes this corpus actually uses. Listed rather
+    # than pattern-matched: `ZZ` matches a two-letter pattern and is not a
+    # country, and the Atlas would carry it silently.
+    ISO = frozenset("""
+        AD AE AR AT AU AW BE BH BO BQ BR CA CH CI CL CM CO CR CU CW CY CZ DE
+        DK DO DZ EC EE EG ES FI FR GB GE GH GN GR GT HN HR HU ID IE IL IN IT
+        JM JO JP KE KW LB LT LU LV MA MG MT MU MX MY NG NI NL NO NZ OM PA PE
+        PH PK PL PT PY QA RO RS SA SE SG SI SK SN SV TH TN TR TT UA US UY VE
+        VN ZA
+    """.split())
+
+    def _cards(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = {}
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            name = os.path.basename(path)
+            if name.lower() == "readme.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                head = fh.read(4000)
+            co = re.search(r"<!--\s*countries:\s*(.+?)\s*-->", head)
+            sc = re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", head)
+            out[name[:-3]] = (co.group(1) if co else None,
+                              sc.group(1) if sc else None)
+        return out
+
+    def test_every_declared_code_is_a_real_one(self):
+        bad = []
+        for card, (countries, _sc) in self._cards().items():
+            if countries is None:
+                continue
+            for code in countries.split():
+                if code == "*":
+                    continue
+                if code not in self.ISO:
+                    bad.append(f"{card}: {code}")
+        self.assertEqual(bad, [], "not ISO 3166-1 alpha-2: " + ", ".join(bad))
+
+    def test_a_card_with_an_adapter_says_where_it_reaches(self):
+        """**The direction that closes the Atlas hole.** A board shipped
+        without this is a country published as uncovered while its adapter
+        sits in `scripts/`."""
+        silent = sorted(c for c, (co, sc) in self._cards().items()
+                        if sc and not co)
+        self.assertEqual(silent, [],
+                         "these declare an adapter and no countries, so "
+                         "nothing can tell what they cover: "
+                         + ", ".join(silent))
+
+    def test_the_star_is_not_mixed_with_countries(self):
+        """`* FR` would mean both *"not country-scoped"* and *"France"*. A
+        reader would take one and the Atlas the other."""
+        mixed = []
+        for card, (countries, _sc) in self._cards().items():
+            if countries and "*" in countries.split() \
+                    and len(countries.split()) > 1:
+                mixed.append(card)
+        self.assertEqual(mixed, [], "`*` mixed with codes: " + ", ".join(mixed))
+
+    def test_the_declarations_cover_the_corpus(self):
+        """**The floor**, so the population cannot empty in silence — the
+        defect found in two of this suite's own guards on 2026-09-04."""
+        cards = self._cards()
+        self.assertGreater(len(cards), 80)
+        declared = [c for c, (co, _s) in cards.items() if co]
+        self.assertEqual(len(declared), len(cards),
+                         f"only {len(declared)} of {len(cards)} cards declare "
+                         f"countries — declared everywhere or an absence is "
+                         f"not a signal")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

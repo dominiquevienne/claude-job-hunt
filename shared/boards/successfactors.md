@@ -2,6 +2,7 @@
 
 <!-- script: successfactors.py -->
 <!-- verified: 2026-09-02 -->
+<!-- countries: * -->
 
 An ATS, not a board: one employer per host, no search across employers.
 Employers front it with a vanity domain of their own (`jobs.<employer>.ch`,

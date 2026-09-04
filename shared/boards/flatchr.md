@@ -4,6 +4,7 @@
 
 <!-- hosts: careers.flatchr.io -->
 <!-- script: flatchr.py -->
+<!-- countries: * -->
 **No tenant directory was found. Searched 2026-09-02**, after `taleez.md` and
 `solique.md` both turned out to have one at the standard path:
 `careers.flatchr.io/sitemap.xml` **redirects to `www.flatchr.io/sitemap.xml`**

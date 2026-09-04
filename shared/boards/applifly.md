@@ -2,6 +2,7 @@
 
 <!-- script: applifly.py -->
 <!-- verified: 2026-09-03 -->
+<!-- countries: CH -->
 
 A Swiss applicant-tracking system. **Employers front it with their own vanity
 domain** — `jobs.<employer>.ch` — so **the host never says Applifly and the

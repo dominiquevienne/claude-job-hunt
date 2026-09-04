@@ -2,6 +2,7 @@
 
 <!-- hosts: join.com -->
 <!-- script: ats.py -->
+<!-- countries: * -->
 
 One employer at a time, by tenant. **No browser, no account, no key.**
 

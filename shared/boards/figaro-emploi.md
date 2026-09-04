@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: emploi.lefigaro.fr -->
+<!-- countries: FR -->
 **Re-tested 2026-09-02: the constraint holds.** `emploi.lefigaro.fr/robots.txt` still answers **HTTP 403** with 4 579 bytes of `text/html` to a scripted request.
 
 A large French generalist board — **244 815 ads in its own sitemap** — run by

@@ -2,6 +2,7 @@
 
 <!-- hosts: www.crit-job.com -->
 <!-- script: crit.py -->
+<!-- countries: FR -->
 
 **16 175 ads** — the largest French interim board here, ahead of `adecco.md`
 (13 293) and more than twice `randstad-fr.md` (6 755). **No browser, no
