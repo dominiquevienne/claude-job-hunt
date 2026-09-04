@@ -22,7 +22,7 @@ neither announces which contract it is honouring.
 and it stops before it reaches the index.
 
 `https://empleate.gob.es/robots.txt` answers **HTTP 200, `Content-Type:
-text/html`, ~8 456 bytes** — the SEPE error page, `<title>SEPE</title>`, *"Si el
+text/html`, 8 456 bytes** — the SEPE error page, `<title>SEPE</title>`, *"Si el
 problema persiste, póngase en contacto con nosotros"*. It is not a rules file
 and it is not an absence of one. `_robots.py`'s `unrecognised` state (#128)
 refuses to guess in either direction, so **both adapters on this host exit

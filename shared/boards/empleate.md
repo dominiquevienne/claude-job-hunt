@@ -22,7 +22,7 @@ requests.
 and it stops before it reaches the index.
 
 `https://empleate.gob.es/robots.txt` answers **HTTP 200, `Content-Type:
-text/html`, ~8 456 bytes** — the SEPE error page, `<title>SEPE</title>`, *"Si el
+text/html`, 8 456 bytes** — the SEPE error page, `<title>SEPE</title>`, *"Si el
 problema persiste, póngase en contacto con nosotros"*. It is not a rules file
 and it is not an absence of one. `_robots.py`'s `unrecognised` state (#128)
 refuses to guess in either direction, so **both adapters on this host exit
@@ -334,9 +334,16 @@ solr("comunidadF:CASTILLA LEON")                # → dies on the FAIL! body
 ## Stopped 2026-09-03: this host no longer serves a rules file
 
 `empleate.gob.es/robots.txt` and `www.empleate.gob.es/robots.txt` both return
-**8 450 bytes of the SEPE home page** — `Content-Type: text/html`, `<title>SEPE
+**8 456 bytes of an SEPE error page** — `Content-Type: text/html`, `<title>SEPE
 </title>`, and **zero `User-agent`, `Disallow` or `Allow` lines anywhere in
 it**.
+
+**This figure read 8 450 until 2026-09-04, and 8 450 was never a byte count.**
+It came from the guard's own message, which measured `len()` of a *decoded
+string* and called the result `bytes`; this page carries six multi-byte
+sequences, so it under-reported by exactly six. Corrected in v1.203.0 (#130).
+**The number is the same page, not a page that changed size** — and the two
+readings were briefly published as evidence that it did.
 
 This card previously recorded *"`Allow: /`, six private paths closed"*, so the
 file was real when it was written. **The site drifted; the reading did not.**

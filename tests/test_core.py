@@ -2401,5 +2401,89 @@ class TlsHostsAreRoutedEverywhere(unittest.TestCase):
                          + ", ".join(offenders))
 
 
+class GuardReportsBytesNotCharacters(unittest.TestCase):
+    """#130: `len()` of a decoded string counts characters; every message
+    called the number `bytes`.
+
+    **An all-ASCII body cannot catch this** — the two counts coincide there,
+    and `robots.txt` is usually ASCII, which is why it survived. It shows on
+    anything else: `empleate.gob.es` answered with an 8 456-byte error page
+    carrying six multi-byte sequences, and the guard announced *"8 450
+    bytes"*.
+
+    **A wrong unit is worse than a missing one.** A missing unit stops the
+    reader; a wrong one invites them to compare two numbers that are not the
+    same quantity. That is exactly what happened: a direct read (8 456) and
+    this message (8 450) were set beside each other and the difference was
+    published as the site changing size between reads — **a property of our
+    counter, reported as a property of the host.**
+
+    So the specimen here is deliberately multi-byte, and the assertion is
+    against the count on the wire.
+    """
+
+    def _serve(self, body_bytes, ctype="text/html"):
+        """One request, on a real socket, then the server dies."""
+        import http.server
+        import threading
+        holder = {}
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(inner):                      # noqa: N805
+                inner.send_response(200)
+                inner.send_header("Content-Type", ctype)
+                inner.send_header("Content-Length", str(len(body_bytes)))
+                inner.end_headers()
+                inner.wfile.write(body_bytes)
+
+            def log_message(inner, *a):             # noqa: N805
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        holder["port"] = srv.server_address[1]
+        t = threading.Thread(target=srv.handle_request, daemon=True)
+        t.start()
+        self.addCleanup(srv.server_close)
+        return holder["port"]
+
+    def test_a_multibyte_body_is_reported_by_its_byte_length(self):
+        import _robots
+        # six two-byte sequences, exactly the shape of the page that exposed
+        # this: an error document with accented Spanish.
+        text = ("<html><title>SEPE</title>"
+                "<p>Si el problema persiste, p\u00f3ngase en contacto "
+                "con nosotros a trav\u00e9s de la sede electr\u00f3nica. "
+                "Disculpe las molestias, gracias por su comprensi\u00f3n. "
+                "M\u00e1s informaci\u00f3n.</p></html>")
+        raw = text.encode("utf-8")
+        self.assertGreater(len(raw), len(text),
+                           "specimen is not multi-byte — this test would "
+                           "pass on the defect it exists to catch")
+
+        port = self._serve(raw)
+        got = _robots._fetch_once(
+            f"http://127.0.0.1:{port}/robots.txt", "127.0.0.1", 10)
+
+        self.assertEqual(got["state"], "unrecognised", got.get("why"))
+        self.assertEqual(
+            got["bytes"], len(raw),
+            f"reported {got['bytes']}, on the wire {len(raw)}, decoded "
+            f"{len(text)} characters — the report is following the decode")
+        self.assertIn(f"{len(raw)} bytes", got["why"],
+                      "the printed sentence still carries the wrong number "
+                      "even if the field is right — the user reads the "
+                      "sentence")
+
+    def test_an_ascii_body_agrees_and_proves_nothing_alone(self):
+        """Kept as the control, and labelled as such: it passes on the defect
+        too, which is why the case above exists."""
+        import _robots
+        raw = b"<html>plain ascii error page, no rules here</html>"
+        port = self._serve(raw)
+        got = _robots._fetch_once(
+            f"http://127.0.0.1:{port}/robots.txt", "127.0.0.1", 10)
+        self.assertEqual(got["bytes"], len(raw))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

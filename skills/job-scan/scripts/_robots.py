@@ -213,7 +213,20 @@ def _fetch_once(url, host, timeout):
                                     context=_tls.context_for(host)) as r:
             final = urllib.parse.urlsplit(r.geturl()).netloc or host
             ctype = r.headers.get("Content-Type")
-            body = r.read().decode("utf-8", "replace")
+            # **`len()` of a decoded string counts characters, and every
+            # message below calls the number `bytes`.** On an all-ASCII rules
+            # file the two coincide, which is why this survived: the pages the
+            # guard reads are usually `robots.txt`. It shows on anything else
+            # — `empleate.gob.es` returns an 8 456-byte error page carrying six
+            # multi-byte sequences and the guard announced "8 450 bytes".
+            # **A wrong unit is worse than no unit**: it invites comparing two
+            # numbers that are not the same quantity, which is exactly what
+            # happened when a direct read and this message were set side by
+            # side and the difference was published as the site changing size.
+            # Issue #130.
+            raw = r.read()
+            nbytes = len(raw)
+            body = raw.decode("utf-8", "replace")
             status = r.getcode()
             # **A 2xx that is not 200 is not the document.** `202 Accepted`
             # means the request was taken and processing is not finished — it
@@ -225,8 +238,8 @@ def _fetch_once(url, host, timeout):
             # nothing at all**, and the two must not share a verdict. #125.
             if status != 200:
                 return {"state": "unreachable", "final": final,
-                        "status": status, "bytes": len(body),
-                        "why": f"HTTP {status} with a {len(body)}-byte body — "
+                        "status": status, "bytes": nbytes,
+                        "why": f"HTTP {status} with a {nbytes}-byte body — "
                                f"a 2xx that is not 200 is not the document, "
                                f"and an empty body states nothing. **This is "
                                f"not an absence**: a 404 would say there are "
@@ -248,13 +261,13 @@ def _fetch_once(url, host, timeout):
             if ctype is None:
                 if _looks_like_rules(body):
                     return {"state": "read", "body": body, "final": final,
-                            "status": status, "bytes": len(body),
+                            "status": status, "bytes": nbytes,
                             "why": "no Content-Type; the body is a rules "
                                    "file"}
                 return {"state": "unreadable", "final": final,
-                        "status": status, "bytes": len(body),
+                        "status": status, "bytes": nbytes,
                         "why": f"HTTP {status}, no Content-Type, and the "
-                               f"{len(body)} bytes are not a rules file "
+                               f"{nbytes} bytes are not a rules file "
                                f"either"}
             # **The body decides, and the header does not.** Until #128 a
             # `Content-Type` containing `text/plain` skipped the body check
@@ -271,15 +284,15 @@ def _fetch_once(url, host, timeout):
             # defect, one branch earlier.
             if not _looks_like_rules(body):
                 return {"state": "unrecognised", "final": final,
-                        "status": status, "bytes": len(body),
+                        "status": status, "bytes": nbytes,
                         "why": f"HTTP {status}, Content-Type {ctype!r}, "
-                               f"{len(body)} bytes, and **no `User-agent`, "
+                               f"{nbytes} bytes, and **no `User-agent`, "
                                f"`Disallow` or `Allow` line anywhere in it** "
                                f"— this is not a rules file, whatever it is "
                                f"labelled. A body nobody could recognise is "
                                f"not an absence of rules."}
             return {"state": "read", "body": body, "final": final,
-                    "status": status, "bytes": len(body)}
+                    "status": status, "bytes": nbytes}
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             return {"state": "absent", "status": e.code,
@@ -316,13 +329,14 @@ def _storage_note(err):
     and one error document is not a fact about consent.
     """
     try:
-        head = err.read(400).decode("utf-8", "replace")
+        head_raw = err.read(400)
+        head = head_raw.decode("utf-8", "replace")
     except Exception:  # noqa: BLE001 - a body we cannot read tells us nothing
         return ""
     if "AccessDenied" not in head and "NoSuchKey" not in head:
         return ""
     return (". **The body is an object-storage error document** "
-            f"({len(head)} bytes, `AccessDenied`/`NoSuchKey`), and on S3 a "
+            f"({len(head_raw)} bytes, `AccessDenied`/`NoSuchKey`), and on S3 a "
             f"*missing* file answers 403 rather than 404 — so this host may "
             f"simply publish no robots.txt. **That is a hint, not a "
             f"finding**: the refusal stands, because an absence inferred "
@@ -360,7 +374,9 @@ def siblings(host):
         pair[name] = {
             "state": got["state"],
             "final": got.get("final"),
-            "bytes": len(got.get("body") or ""),
+            # **The fetch already measured this correctly**; recomputing it
+            # from the decoded string here would reintroduce #130 one level up.
+            "bytes": got.get("bytes"),
             "is_rules_file": got["state"] == "read",
             "why": got.get("why"),
         }
