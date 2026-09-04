@@ -91,6 +91,7 @@ has gone stale before.
 | Mihnati | `mihnati.md` | **Shipped.** Saudi Arabia. **Ten ads out of ten quote `PKR` on Saudi jobs** — a currency field that is not the country's |
 | ONAPE (Chad) | `onape.md` | **Shipped.** Chad's public employment service. **30 advertisements, and its sitemap says 32** — one is listed three times. No key, no browser; the employer field is empty on every advertisement and is emitted as `null` |
 | Ergodotisi (Cyprus) | `ergodotisi.md` | **Shipped.** **2 644 advertisements, and the sitemap says 5 302** — every one appears under `/en-CY/` and `/el-CY/`, and the two are the same document with a different `lang`. The only count in the series with an independent witness: the site's own "2 573 open jobs" |
+| Keejob (Tunisia) | `keejob.md` | **Shipped.** **827 advertisements, all within thirty days, no duplicates** — the only readable board of eight Tunisian ranks. Salaries in `TND` where given; `employmentType` is `OTHER` on every advertisement and is not emitted |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
