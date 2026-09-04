@@ -2,10 +2,16 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: sence.gob.cl, www.trabajaenelestado.cl, www.practicasparachile.cl, directoresparachile.cl, adp.serviciocivil.cl, www.empleospublicos.cl -->
-<!-- script: icims.py -->
 
 Five Chilean portals were assessed for an adapter on 2026-09-03. **None of
-them yields one, and each fails for a different reason.** This card exists so
+them yields one, and each fails for a different reason.**
+
+**This card declares no adapter, and that is the finding, not an omission.**
+`icims.py` appears once below as a *comparison* — it warns aloud when an
+employer's two hosts disagree — and it was briefly declared here as this
+card's script on 2026-09-04. That was wrong, and wrong in the exact way this
+repository had just finished correcting elsewhere: **a cross-reference read as
+a declaration.** This card exists so
 the next person does not spend the day finding that out again — and so that
 "no adapter" is never read as "nobody looked".
 
