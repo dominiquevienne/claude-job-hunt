@@ -689,14 +689,32 @@ def verdict(host):
     out["group_conflict"] = _records_disagree(body, matched)
     if "/" in dis:
         out["sweep"] = False
-        out["reason"] = (
-            (f"this host closes everything to `User-agent: {token}` — "
-             f"**a refusal that names this project**, not a general policy. "
-             f"Not swept."
-             if token != "*" else
-             "this host's robots.txt is `User-agent: * / Disallow: /` — "
-             "everything closed, evenly. Not swept.")
-            + _named_note(matched, out.get("group_conflict")))
+        if allow:
+            # **`sweep: False` never meant "no path is open", and saying so
+            # was half the defect.** A group carrying `Allow:` lines beside
+            # `Disallow: /` is a whitelist: sweeping blindly stays refused,
+            # because there is no list of what may be fetched — but the named
+            # families are open, and `allowed(host, path)` is the question that
+            # gets a real answer. Issue #152.
+            fams = ", ".join(f"`{a}`" for a in allow[:6])
+            more = f" and {len(allow) - 6} more" if len(allow) > 6 else ""
+            out["reason"] = (
+                f"`{final}` closes the site to `User-agent: {token}` "
+                f"**except {len(allow)} named path famil"
+                f"{'y' if len(allow) == 1 else 'ies'}**: {fams}{more}. "
+                f"**This is a whitelist, not a wall** — a blind sweep has no "
+                f"list to sweep and stays refused, but ask `allowed(host, "
+                f"path)` before concluding that any particular path is closed."
+                + _named_note(matched, out.get("group_conflict")))
+        else:
+            out["reason"] = (
+                (f"this host closes everything to `User-agent: {token}` — "
+                 f"**a refusal that names this project**, not a general "
+                 f"policy. Not swept."
+                 if token != "*" else
+                 "this host's robots.txt is `User-agent: * / Disallow: /` — "
+                 "everything closed, evenly. Not swept.")
+                + _named_note(matched, out.get("group_conflict")))
     elif dis:
         # **`sweep` answers "is this host closed in one block". It cannot
         # answer for a path, and it must not look as though it does.**
@@ -956,9 +974,26 @@ def allowed(host, path):
         out["reason"] = v["reason"]
         return out
     if not v["sweep"]:
-        out.update(allowed=False, kind="host-closed", rule="/")
-        out["reason"] = v["reason"]
-        return out
+        # **A `Disallow: /` beside `Allow:` lines is a whitelist, not a wall**,
+        # and this early return read it as a wall. `bebee.com` opens six path
+        # families to `User-agent: ClaudeBot` and closes the rest; the module
+        # answered *this host closes everything* and the longest-match code
+        # below — which implements the rule this function's own docstring
+        # promises — was unreachable in **exactly** the case where `Allow`
+        # lines mean anything. Issue #152.
+        #
+        # **A false refusal is the invisible direction.** A false *yes*
+        # eventually produces a 403 somebody sees; a false *no* makes us not
+        # fetch, record the host as closed, and move on. Nothing in the result
+        # says a door was open. It is the mirror of #101, which was found only
+        # because it produced a refused fetch.
+        #
+        # The short-circuit stays wherever there is nothing to match against:
+        # a refusal, an unreadable file, a group with no `Allow` at all.
+        if not (v["state"] == "read" and v.get("allow")):
+            out.update(allowed=False, kind="host-closed", rule="/")
+            out["reason"] = v["reason"]
+            return out
     if v["state"] != "read":
         # **Name what happened, not what would have been convenient.** This
         # branch used to read *"a 404 is an absence"* whatever the state was,

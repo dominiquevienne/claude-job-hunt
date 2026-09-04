@@ -5819,5 +5819,152 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
         self.assertGreaterEqual(seen, 0)
 
 
+class AWhitelistIsNotAWall(unittest.TestCase):
+    """**#152, and it is the invisible direction of the two.**
+
+    `bebee.com` names this project and opens six path families to it, then
+    closes the rest:
+
+        User-Agent: ClaudeBot
+        Allow: /*/jobs/        Allow: /*/people/     Allow: /*/blog/
+        Allow: /*/salaries/    Allow: /*/skills/     Allow: /*/industry/
+        Disallow: /
+
+    The module answered *this host closes everything*. Two lines, two hundred
+    apart: `verdict()` set `sweep=False` on the bare `Disallow: /` **without
+    ever consulting the `Allow` list**, and `allowed()` returned on
+    `if not v["sweep"]` **before** the `best_d`/`best_a` longest-match code —
+    which was therefore unreachable in exactly the case where `Allow` lines
+    mean anything. The docstring promised *"Longest match wins, `Allow` on a
+    tie"*; the function did not do it.
+
+    **A false refusal is worse than a false permission.** A false *yes*
+    eventually produces a 403 somebody sees. A false *no* makes us not fetch,
+    record the host as closed, and move on — and nothing in the result says a
+    door was open. It is the mirror of #101, which was only ever found because
+    it produced a refused fetch.
+
+    **`sweep` stays `False`, and that is not a compromise.** A whitelist gives
+    no list to sweep, so blind sweeping remains refused; what changes is that
+    `allowed(host, path)` now answers the question it always claimed to.
+    """
+
+    # bebee.com/robots.txt, fetched 2026-09-04 — the ClaudeBot group verbatim,
+    # with the `*` group kept so the group-selection half is exercised too.
+    BODY = (
+        "User-Agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        "Disallow: /dashboard/\n"
+        "\n"
+        "User-Agent: ClaudeBot\n"
+        "Allow: /*/jobs/\n"
+        "Allow: /*/people/\n"
+        "Allow: /*/blog/\n"
+        "Allow: /*/salaries/\n"
+        "Allow: /*/skills/\n"
+        "Allow: /*/industry/\n"
+        "Disallow: /\n"
+    )
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://bebee.example/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _with(self, body):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body))
+        try:
+            return (_robots.verdict("bebee.example"),
+                    {p: _robots.allowed("bebee.example", p) for p in (
+                        "/es/jobs/x", "/en/people/y", "/dashboard/", "/api/v1",
+                        "/")})
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_named_family_is_open(self):
+        _v, a = self._with(self.BODY)
+        self.assertTrue(a["/es/jobs/x"]["allowed"],
+                        "a path the host opens to us by name was refused — "
+                        "this is the false refusal of #152")
+        self.assertEqual(a["/es/jobs/x"]["rule"], "/*/jobs/")
+        self.assertEqual(a["/es/jobs/x"]["kind"], "allow")
+        self.assertTrue(a["/en/people/y"]["allowed"])
+
+    def test_everything_else_is_still_refused(self):
+        """**The other half, and without it the fix is a hole.** Opening the
+        whitelist must not open the site."""
+        _v, a = self._with(self.BODY)
+        for path in ("/dashboard/", "/api/v1", "/"):
+            with self.subTest(path=path):
+                self.assertFalse(a[path]["allowed"], f"{path} became readable")
+                self.assertEqual(a[path]["rule"], "/")
+
+    def test_the_sweep_stays_refused_and_says_why(self):
+        """A whitelist gives nothing to sweep. The verdict must keep refusing
+        the blind sweep **and** stop claiming everything is closed."""
+        v, _a = self._with(self.BODY)
+        self.assertFalse(v["sweep"])
+        self.assertEqual(v.get("group"), "claudebot")
+        self.assertIn("whitelist", v["reason"].lower())
+        self.assertNotIn("closes everything", v["reason"])
+
+    # ---- mutation, both directions, because one side proves nothing --------
+
+    def test_without_the_allow_lines_it_is_a_wall_again(self):
+        """**Direction one.** Strip the `Allow:` lines and the group is a plain
+        refusal: the short-circuit must come back, or the fix has simply
+        stopped refusing."""
+        body = "\n".join(l for l in self.BODY.splitlines()
+                          if not l.startswith("Allow: /*")) + "\n"
+        self.assertNotIn("/*/jobs/", body, "the mutation did not apply")
+        v, a = self._with(body)
+        self.assertFalse(v["sweep"])
+        self.assertFalse(a["/es/jobs/x"]["allowed"],
+                         "with no Allow line, this path must be refused")
+        self.assertEqual(a["/es/jobs/x"]["kind"], "host-closed")
+
+    def test_without_the_disallow_slash_the_allows_are_not_what_decides(self):
+        """**Direction two, and it is the one that catches a fix that only
+        ever says yes.** Remove `Disallow: /` and the group closes nothing —
+        so a path outside the whitelist must become open. A case that only
+        goes red when `Allow` is removed would pass on a function that
+        returned `True` unconditionally."""
+        body = self.BODY.replace("Allow: /*/industry/\nDisallow: /\n",
+                                 "Allow: /*/industry/\n")
+        self.assertNotEqual(body, self.BODY, "the mutation did not apply")
+        self.assertEqual(body.count("Disallow: /\n"), 0,
+                         "the bare Disallow is still there")
+        v, a = self._with(body)
+        self.assertTrue(v["sweep"], "with no `Disallow: /` the site is open")
+        self.assertTrue(a["/dashboard/"]["allowed"],
+                        "nothing closes this path any more, yet it was refused")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
