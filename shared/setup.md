@@ -661,6 +661,20 @@ environment, then `<workspace>/credentials.env`, then the older
 `~/.<board>.env`. **Nothing has to be sourced, and no shell is required.** A
 user working in an app creates that one file and is done.
 
+**Give them the resolved path, never `<workspace>`.** It is the one announced
+in step 0, and if that was a different conversation, resolve it again rather
+than asking them to remember:
+
+```bash
+JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+echo "$JOB_HUNT_HOME/credentials.env"
+```
+
+**A placeholder is where this section fails a reader who has no shell.** The
+adapters print the absolute path in their own missing-key message — which means
+that without this line, **the surest way to learn where the file goes is to run
+a sweep and let it fail.**
+
 **The environment still wins**, so nothing changes for a terminal. And the
 security rule does not move: **never in `config.yml`** — read aloud, pasted
 into issues, backed up — **never in git**, and **never pasted into the
@@ -683,6 +697,19 @@ nothing.
 **nothing on `stdout`** and a message that names the cause. **Neither produces
 an empty board** — so a board that comes back empty is a market, not a
 credential.
+
+**Then confirm it, because *"it did not fail"* is not *"it is set"*.** Somebody
+who has just pasted two values into a file has seen nothing at all. One command
+per board, and each says what it proves:
+
+| board | check | what a good answer looks like |
+| :-- | :-- | :-- |
+| France Travail | `francetravail.py token` | `{"ok": true, …}` — §5c has the four outcomes |
+| Adzuna | `adzuna.py count --country <cc> --what <term>` | a `matches` number, and it **announces its own cost**: *1 call of the 250/day* |
+| La Bonne Alternance | `labonnealternance.py search --departement <dd>` | ads and recruiters — **there is no cheap check here**, the search is the check |
+
+**`adzuna.py count` is the one to know**: a single call, under a second, and it
+is the reason not to verify Adzuna with a `search`.
 
 ## 5c — France Travail: a key the user creates, and how to get it
 
