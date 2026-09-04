@@ -5585,5 +5585,62 @@ class ADrawIsSealedBeforeTheInterview(unittest.TestCase):
         self.assertIn("already holds a draw", again.stderr)
 
 
+class TheSitemapModuleStillDoesNotFetch(unittest.TestCase):
+    """**A tripwire, not a feature.** Rules 5 and 6 of the coordinates section
+    are prospective: no adapter fetches a third-party sitemap today, so neither
+    rule can fail today. #149, #151.
+
+    **That is exactly the shape this repository has been bitten by** — a defect
+    downstream of an absence cannot fail while the absence lasts, and then
+    surfaces as a fresh breakage on the day it ends, at the worst moment and
+    attributed to the wrong cause.
+
+    `_sitemap.py` receives bodies and never URLs. **The day it grows a fetch,
+    rule 5 stops being prospective**: whatever it fetches needs a verdict on
+    the host actually contacted, and that host declared on the card. This case
+    exists to make that day announce itself instead of passing unnoticed.
+
+    It asserts nothing about whether fetching there is wrong. It asserts that
+    the assumption the two rules were written under still holds.
+    """
+
+    def _module(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "skills", "job-scan", "scripts",
+                            "_sitemap.py")
+        with open(path, encoding="utf-8") as fh:
+            return path, fh.read()
+
+    def test_it_parses_bodies_and_does_not_open_sockets(self):
+        import re
+        _path, src = self._module()
+        opens = re.findall(r"urlopen|urllib\.request|http\.client|requests\.",
+                           src)
+        self.assertEqual(
+            opens, [],
+            "_sitemap.py has grown a fetch. Rule 5 of the coordinates section "
+            "in shared/robots-policy.md was written on the assumption that it "
+            "only parses: a sitemap may be declared on another host, and "
+            "following it is a fetch of that host, which needs its own verdict "
+            "and its own <!-- hosts: --> entry.")
+
+    def test_the_only_sitemap_extractor_still_only_prints(self):
+        """`workday.py` is the one place that reads `Sitemap:` out of a
+        robots.txt. It enumerates; it does not follow. **Enumerating is not
+        choosing** — the rule already written two sections above."""
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "scripts",
+                               "workday.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("Sitemap:", src,
+                      "the extractor moved; this case now measures nothing")
+        line = next((l for l in src.splitlines() if "Sitemap:" in l
+                     and "re.findall" in l), None)
+        self.assertIsNotNone(
+            line, "workday.py no longer extracts Sitemap: with re.findall — "
+                  "check whether it now follows them")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

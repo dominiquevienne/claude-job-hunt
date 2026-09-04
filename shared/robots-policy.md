@@ -1416,6 +1416,46 @@ silence read our way.**
 4. **Nothing in this section is a permission.** It changes what we may *learn*
    from a file, never what we may *fetch* from a host that refused.
 
+5. **A `Sitemap:` may name a different host, and following it is a fetch of
+   that host.** `merojob.com` declares its sitemaps on `sg.merojob.com`,
+   gzipped, measured 2026-09-04. **That address escapes both instruments at
+   once**: it is not in the card's `<!-- hosts: -->`, and the guard was asked
+   about `merojob.com`. So following such a directive requires a verdict on the
+   host that will actually be fetched, and that host declared on the card. It
+   is the apex/`www` lesson generalised — two names, two hosts, two possible
+   rules files — except that here **the second address is named by the first,
+   so it is discoverable before it is needed.**
+
+   *Prospective: `_sitemap.py` receives bodies, never URLs, and the only place
+   that extracts `Sitemap:` at all — `workday.py:225` — prints the lines rather
+   than following them. No adapter fetches a third-party sitemap today. The
+   rule is written now because a defect behind an absence cannot fail until
+   someone writes that adapter, and then it surfaces as a fresh breakage.*
+
+6. **A sitemap index is not a list of advertisements, and neither is a sitemap
+   of advertisements.** Two Nepali boards, measured 2026-09-04, mix tenders
+   into their listings and do it differently:
+
+   - `merojob.com` puts `sitemap-tender_post-1.xml.gz` — **15 940 tenders since
+     2017** — beside `sitemap-job_post-1.xml.gz`'s 239 jobs, siblings in one
+     index. An adapter reading "every sitemap in the index" would report
+     **16 179 jobs instead of 239**.
+   - `jobsnepal.com` has no such separation: **55 of the 177 entries (31 %) of
+     a file named `jobs-sitemap.xml`** are `invitation-for-sealed-bids`,
+     `request-for-proposal` or `expression-of-interest`. **No filename filter
+     reaches that case at all.**
+
+   **The filename promises; it does not attest** — the rule already written for
+   routes, applied to sitemaps. So **what enters a count is justified, and what
+   is excluded is counted too**: a number that silently drops 31 % is
+   indistinguishable from one that had nothing to drop.
+
+   *Filtering exists today but is per-adapter and ad hoc — `_sitemap.locs()`
+   takes a `contains=` and each of its ten callers decides alone; `ssge.py`
+   sets aside `sitemap-listing-*` as search-filter URLs, `jobstore.py` keeps
+   `/job-\d+\.xml$`. Nothing shared said an index could hold anything but
+   ads.*
+
 ## Which commands ask the host, and which do not
 
 **Every command that reads advert content asks first.** Measured coverage,
