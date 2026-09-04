@@ -505,6 +505,57 @@ other's input.
 common.** Two tenants of one vendor measured on different dates corroborate;
 five country queries served from one pool do not.
 
+## An instrument has a domain, and a result from outside it reads like a result
+
+**The fabrication sieve compares sets of title words across boards.** Two
+corpora sharing almost no vocabulary are independent; two sharing most of it
+are one corpus wearing two names. It settled a network of eight African nodes
+in 2026-09, and it was right.
+
+**It assumes the corpora label in the same language, and nothing in it says
+so.** Applied to Armenia on 2026-09-04, three boards write their titles in
+transliterated Armenian, in English, and in percent-encoded Armenian. **The
+0.3 % overlap it returned does not separate *independent* from *written
+differently*.** The number is real, the arithmetic is right, and the question
+it answers is not the question asked.
+
+**The assumption held by accident on the eight African nodes, all
+anglophone** — so the instrument had never been outside its domain, and its
+domain had never been written down. **A precondition nobody states is a
+precondition nobody can check.**
+
+### Three states, not two
+
+**An inapplicable 0.3 % and a conclusive 0.3 % are indistinguishable once
+written down.** Both are a number, a date and a method. So a recorded result
+carries which of three things it is:
+
+| state | what it means |
+| :-- | :-- |
+| **measured** | the instrument applied, and this is what it returned |
+| **assumed** | no instrument ran; this is a reading, and says so |
+| **out of domain** | the instrument ran and its preconditions did not hold |
+
+**The third is not a weaker form of the first.** A measurement out of domain is
+not a low-confidence measurement — it is *evidence about something else*, and
+averaging it with real results is how a precondition failure becomes a trend.
+
+**And it is not a weaker form of the second either.** "Assumed" is honest about
+having no instrument; "out of domain" is honest about having one that did not
+apply, which is the state most likely to be mistaken for a result — because it
+has all the furniture of one.
+
+### Publish the composition, not the quotient
+
+**20 refusals of 22 came from a managed block**, measured across 61 held files
+without a single request, 2026-09-04. **That is published as `20 : 2`, not as
+91 %.**
+
+A quotient hides its denominator, and a denominator of 22 is not a rate — it is
+a count that division dresses as one. **The reader who sees 91 % cannot
+recover 22; the reader who sees `20 : 2` cannot lose it.** Small denominators
+are where this bites, and small denominators are where measurements start.
+
 ## The rules
 
 **1. Make the confusion impossible in the name, not in the documentation.** A
@@ -543,6 +594,17 @@ Two of the eight mechanisms above were produced by tooling written the same
 day, by someone who knew the failure mode and was looking for it. **A number
 that arrives clean from your own script has a provenance too, and it is the one
 nobody audits.**
+
+**9. Record whether the instrument applied, not only what it returned.**
+Three states — **measured**, **assumed**, **out of domain** — and the third
+exists because a result from outside an instrument's domain has every visible
+property of a result. **Write the precondition down when you first rely on it**,
+because the run that discovers it is the run where it fails.
+
+**10. Publish a composition rather than a quotient wherever the denominator is
+small.** `20 : 2` survives being quoted; 91 % does not, because the number that
+would let a reader check it has already been divided away. **A rate is a claim
+about a population; a ratio is a report of what was counted.**
 
 ## How to tell you are in this class
 

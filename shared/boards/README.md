@@ -350,6 +350,37 @@ recorded — `jobs.recruitee.com` answering as `careers.tellent.com`,
 no longer serves anything describes nothing**; the rules that apply are the
 receiving host's.
 
+**And where a board's *content* has been examined, say what state that
+examination is in** — on the same line block, optional, and meaningful by its
+absence:
+
+```
+<!-- content: measured · fabrication sieve, 0.3% shared titles of 300 · 2026-09-04 -->
+<!-- content: out-of-domain · the sieve assumes one labelling language · 2026-09-04 -->
+<!-- content: assumed · read from the ad pages, no instrument run · 2026-09-04 -->
+```
+
+`<state> · <method or reason, with the figure and its unit> · <YYYY-MM-DD>` — **three fields, and the state is one of three,
+not two.** `shared/plausible-and-false.md` carries the reasoning; the short
+version is that **an inapplicable result and a conclusive one are
+indistinguishable once written down.** The fabrication sieve compares sets of
+title words and *assumes the corpora label in the same language* — true by
+accident across eight anglophone African nodes, false in Armenia, where three
+boards write in transliterated Armenian, English and percent-encoded Armenian.
+**A 0.3 % that cannot separate *independent* from *written differently* is not
+a weak measurement; it is a measurement of something else.**
+
+**The date and the unit are part of the value.** A share measured over 300 ads
+on one day is true dated and false refreshed — the counter that expires by the
+growth of its own denominator. **And where the denominator is small, publish
+the composition rather than the quotient**: `20 : 2`, never 91 %, because the
+number a reader would need to check the claim has already been divided away.
+
+**No card carries this line yet, and that is deliberate.** Writing one requires
+having run the examination; the declaration exists so that the day someone does,
+the result has somewhere to live that is not a published artefact — which is
+where the last one lived, readable by nobody holding the repository. Issue #140.
+
 **Ask `skills/job-scan/scripts/_robots.py` before you fetch, and ask it about
 the path — `verdict()` answers *is this host closed in one block*, and
 `allowed(host, path)` answers the question an adapter actually has.** They are

@@ -5642,5 +5642,146 @@ class TheSitemapModuleStillDoesNotFetch(unittest.TestCase):
                   "check whether it now follows them")
 
 
+class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
+    """**#140.** A board's content can be examined, and the result had nowhere
+    in the repository to live — the last one lived only in published artefacts,
+    readable by nobody holding the code.
+
+    **The declaration has three states, not two**, and the third is the point.
+    The fabrication sieve compares sets of title words and *assumes the corpora
+    label in the same language*. That held by accident across eight anglophone
+    African nodes; in Armenia three boards write in transliterated Armenian, in
+    English and in percent-encoded Armenian, so the 0.3 % it returns cannot
+    separate *independent* from *written differently*.
+
+    **An inapplicable 0.3 % and a conclusive 0.3 % are indistinguishable once
+    written down** — both are a number, a method and a date. So the state is
+    part of the value.
+
+    **No card carries the line yet, and this class is written to be useful
+    anyway.** A corpus scan over an empty population is green by having nothing
+    to check — the failure this suite has already shipped twice. So the
+    vocabulary itself is exercised on examples, and the scan validates whatever
+    real cards adopt it later.
+    """
+
+    STATES = ("measured", "assumed", "out-of-domain")
+
+    def _check(self, value):
+        """Return a list of complaints about one `content:` value."""
+        import re
+        parts = [p.strip() for p in value.split("·")]
+        bad = []
+        if len(parts) != 3:
+            return [f"wants <state> · <method or reason> · <YYYY-MM-DD>, "
+                    f"got {len(parts)} field(s)"]
+        state, reason, date = parts
+        if state not in self.STATES:
+            bad.append(f"unknown state {state!r}")
+        if not reason:
+            bad.append("no method or reason given")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            bad.append(f"{date!r} is not a YYYY-MM-DD date")
+        # **The date and the unit are part of the value**: a share expires by
+        # the growth of its own denominator, so a measurement states a figure.
+        if state == "measured" and not re.search(r"\d", reason):
+            bad.append("a measurement carries a figure and its unit")
+        return bad
+
+    def test_the_three_states_are_accepted(self):
+        for value in (
+            "measured · fabrication sieve, 0.3% shared titles of 300 · "
+            "2026-09-04",
+            "out-of-domain · the sieve assumes one labelling language · "
+            "2026-09-04",
+            "assumed · read from the ad pages, no instrument run · 2026-09-04",
+        ):
+            with self.subTest(value=value[:40]):
+                self.assertEqual(self._check(value), [], value)
+
+    def test_a_fourth_state_is_refused(self):
+        """**An open vocabulary is an absence with extra steps.** `unknown`
+        and `partial` read like states and are not; either would let a card say
+        nothing while looking like it said something."""
+        for state in ("unknown", "partial", "probably", ""):
+            with self.subTest(state=state):
+                bad = self._check(f"{state} · something · 2026-09-04")
+                self.assertTrue(bad, f"{state!r} was accepted as a state")
+
+    def test_a_measurement_without_a_figure_is_refused(self):
+        """*"measured · fabrication sieve · 2026-09-04"* is the shape that
+        loses the denominator, and a share without one expires silently."""
+        bad = self._check("measured · fabrication sieve · 2026-09-04")
+        self.assertTrue(bad)
+
+    def test_out_of_domain_still_has_to_say_why(self):
+        """**The third state is not an escape hatch.** Its whole content is the
+        precondition that failed; without it, it is `assumed` with a longer
+        name."""
+        self.assertTrue(self._check("out-of-domain ·  · 2026-09-04"))
+        self.assertEqual(
+            self._check("out-of-domain · the sieve assumes one labelling "
+                        "language · 2026-09-04"), [])
+
+    def test_a_malformed_date_is_refused(self):
+        for date in ("04-09-2026", "2026-9-4", "yesterday", "2026"):
+            with self.subTest(date=date):
+                self.assertTrue(self._check(f"assumed · read · {date}"))
+
+    def test_the_specs_own_examples_satisfy_the_spec(self):
+        """**The slip this catches is the one that happened.** The README first
+        documented the line with *four* fields while the format takes three —
+        method and figure written as separate segments instead of one. Nothing
+        would have found it: the corpus scan skips the README because the README
+        holds the examples, which is exactly why the examples go unchecked.
+
+        **A format documented one way and parsed another is worse than an
+        undocumented format**, because the first card to adopt it copies the
+        example.
+        """
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "shared", "boards", "README.md"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        examples = re.findall(r"<!--\s*content:\s*(.*?)\s*-->", src)
+        self.assertGreaterEqual(
+            len(examples), 3,
+            f"the README documents {len(examples)} example(s) of the line; it "
+            f"should show all three states, and this case is worthless if it "
+            f"finds none")
+        states = set()
+        for value in examples:
+            with self.subTest(example=value[:44]):
+                self.assertEqual(self._check(value), [], value)
+            states.add(value.split("·")[0].strip())
+        self.assertEqual(states, set(self.STATES),
+                         f"the README shows {sorted(states)}; a state nobody "
+                         f"documents is a state nobody writes")
+
+    def test_any_card_that_adopts_the_line_is_well_formed(self):
+        """The corpus half. **Empty today, and it says so** rather than
+        reporting health: `test_the_three_states_are_accepted` is what proves
+        this class works until a card carries the line."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        seen, bad = 0, []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            if os.path.basename(path) == "README.md":
+                continue  # the spec, not a card: it holds the examples
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            m = re.search(r"<!--\s*content:\s*(.*?)\s*-->", src)
+            if not m:
+                continue
+            seen += 1
+            for complaint in self._check(m.group(1)):
+                bad.append(f"{os.path.basename(path)}: {complaint}")
+        self.assertEqual(bad, [], "; ".join(bad))
+        self.assertGreaterEqual(seen, 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
