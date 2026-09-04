@@ -171,14 +171,21 @@ jobs:
           # heading, message body underneath — these bodies carry the reasoning,
           # and a release that keeps only first lines throws it away.
           notes=$(git log --format='### %s%n%n%b' "${{ steps.moved.outputs.last }}"..HEAD^)
+          # **`%b` carries the trailers, and this repository is public.** The
+          # attribution footer puts a `Claude-Session:` URL on every commit;
+          # without this line the first automated release would publish
+          # twenty-one of them, and every release after. **The trailers are not
+          # part of the developments** — stripping them is what the decision
+          # asked for, not a reduction of it.
+          notes=$(printf '%s\n' "$notes" | sed -E '/^(Claude-Session|Co-Authored-By):/d')
           # **And a degradation that names itself.** GitHub caps a release body
-          # at 125 000 characters. Past 120 000 this falls back to subjects and
-          # **says so in the notes** rather thanfailing or truncating in
+          # at 125 000 characters. Past 110 000 this falls back to subjects and
+          # **says so in the notes** rather than failing or truncating in
           # silence — `shared/never-fail-silently.md`.
-          if [ "${#notes}" -gt 120000 ]; then
+          if [ "${#notes}" -gt 110000 ]; then
             echo "::warning::notes ${#notes} chars — falling back to subjects"
             notes=$(printf '%s\n\n%s\n' \
-              "_Les messages complets dépassent la limite de GitHub (${#notes} caractères) : seuls les sujets figurent ici. Le détail est dans \`git log\`._" \
+              "_The full commit messages exceed what a release body can hold (${#notes} characters): only subjects are listed here. The detail is in \`git log\`._" \
               "$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)")
           fi
           printf '%s\n' "$notes" | gh release create "v$next" \
