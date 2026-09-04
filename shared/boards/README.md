@@ -93,6 +93,7 @@ has gone stale before.
 | Ergodotisi (Cyprus) | `ergodotisi.md` | **Shipped.** **2 644 advertisements, and the sitemap says 5 302** — every one appears under `/en-CY/` and `/el-CY/`, and the two are the same document with a different `lang`. The only count in the series with an independent witness: the site's own "2 573 open jobs" |
 | Keejob (Tunisia) | `keejob.md` | **Shipped.** **827 advertisements, all within thirty days, no duplicates** — the only readable board of eight Tunisian ranks. Salaries in `TND` where given; `employmentType` is `OTHER` on every advertisement and is not emitted |
 | Jobs Botswana | `jobsbotswana.md` | **Shipped.** **367 advertisements, and the sitemap holds 368** — the extra is the listing page. Rank 1 in the country refuses us by the managed default, so this is Botswana's readable market. `--live` drops the expired, which stay in the file |
+| HelloJob (Azerbaijan) | `hellojob.md` | **Shipped.** **588 live advertisements, separated by the site itself** from 27 402 expired — the only board of the series that does the freshness work for us. No `JobPosting`; fields come from a labelled list, 8/8 on a sample |
 | *your board here* | — | See *Writing an adapter* below |
 
 ## When a shipped adapter stops working
