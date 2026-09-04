@@ -3269,5 +3269,126 @@ class TheSharedBoardSaysWhichOneItRead(unittest.TestCase):
                               f"the noise this was avoiding")
 
 
+class PresenceIsNotBehaviour(unittest.TestCase):
+    """Four guards asserted that a token appeared in a file and reported a
+    behaviour. **Each could be neutralised without moving the text it looked
+    for**, and each reinstates a defect this repository had already shipped a
+    fix for.
+
+    | guard | how it stayed green |
+    | :-- | :-- |
+    | `_tls` is routed | import kept, `context=None` passed to `urlopen` |
+    | the declared agent is sent | `_ua` imported, a Chrome string in the header |
+    | the SmartRecruiters gate exists | the gate's body replaced by `return True` |
+    | that gate refuses | `if not allowed:` replaced by `if False:` |
+
+    **A guard that reads presence cannot see intent.** The import is there,
+    the header key is there, the call is there — and none of them does
+    anything. These cases exercise the code instead, on stubbed sockets, so no
+    request leaves the machine.
+    """
+
+    def _capture(self, module):
+        """Run the module's fetch against a stubbed opener and hand back the
+        `Request` and the keyword arguments it was called with."""
+        seen = {}
+
+        def fake(req, *a, **kw):
+            seen["req"] = req
+            seen["kw"] = kw
+            raise module.urllib.error.URLError("stubbed")
+
+        return seen, fake
+
+    def test_a_tls_host_is_fetched_with_the_tls_context(self):
+        """#104 again: `context=None` restores the failure `_tls` exists to
+        remove, and the import stays in place while it does."""
+        import oposiciones
+        import _tls
+        seen, fake = self._capture(oposiciones)
+        real = oposiciones.urllib.request.urlopen
+        real_gate = getattr(oposiciones, "_robots_gate", None)
+        oposiciones.urllib.request.urlopen = fake
+        if real_gate:
+            oposiciones._robots_gate = lambda *a, **k: None
+        try:
+            try:
+                oposiciones.fetch(
+                    "https://empleate.gob.es/empleate/open/x", retries=0)
+            except BaseException:
+                pass
+        finally:
+            oposiciones.urllib.request.urlopen = real
+            if real_gate:
+                oposiciones._robots_gate = real_gate
+        self.assertIn("kw", seen, "fetch() never reached the opener")
+        ctx = seen["kw"].get("context")
+        self.assertIsNotNone(
+            ctx, "the request went out with no TLS context — `_tls` is "
+                 "imported and not applied, which is #104 exactly")
+        self.assertIsNotNone(_tls.context_for("empleate.gob.es"))
+
+    def test_the_declared_agent_is_the_one_on_the_wire(self):
+        """#120 again: the header key is what the old guard checked, and the
+        value is what the operator reads."""
+        import adecco
+        import _ua
+        seen, fake = self._capture(adecco)
+        real = adecco.urllib.request.urlopen
+        real_gate = adecco._robots_gate
+        adecco.urllib.request.urlopen = fake
+        adecco._robots_gate = lambda *a, **k: None   # the guard is elsewhere
+        try:
+            try:
+                adecco.get("https://www.adecco.fr/", retries=0)
+            except BaseException:
+                pass
+        finally:
+            adecco.urllib.request.urlopen = real
+            adecco._robots_gate = real_gate
+        self.assertIn("req", seen, "fetch() never reached the opener")
+        sent = seen["req"].get_header("User-agent")
+        self.assertEqual(sent, _ua.UA,
+                         f"the wire carries {sent!r}, not the declared "
+                         f"agent — a token declared and not sent is worse "
+                         f"than one never declared")
+
+    def test_the_smartrecruiters_gate_refuses_when_it_should(self):
+        """#121 again. The gate may be called, may exist, and may do nothing:
+        `return True` in its body, or `if False:` where it decides, both left
+        the suite green."""
+        import ats
+        calls = {"died": 0}
+        real_verdict = ats.robots_verdict
+        real_die = ats.die
+        real_cfg = getattr(ats, "override_enabled", None)
+
+        def refused(host):
+            return {"sweep": False, "certain": True,
+                    "reason": "User-agent: * / Disallow: /"}
+
+        def die(msg, code=2):
+            calls["died"] += 1
+            raise SystemExit(code)
+
+        ats.robots_verdict = refused
+        ats.die = die
+        if real_cfg is not None:
+            ats.override_enabled = lambda *a, **k: False
+        try:
+            try:
+                ats.smartrecruiters_gate()
+            except SystemExit:
+                pass
+        finally:
+            ats.robots_verdict = real_verdict
+            ats.die = real_die
+            if real_cfg is not None:
+                ats.override_enabled = real_cfg
+        self.assertEqual(calls["died"], 1,
+                         "the host refuses and no override is enabled, and "
+                         "the gate let the run continue")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
