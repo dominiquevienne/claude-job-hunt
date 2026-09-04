@@ -1,6 +1,7 @@
 # Board adapter — turijobs.com (Spain, hospitality)
 
 <!-- hosts: www.turijobs.com -->
+<!-- siblings: turijobs.com 2026-09-04 agree -->
 <!-- script: turijobs.py -->
 <!-- countries: ES -->
 

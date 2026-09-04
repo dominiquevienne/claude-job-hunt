@@ -1,6 +1,7 @@
 # Board adapter — Empléate, public sector (oposiciones)
 
 <!-- hosts: empleate.gob.es -->
+<!-- siblings: empleate.gob.es 2026-09-04 incomparable -->
 <!-- script: oposiciones.py -->
 <!-- countries: ES -->
 

@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: www.jobivoire.ci, jobivoire.ci -->
+<!-- siblings: jobivoire.ci 2026-09-04 agree -->
 <!-- script: jobivoire.py -->
 <!-- countries: CI -->
 

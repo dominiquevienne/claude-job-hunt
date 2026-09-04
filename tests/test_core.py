@@ -4198,5 +4198,126 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
             self.assertIn(owed, note)
 
 
+class TheSiblingVerdictIsRecordedOrAbsent(unittest.TestCase):
+    """`siblings()` answers the apex/`www` question and nothing recorded its
+    answer, so **86 hosts of 88 could not be told apart from "nobody looked"**.
+
+    The doctrine is already right — `robots-policy.md` carries `jobindex.dk`,
+    47 bytes of `Disallow: /` on the apex against 4 218 bytes of permissions
+    on the `www`, and an adapter written against the wrong form never sees the
+    refusal. **What was missing is the trace.** Issue #141.
+
+    **No mass backfill, and that is measured rather than preferred.** Filling
+    every card would be **172 requests over 86 pairs, about nine minutes**,
+    with 5 of 12 sampled pairs taking over five seconds — and the expected
+    yield is the measured 4%: two of 55 comparable hosts were two real rules
+    files.
+
+    **The decisive argument is the issue's own.** It requires the date because
+    *"a twin that agreed on 3 September may diverge"*. A backfill stamps
+    eighty-six markers with one date, so **they go stale together and become
+    suspect together**, on a day nobody chose. Markers written as cards are
+    written or touched are staggered, and each one dates the moment somebody
+    was actually looking at that board.
+
+    **So absence is meaningful and stays legal**: no marker means nobody
+    looked, which is exactly the state #141 says must be distinguishable. What
+    this guard forbids is a marker that says something it cannot support.
+    """
+
+    VERDICTS = frozenset({"agree", "differ", "disagree", "incomparable"})
+
+    def _markers(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = {}
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            name = os.path.basename(path)
+            if name.lower() == "readme.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                head = fh.read(4000)
+            hosts = re.search(r"<!--\s*hosts:\s*(.+?)\s*-->", head)
+            declared = set()
+            if hosts:
+                declared = {h.strip().lower()
+                            for h in re.split(r"[,\s]+", hosts.group(1))
+                            if h.strip()}
+            # **Count the openings, not only what parses.** A marker missing
+            # a field matches no pattern, so it disappears and reads as "no
+            # marker" — which means "nobody looked". A malformed record must
+            # not be indistinguishable from an absent one; that is the whole
+            # distinction #141 exists to draw.
+            opened = len(re.findall(r"<!--\s*siblings:", head))
+            marks = re.findall(
+                r"<!--\s*siblings:\s*(\S+)\s+(\S+)\s+(\S+)\s*-->", head)
+            out[name[:-3]] = (declared, marks, opened)
+        return out
+
+    def test_every_marker_carries_a_known_verdict(self):
+        bad = []
+        for card, (_d, marks, _n) in self._markers().items():
+            for host, _date, verdict in marks:
+                if verdict not in self.VERDICTS:
+                    bad.append(f"{card}: {host} -> {verdict!r}")
+        self.assertEqual(bad, [], "not one of " + ", ".join(
+            sorted(self.VERDICTS)) + ": " + ", ".join(bad))
+
+    def test_a_malformed_marker_is_not_mistaken_for_an_absent_one(self):
+        """**The silent case.** `<!-- siblings: host agree -->` — no date —
+        matches no pattern, so it vanishes from the parse and the card looks
+        unexamined. A record that cannot be read must fail, not disappear."""
+        bad = []
+        for card, (_d, marks, opened) in self._markers().items():
+            if opened != len(marks):
+                bad.append(f"{card}: {opened} written, {len(marks)} parse")
+        self.assertEqual(bad, [],
+                         "a siblings marker does not parse and is therefore "
+                         "invisible — it reads as 'nobody looked': "
+                         + ", ".join(bad))
+
+    def test_every_marker_carries_a_date(self):
+        """**A twin that agreed in September may diverge.** A verdict with no
+        date is not a weaker record, it is not a record."""
+        import re
+        bad = []
+        for card, (_d, marks, _n) in self._markers().items():
+            for host, date, _v in marks:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+                    bad.append(f"{card}: {host} -> {date!r}")
+        self.assertEqual(bad, [], "not an ISO date: " + ", ".join(bad))
+
+    def test_a_marker_names_a_host_its_card_declares(self):
+        """**The second direction.** A verdict about a host the card does not
+        claim is a measurement of something else, filed here — the shape that
+        put `<!-- script: icims.py -->` on a card with no adapter."""
+        stray = []
+        for card, (declared, marks, _n) in self._markers().items():
+            for host, _date, _v in marks:
+                if not declared:
+                    stray.append(f"{card}: {host} (card declares no hosts)")
+                elif host not in declared and ("www." + host) not in declared \
+                        and not any(d.lstrip("www.") == host for d in declared):
+                    stray.append(f"{card}: {host}")
+        self.assertEqual(stray, [],
+                         "markers about hosts their card does not declare: "
+                         + ", ".join(stray))
+
+    def test_absence_is_still_legal(self):
+        """**The witness.** If this ever fails, someone has turned the marker
+        into an obligation and bought a backfill the measurement rejected —
+        172 requests for a 4% yield, all dated the same day."""
+        marked = sum(1 for _c, (_d, m, _n) in self._markers().items() if m)
+        total = len(self._markers())
+        self.assertGreater(total - marked, 0,
+                           "every card now carries a marker — if that was a "
+                           "backfill, the dates are all the same and stale "
+                           "together; see #141")
+        self.assertGreater(marked, 0, "no card records a sibling verdict, so "
+                                      "the convention has been lost")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,6 +1,7 @@
 # Board adapter — empleate.gob.es (SEPE, Spain)
 
 <!-- hosts: empleate.gob.es -->
+<!-- siblings: empleate.gob.es 2026-09-04 incomparable -->
 <!-- script: empleate.py -->
 <!-- countries: ES -->
 
