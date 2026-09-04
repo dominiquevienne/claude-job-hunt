@@ -4994,5 +4994,83 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             "closed, and nothing else inherits it by omission")
 
 
+class TheDeclaredVersionIsTheReleasedVersion(unittest.TestCase):
+    """**Two files carry the version, and until now nothing said so.**
+
+    `.claude-plugin/plugin.json` is the manifest; `skills/job-scan/scripts/`
+    `_ua.py` hard-codes the same number into the `User-Agent` every adapter
+    sends to every third party. Twenty-six releases on 2026-09-04 bumped both,
+    because a human did it by hand and remembered.
+
+    **`release.yml` bumps only the manifest.** Its first unattended run would
+    have published a version whose declared agent announced the previous one,
+    and every release after it would have widened the gap — *the number we
+    tell other people we are* drifting away from the number we released.
+
+    This is the species already named twice in this suite: **two numbers, two
+    provenances, one assumed quantity.** The assumption held only while the
+    hand that moved one moved the other.
+
+    **The third provenance is the tag**, and it has already broken once:
+    v1.209.0 was tagged onto a tree still declaring 1.208.0. So the newest tag
+    is checked here too — `release.yml` computes the next version from the
+    manifest but decides *whether to run* from the tag, and a disagreement
+    between them makes it compute a number that already exists.
+    """
+
+    def _root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _manifest(self):
+        import json
+        p = os.path.join(self._root(), ".claude-plugin", "plugin.json")
+        with open(p, encoding="utf-8") as fh:
+            return json.load(fh)["version"]
+
+    def _agent(self):
+        import re
+        p = os.path.join(self._root(), "skills", "job-scan", "scripts",
+                         "_ua.py")
+        with open(p, encoding="utf-8") as fh:
+            src = fh.read()
+        hits = re.findall(r"claude-job-hunt/([0-9]+\.[0-9]+\.[0-9]+)", src)
+        self.assertEqual(len(hits), 1,
+                         f"_ua.py declares {len(hits)} versions; the bump in "
+                         f"release.yml rewrites exactly one and fails loudly "
+                         f"otherwise, so this number is load-bearing")
+        return hits[0]
+
+    def test_the_agent_announces_the_released_version(self):
+        self.assertEqual(
+            self._agent(), self._manifest(),
+            "_ua.py and plugin.json disagree: the agent we send to every "
+            "third party is not the version we published")
+
+    def test_the_newest_tag_agrees_with_the_manifest(self):
+        """**Not a duplicate of the case above.** That one compares two files
+        in the tree; this compares the tree to what was actually published. A
+        tag ahead of the manifest makes the next automated release compute a
+        version that already exists, and it wedges: `git describe` skips a tag
+        that is not an ancestor, so it recomputes the same number forever.
+        """
+        import subprocess
+        try:
+            out = subprocess.run(
+                ["git", "describe", "--tags", "--abbrev=0"],
+                cwd=self._root(), capture_output=True, text=True, timeout=20)
+        except (OSError, subprocess.SubprocessError):
+            self.skipTest("git is not available here")
+        if out.returncode != 0:
+            self.skipTest("no tags reachable from HEAD (a shallow checkout)")
+        tag = out.stdout.strip().lstrip("v")
+        if not tag:
+            self.skipTest("git describe said nothing")
+        self.assertEqual(
+            tag, self._manifest(),
+            f"the newest reachable tag is v{tag} but the manifest says "
+            f"{self._manifest()}; whichever moved without the other, the "
+            f"automated release will compute a version that already exists")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
