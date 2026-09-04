@@ -1,5 +1,6 @@
 # Board adapter — Bumeran / Jobint (seven Latin American brands)
 
+<!-- hosts: www.bumeran.com.ar, www.bumeran.com.mx, www.bumeran.com.pe, www.bumeran.com.ve, www.konzerta.com, www.laborum.cl, www.multitrabajos.com, www.zonajobs.com.ar -->
 <!-- script: bumeran.py -->
 <!-- verified: 2026-09-03 -->
 <!-- countries: AR CL PE MX EC VE PA -->

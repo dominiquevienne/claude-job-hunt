@@ -1,5 +1,6 @@
 # Board adapter — fachkraft.ch / sta.jobs
 
+<!-- hosts: www.fachkraft.ch, www.sta.jobs, www.stellenpartner.ch -->
 <!-- script: fachkraft.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: CH -->

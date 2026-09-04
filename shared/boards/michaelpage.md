@@ -1,5 +1,6 @@
 # Board adapter — Michael Page
 
+<!-- hosts: per-country -->
 <!-- script: michaelpage.py -->
 <!-- countries: * -->
 **A board, not an ATS**: one search across many employers. It is the first

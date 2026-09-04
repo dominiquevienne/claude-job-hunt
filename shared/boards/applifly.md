@@ -1,5 +1,6 @@
 # Board adapter — Applifly (Swiss ATS, one employer per host)
 
+<!-- hosts: per-tenant -->
 <!-- script: applifly.py -->
 <!-- verified: 2026-09-03 -->
 <!-- countries: CH -->

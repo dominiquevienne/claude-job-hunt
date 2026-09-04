@@ -5072,5 +5072,135 @@ class TheDeclaredVersionIsTheReleasedVersion(unittest.TestCase):
             f"automated release will compute a version that already exists")
 
 
+class HostsAreDeclaredOrDeclaredInapplicable(unittest.TestCase):
+    """**#146. Twelve cards had an adapter and no `<!-- hosts: -->`**, so no
+    host-indexed check could reach them. The shortest demonstration: `jobup.ch`
+    was measured with `_robots.py --siblings` on 2026-09-04, it returned
+    `agree`, **and the result had nowhere to go.**
+
+    **The form chosen is an explicit declaration of inapplicability**, so that
+    an absence means what it used to mean: *no line = nobody looked*, a token
+    = *somebody looked and the question does not arise.* That is the property
+    `<!-- script: -->` and `<!-- countries: -->` already have.
+
+    **The vocabulary is smaller than proposed, and that is the finding.** The
+    suggestion was `per-tenant` and `multi-brand`. **`multi-brand` was wrong on
+    every card it would have covered** — each of them enumerates its own hosts
+    in its own source:
+
+        bumeran      SITES, 8 keys      jobology   SITES, 9 keys
+        stepstone    SITES, 10 host=    fachkraft  DOMAINS, 3
+        computrabajo COUNTRIES, 18      jobup      SITES, 2
+
+    So they get real lists. **A token there would have replaced a retrievable
+    list with a word** — including on `jobup`, the card whose lost measurement
+    is the whole reason for the issue.
+
+    The two tokens that survive name genuinely unbounded sets:
+    `per-tenant`, where the host names an employer using an ATS, and
+    `per-country`, where it names a country edition the repo does not
+    enumerate.
+    """
+
+    TOKENS = ("per-tenant", "per-country")
+
+    def _cards(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            name = os.path.basename(path)[:-3]
+            if name == "README":
+                continue
+            src = open(path, encoding="utf-8").read()
+            hosts = re.search(r"<!--\s*hosts:\s*(.*?)\s*-->", src)
+            script = re.search(r"<!--\s*script:\s*([^\s>]+)", src)
+            values = ([h.strip() for h in hosts.group(1).split(",") if h.strip()]
+                      if hosts else None)
+            out.append((name, values, script.group(1) if script else None, root))
+        return out
+
+    def test_every_card_declares_its_hosts_or_says_why_not(self):
+        missing = [n for n, v, _s, _r in self._cards() if not v]
+        self.assertEqual(missing, [],
+                         f"{len(missing)} cards carry no <!-- hosts: --> line, "
+                         f"so no host-indexed check can reach them: {missing}")
+
+    def test_the_tokens_come_from_a_closed_vocabulary(self):
+        """**An open vocabulary is an absence with extra steps.** A token
+        nobody indexed is worth exactly as much as the missing line was."""
+        bad = []
+        for name, values, _s, _r in self._cards():
+            for v in values or []:
+                if "." not in v and v not in self.TOKENS:
+                    bad.append(f"{name}: {v!r}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_a_token_is_never_mixed_with_real_hosts(self):
+        """Half a list is not a list. If a board has one enumerable host it
+        has an enumerable set, and the token is a claim about the set."""
+        bad = []
+        for name, values, _s, _r in self._cards():
+            vals = values or []
+            if any(v in self.TOKENS for v in vals) and len(vals) > 1:
+                bad.append(f"{name}: {vals}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_no_card_claims_inapplicable_while_its_script_enumerates(self):
+        """**The half that matters, and the one that nearly went the other
+        way.** A token on a board that does enumerate its hosts is not a
+        shorthand — it discards a list the repo already holds, and it does it
+        invisibly, because a token and a truth look identical on the card.
+
+        So the source is asked: does this script carry a literal host-bearing
+        structure? If it does, the card may not claim the question is moot.
+        """
+        import ast
+        NAMES = ("SITES", "DOMAINS", "HOSTS", "COUNTRIES", "BRANDS")
+        bad = []
+        for name, values, script, root in self._cards():
+            if not values or not any(v in self.TOKENS for v in values):
+                continue
+            if not script:
+                continue
+            path = os.path.join(root, "skills", "job-scan", "scripts", script)
+            if not os.path.isfile(path):
+                continue
+            try:
+                tree = ast.parse(open(path, encoding="utf-8").read())
+            except SyntaxError:
+                continue
+            for node in tree.body:
+                if not isinstance(node, ast.Assign):
+                    continue
+                for t in node.targets:
+                    if getattr(t, "id", None) not in NAMES:
+                        continue
+                    try:
+                        val = ast.literal_eval(node.value)
+                    except Exception:
+                        continue
+                    if len(val) > 1:
+                        bad.append(f"{name} says {values} but {script} "
+                                   f"enumerates {len(val)} in {t.id}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_the_enumerated_boards_kept_their_lists(self):
+        """**The floor.** The four checks above are all satisfied by giving
+        every card the token — the cheapest way to go green is the exact
+        mistake this class exists to prevent."""
+        got = {n: v for n, v, _s, _r in self._cards()}
+        for name, least in (("bumeran", 8), ("jobology", 9), ("stepstone", 10),
+                            ("computrabajo", 18), ("fachkraft", 3)):
+            with self.subTest(board=name):
+                self.assertIn(name, got)
+                self.assertGreaterEqual(
+                    len(got[name] or []), least,
+                    f"{name} enumerates {least} hosts in its source; its card "
+                    f"now claims {got[name]}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

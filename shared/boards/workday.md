@@ -1,5 +1,6 @@
 # Board adapter — Workday
 
+<!-- hosts: per-tenant -->
 <!-- script: workday.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: * -->

@@ -1,5 +1,6 @@
 # Board adapter — Jobology (nine sector boards)
 
+<!-- hosts: www.clicandearth.fr, www.clicandpower.fr, www.clicandsea.fr, www.clicandsport.fr, www.clicandtour.fr, www.distrijob.fr, www.jobtransport.com, www.jobvitae.fr, www.supply-chain.fr -->
 <!-- script: jobology.py -->
 <!-- countries: FR -->
 Jobology runs **nine French sector job boards** on one platform. They share a

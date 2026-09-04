@@ -1,5 +1,6 @@
 # Board adapter — jobs.ch
 
+<!-- hosts: www.jobs.ch -->
 <!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: CH -->

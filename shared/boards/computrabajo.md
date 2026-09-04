@@ -1,5 +1,6 @@
 # Board adapter — Computrabajo (18 Latin American countries)
 
+<!-- hosts: co.computrabajo.com, cl.computrabajo.com, pe.computrabajo.com, mx.computrabajo.com, ar.computrabajo.com, ec.computrabajo.com, ve.computrabajo.com, cr.computrabajo.com, pa.computrabajo.com, gt.computrabajo.com, bo.computrabajo.com, do.computrabajo.com, uy.computrabajo.com, sv.computrabajo.com, hn.computrabajo.com, ni.computrabajo.com, py.computrabajo.com, pr.computrabajo.com -->
 <!-- script: computrabajo.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY US -->

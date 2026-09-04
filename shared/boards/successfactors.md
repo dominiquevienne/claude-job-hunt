@@ -1,5 +1,6 @@
 # Board adapter — SAP SuccessFactors
 
+<!-- hosts: per-tenant -->
 <!-- script: successfactors.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: * -->

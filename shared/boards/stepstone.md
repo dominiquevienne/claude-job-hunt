@@ -1,5 +1,6 @@
 # Board adapter — StepStone
 
+<!-- hosts: www.totaljobs.com, www.jobsite.co.uk, www.caterer.com, www.irishjobs.ie, www.nijobs.com, www.jobs.ie, www.stepstone.de, www.stepstone.at, www.stepstone.be, www.stepstone.nl -->
 <!-- script: stepstone.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: DE AT BE NL GB IE -->
