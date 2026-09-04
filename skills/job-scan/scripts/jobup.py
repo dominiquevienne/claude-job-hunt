@@ -68,6 +68,8 @@ SITES = {
                 "detail": "/de/stellenangebote/detail/"},
 }
 from _ua import UA
+
+DEFAULT_SITE = "jobup"
 EXIT_PARTIAL = 6
 
 
@@ -76,8 +78,16 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+# **The tag named one of the two boards this adapter reads, always.** Running
+# `--site jobs-ch` printed `[jobup] 20 ad(s) …` while the records carried
+# `jobs-ch:` ids and `www.jobs.ch` URLs — the data was right and every
+# sentence about it was wrong. A reader checks the sentence. Issue #129's
+# shape, on the tag itself.
+_TAG = "jobup"
+
+
 def note(msg):
-    print(f"[jobup] {msg}", file=sys.stderr)
+    print(f"[{_TAG}] {msg}", file=sys.stderr)
 
 
 def get(url):
@@ -128,6 +138,26 @@ def card(site, p):
     }
 
 
+def resolve_site(chosen):
+    """`(site, message_or_None)` — the default, and whether to say so.
+
+    **A pure function on purpose.** The announcement used to sit inline, and a
+    test could only assert *where* the line was written, never *when* it runs.
+    A `if True:` nested in the same span kept it in place and fired it on every
+    call, and the check stayed green: it was reading position, not condition.
+    **Here the condition is the return value**, so a case can call it twice and
+    compare.
+    """
+    if chosen is not None:
+        return chosen, None
+    return DEFAULT_SITE, (
+        f"no --site given, reading **{SITES[DEFAULT_SITE]['host']}**. This "
+        f"adapter serves {len(SITES)} boards ({', '.join(sorted(SITES))}) and "
+        f"defaults to `{DEFAULT_SITE}` — **if you meant the other one, say "
+        f"so**: the records would carry `{DEFAULT_SITE}:` ids and look like a "
+        f"normal answer.")
+
+
 def cmd_search(a):
     # **An invocation that cannot return anything must not be accepted.**
     # `search` with no filter fetches the bare listing, which serves no
@@ -151,6 +181,19 @@ def cmd_search(a):
             "board — this board, this repository, #122. A filter makes the "
             "answer interpretable. No request was made.", 2)
 
+    global _TAG
+    # **`--site` used to default silently to `jobup`.** Two boards share this
+    # adapter, and somebody who enabled jobs.ch and typed the general form got
+    # twenty jobup.ch advertisements, HTTP 200, no warning — the `ledger_id`
+    # prefix was the only tell, and it is in the JSON, not in the message.
+    #
+    # **The default still holds; it no longer holds quietly.** The line is
+    # printed only when nobody chose, because a warning that fires on correct
+    # use is noise.
+    a.site, said = resolve_site(a.site)
+    if said:
+        note(said)
+    _TAG = a.site
     site = SITES[a.site]
     v = robots_verdict(site["host"])
     if not v["sweep"]:
@@ -240,7 +283,15 @@ def cmd_search(a):
 
 
 def cmd_ad(a):
+    global _TAG
     host = urllib.parse.urlsplit(a.url).netloc
+    # **The second way in, and it had the same defect.** `ad` takes a URL
+    # rather than `--site`, so nothing here ever set the tag: reading a
+    # `www.jobs.ch` advertisement printed `[jobup]` over every line about it.
+    for name, cfg in SITES.items():
+        if cfg["host"] == host:
+            _TAG = name
+            break
     v = robots_verdict(host)
     if not v["sweep"]:
         die(f"{host}: {v['reason']}", 8 if v["sweep"] is None else 7)
@@ -280,7 +331,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("search", help="read the listing, one request per page")
-    s.add_argument("--site", choices=sorted(SITES), default="jobup")
+    # `default=None`, not `default="jobup"`: argparse cannot otherwise tell
+    # a chosen `jobup` from an unchosen one, and the announcement below has to.
+    s.add_argument("--site", choices=sorted(SITES), default=None,
+                   help=f"which of the two boards ({', '.join(sorted(SITES))})"
+                        f"; defaults to {DEFAULT_SITE}, and says so when it "
+                        f"does")
     s.add_argument("--term")
     s.add_argument("--location", help="town filter, accent-insensitive")
     s.add_argument("--pages", type=int, default=1)

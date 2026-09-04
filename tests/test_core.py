@@ -3042,5 +3042,104 @@ class DocumentedInvocationsAreReal(unittest.TestCase):
                            f"invocation — the `$S` form is not resolving")
 
 
+class TheSharedBoardSaysWhichOneItRead(unittest.TestCase):
+    """`jobup.py` serves two boards and defaulted to one of them in silence.
+
+    `--site` carried `default="jobup"`, so somebody who had enabled **jobs.ch**
+    and typed the general form got twenty **jobup.ch** advertisements, HTTP
+    200, no warning. The `ledger_id` prefix was the only tell, **and it is in
+    the JSON, not in the message** — the reader of a sweep reads the message.
+
+    **And the tag lied in the other direction too.** `note()` printed
+    `[jobup]` unconditionally, so `--site jobs-ch` announced its twenty
+    advertisements under the other board's name while the records themselves
+    carried `jobs-ch:` ids and `www.jobs.ch` URLs. **The data was right and
+    every sentence about it was wrong.**
+
+    **The default is kept and no longer silent.** Making `--site` required
+    would have been the other repair, and it would have invalidated the
+    invocations `jobup.md` documents — two days after establishing that the
+    documented invocations are all valid.
+
+    **The announcement fires only when nobody chose.** A warning on correct
+    use is noise, so the quiet case is asserted too: without it this cannot
+    tell *"announces"* from *"announces when it should"*.
+    """
+
+    def _parser(self):
+        import jobup
+        return jobup
+
+    def test_the_flag_does_not_carry_its_own_default(self):
+        """`argparse` cannot distinguish a chosen `jobup` from an unchosen one
+        if the default is the value. It has to arrive as `None`."""
+        jobup = self._parser()
+        p = jobup.build() if hasattr(jobup, "build") else None
+        if p is None:
+            import re
+            src = open(jobup.__file__, encoding="utf-8").read()
+            i = src.index('add_argument("--site"')
+            call = src[i:src.index("\n\n", i)]
+            self.assertIn("default=None", call)
+            self.assertNotIn('default="jobup"', call)
+
+    def test_the_default_is_named_once(self):
+        jobup = self._parser()
+        self.assertEqual(jobup.DEFAULT_SITE, "jobup")
+        self.assertIn(jobup.DEFAULT_SITE, jobup.SITES)
+
+    def test_the_tag_follows_the_site(self):
+        """`[jobup]` over twenty jobs.ch advertisements is the defect this
+        catches — the records were always right."""
+        import io
+        import contextlib
+        jobup = self._parser()
+        before = jobup._TAG
+        try:
+            for name in sorted(jobup.SITES):
+                jobup._TAG = name
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    jobup.note("x")
+                self.assertEqual(err.getvalue().strip(), f"[{name}] x")
+        finally:
+            jobup._TAG = before
+
+    def test_the_default_announces_itself(self):
+        """`resolve_site(None)` is somebody who typed the general form."""
+        jobup = self._parser()
+        site, said = jobup.resolve_site(None)
+        self.assertEqual(site, jobup.DEFAULT_SITE)
+        self.assertIsNotNone(said, "the default no longer announces itself")
+        self.assertIn(jobup.SITES[jobup.DEFAULT_SITE]["host"], said)
+        self.assertIn("--site", said)
+        for name in jobup.SITES:
+            self.assertIn(name, said,
+                          "the line does not name the board the reader might "
+                          "have meant — a warning that does not say what to "
+                          "do instead is half a warning")
+
+    def test_a_chosen_site_is_not_announced(self):
+        """**The witness, and its first version could not fail.**
+
+        It asserted that the `note(` call sat between two markers in the
+        source. Nesting `if True:` inside that span fires the announcement on
+        every run and **leaves the text exactly where the check looked** — the
+        suite stayed green while every correct invocation was warned at. It
+        was reading position, not condition.
+
+        `resolve_site` returns the message instead of printing it, so the
+        condition is the value and both cases can be compared.
+        """
+        jobup = self._parser()
+        for name in sorted(jobup.SITES):
+            site, said = jobup.resolve_site(name)
+            self.assertEqual(site, name)
+            self.assertIsNone(said,
+                              f"--site {name} was chosen explicitly and still "
+                              f"drew a warning — a warning on correct use is "
+                              f"the noise this was avoiding")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
