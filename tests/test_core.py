@@ -2826,5 +2826,58 @@ class EveryCardDeclaresItsScript(unittest.TestCase):
                       "it more than once the declarations have drifted")
 
 
+class TheCredentialNoteKeepsItsBlock(unittest.TestCase):
+    """`missing_note()` indented only the first credential it listed.
+
+    The variable names were joined with a bare newline and then interpolated
+    after eight spaces, so **the f-string indented the first line and every
+    later one started at column 0**, falling out of the block a reader is
+    meant to copy.
+
+    **A single credential cannot show this** — there is no second line. The
+    two that can are `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` and France Travail's
+    pair: **the two messages whose entire point is that both values are
+    needed.** So the specimen here has two, and one with a single name is
+    kept beside it to say why it proves nothing alone.
+
+    It matters more than a layout slip because of where it sits. The same
+    measurement established that `missing_note()` goes to **stderr with exit
+    2 and an empty stdout**, and that no documented invocation redirects
+    stderr — so **there is no silent failure here**: a wrong key gives a named
+    401, not an empty board. **This message is the user's only recovery, and
+    half its content was leaving the block.**
+    """
+
+    def _indents(self, names):
+        import _secrets
+        note = _secrets.missing_note(names, "x", "X Service", "see the card")
+        return [len(ln) - len(ln.lstrip())
+                for ln in note.split("\n")
+                if "=" in ln and ln.strip().endswith("\u2026")]
+
+    def test_two_credentials_are_both_inside_the_block(self):
+        got = self._indents(["ADZUNA_APP_ID", "ADZUNA_APP_KEY"])
+        self.assertEqual(len(got), 2, "the specimen must list two names or "
+                                      "it cannot catch this")
+        self.assertEqual(got, [got[0]] * 2,
+                         f"the credentials are indented {got} — a later line "
+                         f"left the block the reader is told to copy")
+        self.assertGreater(got[0], 0, "the block is not indented at all")
+
+    def test_a_single_credential_agrees_and_proves_nothing_alone(self):
+        """Kept and labelled: this passes on the defect."""
+        self.assertEqual(len(self._indents(["LBA_API_KEY"])), 1)
+
+    def test_it_still_gives_both_routes(self):
+        """**Prescribing a shell command to somebody without a shell is not
+        help**, so the note carries a file route and a terminal route. A fix
+        to the layout must not cost one of them."""
+        import _secrets
+        note = _secrets.missing_note(["A_KEY"], "svc", "X", "y")
+        self.assertIn("credentials.env", note)
+        self.assertIn("set -a", note)
+        self.assertIn("config.yml", note)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

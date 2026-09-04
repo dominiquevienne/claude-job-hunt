@@ -138,14 +138,20 @@ def missing_note(vars_, name, where, how):
     ws = _workspace()
     target = os.path.join(ws, "credentials.env") if ws else \
         "<your workspace>/credentials.env"
-    lines = "\n".join(f"{v}=…" for v in vars_)
+    # **The indentation has to be inside the join, not in front of it.**
+    # An f-string indents only the first line of what it interpolates; every
+    # later one starts at column 0 and falls out of the block. A single
+    # credential never showed it — the two that do are `ADZUNA_APP_ID` /
+    # `ADZUNA_APP_KEY` and France Travail's pair, **the two messages whose
+    # whole point is that both values are needed.**
+    lines = "\n".join(f"        {v}=…" for v in vars_)
     return (
         f"{joined} not found — neither in the environment nor in a credentials "
         f"file.\n\n"
         f"**In the app**, put them in a file the plugin will find, one per "
         f"line:\n"
         f"    {target}\n"
-        f"        {lines}\n\n"
+        f"{lines}\n\n"
         f"**In a terminal**, either that file or the older convention:\n"
         f"    set -a; . ~/.{name}.env; set +a\n\n"
         f"A key for {where} is free and self-service: {how} — **the plugin "
