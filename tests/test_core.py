@@ -4903,7 +4903,7 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
     costs no credential and no request: the opener is replaced.
     """
 
-    def _wire(self, module_name, entry):
+    def _wire(self, module_name, entry, stub_token=False):
         """What the request carried, without one leaving the machine."""
         import importlib
         mod = importlib.import_module(module_name)
@@ -4915,6 +4915,15 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             seen["reached"] = True
             raise mod.urllib.error.URLError("stubbed for this case")
 
+        # **`francetravail.call` fetches a bearer token before it builds the
+        # request**, so on a machine without credentials it dies before the
+        # opener is reached. That is how this case passed here and failed on
+        # every CI runner: my own `~/.francetravail.env` was standing in for
+        # a fixture. The token is stubbed so the case measures the header it
+        # is about, everywhere.
+        real_token = getattr(mod, "token", None) if stub_token else None
+        if real_token is not None:
+            mod.token = lambda *_a, **_k: "stub-token"
         real = mod.urllib.request.urlopen
         # **These adapters retry with 1.5s and 3s of backoff**, and paying it
         # for a case about a header put 4.6 seconds on the suite. The retry
@@ -4934,6 +4943,8 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             mod.urllib.request.urlopen = real
             if slept is not None:
                 mod.time.sleep = real_sleep
+            if real_token is not None:
+                mod.token = real_token
         return seen
 
     def test_an_exempted_api_route_sends_the_declared_agent(self):
@@ -4951,7 +4962,8 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
         """Two of the four, because **one specimen is not a corpus** — the
         lesson `empleate.py` taught on the TLS half the same day."""
         import _ua
-        seen = self._wire("francetravail", "call")
+        seen = self._wire("francetravail", "call",
+                          stub_token=True)
         self.assertTrue(seen.get("reached"))
         self.assertEqual(seen.get("ua"), _ua.UA)
 
