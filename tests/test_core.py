@@ -4584,5 +4584,141 @@ class TravelIsADegreeNotAFact(unittest.TestCase):
         self.assertTrue(value.startswith('"'), "the example is not a phrase")
 
 
+class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
+    """`DocumentedInvocationsAreReal` reads `shared/boards/` and nothing else.
+
+    The two `SKILL.md` files and fifteen `shared/*.md` document commands too,
+    and **none of them was checked by anything**. #148.
+
+    **The demonstration is mine, from the same day.** Shipping #137 put
+
+        python3 "${CLAUDE_PLUGIN_ROOT:-.}/…/_travel.py" --file <the ad>
+
+    into **two** `SKILL.md` files while the module had no `__main__`. The
+    command did not exist, in both files, and the suite was green. It was
+    caught within the hour because I ran the command I had just written —
+    **not because anything reported it.**
+
+    Measured at `d35cab4`: 17 documents, 33 command lines, 14 distinct
+    scripts, **zero broken**. The state is healthy and nothing holds it.
+
+    **What this checks is narrower than the card guard, deliberately.** A
+    board card names a subcommand and options, and the AST can compare them.
+    A skill mostly names a script and a flag, so this asks the smaller
+    question the population supports: **does the file exist, and does it run
+    as a command at all.** Asking more of prose would manufacture findings.
+    """
+
+    # every place a documented script may live
+    HOMES = ("skills/job-scan/scripts", "bin", "skills/cover-letter",
+             "skills/job-scan")
+
+    def _docs(self):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = [os.path.join(root, "skills", s, "SKILL.md")
+               for s in ("job-scan", "cover-letter")]
+        out += sorted(glob.glob(os.path.join(root, "shared", "*.md")))
+        return root, [d for d in out if os.path.exists(d)]
+
+    def _commands(self, text):
+        r"""Every command line in a fenced block that names a `.py`.
+
+        **The hyphen matters and cost three false findings.** A pattern of
+        `[a-z0-9_]+\.py` reads `version-check.py` as `check.py` and reports
+        three files that do not exist — the measurement behind this class
+        invented its own defects twice before producing a number.
+        """
+        import re
+        out = []
+        for m in re.finditer(r"```[a-z]*\n(.*?)```", text, re.S):
+            for line in m.group(1).replace("\\\n", " ").split("\n"):
+                line = line.split("#", 1)[0].strip()
+                hit = re.search(r"([a-z0-9_-]+\.py)", line)
+                if not hit:
+                    continue
+                # a command, an assignment from one, or a substitution
+                if not re.match(r"^(python3?\b|\$|[A-Za-z_]+=)", line):
+                    continue
+                out.append((hit.group(1), line[:90]))
+        return out
+
+    def _resolve(self, root, script):
+        for home in self.HOMES:
+            path = os.path.join(root, home, script)
+            if os.path.exists(path):
+                return path
+        return None
+
+    def _runs_as_a_command(self, path):
+        import ast
+        try:
+            tree = ast.parse(open(path, encoding="utf-8").read())
+        except SyntaxError:
+            return None
+        for n in ast.walk(tree):
+            if isinstance(n, ast.If) and isinstance(n.test, ast.Compare) \
+                    and isinstance(n.test.left, ast.Name) \
+                    and n.test.left.id == "__name__":
+                return True
+        return False
+
+    def _walk(self):
+        root, docs = self._docs()
+        seen, bad = {}, []
+        for doc in docs:
+            text = open(doc, encoding="utf-8").read()
+            for script, line in self._commands(text):
+                seen.setdefault(script, []).append(
+                    (os.path.relpath(doc, root), line))
+        for script, uses in sorted(seen.items()):
+            path = self._resolve(root, script)
+            where = uses[0][0]
+            if path is None:
+                bad.append(f"{where}: no such file {script}")
+            elif self._runs_as_a_command(path) is False:
+                bad.append(f"{where}: {script} has no `__main__` and is "
+                           f"documented as a command")
+        return seen, bad
+
+    def test_every_documented_script_exists_and_runs_as_a_command(self):
+        seen, bad = self._walk()
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_the_population_has_not_collapsed(self):
+        """**The floor**, because this guard's own extractor is the fragile
+        part: a pattern that stops matching reports a clean corpus."""
+        seen, _bad = self._walk()
+        self.assertGreater(len(seen), 10,
+                           f"only {len(seen)} scripts found in the skills and "
+                           f"shared docs — the extractor has gone quiet")
+
+    def test_the_unusual_forms_are_still_read(self):
+        """**The other half of the mutation.** A guard that only reads
+        `python3 path/to/x.py` would be green on this corpus by seeing almost
+        none of it. These four shapes all appear in the documents and must all
+        resolve."""
+        root, _docs = self._docs()
+        shapes = {
+            'python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"':
+                "version-check.py",
+            'JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/'
+            'workspace-path.py")"': "workspace-path.py",
+            'python3 "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/'
+            'save-profile-text.py" --in x': "save-profile-text.py",
+            'python3 "$S/_travel.py" --file ad.md': "_travel.py",
+        }
+        for line, expected in shapes.items():
+            with self.subTest(line=line[:44]):
+                got = self._commands("```bash\n" + line + "\n```")
+                self.assertTrue(got, f"this form is not read at all: {line}")
+                self.assertEqual(got[0][0], expected)
+                self.assertIsNotNone(
+                    self._resolve(root, expected),
+                    f"{expected} does not resolve — the hyphen or the "
+                    f"directory list is wrong, which is how the measurement "
+                    f"behind this class invented three defects")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
