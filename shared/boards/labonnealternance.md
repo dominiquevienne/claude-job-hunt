@@ -2,6 +2,7 @@
 
 <!-- hosts: api.apprentissage.beta.gouv.fr -->
 <!-- script: labonnealternance.py -->
+<!-- robots: keyed-api -->
 <!-- countries: FR -->
 
 A French state service for **apprenticeship and alternance**, run by the

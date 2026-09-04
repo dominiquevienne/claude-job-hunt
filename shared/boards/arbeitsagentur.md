@@ -2,6 +2,7 @@
 
 <!-- hosts: jobsuche.api.bund.dev, rest.arbeitsagentur.de -->
 <!-- script: arbeitsagentur.py -->
+<!-- robots: keyed-api -->
 <!-- countries: DE -->
 
 **994 348 live ads.** Germany's federal employment agency, through the API the

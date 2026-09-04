@@ -4986,12 +4986,50 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             if not re.search(r"(^|\n)\s*(import _robots|from _robots\s+import)",
                              src):
                 unguarded.append(name[:-3])
+        declared = self._declared_exempt()
         self.assertEqual(
-            sorted(unguarded),
-            ["adzuna", "arbeitsagentur", "francetravail", "labonnealternance"],
-            "the set of adapters exempt from the guard has changed; the "
-            "owner's decision covers keyed APIs whose door is explicitly "
-            "closed, and nothing else inherits it by omission")
+            sorted(unguarded), sorted(declared),
+            f"the set of adapters exempt from the guard is inferred from an "
+            f"absence of calls ({sorted(unguarded)}) and declared on the cards "
+            f"({sorted(declared)}), and the two disagree. An exemption that "
+            f"only exists as a missing import is one nobody granted.")
+
+    def _declared_exempt(self):
+        """**#100 point 1, made a declaration instead of an inference.**
+
+        Until now this population lived as a literal list inside this test:
+        the exemption was visible only as an *absence* of `import _robots`,
+        and the test was the only place saying which absences were intended.
+        **An adapter that quietly stopped importing the guard would have
+        looked exactly like one that was meant to be exempt** — the same shape
+        that let two of these four stop sending our declared agent while an
+        audit counted what obeys and not what escapes.
+
+        Now each of the four says so on its own card, and this reads them.
+        """
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            decl = re.search(r"<!--\s*robots:\s*(.*?)\s*-->", src)
+            if not decl:
+                continue
+            self.assertEqual(
+                decl.group(1), "keyed-api",
+                f"{os.path.basename(path)} declares an unknown robots value "
+                f"{decl.group(1)!r}; the vocabulary is closed, because a value "
+                f"nothing reads is an absence with extra steps")
+            script = re.search(r"<!--\s*script:\s*([^\s>]+)", src)
+            self.assertIsNotNone(
+                script, f"{os.path.basename(path)} claims a robots exemption "
+                        f"but names no script, so nothing can check it")
+            out.append(script.group(1)[:-3] if script.group(1).endswith(".py")
+                       else script.group(1))
+        return out
 
 
 class TheDeclaredVersionIsTheReleasedVersion(unittest.TestCase):
@@ -5114,7 +5152,8 @@ class HostsAreDeclaredOrDeclaredInapplicable(unittest.TestCase):
             name = os.path.basename(path)[:-3]
             if name == "README":
                 continue
-            src = open(path, encoding="utf-8").read()
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
             hosts = re.search(r"<!--\s*hosts:\s*(.*?)\s*-->", src)
             script = re.search(r"<!--\s*script:\s*([^\s>]+)", src)
             values = ([h.strip() for h in hosts.group(1).split(",") if h.strip()]
