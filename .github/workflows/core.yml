@@ -28,6 +28,15 @@ jobs:
         # 3.9 is the floor, and it is measured rather than chosen: it is the
         # oldest version that runs this code, set by `str.removeprefix` in
         # bin/host-drift.py. See CONTRIBUTING.md.
+        #
+        # **That measurement was taken on `bin/` and not on `tests/`**, and
+        # the three 3.9 cells were red from the first run because
+        # `tests/test_core.py` used `sys.stdlib_module_names`, which is 3.10+.
+        # The floor is a promise in README.md, so the test was changed rather
+        # than the promise — a published promise is not raised to make a check
+        # pass. Re-measured across every tracked `.py` on 2026-09-04: the only
+        # version-bearing calls left are `removeprefix`/`removesuffix`, and
+        # the floor is 3.9 in fact and not only in this comment. #143.
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.9", "3.12"]
     steps:
