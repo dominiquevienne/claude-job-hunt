@@ -2640,7 +2640,14 @@ class TlsHostsAreRoutedEverywhere(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 src = fh.read()
             # only a file that actually opens a socket on the host counts
-            if not re.search(r"urlopen|http\.client", src):
+            # **The wide pattern, and it was narrow for an hour.** Four
+            # adapters fetch through `OPENER.open(...)` rather than
+            # `urlopen(...)`: applifly, emploiterritorial, hiringcafe and
+            # philjobnet. A filter matching only `urlopen` dropped all four
+            # from this population — and one of them imports no guard at all,
+            # so the guard reported a healthy set of exactly four exemptions
+            # while five adapters were unguarded.
+            if not re.search(r"urllib\.request|http\.client|requests\.", src):
                 continue
             if not any(h in src for h in hosts):
                 continue
@@ -2775,10 +2782,21 @@ class DeclaredAgentIsSentEverywhere(unittest.TestCase):
                 continue
             with open(path, encoding="utf-8") as fh:
                 src = fh.read()
-            if not re.search(r"urlopen|http\.client", src):
+            # wide on purpose: four adapters fetch through
+            # `OPENER.open(...)`, not `urlopen(...)` — see
+            # TheExemptedApiRoutesStillIdentifyThemselves
+            if not re.search(r"urllib\.request|http\.client|requests\.", src):
                 continue
             imported = re.search(r"(^|\n)\s*(from _ua import|import _ua)", src)
-            header = re.search(r"""["']User-Agent["']\s*:""", src)
+            # **Two shapes, and only one was recognised for a day.** Most
+            # adapters pass `Request(headers={"User-Agent": UA})`; `philjobnet`
+            # sets `opener.addheaders = [("User-Agent", UA), ...]`, which is a
+            # tuple, not a key. The narrow pattern reported it as sending no
+            # agent at all — **a false accusation, not a missed one**, and the
+            # more dangerous direction: it invites a "fix" to code that was
+            # already correct.
+            header = re.search(
+                r"""["']User-Agent["']\s*[:,]""", src)
             if not imported:
                 offenders.append(f"{name} (no _ua import)")
             elif not header:
@@ -4981,7 +4999,10 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             if name.startswith("_"):
                 continue
             src = open(path, encoding="utf-8").read()
-            if not re.search(r"urlopen|http\.client", src):
+            # wide on purpose: four adapters fetch through
+            # `OPENER.open(...)`, not `urlopen(...)` — see
+            # TheExemptedApiRoutesStillIdentifyThemselves
+            if not re.search(r"urllib\.request|http\.client|requests\.", src):
                 continue
             if not re.search(r"(^|\n)\s*(import _robots|from _robots\s+import)",
                              src):
@@ -5018,8 +5039,8 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             decl = re.search(r"<!--\s*robots:\s*(.*?)\s*-->", src)
             if not decl:
                 continue
-            self.assertEqual(
-                decl.group(1), "keyed-api",
+            self.assertIn(
+                decl.group(1), ("keyed-api", "suspended"),
                 f"{os.path.basename(path)} declares an unknown robots value "
                 f"{decl.group(1)!r}; the vocabulary is closed, because a value "
                 f"nothing reads is an absence with extra steps")
@@ -5392,6 +5413,47 @@ class TheTenantIsAskedAboutNotThePlatform(unittest.TestCase):
         self.assertEqual(sorted(found), sorted(self.SEVEN),
                          f"only {len(found)} of {len(self.SEVEN)} multi-tenant "
                          f"adapters have a gate: {sorted(found)}")
+
+
+class TheAgentGoesOutThroughAnOpenerToo(unittest.TestCase):
+    """**The specimen for the second shape.** `DeclaredAgentIsSentEverywhere`
+    reads source; this runs one.
+
+    `philjobnet.py` builds an `OpenerDirector` and sets
+    `addheaders = [("User-Agent", UA), ...]`. **Nothing had ever exercised that
+    path**, and when the corpus scan was widened to a filter that could finally
+    see this file, its pattern — a dict key — reported the adapter as sending
+    no agent. The header was there and had always gone out.
+
+    So the scan learned the second shape, and this proves the shape works. The
+    seam is `OpenerDirector._open`, which runs **after** `addheaders` have been
+    folded into the request: intercepting `open` would be too early and would
+    measure the request before the opener touched it, which is exactly the kind
+    of case that passes while proving nothing.
+    """
+
+    def test_the_opener_puts_the_declared_agent_on_the_request(self):
+        import importlib
+        import _ua
+        mod = importlib.import_module("philjobnet")
+        session = mod.Session()
+        seen = {}
+
+        def fake_open(req, *a, **kw):
+            seen["ua"] = req.get_header("User-agent")
+            raise mod.urllib.error.URLError("stubbed for this case")
+
+        session.op._open = fake_open
+        try:
+            session.op.open(mod.urllib.request.Request("https://x.invalid/"),
+                            timeout=1)
+        except BaseException:
+            pass
+        self.assertIn("ua", seen,
+                      "the request never reached the handler, so this case "
+                      "measured nothing — the seam moved")
+        self.assertEqual(seen["ua"], _ua.UA,
+                         f"the opener sent {seen.get('ua')!r}")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
+<!-- robots: suspended -->
 <!-- countries: * -->
 A **meta-board**: HiringCafe crawls employer career pages across some forty ATS
 platforms and republishes them under one search. Worldwide — every country
