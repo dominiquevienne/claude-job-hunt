@@ -3269,6 +3269,66 @@ class TheSharedBoardSaysWhichOneItRead(unittest.TestCase):
                               f"the noise this was avoiding")
 
 
+class TheRefusedSearchIsRefusedInFact(unittest.TestCase):
+    """`_hiringcafe` centralises the refusal so three commands cannot say
+    three different things. **Nothing exercised it** — the module was never
+    named in this suite, and renaming `search_url` away left the suite green.
+
+    The corpus scan next door asserts that no adapter assembles the refused
+    URL itself, which is a statement about **text across 65 files** and is
+    right to be. It says nothing about whether the one place that may build
+    it actually refuses to fetch it.
+
+    **Collection is suspended by decision, not by accident** — no request to
+    that host in any form, even on the paths its own file allows. So this
+    exercises the refusal with an opener that fails the case if it is ever
+    reached.
+    """
+
+    def test_the_search_mode_refuses_and_makes_no_request(self):
+        import hiringcafe
+
+        def forbidden(*a, **k):
+            raise AssertionError(
+                "hiringcafe.py opened a socket — collection is suspended and "
+                "no request to that host is permitted in any form")
+
+        real = hiringcafe.urllib.request.urlopen
+        hiringcafe.urllib.request.urlopen = forbidden
+        code, said = None, ""
+        try:
+            import subprocess
+            import sys as _sys
+            out = subprocess.run(
+                [_sys.executable, os.path.join(SCRIPTS, "hiringcafe.py"),
+                 "search", "--query", "x", "--country", "CH"],
+                capture_output=True, text=True, timeout=60)
+            code, said = out.returncode, out.stderr
+        except AssertionError:
+            raise
+        finally:
+            hiringcafe.urllib.request.urlopen = real
+        self.assertEqual(code, 7,
+                         f"the refused search did not exit 7 (got {code!r} "
+                         f"{said[:60]})")
+
+    def test_the_refusal_quotes_the_rule_and_the_date(self):
+        """**A refusal that does not say what refused it invites a retry.**"""
+        import _hiringcafe
+        said = _hiringcafe.refusal("x", "this search")
+        self.assertIn("robots.txt", said)
+        self.assertIn(_hiringcafe.MEASURED_ON, said)
+        self.assertIn("No request was made", said)
+
+    def test_the_constructor_is_the_only_place_that_builds_it(self):
+        """Kept as the corpus half, beside the exercised one — **the scan
+        covers 65 files, the case above covers one command.**"""
+        import _hiringcafe
+        url = _hiringcafe.search_url({"searchState": "{}"})
+        self.assertTrue(url.startswith(_hiringcafe.BASE))
+        self.assertIn("searchState", url)
+
+
 class PresenceIsNotBehaviour(unittest.TestCase):
     """Four guards asserted that a token appeared in a file and reported a
     behaviour. **Each could be neutralised without moving the text it looked
@@ -3299,6 +3359,67 @@ class PresenceIsNotBehaviour(unittest.TestCase):
             raise module.urllib.error.URLError("stubbed")
 
         return seen, fake
+
+    def test_every_adapter_that_uses_tls_actually_passes_the_context(self):
+        """**One specimen does not cover a corpus, and this is the proof.**
+
+        The case below exercises `oposiciones.py` and says nothing about the
+        other reader of the same host. `empleate.py` could be given
+        `context=None` — reinstating #104 on the adapter #104 was *opened*
+        for — and the suite stayed green: the corpus scan sees the import, the
+        exercised case sees the wrong file.
+
+        Three files use `_tls`; two of them are adapters. Exercising both
+        costs a loop.
+        """
+        import glob
+        import re
+        import importlib
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        users = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            if re.search(r"(^|\n)\s*import _tls", src):
+                users.append(name[:-3])
+        self.assertGreaterEqual(len(users), 2,
+                                "the adapters using _tls have vanished — "
+                                "either a real change or this went quiet")
+
+        for mod_name in users:
+            with self.subTest(adapter=mod_name):
+                mod = importlib.import_module(mod_name)
+                seen, fake = self._capture(mod)
+                real = mod.urllib.request.urlopen
+                gate = getattr(mod, "_robots_gate", None)
+                mod.urllib.request.urlopen = fake
+                real_sleep = getattr(mod, "time", None)
+                if real_sleep is not None:
+                    slept = mod.time.sleep
+                    mod.time.sleep = lambda *_a, **_k: None
+                if gate:
+                    setattr(mod, "_robots_gate", lambda *a, **k: None)
+                try:
+                    fn = getattr(mod, "fetch", None) or getattr(mod, "get")
+                    try:
+                        fn("https://empleate.gob.es/x")
+                    except BaseException:
+                        pass
+                finally:
+                    mod.urllib.request.urlopen = real
+                    if real_sleep is not None:
+                        mod.time.sleep = slept
+                    if gate:
+                        setattr(mod, "_robots_gate", gate)
+                self.assertIn("kw", seen,
+                              f"{mod_name}: never reached the opener")
+                self.assertIsNotNone(
+                    seen["kw"].get("context"),
+                    f"{mod_name} sent the request with no TLS context — "
+                    f"`_tls` is imported and not applied, which is #104")
 
     def test_a_tls_host_is_fetched_with_the_tls_context(self):
         """#104 again: `context=None` restores the failure `_tls` exists to
