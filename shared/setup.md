@@ -578,7 +578,7 @@ itself.
 | Solique | The employers they would work for, **as tenant names** — the path segment of any of their ad URLs (`iss`, `ktzh`, `manor`). **No login, no browser.** Warn them that some tenants only serve a truncated listing: the adapter says so per run, and the count is not the size of the board |
 | SAP SuccessFactors | The employers they would work for, **as careers domains** — `jobs.<employer>.ch`, `www.carrieres-<employer>.com`. **No login, no browser.** Never guess the site's locale: one the tenant does not publish returns an empty board with no error at all. `successfactors.py locale --host <host>` reads the right one |
 | umantis | The employers they would work for, **as careers URLs** — `recruitingapp-<n>.umantis.com` or the employer's own `jobs.<employer>.com`. **No login, no browser.** Unlike the other ATS boards there is no resolver: HiringCafe indexes no umantis ad, so a tenant cannot be looked up from a name. Ask for the URL; never guess a tenant number, because a wrong one serves the vendor's marketing page and looks like an employer with nothing open |
-| La Bonne Alternance | The **departments** they would work in, **exactly two characters** — `69`, `2A`. **No browser, no login, but a free API key**: an account at api.apprentissage.beta.gouv.fr, three minutes, and the token goes in `LBA_API_KEY` in their environment — never in config.yml. Offer it **only** for apprenticeship or work-study, and tell them the best part: it also returns companies that take apprentices without posting an ad. Warn that a sandbox key returns unusable apply links for those companies |
+| La Bonne Alternance | The **departments** they would work in, **exactly two characters** — `69`, `2A`. **No browser, no login, but a free API key**: an account at api.apprentissage.beta.gouv.fr, three minutes, and the token goes in `LBA_API_KEY` — **in the credentials file of §5b-bis, which needs no shell**, never in config.yml. Offer it **only** for apprenticeship or work-study, and tell them the best part: it also returns companies that take apprentices without posting an ad. Warn that a sandbox key returns unusable apply links for those companies |
 | Emploi Territorial | The **departments** they would work in — written any way, `69` or `069`. **No login, no browser, no key.** French local government: communes, départements, régions, CCAS. Offer it to anyone open to the fonction publique territoriale, and say the deadline is real — these ads close on a stated date. Without a department the sweep is the whole country, over 1 300 pages |
 | Cegid Talentsoft | The employers they would work for, **as careers host labels** — `businessfrance-recrute`, `groupeadp-recrute`. **`place-ep-recrute` is `choisirleservicepublic.gouv.fr`**, the state's public-service portal: offer it to anyone open to the fonction publique, and warn that its 51 708 posts are not a board to read whole. **No login, no browser, no key.** Ministries, airports, energy, large agencies. No directory exists, so ask for the URL; a wrong label does not 404, it fails to resolve. Worth saying: the listing already carries the address and the date, so a scan is useful without opening a single ad |
 | DigitalRecruiters | The employers they would work for, **as careers hostnames** — `recrutement.monoprix.fr`. **No login, no browser, no key.** French retail, franchise networks and large service groups; the biggest boards of any ATS here. No directory exists — the site is on the employer's own domain, so ask for the URL. Warn them the listing has no description or date, and that reading the ads is deliberately paced |
@@ -634,6 +634,56 @@ immediately** — a board switched on with an empty required key is skipped at
 scan time, which reads as a bug. Read the adapter's own *Configuration* section
 for the exact keys and how the user obtains each one.
 
+## 5b-bis — Where a key lives, and it is one answer for three boards
+
+**Read this before 5c, 5e and La Bonne Alternance.** Three boards need a
+credential the user creates, and **they take it in the same place**. It used to
+be written once per board, in three shapes; the shapes were not the same and
+two of them were older than the code.
+
+**There are two places a credential can live, and the file is the one that
+works everywhere.** Outside a terminal the shell is reset between calls, so an
+exported variable does not survive from one to the next — *"from the
+environment, and from nowhere else"* was not merely tedious there, it **could
+not work**. Issue #110.
+
+```
+<workspace>/credentials.env
+    FRANCE_TRAVAIL_CLIENT_ID=…
+    FRANCE_TRAVAIL_CLIENT_SECRET=…
+    ADZUNA_APP_ID=…
+    ADZUNA_APP_KEY=…
+    LBA_API_KEY=…
+```
+
+**The scripts read that file themselves** — `_secrets.py`, in this order: the
+environment, then `<workspace>/credentials.env`, then the older
+`~/.<board>.env`. **Nothing has to be sourced, and no shell is required.** A
+user working in an app creates that one file and is done.
+
+**The environment still wins**, so nothing changes for a terminal. And the
+security rule does not move: **never in `config.yml`** — read aloud, pasted
+into issues, backed up — **never in git**, and **never pasted into the
+conversation.** The workspace is the user's data directory, not a repository.
+
+**Ask which situation they are in before prescribing.** Telling somebody with
+no shell to run `export` is not help, and neither is prescribing a file to
+somebody holding a terminal. The adapters' own messages give both routes and
+label them.
+
+**Every shell command in 5c and 5e is bash**: `export`, `chmod 600` and
+`set -a; . file; set +a` are bash, not PowerShell. On Windows that means WSL or
+Git Bash — `README.md` documents both routes and this file does not repeat
+them. **Say which shell you are asking for before you ask**: a Windows user
+reading this page on its own runs these in PowerShell and gets errors that name
+nothing.
+
+**And a wrong key does not hide.** Measured 2026-09-04 on `adzuna` and
+`labonnealternance`: a missing key and a wrong one both exit non-zero with
+**nothing on `stdout`** and a message that names the cause. **Neither produces
+an empty board** — so a board that comes back empty is a market, not a
+credential.
+
 ## 5c — France Travail: a key the user creates, and how to get it
 
 **Skip this section entirely unless the user enabled `france-travail`.**
@@ -672,37 +722,9 @@ write it into `config.yml`.** That file is read aloud, copied into issues and
 backed up; a secret does not belong in it, and `francetravail.py` deliberately
 cannot read one from there.
 
-**There are two places a credential can live, and the file is the one that
-works everywhere.** Outside a terminal the shell is reset between calls, so an
-exported variable does not survive from one to the next — *"from the
-environment, and from nowhere else"* was not merely tedious there, it **could
-not work**. Issue #110.
-
-```
-<workspace>/credentials.env
-    FRANCE_TRAVAIL_CLIENT_ID=…
-    FRANCE_TRAVAIL_CLIENT_SECRET=…
-    ADZUNA_APP_ID=…
-    ADZUNA_APP_KEY=…
-    LBA_API_KEY=…
-```
-
-**The environment still wins**, so nothing changes for a terminal. And the
-security rule does not move: **never in `config.yml`** — read aloud, pasted
-into issues, backed up — **never in git**, and **never pasted into the
-conversation.** The workspace is the user's data directory, not a repository.
-
-**Ask which situation they are in before prescribing.** Telling somebody with
-no shell to run `export` is not help, and neither is prescribing a file to
-somebody holding a terminal. The adapters' own messages give both routes and
-label them.
-
-**Every command in this section is bash**, here and in 5e: `export`,
-`chmod 600` and `set -a; . file; set +a` are bash, not PowerShell. On Windows
-that means WSL or Git Bash — `README.md` documents both routes and this file
-does not repeat them. **Say which shell you are asking for before you ask**: a
-Windows user reading this page on its own runs these in PowerShell and gets
-errors that name nothing.
+**Where the value goes is the same answer for all three boards, and it is in
+§5b-bis.** Send them there rather than repeating it: France Travail, Adzuna and
+La Bonne Alternance share one file.
 
 Give them these two lines and ask them to run them **themselves**, with the `!`
 prefix so the shell is theirs:
@@ -914,25 +936,33 @@ the person, and creating one tells no employer anything.
 it into `config.yml`.** Same reason as 5c: that file is read aloud, pasted into
 issues and backed up.
 
-Adzuna's convention here is a file of its own, because two values that belong
-together are easier to keep than two exports:
+**Both values go in the file of §5b-bis**, one per line, and nothing else is
+needed:
+
+```
+<workspace>/credentials.env
+    ADZUNA_APP_ID=…
+    ADZUNA_APP_KEY=…
+```
+
+**`adzuna.py` reads that file itself** — no `export`, no sourcing, no shell.
+That is the route to give by default, and the only one that works in an app.
+
+**In a terminal, the older convention still works** and is worth offering to
+anyone who already keeps keys that way — `~/.adzuna.env`, sourced into the
+shell that runs the sweep:
 
 ```bash
 printf 'ADZUNA_APP_ID=%s\nADZUNA_APP_KEY=%s\n' '<app id>' '<app key>' \
   > ~/.adzuna.env
 chmod 600 ~/.adzuna.env
-```
-
-**And it has to be sourced into the shell that runs the sweep** — the file is
-not read by the script:
-
-```bash
 set -a; . ~/.adzuna.env; set +a
 ```
 
-**That last line is the one people lose.** A shell that has not sourced it gets
-the adapter's own message naming both variables, which is the intended
-behaviour and not a failure.
+**That last line is the one people lose** — which is why it is the fallback and
+not the instruction. A shell that has not sourced it gets the adapter's own
+message naming both variables and both routes, which is the intended behaviour
+and not a failure.
 
 ### The budget is the constraint, and it is small
 
