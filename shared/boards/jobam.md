@@ -34,10 +34,33 @@ six between them. A mean taken across both falls between the two populations
 and resembles neither. *Comparing a gap of 46 to that mean was a summary
 standing in for a value that was in the file.*
 
-Aligning the two readings day by day: **34 from the window, seven more from
-ordinary expiry on the three oldest surviving days**, and five unaccounted at
-the time of writing. **The window explains most of the gap, not all of it**, and
-advertisements also drop out from inside it.
+Aligned day by day against the other session's histogram, the 46 settle to the
+unit: **34 from the window, 12 from scattered removals** across six days —
+08-06 (−4), 08-07 (−1), 08-11 (−2), 08-13 (−2), 08-14 (−2), 08-24 (−1).
+Nineteen days are identical to the unit and **not one day gained**.
+
+*"The oldest fall first" is a tendency and not the rule: 2026-08-24 lost one at
+eleven days from the edge.*
+
+## And "no advertisement was published in 112 minutes" would be false
+
+**Zero days gained. That is measured, exact, and says nothing about the board.**
+
+```
+20:46 UTC = 00:46 in Yerevan
+22:38 UTC = 02:38 in Yerevan
+```
+
+**Both readings fall between one and three in the morning, local time.** That
+`job.am` published nothing is a property of the hour we looked, not of the site
+— and this file already says so: `2026-08-22`, `08-29` and `08-30` carry **two
+entries each** against 85 on 2026-08-31. **The board keeps human hours**, 36 to
+85 on working days and 0 to 2 at weekends.
+
+**So the only supportable sentence is: over this night-time window, 46 removals
+and no arrivals — with the local hour in the sentence rather than in a
+footnote.** A measurement taken once carries its date; one taken across two
+hours carries its timezone as well.
 
 **The signature distinguishes this from ordinary trading.** A board that gains
 and loses advertisements changes its counts throughout; **a retention window
