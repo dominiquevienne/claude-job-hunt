@@ -350,6 +350,29 @@ recorded — `jobs.recruitee.com` answering as `careers.tellent.com`,
 no longer serves anything describes nothing**; the rules that apply are the
 receiving host's.
 
+**And where a host was not obvious, say where it was read** — optional, and one
+line per card:
+
+```
+<!-- hosts-source: footer-countries block of a Sierra Leonean ad · 2026-09-03 -->
+<!-- hosts-source: named by careerical.com's top-ten article, no domain given · 2026-09-04 -->
+```
+
+`<where it was read> · <YYYY-MM-DD>`. **The absence of this field is what let an
+eighth host sit for two days inside files already held.** Seven siblings were
+declared by a `footer-countries` block; `egyptjobsearch.com` was in the same
+block, in fifty-one held files, and the count went from four to five to seven
+without its provenance ever being written — so nobody could see that the number
+had a source that could be re-read. **A count whose provenance is unwritten
+cannot be audited by the person who produced it, which is the only person who
+will.**
+
+It is also where a host that has **no** resolvable domain is recorded rather
+than dropped: *"named by \<source\>, no domain given"*. `Wzayef`, `Dubizzle` and
+`Jobisland` were named in prose without one, and the rule against inventing a
+TLD — which does not change — deleted them. **A deleted host and a host that
+does not exist read the same afterwards.**
+
 **And where a board's *content* has been examined, say what state that
 examination is in** — on the same line block, optional, and meaningful by its
 absence:

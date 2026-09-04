@@ -5728,6 +5728,42 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
             with self.subTest(date=date):
                 self.assertTrue(self._check(f"assumed · read · {date}"))
 
+    def test_a_host_provenance_line_is_well_formed_wherever_it_appears(self):
+        """**#140 point 3.** `<!-- hosts-source: <where read> · <YYYY-MM-DD> -->`
+        — the field whose absence let `egyptjobsearch.com` sit for two days in
+        fifty-one files already held, while a sibling count went from four to
+        five to seven with its provenance never written down.
+
+        Same shape as the `content:` line and checked the same way, including
+        the README's own examples — because the corpus scan skips the README
+        precisely because the README holds them.
+        """
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        found = 0
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for value in re.findall(r"<!--\s*hosts-source:\s*(.*?)\s*-->", src):
+                found += 1
+                with self.subTest(card=os.path.basename(path)):
+                    parts = [p.strip() for p in value.split("·")]
+                    self.assertEqual(
+                        len(parts), 2,
+                        f"wants <where it was read> · <YYYY-MM-DD>, got "
+                        f"{len(parts)} field(s): {value!r}")
+                    self.assertTrue(parts[0], "no source given")
+                    self.assertRegex(
+                        parts[1], r"^\d{4}-\d{2}-\d{2}$",
+                        f"{parts[1]!r} is not a YYYY-MM-DD date")
+        self.assertGreaterEqual(
+            found, 2,
+            "the README documents fewer than two examples of hosts-source; "
+            "this case is worthless if it finds none, and the format it "
+            "checks would go unchecked exactly where it is copied from")
+
     def test_the_specs_own_examples_satisfy_the_spec(self):
         """**The slip this catches is the one that happened.** The README first
         documented the line with *four* fields while the format takes three —
