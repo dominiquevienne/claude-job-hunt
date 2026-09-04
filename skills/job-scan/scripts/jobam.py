@@ -15,8 +15,14 @@ ITS SITEMAP IS A ROLLING THIRTY-DAY WINDOW, AND THAT IS NOT A SIZE
 Another session read the same file at **20:46 UTC** and found **1 231 entries
 over 26 dates, 2026-08-05 → 2026-09-04** — thirty-one days.
 
-**Between the two readings the window rolled and took 2026-08-05 with it.** The
-gap is 46 advertisements; an average day in this file carries 47.4.
+**Between the two readings the window rolled and took 2026-08-05 with it.**
+
+**The day that fell carried 34.** An average day here carries 47.4 and that
+average describes nothing: twenty-two working days hold 1 179 entries, eight
+weekend days hold six between them, and the mean sits between two populations
+it does not resemble. Day by day, 34 came from the window and seven more from
+ordinary expiry on the oldest surviving days — **the window explains most of the
+gap, not all of it.**
 
 **This is a distinct mechanism from advertisements being added and removed, and
 its signature differs: the oldest date vanishes entire.** A count that changes

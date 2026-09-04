@@ -25,8 +25,19 @@ https://job.am/sitemap/jobs.xml
 Another session read the same file at **20:46 UTC**: **1 231 entries over 26
 dates, 2026-08-05 → 2026-09-04** — thirty-one days.
 
-**Between the two readings the window rolled and took 2026-08-05 entire.** The
-gap is 46 advertisements; an average day here carries 47.4.
+**Between the two readings the window rolled and took 2026-08-05 entire.**
+
+**The day that fell carried 34, not the 47.4 an average day carries — and the
+average describes nothing here.** The distribution is bimodal: twenty-two
+working days hold 1 179 entries (36 to 85 each), and eight weekend days hold
+six between them. A mean taken across both falls between the two populations
+and resembles neither. *Comparing a gap of 46 to that mean was a summary
+standing in for a value that was in the file.*
+
+Aligning the two readings day by day: **34 from the window, seven more from
+ordinary expiry on the three oldest surviving days**, and five unaccounted at
+the time of writing. **The window explains most of the gap, not all of it**, and
+advertisements also drop out from inside it.
 
 **The signature distinguishes this from ordinary trading.** A board that gains
 and loses advertisements changes its counts throughout; **a retention window
