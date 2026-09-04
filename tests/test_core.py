@@ -458,6 +458,44 @@ class Secrets(unittest.TestCase):
         self.assertIn("config.yml", note)
 
 
+def _stdlib_names():
+    """The standard library's module names, on every version this runs on.
+
+    **`sys.stdlib_module_names` is 3.10+, and this file is the only thing in
+    the repository that needed it.** `core.yml` declares 3.9 as the floor and
+    documents it as *measured* — but it was measured on `bin/`, not on
+    `tests/`, so the three 3.9 cells were red by construction from the first
+    run. **A conformance check set on the participants instead of the
+    obligated**, which is the shape this suite catches elsewhere. #143.
+
+    The floor is a promise in `README.md`. Raising it to fit a test would be
+    changing a published promise to make a check pass, so the check changes
+    instead.
+
+    Derived from `sysconfig` when the attribute is absent: the names of the
+    modules and packages in the stdlib directory, the frozen builtins, and the
+    dynamically loaded extensions. Verified against `sys.stdlib_module_names`
+    on 3.14 — the derivation misses eleven platform C modules
+    (`_winapi`, `msvcrt`, `_tkinter` …) and **none of the 53 modules this
+    repository imports.**
+    """
+    names = set(getattr(sys, "stdlib_module_names", ()))
+    if names:
+        return names
+    import glob as _glob
+    import sysconfig
+    names = set(sys.builtin_module_names)
+    std = sysconfig.get_path("stdlib")
+    for path in _glob.glob(os.path.join(std, "*.py")):
+        names.add(os.path.basename(path)[:-3])
+    for path in _glob.glob(os.path.join(std, "*", "__init__.py")):
+        names.add(os.path.basename(os.path.dirname(path)))
+    plat = sysconfig.get_path("platstdlib")
+    for path in _glob.glob(os.path.join(plat, "lib-dynload", "*")):
+        names.add(os.path.basename(path).split(".")[0])
+    return names
+
+
 class NoDependencies(unittest.TestCase):
     """The README promises a zero-install path. **This is what makes it true.**
 
@@ -471,7 +509,7 @@ class NoDependencies(unittest.TestCase):
         import ast
         import glob
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        std = set(sys.stdlib_module_names)
+        std = _stdlib_names()
         local = {os.path.basename(f)[:-3] for f in
                  glob.glob(os.path.join(root, "skills", "job-scan",
                                         "scripts", "*.py"))}
@@ -4016,7 +4054,8 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
         import importlib
         import _secrets
         keep = {k: os.environ.get(k) for k in
-                ("HOME", "JOB_HUNT_HOME", "ADZUNA_APP_ID", "ADZUNA_APP_KEY")}
+                ("HOME", "USERPROFILE", "JOB_HUNT_HOME",
+                 "ADZUNA_APP_ID", "ADZUNA_APP_KEY")}
 
         def restore():
             for k, v in keep.items():
@@ -4027,7 +4066,12 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
             importlib.reload(_secrets)
 
         self.addCleanup(restore)
+        # **`~` is not resolved from `HOME` on Windows.** `expanduser` reads
+        # `USERPROFILE` there, so setting only `HOME` left these cases looking
+        # at the runner's real profile instead of the sandbox — two of the
+        # three CI failures on this class. #143.
         os.environ["HOME"] = home
+        os.environ["USERPROFILE"] = home
         for k in ("JOB_HUNT_HOME", "ADZUNA_APP_ID", "ADZUNA_APP_KEY"):
             os.environ.pop(k, None)
         importlib.reload(_secrets)
@@ -4047,10 +4091,31 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
         sec = self._with_home(home)
         self.assertEqual(sec._workspace(), mod.resolve()[0])
 
+    def _needs_posix_permissions(self):
+        """**`chmod 500` does not make a directory unwritable on Windows, and
+        `os.access(dir, W_OK)` does not report the truth about directories
+        there.** So the fixture cannot produce the state these cases are
+        about, and a version of them that passed on Windows would be a guard
+        that never exercises — the defect this suite found three times on
+        2026-09-04, committed deliberately the fourth time.
+
+        **Skipped with the reason rather than made green.** What #109's guard
+        does under Windows is *not established*, and that is a question about
+        the product, not about the test: it is #145, and this skip is where a
+        reader meets it.
+        """
+        if os.name != "posix":
+            self.skipTest(
+                "chmod cannot create an unwritable directory here, and "
+                "os.access is not authoritative on directories — see #145: "
+                "whether #109's guard protects anything on Windows is "
+                "unestablished, and this case cannot establish it")
+
     def test_an_unwritable_documents_settles_nothing(self):
         """**The guard `_secrets` was missing.** A container has a `Documents`
         too, so its existence proves nothing; not being able to write there is
         the evidence that this home is not the person's."""
+        self._needs_posix_permissions()
         home = self._home(writable_docs=False)
         sec = self._with_home(home)
         self.assertIsNone(sec._workspace(),
@@ -4061,7 +4126,11 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
         """Step 1, which `_secrets` could not receive at all — and the only
         step that works in a container."""
         import tempfile
-        home = self._home(writable_docs=False)
+        # **Not skipped off posix.** This asserts that a named folder wins
+        # whatever the cascade would otherwise have chosen, which holds
+        # wherever `expanduser` finds the sandbox — and it is the step that
+        # matters in a container, so it should run on every runner.
+        home = self._home(writable_docs=True)
         sec = self._with_home(home)
         named = tempfile.mkdtemp()
         self.assertEqual(sec._workspace(prefer=named), named)
@@ -4077,6 +4146,7 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
 
         The refusal stands — guessing is what #109 removed — **but it does not
         stand quietly**, and the sentence names the file."""
+        self._needs_posix_permissions()
         home = self._home(writable_docs=False, with_keys=True)
         sec = self._with_home(home)
         note = sec.missing_note(["ADZUNA_APP_ID", "ADZUNA_APP_KEY"],
@@ -4112,6 +4182,7 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
     def test_the_ordinary_guidance_survives(self):
         """A stranded key must not cost the reader the two routes: **telling
         somebody without a shell to run `export` is not help.**"""
+        self._needs_posix_permissions()
         home = self._home(writable_docs=False, with_keys=True)
         sec = self._with_home(home)
         note = sec.missing_note(["A_KEY"], "svc", "X", "y")
