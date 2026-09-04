@@ -2174,7 +2174,12 @@ class ABodyNobodyRecognisedIsNotAnAbsence(unittest.TestCase):
         were merged once already.
         """
         v, a = self._verdict(self.APACHE, "text/plain")
-        self.assertEqual(v["state"], "unrecognised")
+        # **This specimen moved state on 2026-09-04, and correctly.** It says
+        # `Access forbidden! Error 403` in words, so #138 now reads it as
+        # `refused-in-prose` rather than as an absence of rules. What #128
+        # established is unchanged and is what this asserts: it is not parsed
+        # into an empty `*` group, and it is not certified.
+        self.assertEqual(v["state"], "refused-in-prose")
         self.assertFalse(v["certain"])
         self.assertFalse(a["certain"])
         self.assertIsNone(v.get("group"),
@@ -2214,10 +2219,14 @@ class ABodyNobodyRecognisedIsNotAnAbsence(unittest.TestCase):
 
     def test_the_reason_quotes_what_was_seen_not_an_invented_group(self):
         v, a = self._verdict(self.APACHE, "text/plain")
-        self.assertIn("not a rules file", v["reason"])
+        # The wording changed with the state (#138); **what it must not do is
+        # what #128 was about** — quote a group nobody wrote.
+        self.assertIn("no directive line", v["reason"])
         self.assertIn("200", v["reason"])
         self.assertNotIn("the group that applies to everyone",
                          a["reason"] or "")
+        self.assertFalse(v["certain"],
+                         "a body read as prose was certified")
 
 
 class RulesNothingHadEverTested(unittest.TestCase):
@@ -4718,6 +4727,147 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
                     f"{expected} does not resolve — the hyphen or the "
                     f"directory list is wrong, which is how the measurement "
                     f"behind this class invented three defects")
+
+
+class ARefusalInProseIsStillARefusal(unittest.TestCase):
+    """Since 2026-09-04 a readable 200 with no directive opens the door, and
+    `maliemploi.org` served an Apache error page as its `robots.txt`:
+
+        <title>403 Forbidden</title> … <h1>Access forbidden!</h1><p>Error 403</p>
+
+    **That is in the letter of that decision and outside its spirit.** The
+    reasoning quoted was about a host expressing *nothing*; this one expresses
+    a refusal in words, and only its HTTP status lies. #138.
+
+    **The formulation was left to be settled by writing it**, and this is the
+    choice: `allowed` is `False`, not `None`. `None` means *unknown*, which is
+    what `unreachable` says (#118) — **here nothing is unknown**: the host
+    answered, and what it answered was no. `certain` stays `False` because it
+    said so in prose this module cannot quote as a rule. The four states do
+    not merge.
+
+    **Two bounds, both measured on live hosts rather than imagined.**
+    """
+
+    APACHE = ('<!DOCTYPE HTML><html><head><title>403 Forbidden</title></head>'
+              '<body><h1>Access forbidden!</h1><p>Error 403</p></body></html>')
+    # malibaara.com, fetched 2026-09-04: 5 132 bytes, 116 characters of
+    # visible text.
+    SHELL = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
+             '<title>Malibaara.com | Le site par excellence de recherche '
+             "d'emplois au Mali</title></head><body><div id=\"root\"></div>"
+             '<noscript>You need to enable JavaScript to run this app.'
+             '</noscript></body></html>')
+    # empleate.gob.es, fetched 2026-09-04. It carries a ROBOTS meta tag *and*
+    # says "try again later".
+    ERROR_PAGE = ("<html><head><title>SEPE</title>"
+                  "<META NAME='ROBOTS' CONTENT='NOINDEX,NOFOLLOW'></head>"
+                  "<body>En este momento no ha sido posible procesar la "
+                  "operaci&oacute;n solicitada. Por favor, "
+                  "int&eacute;ntelo de nuevo m&aacute;s tarde.</body></html>")
+
+    class _Resp:
+        def __init__(self, body, ctype="text/html", code=200):
+            self._b = body.encode("utf-8")
+            self._c, self._code = ctype, code
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def getcode(self):
+            return self._code
+
+        @property
+        def headers(self):
+            return {"Content-Type": self._c}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _verdict(self, body):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body))
+        try:
+            return (_robots.verdict("h.example"),
+                    _robots.allowed("h.example", "/jobs"))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    # ---- the origin case -------------------------------------------------
+
+    def test_the_apache_page_stops_the_module(self):
+        v, a = self._verdict(self.APACHE)
+        self.assertEqual(v["state"], "refused-in-prose")
+        self.assertFalse(v["sweep"])
+        self.assertFalse(a["allowed"])
+        self.assertFalse(a["certain"],
+                         "a refusal read out of prose is not a certainty")
+
+    def test_the_reason_says_the_status_disagreed_with_the_body(self):
+        v, _a = self._verdict(self.APACHE)
+        self.assertIn("says no", v["reason"])
+        self.assertIn("200", v["reason"])
+
+    # ---- bound one: an application shell -------------------------------
+
+    def test_an_application_shell_is_not_a_refusal(self):
+        """`malibaara.com` serves the same React shell for `/robots.txt` as
+        for everything else — 116 characters of visible text, none of it a
+        refusal. **It fails the predicate naturally rather than by an
+        exclusion list**: a predicate that must name its exceptions has not
+        found its rule."""
+        import _robots
+        self.assertFalse(_robots._looks_like_refusal(self.SHELL))
+        v, a = self._verdict(self.SHELL)
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertTrue(a["allowed"], "the open door closed on a shell")
+
+    # ---- bound two: not the word, and not a failure --------------------
+
+    def test_it_does_not_rest_on_the_word_robots(self):
+        """`empleate.gob.es`'s error page carries
+        `<META NAME='ROBOTS' CONTENT='NOINDEX,NOFOLLOW'>`. **A predicate
+        searching for that word would be searching for its own answer.**"""
+        import _robots
+        self.assertIn("ROBOTS", self.ERROR_PAGE,
+                      "the specimen no longer carries the word, so it proves "
+                      "nothing about the bound")
+        self.assertFalse(_robots._looks_like_refusal(self.ERROR_PAGE))
+
+    def test_try_again_later_is_a_failure_not_a_refusal(self):
+        """The same page says *"no ha sido posible… inténtelo de nuevo más
+        tarde"*. **Words that mean "you may not", never words that mean "it
+        did not work"** — and this one means the second."""
+        v, a = self._verdict(self.ERROR_PAGE)
+        self.assertEqual(v["state"], "unrecognised")
+        self.assertTrue(a["allowed"])
+
+    # ---- the neighbours still do not merge ------------------------------
+
+    def test_a_real_rules_file_is_untouched(self):
+        v, _a = self._verdict("User-agent: *\nDisallow: /wp-admin/\n")
+        self.assertEqual(v["state"], "read")
+
+    def test_the_four_states_are_distinct(self):
+        """`unreachable`, `refused`, `unrecognised`, `refused-in-prose` — and
+        the last two differ only by what the body says, which is the whole
+        point."""
+        shell = self._verdict(self.SHELL)[0]["state"]
+        prose = self._verdict(self.APACHE)[0]["state"]
+        self.assertNotEqual(shell, prose)
+        self.assertEqual({shell, prose}, {"unrecognised", "refused-in-prose"})
 
 
 if __name__ == "__main__":

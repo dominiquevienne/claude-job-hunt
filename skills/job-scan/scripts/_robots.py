@@ -164,6 +164,76 @@ _DIRECTIVE = re.compile(
     r"content-signal)\s*:")
 
 
+# A refusal written in prose, not in directives. **Words that mean "you may
+# not", never words that mean "it did not work"** — the distinction is the
+# whole predicate, and `empleate.gob.es` is why: its error page says *"no ha
+# sido posible procesar la operación… inténtelo de nuevo más tarde"*, which is
+# a transient failure and the opposite of a refusal.
+_REFUSAL_WORDS = re.compile(
+    r"access (?:is )?(?:forbidden|denied|restricted)"
+    r"|forbidden\b"
+    r"|not authori[sz]ed|unauthori[sz]ed"
+    r"|permission denied"
+    r"|you (?:are|do) not have permission"
+    r"|acc[èe]s (?:interdit|refus[ée]|non autoris[ée])"
+    r"|zugriff verweigert|nicht erlaubt"
+    r"|acceso denegado|prohibido"
+    r"|accesso negato|vietato",
+    re.I)
+
+# The status a refusal announces about itself. Required alongside the words on
+# the short forms, because "forbidden" alone appears in prose that forbids
+# nothing.
+_REFUSAL_STATUS = re.compile(r"\b(401|403|451)\b")
+
+
+def _looks_like_refusal(body):
+    """A body that says *no* without saying it in directives.
+
+    **This exists because `unrecognised` now opens the door.** Since the
+    owner's decision of 2026-09-04, a readable 200 carrying no directive is
+    treated as an absence of rules — an open door. `maliemploi.org` served an
+    Apache error page as its `robots.txt`:
+
+        <title>403 Forbidden</title> … <h1>Access forbidden!</h1><p>Error 403</p>
+
+    **That is in the letter of the decision and outside its spirit.** The
+    reasoning quoted was about a host that expressed *nothing*; this one
+    expresses a refusal in words, and only its HTTP status lies. #138.
+
+    TWO BOUNDS, AND BOTH ARE MEASURED RATHER THAN IMAGINED:
+
+    **It must not catch an application shell.** `malibaara.com` serves the
+    same React shell for `/robots.txt` as for everything else — 5 132 bytes,
+    **116 characters of visible text**, *"You need to enable JavaScript to run
+    this app."* It carries no refusal word, so it fails here naturally rather
+    than by an exclusion list — **a predicate that must name its exceptions
+    has not found its rule.**
+
+    **It must not rest on the word `robots`.** `empleate.gob.es`'s error page
+    carries `<META NAME='ROBOTS' CONTENT='NOINDEX,NOFOLLOW'>`; a predicate
+    searching for that word would be searching for its own answer. Nothing
+    here reads it. And that page fails for a second reason worth stating: it
+    says *"try again later"*, which is a failure, not a refusal. **Words that
+    mean "you may not", never words that mean "it did not work".**
+
+    Returns True only when the body both *names* a refusal and *is* one — the
+    status corroborates on the short server templates, and an unambiguous
+    phrase stands alone.
+    """
+    text = body or ""
+    if not _REFUSAL_WORDS.search(text):
+        return False
+    # `403 Forbidden` in a page that also offers a login is still a refusal;
+    # `forbidden` inside an article about forbidden characters is not, and the
+    # status is what separates them on the bodies measured here.
+    if _REFUSAL_STATUS.search(text[:2000]):
+        return True
+    return bool(re.search(r"access (?:is )?(?:forbidden|denied)"
+                          r"|permission denied|acc[èe]s (?:interdit|refus[ée])",
+                          text, re.I))
+
+
 def _looks_like_rules(body):
     """Decide from the body when the server declined to declare a type.
 
@@ -292,6 +362,23 @@ def _fetch_once(url, host, timeout):
             # the size** — the short one was labelled `text/plain` and never
             # examined, the long one was labelled `text/html` and was. Same
             # defect, one branch earlier.
+            if not _looks_like_rules(body) and _looks_like_refusal(body):
+                # **Asked before `unrecognised`, because since 2026-09-04
+                # that conclusion opens the door.** A body that says
+                # `Access forbidden! Error 403` expressed a refusal; only its
+                # HTTP status says otherwise, and reading it as an absence of
+                # rules is the letter of that decision against its spirit.
+                # #138.
+                return {"state": "refused-in-prose", "final": final,
+                        "status": status, "bytes": nbytes,
+                        "why": f"HTTP {status}, Content-Type {ctype!r}, "
+                               f"{nbytes} bytes, **no directive line — and a "
+                               f"refusal written in words**. The host served "
+                               f"something that says no while its status says "
+                               f"200. **This is not an absence of rules and "
+                               f"not a permission**: it is a refusal this "
+                               f"module cannot quote as a rule, so it stops "
+                               f"and asks for the file to be read by hand."}
             if not _looks_like_rules(body):
                 return {"state": "unrecognised", "final": final,
                         "status": status, "bytes": nbytes,
@@ -482,6 +569,19 @@ def verdict(host):
             f"rotate, do not retry with another agent string. Read the file "
             f"by hand in the user's own browser and record what it says.")
         return _keep(out)
+    if got["state"] == "refused-in-prose":
+        # **Not `unrecognised`, which opens; not `refused`, which is a 403.**
+        # The host answered, and what it answered was no — in prose. `sweep`
+        # is False because it said no; `certain` is False because it said so
+        # in words this module cannot parse into a rule.
+        out["sweep"] = False
+        out["certain"] = False
+        out["reason"] = (
+            f"{got.get('why')} **A refusal in prose is still a refusal.** "
+            f"Read the file by hand and record what it says; if it turns out "
+            f"to be a server fault rather than a policy, that is a fact worth "
+            f"writing down, and it is not one this module may assume.")
+        return out
     if got["state"] == "unrecognised":
         # **A body that says nothing does not say no.** The host answered, the
         # answer was readable, and it expressed no rule — so there is nothing
