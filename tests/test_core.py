@@ -4870,5 +4870,117 @@ class ARefusalInProseIsStillARefusal(unittest.TestCase):
         self.assertEqual({shell, prose}, {"unrecognised", "refused-in-prose"})
 
 
+class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
+    """The owner settled #100 on 2026-09-04:
+
+    > *"Si une API est disponible, on en conclut que l'entrée, si elle est
+    > bloquée, l'est techniquement — jeton, quota. Le check n'est pas de notre
+    > ressort."*
+
+    So four adapters do not consult the guard, and that is now a rule rather
+    than an accident: `adzuna`, `arbeitsagentur`, `francetravail`,
+    `labonnealternance`. **What stops you on an API host is read in its
+    answer, not in a `robots.txt`.**
+
+    **The exemption is from the verdict, not from the identity — and that half
+    has already broken once.** On 2026-09-04 two of these four were sending no
+    declared agent at all: `adzuna` carried its own `UA` string naming no
+    token, and `labonnealternance` sent none, so urllib announced
+    `Python-urllib/3.x`. The audit that had closed #120 counted what obeys and
+    not what escapes. **An API route is still a route that introduces
+    itself.**
+
+    `DeclaredAgentIsSentEverywhere` covers all four — it reads every file. But
+    the *exercised* case behind it runs on `adecco`, which is **not one of
+    them**, and the corpus scan cannot see intent: an import and a header key
+    can both be present while the value is wrong. That is precisely how
+    `empleate.py` was able to drop its TLS context while `oposiciones.py` was
+    the file being exercised.
+
+    **So this is the depth half, on the exempted route itself.**
+    `arbeitsagentur` is the specimen because its key is published in the
+    specification and hard-coded — it needs nothing from the user, so the case
+    costs no credential and no request: the opener is replaced.
+    """
+
+    def _wire(self, module_name, entry):
+        """What the request carried, without one leaving the machine."""
+        import importlib
+        mod = importlib.import_module(module_name)
+        seen = {}
+
+        def fake(req, *a, **kw):
+            seen["ua"] = (req.get_header("User-agent")
+                          if hasattr(req, "get_header") else None)
+            seen["reached"] = True
+            raise mod.urllib.error.URLError("stubbed for this case")
+
+        real = mod.urllib.request.urlopen
+        # **These adapters retry with 1.5s and 3s of backoff**, and paying it
+        # for a case about a header put 4.6 seconds on the suite. The retry
+        # behaviour is pinned elsewhere; what this measures is what the first
+        # request carried.
+        slept = getattr(mod, "time", None)
+        if slept is not None:
+            real_sleep = mod.time.sleep
+            mod.time.sleep = lambda *_a, **_k: None
+        mod.urllib.request.urlopen = fake
+        try:
+            try:
+                getattr(mod, entry)("https://example.invalid/x")
+            except BaseException:
+                pass
+        finally:
+            mod.urllib.request.urlopen = real
+            if slept is not None:
+                mod.time.sleep = real_sleep
+        return seen
+
+    def test_an_exempted_api_route_sends_the_declared_agent(self):
+        import _ua
+        seen = self._wire("arbeitsagentur", "api")
+        self.assertTrue(seen.get("reached"),
+                        "the request never reached the opener, so this case "
+                        "measured nothing — the entry point moved")
+        self.assertEqual(seen.get("ua"), _ua.UA,
+                         f"an exempted API route went out as "
+                         f"{seen.get('ua')!r}: exempt from the guard is not "
+                         f"exempt from saying who is calling")
+
+    def test_a_second_exempted_route_does_too(self):
+        """Two of the four, because **one specimen is not a corpus** — the
+        lesson `empleate.py` taught on the TLS half the same day."""
+        import _ua
+        seen = self._wire("francetravail", "call")
+        self.assertTrue(seen.get("reached"))
+        self.assertEqual(seen.get("ua"), _ua.UA)
+
+    def test_the_four_are_still_the_four(self):
+        """**The population floor.** If a fifth adapter stops importing the
+        guard, it inherits an exemption nobody granted it — and the count is
+        the only thing that would say so."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        unguarded = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            if not re.search(r"urlopen|http\.client", src):
+                continue
+            if not re.search(r"(^|\n)\s*(import _robots|from _robots\s+import)",
+                             src):
+                unguarded.append(name[:-3])
+        self.assertEqual(
+            sorted(unguarded),
+            ["adzuna", "arbeitsagentur", "francetravail", "labonnealternance"],
+            "the set of adapters exempt from the guard has changed; the "
+            "owner's decision covers keyed APIs whose door is explicitly "
+            "closed, and nothing else inherits it by omission")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

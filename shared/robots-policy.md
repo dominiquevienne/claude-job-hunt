@@ -484,6 +484,34 @@ nothing.**
 | `rest.arbeitsagentur.de` | answers 403 | **this one** |
 | `api.apprentissage.beta.gouv.fr` | answered, expressed no rule | **`unrecognised`** — see *a body that says nothing does not say no* |
 
+### The keyed API hosts do not consult the guard, and that is a rule
+
+Settled by the owner on 2026-09-04, on #100:
+
+> *"Si une API est disponible, on en conclut que l'entrée, si elle est
+> bloquée, l'est techniquement — jeton, quota. Le check n'est pas de notre
+> ressort."*
+
+**So four adapters do not call `_robots`** — `adzuna`, `arbeitsagentur`,
+`francetravail`, `labonnealternance` — and it is no longer an accident of the
+code that each card happened to explain. **What stops you on an API host is
+read in its answer: a 401, a 429, a quota.** Those hosts publish
+`Disallow: /` to everyone, so consulting the guard would stop a route the
+owner has decided to take.
+
+**Nothing inherits this by omission.** The exemption covers a keyed API whose
+door is explicitly closed and which the operator offers free and self-service.
+An adapter that simply stops importing the guard has not acquired it, and a
+case asserts the set is still exactly those four.
+
+**And the exemption is from the verdict, not from the identity.** This half
+has already broken once: on the day it was written, **two of the four were
+sending no declared agent at all** — one carried its own string naming no
+token, the other sent none and urllib announced `Python-urllib/3.x`. The audit
+that had closed #120 counted what obeys and not what escapes. **An API route
+is still a route that introduces itself**, and two of the four are now
+exercised on the wire rather than only scanned.
+
 ### The onboarding is part of the rule, not a nicety
 
 **Since this decision the key is no longer a convenience: it decides whether
