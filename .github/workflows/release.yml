@@ -105,6 +105,12 @@ jobs:
         if: steps.moved.outputs.go == 'yes'
         run: |
           cur=$(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          # **Le manifeste et le dernier tag doivent dire la même chose.** S'ils
+          # divergent, l'incrément part d'un nombre qui n'est pas celui publié et
+          # retombe sur un tag qui existe — un état dont on ne sort pas seul.
+          # `v1.209.0` a déjà été taggé sur un arbre qui déclarait `1.208.0`.
+          tagv="${{ steps.moved.outputs.last }}"; tagv="${tagv#v}"
+          [ "$cur" = "$tagv" ] || { echo "::error::plugin.json dit $cur, le dernier tag dit $tagv — refus de calculer un incrément sur deux origines."; exit 1; }
           # **`feat:` is the only prefix that moves the minor.** `fix:`,
           # `docs:`, `test:`, `ci:` and `chore:` are patches. Major is never
           # taken here — see the header.
@@ -126,12 +132,34 @@ jobs:
           # **A round-trip through `json`, verified to be a one-line diff** on
           # this file as it stands — its two-space indent and key order survive.
           python3 -c 'import json,sys,pathlib;p=pathlib.Path(".claude-plugin/plugin.json");d=json.loads(p.read_text());d["version"]=sys.argv[1];p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+chr(10))' "$next"
+          # **Le second fichier qui porte la version.** `_ua.py` annonce
+          # `claude-job-hunt/<version>` à tous les tiers, en dur. Sans cette
+          # étape, le User-Agent déclarerait une version qui n'est pas celle
+          # publiée, et l'écart s'élargirait à chaque release. Les vingt-six
+          # bumps du 04.09 ont touché les deux parce que quelqu'un s'en
+          # souvenait — deux nombres, deux provenances, une seule quantité.
+          python3 - "$next" <<'PY'
+          import pathlib, re, sys
+          p = pathlib.Path("skills/job-scan/scripts/_ua.py")
+          s = p.read_text(encoding="utf-8")
+          new, n = re.subn(r"(claude-job-hunt/)[0-9]+\.[0-9]+\.[0-9]+",
+                           r"\g<1>" + sys.argv[1], s)
+          # **Une substitution qui ne s'applique pas produit du vert.**
+          if n != 1:
+              sys.exit("_ua.py: attendu 1 version, trouve %d" % n)
+          p.write_text(new, encoding="utf-8")
+          PY
           title=$(git log -1 --format='%s')
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "chore: release $next"
           git tag -a "v$next" -m "v$next — $title"
-          git push origin HEAD:main --follow-tags
+          # **`--atomic`, et ce n'est pas de la prudence.** Sans lui, un push
+          # concurrent fait passer le tag et refuser la branche : il reste un tag
+          # dont le commit n'est sur aucune branche, `git describe` l'ignore, le
+          # tir suivant recalcule le même numéro et meurt sur `tag already
+          # exists` — deux fois par jour jusqu'à ce qu'un humain le supprime.
+          git push --atomic origin HEAD:main --follow-tags
           # **The half-day's commits are the notes.** Anything better is written
           # by whoever made the change, not here.
           notes=$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)
