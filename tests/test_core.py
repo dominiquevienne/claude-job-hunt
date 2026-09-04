@@ -490,9 +490,17 @@ def _stdlib_names():
         names.add(os.path.basename(path)[:-3])
     for path in _glob.glob(os.path.join(std, "*", "__init__.py")):
         names.add(os.path.basename(os.path.dirname(path)))
-    plat = sysconfig.get_path("platstdlib")
-    for path in _glob.glob(os.path.join(plat, "lib-dynload", "*")):
-        names.add(os.path.basename(path).split(".")[0])
+    # **C extensions live in two different places.** POSIX puts them in
+    # `lib-dynload/*.so`; Windows puts them in `<base_prefix>/DLLs/*.pyd`.
+    # Scanning only the first left `unicodedata` outside the set and turned
+    # `windows-latest · python 3.9` red while the other eight cells were
+    # green — the derivation was written and checked on one platform.
+    for ext_dir in (os.path.join(sysconfig.get_path("platstdlib"),
+                                 "lib-dynload"),
+                    os.path.join(sys.base_prefix, "DLLs"),
+                    os.path.join(sys.base_prefix, "lib", "lib-dynload")):
+        for path in _glob.glob(os.path.join(ext_dir, "*")):
+            names.add(os.path.basename(path).split(".")[0])
     return names
 
 
