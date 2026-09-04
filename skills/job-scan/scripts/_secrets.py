@@ -63,15 +63,54 @@ _LINE = re.compile(r"""^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$"""
 _CACHE = {}
 
 
-def _workspace():
-    """The user's workspace, resolved the way everything else resolves it."""
-    env = os.environ.get("JOB_HUNT_HOME")
-    if env:
-        return os.path.abspath(os.path.expanduser(env))
+def _resolver():
+    """`bin/workspace-path.py`, imported rather than reimplemented.
+
+    **This function used to be a copy of that cascade with its two guards
+    left out**, and those two were the whole point of #109: it took
+    `JOB_HUNT_HOME`, else `<home>/Documents/job_applications` the moment
+    `Documents` merely *existed*, and it could not be handed the folder the
+    user had named. In CoWork `$HOME` is a container's — so a `Documents`
+    inside it satisfied that test and the credentials were read from a path
+    the person will never see. **A silent success, which is the failure #109
+    was opened against.**
+
+    The file name has a hyphen, so it is loaded by path.
+    """
+    import importlib.util
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, "..", "..", "..", "bin", "workspace-path.py")
+    path = os.path.normpath(path)
+    if not os.path.exists(path):
+        return None
+    spec = importlib.util.spec_from_file_location("_workspace_path", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# Where the old, weaker cascade would have looked. Kept for one purpose only:
+# telling somebody whose keys are sitting there that they are no longer being
+# read, and naming the file.
+def _legacy_workspace():
     docs = os.path.join(os.path.expanduser("~"), "Documents")
-    if os.path.isdir(docs):
-        return os.path.join(docs, "job_applications")
-    return None
+    return os.path.join(docs, "job_applications") if os.path.isdir(docs) \
+        else None
+
+
+def _workspace(prefer=None):
+    """The user's workspace, resolved the way the files are resolved.
+
+    Returns `None` when nothing is established — **and refusing to guess is
+    the point.** `bin/workspace-path.py` exits 3 with a question in that case
+    rather than inventing a directory in a container and reporting success.
+    """
+    mod = _resolver()
+    if mod is None:                      # a checkout without bin/, tests aside
+        env = os.environ.get("JOB_HUNT_HOME")
+        return os.path.abspath(os.path.expanduser(env)) if env else None
+    path, _source, _ask = mod.resolve(prefer)
+    return path
 
 
 def candidate_files(name=None):
@@ -89,6 +128,39 @@ def candidate_files(name=None):
     if name:
         out.append(os.path.join(home, f".{name}.env"))
     return out
+
+
+def stranded_note(name=None):
+    """A sentence when the strict cascade settles nothing **and** a readable
+    `credentials.env` is sitting where the old one would have looked.
+
+    **The hardening can stop finding a file that was being found.** Somebody
+    whose keys are in `~/Documents/job_applications/credentials.env` on a
+    `Documents` that is not writable was served by the old cascade and is not
+    served by this one: their setup works this evening and not after the
+    release, without their having touched anything.
+
+    `shared/never-fail-silently.md` is exactly this case. The refusal stands —
+    guessing is what #109 removed — but it does not stand quietly, and the
+    sentence names the file so the person can see what is no longer read.
+    """
+    if _workspace() is not None:
+        return None
+    legacy = _legacy_workspace()
+    if not legacy:
+        return None
+    f = os.path.join(legacy, "credentials.env")
+    if not (os.path.isfile(f) and os.access(f, os.R_OK)):
+        return None
+    return (
+        f"**`{f}` exists and is no longer being read.**\n"
+        f"  This plugin now resolves your workspace the way it resolves every "
+        f"other file it writes, and that resolution has settled nothing here: "
+        f"`~/Documents` is not writable, which usually means this home folder "
+        f"is not yours. **It will not guess**, because guessing is how "
+        f"credentials came to be read from inside a container.\n"
+        f"  **Your keys are not lost.** Tell the plugin which folder is yours, "
+        f"or set `JOB_HUNT_HOME`, and that file is read again.")
 
 
 def load(name=None):
@@ -134,6 +206,12 @@ def missing_note(vars_, name, where, how):
     situation is unknown**, and prescribing a shell command to somebody
     without a shell is not help.
     """
+    # **The stranded file goes first, because it changes what the reader
+    # should do.** Somebody whose keys are sitting in the old place does not
+    # need to be told how to obtain a key — they have one, and it is no longer
+    # being read. A note nobody prints is a signal nobody reads, so this is
+    # said here rather than left for a caller to remember.
+    stranded = stranded_note(name)
     joined = " and ".join(f"`{v}`" for v in vars_)
     ws = _workspace()
     target = os.path.join(ws, "credentials.env") if ws else \
@@ -146,8 +224,9 @@ def missing_note(vars_, name, where, how):
     # whole point is that both values are needed.**
     lines = "\n".join(f"        {v}=…" for v in vars_)
     return (
-        f"{joined} not found — neither in the environment nor in a credentials "
-        f"file.\n\n"
+        (stranded + "\n\n" if stranded else "")
+        + f"{joined} not found — neither in the environment nor in a "
+        f"credentials file.\n\n"
         f"**In the app**, put them in a file the plugin will find, one per "
         f"line:\n"
         f"    {target}\n"

@@ -3971,5 +3971,153 @@ class ATestNamespaceMatchesTheRealParser(unittest.TestCase):
             "the fixture's namespace changed and the list above did not")
 
 
+class OneResolverForFilesAndKeys(unittest.TestCase):
+    """`_secrets` resolved the workspace by a copy of `bin/workspace-path.py`
+    with both of its guards left out.
+
+    That file was written for #109 against one trap: **`$HOME` is not the
+    person's folder outside a terminal — in CoWork it is a container's.** Its
+    cascade takes a folder the user *named* first, then `JOB_HUNT_HOME`, then
+    `<home>/Documents/job_applications` **only if `Documents` is writable**,
+    and then refuses, with a question to put to the person.
+
+    `_secrets._workspace()` had neither the first step nor the writability
+    test. It took `JOB_HUNT_HOME`, else `Documents` **the moment it merely
+    existed** — and a container has a `Documents`. So the credentials were
+    read from a path the person will never see, and nothing failed. **A silent
+    success, which is the failure #109 exists against.**
+
+    It also mattered for a reason that had not been connected to it: of the
+    three places a key may live, **the environment does not survive CoWork's
+    shell reset (#110) and `~/.<name>.env` is inside the container (#109)**.
+    The workspace file is the only one left, so the resolver that finds it is
+    the whole path.
+
+    **The hardening can stop finding a file that was being found**, and that
+    is the case the last two cases here are about.
+    """
+
+    def _home(self, writable_docs=True, with_keys=False):
+        """A throwaway home, so nothing here depends on this machine's."""
+        import tempfile
+        home = tempfile.mkdtemp()
+        docs = os.path.join(home, "Documents")
+        os.makedirs(os.path.join(docs, "job_applications"))
+        if with_keys:
+            with open(os.path.join(docs, "job_applications",
+                                   "credentials.env"), "w") as fh:
+                fh.write("ADZUNA_APP_ID=x\nADZUNA_APP_KEY=y\n")
+        if not writable_docs:
+            os.chmod(docs, 0o500)
+            self.addCleanup(os.chmod, docs, 0o700)
+        return home
+
+    def _with_home(self, home):
+        import importlib
+        import _secrets
+        keep = {k: os.environ.get(k) for k in
+                ("HOME", "JOB_HUNT_HOME", "ADZUNA_APP_ID", "ADZUNA_APP_KEY")}
+
+        def restore():
+            for k, v in keep.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+            importlib.reload(_secrets)
+
+        self.addCleanup(restore)
+        os.environ["HOME"] = home
+        for k in ("JOB_HUNT_HOME", "ADZUNA_APP_ID", "ADZUNA_APP_KEY"):
+            os.environ.pop(k, None)
+        importlib.reload(_secrets)
+        return _secrets
+
+    def test_the_two_resolvers_agree(self):
+        """**The convergence itself.** Not that `_secrets` has a cascade — that
+        it has *the* cascade, the one the files use."""
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        wp = os.path.join(root, "bin", "workspace-path.py")
+        spec = importlib.util.spec_from_file_location("_wp_check", wp)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        home = self._home(writable_docs=True)
+        sec = self._with_home(home)
+        self.assertEqual(sec._workspace(), mod.resolve()[0])
+
+    def test_an_unwritable_documents_settles_nothing(self):
+        """**The guard `_secrets` was missing.** A container has a `Documents`
+        too, so its existence proves nothing; not being able to write there is
+        the evidence that this home is not the person's."""
+        home = self._home(writable_docs=False)
+        sec = self._with_home(home)
+        self.assertIsNone(sec._workspace(),
+                          "the workspace was guessed from a Documents this "
+                          "process cannot write to — that is #109")
+
+    def test_a_named_folder_wins(self):
+        """Step 1, which `_secrets` could not receive at all — and the only
+        step that works in a container."""
+        import tempfile
+        home = self._home(writable_docs=False)
+        sec = self._with_home(home)
+        named = tempfile.mkdtemp()
+        self.assertEqual(sec._workspace(prefer=named), named)
+
+    # ---- the hardening must not take a key away in silence -------------
+
+    def test_a_stranded_credentials_file_is_named_out_loud(self):
+        """**The regression this hardening can cause.** Somebody whose keys
+        sit in `~/Documents/job_applications/credentials.env` on a Documents
+        that is not writable was served before and is not served now: their
+        setup works this evening and not after the release, without their
+        having touched anything.
+
+        The refusal stands — guessing is what #109 removed — **but it does not
+        stand quietly**, and the sentence names the file."""
+        home = self._home(writable_docs=False, with_keys=True)
+        sec = self._with_home(home)
+        note = sec.missing_note(["ADZUNA_APP_ID", "ADZUNA_APP_KEY"],
+                                "adzuna", "Adzuna", "developer.adzuna.com")
+        expected = os.path.join(home, "Documents", "job_applications",
+                                "credentials.env")
+        self.assertIn(expected, note,
+                      "the file that stopped being read is not named — the "
+                      "user cannot tell a lost key from a missing one")
+        self.assertIn("no longer being read", note)
+        self.assertIn("not lost", note)
+
+    def test_it_says_nothing_when_nothing_is_stranded(self):
+        """**The witness.** Without it the case above passes on a note that
+        cries stranded on every run, which is the noise this avoids."""
+        # **A workspace that resolves, and a file sitting in it.** The first
+        # version used an unwritable Documents with no file, so the note came
+        # back None whether or not the workspace was consulted — it could not
+        # tell "checks first" from "does not check".
+        home = self._home(writable_docs=True, with_keys=True)
+        sec = self._with_home(home)
+        self.assertIsNotNone(sec._workspace(),
+                             "the fixture must resolve or this proves "
+                             "nothing")
+        self.assertIsNone(sec.stranded_note("adzuna"),
+                          "nothing is stranded — the workspace resolved and "
+                          "that file is the one being read")
+        note = sec.missing_note(["NOT_A_REAL_KEY"], "adzuna", "X", "y")
+        self.assertNotIn("no longer being read", note,
+                         "a warning on a healthy install is the noise this "
+                         "avoids")
+
+    def test_the_ordinary_guidance_survives(self):
+        """A stranded key must not cost the reader the two routes: **telling
+        somebody without a shell to run `export` is not help.**"""
+        home = self._home(writable_docs=False, with_keys=True)
+        sec = self._with_home(home)
+        note = sec.missing_note(["A_KEY"], "svc", "X", "y")
+        for owed in ("credentials.env", "set -a", "config.yml"):
+            self.assertIn(owed, note)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
