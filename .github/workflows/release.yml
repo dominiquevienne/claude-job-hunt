@@ -1,0 +1,139 @@
+# Two releases a day, and only if there is something to release.
+#
+# **The rule this replaces.** Until 2026-09-04 the practice was one release per
+# functional object, published as soon as it landed: five of them went out
+# between 11:44 and 12:26 on that single morning. A release is meant to be
+# *the version the author deliberately published* — `bin/version-check.py` says
+# so, and points users at `/releases/latest` for exactly that reason. **Five in
+# forty-five minutes is a commit log wearing tags.**
+#
+# **The new rule.** Noon and midnight, and **only if `main` moved since the last
+# tag**. A quiet half-day publishes nothing and says so.
+#
+# TIMES ARE UTC AND DO NOT FOLLOW DAYLIGHT SAVING. GitHub's scheduler has no
+# timezone. `10:00`/`22:00` UTC is noon and midnight in Zurich **in summer**;
+# from the last Sunday of October it is 11:00 and 23:00 local. **Written down
+# rather than smoothed over**: fixing it would mean running hourly and checking
+# the local clock, which trades a known hour of drift for twenty-four wake-ups.
+#
+# WHAT THIS REFUSES TO DO, and it is the part to read:
+#
+# - **It will not publish onto a red `core`.** Four releases were tagged on
+#   2026-09-04 while `core.yml` had failed twenty-two runs out of twenty-two.
+#   Nobody had looked, because the suite was green on the developer's machine.
+#   *A release that its own CI has never passed is not a deliberate
+#   publication.* Until #143 lands, this job will refuse and name the run.
+# - **It will not decide a major version.** `feat:` in the window makes it a
+#   minor, anything else a patch. **A breaking change is a human decision**, and
+#   this file has no way to recognise one.
+# - **It will not write release notes.** The title is the newest commit subject.
+#   Anything better belongs to whoever made the change.
+name: release
+
+on:
+  schedule:
+    - cron: "0 10,22 * * *"
+  workflow_dispatch:
+    inputs:
+      allow_red_ci:
+        description: "Publish even though core is failing — say why in the run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Has main moved since the last tag?
+        id: moved
+        run: |
+          last=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$last" ]; then
+            echo "No tag at all — this is not the state this workflow was written for."
+            echo "go=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          n=$(git rev-list --count "$last"..HEAD)
+          echo "last tag: $last · commits since: $n"
+          if [ "$n" -eq 0 ]; then
+            # **A quiet half-day is the expected case, not a failure.**
+            echo "Nothing landed since $last. No release, and that is the rule working."
+            echo "go=no" >> "$GITHUB_OUTPUT"
+          else
+            git log --format='  %s' "$last"..HEAD
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+            echo "last=$last" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Is `core` green on this commit?
+        if: steps.moved.outputs.go == 'yes' && inputs.allow_red_ci != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # **The verdict is read for this exact commit, not for the branch.**
+          # "core is usually green" is not a statement about what is about to
+          # be published.
+          got=$(gh run list --workflow=core.yml --commit "$GITHUB_SHA" \
+                  --limit 1 --json conclusion,url \
+                  --jq '.[0] | "\(.conclusion)\t\(.url)"' || true)
+          concl="${got%%$'\t'*}"; url="${got#*$'\t'}"
+          if [ -z "$got" ] || [ "$concl" = "null" ]; then
+            echo "::error::No \`core\` run for $GITHUB_SHA. **An absent verdict is not a pass** — see #143."
+            exit 1
+          fi
+          if [ "$concl" != "success" ]; then
+            echo "::error::\`core\` is \`$concl\` on this commit: $url"
+            echo "::error::Refusing to publish. Fix it, or re-run this workflow by hand with \`allow_red_ci\` and say why."
+            exit 1
+          fi
+          echo "core: success — $url"
+
+      - name: What kind of bump, and to what number?
+        id: bump
+        if: steps.moved.outputs.go == 'yes'
+        run: |
+          cur=$(python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          # **`feat:` is the only prefix that moves the minor.** `fix:`,
+          # `docs:`, `test:`, `ci:` and `chore:` are patches. Major is never
+          # taken here — see the header.
+          if git log --format='%s' "${{ steps.moved.outputs.last }}"..HEAD | grep -qE '^feat(\(|:)'; then
+            kind=minor
+          else
+            kind=patch
+          fi
+          next=$(python3 -c 'import sys;a,b,c=[int(x) for x in sys.argv[1].split(".")];print("%d.%d.%d" % ((a,b+1,0) if sys.argv[2]=="minor" else (a,b,c+1)))' "$cur" "$kind")
+          echo "$cur → $next ($kind)"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Bump, tag, publish
+        if: steps.moved.outputs.go == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          next="${{ steps.bump.outputs.next }}"
+          # **A round-trip through `json`, verified to be a one-line diff** on
+          # this file as it stands — its two-space indent and key order survive.
+          python3 -c 'import json,sys,pathlib;p=pathlib.Path(".claude-plugin/plugin.json");d=json.loads(p.read_text());d["version"]=sys.argv[1];p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+chr(10))' "$next"
+          title=$(git log -1 --format='%s')
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: release $next"
+          git tag -a "v$next" -m "v$next — $title"
+          git push origin HEAD:main --follow-tags
+          # **The half-day's commits are the notes.** Anything better is written
+          # by whoever made the change, not here.
+          notes=$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)
+          printf '%s\n' "$notes" | gh release create "v$next" \
+            --title "v$next — $title" --notes-file -
