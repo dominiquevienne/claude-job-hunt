@@ -59,7 +59,12 @@ from _secrets import missing_note
 from _zero import zero_note
 
 API = "https://api.adzuna.com/v1/api"
-UA = "claude-job-hunt (personal job search; one user, own API key)"
+# **The declaration is central and was applied per adapter**, so this
+# file kept a local string of its own and #120 never reached it. It
+# named no agent token, carried no version and no contact URL — and it
+# described the tool as *"personal job search; one user"*, which this
+# repository stopped being. `_ua.UA` is the one declaration. #130.
+from _ua import UA
 
 # The API's own list, and it publishes it: an unknown code is a 404 whose JSON
 # body names every supported one. Ireland is not among them.

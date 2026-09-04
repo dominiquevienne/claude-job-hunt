@@ -2485,5 +2485,78 @@ class GuardReportsBytesNotCharacters(unittest.TestCase):
         self.assertEqual(got["bytes"], len(raw))
 
 
+class DeclaredAgentIsSentEverywhere(unittest.TestCase):
+    """#120 settled what this project calls itself. **The declaration was
+    central and its application was per adapter**, so two files never got it.
+
+    Found on 2026-09-04 by looking for the shape that lost `oposiciones.py` a
+    day earlier — a value a helper hands back that the caller must remember to
+    use. `_tls.context_for()` returns a context you have to pass to `urlopen`;
+    `_ua.UA` is a string you have to put in a header. **Neither does anything
+    on its own.**
+
+    What was found:
+
+      * `adzuna.py` defined its **own** `UA`, naming no agent token, carrying
+        no version and no contact URL, and describing the tool as *"personal
+        job search; one user"* — which this repository stopped being.
+      * `labonnealternance.py` sent **no `User-Agent` at all**, so urllib
+        announced `Python-urllib/3.x`.
+
+    Both are in the four keyed-API boards, which carry a documented exemption
+    from the **robots guard**. That is a different obligation, and it does not
+    extend here: a key says which account is calling, not who is calling.
+
+    **Declaring a token and then not sending it is worse than not declaring
+    one** — the operators who could have recognised us cannot, and the
+    declaration in `_ua.py` becomes a claim the traffic does not support.
+    """
+
+    def test_every_network_reader_sends_the_declared_agent(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            if not re.search(r"urlopen|http\.client", src):
+                continue
+            imported = re.search(r"(^|\n)\s*(from _ua import|import _ua)", src)
+            header = re.search(r"""["']User-Agent["']\s*:""", src)
+            if not imported:
+                offenders.append(f"{name} (no _ua import)")
+            elif not header:
+                offenders.append(f"{name} (imports _ua, sends no header)")
+        self.assertEqual(offenders, [],
+                         "these open sockets without the declared agent: "
+                         + ", ".join(offenders))
+
+    def test_no_adapter_defines_a_user_agent_of_its_own(self):
+        """The defect was not a missing header — `adzuna.py` had one. It was a
+        **second declaration**, which is why a header check alone would have
+        stayed green."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            if re.search(r"^UA\s*=\s*[\"']", src, re.M):
+                offenders.append(name)
+        self.assertEqual(offenders, [],
+                         "these bind their own UA string, shadowing the one "
+                         "declaration: " + ", ".join(offenders))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

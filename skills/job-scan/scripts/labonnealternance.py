@@ -38,6 +38,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _ua import UA
+
 from _secrets import get as secret_get
 from _secrets import missing_note
 
@@ -89,6 +91,11 @@ def call(params):
     req = urllib.request.Request(url, headers={
         "Authorization": f"Bearer {key()}",
         "Accept": "application/json",
+        # **Sent nothing at all before**, so urllib announced
+        # `Python-urllib/3.x` — not a declaration anybody chose, and the
+        # opposite of what #120 settled. A key identifies the account; it does
+        # not say who is calling. #130.
+        "User-Agent": UA,
     })
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
