@@ -198,7 +198,7 @@ def cmd_search(a):
     v = robots_verdict(site["host"])
     if not v["sweep"]:
         die(f"{site['host']}: {v['reason']}", 8 if v["sweep"] is None else 7)
-    seen, rows, repeats = set(), [], 0
+    seen, rows, repeats, partial = set(), [], 0, False
     for page in range(1, a.pages + 1):
         # **`location` goes into the URL.** It used to be applied only after
         # the fetch, by `drop_report`, so `--location Lausanne` alone
@@ -244,10 +244,19 @@ def cmd_search(a):
         # Entirely repeated → the pagination did not advance. A few repeats →
         # paid placement, which is what a promoted card looks like.
         if ids and ids <= seen:
+            # **The sentence was right and the behaviour contradicted it.**
+            # `sys.exit` here left the loop *and* skipped the print stage
+            # below, so the run announced "N row(s) so far and they are good"
+            # on stderr and put nothing on stdout — a total, silent loss for
+            # anything reading stdout, which is the whole chain. The other
+            # early stop in this loop uses `break` and does reach the print;
+            # two exits from one loop, and only one of them worked. #134.
             note(f"page {page} repeats page {page - 1} entirely — the "
                  f"pagination did not advance. Stopping rather than looping; "
-                 f"{len(rows)} row(s) so far and they are good.")
-            sys.exit(EXIT_PARTIAL)
+                 f"{len(rows)} row(s) so far and they are good, and they are "
+                 f"on stdout below.")
+            partial = True
+            break
         for p in found:
             row = card(a.site, p)
             if not row["id"] or row["id"] in seen:
@@ -280,6 +289,10 @@ def cmd_search(a):
         note(f"{repeats} card(s) repeated across pages and were deduplicated — "
              f"paid placement, not a pagination failure: one ad was measured "
              f"at position 13 of page 1 and position 1 of page 2.")
+    if partial:
+        # **The status still says partial; only its timing changed.** Exit 6
+        # after stdout has the rows, not instead of them.
+        sys.exit(EXIT_PARTIAL)
 
 
 def cmd_ad(a):

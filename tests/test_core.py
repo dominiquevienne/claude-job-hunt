@@ -15,6 +15,7 @@ function under it.
 Run: `python3 -m unittest discover -s tests -v`
 """
 
+import argparse
 import io
 import os
 import re
@@ -3509,6 +3510,94 @@ class PresenceIsNotBehaviour(unittest.TestCase):
         self.assertEqual(calls["died"], 1,
                          "the host refuses and no override is enabled, and "
                          "the gate let the run continue")
+
+
+class PartialStillWritesWhatItKept(unittest.TestCase):
+    """`jobup.py search` announced rows on stderr and put none on stdout.
+
+    When page 2 repeats page 1 entirely the sweep stops rather than looping —
+    a good guard, and the diagnosis was right. But it stopped with
+    `sys.exit(EXIT_PARTIAL)` **inside the page loop**, above the print stage,
+    so the run said *"6 row(s) so far and they are good"* and wrote nothing.
+    **Total and silent for anything reading stdout**, which is the whole
+    chain. Reproduced twice on 2026-09-04, exit 6, `wc -l` 0. Issue #134.
+
+    **Two exits left the same loop and only one of them worked.** The other,
+    for a page with no postings, uses `break` and reaches the print. The
+    difference was invisible because both printed a correct sentence first.
+
+    **It was the only one.** Thirteen functions in the corpus exit inside a
+    loop before their last `print`; eight of those claim to hold rows; two
+    carry this very sentence — `philjobnet.py` and `jobivoire.py` — and both
+    **print inside the loop**, so their rows are already out when they leave.
+    A `die()` on a bad department code or a 404 is not this defect either.
+    Same shape, different case, four times over.
+    """
+
+    class _Page:
+        """One posting, returned for every page — which is what a board that
+        has stopped paginating looks like."""
+
+        BODY = ('<html><script type="application/ld+json">'
+                '{"@type":"JobPosting","identifier":{"value":"abc-1"},'
+                '"title":"X","hiringOrganization":{"name":"Y"},'
+                '"datePosted":"2026-09-01",'
+                '"url":"https://www.jobup.ch/fr/emplois/detail/abc-1/"}'
+                '</script></html>')
+
+    def _run(self, pages):
+        import io
+        import contextlib
+        import jobup
+        real_get = jobup.get
+        real_gate = jobup.robots_verdict
+        real_sleep = jobup.time.sleep
+        jobup.get = lambda url: (200, self._Page.BODY, url)
+        jobup.robots_verdict = lambda h: {"sweep": True, "certain": True,
+                                          "reason": ""}
+        jobup.time.sleep = lambda *a, **k: None
+        args = argparse.Namespace(
+            site="jobup", term="x", location=None, pages=pages, limit=None,
+            delay=0)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        try:
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                jobup.cmd_search(args)
+        except SystemExit as exc:
+            code = exc.code
+        finally:
+            jobup.get = real_get
+            jobup.robots_verdict = real_gate
+            jobup.time.sleep = real_sleep
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_repeated_page_still_writes_its_rows(self):
+        code, out, err = self._run(pages=2)
+        self.assertIn("pagination did not advance", err,
+                      "the fixture did not reach the partial branch")
+        rows = [l for l in out.splitlines() if l.strip()]
+        self.assertEqual(
+            len(rows), 1,
+            f"stderr announced rows and stdout carried {len(rows)} — this is "
+            f"#134: the exit skipped the print stage")
+        self.assertEqual(code, 6, "the partial status was lost with the fix")
+
+    def test_the_row_on_stdout_is_the_row_it_counted(self):
+        """**A count on stderr and a row on stdout must be the same thing.**
+        Writing *some* row would satisfy the case above."""
+        import json
+        _code, out, err = self._run(pages=2)
+        row = json.loads(out.splitlines()[0])
+        self.assertEqual(row["id"], "abc-1")
+        self.assertIn("1 row(s) so far", err)
+
+    def test_a_normal_run_is_unchanged(self):
+        """The witness: one page, no repetition, no partial status."""
+        code, out, _err = self._run(pages=1)
+        self.assertIsNone(code, "a complete run must not exit 6")
+        self.assertEqual(len([l for l in out.splitlines() if l.strip()]), 1)
 
 
 if __name__ == "__main__":
