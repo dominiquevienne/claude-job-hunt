@@ -3880,5 +3880,96 @@ class TheDeclaredDuplicateIsALedgerId(unittest.TestCase):
                          "not name them: " + ", ".join(missing))
 
 
+class ATestNamespaceMatchesTheRealParser(unittest.TestCase):
+    """A case that builds `argparse.Namespace` by hand bypasses argparse.
+
+    **Most of that is already caught, and measuring it was the point.**
+    A field the code reads under a *wrong* name raises `AttributeError` —
+    renaming `term` to `keyword` turns three cases red. And a drift in the CLI
+    itself is caught elsewhere: renaming `--term` to `--query` breaks the
+    invocations `jobup.md` documents, which
+    `DocumentedInvocationsAreReal` sees. The subprocess-driven case is
+    validated by argparse directly — driving `--what` where the CLI wants
+    `--query --country` failed loudly while this suite was being written.
+
+    A field *missing* from the namespace is caught too, for the same reason:
+    dropping `delay` turns those three cases red.
+
+    **One shape escapes all of it: an option the CLI gains that the fixture
+    does not supply.** Measured on v1.221.0 — adding `--since` to the parser
+    produced **zero failures**, while every real invocation would now carry a
+    field the case never sets. So the case drifts from the CLI it stands for,
+    quietly, in the one direction nothing was watching.
+
+    *Establishing that took two bad mutations of my own.* The first `delay`
+    mutation matched nothing — the fixture wraps across lines, so
+    `", delay=0)"` is not in the file — and its green was read as a finding.
+    The second comparison ran with the new guard already in the working tree,
+    because `git checkout` carries uncommitted changes across branches. **Both
+    readings were void, and the gap is the one that survived redoing them.**
+    """
+
+    def _dests(self, script, subcommand):
+        """Every `dest` the parser defines, read from the AST."""
+        import ast
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "skills", "job-scan", "scripts", script)
+        tree = ast.parse(open(path, encoding="utf-8").read())
+        var = None
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call) \
+                    and isinstance(n.value.func, ast.Attribute) \
+                    and n.value.func.attr == "add_parser" \
+                    and n.value.args \
+                    and isinstance(n.value.args[0], ast.Constant) \
+                    and n.value.args[0].value == subcommand:
+                for t in n.targets:
+                    if isinstance(t, ast.Name):
+                        var = t.id
+        self.assertIsNotNone(var, f"no `{subcommand}` subparser in {script}")
+        out = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) \
+                    and n.func.attr == "add_argument" \
+                    and isinstance(n.func.value, ast.Name) \
+                    and n.func.value.id == var:
+                named = [a.value for a in n.args
+                         if isinstance(a, ast.Constant)
+                         and isinstance(a.value, str)]
+                dest = next((kw.value.value for kw in n.keywords
+                             if kw.arg == "dest"
+                             and isinstance(kw.value, ast.Constant)), None)
+                if dest:
+                    out.add(dest)
+                elif named:
+                    out.add(named[0].lstrip("-").replace("-", "_"))
+        return out
+
+    def test_the_jobup_namespace_carries_every_option_the_cli_defines(self):
+        dests = self._dests("jobup.py", "search")
+        self.assertIn("term", dests, "the parser no longer defines --term, "
+                                     "and the fixture below still passes it")
+        built = {"site", "term", "location", "pages", "limit", "delay"}
+        missing = sorted(dests - built)
+        self.assertEqual(
+            missing, [],
+            f"PartialStillWritesWhatItKept builds a namespace without "
+            f"{missing} — the CLI always supplies those, so the case is "
+            f"exercising a shape no invocation can produce")
+
+    def test_the_fixture_and_this_list_are_the_same_list(self):
+        """**Two copies of one fact, and the case above compares the wrong
+        one if they drift.** This reads the fixture's own namespace rather
+        than trusting the literal repeated here."""
+        import re
+        src = open(os.path.abspath(__file__), encoding="utf-8").read()
+        m = re.search(r"args = argparse\.Namespace\(\s*(.*?)\)", src, re.S)
+        self.assertIsNotNone(m, "the fixture no longer builds a namespace")
+        fields = set(re.findall(r"(\w+)=", m.group(1)))
+        self.assertEqual(
+            fields, {"site", "term", "location", "pages", "limit", "delay"},
+            "the fixture's namespace changed and the list above did not")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
