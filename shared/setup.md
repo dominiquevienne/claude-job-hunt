@@ -641,11 +641,21 @@ credential the user creates, and **they take it in the same place**. It used to
 be written once per board, in three shapes; the shapes were not the same and
 two of them were older than the code.
 
-**There are two places a credential can live, and the file is the one that
-works everywhere.** Outside a terminal the shell is reset between calls, so an
-exported variable does not survive from one to the next — *"from the
-environment, and from nowhere else"* was not merely tedious there, it **could
-not work**. Issue #110.
+**There is one place to put a credential, and the other two are terminal-only
+fallbacks the code still reads.** Do not offer them side by side: an
+installation built on either works until the day the person opens the same
+plugin somewhere without a shell, and then stops, having changed nothing.
+
+| where | in a terminal | outside one |
+| :-- | :-- | :-- |
+| **`<workspace>/credentials.env`** | works | **works — the only one that does** |
+| `export` in the environment | works | **no**: the shell is reset between calls, so an exported variable does not survive from one to the next (#110) |
+| `~/.<board>.env` | works | **no**: `$HOME` is a container's, not the person's folder (#109) |
+
+**So the instruction is single**: the folder the user names or connects, then
+`credentials.env` inside it. The two fallbacks stay in the code because
+removing them would break every terminal install that has one — **they are not
+a second answer to give.**
 
 ```
 <workspace>/credentials.env
@@ -680,10 +690,21 @@ security rule does not move: **never in `config.yml`** — read aloud, pasted
 into issues, backed up — **never in git**, and **never pasted into the
 conversation.** The workspace is the user's data directory, not a repository.
 
-**Ask which situation they are in before prescribing.** Telling somebody with
-no shell to run `export` is not help, and neither is prescribing a file to
-somebody holding a terminal. The adapters' own messages give both routes and
-label them.
+**Telling somebody with no shell to run `export` is not help** — and that is
+why the answer above does not depend on asking. The file route is prescribed
+to everyone because it is the only one that holds in both places; a person with
+a terminal loses nothing by using it, and the adapters' own messages still name
+both routes for anyone who already has a key in the older place.
+
+**And the resolution can settle nothing, on purpose.** If `Documents` is not
+writable — which usually means the home folder is not the person's —
+`workspace-path.py` exits **3** with a question instead of inventing a
+directory. **Ask it, and use the folder they name.** Since v1.223.0 the
+credential reader follows that same cascade, so the answer they give is the
+answer the keys are read from.
+
+**If they already had keys in the old default, the run says so and names the
+file.** Nothing is lost; the folder simply has to be named once.
 
 **Every shell command in 5c and 5e is bash**: `export`, `chmod 600` and
 `set -a; . file; set +a` are bash, not PowerShell. On Windows that means WSL or
@@ -691,6 +712,14 @@ Git Bash — `README.md` documents both routes and this file does not repeat
 them. **Say which shell you are asking for before you ask**: a Windows user
 reading this page on its own runs these in PowerShell and gets errors that name
 nothing.
+
+**What is measured here, and what is not.** The failure behaviour below was
+**measured on this repository on 2026-09-04**. The two "no" cells in the table
+above are **not** — they are established by issues #109 and #110, from the
+code and its history, and **nobody has run this plugin under CoWork to watch
+`$HOME` resolve or an `export` survive.** The instruction is built on that
+reasoning, and an onboarding is followed without being re-read, so it says
+which of its claims were watched and which were argued.
 
 **And a wrong key does not hide.** Measured 2026-09-04 on `adzuna` and
 `labonnealternance`: a missing key and a wrong one both exit non-zero with

@@ -49,7 +49,7 @@ TOKEN = "Claude-User"
 # thing and send another.
 
 
-UA = (f"Mozilla/5.0 (compatible; {TOKEN}; claude-job-hunt/1.223.0; "
+UA = (f"Mozilla/5.0 (compatible; {TOKEN}; claude-job-hunt/1.224.0; "
       f"+https://github.com/dominiquevienne/claude-job-hunt)")
 
 
