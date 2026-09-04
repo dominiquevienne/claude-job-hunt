@@ -5,6 +5,19 @@
 <!-- hosts: vieclam24h.vn -->
 <!-- script: vieclam24h.py -->
 <!-- countries: VN -->
+
+> **The `search` command is refused by `robots.txt` and now stops.** The file
+> closes `/*?q` to `User-agent: *`, and the search loop fetched
+> `/tim-kiem-viec-lam-nhanh?q=…`. The adapter asked `verdict()` — *is this host
+> closed outright* — which answers **yes, sweep** for this host, and never asked
+> about the path. **A comment in `get()` asserted "robots.txt permits this
+> path" on the one path it does not permit.** Fixed 2026-09-04, issues #101 and
+> #156.
+>
+> **The sitemap route is unaffected and remains the way in**:
+> `/file/sitemap/sitemap-index.xml` and the `job` family under it are permitted,
+> and that is where the 17 089 ad URLs are.
+
 One of Vietnam's largest boards, and **the richest per-ad record measured in
 this repository**: 110 fields on the ad page, 69 on a search card. **No key,
 no cookie, no browser** — every search page carries its own results in

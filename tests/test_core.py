@@ -6050,5 +6050,167 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
             f"but the rows were not read")
 
 
+class TheSearchLoopWasTheRefusedPath(unittest.TestCase):
+    """**#156, and it is the mirror of #101 inside our own code.**
+
+    `vieclam24h.py` asked `robots_verdict(host)` and nothing else.
+    `vieclam24h.vn` has no `Disallow: /`, so that check answered *sweep* every
+    time — and the file closes `/*?q` to `User-agent: *` while `cmd_search`
+    fetched `/tim-kiem-viec-lam-nhanh?q=<terms>&page=<n>`. **The adapter's main
+    loop was the refused path.**
+
+    Nothing could have surfaced it. The host answers 200, the host-level
+    verdict is true, and `get()` carried the comment *"robots.txt permits this
+    path"* — **a claim of compliance sitting on the one path that is not
+    compliant.** The claim is not a check, and this file held both for as long
+    as it held the defect.
+
+    Found by asking, of every adapter, *which paths do you actually fetch* —
+    the population of the concerned rather than of the participants. Eighteen
+    adapters query the guard by host only; seven of those face hosts carrying
+    path rules; **one of the seven fetched a path those rules close.**
+    """
+
+    def _allowed(self, path):
+        import urllib.parse
+        import _robots
+        parts = urllib.parse.urlsplit("https://vieclam24h.vn" + path)
+        full = (parts.path or "/") + (("?" + parts.query) if parts.query else "")
+        return _robots.allowed("vieclam24h.vn", full)
+
+    RULES = "User-agent: *\nDisallow: /admin/\nDisallow: /*?q\nDisallow: /asset/\n"
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode()
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://vieclam24h.vn/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def setUp(self):
+        import _robots
+        self._real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(self.RULES))
+
+    def tearDown(self):
+        import _robots
+        _robots.urllib.request.urlopen = self._real
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def test_the_search_path_is_refused(self):
+        a = self._allowed("/tim-kiem-viec-lam-nhanh?q=dev&page=1")
+        self.assertFalse(a["allowed"],
+                         "the search loop's own path must be refused — this is "
+                         "the defect #156 found")
+        self.assertEqual(a["rule"], "/*?q")
+
+    def test_the_sitemap_route_is_untouched(self):
+        """**The other half.** The fix must not close the way in: the ads are
+        reached through the sitemap, and that path is permitted."""
+        for path in ("/file/sitemap/sitemap-index.xml", "/job-abc", "/"):
+            with self.subTest(path=path):
+                self.assertTrue(self._allowed(path)["allowed"])
+
+    def test_the_adapter_actually_stops(self):
+        """**The exercised case, and the corpus scan below could not do this.**
+
+        The first version of this class checked that `get()` *contains* the
+        per-path call. Mutating `if a["allowed"] is False:` to `if False:`
+        left it green: the import stayed, the call stayed, the branch did
+        nothing. **A guard present and inert**, in the test written against
+        exactly that failure.
+
+        So the adapter is run. The refused path must raise `SystemExit(7)`
+        before any request is built, and a permitted path must go through.
+        """
+        import importlib
+        import _robots
+        mod = importlib.import_module("vieclam24h")
+        # **`_robots.urllib` and `vieclam24h.urllib` are the same module
+        # object**, so replacing one replaces both — and the first version of
+        # this case made the guard read the adapter's stubbed HTML as the rules
+        # file, get `unrecognised`, and permit everything. The verdict is
+        # settled here, under setUp's rules stub, before the opener is swapped.
+        _robots.verdict("vieclam24h.vn")
+        real = mod.urllib.request.urlopen
+        reached = []
+
+        class Resp:
+            def read(self):
+                return b"<html></html>"
+
+            def getcode(self):
+                return 200
+
+            def geturl(self):
+                return "https://vieclam24h.vn/x"
+
+            @property
+            def headers(self):
+                return {"Content-Type": "text/html; charset=utf-8"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake(req, *a, **k):
+            reached.append(getattr(req, "full_url", str(req)))
+            return Resp()
+
+        mod.urllib.request.urlopen = fake
+        try:
+            with self.assertRaises(SystemExit, msg=(
+                    "the search loop's refused path was fetched anyway")) as c:
+                mod.get("/tim-kiem-viec-lam-nhanh?q=dev&page=1")
+            self.assertEqual(c.exception.code, 7)
+            self.assertEqual(reached, [],
+                             f"a request was built before the refusal: "
+                             f"{reached}")
+            code, _body = mod.get("/job-abc")
+            self.assertEqual(code, 200, "the permitted path stopped too — a "
+                                        "fix that refuses everything is not a "
+                                        "fix")
+        finally:
+            mod.urllib.request.urlopen = real
+
+    def test_the_adapter_asks_about_the_path_not_only_the_host(self):
+        """**The behavioural half.** A host-level verdict cannot see this, so
+        checking that the module imports `allowed` is the property that
+        matters — `verdict` alone is what shipped the defect."""
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "scripts",
+                               "vieclam24h.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertRegex(
+            src, r"from _robots import allowed",
+            "vieclam24h.py no longer asks about paths; a host verdict answers "
+            "`sweep` for this host and says nothing about `/*?q`")
+        self.assertIn("robots_allowed(parts.netloc", src,
+                      "the per-path call is gone from get()")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

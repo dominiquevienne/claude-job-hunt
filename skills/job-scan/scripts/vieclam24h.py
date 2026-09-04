@@ -66,6 +66,7 @@ from _zero import zero_note
 from _sitemap import locs as sitemap_locs
 
 from _robots import verdict as robots_verdict
+from _robots import allowed as robots_allowed
 
 BASE = "https://vieclam24h.vn"
 from _ua import UA
@@ -90,11 +91,33 @@ def note(msg):
 
 
 def get(path):
+    """Fetch one path, **after asking about that path**.
+
+    **This asked `verdict()` and nothing else, and `verdict()` answers a
+    different question.** `vieclam24h.vn` sweeps — no `Disallow: /` — so the
+    host-level check said go, every time. But the file closes `/*?q` to
+    `User-agent: *`, and `cmd_search` fetches
+    `/tim-kiem-viec-lam-nhanh?q=<terms>&page=<n>` — **the adapter's main loop
+    was the refused path.**
+
+    Nothing could have surfaced it: the host answers 200, the sweep verdict is
+    true, and the comment below asserted *"robots.txt permits this path"* on
+    the one path it does not permit. **A claim of compliance is not a check**,
+    and this file carried the claim for as long as it carried the defect.
+
+    Issues #101 and #156.
+    """
     url = path if path.startswith("http") else BASE + path
+    parts = urllib.parse.urlsplit(url)
+    if parts.netloc:
+        a = robots_allowed(parts.netloc, (parts.path or "/") +
+                           (("?" + parts.query) if parts.query else ""))
+        if a["allowed"] is False:
+            die(f"{url}: {a['reason']}", 7)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         # Without these two the same URL answers 403. Header sniffing, not a
-        # refusal — robots.txt permits this path.
+        # refusal — and the path itself is now asked about above.
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
     })
