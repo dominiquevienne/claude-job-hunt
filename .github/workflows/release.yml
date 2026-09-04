@@ -26,8 +26,10 @@
 # - **It will not decide a major version.** `feat:` in the window makes it a
 #   minor, anything else a patch. **A breaking change is a human decision**, and
 #   this file has no way to recognise one.
-# - **It will not write release notes.** The title is the newest commit subject.
-#   Anything better belongs to whoever made the change.
+# - **It will not invent release notes.** The title is the newest commit subject;
+#   the body is **every commit of the window, subject and message in full** —
+#   decision of 2026-09-04. These messages carry the reasoning, and a release
+#   that lists only their first lines throws away what was written.
 name: release
 
 on:
@@ -165,8 +167,19 @@ jobs:
           # tir suivant recalcule le même numéro et meurt sur `tag already
           # exists` — deux fois par jour jusqu'à ce qu'un humain le supprime.
           git push --atomic origin HEAD:main --follow-tags
-          # **The half-day's commits are the notes.** Anything better is written
-          # by whoever made the change, not here.
-          notes=$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)
+          # **The window's commits ARE the notes, in full.** Subject as a
+          # heading, message body underneath — these bodies carry the reasoning,
+          # and a release that keeps only first lines throws it away.
+          notes=$(git log --format='### %s%n%n%b' "${{ steps.moved.outputs.last }}"..HEAD^)
+          # **And a degradation that names itself.** GitHub caps a release body
+          # at 125 000 characters. Past 120 000 this falls back to subjects and
+          # **says so in the notes** rather thanfailing or truncating in
+          # silence — `shared/never-fail-silently.md`.
+          if [ "${#notes}" -gt 120000 ]; then
+            echo "::warning::notes ${#notes} chars — falling back to subjects"
+            notes=$(printf '%s\n\n%s\n' \
+              "_Les messages complets dépassent la limite de GitHub (${#notes} caractères) : seuls les sujets figurent ici. Le détail est dans \`git log\`._" \
+              "$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)")
+          fi
           printf '%s\n' "$notes" | gh release create "v$next" \
             --title "v$next — $title" --notes-file -
