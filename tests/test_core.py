@@ -5966,5 +5966,89 @@ class AWhitelistIsNotAWall(unittest.TestCase):
                         "nothing closes this path any more, yet it was refused")
 
 
+class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
+    """**Five shipped adapters were invisible in the one table a user reads.**
+
+    `emploitic`, `employtt`, `jobivoire`, `jobs-gov-pk` and `mihnati` each had a
+    card, a `<!-- script: -->` that resolves, a `<!-- verified: 2026-09-03 -->`
+    and declared hosts — and none appeared under *Which boards are available*.
+    A board nobody can find is not shipped in any sense that matters to the
+    person looking for it.
+
+    **The card guards could not catch this**, and that is the interesting part:
+    every one of them asks whether a card is well-formed, so a perfectly formed
+    card that no index points at is invisible to all of them. **Completeness of
+    each record says nothing about completeness of the set.**
+
+    The reverse direction is checked too — a row naming a file that does not
+    exist sends a reader to a missing page, which is worse than an absent row
+    because it looks like an answer.
+
+    **Cards without a script are deliberately exempt.** `bayt`,
+    `chile-public-sector`, `melr-gh`, `saudi-labour-platforms` and
+    `skillingpakistan` are investigation records: nothing ships, so nothing is
+    promised, and listing them under *available* would be the opposite error.
+    """
+
+    def _registry(self):
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "shared", "boards", "README.md")
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        start = next((i for i, l in enumerate(lines)
+                      if l.startswith("| Board | File")), None)
+        self.assertIsNotNone(
+            start, "the `| Board | File |` table header is gone — this guard "
+                   "measures nothing until it is found again")
+        end = start
+        while end < len(lines) and lines[end].startswith("|"):
+            end += 1
+        listed = {m.group(1) for l in lines[start:end]
+                  if (m := re.search(r"`([a-z0-9-]+)\.md`", l))}
+        return root, listed
+
+    def _with_script(self, root):
+        import glob
+        import re
+        out = set()
+        for path in glob.glob(os.path.join(root, "shared", "boards", "*.md")):
+            name = os.path.basename(path)[:-3]
+            if name == "README":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                if re.search(r"<!--\s*script:", fh.read()):
+                    out.add(name)
+        return out
+
+    def test_every_card_that_ships_a_script_is_in_the_table(self):
+        root, listed = self._registry()
+        missing = sorted(self._with_script(root) - listed)
+        self.assertEqual(
+            missing, [],
+            f"{len(missing)} shipped adapter(s) have a card and no row under "
+            f"*Which boards are available*, so nobody reading the README can "
+            f"find them: {missing}")
+
+    def test_no_row_points_at_a_card_that_does_not_exist(self):
+        """A row naming a missing file is worse than a missing row: it looks
+        like an answer."""
+        root, listed = self._registry()
+        import glob
+        files = {os.path.basename(p)[:-3]
+                 for p in glob.glob(os.path.join(root, "shared", "boards",
+                                                 "*.md"))} - {"README"}
+        self.assertEqual(sorted(listed - files), [])
+
+    def test_the_table_has_not_shrunk_to_nothing(self):
+        """**The denominator.** Both checks above are set differences, and both
+        pass on an empty table — the failure this suite has shipped twice."""
+        _root, listed = self._registry()
+        self.assertGreater(
+            len(listed), 60,
+            f"the registry lists {len(listed)} boards; the header was found "
+            f"but the rows were not read")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
