@@ -693,6 +693,43 @@ does** — returning empty ads, truncating in silence, matching every document �
 not because of who it happens to inconvenience. Write *"anybody who asks for
 the language they read"*, never *"our user"*.
 
+### A regional aggregator is not discarded for being regional
+
+**"It is not the country's board" is not a reason, and for a while it was one
+that nobody had written down** — so from the outside it was indistinguishable
+from an oversight. Issue #147.
+
+**The decisive property is not scope, it is reach.** An aggregator carrying ads
+in a country the plugin cannot otherwise read is not discardable at all, whatever
+its shape. *Measured 2026-09-04 by the country survey, not re-measured here:*
+`caglobalint.com` carries 183 ads across 24 countries — sixteen of them
+Egyptian, where Wuzzuf, Jobzella and 3amal all refuse us; two Sudanese; and
+**one Namibian, the only country in the corpus for which no host is known at
+all.** `afriqueemplois.com` carries 149 across 17 national sitemaps.
+
+**Discarding one is a conclusion, and it carries its evidence like any other.**
+`africajobboard.com` is discardable because *it publishes no advertisement
+sitemap* — a property of the site, checkable by whoever doubts it. That is the
+shape a rejection takes here; "regional" is not.
+
+**And it follows from a rule already on this page**: the criterion is whether
+the population is *already covered by something shipped*. A regional host is
+the case where it most often is not — it reaches exactly the countries where
+nothing else answers.
+
+### A host named without a domain is a third state, not a deletion
+
+`Wzayef`, `Dubizzle` and `Jobisland` were named in prose with no domain. **The
+rule not to invent a TLD is right and must not change** — but applying it
+deleted them, and a deleted host and a host that does not exist read the same
+afterwards.
+
+**They are neither measured nor forgotten: they are unresolved**, and that is a
+state worth writing. *An assertion of non-existence carries the search that
+established it* — the section below says so for boards, and it applies here to
+a name: **the honest record is "named by <source>, no domain found", never
+silence.**
+
 **What this does not mean.** Geography that is a measured property of a board
 stays: *jobup.ch is French-speaking Switzerland*, *randstad.ch's structured
 data is missing exactly where Romandie is*, *the `/es/` sitemap is the
