@@ -311,18 +311,50 @@ full list is in `shared/pipeline-format.md`):
 - Ads whose stack is explicitly foreign to the candidate.
 - Anything breaching the commute filter below.
 - Anything already in the exclusion set from step 0.
+- **Anything whose `duplicate_of` is in that set.** Three adapters publish it
+  and this step used to read none of them — see below.
 - **Anything the company index from step 0 matches to an existing row for a
   comparable role** — see below.
 
-### Cross-board duplicates: the id check will not catch them
+### Cross-board duplicates: read `duplicate_of` first
 
-The same ad on two boards has two ids, so **the id check cannot see it**. The
-only signal available at scan time is the employer's name — and it must be
-matched **as a substring, in both directions**, never as an exact cell:
+**Some boards tell you outright.** `job-room`, `France Travail` and
+`La Bonne Alternance` syndicate ads from boards this plugin already sweeps,
+and each publishes the other board's own id in the ledger's namespace:
+
+```
+  ledger_id     : job-room:<uuid-A>
+  duplicate_of  : jobup:<uuid-B>     ← already in the ledger, status `applied`
+  source_system : EXTERN
+```
+
+**`duplicate_of` is a ledger id.** Testing it against the step 0 exclusion set
+is the same set lookup as the `ID` check, and it must be done at step 3, before
+scoring. `francetravail.py` says so in its own source: *"When it is set and the
+ledger already holds that row, this is the same posting — record it discarded
+naming the row."*
+
+**This step used to say the employer's name was the only signal, and that was
+false.** On one job-room sweep of 497 rows, **20 offered duplicates went
+through** — one of them an ad the ledger already held at status `applied`.
+Nothing stopped it until the ledger refused to write an id it already had,
+which is *after* it had been scored and listed as a find. The adapter had
+published the answer on the same row. #136.
+
+**Then, and only then, the employer's name.** It is the fallback for boards
+that do not declare syndication, and it must be matched **as a substring, in
+both directions**, never as an exact cell:
 
 ```bash
 grep -n "<Company>" "$JOB_HUNT_HOME/job-pipeline.md"
 ```
+
+**And the employer check has a blind spot `duplicate_of` does not.** For a
+syndicated ad, job-room writes the *syndicating board* as the employer —
+`Jobup` — while the ledger holds the real employer's legal name. There is no
+common substring in either direction, so the fallback cannot fire on exactly
+the rows the declaration would have caught. **The two checks fail on different
+things, which is why both are here and in this order.**
 
 Boards write the same employer differently, and an exact match fails on either
 side of the difference. Both of these were observed on one real scan, on

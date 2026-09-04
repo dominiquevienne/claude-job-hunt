@@ -3762,5 +3762,123 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
                          f"not a signal")
 
 
+class TheDeclaredDuplicateIsALedgerId(unittest.TestCase):
+    """Three adapters publish the other board's own id, and the skill read
+    none of them.
+
+    `job-room`, `France Travail` and `La Bonne Alternance` syndicate ads from
+    boards this plugin already sweeps, and each emits `duplicate_of` **in the
+    ledger's namespace** — `jobup:<uuid>` beside its own `job-room:<uuid>`.
+    `francetravail.py` states the intended conduct in its source: *"When it is
+    set and the ledger already holds that row, this is the same posting —
+    record it discarded naming the row."*
+
+    **`SKILL.md` said the employer's name was the only signal available at
+    scan time.** On one sweep of 497 job-room rows, **20 offered duplicates
+    went through**, one of them already at status `applied`. Nothing stopped
+    it until the ledger refused an id it already held — *after* it had been
+    scored and listed as a find. #136.
+
+    **And the employer fallback cannot cover those rows.** For a syndicated
+    ad job-room writes the *syndicating board* as the employer — `Jobup` —
+    while the ledger holds the real employer's legal name. No common
+    substring in either direction: the two checks fail on different things.
+
+    The value is only useful if it really is a ledger id, so that is what
+    this exercises.
+    """
+
+    def test_the_value_is_a_ledger_id_not_a_url(self):
+        import jobroom
+        got = jobroom.duplicate_of(
+            "https://www.jobup.ch/fr/emplois/detail/"
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6/")
+        self.assertEqual(got, "jobup:3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        self.assertNotIn("/", got, "a URL cannot be looked up in the ledger")
+        self.assertEqual(got.count(":"), 1)
+
+    def test_a_host_this_plugin_does_not_sweep_yields_nothing(self):
+        """**A duplicate of an ad we never held is not a duplicate.** Naming
+        a board outside the ledger would produce a key that can never match,
+        which reads like a working check and is not one."""
+        import jobroom
+        # **With a real UUID on it**, so the None can only come from the host
+        # being unknown. The first version of this case used a URL with no
+        # UUID and passed for that reason instead — it could not have failed
+        # on its own subject.
+        with_uuid = ("https://www.example.invalid/offer/"
+                     "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        self.assertTrue(jobroom.UUID_RE.search(with_uuid),
+                        "the specimen must carry a UUID or this proves "
+                        "nothing about the host lookup")
+        self.assertIsNone(jobroom.duplicate_of(with_uuid))
+        self.assertIsNone(jobroom.duplicate_of(None))
+
+    def test_a_scheme_less_url_still_resolves(self):
+        """The field is built from whatever the feed carries, and the feed
+        does not always carry a scheme."""
+        import jobroom
+        self.assertEqual(
+            jobroom.duplicate_of(
+                "www.jobup.ch/fr/emplois/detail/"
+                "3fa85f64-5717-4562-b3fc-2c963f66afa6/"),
+            "jobup:3fa85f64-5717-4562-b3fc-2c963f66afa6")
+
+    def test_the_skill_reads_the_field_at_the_exclusion_step(self):
+        """**The object here is the text of `SKILL.md`**, which is what a run
+        follows — so reading it is the check, not a proxy for one. What it
+        must say is that a row whose `duplicate_of` is in the exclusion set is
+        excluded, *at step 3*, before scoring."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        skill = open(os.path.join(root, "skills", "job-scan", "SKILL.md"),
+                     encoding="utf-8").read()
+        self.assertIn("duplicate_of", skill,
+                      "the skill does not mention the field three adapters "
+                      "publish")
+        i = skill.index("- Anything already in the exclusion set from step 0.")
+        # **the bullet list only.** A 400-character window reached into the
+        # section below, whose heading also names the field, so deleting the
+        # bullet left this green — the window was the test's own blind spot.
+        bullets = skill[i:skill.index("\n\n", i)]
+        self.assertIn("duplicate_of", bullets,
+                      "step 3 does not exclude on `duplicate_of` — the field "
+                      "may be described further down and never acted on")
+
+    def test_every_adapter_that_publishes_it_is_named_in_the_skill(self):
+        """A fourth adapter emitting it and going unnamed is the same defect
+        again, one board later."""
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        whole = open(os.path.join(root, "skills", "job-scan", "SKILL.md"),
+                     encoding="utf-8").read()
+        # **The section, not the file.** 58 of 74 adapter names appear
+        # somewhere in this skill, so "named anywhere" is true by accident
+        # about four times in five — the first version of this case could not
+        # have failed.
+        start = whole.index("### Cross-board duplicates")
+        end = whole.index("\n## ", start)
+        skill = whole[start:end].lower()
+        emitters = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("_"):
+                continue
+            if '"duplicate_of"' in open(path, encoding="utf-8").read():
+                emitters.append(name[:-3])
+        self.assertGreaterEqual(len(emitters), 3,
+                                "the emitters have vanished — either a real "
+                                "change or this went quiet")
+        # the skill names boards in prose, so match on the board's own words
+        WORDS = {"jobroom": "job-room", "francetravail": "france travail",
+                 "labonnealternance": "la bonne alternance"}
+        missing = [e for e in emitters
+                   if WORDS.get(e, e.replace("_", " ")) not in skill]
+        self.assertEqual(missing, [],
+                         "these publish `duplicate_of` and the skill does "
+                         "not name them: " + ", ".join(missing))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
