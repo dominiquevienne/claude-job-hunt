@@ -1,5 +1,6 @@
 # Board adapter — Michael Page
 
+<!-- script: michaelpage.py -->
 **A board, not an ATS**: one search across many employers. It is the first
 recruitment *agency* here, and that changes what comes back more than the
 technology does — see the trap below, which is the reason to read this file.

@@ -12,6 +12,7 @@ which is the half that matters here: this adapter reads
 Nothing in either file refuses it.
 
 <!-- hosts: jobs.recruitee.com, tellent.recruitee.com -->
+<!-- script: recruitee.py -->
 
 One employer at a time, by tenant. Recruitee is a Dutch-origin ATS, now part of
 Tellent, used across the Netherlands, Belgium, Germany, Poland and beyond. Each

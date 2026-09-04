@@ -1,6 +1,7 @@
 # Board adapter — free-work.com
 
 <!-- hosts: www.free-work.com -->
+<!-- script: freework.py -->
 
 French **IT** roles, permanent and contract, on one public JSON API.
 **No browser, no account, no cookie.**

@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: vieclam24h.vn -->
+<!-- script: vieclam24h.py -->
 One of Vietnam's largest boards, and **the richest per-ad record measured in
 this repository**: 110 fields on the ad page, 69 on a search card. **No key,
 no cookie, no browser** — every search page carries its own results in

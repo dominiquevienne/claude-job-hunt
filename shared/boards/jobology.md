@@ -1,5 +1,6 @@
 # Board adapter — Jobology (nine sector boards)
 
+<!-- script: jobology.py -->
 Jobology runs **nine French sector job boards** on one platform. They share a
 URL contract, a `robots.txt` and a page structure, so one adapter reaches all
 nine — the same leverage as `taleez.md`, `flatchr.md` and `digitalrecruiters.md`,

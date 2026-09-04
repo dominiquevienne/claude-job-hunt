@@ -1,5 +1,6 @@
 # Board adapter — SAP SuccessFactors
 
+<!-- script: successfactors.py -->
 <!-- verified: 2026-09-02 -->
 
 An ATS, not a board: one employer per host, no search across employers.

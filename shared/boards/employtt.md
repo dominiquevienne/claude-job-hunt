@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: employtt.gov.tt -->
+<!-- script: employtt.py -->
 
 The Ministry of Labour's national employment service. **No key, no cookie, no
 browser, no endpoint** — every advertisement is in the served HTML of one page.

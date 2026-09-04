@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: lmis.gov.jm -->
+<!-- script: lmisjm.py -->
 
 Jamaica's Labour Market Information System. **No key, no cookie, no browser** —
 the page renders client-side and the endpoint behind it answers a plain POST.

@@ -1,5 +1,6 @@
 # Board adapter — jobup.ch
 
+<!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
 
 Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud).

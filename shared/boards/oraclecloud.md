@@ -1,5 +1,6 @@
 # Board adapter — Oracle Recruiting Cloud
 
+<!-- script: oraclecloud.py -->
 One employer at a time, by host. **The biggest ATS family this repository did
 not cover.**
 

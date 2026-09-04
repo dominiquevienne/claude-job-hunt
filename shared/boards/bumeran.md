@@ -1,5 +1,6 @@
 # Board adapter — Bumeran / Jobint (seven Latin American brands)
 
+<!-- script: bumeran.py -->
 <!-- verified: 2026-09-03 -->
 
 **One platform wearing national brands, and the tell is a filename.** Every one

@@ -1,6 +1,7 @@
 # Board adapter — join.com
 
 <!-- hosts: join.com -->
+<!-- script: ats.py -->
 
 One employer at a time, by tenant. **No browser, no account, no key.**
 

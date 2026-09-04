@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-03 -->
 
 <!-- hosts: www.jobs.ge -->
+<!-- script: jobsge.py -->
 Georgia's independent generalist, unrelated to the HR.ge platform. **No key, no
 cookie, no browser — and no pagination.**
 

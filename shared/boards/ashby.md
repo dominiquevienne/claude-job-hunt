@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: jobs.ashbyhq.com -->
+<!-- script: ats.py -->
 **Re-verified 2026-09-02**: an unknown job board still answers a clean **404**.
 
 Ashby is an ATS, not a board. Each employer publishes its job board as public

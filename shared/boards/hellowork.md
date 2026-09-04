@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.hellowork.com -->
+<!-- script: hellowork.py -->
 **Re-verified 2026-09-02**: `metier_developpeur` returned **20 cards**, and the script still says out loud that 20 is the cap and not the result count — pagination is a query string this site's `robots.txt` disallows.
 
 France's largest private generalist board. Ex-RegionsJob, merged with Cadreo in

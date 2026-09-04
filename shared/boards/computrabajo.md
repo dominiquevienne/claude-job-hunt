@@ -1,5 +1,6 @@
 # Board adapter — Computrabajo (18 Latin American countries)
 
+<!-- script: computrabajo.py -->
 <!-- verified: 2026-09-02 -->
 
 **Eighteen national sites, one adapter, and one rule file with no exception.**

@@ -1,5 +1,6 @@
 # Board adapter — fachkraft.ch / sta.jobs
 
+<!-- script: fachkraft.py -->
 <!-- verified: 2026-09-02 -->
 
 **Re-verified 2026-09-02**: **3 580 of 3 580 ads**, and the run still warns that keys are domain-scoped without `--with-ref` because the numeric id differs between domains.

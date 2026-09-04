@@ -1,6 +1,7 @@
 # Board adapter — empleate.gob.es (SEPE, Spain)
 
 <!-- hosts: empleate.gob.es -->
+<!-- script: empleate.py -->
 
 **28 099 live ads.** The first Spanish board in this repository, and the third
 national public employment service after `job-room.md` (Switzerland) and

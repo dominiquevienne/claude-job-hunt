@@ -25,6 +25,7 @@ RFC 9309, rather than letting the first win.)*
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: talent-soft.com -->
+<!-- script: talentsoft.py -->
 **Re-verified 2026-09-02** on the tenant-directory question, with the search
 recorded below rather than its conclusion.
 

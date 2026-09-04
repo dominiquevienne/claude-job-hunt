@@ -1,6 +1,7 @@
 # Board adapter — Personio (DACH ATS)
 
 <!-- hosts: jobs.personio.de -->
+<!-- script: personio.py -->
 
 Personio is the applicant-tracking system most German, Austrian and **Swiss**
 SMEs run their careers page on. Each tenant publishes a **documented XML feed**

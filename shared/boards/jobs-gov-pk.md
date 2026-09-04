@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: jobs.gov.pk -->
+<!-- script: jobsgovpk.py -->
 
 Pakistan's national employment exchange. **No key, no cookie, no browser, no
 endpoint** — one GET returns every advertisement it holds.

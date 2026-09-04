@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.jobstore.com -->
+<!-- script: jobstore.py -->
 An aggregator running **26 country sites** off one host, `www.jobstore.com/<cc>/`.
 Switzerland carries **52 128 ads**.
 

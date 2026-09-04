@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: www.bne.gob.cl, bne.cl -->
+<!-- script: bnecl.py -->
 
 Chile's national employment service. **No key, no cookie, no browser** — the
 *search* renders client-side and **the advertisement pages do not**: each

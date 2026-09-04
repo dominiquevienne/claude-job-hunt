@@ -1,6 +1,7 @@
 # Board adapter — hays.fr
 
 <!-- hosts: www.hays.fr -->
+<!-- script: hays.py -->
 
 **3 193 ads** from the job sitemap the site's `robots.txt` declares. Smaller
 than `crit.md` (16 175), `adecco.md` (13 293) and `randstad-fr.md` (6 755), and

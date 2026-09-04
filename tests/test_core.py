@@ -2733,5 +2733,98 @@ class AnEmptyBodyIsAnOpenDoor(unittest.TestCase):
         self.assertIsNot(a["allowed"], True)
 
 
+class EveryCardDeclaresItsScript(unittest.TestCase):
+    """The card-to-script link was never written down, so every check had to
+    guess it — and guessing was wrong about one time in seven.
+
+    **Three audits in two days tripped on a guessed correspondence.** A
+    `decode("utf-8")` pattern that defined its own population and missed nine
+    adapters. A `sweep()` in `francetravail.py` — the adapter's own function,
+    nothing to do with the guard — counted as a guard call. And
+    `jobivoire.md`, which names **no** script of its own: the only `.py` it
+    mentions is `employtt.py`, in a cross-reference about entity escaping, so
+    a name-matching check paired the card with the wrong adapter entirely.
+
+    **Those are not three slips. They are three instances of one missing
+    fact.** `<!-- script: -->` states it, beside the `<!-- hosts: -->` line
+    that was already there, and this reads it without heuristics.
+
+    **The guard runs both ways**, because each direction catches a different
+    accident:
+
+      * a declaration naming a file that does not exist — a rename, a typo;
+      * an adapter no card declares — a board shipped without its card
+        pointing at it, which is exactly what `jobivoire` was.
+
+    Tooling is named here rather than pattern-matched: a rule that excluded
+    "anything not looking like a board" would quietly excuse a real adapter
+    the day one is named like a utility.
+    """
+
+    TOOLING = frozenset({
+        "ledger.py", "employers.py", "dormant.py", "achievements.py",
+        "board_offer.py", "tenant_offer.py",
+    })
+
+    def _paths(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return (os.path.join(root, "shared", "boards"),
+                os.path.join(root, "skills", "job-scan", "scripts"))
+
+    def _declared(self):
+        import glob
+        import re
+        cards, _ = self._paths()
+        out = {}
+        for path in sorted(glob.glob(os.path.join(cards, "*.md"))):
+            name = os.path.basename(path)
+            if name.lower() == "readme.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                head = fh.read(4000)
+            m = re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", head)
+            if m:
+                out.setdefault(m.group(1), []).append(name)
+        return out
+
+    def _adapters(self):
+        import glob
+        _, scripts = self._paths()
+        return {os.path.basename(p)
+                for p in glob.glob(os.path.join(scripts, "*.py"))
+                if not os.path.basename(p).startswith("_")} - self.TOOLING
+
+    def test_every_declaration_names_a_file_that_exists(self):
+        import glob
+        _, scripts = self._paths()
+        present = {os.path.basename(p)
+                   for p in glob.glob(os.path.join(scripts, "*.py"))}
+        missing = sorted(s for s in self._declared() if s not in present)
+        self.assertEqual(missing, [],
+                         "cards declare scripts that are not there: "
+                         + ", ".join(missing))
+
+    def test_every_adapter_is_declared_by_some_card(self):
+        """**The direction that would have caught `jobivoire`.** Its adapter
+        existed and shipped; no card pointed at it, so nothing could find the
+        pair except by guessing the name."""
+        declared = set(self._declared())
+        orphans = sorted(self._adapters() - declared)
+        self.assertEqual(orphans, [],
+                         "these adapters are declared by no card, so any "
+                         "check must guess the link: " + ", ".join(orphans))
+
+    def test_the_declarations_are_enough_to_pair_without_guessing(self):
+        """A shared adapter may be declared by several cards — `ats.py` serves
+        seven — and that is the point: **the fact is written, so nothing has
+        to infer it.**"""
+        declared = self._declared()
+        self.assertGreater(len(declared), 50)
+        shared = {k: v for k, v in declared.items() if len(v) > 1}
+        self.assertIn("ats.py", shared,
+                      "ats.py serves several boards; if no card pairs with "
+                      "it more than once the declarations have drifted")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,6 +1,7 @@
 # Board adapter — emploi-territorial.fr
 
 <!-- hosts: www.emploi-territorial.fr -->
+<!-- script: emploiterritorial.py -->
 
 The portal of the **centres de gestion**: France's territorial civil service —
 communes, departments, regions, CCAS, intercommunalités. **26 613 posts**

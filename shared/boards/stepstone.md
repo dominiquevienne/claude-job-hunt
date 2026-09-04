@@ -1,5 +1,6 @@
 # Board adapter — StepStone
 
+<!-- script: stepstone.py -->
 <!-- verified: 2026-09-02 -->
 
 **One platform, eleven domains, six inventories, six countries.** Totaljobs,

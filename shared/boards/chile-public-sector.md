@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: sence.gob.cl, www.trabajaenelestado.cl, www.practicasparachile.cl, directoresparachile.cl, adp.serviciocivil.cl, www.empleospublicos.cl -->
+<!-- script: icims.py -->
 
 Five Chilean portals were assessed for an adapter on 2026-09-03. **None of
 them yields one, and each fails for a different reason.** This card exists so

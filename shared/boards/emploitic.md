@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: emploitic.com, www.emploitic.com -->
+<!-- script: emploitic.py -->
 
 Algeria's largest private job board. **No key, no cookie, no browser.**
 

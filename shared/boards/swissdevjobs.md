@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: swissdevjobs.ch -->
+<!-- script: swissdevjobs.py -->
 **Re-verified 2026-09-02**: **177 of 177 postings kept**, against 172 recorded earlier.
 
 Swiss tech and software roles. **A real multi-employer board**, unlike the

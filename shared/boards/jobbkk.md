@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.jobbkk.com -->
+<!-- script: jobbkk.py -->
 Thailand's largest board by volume, and **the first Thai adapter here**. Plain
 HTML, **no key, no cookie, no account, no browser**.
 

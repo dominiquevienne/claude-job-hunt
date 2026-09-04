@@ -1,5 +1,6 @@
 # Board adapter — Applifly (Swiss ATS, one employer per host)
 
+<!-- script: applifly.py -->
 <!-- verified: 2026-09-03 -->
 
 A Swiss applicant-tracking system. **Employers front it with their own vanity

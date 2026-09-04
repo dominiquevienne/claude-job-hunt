@@ -1,6 +1,7 @@
 # Board adapter — adecco.com (France)
 
 <!-- hosts: www.adecco.com -->
+<!-- script: adecco.py -->
 
 **13 293 French ads** — not the 20 000 the home page advertises. That number is
 marketing; this one is counted, from the country sitemap the site's own

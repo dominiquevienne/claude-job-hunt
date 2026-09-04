@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.meteojob.com -->
+<!-- script: meteojob.py -->
 **Re-verified 2026-09-02**: one search still returns **exactly 20 ads and no second page**, with the run stating that this is the ceiling rather than the market.
 
 A French generalist board, around 2 million visitors a month. It also **feeds

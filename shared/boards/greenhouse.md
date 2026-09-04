@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: boards-api.greenhouse.io -->
+<!-- script: ats.py -->
 **Re-verified 2026-09-02**: an unknown tenant still answers a clean **404**, which is what separates this family from SmartRecruiters — see `smartrecruiters.md`.
 
 Greenhouse is an ATS, not a board. Each employer has its own job board under a

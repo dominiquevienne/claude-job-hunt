@@ -1,6 +1,7 @@
 # Board adapter — lagriculture-recrute.org (ANEFA)
 
 <!-- hosts: www.lagriculture-recrute.org -->
+<!-- script: anefa.py -->
 
 **2 818 offres** of French agricultural work — harvests, vineyards, livestock,
 market gardening, farm machinery. The ANEFA is the sector's own employment

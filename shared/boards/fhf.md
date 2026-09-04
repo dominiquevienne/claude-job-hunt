@@ -1,6 +1,7 @@
 # Board adapter — emploi.fhf.fr
 
 <!-- hosts: emploi.fhf.fr -->
+<!-- script: fhf.py -->
 
 France's **public hospitals and medico-social sector**, on the Fédération
 Hospitalière de France's own board. **No browser, no account, no key.**

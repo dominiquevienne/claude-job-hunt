@@ -1,5 +1,6 @@
 # Board adapter — Workday
 
+<!-- script: workday.py -->
 <!-- verified: 2026-09-02 -->
 
 **The tenant's own `robots.txt` lists its career sites — `workday.py sites`

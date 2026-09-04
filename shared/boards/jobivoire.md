@@ -2,6 +2,7 @@
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: www.jobivoire.ci, jobivoire.ci -->
+<!-- script: jobivoire.py -->
 
 `robots.txt` is two lines and closes nothing: `User-agent: *` and a bare
 `Disallow:`. **It declares no sitemap, and the one that exists must not be

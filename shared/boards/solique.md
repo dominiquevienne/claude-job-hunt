@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: live.solique.ch -->
+<!-- script: solique.py -->
 An ATS, not a board: one employer per tenant, no search across employers. Public
 HTML and JSON, unauthenticated, **no key, no cookie, no browser**.
 

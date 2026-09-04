@@ -3,6 +3,7 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: www.kalibrr.com -->
+<!-- script: kalibrr.py -->
 South-East Asia's private board, and **one adapter for two countries**: 1 045
 Indonesian and 778 Philippine ads on 2026-09-02. Public JSON, **no key, no
 cookie, no account, no browser**.
