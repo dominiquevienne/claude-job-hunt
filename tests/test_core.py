@@ -2879,5 +2879,115 @@ class TheCredentialNoteKeepsItsBlock(unittest.TestCase):
         self.assertIn("config.yml", note)
 
 
+class DocumentedInvocationsAreReal(unittest.TestCase):
+    """Every board card documents how to run its adapter. Nothing checked
+    that the subcommand and options existed.
+
+    **Re-verifying a board means running its adapter**, and seventy adapters
+    cannot be run for an internal check — that would be seventy visits to
+    third parties to test ourselves. **But half of it needs no request at
+    all**: `argparse` states what the script accepts, the card asserts what to
+    type, and the two had never been compared.
+
+    Read from the **AST**, not by importing or by `--help`: importing an
+    adapter executes its module-level code, and a check should not need to
+    run the thing it checks.
+
+    **What this cannot do, said rather than hidden.** Eighteen adapters build
+    at least one subcommand name in a loop — `sub.add_parser(name, help=h)` —
+    so the names are not in the source as literals. Their **options** are
+    still checked; their **subcommands** are skipped and counted. `adzuna.py`,
+    `infoempleo.py` and `platsbanken.py` are of this kind, and
+    `infoempleo.py search` is perfectly real.
+
+    **Prose is not an invocation.** The first pass of this check reported four
+    findings and all four were its own: a `#` comment tail, an arrow in a
+    diagram, and two subcommands built in loops. Only lines inside a fenced
+    block that begin as a command are read.
+    """
+
+    LOOSE = ("--help", "-h")
+
+    def _shape(self, path):
+        import ast
+        tree = ast.parse(open(path, encoding="utf-8").read())
+        subs, opts, dynamic = set(), set(), False
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+                if n.func.attr == "add_parser" and n.args:
+                    if isinstance(n.args[0], ast.Constant):
+                        subs.add(n.args[0].value)
+                    else:
+                        dynamic = True
+                elif n.func.attr == "add_argument":
+                    for a in n.args:
+                        if isinstance(a, ast.Constant) and \
+                                isinstance(a.value, str) and \
+                                a.value.startswith("-"):
+                            opts.add(a.value)
+        return subs, opts, dynamic
+
+    def _commands(self, text, script):
+        import re
+        out = []
+        for m in re.finditer(r"```[a-z]*\n(.*?)```", text, re.S):
+            for line in m.group(1).replace("\\\n", " ").split("\n"):
+                line = line.split("#", 1)[0].strip()
+                if script not in line:
+                    continue
+                if not re.match(r"^(python3?|\$|)\s*[\"']?\S*"
+                                + re.escape(script), line):
+                    continue
+                tail = line.split(script, 1)[1].replace('"', " ")
+                sub, opts = None, []
+                for tok in tail.split():
+                    if tok.startswith("-"):
+                        opts.append(tok.split("=")[0])
+                    elif sub is None and not opts and re.fullmatch(
+                            r"[a-z][a-z0-9-]*", tok):
+                        sub = tok
+                if sub or opts:
+                    out.append((sub, opts, line[:70]))
+        return out
+
+    def test_every_documented_subcommand_and_option_exists(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cards = os.path.join(root, "shared", "boards")
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+
+        bad, checked = [], 0
+        for path in sorted(glob.glob(os.path.join(cards, "*.md"))):
+            if os.path.basename(path).lower() == "readme.md":
+                continue
+            text = open(path, encoding="utf-8").read()
+            m = re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", text)
+            if not m:
+                continue
+            sp = os.path.join(scripts, m.group(1))
+            if not os.path.exists(sp):
+                continue          # the other guard owns that failure
+            subs, opts, dynamic = self._shape(sp)
+            card = os.path.basename(path)[:-3]
+            for sub, used, raw in self._commands(text, m.group(1)):
+                if sub is not None and not dynamic:
+                    checked += 1
+                    if sub not in subs:
+                        bad.append(f"{card}: {m.group(1)} has no subcommand "
+                                   f"`{sub}` (has {sorted(subs)}) — {raw}")
+                for o in used:
+                    if o in self.LOOSE:
+                        continue
+                    checked += 1
+                    if o not in opts:
+                        bad.append(f"{card}: {m.group(1)} has no option "
+                                   f"`{o}` — {raw}")
+        self.assertGreater(checked, 150,
+                           "the check stopped finding invocations — the card "
+                           "format changed and this went quiet")
+        self.assertEqual(bad, [], "\n".join(bad[:6]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
