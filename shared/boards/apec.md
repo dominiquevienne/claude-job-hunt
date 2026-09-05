@@ -5,6 +5,7 @@
 <!-- hosts: www.apec.fr -->
 <!-- script: apec.py -->
 <!-- countries: FR -->
+<!-- witness: none found — the 77 023 comes from a search API rather than an enumeration; the site publishes no total; and `sitemap_offres_search_engine.xml.gz` holds 1 288 URLs that are search FACETS, not advertisements, so counting this board by its declared sitemap publishes 1 288 — sixty times too few · 2026-09-05 -->
 **Re-verified 2026-09-02**: a `--mots-cles developpeur` search returned **50 cards of 3 286 matching**, and every card still carries a teaser rather than the ad — the constraint this file is built on.
 
 The **Association pour l'emploi des cadres** — France's public-interest agency

@@ -5,6 +5,7 @@
 <!-- hosts: api.mycareersfuture.gov.sg, www.mycareersfuture.gov.sg -->
 <!-- script: mycareersfuture.py -->
 <!-- countries: SG -->
+<!-- witness: the board's own reported total — 96 778 advertisements read against 96 869 reported, 0.09 % apart -->
 Singapore's national job portal, run by the **Skills and Workforce Development
 Agency (SWDA)** — Workforce Singapore renamed, which is why `wsg.gov.sg` now
 lands on `swda.gov.sg`. The **seventh national public employment service** here

@@ -63,6 +63,53 @@ from _ua import UA                    # noqa: E402
 EXIT_HTTP, EXIT_REFUSED, EXIT_UNKNOWN = 2, 7, 8
 
 
+def decoded(body, encoding):
+    """`(body, encoding_or_None)` — the bytes a reader would see.
+
+    **A record of compressed bytes describes the transfer, not the document.**
+    `apec.fr` answers gzip without being asked: 14 171 bytes on the wire for a
+    65 551-byte page. Two things follow, and the second is the heavy one.
+
+    A `grep` over such a body returns **no match and no error** — a negative
+    manufactured by an encoding, and one was published as *"apec serves no
+    total"* before it was caught.
+
+    And an md5 taken there compares transfers. **Two identical responses
+    compressed differently give different `bytes` and different `md5` for the
+    same document** — a third road to the false *"the file changed"*, after
+    this morning's stripped trailing newline and a render stamp.
+
+    So the record describes the decoded body, and **names the encoding it
+    undid** rather than silently erasing it: `encoded_bytes` keeps what came
+    off the wire, because a transfer size is a real fact about a host and the
+    point is to stop the two being one number.
+    """
+    if not encoding or encoding == "identity":
+        return body, None
+    try:
+        if encoding in ("gzip", "x-gzip"):
+            import gzip
+            return gzip.decompress(body), encoding
+        if encoding == "deflate":
+            import zlib
+            try:
+                return zlib.decompress(body), encoding
+            except zlib.error:
+                return zlib.decompress(body, -zlib.MAX_WBITS), encoding
+        # **`br` is not decoded here, and it is named rather than ignored.**
+        # There is no brotli in the standard library and this plugin installs
+        # nothing — the repository's own dependency guard caught the import
+        # that tried. A caller gets the bytes with the encoding that defeated
+        # us attached, which is the honest answer: *undecodable is not
+        # unencoded*.
+    except Exception:                                       # noqa: BLE001
+        # **Undecodable is not the same as unencoded.** The record must not
+        # claim a decoded body it does not have; the caller is told which
+        # encoding defeated it.
+        return body, f"{encoding} (not decoded)"
+    return body, f"{encoding} (unknown)"
+
+
 def shown_token():
     """The name to print for our identity — **not the first word of `UA`.**
 
@@ -172,8 +219,10 @@ def main():
     try:
         with urllib.request.urlopen(req, timeout=a.timeout) as r:
             status, body, landed = r.getcode(), r.read(), r.geturl()
+            enc = (r.headers.get("Content-Encoding") or "").strip().lower()
     except urllib.error.HTTPError as e:
         status, body, landed = e.code, e.read(), e.geturl()
+        enc = (e.headers.get("Content-Encoding") or "").strip().lower()
     except (urllib.error.URLError, OSError) as e:
         print(f"ERROR: {a.url}: {e}", file=sys.stderr)
         return EXIT_HTTP
@@ -197,9 +246,13 @@ def main():
     # concluded on the second while being named for the first said so nowhere.
     # A record that keeps only the requested URL cannot answer *which host is
     # this body's* — the question the whole record exists for.
+    wire = len(body)
+    body, undone = decoded(body, enc)
     rec = save(a.out, body, url=a.url, status=status, agent=UA,
                crawl_delay_s=delay,
-               final_url=(landed if landed and landed != a.url else None))
+               final_url=(landed if landed and landed != a.url else None),
+               content_encoding=undone,
+               encoded_bytes=(wire if undone else None))
     print(f"[fetch-body] {a.out} — HTTP {rec['status']}, {rec['bytes']} bytes, "
           f"md5 {rec['md5'][:12]}, as {shown_token()}, "
           f"{rec['fetched_at']}", file=sys.stderr)

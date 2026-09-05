@@ -7864,5 +7864,76 @@ class ACitedMarkdownFileExists(unittest.TestCase):
 
 
 
+class TheRecordDescribesTheDocumentNotTheTransfer(unittest.TestCase):
+    """`apec.fr` answers gzip without being asked: **14 171 bytes on the wire
+    for a 65 551-byte page.** A record taken there describes the transfer.
+
+    Two things follow. A `grep` over such a body returns **no match and no
+    error** — a negative manufactured by an encoding, and one was published as
+    *"apec serves no total"* before it was caught. And an md5 taken there
+    compares transfers: **two identical responses compressed differently give
+    different `bytes` and different `md5` for the same document**, a third road
+    to the false *"the file changed"* after a stripped trailing newline and a
+    render stamp.
+
+    Audited before fixing: **0 of 238 bodies already saved by this tool carry a
+    compression signature**, because it sends no `Accept-Encoding` and most
+    hosts honour that. Checked, not assumed — the redirect measurement and the
+    28-identical list rest on those bodies.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def test_a_gzip_body_is_decoded_and_the_encoding_is_named(self):
+        import gzip
+        m = self._tool()
+        raw = b"User-agent: *\nAllow: /\n" * 40
+        body, enc = m.decoded(gzip.compress(raw), "gzip")
+        self.assertEqual(body, raw)
+        self.assertEqual(enc, "gzip")
+
+    def test_an_unencoded_body_names_no_encoding(self):
+        """**The failing direction.** A field filled on every body would say
+        `identity` everywhere and stop distinguishing the two cases, which is
+        the whole point of recording it."""
+        m = self._tool()
+        for header in ("", None, "identity"):
+            with self.subTest(header=header):
+                body, enc = m.decoded(b"plain\n", header)
+                self.assertEqual(body, b"plain\n")
+                self.assertIsNone(enc)
+
+    def test_an_undecodable_body_is_not_claimed_as_decoded(self):
+        """**Undecodable is not unencoded.** Returning the bytes with `None`
+        would record compressed bytes as a document, which is the defect."""
+        m = self._tool()
+        body, enc = m.decoded(b"not gzip at all", "gzip")
+        self.assertEqual(body, b"not gzip at all")
+        self.assertIsNotNone(enc)
+        self.assertIn("not decoded", enc)
+
+    def test_the_tool_records_both_sizes(self):
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        self.assertIn("content_encoding=", src)
+        self.assertIn("encoded_bytes=", src,
+                      "the wire size is dropped, so a transfer size and a "
+                      "document size become one number again")
+        i = src.index("encoded_bytes=")
+        self.assertIn("if undone else None", src[i:i + 80],
+                      "the wire size is recorded even when nothing was "
+                      "decoded, which makes it indistinguishable from the "
+                      "document size")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

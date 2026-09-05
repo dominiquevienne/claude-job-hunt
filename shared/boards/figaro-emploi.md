@@ -4,6 +4,7 @@
 
 <!-- hosts: emploi.lefigaro.fr -->
 <!-- countries: FR -->
+<!-- witness: none possible — the host answers **403 on its own `robots.txt`** as of 2026-09-05, so the 244 815 figure was taken when it replied and is not reproducible today; that is a fact about the number's future, not a defect of this card -->
 **Re-tested 2026-09-02: the constraint holds.** `emploi.lefigaro.fr/robots.txt` still answers **HTTP 403** with 4 579 bytes of `text/html` to a scripted request.
 
 A large French generalist board — **244 815 ads in its own sitemap** — run by
