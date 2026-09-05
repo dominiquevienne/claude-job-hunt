@@ -34,7 +34,17 @@ name: release
 
 on:
   schedule:
-    - cron: "0 10,22 * * *"
+    # **`:17`, pas `:00`, et ce n'est pas une préférence.** Le premier tir
+    # planifié — 22:00 UTC le 04.09.2026 — a été dépêché par GitHub à **23:49**,
+    # une heure quarante-neuf plus tard. Le job lui-même a duré **sept
+    # secondes** : le retard est entièrement dans la mise en file. Les créneaux
+    # à l'heure pile sont les plus contendus, et minuit UTC est le pire.
+    # `CLAUDE.md` prescrit depuis des jours de décaler les crons de `:00` et
+    # `:30` — la règle avait été écrite pour les crons de session, et sa raison
+    # est la contention, qui ne distingue pas quel ordonnanceur on emploie.
+    # Elle a été appliquée à la classe rencontrée et pas à l'espèce.
+    # **Correctif de conformité, sur une cause établie et non devinée.**
+    - cron: "17 10,22 * * *"
   workflow_dispatch:
     inputs:
       allow_red_ci:
