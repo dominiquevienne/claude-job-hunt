@@ -6,6 +6,39 @@
 <!-- script: hiringcafe.py -->
 <!-- robots: suspended -->
 <!-- countries: * -->
+
+## Route 2 of #102 is measured, and it is closed
+
+**The issue asked whether there is an open door beside the forced one** — the
+rules permit `/jobs`, `/recently-posted-jobs` and declare six sitemaps, and
+that was to be established by measurement rather than supposition.
+
+Measured **2026-09-05 10:45 UTC**, under `Claude-User`, collection having been
+resumed:
+
+```
+sitemap.xml · jobs-sitemap.xml · job-search-sitemap.xml
+job-posting-sitemap.xml · priority-jobs-sitemap.xml · vip-jobs-sitemap.xml
+    all six      HTTP 403, 25 bytes, "Your request was blocked."
+/jobs · /recently-posted-jobs · /job/<id> · /
+    all four     HTTP 403, 25 bytes, identical body
+```
+
+**There is no open door.** The rules permit those paths and the infrastructure
+refuses every one of them.
+
+**And the body is a fingerprint we already hold**: md5 `9ccabba20b9f`, byte-for
+-byte identical to `kariera.mk` (North Macedonia), `sptojobslink.com` (South
+Pacific), `northcyprus.cv` (Eastern Mediterranean) and `jobs.af` (Afghanistan).
+**Five hosts, five regions, one 25-byte body served with HTTP 200 or 403.** The
+operator is not named here — an identical artefact does not establish a common
+actor, which is the distinction the managed-block family cost us.
+
+**So `hiringcafe.com` is the second known specimen of *rules open,
+infrastructure closed*, after `tala-com.com`** — and `identity()` classifies it
+`http`, because it decides on the rules and not on what the host does next.
+That gap is real and is recorded rather than patched here.
+
 A **meta-board**: HiringCafe crawls employer career pages across some forty ATS
 platforms and republishes them under one search. Worldwide — every country
 tested returned local ads (see *Coverage*, below).
