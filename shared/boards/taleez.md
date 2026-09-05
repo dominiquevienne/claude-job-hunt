@@ -5,6 +5,7 @@
 <!-- hosts: taleez.com -->
 <!-- script: taleez.py -->
 <!-- countries: * -->
+<!-- witness: a second reading of the same sitemap — 14 020 `/apply/` slugs on 2026-09-05 against the 14 221 this card publishes from 2026-09-02: **-201 in three days, -1.4 %**, the direction a board of expiring ads takes -->
 ## The directory this file said did not exist
 
 **Corrected 2026-09-02.** This file said there was no tenant directory and

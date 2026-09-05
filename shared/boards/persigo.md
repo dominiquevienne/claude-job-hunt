@@ -5,6 +5,7 @@
 <!-- hosts: www.persigo.ch -->
 <!-- script: persigo.py -->
 <!-- countries: CH -->
+<!-- witness: three readings, not two — 890 then 887 on 2026-09-02, 888 on 2026-09-05. **The +1 is edge noise, not growth**: a spread of three across three readings, two of them minutes apart, and publishing a direction from it would be reading a trend in the width of the measurement -->
 A Swiss staffing **agency** board, like `michaelpage.md` and `fachkraft.md`:
 `hiringOrganization` is *Persigo AG* on every ad and **the client employer is
 never named**.
