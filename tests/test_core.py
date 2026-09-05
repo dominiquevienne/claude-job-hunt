@@ -7216,11 +7216,16 @@ class TheModuleNamesTheDirectivesItDoesNotActOn(unittest.TestCase):
     Whether to obey any of these is the owner's call and is not decided here.
     """
 
-    def test_a_declared_sitemap_is_named_as_unread(self):
+    def test_a_directive_we_do_not_act_on_is_named(self):
+        """**`sitemap` was this test's example and stopped being one the same
+        day**: it is parsed and exposed now, so it left the ignored list and
+        the assertion moved with it. `host` and `clean-param` are still
+        unread — 3 and 1 of the 187 bodies — and the `clean-param` sits in a
+        group that names this project."""
         self.assertEqual(
             _robots.ignored_for("User-agent: *\nDisallow:\n"
-                                "Sitemap: https://h.example/s.xml\n"),
-            ["sitemap"])
+                                "Host: h.example\nClean-param: sid\n"),
+            ["clean-param", "host"])
 
     def test_nothing_ignorable_reports_nothing(self):
         """**The failing direction.** A function returning a fixed list would
@@ -7377,6 +7382,78 @@ class TheRateAMeasurementWasTakenAtIsPartOfItsProvenance(unittest.TestCase):
         self.assertIn("crawl_delay_s=delay", src,
                       "the tool computes a delay, waits for it, and does not "
                       "record it — which is the defect this class exists for")
+
+
+
+class ADeclaredSitemapIsReadRatherThanGuessed(unittest.TestCase):
+    """**82 of 187 rules bodies declare a sitemap and not one was read.**
+
+    Measured 2026-09-05 across three sessions, no network: 43.9 %. Meanwhile
+    composing a URL is forbidden, so a session wanting a sitemap could try
+    `/sitemap.xml` or do nothing — **while the host was saying where it is.**
+
+    `merojob.com` declares its sitemaps on `sg.merojob.com`, and a path like
+    `sitemap-job_post-1.xml.gz` is covered by no verdict taken at the root.
+    That is the class the declaration resolves, and it is why the URLs come
+    back **as written**.
+    """
+
+    def test_a_declaration_is_returned(self):
+        self.assertEqual(
+            _robots.sitemaps_for("User-agent: *\nDisallow:\n"
+                                 "Sitemap: https://h.example/s.xml\n"),
+            ["https://h.example/s.xml"])
+
+    def test_it_is_not_filed_under_the_preceding_record(self):
+        """**`Sitemap` is not a group member** (RFC 9309 §2.2.1). Filing it
+        under whichever `User-agent` happens to precede it would invent an
+        addressee the host never named — and the record before it here refuses
+        us outright, which would have suppressed the declaration entirely."""
+        self.assertEqual(
+            _robots.sitemaps_for("User-agent: ClaudeBot\nDisallow: /\n"
+                                 "Sitemap: https://h.example/s.xml\n"),
+            ["https://h.example/s.xml"])
+
+    def test_another_host_survives_verbatim(self):
+        """**The useful case, not the edge case.** Rewriting these to the host
+        whose `robots.txt` was read erases exactly the information worth
+        having."""
+        u = "https://sg.merojob.com/sitemap-job_post-1.xml.gz"
+        self.assertEqual(_robots.sitemaps_for(f"Sitemap: {u}\n"), [u])
+
+    def test_a_body_that_declares_none_returns_none(self):
+        """**The failing direction.** A function returning a fixed list, or
+        one composing `/sitemap.xml` when it finds nothing, would pass every
+        case above — and composing a URL is what this exists to stop."""
+        for body in ("User-agent: *\nDisallow: /\n",
+                     "# Sitemap: https://h.example/s.xml\n",
+                     ""):
+            with self.subTest(body=body):
+                self.assertEqual(_robots.sitemaps_for(body), [])
+
+    def test_duplicates_collapse_and_order_is_the_file_order(self):
+        self.assertEqual(
+            _robots.sitemaps_for("Sitemap: https://h/b.xml\n"
+                                 "Sitemap: https://h/a.xml\n"
+                                 "Sitemap: https://h/b.xml\n"),
+            ["https://h/b.xml", "https://h/a.xml"])
+
+    def test_reading_a_declaration_is_not_permission(self):
+        """The module must not fetch what it just read. **A declaration on a
+        host the guard has never seen is the whole point**, so the guard call
+        cannot be skipped on the strength of having found the URL."""
+        import inspect
+        src = inspect.getsource(_robots.sitemaps_for)
+        self.assertNotIn("urlopen", src)
+        self.assertIn("authorises nothing", src,
+                      "the docstring no longer says that reading a "
+                      "declaration grants nothing — which is the one thing a "
+                      "caller may get wrong here")
+
+    def test_the_directive_is_no_longer_reported_as_unread(self):
+        self.assertNotIn(
+            "sitemap",
+            _robots.ignored_for("User-agent: *\nSitemap: https://h/s.xml\n"))
 
 
 

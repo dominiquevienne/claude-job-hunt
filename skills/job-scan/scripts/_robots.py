@@ -560,7 +560,7 @@ def verdict(host, agents=None):
 
     out = {"host": final, "requested_host": host, "sweep": True,
            "reason": None, "content_signal": None, "crawl_delay": None,
-           "ignored": [], "state": got["state"],
+           "ignored": [], "sitemaps": [], "state": got["state"],
            "attempts": got.get("attempts"), "certain": True,
            "status": got.get("status"), "bytes": got.get("bytes")}
     if final != host:
@@ -692,6 +692,7 @@ def verdict(host, agents=None):
     # towards permitted on the one kind of file that addresses us by name.
     token, dis, allow, matched = group_for(body, agents)
     out["crawl_delay"] = delay_for(body, agents)
+    out["sitemaps"] = sitemaps_for(body)
     out["ignored"] = ignored_for(body)
     # **An empty `Disallow:` is not a refused path — it is how a file says
     # *nothing is closed*.** `_match_len` has known that since #101, and a
@@ -952,7 +953,8 @@ def _fetch_note(token):
 # parsed returns `None` for ever, which reads exactly like a host that asked
 # for nothing.** Measured 2026-09-05 on 187 rules bodies held across three
 # sessions: `sitemap` in 82 (43.9 %), `host` in 3, `clean-param` in 1.
-_ACTED_ON = ("user-agent", "disallow", "allow", "crawl-delay")
+_ACTED_ON = ("user-agent", "disallow", "allow", "crawl-delay",
+             "sitemap")
 
 
 def ignored_for(body):
@@ -969,6 +971,47 @@ def ignored_for(body):
     present = {m.group(1).lower() for m in re.finditer(
         r"(?im)^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:", body or "")}
     return sorted(present - set(_ACTED_ON) - {"content-signal"})
+
+
+def sitemaps_for(body):
+    """The sitemaps a host declares, **as written**, in file order.
+
+    **`Sitemap` is not a group member** (RFC 9309 §2.2.1): it belongs to no
+    `User-agent` record and applies to every client. So it is read straight
+    from the file and never filed under a token — putting it under the record
+    that happens to precede it would invent an addressee the host did not name.
+
+    **The URLs come back exactly as the host wrote them, host included.** A
+    declaration may point at another host and *that is the useful case*:
+    `merojob.com` declares its sitemaps on `sg.merojob.com`, and a path like
+    `sitemap-job_post-1.xml.gz` is covered by no verdict taken at the root.
+    Rewriting these to the host whose `robots.txt` was read would erase exactly
+    the information worth having.
+
+    **Reading a declaration authorises nothing.** The guard is still taken on
+    the exact URL, host included, before any fetch — `allowed(host, path)` on
+    what this returns, in a separate turn from the retrieval. This function
+    makes no request and must not be read as permission.
+
+    Measured 2026-09-05 on 187 rules bodies held across three sessions: **82
+    declare at least one sitemap, 43.9 %**, and until today not one of those
+    declarations was read. A session wanting a sitemap was reduced to trying
+    `/sitemap.xml` or doing nothing, while the host was saying where it is.
+    """
+    out, seen = [], set()
+    for line in (body or "").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        k, _, v = line.partition(":")
+        if k.strip().lower() != "sitemap":
+            continue
+        v = v.strip()
+        if not v or v in seen:
+            continue
+        seen.add(v)
+        out.append(v)
+    return out
 
 
 def delay_for(body, agents=OUR_AGENTS):

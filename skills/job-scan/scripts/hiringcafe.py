@@ -79,7 +79,15 @@ class Throttled(Exception):
     """A 403/429/5xx that survived the backoff. Transient, not broken."""
 
 
-def get(url, attempts=4, first_wait=20.0):
+# **60 seconds, and the number is a cost ceiling rather than a measured
+# remedy.** It was four attempts from 20s doubling — 140s per call. Nothing
+# measured justifies any particular delay: on 2026-09-03 waiting preceded 298
+# successes out of 524, and nobody recorded how long the throttle took to
+# ease; on 2026-09-05 nine permitted paths refused constantly and three
+# backed-off attempts added nothing. **So the retry is kept, because one day's
+# refusal does not erase the other day's success, and it is bounded, because
+# no measurement pays for the extra eighty seconds.**
+def get(url, attempts=3, first_wait=20.0):
     """Fetch with a timed backoff.
 
     hiring.cafe answers 403 intermittently and the refusal rate rises with the
@@ -99,10 +107,22 @@ def get(url, attempts=4, first_wait=20.0):
                 raise
             if attempt == attempts:
                 raise Throttled(f"HTTP {e.code} after {attempts} attempts")
+            # **A claim about a site is dated or it is not made.** This line
+            # read *"this site throttles by pages requested; waiting works
+            # where retrying does not"* in the present tense. That was
+            # measured on 2026-09-03, when 298 of 524 requests succeeded. On
+            # 2026-09-05 the refusal is constant: six requests across the six
+            # declared sitemaps and three real `/job/` ids returned HTTP 403
+            # with the same 25-byte body, and three backed-off attempts here
+            # added nothing but 140 seconds. **Nothing in the response
+            # distinguishes a deployment from an intermittence**, so the retry
+            # is kept and shortened rather than removed.
             print(f"[hiringcafe] HTTP {e.code} — waiting {wait:.0f}s "
-                  f"(attempt {attempt} of {attempts}). This site throttles by "
-                  f"pages requested; waiting works where retrying does not.",
-                  file=sys.stderr)
+                  f"(attempt {attempt} of {attempts}). **Waiting worked on "
+                  f"2026-09-03 and did not on 2026-09-05**, where the refusal "
+                  f"was constant across nine permitted paths. If this run also "
+                  f"ends refused, the host is closed to us today rather than "
+                  f"throttling.", file=sys.stderr)
             time.sleep(wait)
             wait *= 2
         except urllib.error.URLError as e:
