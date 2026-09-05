@@ -271,7 +271,9 @@ def _fetch(host):
         # **Only an unknown is worth asking again.** `absent`, `refused` and
         # `unreadable` are answers; repeating a question a host has already
         # answered is not diligence, it is load.
-        if got["state"] != "unreachable" or attempt == len(_TIMEOUTS):
+        if (got["state"] != "unreachable"
+                or not got.get("transient", True)
+                or attempt == len(_TIMEOUTS)):
             return got
         # Spaced, and jittered so a sweep of many hosts does not retry in
         # lockstep. A slow host used to be a permissive host (#118); it is now
@@ -413,7 +415,18 @@ def _fetch_once(url, host, timeout):
             return {"state": "refused",
                     "why": f"HTTP {e.code} — the host refuses to serve its "
                            f"rules file" + _storage_note(e)}
-        return {"state": "unreachable", "why": f"HTTP {e.code}"}
+        # **A 4xx is an answer; a 5xx may be an incident.** The retry is not
+        # unconditional — it fires only on `unreachable` — but every status
+        # outside the six named above landed there, so a host answering 400
+        # was asked the same question three times. It had already replied.
+        # Retrying a definitive answer multiplies by the number of
+        # indeterminate hosts and tells us nothing new.
+        #
+        # **The verdict does not change**: a 400 is still `unreachable`, still
+        # an unknown, and an unknown is still not probed. Only the number of
+        # times we ask changes.
+        return {"state": "unreachable", "why": f"HTTP {e.code}",
+                "transient": e.code >= 500 or e.code == 408}
     except (urllib.error.URLError, OSError) as e:
         return {"state": "unreachable", "why": str(e)}
 
@@ -498,6 +511,58 @@ def siblings(host):
     # bytes: two files can differ in a comment and agree on everything.
     out["sweep_disagrees"] = len(set(out["sweep"].values())) > 1
     return out
+
+
+
+class Partial(dict):
+    """A verdict-derived mapping that **refuses to be silent about what it
+    does not carry**.
+
+    `allowed()` returns a subset of what `verdict()` builds. Reading a field it
+    dropped used to give `None`, and **a `.get()` on a key never carried is
+    indiscernible from a key carried whose value is legitimately `None`.**
+
+    That cost twice in one day. `crawl_delay` was missing, so
+    `allowed(...).get("crawl_delay")` said *this host asked for nothing* about
+    a host asking for ten seconds. Then `group_conflict` was found missing one
+    key further along — and that one is worse, because it reports **whether the
+    verdict itself is reliable**: a caller saw a clean boolean and never
+    learned that two records contradict each other about us.
+
+    **Filling the list case by case repairs instances and leaves the form.**
+    The next field added to `verdict()` and forgotten here would fail exactly
+    the same way, in silence, in the direction that costs — and a hand-kept
+    list is precisely what this defect has already walked through once.
+
+    So absence is loud. A key this mapping knows `verdict()` builds, and does
+    not carry, raises on both `[...]` and `.get(...)`. A key nobody knows stays
+    an ordinary miss: `.get()` returns its default, because inventing an error
+    for an unknown name would break every caller probing for optional keys.
+    """
+
+    __slots__ = ("_known",)
+
+    def __init__(self, *a, known=(), **kw):
+        super().__init__(*a, **kw)
+        self._known = frozenset(known)
+
+    def _complain(self, key):
+        return KeyError(
+            f"{key!r} is built by `verdict()` and not carried by `allowed()`. "
+            f"**This is not `None` — it is a field nobody passed on.** Read it "
+            f"from `verdict(host)`, or add it to `CARRY` if a caller needs it "
+            f"at the gate. *Returning `None` here is how a host asking for ten "
+            f"seconds came back as a host asking for nothing.*")
+
+    def __missing__(self, key):
+        if key in self._known:
+            raise self._complain(key)
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        if key not in self and key in self._known:
+            raise self._complain(key)
+        return super().get(key, default)
 
 
 def verdict(host, agents=None):
@@ -1220,12 +1285,27 @@ def allowed(host, path, agents=None):
     #
     # Only what a caller cannot compute from what it already has: the rate, the
     # declarations, and what was read but not acted on.
-    CARRY = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state")
+    # **What a caller needs at the gate — and `need` is the word, because the
+    # first version of this comment said `what a caller cannot recompute` and
+    # that is not what it selects.** None of the seven left behind is
+    # computable from what `allowed()` returns either: `status`, `attempts`,
+    # `bytes`, `disallow`, `allow`, `groups` and `group_conflict` would all
+    # take a second request. *A rule that does not select what it claims to
+    # select will not protect the next field added* — the same family as a
+    # guard that covers the wording of a fix instead of the behaviour.
+    #
+    # These five are what a caller decides with at the moment it decides: the
+    # rate to keep, the declarations to follow, what was read and not acted
+    # on, and how the file was obtained. The rest is evidence about the
+    # verdict, and belongs to whoever is auditing the verdict.
+    CARRY = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state",
+             "group_conflict")
 
     def _carry(result):
+        out = Partial(result, known=set(v))
         for k in CARRY:
-            result.setdefault(k, v.get(k))
-        return result
+            out.setdefault(k, v.get(k))
+        return out
 
     def _named(result):
         """Prefix the host these rules actually came from.

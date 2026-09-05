@@ -8517,7 +8517,8 @@ class TheTwoHalvesOfTheGuardAgreeOnEveryField(unittest.TestCase):
     the same hole one function away.
     """
 
-    CARRIED = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state")
+    CARRIED = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state",
+               "group_conflict")
 
     def _both(self, body):
         _robots._CACHE.clear()
@@ -8849,6 +8850,209 @@ class EveryPacedAdapterActuallyWaits(unittest.TestCase):
                     f"exactly like wired")
                 self.assertEqual(set(waits), {host},
                                  f"{mod} paced the wrong host: {set(waits)}")
+
+
+
+class AFieldNobodyCarriedIsNotNone(unittest.TestCase):
+    """**A `.get()` on a key never carried is indiscernible from a key carried
+    whose value is legitimately `None`.**
+
+    That cost twice in one day, one key apart. `crawl_delay` was missing, so
+    the gate reported *this host asked for nothing* about a host asking for
+    ten seconds. Then `group_conflict` was found missing one key further along
+    — **and that one says whether the verdict itself is reliable**: a caller
+    saw a clean boolean and never learned that two records contradict each
+    other about us.
+
+    *Filling the list case by case repairs instances and leaves the form.* The
+    next field added to `verdict()` and forgotten would fail identically, in
+    silence, in the direction that costs — and a hand-kept list is exactly
+    what this defect has already walked through once.
+
+    So the absence is loud, and this class asserts the loudness rather than
+    the list.
+    """
+
+    def _both(self):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda *a, **k: R(
+            b"User-agent: *\nAllow: /\nCrawl-delay: 3\n")
+        try:
+            return (_robots.verdict("h.example"),
+                    _robots.allowed("h.example", "/jobs"))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_dropped_field_raises_instead_of_answering_none(self):
+        v, a = self._both()
+        dropped = sorted(set(v) - set(a))
+        self.assertGreaterEqual(
+            len(dropped), 3,
+            f"only {len(dropped)} fields are dropped; if `allowed()` now "
+            f"carries everything this class guards nothing")
+        for k in dropped:
+            with self.subTest(field=k):
+                with self.assertRaises(KeyError):
+                    a.get(k)
+                with self.assertRaises(KeyError):
+                    a[k]
+
+    def test_a_carried_field_answers_normally(self):
+        """**The failing direction.** A mapping that raised on everything
+        would pass the case above and break every ordinary read."""
+        _v, a = self._both()
+        self.assertEqual(a.get("crawl_delay"), 3.0)
+        self.assertEqual(a.get("sitemaps"), [])
+        self.assertIs(a.get("allowed"), True)
+
+    def test_a_carried_field_whose_value_is_none_stays_none(self):
+        """The whole point: `None` must remain sayable. A field carried and
+        genuinely empty is a fact, and it must not raise."""
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda *a, **k: R(
+            b"User-agent: *\nAllow: /\n")
+        try:
+            a = _robots.allowed("h.example", "/jobs")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertIsNone(a.get("crawl_delay"),
+                          "a host that set no rate must still be able to say "
+                          "so — raising here would make silence unsayable")
+
+    def test_an_unknown_name_is_an_ordinary_miss(self):
+        """A key nobody builds is not this mapping's business. Inventing an
+        error for it would break every caller probing for an optional key."""
+        _v, a = self._both()
+        self.assertEqual(a.get("no_such_field", "default"), "default")
+        self.assertIsNone(a.get("no_such_field"))
+
+
+
+class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
+    """`bin/fetch-body.py` made **three attempts** on the rules file of a host
+    answering **400**. Retrying a rules file is defensible; retrying a
+    definitive answer is not.
+
+    The retry was never unconditional — it fires only on `unreachable` — but
+    **every status outside the six named ones landed there**, so 400, 405 and
+    418 were all asked three times. *A 4xx is an answer; a 5xx may be an
+    incident.* Multiplied by the number of indeterminate hosts, that is two
+    extra requests each to hosts that already replied.
+
+    **The verdict does not change.** A 400 is still `unreachable`, still an
+    unknown, and an unknown is still not probed — `CLAUDE.md`. Only how many
+    times we ask changes.
+    """
+
+    def _attempts(self, code):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        n = []
+
+        def fail(*a, **k):
+            n.append(1)
+            raise _robots.urllib.error.HTTPError(
+                "https://h.example/robots.txt", code, "x", {}, io.BytesIO(b""))
+
+        _robots.urllib.request.urlopen = fail
+        _robots._BACKOFF = (0, 0)
+        try:
+            v = _robots.verdict("h.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        return len(n), v
+
+    def test_a_definitive_answer_is_asked_once(self):
+        for code in (400, 405, 418, 451, 404, 403):
+            with self.subTest(code=code):
+                n, _v = self._attempts(code)
+                self.assertEqual(n, 1, f"HTTP {code} was asked {n} times; the "
+                                       f"host answered the first time")
+
+    def test_a_possible_incident_is_asked_again(self):
+        """**The failing direction.** A retry removed everywhere would pass the
+        case above and give up on a host that was merely restarting."""
+        for code in (500, 502, 503, 408):
+            with self.subTest(code=code):
+                n, _v = self._attempts(code)
+                self.assertEqual(n, 3, f"HTTP {code} was asked once; a 5xx may "
+                                       f"be an incident and asking again is "
+                                       f"what the back-off is for")
+
+    def test_a_network_failure_is_still_retried(self):
+        """No status at all is the case the retry was written for."""
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        n = []
+
+        def fail(*a, **k):
+            n.append(1)
+            raise _robots.urllib.error.URLError("no route")
+
+        _robots.urllib.request.urlopen = fail
+        _robots._BACKOFF = (0, 0)
+        try:
+            _robots.verdict("h.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertEqual(len(n), 3)
+
+    def test_the_verdict_is_unchanged_by_asking_less(self):
+        """Asking fewer times must not turn an unknown into anything else."""
+        _n, v = self._attempts(400)
+        self.assertEqual(v["state"], "unreachable")
+        self.assertIsNone(v["sweep"] if v["sweep"] is not True else None,
+                          "a 400 became a permission")
 
 
 
