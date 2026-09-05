@@ -7790,14 +7790,44 @@ class ACitedMarkdownFileExists(unittest.TestCase):
     have gone green on it.
     """
 
-    # **Names this plugin writes into the user's workspace**, which exist at
-    # run time and never in the repository. Taken from `shared/workspace.md`,
-    # not from what happened to be cited: a list assembled from the citations
-    # would excuse whatever it found.
-    WORKSPACE = frozenset({
-        "job-ad.md", "resume.md", "cover-letter.md", "candidate.md",
-        "repos.md", "config.yml",
+    # **Scope, written down rather than implied by a walk.**
+    #
+    # Only the bodies of `shared/boards/*.md` and `shared/*.md` are checked.
+    # That is a decision, not an accident of which directory the loop happens
+    # to open, and widening it changes the semantics — so the three species a
+    # cited `.md` can belong to are named here:
+    #
+    #   1. **a repository file** — must resolve, and four did not;
+    #   2. **a run-time file** — written into the user's workspace and never
+    #      present here: `job-ad.md`, `job-pipeline.md`, `commute.md`;
+    #   3. **a conditional reference** — where **the absence of the file is
+    #      the documented state**. `setup.md` says *"check first whether the
+    #      adapter exists — `shared/boards/ams.md`"* and then tables both
+    #      outcomes. **Making that resolve would mean creating the card to
+    #      satisfy the guard**, which inverts what a guard is for.
+    #
+    # Species 2 is **derived from `shared/workspace.md`'s own table**, not
+    # copied. It was copied first, from one row of that table, and came out
+    # six names where the table holds more — a list read at one line instead
+    # of read. Deriving it cannot drift and cannot be padded by hand.
+    #
+    # Species 3 is keyed by **(citing file, cited name)**, so an exemption
+    # cannot spread to other files, and the pairs are capped and each asserted
+    # still to be needed: *a list of exceptions that grows becomes the guard.*
+    CONDITIONAL = frozenset({
+        ("setup.md", "shared/boards/ams.md"),
     })
+
+    def _workspace_names(self):
+        """Every file `shared/workspace.md` says lives in the workspace."""
+        src = (self._repo() / "shared" / "workspace.md").read_text(
+            encoding="utf-8")
+        names = set()
+        for row in re.findall(r"^\|\s*`([^`]+)`\s*\|", src, re.M):
+            names.update(re.findall(r"[A-Za-z0-9._-]+\.(?:md|yml)", row))
+        for row in re.findall(r"^\|[^|]*\|[^|]*\|([^|]*)\|", src, re.M):
+            names.update(re.findall(r"`([A-Za-z0-9._-]+\.(?:md|yml))`", row))
+        return frozenset(names)
 
     def _repo(self):
         return pathlib.Path(
@@ -7808,7 +7838,8 @@ class ACitedMarkdownFileExists(unittest.TestCase):
         bare = re.compile(r"`([A-Za-z0-9][A-Za-z0-9._-]*\.md)`")
         pathy = re.compile(r"`((?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+\.md)`")
         out = []
-        for card in sorted((self._repo() / "shared" / "boards").glob("*.md")):
+        roots = [self._repo() / "shared" / "boards", self._repo() / "shared"]
+        for card in sorted(p for r in roots for p in r.glob("*.md")):
             src = card.read_text(encoding="utf-8")
             for m in bare.finditer(src):
                 out.append((card.name, m.group(1), False))
@@ -7820,7 +7851,7 @@ class ACitedMarkdownFileExists(unittest.TestCase):
         repo = self._repo()
         if has_path:
             return (repo / name).exists()
-        if name in self.WORKSPACE:
+        if name in self._workspace_names():
             return True
         return any((repo / d / name).exists()
                    for d in ("shared/boards", "shared", "."))
@@ -7840,7 +7871,8 @@ class ACitedMarkdownFileExists(unittest.TestCase):
 
     def test_every_cited_markdown_file_resolves(self):
         dead = sorted({(c, n) for c, n, p in self._cited()
-                       if not self._resolves(n, p)})
+                       if not self._resolves(n, p)
+                       and (c, n) not in self.CONDITIONAL})
         self.assertEqual(
             dead, [], "these cards cite a file that does not exist: "
                       + "; ".join(f"{c} -> {n}" for c, n in dead))
@@ -7854,14 +7886,42 @@ class ACitedMarkdownFileExists(unittest.TestCase):
                 self.assertFalse(self._resolves(name, False))
         self.assertFalse(self._resolves("shared/nowhere/x.md", True))
 
-    def test_the_workspace_names_are_not_a_blanket(self):
-        """The allowlist excuses six names taken from `shared/workspace.md`,
-        and must excuse nothing else — otherwise it becomes the place a dead
-        citation goes to hide."""
-        self.assertLessEqual(len(self.WORKSPACE), 8)
-        for n in self.WORKSPACE:
+    def test_the_workspace_names_are_derived_and_not_a_blanket(self):
+        """**Derived from the table, not copied out of it.** Copying gave six
+        names from one row where the table holds more, and the three that were
+        missing — `job-pipeline.md`, `commute.md`, `employers.md` — are cited
+        by four files each."""
+        names = self._workspace_names()
+        self.assertGreaterEqual(len(names), 8, sorted(names))
+        self.assertLessEqual(len(names), 20,
+                             "the derivation is sweeping up more than the "
+                             "workspace table's own entries")
+        for n in ("job-ad.md", "job-pipeline.md", "commute.md",
+                  "employers.md"):
             with self.subTest(name=n):
-                self.assertTrue(self._resolves(n, False))
+                self.assertIn(n, names)
+
+    def test_a_conditional_reference_is_exempt_by_pair_and_capped(self):
+        """**The absence is the documented state.** `setup.md` tables both
+        outcomes of *does this adapter exist*; making the citation resolve
+        would mean creating the card so the guard goes green.
+
+        Keyed by pair, so the exemption cannot spread, and each pair must
+        still be needed — an exemption kept after the file appears is a hole
+        nobody is watching."""
+        self.assertLessEqual(len(self.CONDITIONAL), 4,
+                             "a list of exceptions that grows becomes the "
+                             "guard")
+        for citing, cited in self.CONDITIONAL:
+            with self.subTest(pair=(citing, cited)):
+                self.assertFalse(
+                    self._resolves(cited, "/" in cited),
+                    f"{cited} exists now, so this exemption is stale and is "
+                    f"hiding whatever else points at it")
+                self.assertTrue(
+                    any(c == citing and n == cited
+                        for c, n, _p in self._cited()),
+                    f"{citing} no longer cites {cited}")
 
 
 
