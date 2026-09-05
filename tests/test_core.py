@@ -8054,6 +8054,15 @@ class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
     single file removes the drift by removing the second copy, which removes
     the check with it.
 
+    **WHAT THIS CANNOT SEE, AND IT IS NOT SMALL.** It checks that two
+    declarations *agree*; it can say nothing about whether they are *true*.
+    `job-room.md` and `solique.md` agreed for a whole morning on *24 of 2 800*
+    — and the 2 800 was a count of what one paginated sweep had fetched, not
+    the board. **Agreement is not truth**, and a bilateral declaration
+    propagates an error introduced at writing exactly as faithfully as it
+    prevents one introduced later. *The redundancy defends against drift and
+    against nothing else.*
+
     **Two keys, not one.** `shares-platform:` records a property — the same
     posting UUID on both brands — and carries no date because it does not age.
     `overlap:` records a measurement and carries one. *In a single key the

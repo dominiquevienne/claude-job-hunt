@@ -205,7 +205,7 @@ third time in one day that a count of what we read was published as a count of
 what exists* — after `jobsbotswana` at 367 against 5 123, and `apec`'s file
 named *offres* holding 1 288 search facets.
 
-**No total is published in its place.** A figure exists in a hard-coded string
+**A dated floor is published in its place, because a floor is true and a total would be false: `≥ 16 043 ads, Zurich alone, 2026-09-05`.** No national total is published. A figure exists in a hard-coded string
 inside the script and nowhere in any measurement, and a hard-coded population
 is exactly what this repository distrusts. The measurement that would settle it
 is summing the per-canton match counts the API already returns.
