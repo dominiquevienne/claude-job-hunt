@@ -4,8 +4,8 @@
 
 <!-- hosts: per-country -->
 <!-- script: none -->
-<!-- countries: DZ EG SY YE -->
-<!-- content: indeterminate · rules unreadable on 5 of 5 hosts queried, HTTP 202 with a 0-byte body · 2026-09-05 -->
+<!-- countries: DZ EG PS SY YE -->
+<!-- content: indeterminate · rules unreadable on 6 of 6 hosts queried, HTTP 202 with a 0-byte body · 2026-09-05 -->
 <!-- witness: none — nothing was fetched beyond robots.txt, and nothing could be -->
 
 **No adapter exists and none can be written until this changes.** The state is
@@ -13,14 +13,31 @@
 
 ## The measurement, dated
 
-Five hosts of the same operator, queried 2026-09-05 through `_robots.allowed()`:
+**Six hosts of the same operator**, each with the date it was measured and by
+whom — because two independent readings of this same set both said *five* and
+they were not the same five:
 
-    tanqeeb.com            HTTP 202   0 bytes   state unreachable   sweep None
-    algerie.tanqeeb.com    HTTP 202   0 bytes   state unreachable   sweep None
-    syria.tanqeeb.com      HTTP 202   0 bytes   state unreachable   sweep None
+    tanqeeb.com              2026-09-05   this session      HTTP 202   0 bytes
+    algerie.tanqeeb.com      2026-09-05   this session      HTTP 202   0 bytes
+    syria.tanqeeb.com        2026-09-05   this session      HTTP 202   0 bytes
+    egypt.tanqeeb.com        2026-09-04   issue #155 body   HTTP 202   0 bytes
+    yemen.tanqeeb.com        2026-09-04   issue #155 body   HTTP 202   0 bytes
+    palestine.tanqeeb.com    2026-09-04   issue #155 comment, 21:15   HTTP 202   0 bytes
 
-and, on 2026-09-04, `yemen.tanqeeb.com` and `egypt.tanqeeb.com`, identically.
-`d41d8cd98f00b204e9800998ecf8427e` is the md5 of the empty string.
+`d41d8cd98f00b204e9800998ecf8427e` is the md5 of the empty string, on all six.
+
+**The apex is not a country and adds none**; `countries:` carries the five
+country subdomains.
+
+> **Why the provenance column is here.** The first version of this sheet listed
+> five hosts — four country subdomains and the apex — while the record published
+> on 2026-09-04 listed five country subdomains including `palestine`. **Same
+> cardinal, different members.** No count signalled it, no sum collapsed, and two
+> readers would both have said *five*. It was found by reading the names.
+>
+> The cause is worth naming: **the issue body listed four, and `palestine` was
+> added in a comment.** Reading the body and treating it as the issue is how a
+> measurement that exists goes missing.
 
 The guard's own words, which are the finding:
 
@@ -43,11 +60,11 @@ at all, so a per-country explanation is ruled out at the operator level.
 The Algerian host is the one that produced the fix in #125; it is not the one
 that has the behaviour.
 
-## Why the host list stops at five, and why that is not laziness
+## Why the host list stops at six, and why that is not laziness
 
 The issue asks for **every `tanqeeb` subdomain the repository can name**. It can
-name one — `algerie.tanqeeb.com` — and this sheet adds the four measured beside
-it.
+name one — `algerie.tanqeeb.com` — and this sheet adds the five measured beside
+it, four of them from #155 and its comment, one measured here.
 
 **The obvious way to extend the list is to read the apex and let the operator
 name its own countries.** That is the method that closed a thirty-two-host
@@ -58,7 +75,7 @@ is not probed** — that is the standing rule, and it binds hardest exactly when
 the result would be useful. The alternative, composing `<country>.tanqeeb.com`
 for countries the operator plausibly serves, is inventing hostnames.
 
-**So the list is five, it is short for a reason that is written down, and it is
+**So the list is six, it is short for a reason that is written down, and it is
 not a claim that the operator serves five markets.**
 
 ## What this blocks
