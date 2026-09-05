@@ -5,7 +5,7 @@
 <!-- hosts: taleez.com -->
 <!-- script: taleez.py -->
 <!-- countries: * -->
-<!-- witness: a second reading of the same sitemap — 14 020 `/apply/` slugs on 2026-09-05 against the 14 221 this card publishes from 2026-09-02: **-201 in three days, -1.4 %**, the direction a board of expiring ads takes -->
+<!-- witness: a second reading of the same sitemap — 14 020 `/apply/` slugs on 2026-09-05 against the 14 221 published on 2026-09-02, -201. **The flow this net sits on is unknown, so the -201 cannot be read as a rate**: `publishDate` lives on the advertisement page, this adapter has no date option, and obtaining it would cost 14 020 requests. That cost is the useful figure here — it says which measurement is missing and what it would take -->
 ## The directory this file said did not exist
 
 **Corrected 2026-09-02.** This file said there was no tenant directory and

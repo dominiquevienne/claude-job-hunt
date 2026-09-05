@@ -238,6 +238,14 @@ twelve hours, the interval carried some 19 200 arrivals for a net of +1 741.
 *A ratio is a quotient of two numbers measured the same way at the same
 instant, so the flow that drowns each of them cancels in it.*
 
-*This is the opposite of `bumeran.md`, where eight independent members all rose
-against a nearly still stock, and the opposite of `ihararejobs`, where the URL
-set was identical to the unit.*
+*This is the opposite of `bumeran.md`, where **eight members** all rose against
+a nearly still stock — not *independent* members: they are one operator on one
+platform, and seven of the eight share the sitemap label `bum`, so a single
+index regeneration would move all seven together. **Its strength is the
+agreement of the signs, not the size of any net**: eight non-negative series,
+seven up and one flat, is of the order of 1 in 256 if the nets were symmetric
+noise — an argument of shape, which no single number can offer. The one
+dissociation available is `zonajobs.com.ar`, labelled `zj`, which rises too.*
+
+*And the opposite of `ihararejobs`, where the URL set was identical to the
+unit.*

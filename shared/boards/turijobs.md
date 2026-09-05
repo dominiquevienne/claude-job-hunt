@@ -4,7 +4,7 @@
 <!-- siblings: turijobs.com 2026-09-04 agree -->
 <!-- script: turijobs.py -->
 <!-- countries: ES -->
-<!-- witness: a second reading of `active-offers.xml` — 2 824 ads on 2026-09-05 against the 2 863 this card publishes from 2026-09-02: **-39 in three days, -1.4 %**, and the file is named for active offers so a fall is what it should do -->
+<!-- witness: WEAK. A second reading of `active-offers.xml` gives 2 824 ads on 2026-09-05 against the 2 863 this card publishes from 2026-09-02 — -39, -1.4 %. **But 318 of the 2 824 carry a `lastmod` on or after 2026-09-02, so the net is 12.3 % of the movement it sits on**, and a net an eighth of the gross is compatible with a large range of earlier counts. This corroborates that the file is read the same way twice; it does not corroborate 2 863 -->
 
 **2 863 active ads** in tourism and hospitality — hotels, kitchens, front
 desk, spa, housekeeping. The fourth Spanish adapter here and **the first
