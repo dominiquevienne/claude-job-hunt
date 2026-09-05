@@ -1161,6 +1161,20 @@ class SuiteRuns(unittest.TestCase):
         self.assertEqual(after, [])
 
 
+# **A date, optionally carrying a time.** This pattern required a bare
+# `YYYY-MM-DD` until 2026-09-05, and on that day **two sessions independently
+# wrote a UTC timestamp into it within hours of each other** — `keejob.md` in
+# the morning, three Zambian cards at midday. Two people reaching for the same
+# "wrong" form is evidence about the format, not about them: a timestamp is
+# strictly more information than a date, and the field exists so that a claim
+# carries when it was true.
+#
+# **So the guard widens rather than the cards being forced.** It still refuses
+# a value with no date in it at all, which is the thing it was written to
+# catch. The two directions are tested.
+DATE_OR_INSTANT = r"\d{4}-\d{2}-\d{2}(?:[T ][0-9:]{4,8}\s*(?:Z|UTC)?)?"
+
+
 SCRIPTS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts")
@@ -5710,8 +5724,9 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
             bad.append(f"unknown state {state!r}")
         if not reason:
             bad.append("no method or reason given")
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
-            bad.append(f"{date!r} is not a YYYY-MM-DD date")
+        if not re.fullmatch(DATE_OR_INSTANT, date):
+            bad.append(f"{date!r} is not a date: wants YYYY-MM-DD, optionally "
+                       f"followed by a time")
         # **The date and the unit are part of the value**: a share expires by
         # the growth of its own denominator, so a measurement states a figure.
         if state == "indeterminate" and not re.search(r"\d", reason):
@@ -5790,7 +5805,8 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
                     self.assertTrue(parts[0], "no source given")
                     self.assertRegex(
                         parts[1], r"^\d{4}-\d{2}-\d{2}$",
-                        f"{parts[1]!r} is not a YYYY-MM-DD date")
+                        f"{parts[1]!r} is not a date: wants YYYY-MM-DD, "
+                        f"optionally followed by a time")
         self.assertGreaterEqual(
             found, 2,
             "the README documents fewer than two examples of hosts-source; "
@@ -7181,6 +7197,137 @@ class TheToolDoesNotPrintThatItIsABrowser(unittest.TestCase):
             self.assertEqual(m.shown_token(), "Claude-User")
         finally:
             m.UA = real
+
+
+
+class TheModuleNamesTheDirectivesItDoesNotActOn(unittest.TestCase):
+    """`_DIRECTIVE` lists seven names as *what a rules file is made of*, and
+    `_groups()` keeps four of them. **That gap was silent**: a host declaring
+    `Sitemap:` produced the same verdict, with the same fields, as a host
+    declaring nothing.
+
+    Measured 2026-09-05 on **187 rules bodies held across three sessions, no
+    network**: `sitemap` in 82 (43.9 %), `host` in 3, `clean-param` in 1, and
+    `crawl-delay` in 14 of which 3 sit in a group naming this project.
+
+    **The point is the separation, not the obedience.** *A directive we ignore
+    for want of parsing it* and *a directive we see and choose not to follow*
+    are a defect and a decision, and from outside they read identically.
+    Whether to obey any of these is the owner's call and is not decided here.
+    """
+
+    def test_a_declared_sitemap_is_named_as_unread(self):
+        self.assertEqual(
+            _robots.ignored_for("User-agent: *\nDisallow:\n"
+                                "Sitemap: https://h.example/s.xml\n"),
+            ["sitemap"])
+
+    def test_nothing_ignorable_reports_nothing(self):
+        """**The failing direction.** A function returning a fixed list would
+        pass every positive case above while inventing directives on a file
+        that carries none."""
+        for body in ("User-agent: *\nDisallow: /a\n",
+                     "User-agent: ClaudeBot\nAllow: /\nCrawl-delay: 5\n",
+                     ""):
+            with self.subTest(body=body):
+                self.assertEqual(_robots.ignored_for(body), [])
+
+    def test_what_the_module_acts_on_is_not_reported_as_ignored(self):
+        for d in _robots._ACTED_ON:
+            with self.subTest(directive=d):
+                self.assertNotIn(
+                    d, _robots.ignored_for(f"User-agent: *\n{d}: x\n"),
+                    f"`{d}` is parsed and is being reported as unread")
+
+    def test_content_signal_is_excluded_because_it_is_read_elsewhere(self):
+        self.assertEqual(
+            _robots.ignored_for("User-agent: *\nContent-Signal: ai-train=no\n"),
+            [])
+
+    def test_a_comment_is_not_a_directive(self):
+        """`# Sitemap: …` is a comment. Counting it would report a gap the
+        host never opened — and an invented defect is chased like a real one."""
+        self.assertEqual(
+            _robots.ignored_for("User-agent: *\n# Sitemap: https://x/s.xml\n"),
+            [])
+
+    def test_every_verdict_carries_the_field(self):
+        import inspect
+        self.assertIn('"ignored": []', inspect.getsource(_robots.verdict),
+                      "the field is missing from the verdict dict, so an early "
+                      "return omits it and a caller cannot tell an unparsed "
+                      "directive from a host that wrote none")
+
+
+
+class ADateMayCarryATimeButMustBeADate(unittest.TestCase):
+    """The `content:` and `hosts-source:` guards wanted a bare `YYYY-MM-DD`.
+
+    **On 2026-09-05 two sessions independently wrote a UTC timestamp there
+    within hours** — one card in the morning, three at midday. Two people
+    reaching for the same rejected form is evidence about the format. A
+    timestamp is strictly more information than a date, and the field exists so
+    a claim carries when it was true.
+
+    **Widened, not loosened**, and both directions are asserted: the thing the
+    guard was written to catch — a field with no date in it — still fails.
+    """
+
+    ACCEPTED = ("2026-09-05", "2026-09-05T11:45:51Z", "2026-09-05 10:58 UTC",
+                "2026-09-05T11:48Z", "2026-09-05 10:58")
+    REFUSED = ("2026-09-05 10:58 UTC, and later", "hier", "", "2026-9-5",
+               "05-09-2026", "sometime in September", "2026-09")
+
+    def test_a_date_with_or_without_a_time_is_accepted(self):
+        for v in self.ACCEPTED:
+            with self.subTest(value=v):
+                self.assertRegex(v, f"^{DATE_OR_INSTANT}$")
+
+    def test_what_it_was_written_to_catch_still_fails(self):
+        """**The failing direction.** `.*` would pass every case above."""
+        import re
+        for v in self.REFUSED:
+            with self.subTest(value=v):
+                self.assertIsNone(re.fullmatch(DATE_OR_INSTANT, v),
+                                  f"{v!r} is accepted as a date")
+
+
+
+class ADnsFailureIsTheResolversAnswerNotTheHosts(unittest.TestCase):
+    """Reported by another session on 2026-09-05, from using the tool.
+
+    `skillingpakistan.gov.pk` came back unresolvable and **the message was read
+    as a statement about the host**, which was then recorded as gone — with a
+    dissociation that seemed to prove it, two control hosts resolving and the
+    target not. The host was alive:
+
+        via 1.1.1.1   skillingpakistan.gov.pk   NOERROR   A = 203.124.43.206
+        via 8.8.8.8   skillingpakistan.gov.pk   SERVFAIL
+                      jobs.gov.pk               SERVFAIL   <- not specific
+
+    **The verdict was correct and the sentence invited the wrong reading.** The
+    module inherits the system resolver, so an unresolvable name is a fact
+    about *tool + resolver*. The note is added where the unknown is composed.
+    """
+
+    def test_a_resolution_failure_says_to_check_a_second_resolver(self):
+        for why in ("nodename nor servname provided, or not known",
+                    "Name or service not known",
+                    "Temporary failure in name resolution",
+                    "[Errno 8] getaddrinfo failed",
+                    "SERVFAIL"):
+            with self.subTest(why=why):
+                self.assertIn("second resolver", _robots._resolver_note(why))
+
+    def test_other_failures_get_no_such_note(self):
+        """**The failing direction.** A note appended unconditionally would
+        pass every case above and tell a reader to check DNS after a timeout,
+        a TLS error or a refusal — advice that is wrong three times out of
+        four and looks equally authoritative."""
+        for why in ("timed out", "HTTP 403", "certificate verify failed",
+                    "connection reset by peer", "", None):
+            with self.subTest(why=why):
+                self.assertEqual(_robots._resolver_note(why), "")
 
 
 

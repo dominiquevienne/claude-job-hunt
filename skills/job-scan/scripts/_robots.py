@@ -560,7 +560,7 @@ def verdict(host, agents=None):
 
     out = {"host": final, "requested_host": host, "sweep": True,
            "reason": None, "content_signal": None, "crawl_delay": None,
-           "state": got["state"],
+           "ignored": [], "state": got["state"],
            "attempts": got.get("attempts"), "certain": True,
            "status": got.get("status"), "bytes": got.get("bytes")}
     if final != host:
@@ -644,7 +644,7 @@ def verdict(host, agents=None):
             f"permission and not a refusal.** A host that names this project "
             f"and closes everything to it looks exactly like this from here "
             f"— it did, on `nea.gov.kh`. Retry later, or read the file by "
-            f"hand and record what it says.")
+            f"hand and record what it says." + _resolver_note(got.get("why")))
         # **Deliberately not cached.** Caching a transient failure poisons a
         # whole run with an unknown that a second request would have resolved;
         # the three attempts above have already paid for patience.
@@ -692,6 +692,7 @@ def verdict(host, agents=None):
     # towards permitted on the one kind of file that addresses us by name.
     token, dis, allow, matched = group_for(body, agents)
     out["crawl_delay"] = delay_for(body, agents)
+    out["ignored"] = ignored_for(body)
     # **An empty `Disallow:` is not a refused path — it is how a file says
     # *nothing is closed*.** `_match_len` has known that since #101, and a
     # test pins it; `verdict()` did not, and counted the empty string as a
@@ -882,6 +883,36 @@ def _records_disagree(body, matched):
     return len(seen) > 1
 
 
+# **A name that does not resolve here has not been shown to be gone.** This
+# module inherits the system resolver, so a resolution failure is a fact about
+# *tool + resolver*, not about the host. Reported by another session on
+# 2026-09-05: `skillingpakistan.gov.pk` came back unresolvable, and the reading
+# went to "the host has disappeared" — with a dissociation that seemed to prove
+# it, two control hosts resolving and the target not.
+#
+#     via 1.1.1.1   skillingpakistan.gov.pk   NOERROR   A = 203.124.43.206
+#     via 8.8.8.8   skillingpakistan.gov.pk   SERVFAIL
+#                   jobs.gov.pk               SERVFAIL   <- not specific to it
+#
+# **The host was alive.** The message was accurate and was still read as a
+# statement about the world, so the sentence that was missing is added here
+# rather than left to the reader.
+_RESOLUTION = ("nodename nor servname", "name or service not known",
+               "temporary failure in name resolution", "getaddrinfo",
+               "servfail", "nxdomain")
+
+
+def _resolver_note(why):
+    if not any(k in (why or "").lower() for k in _RESOLUTION):
+        return ""
+    return (" **This one is a DNS failure, and DNS is the resolver's answer, "
+            "not the host's.** Check the name against a second resolver before "
+            "concluding anything about the host — a host that resolves "
+            "elsewhere is reachable and this verdict is about the path here. "
+            "There is deliberately no flag to override it: a name that resolves "
+            "on a second resolver simply runs again.")
+
+
 def _fetch_note(token):
     """Whether the refused group names a token a request from here can carry.
 
@@ -912,6 +943,32 @@ def _fetch_note(token):
             f"the refusal binds us by our restrictive reading, not by the "
             f"editor having named an agent we could arrive as. "
             f"`identity()` says which token the rules leave open.")
+
+
+# **What the parser acts on.** `_DIRECTIVE` above lists what a rules file is
+# made of — seven names — and `_groups()` keeps four of them. That gap was
+# silent: a host declaring `Sitemap:` got the same verdict, with the same
+# fields, as a host declaring nothing, and **a `.get()` on a field never
+# parsed returns `None` for ever, which reads exactly like a host that asked
+# for nothing.** Measured 2026-09-05 on 187 rules bodies held across three
+# sessions: `sitemap` in 82 (43.9 %), `host` in 3, `clean-param` in 1.
+_ACTED_ON = ("user-agent", "disallow", "allow", "crawl-delay")
+
+
+def ignored_for(body):
+    """Directives present in `body` that this module does not act on.
+
+    **Names the gap rather than closing it.** Whether to obey `Clean-param` or
+    to read a declared `Sitemap` is a decision; being unable to see that the
+    host wrote one is a defect. This separates the two, which from outside read
+    identically — *a directive we ignore for want of parsing it* and *a
+    directive we see and choose not to follow* produce the same silence.
+
+    `content-signal` is excluded: it is read, by `verdict()`, elsewhere.
+    """
+    present = {m.group(1).lower() for m in re.finditer(
+        r"(?im)^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:", body or "")}
+    return sorted(present - set(_ACTED_ON) - {"content-signal"})
 
 
 def delay_for(body, agents=OUR_AGENTS):
