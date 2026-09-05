@@ -108,6 +108,13 @@ is not a representation of `robots.txt`, and an empty body states nothing. **A
 404 is knowledge — the host looked and there is no file.** The three-valued
 output added in #118 was right; this branch was not using it.
 
+**And it is the operator, not Algeria.** The Algerian host is the one that
+produced the fix; it is not the one that has the behaviour. Four country
+subdomains answer identically **and so does the bare apex `tanqeeb.com`**, which
+is not a country, so a per-country explanation is ruled out. Measured
+2026-09-05, #155, and written up in `shared/boards/tanqeeb.md` — **a dated
+observation, not a property of the site.**
+
 **Every reason now quotes the status and the byte count actually observed.** A
 silent verdict invites suspicion; **a falsely-motivated one reads like a
 verification**, which is worse.
