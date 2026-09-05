@@ -6375,5 +6375,122 @@ class ACountedCardNamesItsWitnessOrSaysThereIsNone(unittest.TestCase):
             f"is checking almost nothing")
 
 
+class AHostVerdictCanBeTrueAndTheWrongAnswer(unittest.TestCase):
+    """**#156, and it is the sharpest instance of #101 we have found.**
+
+    `zhipin.com` — BOSS Zhipin, one of China's four largest boards — sweeps.
+    No `Disallow: /`, forty path rules, and a host-level verdict answers *yes*.
+
+    **And one of those forty rules closes a subset of its advertisements by the
+    first letter of the slug:**
+
+        Disallow: /job_detail/l*.html
+
+    `/job_detail/abc123.html` is open. `/job_detail/l9f8.html` is closed. **Same
+    host, same directory, same kind of page — and a character decides.**
+
+    **An adapter that asks `verdict()` and then reads all of `/job_detail/`
+    would violate the file on part of its corpus and nothing would say so.**
+    Those pages answer 200: the refusal exists only in the rules file, and only
+    for someone who asks about the path. This is not a refinement of the host
+    question, it is the only question with an answer.
+
+    **Both directions, because a guard that only checks the refusal goes green
+    by refusing everything.** That failure shipped in this repository twice.
+    """
+
+    # `zhipin.com/robots.txt`, the `*` group, fetched 2026-09-05. Trimmed to
+    # the rules that matter here; the full group carries forty.
+    BODY = ("User-agent: *\n"
+            "Disallow: /*?query=*\n"
+            "Disallow: /*.js*\n"
+            "Disallow: /job_detail/l*.html\n"
+            "Disallow: /sem/*\n")
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://zhipin.example/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def setUp(self):
+        import _robots
+        self._real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(self.BODY))
+
+    def tearDown(self):
+        import _robots
+        _robots.urllib.request.urlopen = self._real
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def _allowed(self, path):
+        import _robots
+        return _robots.allowed("zhipin.example", path)
+
+    def test_the_host_verdict_says_yes(self):
+        """**The premise, and it must hold or the case proves nothing.** If
+        this host ever grows a `Disallow: /`, the trap disappears and so does
+        the demonstration."""
+        import _robots
+        v = _robots.verdict("zhipin.example")
+        self.assertTrue(v["sweep"],
+                        "the host no longer sweeps, so a host-level verdict "
+                        "would already refuse and this case is moot")
+
+    def test_an_ordinary_advertisement_is_open(self):
+        """**Direction one.** Without it, a fix that refuses everything passes
+        the next test and looks correct."""
+        a = self._allowed("/job_detail/abc123.html")
+        self.assertTrue(a["allowed"], f"refused an open path: {a['reason']}")
+        self.assertIsNone(a["rule"])
+
+    def test_the_letter_l_closes_the_same_directory(self):
+        """**Direction two.** Same host, same directory, same kind of page."""
+        for path in ("/job_detail/l9f8.html", "/job_detail/lz-abc.html"):
+            with self.subTest(path=path):
+                a = self._allowed(path)
+                self.assertFalse(
+                    a["allowed"],
+                    f"{path} is closed by `Disallow: /job_detail/l*.html` and "
+                    f"was permitted — an adapter reading the directory would "
+                    f"fetch it and get a 200")
+                self.assertEqual(a["rule"], "/job_detail/l*.html")
+
+    def test_the_two_answers_come_from_one_host_verdict(self):
+        """**The point of the whole class.** One host, one `sweep: True`, and
+        two opposite answers for two paths — so the host verdict is not
+        insufficient, it is *true and about the wrong object*."""
+        import _robots
+        v = _robots.verdict("zhipin.example")
+        open_ = self._allowed("/job_detail/abc123.html")
+        shut = self._allowed("/job_detail/l9f8.html")
+        self.assertTrue(v["sweep"])
+        self.assertNotEqual(open_["allowed"], shut["allowed"])
+        self.assertEqual(open_["sweep"], shut["sweep"],
+                         "both paths report the same host verdict, which is "
+                         "exactly why it cannot be the answer")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
