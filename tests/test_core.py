@@ -5678,7 +5678,14 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
     real cards adopt it later.
     """
 
-    STATES = ("measured", "assumed", "out-of-domain")
+    # **Four states, and the fourth was found by a card, not by design.**
+    # `tanqeeb.md` reports rules that could not be read on five of five hosts:
+    # nothing was measured, nothing was assumed, and no instrument ran to fall
+    # outside its domain. **"The examination could not be attempted" is not a
+    # weaker form of any of the three** — it says the door was shut before the
+    # question could be put, and a card forced into `assumed` would claim a
+    # reading nobody made.
+    STATES = ("measured", "assumed", "out-of-domain", "indeterminate")
 
     def _check(self, value):
         """Return a list of complaints about one `content:` value."""
@@ -5697,6 +5704,9 @@ class AContentClaimSaysWhichOfThreeStatesItIsIn(unittest.TestCase):
             bad.append(f"{date!r} is not a YYYY-MM-DD date")
         # **The date and the unit are part of the value**: a share expires by
         # the growth of its own denominator, so a measurement states a figure.
+        if state == "indeterminate" and not re.search(r"\d", reason):
+            bad.append("an indeterminate state says what could not be read, "
+                       "and on how many hosts")
         if state == "measured" and not re.search(r"\d", reason):
             bad.append("a measurement carries a figure and its unit")
         return bad
@@ -6030,8 +6040,14 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
             if name == "README":
                 continue
             with open(path, encoding="utf-8") as fh:
-                if re.search(r"<!--\s*script:", fh.read()):
-                    out.add(name)
+                m = re.search(r"<!--\s*script:\s*([^\s>]+)", fh.read())
+            # **`script: none` is a declaration that nothing ships.**
+            # `tanqeeb.md` says so and was reported as an unlisted shipped
+            # adapter — the guard read the presence of the field as the
+            # presence of a script, which is the same error as counting a key
+            # instead of a value.
+            if m and m.group(1).lower() not in ("none", "-", "—"):
+                out.add(name)
         return out
 
     def test_every_card_that_ships_a_script_is_in_the_table(self):

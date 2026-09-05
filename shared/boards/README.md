@@ -392,9 +392,10 @@ absence:
 <!-- content: measured · fabrication sieve, 0.3% shared titles of 300 · 2026-09-04 -->
 <!-- content: out-of-domain · the sieve assumes one labelling language · 2026-09-04 -->
 <!-- content: assumed · read from the ad pages, no instrument run · 2026-09-04 -->
+<!-- content: indeterminate · rules unreadable on 5 of 5 hosts, HTTP 202 with a 0-byte body · 2026-09-05 -->
 ```
 
-`<state> · <method or reason, with the figure and its unit> · <YYYY-MM-DD>` — **three fields, and the state is one of three,
+`<state> · <method or reason, with the figure and its unit> · <YYYY-MM-DD>` — **three fields, and the state is one of four,
 not two.** `shared/plausible-and-false.md` carries the reasoning; the short
 version is that **an inapplicable result and a conclusive one are
 indistinguishable once written down.** The fabrication sieve compares sets of
