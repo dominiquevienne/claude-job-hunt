@@ -9321,5 +9321,89 @@ class TheRateThatBindsUsIsTheOneThatNamesUs(unittest.TestCase):
 
 
 
+class ABenchFileSaysWhenItIsFinished(unittest.TestCase):
+    """A count taken from the bench's own output file gave **23 rows for 24
+    mutations**. The number was not wrong — it was one second stale, because
+    the file was still being written, **and nothing in the file said so.**
+
+    *An unexplained gap invites an explanation, and an explanation found for a
+    gap that does not exist is a false thesis no re-reading overturns.* The
+    next step was going to be publishing *23 of 24, all red* with one missing.
+
+    And the same run showed a second hole: **restoring the source is not
+    restoring the tree.** A mutation that removed the *where do I write this*
+    check made the tool save a body to a file named `None`; the source restore
+    left it behind, so **the next mutation ran against a tree the previous one
+    had changed** and neither result said so.
+    """
+
+    def _bench(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "mutation_bench", os.path.join(repo, "bin", "mutation-bench.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        self.path = os.path.join(self.dir, "r.jsonl")
+
+    def test_a_file_without_the_marker_is_refused(self):
+        import json
+        with open(self.path, "w", encoding="utf-8") as fh:
+            for i in range(23):
+                fh.write(json.dumps({"state": "red", "i": i}) + "\n")
+        with self.assertRaises(ValueError) as cm:
+            self._bench().read_results(self.path)
+        self.assertIn("lower bound", str(cm.exception),
+                      "the refusal does not say why a partial count is "
+                      "dangerous, which is the whole reason for the marker")
+
+    def test_a_finished_file_reads_and_states_its_count(self):
+        """**The failing direction.** A reader that refused everything would
+        pass the case above and make the file unusable."""
+        import json
+        with open(self.path, "w", encoding="utf-8") as fh:
+            for i in range(3):
+                fh.write(json.dumps({"state": "red", "i": i}) + "\n")
+            fh.write(json.dumps({"done": True, "n": 3}) + "\n")
+        rows, n = self._bench().read_results(self.path)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(n, 3)
+
+    def test_a_short_file_is_caught_by_its_own_count(self):
+        """The marker carries `n`, so a file that ended early with a marker —
+        a bench that skipped mutations — is still visible as short."""
+        import json
+        with open(self.path, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps({"state": "red"}) + "\n")
+            fh.write(json.dumps({"done": True, "n": 24}) + "\n")
+        rows, n = self._bench().read_results(self.path)
+        self.assertNotEqual(
+            len(rows), n,
+            "a bench that wrote one row and claimed 24 must be visible as "
+            "short; the marker is what makes that comparison possible")
+
+    def test_the_bench_scrubs_between_mutations(self):
+        """**Not only after the last one.** The tree is restored and cleaned
+        between runs, or a file one mutation wrote is present for the next."""
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "mutation-bench.py"), encoding="utf-8").read()
+        i = src.index("code, err = run(a.test.split(), tree, a.timeout)")
+        self.assertIn("scrub(tree)", src[i:i + 400],
+                      "the tree is not cleaned between mutations, so what one "
+                      "run writes is present for the next")
+        self.assertIn('"clean"', src,
+                      "restoring tracked files leaves untracked artefacts, "
+                      "which is how two files named `None` survived a restore")
+        self.assertIn('"checkout", "--"', src,
+                      "nothing restores the tracked files a mutation edited")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

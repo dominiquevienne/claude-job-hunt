@@ -95,6 +95,38 @@ def dirty(cwd):
     return [l for l in r.stdout.splitlines() if l.strip()]
 
 
+def scrub(cwd):
+    """Undo everything a run left behind — **including what it wrote.**
+
+    Restoring the source is not restoring the tree. A mutation that removed
+    the *where do I write this* check made the tool save a body to a file
+    literally named `None`, and the source restore left it there. **The next
+    mutation then ran against a tree the previous one had changed**, and
+    nothing in either result said so.
+
+    A bench that promises a clean tree has to check the tree, not the files it
+    remembers touching.
+    """
+    subprocess.run(["git", "checkout", "--", "."], cwd=cwd,
+                   capture_output=True)
+    subprocess.run(["git", "clean", "-fdq"], cwd=cwd, capture_output=True)
+
+
+def read_results(path):
+    """Rows from a bench file, **or a refusal if it is not finished.**
+
+    Without the marker, any count taken from this file is a lower bound
+    wearing the clothes of a total.
+    """
+    rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
+    if not rows or not rows[-1].get("done"):
+        raise ValueError(
+            f"{path} has no completion marker: it is still being written, or "
+            f"the bench died. **Any count from it is a lower bound, not a "
+            f"total** — 23 rows were once read as the result of 24 mutations.")
+    return rows[:-1], rows[-1]["n"]
+
+
 def main():
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -145,12 +177,20 @@ def main():
                 open(f, "w", encoding="utf-8").write(src.replace(before, after, 1))
                 code, err = run(a.test.split(), tree, a.timeout)
                 open(f, "w", encoding="utf-8").write(src)
+                # **Between two mutations, not only after the last one.**
+                left = dirty(tree)
+                scrub(tree)
+                if left:
+                    row_extra = [l.strip() for l in left]
+                else:
+                    row_extra = []
                 classes = sorted(set(re.findall(
                     r"^(?:FAIL|ERROR): \S+ \(\w+\.(\w+)\.", err, re.M)))
                 row = {"tag": tag, "file": path, "kind": kind,
                        "state": ("timeout" if code is None else
                                  "red" if code != 0 else "GREEN"),
                        "classes": classes,
+                       "left_behind": row_extra,
                        "before": before[:70], "after": after[:70]}
             # **Written and flushed now.** The sweep that died lost all
             # twenty-four of its results at once.
@@ -160,6 +200,15 @@ def main():
             k = (row["file"], kind, row["state"])
             counts[k] = counts.get(k, 0) + 1
             print(f"[bench] {row['state']:12} {kind:10} {path}", file=sys.stderr)
+        # **The last line says how many there were.** A reader that counted
+        # this file while it was being written got 23 for 24 mutations — a
+        # figure that was not wrong, only one second stale, with nothing in
+        # the file saying so. *An unexplained gap invites an explanation, and
+        # an explanation found for a gap that does not exist is a false thesis
+        # no re-reading overturns.*
+        out.write(json.dumps({"done": True, "n": len(muts)}) + "\n")
+        out.flush()
+        os.fsync(out.fileno())
         out.close()
 
         # **Cleanliness is a verdict, not a promise.**
