@@ -77,6 +77,7 @@ import os
 import pathlib
 import re
 import shutil
+import ssl
 import sys
 import tempfile
 import unittest
@@ -8026,6 +8027,104 @@ class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
                 else:
                     self.assertEqual(len(p), 2, f"{c}: a property carries no "
                                                 f"date — it does not age")
+
+
+
+class TheFetcherUsesTheSameTlsChainAsTheGuard(unittest.TestCase):
+    """`empleate.gob.es` omits the intermediate certificate its own chain
+    needs; `_tls` supplies it. The guard imported that module and the canonical
+    fetcher did not, so **`bin/fetch-body.py` failed
+    `CERTIFICATE_VERIFY_FAILED` in the same minute the guard declared the host
+    readable at 8 456 bytes.**
+
+    That is not a cosmetic asymmetry. `CLAUDE.md` names this tool as the only
+    way to fetch, so a host the guard can read and the fetcher cannot makes
+    that rule inapplicable on exactly the hosts that need it most — and it is
+    invisible while nobody fetches such a host with the canonical tool.
+
+    Measured before wiring: **one host, two names**, not a family.
+    `_tls.HOSTS` holds `empleate.gob.es` and its `www.`, and a 146-host run of
+    this fetcher returned exactly one TLS failure.
+
+    **This exercises the call rather than reading where it is written.** A
+    context passed in the source and not reaching `urlopen` looks identical to
+    one that does.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _capture(self, host):
+        """Run the tool against `host` and return the kwargs `urlopen` saw."""
+        m = self._tool()
+        seen = {}
+        real_open = m.urllib.request.urlopen
+        real_allowed = m.allowed
+        real_verdict = m.verdict
+
+        def spy(req, *a, **k):
+            seen.update(k)
+            raise m.urllib.error.URLError("stopped after the handshake would be")
+
+        m.urllib.request.urlopen = spy
+        m.allowed = lambda h, p, **k: {"allowed": True, "reason": "stubbed"}
+        m.verdict = lambda h, **k: {"crawl_delay": None}
+        argv = sys.argv
+        sys.argv = ["fetch-body.py", f"https://{host}/robots.txt",
+                    "-o", os.path.join(tempfile.mkdtemp(), "x.txt")]
+        try:
+            m.main()
+        except BaseException:                    # noqa: BLE001
+            pass
+        finally:
+            sys.argv = argv
+            m.urllib.request.urlopen = real_open
+            m.allowed = real_allowed
+            m.verdict = real_verdict
+        return seen
+
+    def test_the_special_host_gets_the_guards_context(self):
+        import _tls
+        for host in sorted(_tls.HOSTS):
+            with self.subTest(host=host):
+                seen = self._capture(host)
+                self.assertIn("context", seen,
+                              "urlopen was called with no context at all")
+                self.assertIsNotNone(
+                    seen["context"],
+                    f"{host} needs the intermediate `_tls` supplies, and the "
+                    f"fetcher passed None — the guard can read this host and "
+                    f"this tool cannot")
+
+    def test_an_ordinary_host_gets_the_default(self):
+        """**The failing direction.** A tool that built a special context for
+        everything would pass the case above while quietly using a chain of its
+        own on 145 hosts that need nothing."""
+        seen = self._capture("example.invalid")
+        self.assertIn("context", seen)
+        self.assertIsNone(seen["context"],
+                          "an ordinary host was given a special TLS context; "
+                          "`None` means *use the default* and that is what "
+                          "every host but one must get")
+
+    def test_verification_is_never_switched_off(self):
+        """`_tls` exists because the alternative is refused. **Its whole point
+        is that the chain is completed, not skipped.**"""
+        import _tls
+        src = open(os.path.join(SCRIPTS, "_tls.py"), encoding="utf-8").read()
+        for host in _tls.HOSTS:
+            ctx = _tls.context_for(host)
+            with self.subTest(host=host):
+                self.assertIsNotNone(ctx)
+                self.assertTrue(ctx.check_hostname)
+                self.assertNotEqual(ctx.verify_mode, ssl.CERT_NONE)
+        self.assertNotIn("CERT_NONE", src)
 
 
 

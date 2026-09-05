@@ -57,6 +57,7 @@ sys.path.insert(0, os.path.join(
     "skills", "job-scan", "scripts"))
 
 from _provenance import save          # noqa: E402
+import _tls                           # noqa: E402
 from _robots import allowed, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
 
@@ -215,9 +216,23 @@ def main():
               f"waiting", file=sys.stderr)
         time.sleep(float(delay))
 
+    # **The same TLS chain the guard uses, or this tool cannot reach a host
+    # the guard has already read.** `empleate.gob.es` omits the intermediate
+    # its certificate needs; `_tls` supplies it. Until 2026-09-05 the guard
+    # imported `_tls` and this tool did not, so it failed
+    # `CERTIFICATE_VERIFY_FAILED` **in the same minute the guard declared the
+    # host readable at 8 456 bytes** — and `CLAUDE.md` names this tool as the
+    # only way to fetch. An asymmetry between the guard and the fetcher makes
+    # that rule inapplicable on exactly the hosts that need it most.
+    #
+    # `context_for` returns `None` for every host but one, and `None` means
+    # *use the default*. **Verification stays whole**: `verify=False` is never
+    # the alternative, which is the whole point of that module.
+    ctx = _tls.context_for(parts.netloc)
     req = urllib.request.Request(a.url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=a.timeout) as r:
+        with urllib.request.urlopen(req, timeout=a.timeout,
+                                    context=ctx) as r:
             status, body, landed = r.getcode(), r.read(), r.geturl()
             enc = (r.headers.get("Content-Encoding") or "").strip().lower()
     except urllib.error.HTTPError as e:
