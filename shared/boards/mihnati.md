@@ -71,3 +71,22 @@ a digit is present.
 `/site/error?e=cnf_jobs` and `?e=cnf_sitemap.xml`. Another *200 with the wrong
 body* — but this one needs no guessing at body shapes, because the final URL
 names the missing controller.
+
+## This host declares another board's sitemap, and no count crosses over
+
+`www.mihnati.com/robots.txt` declares
+**`https://www.rozee.pk/sitemap/sitemap_index.xml`** — a Pakistani board.
+Measured 2026-09-05 with `bin/fetch-body.py`. One house, four brands:
+`mihnati.com`, `rozee.pk`, `rozgar.pk`, `rozeegpt.ai`. See `rozee.md` and
+issue #163.
+
+**No double count exists today**, and that is written here because it is a
+prospective risk rather than a present error: `mihnati.py` enumerates this
+host's own `BASE` and `/EN/`, **not the Pakistani declaration**, and this card
+publishes no `content:` figure at all.
+
+**The risk is born the day somebody follows that `sitemap:` line believing it
+enumerates a Saudi board.** `_robots.sitemaps_for()` returns the URL as
+written, host included, so the reader sees where it points before asking for
+it — that is the whole reason declarations are not rewritten to the host that
+served them.

@@ -79,6 +79,20 @@ def shown_token():
 
 
 def main():
+    # **Nothing here reads standard input, and it is closed anyway.**
+    # Reported 2026-09-05: a shell loop feeding this tool a list of hosts
+    # processed seven of eight. **It did not reproduce here** — three exit
+    # paths were probed in a `while read … done < list` loop (HTTP 200, guard
+    # refusal, `--sitemaps`) and no line was lost, and a 146-host run of this
+    # tool wrote 146 rows. So this is not a repair of a defect I have seen; it
+    # is a tool whose documented use *is* a loop over a list refusing to be
+    # the suspect. **The cause of the seven-of-eight is still unknown and
+    # still worth finding**, because a truncated run looks exactly like a
+    # complete one.
+    try:
+        sys.stdin.close()
+    except Exception:                                      # noqa: BLE001
+        pass
     p = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
