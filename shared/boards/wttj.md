@@ -5,7 +5,7 @@
 <!-- hosts: www.welcometothejungle.com -->
 <!-- script: wttj.py -->
 <!-- countries: FR -->
-<!-- witness: the site's own sitemap children, 88 913 on 2026-09-05 against 88 222 on 2026-09-02 — +691 in three days, +0.78 %, a plausible direction; 8 × 10 000 + 8 913 across the nine `job-listings-*` children, union equal to the raw sum. The index's fifteen other children are not advertisements -->
+<!-- witness: SECOND READING, not conclusive. 88 913 on 2026-09-05 against 88 222 on 2026-09-02, +691. **42 637 entries carry a recent `lastmod`, so the net is 1.6 % of the movement** — weaker than turijobs at 12.3 % or platsbanken at 9 %. **And the argument closes on both branches**: if those dates are real the net is a sixtieth of the gross; if they are regeneration stamps the flow is not legible at all. What it does establish: 8 × 10 000 + 8 913 across nine `job-listings-*` children, union equal to the raw sum, and the index's fifteen other children are not advertisements · 2026-09-05 -->
 **Re-tested 2026-09-02: the discovery half still works without a browser.** `robots.txt` answers 200 (216 bytes, `text/plain`) and the index it advertises, `/sitemaps/index.xml.gz`, answers 200 with **24 sub-sitemaps**. The split this file documents — plain HTTP to discover, browser to read — is unchanged.
 
 **88 222 ads** in the site's own sitemaps, about **two thirds of them

@@ -211,6 +211,41 @@ while a board that comes good is still caught within a season.
 Without the back-off this feature becomes a recurring chore, and a recurring
 chore gets switched off wholesale — taking the BOBST case down with it.
 
+### `witness:` — name the species, because they are immune to different things
+
+A witness is not one thing. **Three kinds, and what each survives:**
+
+| kind | vulnerable to | immune to |
+| :-- | :-- | :-- |
+| **second reading** of the same source | the net-to-flow ratio | — |
+| **second source** on the same quantity | the two sides answering different questions | the flow |
+| **conservation** over a closed partition | — | both |
+
+**A second reading compares a net to a flow that is usually unknown.** `wttj`
+moved +691 against 42 637 entries with a recent `lastmod` — 1.6 %, and the
+argument closes on both branches: real dates make the net a sixtieth of the
+gross, regeneration stamps make the flow illegible. `taleez` cannot even state
+its flow; obtaining it costs 14 020 requests, and **naming that price is the
+useful part of the line.**
+
+**A second source is immune to the flow and exposed to a mismatch of
+question.** `jobsbotswana`'s site says 5 123 against a sitemap of 367 — a
+factor of fourteen, which **refutes rather than confirms**: it establishes the
+figure was mis-named. *Somebody looked* is not *the figure is confirmed.*
+
+**A conservation needs neither.** `hellojob`: 591 + 27 399 = 588 + 27 402
+across a closed partition, where advertisements moving between live and expired
+preserve the total and any other cause breaks the sum. It compares no net to
+any flow.
+
+**`keejob` is the model because it is both** — the sitemap read twice converged
+on the site's own counter, so the agreement is on the value rather than on the
+change, and the net-to-flow objection does not arise.
+
+**Write the kind in the line.** A reader who knows which one it is knows what
+it does not protect against; a line that only says *witness* invites the
+strongest reading of the weakest evidence.
+
 ### `countries:` — the markets the board serves, not the market we measured
 
 ```

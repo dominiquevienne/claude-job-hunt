@@ -6,7 +6,7 @@
 <!-- script: ergodotisi.py -->
 <!-- countries: CY -->
 <!-- content: measured · sitemap read in full, 2 644 advertisements, 25 of 25 sampled pages parsed · 2026-09-05 -->
-<!-- witness: the site's own "2 573 open jobs" against 2 644 in the sitemap — the gap runs as the mechanism predicts -->
+<!-- witness: SECOND SOURCE, CONDITIONAL. The site states "2 573 open jobs" against 2 644 in the sitemap, a gap of 71 running in the direction the body's mechanism predicts. **It confirms only if that mechanism is right, and nobody has checked it** — the reading that would settle it is whether the 71 are expired entries still listed. Until then this is a source that agrees in shape and not in value · 2026-09-05 -->
 
 **The cleanest index of the twenty-eight boards measured across Asia and Africa
 on 2026-09-04.** `/sitemap.xml` declares three children and names them honestly

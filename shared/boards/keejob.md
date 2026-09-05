@@ -6,7 +6,7 @@
 <!-- script: keejob.py -->
 <!-- countries: TN -->
 <!-- content: measured · 808 advertisements in the sitemap, 25 of 25 sampled pages read · 2026-09-05 -->
-<!-- witness: the site's own count, read twice — 808 against a sitemap of 827 then 808, converged 2026-09-05 10:58 UTC; see the body -->
+<!-- witness: SECOND READING **and** SECOND SOURCE — the two classes at once, which is why this card is the model. The sitemap read twice gave 827 then 808, and the site's own counter states 808 in two places: the second reading converged on the second source. **A net-to-flow objection does not apply**, because the agreement is on the value and not on the change · 2026-09-05 10:58 UTC -->
 
 **The only readable board of the eight Tunisian ranks measured on 2026-09-04** —
 rank 1 is a public service whose rules could not be read, rank 3 answers 403 to

@@ -6,7 +6,7 @@
 <!-- script: jobsbotswana.py -->
 <!-- countries: BW -->
 <!-- content: measured · 367 sitemap entries read, 20 of 20 sampled pages parsed; the site lists ~5 123 · 2026-09-05 -->
-<!-- witness: the site's own listing, 5 123 — it disagrees by 14x and the reason is measured -->
+<!-- witness: SECOND SOURCE, and it REFUTES rather than confirms. The site's own listing states 5 123 against this card's 367 — a factor of fourteen. **It establishes that 367 was mis-named**: the sitemap carries about nine months of a nine-year archive, which the body measures. *Somebody looked* is not *the figure is confirmed*, and a second source is immune to flow but exposed to the two sides answering different questions — which is exactly what happened here · 2026-09-05 -->
 
 **Rank 4 in Botswana, and what rank 1 does is refuse us** — the managed
 Content-Signals default, the same 1 834-byte file that closes Niger, Mauritania,
