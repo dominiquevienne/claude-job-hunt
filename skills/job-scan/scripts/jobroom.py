@@ -127,8 +127,18 @@ def build_body(a):
     if a.workload_max is not None:
         body["workloadPercentageMax"] = a.workload_max
     if not body:
-        die("give at least one filter (--canton, --lat/--lon, --keywords…). An "
-            "unfiltered sweep is 78,000 ads.")
+        # **A figure recopied into a message agrees with its card for ever
+        # and drifts with the board in silence.** It looks like a second
+        # source and is the same observation twice. This one said 78,000; the
+        # API reported 16 043 matches for Zurich alone on 2026-09-05, and no
+        # national total has been measured. So the refusal states the cost it
+        # knows rather than a size it does not.
+        die("give at least one filter (--canton, --lat/--lon, --keywords…). "
+            "An unfiltered sweep is every ad on the board, and this adapter "
+            "cannot say how many that is: **it defaults to `--pages 1` at "
+            "`--size 50`, so its own row count is what it fetched, not what "
+            "exists.** The API returns `X-Total-Count` on every request and "
+            "prints it — read that number, do not recopy this message.")
     return body
 
 

@@ -1204,6 +1204,29 @@ def allowed(host, path, agents=None):
     *no rules were read*: honest about the state, wrong about the permission,
     and it is the boolean that callers act on. Issue #118.
     """
+    # **The fields a caller cannot re-derive, carried across.**
+    #
+    # `allowed()` dropped twelve of the eighteen `verdict()` builds, and one of
+    # them is `crawl_delay`. So `allowed(host, path).get("crawl_delay")`
+    # returned `None` on `www.hays.fr` two minutes after `verdict()` returned
+    # `10.0` for the same host — **two components, one field, two answers.**
+    #
+    # And the failure is silent in the direction that costs: *a `.get()` on a
+    # field never carried returns `None` for ever, which reads exactly like a
+    # host that asked for nothing.* A caller reading the rate through the guard
+    # rather than through `bin/fetch-body.py` would not wait on a host that
+    # asked for ten seconds. **This module wrote that sentence about its own
+    # parser this morning and left the same hole one function away.**
+    #
+    # Only what a caller cannot compute from what it already has: the rate, the
+    # declarations, and what was read but not acted on.
+    CARRY = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state")
+
+    def _carry(result):
+        for k in CARRY:
+            result.setdefault(k, v.get(k))
+        return result
+
     def _named(result):
         """Prefix the host these rules actually came from.
 
@@ -1234,7 +1257,7 @@ def allowed(host, path, agents=None):
     if v["sweep"] is None:
         out.update(allowed=None, kind="unknown", certain=False)
         out["reason"] = v["reason"]
-        return _named(out)
+        return _named(_carry(out))
     if not v["sweep"]:
         # **A `Disallow: /` beside `Allow:` lines is a whitelist, not a wall**,
         # and this early return read it as a wall. `bebee.com` opens six path
@@ -1281,7 +1304,7 @@ def allowed(host, path, agents=None):
                "**That is not an absence and not a permission** — a file that "
                "cannot be read says nothing either way. Proceed at a human "
                "pace and say so, or read it by hand."))
-        return _named(out)
+        return _named(_carry(out))
     best_d = max(((_match_len(p, path), p) for p in v.get("disallow") or []),
                  default=(-1, None))
     best_a = max(((_match_len(p, path), p) for p in v.get("allow") or []),
@@ -1298,14 +1321,14 @@ def allowed(host, path, agents=None):
                "about us and not a policy we happen to fall under."
                if g != "*" else "the group that applies to everyone, this "
                                 "project included."))
-        return _named(out)
+        return _named(_carry(out))
     # A tie goes to `Allow`: the specification's rule, and the direction that
     # respects an operator who wrote both.
     if best_a[0] >= best_d[0]:
         out.update(rule=best_a[1], kind="allow")
         out["reason"] = (f"`Allow: {best_a[1]}` matches at least as much of "
                          f"this path as `Disallow: {best_d[1]}`.")
-        return _named(out)
+        return _named(_carry(out))
     token = v.get("group") or "*"
     out.update(allowed=False, rule=best_d[1], kind="disallow", group=token)
     out["reason"] = (
@@ -1317,7 +1340,7 @@ def allowed(host, path, agents=None):
            f"**This is a refusal aimed at everyone, not at a named "
            f"crawler**, and the intention behind it does not change its "
            f"effect."))
-    return _named(out)
+    return _named(_carry(out))
 
 
 def _main():

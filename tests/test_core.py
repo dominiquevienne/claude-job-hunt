@@ -8500,5 +8500,90 @@ class ACardDatesItself(unittest.TestCase):
 
 
 
+class TheTwoHalvesOfTheGuardAgreeOnEveryField(unittest.TestCase):
+    """`_robots.allowed("www.hays.fr", "/")` returned `crawl_delay = None`
+    two minutes after `verdict()` returned `10.0` for the same host, on a clean
+    tree both times. **Two components, one field, two answers** — and
+    `allowed()` was not disagreeing: it never carried the field at all.
+
+    **The failure is silent in the direction that costs.** *A `.get()` on a
+    field never carried returns `None` for ever, which reads exactly like a
+    host that asked for nothing.* A caller reading the rate through the guard
+    rather than through `bin/fetch-body.py` would not wait on a host asking for
+    ten seconds — and `ejob.az` is a host where the delay is the **only**
+    condition set.
+
+    This module wrote that sentence about its own parser this morning and left
+    the same hole one function away.
+    """
+
+    CARRIED = ("crawl_delay", "sitemaps", "ignored", "content_signal", "state")
+
+    def _both(self, body):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda *a, **k: R(body)
+        try:
+            return (_robots.verdict("h.example"),
+                    _robots.allowed("h.example", "/jobs"))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_declared_rate_survives_the_crossing(self):
+        v, a = self._both(b"User-agent: *\nAllow: /\nCrawl-delay: 10\n"
+                          b"Sitemap: https://h.example/s.xml\n")
+        self.assertEqual(v["crawl_delay"], 10.0)
+        for k in self.CARRIED:
+            with self.subTest(field=k):
+                self.assertIn(k, a, f"`allowed()` drops `{k}`, so a caller "
+                                    f"reading it gets None for ever")
+                self.assertEqual(a[k], v[k], f"the two halves disagree on {k}")
+
+    def test_absent_stays_absent(self):
+        """**The failing direction.** Filling the fields with something rather
+        than with the verdict's value would pass the case above and invent a
+        rate on every host that sets none."""
+        v, a = self._both(b"User-agent: *\nAllow: /\n")
+        self.assertIsNone(v["crawl_delay"])
+        self.assertIsNone(a["crawl_delay"],
+                          "a host that asked for nothing came back with a "
+                          "rate, which is worse than dropping the field")
+        self.assertEqual(a["sitemaps"], [])
+
+    def test_the_carried_set_is_what_a_caller_cannot_recompute(self):
+        """Only fields a caller cannot derive from what it already holds. A
+        blanket copy would make the two dicts one and hide which function
+        answers which question."""
+        v, a = self._both(b"User-agent: *\nAllow: /\nCrawl-delay: 5\n")
+        self.assertLess(len(a), len(v),
+                        "`allowed()` now carries everything `verdict()` does, "
+                        "so the two answer the same question and one of them "
+                        "is redundant")
+        for k in ("allowed", "path", "rule", "kind"):
+            with self.subTest(field=k):
+                self.assertIn(k, a)
+                self.assertNotIn(k, v)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

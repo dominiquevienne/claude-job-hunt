@@ -375,8 +375,14 @@ def main():
     a = p.parse_args()
     if a.cmd == "search" and not (a.ville or a.since or a.departement
                                   or a.limit):
-        die("give --ville, --since, --departement or --limit. Without one "
-            "the sweep reads all 6 755 ads.")
+        # **6 755 was recopied here from the card and would agree with it
+        # for ever.** A number in a tool's message is not a second source: it
+        # is the same observation twice, and it drifts with the board while
+        # both copies stay consistent.
+        die("give --ville, --since, --departement or --limit. Without one the "
+            "sweep reads the whole board — **6 755 ads when this line was "
+            "written on 2026-09-02, and this message cannot know what it is "
+            "today.** The run prints the count it actually read.")
     a.func(a)
 
 
