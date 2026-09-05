@@ -117,5 +117,5 @@ host.
 
 `list` without `--fetch` costs **one request** and returns ids and dates.
 With `--fetch` it is one request per advertisement, so `--since` and `--limit`
-bound it: the board is 827 pages and reading all of them should not happen by
+bound it: the board is 808 pages and reading all of them should not happen by
 accident.

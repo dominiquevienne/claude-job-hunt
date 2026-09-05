@@ -8188,5 +8188,111 @@ class TheFetcherUsesTheSameTlsChainAsTheGuard(unittest.TestCase):
 
 
 
+class TheHeadingAgreesWithTheContentLine(unittest.TestCase):
+    """A disagreement between two files is found by comparing them. **A
+    disagreement of one file with itself is found by nothing.**
+
+    `keejob.md` carried 808 in its `content:` line and its heading, and **827
+    in its body**, three sections down — a card corrected in two places out of
+    three, by me, the same morning.
+
+    **WHAT THIS DOES NOT SEE, AND WHY THAT IS THE CHOICE**
+
+    It does not scan the body. A general scan was tried and returned 28
+    candidates, keeping `keejob` for a figure unrelated to the defect: *a true
+    positive by a false mechanism.* The reason it cannot work is that units are
+    the key — `808 advertisements` against `827 pages` is two different keys,
+    so no conflict is visible, and inventing a unit equivalence is inventing a
+    grammar.
+
+    So two **named places** are compared instead, both fixed, neither guessed.
+    `keejob:120` would still be invisible here, and that is accepted: **a guard
+    that catches a named class beats a sweep that returns 28 candidates and one
+    right answer for the wrong reason.**
+
+    **POPULATION, MEASURED BEFORE WRITING THIS**
+
+        12 cards carry `content:`
+         3 carry a figure in their first `##`
+         0 disagree today
+
+    So this ships covering three cards and catching nothing — **including not
+    the defect that prompted it.** That is worth saying plainly: its value is
+    prospective, and a card that corrects one of the two places and not the
+    other fails immediately.
+    """
+
+    def _pairs(self):
+        import re
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        out = []
+        for card in sorted(d.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            src = card.read_text(encoding="utf-8")
+            m = re.search(r"<!--\s*content:\s*(.*?)\s*-->", src, re.S)
+            if not m:
+                continue
+            heads = re.findall(r"(?m)^##\s+(.*)$", src)
+            out.append((card.name, m.group(1), heads[0] if heads else ""))
+        return out
+
+    @staticmethod
+    def _figures(text):
+        import re
+        return {int(x.replace(" ", "").replace("\u202f", "").replace(",", ""))
+                for x in re.findall(r"\d[\d\u202f ,]*\d|\d", text)}
+
+    def test_the_population_is_the_cards_that_carry_content(self):
+        """**Scope, written down.** Only cards with a `content:` line, and of
+        those only the ones whose first `##` carries a figure. A heading
+        without a figure is out of the population, not tolerated inside it."""
+        pairs = self._pairs()
+        self.assertGreaterEqual(len(pairs), 10,
+                                f"only {len(pairs)} cards carry `content:`; "
+                                f"12 did on 2026-09-05")
+        scoped = [c for c, _v, h in pairs if self._figures(h)]
+        self.assertGreaterEqual(
+            len(scoped), 3,
+            f"the guard now covers {len(scoped)} cards; it covered 3, so "
+            f"either headings lost their figures or the walk narrowed")
+
+    def test_a_figure_in_the_heading_appears_in_the_content_line(self):
+        bad, compared = [], 0
+        for card, value, head in self._pairs():
+            hf = self._figures(head)
+            if not hf:
+                continue
+            compared += 1
+            body = value.split("·")[1] if "·" in value else value
+            if not (hf & self._figures(body)):
+                bad.append((card, sorted(hf), sorted(self._figures(body))))
+        # **The comparison counts itself.** Written without this line, a
+        # `continue` that skipped every card left the guard green — measured,
+        # by mutation, two minutes after it was written. *A guard that cannot
+        # fail on its own scope is the defect this repository has named four
+        # times today, and it was mine again here.*
+        self.assertGreaterEqual(
+            compared, 3,
+            f"the guard compared {compared} cards; three carried a figure in "
+            f"their heading on 2026-09-05, so it is passing by looking at "
+            f"nothing")
+        self.assertEqual(
+            bad, [], "the heading states a figure the `content:` line does "
+                     "not, so the card corrects one place and not the "
+                     "other: " + str(bad))
+
+    def test_a_heading_without_a_figure_is_out_of_scope_not_excused(self):
+        """**The failing direction.** A guard that passed every card with a
+        figureless heading *because it had no figure* would also pass one whose
+        heading figure vanished in an edit — the two look the same from
+        inside the loop, and only the population count above tells them
+        apart."""
+        self.assertEqual(self._figures("The witness, and it converged"), set())
+        self.assertEqual(self._figures("808, with no duplicates"), {808})
+        self.assertEqual(self._figures("1 185 in a rolling window"), {1185})
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
