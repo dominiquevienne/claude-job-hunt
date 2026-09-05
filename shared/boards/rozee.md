@@ -66,9 +66,23 @@ postcode would place the whole board in one city.
 *Same family as the PKR on a Saudi line that `mihnati.md` documents: a field
 whose value is the platform's habit rather than the advertisement's content.*
 
-## One house, four brands
+## Where part of the 2 555 goes
 
-`mihnati.com` · `rozee.pk` · `rozgar.pk` · `rozeegpt.ai`
+**Two advertisement URLs of `jobs.xml` serve the RozeeGPT shell**, byte for
+byte identical to `/seeker/`. So a share of the 2 555 non-`.php` URLs are not
+failed advertisements: they are a different product's page returned under an
+advertisement's address. *That is why the `.php` form predicts and the URL's
+directory does not.*
+
+**`rozeegpt.ai` and `recruit-ai.co` are not boards**, and neither is counted
+here. `recruit-ai.co` is established as a fifth brand of the house by a
+`robots.txt` **identical to the byte** — including two lines naming
+subdomains that do not belong to it, which is the kind of copy nobody makes by
+accident.
+
+## One house, five brands
+
+`mihnati.com` · `rozee.pk` · `rozgar.pk` · `rozeegpt.ai` · `recruit-ai.co`
 
 **No double count exists today, and that is worth writing down because it is a
 prospective risk rather than a present error.** `mihnati.py` enumerates its own

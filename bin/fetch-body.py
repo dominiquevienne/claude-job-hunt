@@ -80,15 +80,26 @@ def shown_token():
 
 def main():
     # **Nothing here reads standard input, and it is closed anyway.**
-    # Reported 2026-09-05: a shell loop feeding this tool a list of hosts
-    # processed seven of eight. **It did not reproduce here** — three exit
-    # paths were probed in a `while read … done < list` loop (HTTP 200, guard
-    # refusal, `--sitemaps`) and no line was lost, and a 146-host run of this
-    # tool wrote 146 rows. So this is not a repair of a defect I have seen; it
-    # is a tool whose documented use *is* a loop over a list refusing to be
-    # the suspect. **The cause of the seven-of-eight is still unknown and
-    # still worth finding**, because a truncated run looks exactly like a
-    # complete one.
+    #
+    # A shell loop feeding this tool a list of hosts processed seven of eight,
+    # and this tool was the suspect. It did not reproduce on any of three exit
+    # paths, and the real cause was found the same day and is not here:
+    #
+    #     the list file had no trailing newline, and `while read` returns
+    #     non-zero at such an end-of-file *after assigning the variables*,
+    #     so the loop exits and the last line is read and thrown away.
+    #
+    #     sans_nl.txt  41 bytes  wc -l=2  iterations=2
+    #     avec_nl.txt  42 bytes  wc -l=3  iterations=3
+    #
+    # **One byte, one iteration fewer.** And the check that seemed obvious —
+    # count output rows against input rows — is inert against it: `wc -l`
+    # counts newlines, so both sides agree on the wrong number. Write lists as
+    # `"\n".join(...) + "\n"`, or read them with
+    # `while read -r x || [ -n "$x" ]`.
+    #
+    # Closing stdin stays because the documented use of this tool *is* a loop,
+    # and a tool used that way should not be able to become the suspect again.
     try:
         sys.stdin.close()
     except Exception:                                      # noqa: BLE001

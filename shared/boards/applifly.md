@@ -8,7 +8,7 @@
 A Swiss applicant-tracking system. **Employers front it with their own vanity
 domain** — `jobs.<employer>.ch` — so **the host never says Applifly and the
 path does**: `/job/view-job.php` and `/jobs.php`, with `source=` in the query.
-Same topology as SuccessFactors, which `shared/modules/ats-open-check.md`
+Same topology as SuccessFactors, which `shared/ats-open-check.md`
 already records as recognised by path rather than by host.
 
 **No key, no cookie, no browser.** The ad carries a complete `JobPosting` —

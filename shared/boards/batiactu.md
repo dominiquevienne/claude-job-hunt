@@ -186,7 +186,7 @@ region sweep can come back as one company's recruitment plan.
 **The pagination is exact and it terminates.** Provence-Alpes-Côte d'Azur:
 pages 1–120 gave 20 each, page 121 gave **8**, page 122 gave **zero** — and so
 did 200 and 9999. Corse: 20 then 15 then zero. No cap, no ceiling, no
-plausible-looking page past the end, unlike `jobology.md` and `free-work.md`.
+plausible-looking page past the end, unlike `jobology.md` and `freework.md`.
 **And the listings are stable**: the same URL fetched twice returned the same
 twenty ads in the same order.
 

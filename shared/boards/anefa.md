@@ -141,7 +141,7 @@ rather than dropped.
 **The pagination is exact and it terminates.** 140 pages of 20, then 18 —
 2 818, the announced total to the unit. Page 142 comes back with no ads *and no
 total*, and so do pages 200 and 9999. Third board in a row to behave, after
-`batiactu.md` and against `jobology.md` and `free-work.md`.
+`batiactu.md` and against `jobology.md` and `freework.md`.
 
 ## The ad id and its URL
 

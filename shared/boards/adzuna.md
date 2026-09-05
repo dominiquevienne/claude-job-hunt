@@ -333,5 +333,5 @@ met on SmartRecruiters in `ats.py`, where the exception existed nowhere and
 was a silence.
 
 So: nothing wired, and the hold written here. The same question covers
-`francetravail.md`, `arbeitsagentur.md` and `labonnealternance.md` — **four
+`france-travail.md`, `arbeitsagentur.md` and `labonnealternance.md` — **four
 boards, one arbitration**, not the two it was first framed on.

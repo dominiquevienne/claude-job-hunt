@@ -7769,5 +7769,100 @@ class TheRecordSaysWhereTheBodyCameFrom(unittest.TestCase):
 
 
 
+class ACitedMarkdownFileExists(unittest.TestCase):
+    """**472 citations from card to card live in prose, and nothing checked
+    one of them.** Everything this repository declares *formally* — hosts,
+    scripts, countries, content — is guarded; the cross-references that carry
+    most of its reasoning were not.
+
+    Four were dead when this was written, and they are two different species:
+
+        `francetravail.md`  -> the file is `france-travail.md`
+        `free-work.md` x2   -> the file is `freework.md`
+        `shared/modules/ats-open-check.md` -> it is `shared/ats-open-check.md`
+
+    **And two reported as dead were not.** `job-ad.md`, cited by `jobs-ch.md`
+    and `jobup.md`, is the per-application dossier file this plugin writes into
+    the user's workspace — `shared/workspace.md:59`. *Refusing to guess what it
+    meant was right; reading the sentence settled it in one line.* Guessing
+    would have replaced a correct citation with a wrong one and the guard would
+    have gone green on it.
+    """
+
+    # **Names this plugin writes into the user's workspace**, which exist at
+    # run time and never in the repository. Taken from `shared/workspace.md`,
+    # not from what happened to be cited: a list assembled from the citations
+    # would excuse whatever it found.
+    WORKSPACE = frozenset({
+        "job-ad.md", "resume.md", "cover-letter.md", "candidate.md",
+        "repos.md", "config.yml",
+    })
+
+    def _repo(self):
+        return pathlib.Path(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    def _cited(self):
+        import re
+        bare = re.compile(r"`([A-Za-z0-9][A-Za-z0-9._-]*\.md)`")
+        pathy = re.compile(r"`((?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+\.md)`")
+        out = []
+        for card in sorted((self._repo() / "shared" / "boards").glob("*.md")):
+            src = card.read_text(encoding="utf-8")
+            for m in bare.finditer(src):
+                out.append((card.name, m.group(1), False))
+            for m in pathy.finditer(src):
+                out.append((card.name, m.group(1), True))
+        return out
+
+    def _resolves(self, name, has_path):
+        repo = self._repo()
+        if has_path:
+            return (repo / name).exists()
+        if name in self.WORKSPACE:
+            return True
+        return any((repo / d / name).exists()
+                   for d in ("shared/boards", "shared", "."))
+
+    def test_the_walk_sees_the_citations(self):
+        """**A guard green on a denominator it shrank itself proves nothing.**
+        This extractor already missed a whole form once: written for bare
+        names, it skipped every citation carrying a directory — and the fourth
+        dead link was in exactly that form."""
+        cited = self._cited()
+        self.assertGreater(len(cited), 400,
+                           f"only {len(cited)} citations found; 591 were "
+                           f"counted on 2026-09-05, so the extractor narrowed")
+        self.assertTrue(any(p for _c, _n, p in cited),
+                        "no citation with a directory was seen, and that is "
+                        "the form the extractor first missed entirely")
+
+    def test_every_cited_markdown_file_resolves(self):
+        dead = sorted({(c, n) for c, n, p in self._cited()
+                       if not self._resolves(n, p)})
+        self.assertEqual(
+            dead, [], "these cards cite a file that does not exist: "
+                      + "; ".join(f"{c} -> {n}" for c, n in dead))
+
+    def test_a_name_that_does_not_exist_does_not_resolve(self):
+        """**The failing direction.** A resolver that answered yes to
+        everything would pass the case above on a repository full of dead
+        links."""
+        for name in ("no-such-card.md", "job-ad-typo.md", "freework.mdx"):
+            with self.subTest(name=name):
+                self.assertFalse(self._resolves(name, False))
+        self.assertFalse(self._resolves("shared/nowhere/x.md", True))
+
+    def test_the_workspace_names_are_not_a_blanket(self):
+        """The allowlist excuses six names taken from `shared/workspace.md`,
+        and must excuse nothing else — otherwise it becomes the place a dead
+        citation goes to hide."""
+        self.assertLessEqual(len(self.WORKSPACE), 8)
+        for n in self.WORKSPACE:
+            with self.subTest(name=n):
+                self.assertTrue(self._resolves(n, False))
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
