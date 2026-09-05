@@ -3,7 +3,7 @@
 <!-- verified: 2026-09-05 -->
 
 <!-- hosts: www.gozambiajobs.com, gozambiajobs.com -->
-<!-- script: none -->
+<!-- script: gozambiajobs.py -->
 <!-- countries: ZM -->
 <!-- content: measured · 368 advertisements in `sitemap-jobs-1.xml`, raw 368 / distinct 368, 0 duplicates · 2026-09-05T11:45:51Z -->
 <!-- witness: none found — see below, and that is a finding rather than an omission -->
@@ -49,6 +49,25 @@ learned to ask cannot be asked here:
   either — there is nothing to misread.
 
 **Write `368 advertisements at 2026-09-05T11:45:51Z` and never a rate.**
+
+`gozambiajobs.py list` therefore says so on stderr, and **refuses `--since` and
+`--live` unless `--fetch` is given** — both dates live on the page, and a filter
+with nothing to read would return everything or nothing without saying which.
+
+**An observation, not a feature.** The numeric prefix of each slug rises with the
+posting date across a six-point sample spread over the file — `516181873` on
+2026-07-09 up to `665615191` on 2026-09-04. *Six points suggest an ordering; they
+do not establish one, and nothing in the adapter relies on it.*
+
+## Run, not read
+
+    list                      368 advertisements · one request
+    list --fetch --limit 3    3 read, 3 kept, 0 unreadable
+    ad --slug <slug>          six sampled at positions 0, 73, 146, 219, 292, 367
+                              6 of 6 read · 5 distinct employers
+
+Two of the six have a gap the board itself left — one without a locality, one
+without `employmentType`. **They are emitted as `null`, not filled in.**
 
 ## `witness: none found`, and why that is a measurement
 
