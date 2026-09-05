@@ -71,8 +71,11 @@ Run: `python3 -m unittest discover -s tests -v`
 """
 
 import argparse
+import hashlib
 import io
 import os
+import shutil
+import tempfile
 import re
 import sys
 import unittest
@@ -88,6 +91,7 @@ import _language          # noqa: E402
 import _ldjson            # noqa: E402
 import _locations         # noqa: E402
 import _match             # noqa: E402
+import _provenance        # noqa: E402
 import _robots            # noqa: E402
 import _secrets           # noqa: E402
 import _sitemap           # noqa: E402
@@ -6958,6 +6962,131 @@ class ARefusedNameIsNotAlwaysANameWeSend(unittest.TestCase):
                               f"{tok}: a sweep refusal stopped being one")
                 self.assertEqual(v["allow"], [],
                                  f"{tok}: the refusing group grew an Allow")
+
+
+class AFetchedBodyCarriesItsProvenanceOrIsNotWritten(unittest.TestCase):
+    """Eight files were made permanently unattributable on 2026-09-05.
+
+    A recount of the Cloudflare managed default found 28 bodies **identical to
+    the byte**. The file contains no reference to the host serving it — no
+    `Sitemap:`, no canonical, nothing. **The filename was the only place the
+    host existed, and it had been abbreviated.** `sl_rb` meant Somaliland; the
+    obvious repair, reading sibling files that share the country prefix,
+    answers *Sierra Leone*. **The instrument is refuted on the one case where
+    its answer could be checked** — which is the only reason anyone knows.
+
+    So this class checks the class of defect, not those eight files. And it
+    checks it **from the absent side**: that a body written without provenance
+    is *seen*. A guard that can only confirm the good case confirms nothing —
+    `garde-doit-echouer-sur-sa-portee`, `garde-presente-et-inerte`.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def _mod(self):
+        import _provenance
+        return _provenance
+
+    def test_the_three_fields_have_no_defaults(self):
+        """**Omitting one fails at the call**, not as a blank field found the
+        next day. That is the whole difference between a guard and a habit."""
+        P = self._mod()
+        full = dict(url="https://h.example/robots.txt", status=200, agent="UA")
+        for missing in ("url", "status", "agent"):
+            kw = {k: v for k, v in full.items() if k != missing}
+            with self.subTest(missing=missing):
+                with self.assertRaises(TypeError, msg=(
+                        f"`{missing}` acquired a default. A body saved without "
+                        f"it looks complete and cannot be attributed later.")):
+                    P.save(os.path.join(self.dir, "b.txt"), b"x", **kw)
+
+    def test_a_body_without_a_sidecar_is_refused_not_returned(self):
+        P = self._mod()
+        orphan = os.path.join(self.dir, "orphan.txt")
+        with open(orphan, "wb") as f:
+            f.write(b"User-agent: *\n")
+        with self.assertRaises(FileNotFoundError) as cm:
+            P.load(orphan)
+        # **Not any FileNotFoundError.** With the sidecar check removed, `open`
+        # raises the same type one line later and this test passed for a reason
+        # that had nothing to do with the guard. Measured: the mutation was
+        # green. So the message is asserted, because it is what distinguishes
+        # the refusal from the accident.
+        self.assertIn("unattributable", str(cm.exception),
+                      "the raise came from somewhere other than the sidecar "
+                      "check — a guard satisfied by an accident is inert")
+
+    def test_the_audit_sees_the_absence_and_names_its_denominator(self):
+        """**The failing direction.** Three bodies with provenance, two
+        without: the audit must report two, name them, and report the five it
+        walked. Asserting only `orphan_count == 0` on a clean tree would pass
+        on a walker that found nothing at all."""
+        P = self._mod()
+        for i in range(3):
+            P.save(os.path.join(self.dir, f"ok{i}.txt"), b"body",
+                   url=f"https://h{i}.example/robots.txt", status=200,
+                   agent="UA")
+        for i in range(2):
+            with open(os.path.join(self.dir, f"bad{i}.txt"), "wb") as f:
+                f.write(b"body")
+        a = P.audit(self.dir)
+        self.assertEqual(a["of"], 5,
+                         "the walk did not see five bodies — a guard green on "
+                         "a denominator it shrank itself proves nothing")
+        self.assertEqual(a["orphan_count"], 2, a["orphans"])
+        self.assertEqual(sorted(os.path.basename(x) for x in a["orphans"]),
+                         ["bad0.txt", "bad1.txt"],
+                         "the audit counted two and named the wrong two — "
+                         "same cardinal, different members")
+
+    def test_the_recorded_figures_are_of_the_raw_bytes(self):
+        """**Not stripped.** Three `robots.txt` looked as though they had
+        changed overnight — different byte counts *and* different md5 — and it
+        was one trailing newline on one side. A md5 depends on no counting
+        method; it depends on the body, and the body had been trimmed."""
+        P = self._mod()
+        body = b"User-agent: *\nDisallow:\n"
+        rec = P.save(os.path.join(self.dir, "raw.txt"), body,
+                     url="https://h.example/robots.txt", status=200,
+                     agent="UA")
+        self.assertEqual(rec["bytes"], len(body))
+        self.assertEqual(rec["md5"], hashlib.md5(body).hexdigest())
+        self.assertNotEqual(
+            rec["md5"], hashlib.md5(body.rstrip()).hexdigest(),
+            "the record holds the md5 of a stripped body — that is the exact "
+            "reading that fabricated a change in three files")
+        # **Read it back off the disk.** Checking only the returned record
+        # tests `describe()`, not `save()`: a `save` that wrote
+        # `bytes(body).rstrip()` left this test green while putting a body on
+        # disk that no longer matched its own record. Measured — the mutation
+        # was green, which is how it was found.
+        on_disk, back = P.load(os.path.join(self.dir, "raw.txt"))
+        self.assertEqual(on_disk, body,
+                         "the bytes on disk are not the bytes handed in")
+        self.assertEqual(hashlib.md5(on_disk).hexdigest(), back["md5"],
+                         "the file and its own record disagree")
+
+    def test_a_str_body_is_refused_rather_than_encoded(self):
+        """`bytes` would silently become a character count, which is the
+        confusion the field exists to settle."""
+        P = self._mod()
+        with self.assertRaises(TypeError):
+            P.describe("User-agent: *", url="u", status=200, agent="UA")
+
+    def test_verify_notices_a_body_changed_under_its_record(self):
+        P = self._mod()
+        path = os.path.join(self.dir, "v.txt")
+        P.save(path, b"before", url="https://h.example/r.txt", status=200,
+               agent="UA")
+        self.assertTrue(P.verify(path)["matches"])
+        with open(path, "wb") as f:
+            f.write(b"after")
+        v = P.verify(path)
+        self.assertFalse(v["matches"])
+        self.assertNotEqual(v["recorded"]["md5"], v["found"]["md5"])
+
 
 
 if __name__ == "__main__":

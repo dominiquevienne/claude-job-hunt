@@ -839,6 +839,38 @@ Two rules for anything added here:
    deliberately left out, because exercising them means driving a real
    application on the user's real account.
 
+## A fetched body is saved with its provenance, or it is not saved
+
+**Use `skills/job-scan/scripts/_provenance.py` whenever a retrieved body is
+written to disk.** Not the filename — the filename is what failed.
+
+```python
+from _provenance import save, load, audit
+save(path, body, url=exact_url, status=code, agent=UA)
+body, prov = load(path)          # refuses a body with no sidecar
+audit(directory)                 # names the orphans, and its own denominator
+```
+
+**What it cost to learn.** On 2026-09-05 a recount of the Cloudflare managed
+default found **28 bodies identical to the byte**. Eighteen could be
+attributed; ten could not, and **eight of those are unrecoverable** — the file
+contains no reference to the host serving it, so nothing inside it will ever
+say where it came from.
+
+**The filename was the only place the host existed, and it had been
+abbreviated.** `sl_rb` meant Somaliland. The obvious repair — read sibling
+files sharing the country prefix — answers *Sierra Leone*, because the other
+`sl_*` files are Sierra Leonean. **That is the single case where the
+instrument's answer could be checked, and it is wrong**, which is the only
+reason anyone knows it is wrong.
+
+So: `url`, `status`, `agent` are keyword-only **with no defaults** — a call
+that forgets one fails where it is written rather than producing a file that
+looks complete and is unattributable tomorrow. `bytes` and `md5` are of the
+**raw** body: no strip, no newline normalisation, no decode. A md5 of a
+stripped body differs too, and three files appeared to have changed overnight
+on exactly that.
+
 ## Which adapters are due for re-verification
 
 ```
