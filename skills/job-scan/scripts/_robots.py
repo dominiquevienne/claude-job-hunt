@@ -559,7 +559,8 @@ def verdict(host, agents=None):
         return result
 
     out = {"host": final, "requested_host": host, "sweep": True,
-           "reason": None, "content_signal": None, "state": got["state"],
+           "reason": None, "content_signal": None, "crawl_delay": None,
+           "state": got["state"],
            "attempts": got.get("attempts"), "certain": True,
            "status": got.get("status"), "bytes": got.get("bytes")}
     if final != host:
@@ -690,6 +691,7 @@ def verdict(host, agents=None):
     # opened `*` and closed `ClaudeBot` was reported open, and the error went
     # towards permitted on the one kind of file that addresses us by name.
     token, dis, allow, matched = group_for(body, agents)
+    out["crawl_delay"] = delay_for(body, agents)
     # **An empty `Disallow:` is not a refused path — it is how a file says
     # *nothing is closed*.** `_match_len` has known that since #101, and a
     # test pins it; `verdict()` did not, and counted the empty string as a
@@ -831,6 +833,13 @@ def _groups(body):
             agents.add(v.lower())
         elif k in ("disallow", "allow"):
             rules.append((k, v))
+        elif k == "crawl-delay":
+            # **A directive, not a remark.** `ejob.az` names `ClaudeBot` to
+            # give it `Crawl-delay: 5` and forbids it nothing — named,
+            # allowed, conditioned. Dropping it here made the delay
+            # unreadable to every caller, so the one host that had asked for
+            # one was answered at whatever rate the caller happened to use.
+            rules.append((k, v))
     if agents or rules:
         out.append((agents, rules))
     return out
@@ -903,6 +912,33 @@ def _fetch_note(token):
             f"the refusal binds us by our restrictive reading, not by the "
             f"editor having named an agent we could arrive as. "
             f"`identity()` says which token the rules leave open.")
+
+
+def delay_for(body, agents=OUR_AGENTS):
+    """The `Crawl-delay` that binds us, in seconds, or `None`.
+
+    **The maximum across every record that names us**, and the `*` record only
+    when no record names us — the same shape as the rest of this module: where
+    records disagree, the reading that asks less of the host wins. A record
+    naming us with no delay does not cancel one set by another record naming
+    us; it simply contributes nothing.
+    """
+    ours, star = [], []
+    for names, rules in _groups(body):
+        vals = [v for k, v in rules if k == "crawl-delay"]
+        if not vals:
+            continue
+        for raw in vals:
+            try:
+                d = float(raw)
+            except ValueError:
+                continue
+            if d <= 0:
+                continue
+            (ours if names & set(agents) else
+             star if "*" in names else []).append(d)
+    pool = ours or star
+    return max(pool) if pool else None
 
 
 def group_for(body, agents=OUR_AGENTS):

@@ -841,6 +841,23 @@ Two rules for anything added here:
 
 ## A fetched body is saved with its provenance, or it is not saved
 
+**Use `bin/fetch-body.py`, not an ad-hoc script.** It takes the guard on the
+exact path, declares this project's identity, **tests the HTTP code**, honours
+`Crawl-delay`, and writes the provenance beside the body:
+
+```bash
+bin/fetch-body.py https://host.example/robots.txt -o scratch/h.txt
+bin/fetch-body.py https://host.example/s.xml -o s.xml --allow-refusal
+```
+
+**The population that loses provenance is not the adapters.** Enumerated
+2026-09-05: of the 78 scripts in this repository that touch the network, **not
+one writes a fetched body to disk** — they parse and emit. The only binary
+write is `render-plain.py`, and it writes a PDF it generated. Every lost body
+came from a one-off script in a scratchpad, and an audit of one session's
+scratchpad the same day read **365 bodies, 0 with provenance**.
+
+
 **Use `skills/job-scan/scripts/_provenance.py` whenever a retrieved body is
 written to disk.** Not the filename — the filename is what failed.
 

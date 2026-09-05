@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Fetch one URL and write the body **with its provenance**. — #158
+
+    bin/fetch-body.py https://host.example/robots.txt -o scratch/h.txt
+    bin/fetch-body.py https://host.example/sitemap.xml -o s.xml --allow-refusal
+
+**Use this instead of an ad-hoc script.** That is the whole point: the bodies
+lost on 2026-09-05 were not written by any adapter — *no adapter in this
+repository writes a fetched body to disk at all* — they were written by
+one-off scripts in a scratchpad, and every one of them is now unattributable.
+An audit of one session's scratchpad the same day: **365 bodies, 0 with
+provenance.**
+
+WHAT THIS DOES THAT AN AD-HOC SCRIPT KEEPS FORGETTING
+
+**1. It asks the guard on the exact URL, host included.** Not the root. A
+sitemap can live on a host the guard has never seen — `merojob.com` declares
+its own on `sg.merojob.com` — and a path declared somewhere other than
+`/sitemap.xml` is covered by no verdict taken at the root.
+
+**2. It declares this project's identity.** `_ua.UA`, never a browser string.
+A tool's identity appears nowhere in its output, so it is verified rather than
+observed — and one draft script sent Chrome for a whole day while the module
+beside it declared itself properly.
+
+**3. It tests the HTTP code, and records it either way.** A readable body is
+not an answer: a 403 page once entered a fingerprint table as *"5 587 bytes of
+robots.txt"*, md5 included, and that false success then invented a cause for
+itself that took four measurements to demolish. Here a non-200 is written
+**with its status in the record** and reported on stderr; nothing is silently
+promoted to a success.
+
+**4. It honours `Crawl-delay` when the host sets one.** `ejob.az` names
+`ClaudeBot` to give it `Crawl-delay: 5` and forbids it nothing — named,
+allowed, conditioned.
+
+WHAT IT REFUSES
+
+A path the rules refuse is **not fetched**, and there is no flag for that.
+`--allow-refusal` is about the *HTTP* status: it lets a 4xx/5xx body be saved
+for study, which is legitimate and was never the problem — the problem was
+calling it a success.
+"""
+
+import argparse
+import os
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "skills", "job-scan", "scripts"))
+
+from _provenance import save          # noqa: E402
+from _robots import allowed, verdict  # noqa: E402
+from _ua import UA                    # noqa: E402
+
+EXIT_HTTP, EXIT_REFUSED, EXIT_UNKNOWN = 2, 7, 8
+
+
+def shown_token():
+    """The name to print for our identity — **not the first word of `UA`.**
+
+    `UA` begins `Mozilla/5.0 (compatible; Claude-User; …)`, which is the
+    ordinary convention and is correct on the wire. But `UA.split("/")[0]`
+    reports **"Mozilla"**, and this repository has already spent a day on a
+    tool that announced a browser: an operator reading that line, or a session
+    reading its own output, would see exactly the defect it is meant to
+    disprove. *A tool's identity appears nowhere in its output — it is
+    verified, never observed*, and a summary line is output like any other.
+    """
+    m = re.search(r"(Claude-[A-Za-z-]+|ClaudeBot)", UA)
+    return m.group(1) if m else UA
+
+
+def main():
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("url")
+    p.add_argument("-o", "--out", required=True,
+                   help="where the body goes; the provenance goes beside it")
+    p.add_argument("--allow-refusal", action="store_true",
+                   help="save a non-200 body too — with its status recorded, "
+                        "which is the point")
+    p.add_argument("--timeout", type=float, default=45)
+    a = p.parse_args()
+
+    parts = urllib.parse.urlsplit(a.url)
+    if not parts.netloc:
+        print(f"ERROR: {a.url} has no host", file=sys.stderr)
+        return EXIT_HTTP
+
+    # **The guard is taken on the exact path, in this order, before anything
+    # leaves.** Not on the root, and not after.
+    g = allowed(parts.netloc, parts.path or "/")
+    if g["allowed"] is None:
+        print(f"ERROR: {a.url}: {g['reason']}", file=sys.stderr)
+        return EXIT_UNKNOWN
+    if not g["allowed"]:
+        print(f"REFUSED: {a.url}: {g['reason']}", file=sys.stderr)
+        return EXIT_REFUSED
+
+    delay = (verdict(parts.netloc) or {}).get("crawl_delay")
+    if delay:
+        print(f"[fetch-body] the host asks for {delay}s between requests; "
+              f"waiting", file=sys.stderr)
+        time.sleep(float(delay))
+
+    req = urllib.request.Request(a.url, headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=a.timeout) as r:
+            status, body = r.getcode(), r.read()
+    except urllib.error.HTTPError as e:
+        status, body = e.code, e.read()
+    except (urllib.error.URLError, OSError) as e:
+        print(f"ERROR: {a.url}: {e}", file=sys.stderr)
+        return EXIT_HTTP
+
+    if status != 200 and not a.allow_refusal:
+        # **Not saved, and said out loud.** The failure this prevents is the
+        # opposite one: saving it and calling it a body.
+        print(f"ERROR: {a.url}: HTTP {status}, {len(body)} bytes not saved. "
+              f"**A readable body is not an answer — the code decides.** Pass "
+              f"--allow-refusal to keep it; its status travels in the record.",
+              file=sys.stderr)
+        return EXIT_HTTP
+
+    rec = save(a.out, body, url=a.url, status=status, agent=UA)
+    print(f"[fetch-body] {a.out} — HTTP {rec['status']}, {rec['bytes']} bytes, "
+          f"md5 {rec['md5'][:12]}, as {shown_token()}, "
+          f"{rec['fetched_at']}", file=sys.stderr)
+    print(a.out)
+    return 0 if status == 200 else EXIT_HTTP
+
+
+if __name__ == "__main__":
+    sys.exit(main())

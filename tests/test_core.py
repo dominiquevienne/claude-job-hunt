@@ -7089,5 +7089,100 @@ class AFetchedBodyCarriesItsProvenanceOrIsNotWritten(unittest.TestCase):
 
 
 
+class ACrawlDelayIsADirectiveNotARemark(unittest.TestCase):
+    """`ejob.az` names `ClaudeBot` to give it `Crawl-delay: 5` and forbids it
+    nothing — **named, allowed, conditioned**. The parser dropped every line
+    that was not `Allow` or `Disallow`, so the delay was unreadable to every
+    caller and the one host that had asked for one got whatever rate the
+    caller happened to use.
+
+    The union rule matches the rest of the module: **the maximum across the
+    records that name us**, and `*` only when no record names us. Where
+    records disagree, the reading that asks less of the host wins.
+    """
+
+    def test_a_record_naming_us_outranks_the_star(self):
+        self.assertEqual(_robots.delay_for(
+            "User-agent: *\nCrawl-delay: 1\nDisallow:\n\n"
+            "User-agent: ClaudeBot\nCrawl-delay: 5\n"), 5.0)
+
+    def test_the_star_applies_when_no_record_names_us(self):
+        self.assertEqual(
+            _robots.delay_for("User-agent: *\nCrawl-delay: 2\n"), 2.0)
+
+    def test_the_maximum_wins_among_records_naming_us(self):
+        """Two of our tokens, two delays. **Not the first, not the last.**"""
+        self.assertEqual(_robots.delay_for(
+            "User-agent: ClaudeBot\nCrawl-delay: 2\n\n"
+            "User-agent: Claude-User\nCrawl-delay: 9\n"), 9.0)
+
+    def test_absence_and_nonsense_are_both_none(self):
+        """**The failing direction.** A guard that only ever returns a number
+        would pass every test above while inventing a delay where the host set
+        none — and a fabricated delay is indistinguishable from a real one."""
+        for body in ("User-agent: *\nDisallow:\n",
+                     "User-agent: *\nCrawl-delay: soon\n",
+                     "User-agent: *\nCrawl-delay: 0\n",
+                     "User-agent: *\nCrawl-delay: -3\n",
+                     ""):
+            with self.subTest(body=body):
+                self.assertIsNone(_robots.delay_for(body))
+
+    def test_every_verdict_carries_the_field(self):
+        """Present in **all** returns, including the early ones. A `.get()`
+        that finds nothing and a host that set nothing read identically at the
+        call site, and only one of them is a fact about the host."""
+        import inspect
+        src = inspect.getsource(_robots.verdict)
+        outs = src.count('out = {')
+        self.assertGreaterEqual(outs, 1)
+        self.assertIn('"crawl_delay": None', src,
+                      "the field is not initialised where the verdict dict is "
+                      "built, so an early return omits it entirely")
+
+
+
+class TheToolDoesNotPrintThatItIsABrowser(unittest.TestCase):
+    """`UA` begins `Mozilla/5.0 (compatible; Claude-User; …)` — correct on the
+    wire, and `UA.split("/")[0]` reports **"Mozilla"**.
+
+    That line was written, run, and printed *as Mozilla* before anyone noticed.
+    The header was right; the summary was the shape of the defect this
+    repository already spent a day on. **A summary line is output like any
+    other, and a tool's identity is verified rather than observed.**
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(repo, "bin", "fetch-body.py")
+        spec = importlib.util.spec_from_file_location("fetch_body", path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def test_the_name_shown_is_ours(self):
+        m = self._tool()
+        shown = m.shown_token()
+        self.assertNotIn("Mozilla", shown,
+                         "the tool announces a browser in its own output")
+        self.assertTrue(shown.lower().startswith("claude"),
+                        f"the identity printed is {shown!r}")
+
+    def test_it_survives_a_ua_that_leads_with_mozilla(self):
+        """**The failing direction**, on the exact string that produced the
+        defect — a helper that happened to work on some other UA would pass
+        the test above and reprint "Mozilla" on this one."""
+        m = self._tool()
+        real = m.UA
+        try:
+            m.UA = ("Mozilla/5.0 (compatible; Claude-User; "
+                    "claude-job-hunt/9.9.9; +https://example.invalid)")
+            self.assertEqual(m.shown_token(), "Claude-User")
+        finally:
+            m.UA = real
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
