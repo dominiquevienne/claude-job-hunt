@@ -68,3 +68,57 @@ must still answer `None` — otherwise *the host set no rate* becomes
 unrepresentable, and that is the very fact the fix exists to distinguish. **A
 correction that tightens a screw can remove the only way to say the empty
 case**, and that is not recoverable afterwards.
+
+## Three ways a guard fails, and a report has two colours for them
+
+They are disjoint, they are repaired differently, and **the repair everyone
+reaches for first is wrong two times out of three.**
+
+| species | what is wrong | reads as | repair |
+| :-- | :-- | :-- | :-- |
+| **inert** | it *cannot* fail | **green** | rewrite the guard |
+| **unexercised** | no test reaches the branch | **green** | add the case |
+| **misdescribed** | it fails on **correct** code | **red** | fix what it looks for |
+
+**A green can mean three things** — *there is nothing to find*, *I cannot
+find it*, or *I did not look there* — and nothing in the output separates them.
+Writing the guard more strongly does not cover a branch no test reaches, and
+that is the reflex.
+
+All three were produced in one day, by the same hand, hours apart.
+
+**Inert:** a pacing guard searched the source for the string `_pace`, so
+deleting the call left the import behind and nothing failed.
+
+**Unexercised:** two mutations of `_pace` stayed green because the test stubbed
+the rules lookup and never reached the fallback branch — the guard was sound
+and its case was missing. *Rewriting it would have changed nothing.*
+
+**Misdescribed:** a guard asserted that a source contains `git clean`. It
+contains `["git", "clean", "-fdq"]`. **The guard was right about the behaviour,
+wrong about the spelling, and it failed on correct code** — the most expensive
+kind, because a red is trusted.
+
+**Telling them apart takes a mutation, not a reading.** Break the thing the
+guard is for: still green means inert or unexercised, and which of the two is
+answered by asking whether any test reaches that line at all. A red on
+unmutated code is the third.
+
+## And a bench's runs must be independent
+
+A mutation that removed a *where do I write this* check made the tool save a
+body to a file named `None`. Restoring the source left it there, so **the next
+mutation ran against a tree the previous one had changed** — and nothing in
+either result said so.
+
+*Restoring the source is not restoring the tree.* Clean between runs, not only
+at the end, and record what each run left behind. **A bench whose trials are
+not independent does not measure what it believes**, and none of its rows will
+say otherwise.
+
+**The same applies to reading its output.** A count taken while the file was
+being written gave 23 rows for 24 mutations: not wrong, one second stale, with
+nothing in the file saying so — and the next step was publishing *23 of 24*
+with one unexplained. Write a last line carrying the expected total, and refuse
+any file that lacks it. **The flag alone would certify a truncated run; it is
+the count beside it that makes the file checkable.**
