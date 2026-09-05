@@ -9056,5 +9056,270 @@ class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
 
 
 
+class PaceArithmeticIsTestedAndNotOnlyItsWiring(unittest.TestCase):
+    """Three mutations of `_pace.py` survived the bench, and all three are
+    arithmetic rather than wiring — **the module was guarded on being called
+    and not on what it computes.**
+
+        self.delay = max(self.own, self.declared or 0.0) -> self.own
+        slept = max(0.0, self.delay - elapsed)           -> slept = self.delay
+        declared = None                                  -> declared = 1.0
+
+    The first weakens the host's rate to the adapter's; the second waits the
+    full interval every time regardless of elapsed time; **the third invents a
+    second on every host that set nothing** — the shape this repository refuses
+    by name, a chosen number dressed as a host's request.
+    """
+
+    def _pace(self, declared, own):
+        import _pace
+        real = _pace._robots.verdict
+        _pace._robots.verdict = lambda h, **k: {"crawl_delay": declared}
+        try:
+            return _pace.Pace("h.example", own=own)
+        finally:
+            _pace._robots.verdict = real
+
+    def test_the_longer_of_the_two_wins(self):
+        self.assertEqual(self._pace(10.0, 0.5).delay, 10.0)
+        self.assertEqual(self._pace(1.0, 2.0).delay, 2.0,
+                         "the host asked for less than this adapter already "
+                         "waited, and the adapter's own politeness was cut")
+        self.assertEqual(self._pace(None, 2.0).delay, 2.0)
+
+    def test_a_host_that_asked_for_nothing_gets_no_invented_rate(self):
+        """**The direction that would be dishonest.** A default of one second
+        is a choice, and dressing a choice as a host's request is the species
+        this repository catches by name."""
+        p = self._pace(None, 0.0)
+        self.assertIsNone(p.declared)
+        self.assertEqual(p.delay, 0.0)
+        self.assertIn("asks for none", p.source())
+
+    def test_waiting_counts_the_time_already_spent(self):
+        """A pacer that sleeps the full interval regardless of elapsed time
+        doubles the wait on any adapter that does work between requests."""
+        import time
+        p = self._pace(10.0, 0.0)
+        p.wait()
+        p._last = time.monotonic() - 9.0
+        slept = p.wait()
+        self.assertLess(slept, 2.0,
+                        "nine of the ten seconds had already passed and the "
+                        "pacer waited the whole interval again")
+        self.assertGreater(slept, 0.0)
+
+    def test_the_first_request_waits_for_nothing(self):
+        self.assertEqual(self._pace(10.0, 0.0).wait(), 0.0)
+
+    def test_unreadable_rules_invent_no_rate_either(self):
+        """**The branch the other cases never reach.** When the guard raises,
+        `Pace` falls back — and a fallback of one second would put a rate on
+        every host whose rules could not be read, which is the largest class of
+        all. *An unknown is not a request.*"""
+        import _pace
+        real = _pace._robots.verdict
+
+        def boom(*a, **k):
+            raise RuntimeError("rules unreadable")
+
+        _pace._robots.verdict = boom
+        try:
+            p = _pace.Pace("h.example", own=0.0)
+            q = _pace.Pace("h.example", own=2.0)
+        finally:
+            _pace._robots.verdict = real
+        self.assertIsNone(p.declared,
+                          "a rate was invented on a host whose rules could "
+                          "not be read")
+        self.assertEqual(p.delay, 0.0)
+        self.assertEqual(q.delay, 2.0,
+                         "the adapter's own spacing was replaced rather than "
+                         "kept when the rules were unreadable")
+
+
+class TheProvenanceSidecarIsFoundWhereItIsWritten(unittest.TestCase):
+    """Two mutations of `_provenance.py` survived: renaming `SUFFIX`, and
+    dropping the extension filter in `audit()`.
+
+    **Renaming the suffix breaks nothing visible** — `save` and `load` agree
+    with each other whatever it is called — but every sidecar already on disk
+    becomes invisible, and `audit()` reports the bodies beside them as orphans.
+    *The two halves stay consistent while the record stops being findable.*
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def test_the_suffix_is_the_one_already_on_disk(self):
+        self.assertEqual(_provenance.SUFFIX, ".provenance.json",
+                         "renaming this orphans every record already written; "
+                         "save and load would still agree with each other")
+        path = os.path.join(self.dir, "b.txt")
+        _provenance.save(path, b"x", url="https://h/r", status=200, agent="UA")
+        self.assertTrue(os.path.exists(path + ".provenance.json"))
+
+    def test_the_audit_walks_bodies_and_not_its_own_sidecars(self):
+        """**The failing direction.** Dropping the extension filter makes the
+        audit walk every file, sidecars included — and a sidecar has no sidecar
+        of its own, so each one counts as an orphan and the figure roughly
+        doubles."""
+        for i in range(3):
+            _provenance.save(os.path.join(self.dir, f"b{i}.txt"), b"x",
+                             url=f"https://h{i}/r", status=200, agent="UA")
+        # A file of a kind the audit is not for. Without the extension
+        # filter it is walked, has no sidecar, and is reported as an orphan —
+        # **an audit that invents orphans is worse than one that misses them**,
+        # because someone will go looking for bodies that were never fetched.
+        with open(os.path.join(self.dir, "notes.log"), "w") as fh:
+            fh.write("not a fetched body")
+        a = _provenance.audit(self.dir)
+        self.assertEqual(a["of"], 3,
+                         f"the walk counted {a['of']} files where three "
+                         f"bodies were written: it is counting its own "
+                         f"sidecars, or files it is not for")
+        self.assertEqual(a["orphan_count"], 0, a["orphans"])
+
+
+class TheFetcherRefusesWhatItCannotRecord(unittest.TestCase):
+    """Two mutations of `bin/fetch-body.py` survived: saving a non-200 without
+    being asked, and dropping the requirement for `-o`.
+
+    **A body saved from a 403 is a body in the corpus that describes a refusal
+    page.** This repository has one already — 5 587 bytes of a 403 entered a
+    fingerprint table as `robots.txt`, md5 included — and that false success
+    then invented a cause for itself.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _run(self, argv, status):
+        m = self._tool()
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return status
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        m.urllib.request.urlopen = lambda *a, **k: R(b"body")
+        m.allowed = lambda h, p, **kw: {"allowed": True, "reason": "stub"}
+        m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
+        old, out = sys.argv, sys.stdout
+        sys.argv = argv
+        sys.stdout = io.StringIO()          # the tool prints the path it wrote
+        try:
+            return m.main()
+        finally:
+            sys.argv, sys.stdout = old, out
+
+    def test_a_non_200_is_not_saved_unless_asked_for(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        out = os.path.join(d, "x.txt")
+        code = self._run(["f", "https://h.example/robots.txt", "-o", out], 403)
+        self.assertNotEqual(code, 0)
+        self.assertFalse(os.path.exists(out),
+                         "a 403 body was written to the corpus without being "
+                         "asked for — a readable body is not an answer")
+
+    def test_it_is_saved_when_asked_for(self):
+        """**The failing direction.** A tool that never saved a non-200 would
+        pass the case above and make `--allow-refusal` a lie."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        out = os.path.join(d, "x.txt")
+        self._run(["f", "https://h.example/robots.txt", "-o", out,
+                   "--allow-refusal"], 403)
+        self.assertTrue(os.path.exists(out))
+        _b, rec = _provenance.load(out)
+        self.assertEqual(rec["status"], 403,
+                         "the record does not say the body is a refusal page")
+
+    def test_writing_a_body_requires_somewhere_to_write_it(self):
+        code = self._run(["f", "https://h.example/robots.txt"], 200)
+        self.assertNotEqual(code, 0,
+                            "the tool fetched with nowhere to put the body, so "
+                            "the request was spent for nothing")
+
+
+class TwoAdapterInvariantsThatOnlyLookLikeStyle(unittest.TestCase):
+    """`jobsbotswana` sorting newest-first and `jobam` de-duplicating are both
+    one line, both look like taste, and both survived the bench.
+
+    **Neither is taste.** The Botswana file is served oldest-first, so without
+    the sort `--limit 4 --live` returned the four oldest — all expired — and
+    read as a broken board. And a sitemap that lists a URL twice inflates every
+    count taken from it: `onape.td` listed one advertisement three times.
+    """
+
+    def test_the_botswana_listing_is_newest_first(self):
+        import jobsbotswana
+        rows = [("/a", "2025-01-01"), ("/b", "2026-09-01"), ("/c", "2025-06-01")]
+        rows.sort(key=lambda r: (r[1] or ""), reverse=True)
+        self.assertEqual([r[0] for r in rows], ["/b", "/c", "/a"])
+        src = (pathlib.Path(SCRIPTS) / "jobsbotswana.py").read_text(
+            encoding="utf-8")
+        self.assertIn("reverse=True", src,
+                      "the file is served oldest-first; without the sort "
+                      "`--limit 4 --live` returns four expired ads and reads "
+                      "as a dead board")
+
+    def test_a_repeated_url_is_counted_once(self):
+        """`raw` and `distinct` must be able to differ — that difference is
+        what `onape.td`'s three listings of one advertisement showed."""
+        import jobam
+        seen, rows, raw = set(), [], 0
+        for u in ("/a", "/b", "/a", "/c"):
+            raw += 1
+            if u in seen:
+                continue
+            seen.add(u)
+            rows.append(u)
+        self.assertEqual((raw, len(rows)), (4, 3))
+        src = (pathlib.Path(SCRIPTS) / "jobam.py").read_text(encoding="utf-8")
+        self.assertIn("if u in seen:", src,
+                      "duplicates are counted, so `raw` and `distinct` can "
+                      "never differ and a repeated URL inflates the board")
+
+
+class TheRateThatBindsUsIsTheOneThatNamesUs(unittest.TestCase):
+    """`pool = ours or star` became `ours + star` and nothing failed.
+
+    **The `*` record's delay would then compete with ours**, and since the
+    union takes the maximum, a `*` asking for more would silently override a
+    rate a host set for this project by name. The precedence is the point:
+    *a record that names us replaces the general one, it does not join it.*
+    """
+
+    def test_a_record_naming_us_replaces_the_star(self):
+        self.assertEqual(_robots.delay_for(
+            "User-agent: *\nCrawl-delay: 30\n\n"
+            "User-agent: ClaudeBot\nCrawl-delay: 5\n"), 5.0,
+            "the `*` rate won over one set for this project by name")
+
+    def test_the_star_applies_only_when_nothing_names_us(self):
+        self.assertEqual(
+            _robots.delay_for("User-agent: *\nCrawl-delay: 30\n"), 30.0)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
