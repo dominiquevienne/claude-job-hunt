@@ -4,7 +4,7 @@
 
 <!-- hosts: per-country -->
 <!-- script: none -->
-<!-- countries: DZ, EG, SY, YE -->
+<!-- countries: DZ EG SY YE -->
 <!-- content: indeterminate · rules unreadable on 5 of 5 hosts queried, HTTP 202 with a 0-byte body · 2026-09-05 -->
 <!-- witness: none — nothing was fetched beyond robots.txt, and nothing could be -->
 
