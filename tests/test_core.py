@@ -8072,6 +8072,77 @@ class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
                 drift.append((k, sorted(edge), [v for _c, v in sides]))
         self.assertEqual(drift, [], "the two copies disagree: " + str(drift))
 
+    @staticmethod
+    def share_a_market(a, b):
+        """Do these two `countries:` sets overlap? `*` overlaps everything.
+
+        **Extracted so it can be exercised on inputs the repository does not
+        contain.** Neutering it to `if False:` inside the loop left the guard
+        green — not because the walk stopped, but because **a predicate that
+        never fires cannot be distinguished from one that finds nothing when
+        there is nothing to find.** The `checked` counter catches a walk that
+        stopped; only cases that must come back false catch this.
+        """
+        return bool(a & b) or "*" in a or "*" in b
+
+    def test_the_two_cards_share_a_market(self):
+        """**A declaration checked against the rest of its own header.**
+
+        `jobstore.md` carried `countries: MY SG` four lines above three
+        `overlap:` declarations all saying **Swiss** — two formal declarations
+        of one header contradicting each other, and nothing compared them.
+        The guard written for #164 compared a declaration to its twin in the
+        other card; the redundancy that catches this one was already there and
+        nobody was listening.
+
+        **Countries are compared, never the prose.** Reading *"Swiss"* and
+        mapping it to `CH` would be inventing a grammar — the failure named on
+        the body-scan attempt. Two cards that share no market cannot share
+        advertisements, and `*` shares with everything.
+        """
+        decls, d = self._decls()
+        import re
+
+        def markets(card):
+            m = re.search(r"<!--\s*countries:\s*(.*?)\s*-->",
+                          (d / card).read_text(encoding="utf-8"))
+            return set(m.group(1).split()) if m else set()
+
+        checked, bad = 0, []
+        for card, _k, parts in decls:
+            other = parts[0]
+            if not (d / other).exists():
+                continue
+            a, b = markets(card), markets(other)
+            if not a or not b:
+                continue
+            checked += 1
+            if not self.share_a_market(a, b):
+                bad.append((card, sorted(a), other, sorted(b)))
+        self.assertGreaterEqual(
+            checked, 10,
+            f"only {checked} declarations were compared against their own "
+            f"`countries:`; twelve were on 2026-09-05, so the check is "
+            f"passing by looking at nothing")
+        self.assertEqual(
+            bad, [], "these cards declare a shared overlap and no shared "
+                     "market: " + str(bad))
+
+
+    def test_the_market_predicate_answers_no_when_it_should(self):
+        """**The cases the repository does not contain.** Without these, a
+        predicate hard-wired to *yes* passes every test above."""
+        yes = [({"CH"}, {"CH"}), ({"*"}, {"MY"}), ({"MY"}, {"*"}),
+               ({"MY", "SG"}, {"SG"}), ({"*"}, {"*"})]
+        no = [({"MY", "SG"}, {"CH"}), ({"CH"}, {"FR"}), (set(), {"CH"}),
+              ({"CH"}, set()), (set(), set())]
+        for a, b in yes:
+            with self.subTest(a=sorted(a), b=sorted(b), want=True):
+                self.assertTrue(self.share_a_market(a, b))
+        for a, b in no:
+            with self.subTest(a=sorted(a), b=sorted(b), want=False):
+                self.assertFalse(self.share_a_market(a, b))
+
     def test_a_measured_overlap_carries_a_date_and_a_property_does_not(self):
         """**Why there are two keys.** A property that acquired a date would
         expire on a schedule nothing measured; a measurement without one would

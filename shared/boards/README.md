@@ -211,6 +211,37 @@ while a board that comes good is still caught within a season.
 Without the back-off this feature becomes a recurring chore, and a recurring
 chore gets switched off wholesale — taking the BOBST case down with it.
 
+### `countries:` — the markets the board serves, not the market we measured
+
+```
+<!-- countries: CH -->
+<!-- countries: MY SG -->
+<!-- countries: * -->
+```
+
+**`*` means *more than a short list can carry*** — a worldwide aggregator, or
+an ATS family whose tenants are wherever their employers are. Twenty-three of
+the ninety-seven cards using this key already carry it.
+
+**The country our figure came from goes in `content:`, with its date.** They
+are two different facts and they were one key until 2026-09-05, when
+`jobstore.md` was found declaring `countries: MY SG` four lines above three
+`overlap:` declarations all saying **Swiss** — two formal declarations of the
+same header contradicting each other, with nothing comparing them.
+
+*That is not an author's slip: it is a key used ninety-seven times with no
+definition written anywhere.* This paragraph is the definition, and it was
+settled as an **arbitration** — the three readings available were `MY SG CH`,
+the twenty-six, and `*`. The reasons for `*`: it answers the question a reader
+actually asks — *does this repository cover my country* — the twenty-three
+existing wildcards are exactly the multi-country boards, so majority practice
+already meant markets; and the measured country now has its own key.
+
+**The ninety-four other cards are not retro-corrected.** None is demonstrated
+wrong, and a mass edit under a definition written afterwards would be worse
+than the vagueness it replaced. `AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree`
+catches the disagreements as they are declared.
+
 ### What a re-check is, and what it is not
 
 **A yield check, not a scan.** One listing call at the adapter's cheapest
