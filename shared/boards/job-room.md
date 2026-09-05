@@ -6,7 +6,7 @@
 <!-- script: jobroom.py -->
 <!-- countries: CH -->
 <!-- overlap: sozialinfo.md · 27 ads in common · 2026-09-03 -->
-<!-- overlap: solique.md · 24 of job-room's 2 800 Swiss ads are Solique tenants · 2026-09-03 -->
+<!-- overlap: solique.md · 24 Solique tenants among 2 800 job-room ads FETCHED — **the denominator is a fetched count, not the board's size**, so no share is computed from it · 2026-09-03 -->
 **Re-verified 2026-09-02**: a keyword search returned 50 cards on the documented route.
 
 Switzerland's **public employment service portal**, run by SECO. It carries the
@@ -190,11 +190,28 @@ ledger under a jobs.ch id was being recorded again as new.
 superseded. It was not a sampling difference; the field it counted was
 empty on two rows in three.)*
 
-**A wider sweep, 2026-08-29 — 2 800 ads across all 25 cantons — adds two facts
-the 100-ad sample could not show.**
+**A wider sweep, 2026-08-29 — 2 800 ads FETCHED across all 25 cantons — adds
+two facts the 100-ad sample could not show.**
+
+**2 800 is a count of what was retrieved, not a count of the board.** The
+adapter defaults to `--pages 1` at `--size 50`, which is a cost guard and does
+its job; a canton-by-canton sweep under it returns fifty rows per canton and
+stops. Measured 2026-09-05: **the API reports 16 043 matches for Zurich alone**
+— one canton is 5.7 times the national figure published here.
+
+**And the right number was free on every request.** The API returns its own
+match count, which the adapter prints, and it was never summed. *This is the
+third time in one day that a count of what we read was published as a count of
+what exists* — after `jobsbotswana` at 367 against 5 123, and `apec`'s file
+named *offres* holding 1 288 search facets.
+
+**No total is published in its place.** A figure exists in a hard-coded string
+inside the script and nowhere in any measurement, and a hard-coded population
+is exactly what this repository distrusts. The measurement that would settle it
+is summing the per-canton match counts the API already returns.
 
 **One agency supplies a third of this board.** `med-ipersonal.ch` accounted for
-**872 of 2 800** ads, and all 872 come from a **single employer**: MediPersonal,
+**872 of the 2 800 fetched** ads, and all 872 come from a **single employer**: MediPersonal,
 a healthcare staffing agency. That is not a market signal and not an ATS — it is
 one company publishing at scale. **Never read this board's volume as demand
 without checking the host distribution**, and expect a healthcare-heavy skew
