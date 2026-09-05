@@ -62,6 +62,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _pace import Pace
 from _robots import verdict as robots_verdict
 
 from _ua import UA
@@ -86,7 +87,25 @@ def note(msg):
     print(f"[icims] {msg}", file=sys.stderr)
 
 
+# **One pacer per host, because the rate is the host's property.** Keyed here
+# rather than at each call site so that every request through `get()` is spaced,
+# including ones added later. `careers.icims.com` asks for `crawl-delay: 5` and
+# this adapter gave none until 2026-09-05 — three requests per run, no spacing
+# at all, on a host named by our own card.
+_PACERS = {}
+
+
+def pace_for(host):
+    if host not in _PACERS:
+        _PACERS[host] = Pace(host)
+        p = _PACERS[host]
+        if p.delay:
+            print(f"[icims] {p.source()}", file=sys.stderr)
+    return _PACERS[host]
+
+
 def get(url):
+    pace_for(urllib.parse.urlsplit(url).netloc).wait()
     req = urllib.request.Request(url, headers={
         "User-Agent": UA, "Accept": "text/html,application/xml,*/*;q=0.8"})
     try:

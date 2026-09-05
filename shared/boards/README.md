@@ -839,6 +839,33 @@ Two rules for anything added here:
    deliberately left out, because exercising them means driving a real
    application on the user's real account.
 
+## An adapter that fetches twice consults the host's rate
+
+**Use `skills/job-scan/scripts/_pace.py` in the fetch wrapper**, keyed by host,
+so every request through it is spaced — including ones added later.
+
+```python
+from _pace import Pace
+_PACERS = {}
+def pace_for(host):
+    return _PACERS.setdefault(host, Pace(host, own=<whatever this adapter already slept>))
+```
+
+**The delay comes from the host and never from a number we picked.** When the
+host asks for nothing, `Pace` waits the adapter's own existing spacing and
+nothing more: *a default of one second is a choice, not a measurement.* Where
+both exist the longer wins, so an adapter's own politeness is never weakened.
+
+**Pacing and back-off stay two things.** They had to be separated even to
+count — 47 adapters carrying `time.sleep` turned out to be 43 spacing plus 4
+backing off from 429/503. A retry answers the response; pacing answers the
+rules.
+
+Measured 2026-09-05: 65 of 71 adapters whose fetch wrapper could be identified
+make several requests to one host — **92 %, the normal shape of a board adapter**
+— and 33 had no spacing at all. `careers.icims.com` asks `crawl-delay: 5` and
+`icims.py` gave none.
+
 ## A fetched body is saved with its provenance, or it is not saved
 
 **Use `bin/fetch-body.py`, not an ad-hoc script.** It takes the guard on the

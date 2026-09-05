@@ -74,10 +74,11 @@ import argparse
 import hashlib
 import io
 import os
-import shutil
-import tempfile
+import pathlib
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(
@@ -7524,6 +7525,125 @@ class TheSitemapReaderHasACaller(unittest.TestCase):
         self.assertNotIn('"/sitemap.xml"', block,
                          "the tool composes a fallback path when the host "
                          "declares none — which is the defect it exists for")
+
+
+
+class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
+    """`Crawl-delay` was dropped by the parser until 2026-09-05, so **no
+    adapter had ever applied one**. Measured that day: 65 of 71 whose fetch
+    wrapper could be identified make several requests to the same host — 92 %,
+    the normal shape of a board adapter and not an exception — and 33 have no
+    spacing of any kind.
+
+    The concrete case is a host on our own cards:
+
+        careers.icims.com   crawl-delay: 5   84 bytes, md5 2a0e78d4b005
+        icims.py            3 requests per run, no spacing at all
+
+    **The list below can only shrink.** The test fails in both directions: an
+    adapter that starts fetching twice without pacing is caught because it is
+    not on the list, and one that gets wired is caught because it still is.
+    *A frozen allowlist checked in one direction becomes a place to hide.*
+    """
+
+    UNPACED = (
+        "adecco.py", "adzuna.py", "anefa.py",
+        "apec.py", "arbeitsagentur.py", "ats.py",
+        "batiactu.py", "bnecl.py", "bumeran.py",
+        "computrabajo.py", "crit.py", "digitalrecruiters.py",
+        "emploitic.py", "employtt.py", "encuentra24.py",
+        "ergodotisi.py", "fachkraft.py", "fhf.py",
+        "flatchr.py", "francetravail.py", "freework.py",
+        "hays.py", "hellojob.py", "hellowork.py",
+        "hrge.py", "infoempleo.py", "jobam.py",
+        "jobbkk.py", "jobivoire.py", "jobology.py",
+        "jobroom.py", "jobsbotswana.py", "jobsearchzm.py",
+        "jobsge.py", "jobsgovpk.py", "jobsireland.py",
+        "jobstore.py", "jobup.py", "kalibrr.py",
+        "keejob.py", "lmisjm.py", "meteojob.py",
+        "michaelpage.py", "mihnati.py", "mycareersfuture.py",
+        "onape.py", "oraclecloud.py", "persigo.py",
+        "platsbanken.py", "randstad.py", "randstadfr.py",
+        "solique.py", "sozialinfo.py", "ssge.py",
+        "successfactors.py", "swissdevjobs.py", "taleez.py",
+        "talentsoft.py", "tenant_offer.py", "turijobs.py",
+        "umantis.py", "vieclam24h.py", "workday.py",
+        "wttj.py",
+    )
+
+    def _multi_and_paced(self):
+        import re
+        out = {}
+        for f in sorted(pathlib.Path(SCRIPTS).glob("*.py")):
+            if f.name.startswith("_"):
+                continue
+            src = f.read_text(encoding="utf-8")
+            if not re.search(r"urlopen|urllib\.request", src):
+                continue
+            ws, lines = [], src.splitlines()
+            for i, l in enumerate(lines):
+                m = re.match(r"def (\w+)\s*\(", l)
+                if not m:
+                    continue
+                body = []
+                for nxt in lines[i + 1:]:
+                    if nxt.strip() and not nxt.startswith((" ", "\t")):
+                        break
+                    body.append(nxt)
+                if "urlopen" in "\n".join(body):
+                    ws.append(m.group(1))
+            if not ws:
+                continue
+            pat = re.compile(r"(?<![.\w])(" + "|".join(map(re.escape, ws)) + r")\s*\(")
+            body = re.sub(r"(?m)^def \w+\s*\(.*$", "", src)
+            n = len(pat.findall(body))
+            inloop = False
+            ls = body.splitlines()
+            for i, l in enumerate(ls):
+                if not re.match(r"\s*(for|while)\b", l):
+                    continue
+                ind = len(l) - len(l.lstrip())
+                for nxt in ls[i + 1:]:
+                    if nxt.strip() and (len(nxt) - len(nxt.lstrip())) <= ind:
+                        break
+                    if pat.search(nxt) and not re.search(r"attempt|retry", nxt):
+                        inloop = True
+            if inloop or n >= 2:
+                out[f.name] = "_pace" in src
+        return out
+
+    def test_the_walk_still_sees_the_adapters(self):
+        """**A guard green on a denominator it shrank itself proves nothing.**
+        This detector has been wrong twice in one afternoon: it counted
+        `posting.get(...)` as a network call, and it missed adapters whose
+        wrapper is named something other than `get`."""
+        seen = self._multi_and_paced()
+        self.assertGreaterEqual(
+            len(seen), 60,
+            "the walk found only %d multi-request adapters; 65 were measured "
+            "on 2026-09-05, so the detector has narrowed" % len(seen))
+
+    def test_no_unlisted_adapter_fetches_twice_without_pacing(self):
+        seen = self._multi_and_paced()
+        new = sorted(n for n, paced in seen.items()
+                     if not paced and n not in self.UNPACED)
+        self.assertEqual(new, [], "these make several requests to one host and "
+                                  "never consult its rate, and are not on the "
+                                  "known list: " + ", ".join(new))
+
+    def test_the_list_holds_no_adapter_that_is_already_paced(self):
+        """**The shrinking direction.** Wiring an adapter and leaving it listed
+        would turn the list from a debt into a permanent excuse."""
+        seen = self._multi_and_paced()
+        stale = sorted(n for n in self.UNPACED if seen.get(n) is True)
+        self.assertEqual(stale, [], "paced and still listed as not: "
+                                    + ", ".join(stale))
+
+    def test_the_measured_case_is_wired(self):
+        src = (pathlib.Path(SCRIPTS) / "icims.py").read_text(encoding="utf-8")
+        self.assertIn("_pace", src,
+                      "`careers.icims.com` asks for 5s and this is the adapter "
+                      "measured giving none")
 
 
 
