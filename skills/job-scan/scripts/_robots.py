@@ -500,7 +500,7 @@ def siblings(host):
     return out
 
 
-def verdict(host):
+def verdict(host, agents=None):
     """What this host says about being read.
 
     Returns a dict with **`sweep`, which is `True`, `False` or `None`**,
@@ -536,17 +536,26 @@ def verdict(host):
     # nothing. **A spelling never seen before still costs one request**: there
     # is no way to learn a redirect without following it, and this fixes the
     # verdict being reused, not the fetch. Issue #99.
-    if host in _ALIAS:
-        return _CACHE[_ALIAS[host]]
+    # `OUR_AGENTS` is defined below this function, so the default is resolved
+    # here rather than at definition time.
+    agents = tuple(agents) if agents else OUR_AGENTS
+    # **The cache key carries the agents.** Since 2026-09-05 this function is
+    # asked the same host under one token and then the other, and a key of the
+    # host alone would hand the second caller the first one's verdict — the
+    # exact shape of a silent wrong answer, and it would have arrived with a
+    # correct-looking reason attached.
+    key = (agents,)
+    if (host, key) in _ALIAS:
+        return _CACHE[(_ALIAS[(host, key)], key)]
     got = _fetch(host)
     final = got.get("final") or host
-    if final in _CACHE:
-        _ALIAS[host] = final
-        return _CACHE[final]
+    if (final, key) in _CACHE:
+        _ALIAS[(host, key)] = final
+        return _CACHE[(final, key)]
 
     def _keep(result):
-        _CACHE[final] = result
-        _ALIAS[host] = final
+        _CACHE[(final, key)] = result
+        _ALIAS[(host, key)] = final
         return result
 
     out = {"host": final, "requested_host": host, "sweep": True,
@@ -680,7 +689,7 @@ def verdict(host):
     # `*` and never consulted a record naming this project — so a file that
     # opened `*` and closed `ClaudeBot` was reported open, and the error went
     # towards permitted on the one kind of file that addresses us by name.
-    token, dis, allow, matched = group_for(body)
+    token, dis, allow, matched = group_for(body, agents)
     # **An empty `Disallow:` is not a refused path — it is how a file says
     # *nothing is closed*.** `_match_len` has known that since #101, and a
     # test pins it; `verdict()` did not, and counted the empty string as a
@@ -763,6 +772,12 @@ def verdict(host):
 # are the names this project is addressed by, gathered from the files that name
 # them — `linkedin.com` refuses `Claude-User` by name, Cloudflare's managed
 # block names `ClaudeBot`. Issue #116.
+# **The two tokens this project can actually present as.** The other names in
+# `OUR_AGENTS` are names a site may use *about* us; these are the two a request
+# can carry. The distinction matters since the owner's decision of 2026-09-05.
+FETCH_TOKENS = ("claudebot", "claude-user")
+
+
 OUR_AGENTS = ("claudebot", "claude-web", "claude-user", "claude-searchbot",
               "anthropicbot", "anthropic-ai")
 
@@ -955,7 +970,7 @@ def _match_len(pattern, path):
     return len(m.group(0)) if m else -1
 
 
-def allowed(host, path):
+def allowed(host, path, agents=None):
     """May `path` be fetched on `host`? **Longest match wins, `Allow` on a tie.**
 
     `verdict()` answers *is this host closed in one block*. **A path needs its
@@ -971,7 +986,8 @@ def allowed(host, path):
     *no rules were read*: honest about the state, wrong about the permission,
     and it is the boolean that callers act on. Issue #118.
     """
-    v = verdict(host)
+    agents = tuple(agents) if agents else OUR_AGENTS
+    v = verdict(host, agents)
     out = {"host": v["host"], "requested_host": v.get("requested_host"),
            "path": path, "allowed": True, "rule": None, "kind": None,
            "group": v.get("group"), "sweep": v["sweep"],
@@ -1100,3 +1116,70 @@ def _main():
 
 if __name__ == "__main__":
     raise SystemExit(_main())
+
+
+def identity(host, path="/"):
+    """Which of our two tokens may fetch `path`, or none — decided per token.
+
+    **The owner's decision of 2026-09-05 replaces the restrictive reading.**
+    Until then this module unioned the refusals of every record naming us: a
+    host that opened `Claude-User` and closed `ClaudeBot` was reported closed,
+    and the arbitration was left to a person. It is now made here:
+
+    | the rules say | what this returns |
+    | :-- | :-- |
+    | `ClaudeBot` **or** `Claude-User` permitted | that token — ordinary HTTP |
+    | both refused | `None` — the caller drives the browser |
+
+    **This chooses; it does not retry.** `shared/robots-policy.md` forbids
+    rotating agents *after* a refusal, and that stands: the identity is
+    settled from the rules before any request for content is made, and a
+    refusal received under the chosen token is a refusal, not an invitation to
+    try the other one.
+
+    Returns a dict: `token`, `state` (`"http"` or `"browser"`), `per_token`
+    with each token's own verdict, and `reason`. **`token` is `None` in the
+    browser branch and the caller must look at `state`** — a falsy token is
+    not "unknown".
+
+    **`certain` travels from the underlying verdicts.** When the rules could
+    not be read, no token is permitted and the state is not `browser` either:
+    an unknown is not a refusal, and `state` reads `"unknown"`.
+    """
+    per, permitted = {}, []
+    unknown = 0
+    for tok in FETCH_TOKENS:
+        a = allowed(host, path, agents=(tok,))
+        per[tok] = {"allowed": a["allowed"], "rule": a["rule"],
+                    "group": a.get("group"), "certain": a.get("certain")}
+        if a["allowed"] is None:
+            unknown += 1
+        elif a["allowed"]:
+            permitted.append(tok)
+    out = {"host": host, "path": path, "per_token": per, "token": None}
+    if permitted:
+        # `Claude-User` first when both are open: this project is driven by a
+        # person's request, and that is the token which says so.
+        out["token"] = ("claude-user" if "claude-user" in permitted
+                        else permitted[0])
+        out["state"] = "http"
+        out["reason"] = (
+            f"`{out['token']}` may fetch this path"
+            + (f" (`{FETCH_TOKENS[0] if out['token'] == FETCH_TOKENS[1] else FETCH_TOKENS[1]}` "
+               f"may not)" if len(permitted) == 1 else "")
+            + ". Ordinary HTTP, no browser.")
+        return out
+    if unknown == len(FETCH_TOKENS):
+        out["state"] = "unknown"
+        out["reason"] = ("the rules could not be read for either token. "
+                         "**An unknown is not a refusal**, and it is not the "
+                         "browser branch either — retry, or read the file by "
+                         "hand.")
+        return out
+    out["state"] = "browser"
+    out["reason"] = (
+        "both `ClaudeBot` and `Claude-User` are refused this path, so the "
+        "ordinary route is closed. **The browser branch applies** — drive it "
+        "with the plugin rather than presenting a third identity.")
+    return out
+

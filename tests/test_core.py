@@ -2321,8 +2321,14 @@ class RulesNothingHadEverTested(unittest.TestCase):
             v = _robots.verdict("asked.example")
             self.assertEqual(v["host"], "answered.example")
             self.assertEqual(v["requested_host"], "asked.example")
-            self.assertIn("answered.example", _robots._CACHE)
-            self.assertNotIn("asked.example", _robots._CACHE)
+            # **The key carries the agents since #139**, because `identity()`
+            # asks the same host once per token and a key of the host alone
+            # would hand the second caller the first one's verdict. The claim
+            # this case makes is unchanged: the verdict is filed under the
+            # host that *answered*, never the one that was asked.
+            cached = {h for h, _agents in _robots._CACHE}
+            self.assertIn("answered.example", cached)
+            self.assertNotIn("asked.example", cached)
         finally:
             _robots._fetch = real
             _robots._CACHE.clear()
@@ -6604,6 +6610,147 @@ class ACountOfLocsIsNotACountOfAdvertisements(unittest.TestCase):
         self.assertEqual(len(seen), 8)
         self.assertNotEqual(seen, list(range(8)), "the sample is the head")
         self.assertGreater(max(seen), 100, "the sample never left the start")
+
+
+class WhichOfOurTokensMayFetch(unittest.TestCase):
+    """**#139 — the restrictive reading is abandoned, by the owner's decision
+    of 2026-09-05.**
+
+    Until then `verdict()` unioned the refusals of every record naming us: a
+    host that opened `Claude-User` and closed `ClaudeBot` was reported closed,
+    and the arbitration was left to a person. The decision:
+
+    | the rules say | what happens |
+    | :-- | :-- |
+    | `ClaudeBot` **or** `Claude-User` permitted | present as the permitted one, ordinary HTTP |
+    | both refused | drive the browser with the plugin |
+
+    **What this changed, measured the same day: nine hosts across seven
+    countries.** Every board this repository had published as refusing us —
+    `duapune`, `gjejpune24`, `pngjobseek`, `nigerjob`, `emploimauritanie`,
+    `libyanjobs`, `cypruswork`, `cyprusjobs`, `jobs.ps` — closes `ClaudeBot`
+    and **opens `Claude-User`**. The refusals were real and were not aimed at
+    the thing we do.
+
+    **It chooses; it does not retry.** `shared/robots-policy.md` forbids
+    rotating agents after a refusal and that stands: the token is settled from
+    the rules before any content request, and a refusal received under the
+    chosen token is a refusal.
+    """
+
+    CLOSED_TO_BOT = ("User-agent: ClaudeBot\nDisallow: /\n\n"
+                     "User-agent: Claude-User\nDisallow: /private/\n")
+    CLOSED_TO_BOTH = ("User-agent: ClaudeBot\nDisallow: /\n\n"
+                      "User-agent: Claude-User\nDisallow: /\n")
+    OPEN = "User-agent: *\nDisallow: /wp-admin/\n"
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _identity(self, body, path="/"):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body))
+        try:
+            return _robots.identity("h.example", path)
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_one_token_closed_the_other_open_is_http(self):
+        """**The nine-host case.** Under the old reading this was `closed`."""
+        i = self._identity(self.CLOSED_TO_BOT)
+        self.assertEqual(i["state"], "http")
+        self.assertEqual(i["token"], "claude-user")
+        self.assertFalse(i["per_token"]["claudebot"]["allowed"])
+        self.assertTrue(i["per_token"]["claude-user"]["allowed"])
+
+    def test_both_closed_is_the_browser_branch(self):
+        """**The other direction, and without it a resolver that always says
+        `http` passes the test above.**"""
+        i = self._identity(self.CLOSED_TO_BOTH)
+        self.assertEqual(i["state"], "browser")
+        self.assertIsNone(i["token"])
+        self.assertIn("browser", i["reason"])
+
+    def test_the_path_is_asked_about_not_the_host(self):
+        """`Claude-User` is open on `/` and closed on `/private/` in the same
+        file — so the answer depends on the path, as #156 required."""
+        self.assertEqual(self._identity(self.CLOSED_TO_BOT, "/")["state"],
+                         "http")
+        shut = self._identity(self.CLOSED_TO_BOT, "/private/x")
+        self.assertEqual(shut["state"], "browser",
+                         "a path closed to both tokens is the browser branch "
+                         "even when the host is open to one of them elsewhere")
+
+    def test_an_unreadable_file_is_not_the_browser_branch(self):
+        """**An unknown is not a refusal**, and it is not a licence to open a
+        browser either. #118's third state, one layer up."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+        def boom(*a, **k):
+            raise _robots.urllib.error.URLError("stubbed")
+
+        _robots.urllib.request.urlopen = boom
+        # The module retries with a jittered back-off, which is right in
+        # production and thirteen seconds here. The ladder itself is exercised
+        # elsewhere; this case is about the verdict at the end of it.
+        real_sleep = _robots.time.sleep
+        _robots.time.sleep = lambda *_a, **_k: None
+        try:
+            i = _robots.identity("h.example", "/")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots.time.sleep = real_sleep
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertEqual(i["state"], "unknown")
+        self.assertIsNone(i["token"])
+
+    def test_an_open_host_prefers_the_user_token(self):
+        """When both are permitted the request is a person's, and
+        `Claude-User` is the token that says so."""
+        i = self._identity(self.OPEN)
+        self.assertEqual(i["state"], "http")
+        self.assertEqual(i["token"], "claude-user")
+
+    def test_the_cache_does_not_hand_one_token_the_other_s_verdict(self):
+        """**The defect this nearly shipped with.** `verdict()` caches by host,
+        and `identity()` asks the same host twice under different tokens. A key
+        of the host alone returns the first answer to the second caller — a
+        wrong verdict arriving with a correct-looking reason."""
+        i = self._identity(self.CLOSED_TO_BOT)
+        self.assertNotEqual(i["per_token"]["claudebot"]["allowed"],
+                            i["per_token"]["claude-user"]["allowed"],
+                            "both tokens received the same verdict; the cache "
+                            "key has lost the agents")
 
 
 if __name__ == "__main__":
