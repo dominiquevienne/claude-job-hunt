@@ -3,7 +3,7 @@
 <!-- verified: 2026-09-05 -->
 
 <!-- hosts: jobsearchzm.com -->
-<!-- script: none -->
+<!-- script: jobsearchzm.py -->
 <!-- countries: ZM -->
 <!-- content: measured · 153 advertisements in `job_listing-sitemap.xml`, raw 153 / distinct 153, 0 duplicates · 2026-09-05T11:48Z -->
 <!-- witness: none found — no site-served counter, and the only candidate is a homepage facet, which is not exhaustive -->
