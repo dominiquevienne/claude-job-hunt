@@ -553,7 +553,32 @@ def verdict(host, agents=None):
         _ALIAS[(host, key)] = final
         return _CACHE[(final, key)]
 
+    def _note(result):
+        """Say which host these rules came from, on **every** way out.
+
+        This note used to be written into `reason` right after the dict was
+        built — and **four of the five branches below overwrite `reason` a few
+        lines later**, so it survived only in the one case that happens not to
+        set it, which is the most permissive case of all. The verdict was named
+        for one host and computed on another, and nothing in its output said
+        so: `iqjscout.com` came back `allowed=True` on rules read from
+        `yadanoo.com`, and then answered 403. **A false yes leaves no more
+        trace than a false no.**
+
+        Prefixed here instead, where nothing downstream can clobber it.
+        """
+        if final == host:
+            return result
+        head = (f"**These rules were read from {final!r}, not from {host!r}** "
+                f"— the request was redirected, and the two hosts do not "
+                f"necessarily publish the same file.")
+        result["reason"] = (f"{head} What follows is a verdict about "
+                            f"{final!r}.\n  " + result["reason"]
+                            if result.get("reason") else head)
+        return result
+
     def _keep(result):
+        _note(result)
         _CACHE[(final, key)] = result
         _ALIAS[(host, key)] = final
         return result
@@ -563,10 +588,6 @@ def verdict(host, agents=None):
            "ignored": [], "sitemaps": [], "state": got["state"],
            "attempts": got.get("attempts"), "certain": True,
            "status": got.get("status"), "bytes": got.get("bytes")}
-    if final != host:
-        out["reason"] = (f"read from {final!r}, not {host!r} — the request "
-                         f"was redirected, and the two hosts do not "
-                         f"necessarily publish the same file.")
     if got["state"] == "refused":
         # **A reply, not a silence.** `barbadosjobregister.gov.bb` answers 403
         # with "Request is Blocked by Firewall": a host that will not serve
@@ -598,7 +619,7 @@ def verdict(host, agents=None):
             f"Read the file by hand and record what it says; if it turns out "
             f"to be a server fault rather than a policy, that is a fact worth "
             f"writing down, and it is not one this module may assume.")
-        return out
+        return _note(out)
     if got["state"] == "unrecognised":
         # **A body that says nothing does not say no.** The host answered, the
         # answer was readable, and it expressed no rule — so there is nothing
@@ -629,7 +650,7 @@ def verdict(host, agents=None):
             f"absence established**: `certain` stays false. It is emphatically "
             f"*not* \u201cwe proceed when we do not know\u201d — a fetch that "
             f"failed and a 403 both still stop this module cold.")
-        return out
+        return _note(out)
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not
         # a refusal and emphatically not a permission: `nea.gov.kh` closes
@@ -648,7 +669,7 @@ def verdict(host, agents=None):
         # **Deliberately not cached.** Caching a transient failure poisons a
         # whole run with an unknown that a second request would have resolved;
         # the three attempts above have already paid for patience.
-        return out
+        return _note(out)
     if got["state"] != "read":
         # What is left is `absent` and `unreadable`, and they are not equally
         # solid. **An absence is knowledge**: no file, no rules, nothing to
@@ -1183,6 +1204,27 @@ def allowed(host, path, agents=None):
     *no rules were read*: honest about the state, wrong about the permission,
     and it is the boolean that callers act on. Issue #118.
     """
+    def _named(result):
+        """Prefix the host these rules actually came from.
+
+        **`verdict()` already says it; this is the function adapters print.**
+        Every `gate()` in this repository dies or notes with `a["reason"]` and
+        nothing else, so a note that lives only in the verdict is a note nobody
+        reads. It reached the caller before today **only when the answer was
+        no** — and a `True` computed on another host is the dangerous one:
+        `iqjscout.com` answered `allowed=True` from `yadanoo.com`'s rules and
+        then 403. *A false yes leaves no more trace than a false no.*
+        """
+        if result.get("host") and result.get("requested_host") \
+                and result["host"] != result["requested_host"]:
+            head = (f"**These rules were read from {result['host']!r}, not "
+                    f"from {result['requested_host']!r}** — the request was "
+                    f"redirected, so this verdict is about "
+                    f"{result['host']!r}.")
+            result["reason"] = (head + "\n  " + result["reason"]
+                                if result.get("reason") else head)
+        return result
+
     agents = tuple(agents) if agents else OUR_AGENTS
     v = verdict(host, agents)
     out = {"host": v["host"], "requested_host": v.get("requested_host"),
@@ -1192,7 +1234,7 @@ def allowed(host, path, agents=None):
     if v["sweep"] is None:
         out.update(allowed=None, kind="unknown", certain=False)
         out["reason"] = v["reason"]
-        return out
+        return _named(out)
     if not v["sweep"]:
         # **A `Disallow: /` beside `Allow:` lines is a whitelist, not a wall**,
         # and this early return read it as a wall. `bebee.com` opens six path
@@ -1239,7 +1281,7 @@ def allowed(host, path, agents=None):
                "**That is not an absence and not a permission** — a file that "
                "cannot be read says nothing either way. Proceed at a human "
                "pace and say so, or read it by hand."))
-        return out
+        return _named(out)
     best_d = max(((_match_len(p, path), p) for p in v.get("disallow") or []),
                  default=(-1, None))
     best_a = max(((_match_len(p, path), p) for p in v.get("allow") or []),
@@ -1256,14 +1298,14 @@ def allowed(host, path, agents=None):
                "about us and not a policy we happen to fall under."
                if g != "*" else "the group that applies to everyone, this "
                                 "project included."))
-        return out
+        return _named(out)
     # A tie goes to `Allow`: the specification's rule, and the direction that
     # respects an operator who wrote both.
     if best_a[0] >= best_d[0]:
         out.update(rule=best_a[1], kind="allow")
         out["reason"] = (f"`Allow: {best_a[1]}` matches at least as much of "
                          f"this path as `Disallow: {best_d[1]}`.")
-        return out
+        return _named(out)
     token = v.get("group") or "*"
     out.update(allowed=False, rule=best_d[1], kind="disallow", group=token)
     out["reason"] = (
@@ -1275,7 +1317,7 @@ def allowed(host, path, agents=None):
            f"**This is a refusal aimed at everyone, not at a named "
            f"crawler**, and the intention behind it does not change its "
            f"effect."))
-    return out
+    return _named(out)
 
 
 def _main():

@@ -7653,5 +7653,121 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
 
 
 
+class AVerdictNamesTheHostItWasComputedOn(unittest.TestCase):
+    """`iqjscout.com` came back `allowed=True` — on rules read from
+    `yadanoo.com`, after a 301 — and then answered 403.
+
+    **A verdict named for one host and computed on another said so nowhere.**
+    The note existed: it was written into `reason` right after the dict was
+    built, and **four of the five branches overwrite `reason` a few lines
+    later**. It survived only in the one case that happens not to set it, which
+    is the most permissive case of all. *A false yes leaves no more trace than
+    a false no.*
+
+    And it never reached the caller at all on a permission, because `allowed()`
+    composes its own `reason` — **which is the one adapters print.** Every
+    `gate()` here dies with `a["reason"]` and nothing else.
+    """
+
+    BODIES = {
+        "* permits everything": b"User-agent: *\nAllow: /\n",
+        "names and permits us": b"User-agent: ClaudeBot\nAllow: /\n",
+        "refuses another path": b"User-agent: *\nDisallow: /admin\n",
+        "closes us out": b"User-agent: ClaudeBot\nDisallow: /\n",
+        "closes everyone": b"User-agent: *\nDisallow: /\n",
+        "unrecognised body": b"hello, no rules here\n",
+    }
+
+    def _ask(self, body, final):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return f"https://{final}/robots.txt"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda *a, **k: R(body)
+        try:
+            return (_robots.verdict("asked.example"),
+                    _robots.allowed("asked.example", "/jobs"))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_every_branch_says_where_the_rules_came_from(self):
+        for label, body in self.BODIES.items():
+            with self.subTest(case=label):
+                v, a = self._ask(body, "elsewhere.example")
+                self.assertIn("elsewhere.example", v["reason"] or "",
+                              f"{label}: the verdict does not name the host it "
+                              f"was computed on")
+                self.assertIn("elsewhere.example", a["reason"] or "",
+                              f"{label}: `allowed()` does not name it, and "
+                              f"`allowed()['reason']` is what adapters print")
+
+    def test_a_permission_says_it_too(self):
+        """**The dangerous direction.** A refusal carried the note before
+        today; a permission did not, and a `True` computed on another host is
+        the one that gets acted on."""
+        v, a = self._ask(b"User-agent: *\nAllow: /\n", "elsewhere.example")
+        self.assertIs(a["allowed"], True)
+        self.assertIn("elsewhere.example", a["reason"])
+
+    def test_no_redirect_means_no_note(self):
+        """**The failing direction.** A note added unconditionally would pass
+        every case above and tell a reader, on every ordinary host, that its
+        rules came from somewhere else."""
+        for label, body in self.BODIES.items():
+            with self.subTest(case=label):
+                v, a = self._ask(body, "asked.example")
+                self.assertNotIn("were read from", v["reason"] or "")
+                self.assertNotIn("were read from", a["reason"] or "")
+
+
+
+class TheRecordSaysWhereTheBodyCameFrom(unittest.TestCase):
+    """A provenance record that keeps only the *requested* URL cannot answer
+    **which host is this body's** — the question it exists for.
+
+    `iqjscout.com` redirects to `yadanoo.com`. Its rules were read from the
+    second while the verdict was named for the first, and 146 bodies had
+    already been saved with no way to tell which of them had moved.
+    """
+
+    def test_the_tool_records_the_landing_url(self):
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        self.assertIn("r.geturl()", src)
+        self.assertIn("final_url=", src)
+
+    def test_it_is_null_when_nothing_moved(self):
+        """**The failing direction**, and the one that matters: a record that
+        always carried a landing URL would make every ordinary host look
+        redirected, and a note on all of them is a note on none."""
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        i = src.index("final_url=")
+        self.assertIn("!= a.url", src[i:i + 120],
+                      "the landing URL is recorded unconditionally, so it "
+                      "cannot distinguish a host that moved from one that "
+                      "did not")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

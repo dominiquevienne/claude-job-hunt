@@ -146,9 +146,9 @@ def main():
     req = urllib.request.Request(a.url, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=a.timeout) as r:
-            status, body = r.getcode(), r.read()
+            status, body, landed = r.getcode(), r.read(), r.geturl()
     except urllib.error.HTTPError as e:
-        status, body = e.code, e.read()
+        status, body, landed = e.code, e.read(), e.geturl()
     except (urllib.error.URLError, OSError) as e:
         print(f"ERROR: {a.url}: {e}", file=sys.stderr)
         return EXIT_HTTP
@@ -167,8 +167,14 @@ def main():
     # rather than about the body: a later reader could not tell whether a
     # host's `Crawl-delay` had been honoured. `None` when the host sets none —
     # which is a different fact from "we did not look".
+    # **Where the body actually came from, when that is not where it was
+    # asked for.** `iqjscout.com` redirects to `yadanoo.com`, and a guard that
+    # concluded on the second while being named for the first said so nowhere.
+    # A record that keeps only the requested URL cannot answer *which host is
+    # this body's* — the question the whole record exists for.
     rec = save(a.out, body, url=a.url, status=status, agent=UA,
-               crawl_delay_s=delay)
+               crawl_delay_s=delay,
+               final_url=(landed if landed and landed != a.url else None))
     print(f"[fetch-body] {a.out} — HTTP {rec['status']}, {rec['bytes']} bytes, "
           f"md5 {rec['md5'][:12]}, as {shown_token()}, "
           f"{rec['fetched_at']}", file=sys.stderr)
