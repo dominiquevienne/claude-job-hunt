@@ -6,6 +6,7 @@
 <!-- script: jobam.py -->
 <!-- countries: AM -->
 <!-- content: measured · rolling window read in full, 15 of 15 randomly sampled pages parsed · 2026-09-04 -->
+<!-- witness: none found — the site publishes facet counts that overlap and do not sum to a total -->
 
 **Rank 1 in Armenia refuses us, so this is the country's readable market.**
 

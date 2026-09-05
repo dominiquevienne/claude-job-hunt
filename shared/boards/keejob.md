@@ -6,6 +6,7 @@
 <!-- script: keejob.py -->
 <!-- countries: TN -->
 <!-- content: measured · 827 advertisements in the sitemap, 25 of 25 sampled pages read · 2026-09-05 -->
+<!-- witness: the site's own "808 offres d'emploi trouvees" against 827 in the sitemap, measured 2026-09-05 -->
 
 **The only readable board of the eight Tunisian ranks measured on 2026-09-04** —
 rank 1 is a public service whose rules could not be read, rank 3 answers 403 to

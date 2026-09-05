@@ -6310,5 +6310,70 @@ class TheSieveCarriesItsOwnControls(unittest.TestCase):
         self.assertIsNone(v["control_positive"]["rate"])
 
 
+class ACountedCardNamesItsWitnessOrSaysThereIsNone(unittest.TestCase):
+    """**A count taken once and a count corroborated are written identically.**
+
+    Six adapters shipped on 2026-09-04 with a figure from a sitemap. Two had a
+    second source and four did not, and nothing on the cards distinguished
+    them — so a reader had no way to tell `2 644 against the site's own 2 573`
+    from `367, once, from one file`.
+
+    **The difference is not academic.** `jobsbotswana.info` published 367 as the
+    size of the board; its own listing reports 5 123 and its pagination runs to
+    page 342. The sitemap was a nine-month slice of a nine-year archive, and
+    `raw == distinct` with no gaps had looked like completeness. **A single-file
+    sitemap that omits advertisements has exactly the signature of one that does
+    not.**
+
+    So a card carrying a `content: measured` line carries a `witness:` line
+    too. **`none found` is a valid and useful value** — it records that the
+    question was asked, which is what `content:` alone cannot say.
+    """
+
+    def _cards(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            if os.path.basename(path) == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            content = re.search(r"<!--\s*content:\s*(.*?)\s*-->", src)
+            witness = re.search(r"<!--\s*witness:\s*(.*?)\s*-->", src)
+            out.append((os.path.basename(path)[:-3],
+                        content.group(1) if content else None,
+                        witness.group(1) if witness else None))
+        return out
+
+    def test_every_measured_card_declares_a_witness(self):
+        missing = [n for n, c, w in self._cards()
+                   if c and c.startswith("measured") and not w]
+        self.assertEqual(
+            missing, [],
+            f"{len(missing)} card(s) publish a measured count with no "
+            f"`witness:` line, so a figure taken once reads exactly like one "
+            f"corroborated: {missing}")
+
+    def test_a_witness_line_says_something(self):
+        """An empty declaration is worse than none: it answers the question
+        without carrying the answer."""
+        bad = [n for n, _c, w in self._cards() if w is not None and len(w) < 12]
+        self.assertEqual(bad, [], f"witness lines too short to mean anything: "
+                                  f"{bad}")
+
+    def test_the_population_is_not_empty(self):
+        """**The floor.** Both checks above pass on a corpus with no measured
+        cards at all — the shape this suite has shipped twice."""
+        measured = [n for n, c, _w in self._cards()
+                    if c and c.startswith("measured")]
+        self.assertGreaterEqual(
+            len(measured), 5,
+            f"only {len(measured)} card(s) carry a measured count; this guard "
+            f"is checking almost nothing")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

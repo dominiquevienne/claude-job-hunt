@@ -6,6 +6,7 @@
 <!-- script: hellojob.py -->
 <!-- countries: AZ -->
 <!-- content: measured · live sitemap read in full, 8 of 8 sampled pages parsed on every field · 2026-09-04 -->
+<!-- witness: the closed partition — 591+27 399 = 588+27 402 across two readings, and any other cause breaks the sum -->
 
 **The only board of the series that does the freshness work itself.**
 `/sitemap.xml` declares seven children, two of which are `vacancies.xml` and

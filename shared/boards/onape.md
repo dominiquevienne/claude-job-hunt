@@ -6,6 +6,7 @@
 <!-- script: onape.py -->
 <!-- countries: TD -->
 <!-- content: measured · every advertisement read, 30 of 30 yielded a JobPosting · 2026-09-04 -->
+<!-- witness: none found — /offres-demploi/ answers 404 and no counter was located -->
 <!-- hosts-source: named by the search result for Chad's public employment service · 2026-09-04 -->
 
 **Chad's Office National pour la Promotion de l'Emploi.** A public employment

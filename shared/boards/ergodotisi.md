@@ -6,6 +6,7 @@
 <!-- script: ergodotisi.py -->
 <!-- countries: CY -->
 <!-- content: measured · sitemap read in full, 2 644 advertisements, 25 of 25 sampled pages parsed · 2026-09-05 -->
+<!-- witness: the site's own "2 573 open jobs" against 2 644 in the sitemap — the gap runs as the mechanism predicts -->
 
 **The cleanest index of the twenty-eight boards measured across Asia and Africa
 on 2026-09-04.** `/sitemap.xml` declares three children and names them honestly

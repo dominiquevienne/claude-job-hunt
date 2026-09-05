@@ -4,7 +4,17 @@
   jobsbotswana.py list [--since 2026-08-05] [--limit 20] [--live] [--fetch]
   jobsbotswana.py ad --slug workshop-manager-bango-trading
 
-**367 advertisements, and the sitemap holds 368.** The extra entry is
+**367 in the sitemap, and the site lists about 5 123.** The sitemap is a recent
+slice, not the board: the listing reports `Showing 1–15 of 5123 jobs`, its
+pagination runs to page 342 (342 × 15 ≈ 5 130), and **page 342 carries
+advertisements dated eight and nine years ago** — one of its eleven links is in
+the sitemap. So 367 is roughly the last nine months of a nine-year archive.
+
+*This module first documented `367 advertisements` as the size of the board.
+A single-file sitemap with no duplicates and no gaps looks complete, and
+completeness is not what that demonstrates.*
+
+**367 advertisements in the sitemap, and it holds 368.** The extra entry is
 `/jobs/` — the listing page itself, sitting among the advertisements. Counting
 the file length reports the board one larger than it is, which is small here
 and was 183-against-180 on `caglobalint.com` and 32-against-30 on `onape.td`

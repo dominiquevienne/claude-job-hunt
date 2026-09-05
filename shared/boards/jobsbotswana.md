@@ -5,7 +5,8 @@
 <!-- hosts: jobsbotswana.info -->
 <!-- script: jobsbotswana.py -->
 <!-- countries: BW -->
-<!-- content: measured · 367 advertisements, 20 of 20 sampled pages read · 2026-09-05 -->
+<!-- content: measured · 367 sitemap entries read, 20 of 20 sampled pages parsed; the site lists ~5 123 · 2026-09-05 -->
+<!-- witness: the site's own listing, 5 123 — it disagrees by 14x and the reason is measured -->
 
 **Rank 4 in Botswana, and what rank 1 does is refuse us** — the managed
 Content-Signals default, the same 1 834-byte file that closes Niger, Mauritania,
@@ -17,6 +18,23 @@ jobsbotswana.py list                              # the sitemap alone, one reque
 jobsbotswana.py list --limit 20 --live --fetch    # newest first, expired dropped
 jobsbotswana.py ad --slug workshop-manager-bango-trading
 ```
+
+## 367 in the sitemap — and the site lists about 5 123
+
+**The sitemap is a recent slice, not the board.** Measured 2026-09-05: the
+site's own listing reports **`Showing 1–15 of 5123 jobs`**, and its pagination
+runs to **page 342** — 342 × 15 ≈ 5 130, two signals from the site agreeing
+with each other and disagreeing with the sitemap by a factor of fourteen.
+
+**Page 342 carries advertisements dated `8 years ago` and `9 years ago`**, and
+one of its eleven links is in the sitemap. **So the 5 123 is a nine-year
+archive and the 367 is what the sitemap declares** — roughly the last nine
+months, `2025-12-10 → 2026-09-04`.
+
+*This card first published `367 advertisements` as though it were the size of
+the board. It is not, and the same lesson had been written six hours earlier on
+`job.am`: a window is not a size. **A single-file sitemap with no duplicates and
+no gaps looks complete, and completeness is not what it demonstrates.***
 
 ## 367, and the sitemap holds 368
 
