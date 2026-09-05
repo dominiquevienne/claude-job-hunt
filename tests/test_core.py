@@ -8697,5 +8697,160 @@ class NoRequestLeavesUnderARefusalAndNoneWearsABrowsersName(unittest.TestCase):
 
 
 
+class AnExitCodeMeansTheSameThingInEveryAdapter(unittest.TestCase):
+    """A mutation setting `EXIT_REFUSED, EXIT_UNKNOWN = 0, 0` in `keejob.py`
+    left the suite green. **An adapter refused by a host would have exited 0 —
+    reporting success.**
+
+    The instance was one adapter. **Asking what else has that shape found the
+    family: 21 adapters define `EXIT_*` constants and the suite named two of
+    them.** Nothing asserted a single value.
+
+    *A mutation bench only tests the mutations it knows how to make; its list
+    of survivors is a lower bound, never an inventory.* This came from the
+    survivor, not from the bench.
+
+    The values are already unanimous across twenty adapters — this only makes
+    the unanimity checkable.
+    """
+
+    CANON = {"EXIT_BROKEN": 2, "EXIT_GONE": 3, "EXIT_BUDGET": 4,
+             "EXIT_STALE": 5, "EXIT_PARTIAL": 6, "EXIT_REFUSED": 7,
+             "EXIT_UNKNOWN": 8, "EXIT_BLOCKED": 9}
+
+    def _defined(self):
+        import re
+        pat = re.compile(r"^(EXIT_\w+(?:,\s*EXIT_\w+)*)\s*=\s*([\d,\s]+)$",
+                         re.M)
+        out = []
+        for f in sorted(pathlib.Path(SCRIPTS).glob("*.py")):
+            if f.name.startswith("_"):
+                continue
+            for m in pat.finditer(f.read_text(encoding="utf-8")):
+                keys = [k.strip() for k in m.group(1).split(",")]
+                vals = [v.strip() for v in m.group(2).split(",") if v.strip()]
+                for k, v in zip(keys, vals):
+                    out.append((f.name, k, int(v)))
+        return out
+
+    def test_the_walk_sees_the_adapters(self):
+        """**A guard green on a denominator it shrank itself proves nothing**,
+        and this one has a wide denominator to lose."""
+        found = self._defined()
+        self.assertGreaterEqual(
+            len({f for f, _k, _v in found}), 18,
+            f"only {len({f for f, _k, _v in found})} adapters define exit "
+            f"codes; 21 did on 2026-09-05")
+
+    def test_every_constant_holds_its_canonical_value(self):
+        wrong = [(f, k, v) for f, k, v in self._defined()
+                 if k in self.CANON and v != self.CANON[k]]
+        self.assertEqual(
+            wrong, [], "these mean something different from everywhere else, "
+                       "so a caller reading an exit code cannot know what "
+                       "happened: " + str(wrong))
+
+    def test_no_failure_code_is_success(self):
+        """**The direction that costs.** Zero is *it worked*. A refusal, an
+        unknown or a broken read reported as zero is a silent success on a run
+        that did nothing — the exact shape of the mutation that survived."""
+        zeros = [(f, k, v) for f, k, v in self._defined() if v == 0]
+        self.assertEqual(zeros, [], "a failure constant is 0: " + str(zeros))
+
+    def test_an_unknown_name_is_named_rather_than_ignored(self):
+        """A constant outside the canon is not a defect — it is a fact worth
+        seeing. Silence here would let a private code drift into use."""
+        strays = sorted({k for _f, k, _v in self._defined()
+                         if k not in self.CANON})
+        self.assertEqual(strays, [], "exit constants outside the documented "
+                                     "set: " + ", ".join(strays))
+
+
+class EveryPacedAdapterActuallyWaits(unittest.TestCase):
+    """`icims.py` was exercised; `hays`, `ats` and `jobsge` were wired the same
+    afternoon and only scanned for the string `_pace`.
+
+    **Three of the four wired adapters had no test that the pacer is called** —
+    the same shape as the defect found in `icims`, one question away from it
+    and never asked. `www.hays.fr` asks for **10 seconds**.
+    """
+
+    CASES = (("icims", "get", ("https://careers.icims.com/sitemap.xml",),
+              "careers.icims.com"),
+             ("hays", "get", ("https://www.hays.fr/x",), "www.hays.fr"),
+             ("ats", "fetch", ("https://api.lever.co/v0/postings/x",),
+              "api.lever.co"),
+             ("jobsge", "get", ("https://www.jobs.ge/en/?view=jobs",),
+              "www.jobs.ge"))
+
+    def _waits(self, mod, fn, args, host):
+        m = __import__(mod)
+        waits = []
+
+        class Spy:
+            def __init__(self, h, own=0.0):
+                self.host, self.delay, self.declared = h, 5.0, 5.0
+
+            def source(self):
+                return "spied"
+
+            def wait(self):
+                waits.append(self.host)
+                return 0.0
+
+        def refuse(*a, **k):
+            raise m.urllib.error.URLError("counted, not sent")
+
+        real_open, real_pace = m.urllib.request.urlopen, m.Pace
+        # **Each adapter names its guard differently**, and stubbing only
+        # `gate` sent `hays` to the network — the suite went from 2 s to 15 s
+        # and the slowdown was the only sign. A test that reaches the network
+        # is a test whose result depends on a host.
+        gates = {n: getattr(m, n) for n in
+                 ("gate", "_robots_gate", "smartrecruiters_gate", "check_host")
+                 if hasattr(m, n)}
+        m.urllib.request.urlopen = refuse
+        m.Pace = Spy
+        m._PACERS.clear()
+        for n in gates:
+            setattr(m, n, lambda *a, **k: None)
+        # **The back-off is real and it really sleeps.** Refusing the request
+        # makes each adapter retry, and the class took eight seconds — the
+        # slowdown was the only sign that a test had started waiting. Sleep is
+        # neutralised; the retry itself is left alone, because it is not what
+        # this case is about.
+        real_sleep = m.time.sleep if hasattr(m, "time") else None
+        if real_sleep is not None:
+            m.time.sleep = lambda *_a, **_k: None
+        try:
+            for _ in range(2):
+                try:
+                    getattr(m, fn)(*args)
+                except BaseException:                # noqa: BLE001
+                    pass
+        finally:
+            m.urllib.request.urlopen = real_open
+            m.Pace = real_pace
+            m._PACERS.clear()
+            for n, fn in gates.items():
+                setattr(m, n, fn)
+            if real_sleep is not None:
+                m.time.sleep = real_sleep
+        return waits
+
+    def test_each_wired_adapter_consults_the_rate_on_every_request(self):
+        for mod, fn, args, host in self.CASES:
+            with self.subTest(adapter=mod):
+                waits = self._waits(mod, fn, args, host)
+                self.assertEqual(
+                    len(waits), 2,
+                    f"{mod}.{fn} made two requests and consulted the rate "
+                    f"{len(waits)} time(s) — imported and never called reads "
+                    f"exactly like wired")
+                self.assertEqual(set(waits), {host},
+                                 f"{mod} paced the wrong host: {set(waits)}")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
