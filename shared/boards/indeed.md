@@ -273,6 +273,26 @@ snippet above:
 Verified over eight searches: it removed all five fabricated cards and kept
 every genuine one.
 
+**Re-measured 2026-09-05, and the ranking of the two signals is now load-bearing
+rather than a preference.** Two searches on `ch.indeed.com`, sixteen cards each:
+one fabricated card apiece — `789abcdef0123456` (Geneva, index 13) and
+`123456789abcdef0` (Lausanne, index 2). Both cloned the card immediately above,
+**text identical after whitespace is stripped**, and both signals coincided on
+every card: *rotation id ⇔ single-line `innerText`*. Genuine cards ran 3 to 7
+lines, so the `> 1` line-break filter separated them with margin.
+
+**And the repair that suggests itself does not work.** The fabricated card's own
+links sometimes carry the cloned ad's real `jk` — Geneva's index 13 held
+`fb99e059bea7e87e`, which is index 12's id — so "take the second `jk` from the
+card's `href`s" looks like a fix. **On the Lausanne page the same card's links
+held the placeholder and nothing else.** The fallback finds nothing there, and
+where it does find something it assigns an id that already belongs to another
+row.
+
+**These cards are not ads with a broken id. They are a second rendering of the
+ad above.** The action is to drop them, never to repair the identifier — which
+is why the line-break test, and not the id's shape, is the one to filter on.
+
 **A note on reading these cards.** Dumping a list of raw `data-jk` values or a
 card's `innerHTML` can trip the extension's own content filter, which returns
 `[BLOCKED: Cookie/query string data]` — sixteen-character hex strings look like
