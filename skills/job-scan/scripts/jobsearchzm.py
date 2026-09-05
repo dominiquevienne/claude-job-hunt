@@ -103,8 +103,15 @@ def slug_of(url):
 
 
 def unescape2(s):
-    """Twice, because this publisher escapes entities that were entities."""
-    return html_mod.unescape(html_mod.unescape(s or "")).strip()
+    """Twice, because this publisher escapes entities that were entities.
+
+    Applied to EVERY free-text field. The first run of the shape control
+    checked `title` alone and printed `Solwezi &amp; Kalumbila` in `town`
+    on the line above its own green assertion.
+    """
+    if s is None:
+        return None
+    return html_mod.unescape(html_mod.unescape(s)).strip() or None
 
 
 def entries():
@@ -162,12 +169,15 @@ def town_of(posting):
 
 def card(url, lastmod, posting):
     org = posting.get("hiringOrganization") or {}
+    # Every free-text field, not just the title: the entity that survived a
+    # first run of this control was sitting in `town`, one line below the
+    # assertion that only looked at `title`.
     return {
         "id": "jobsearchzm:" + slug_of(url),
         "url": url,
         "title": unescape2(posting.get("title")),
-        "employer": org.get("name") if isinstance(org, dict) else org,
-        "town": town_of(posting),
+        "employer": unescape2(org.get("name") if isinstance(org, dict) else org),
+        "town": unescape2(town_of(posting)) or None,
         "country": "Zambia",
         "posted": (posting.get("datePosted") or "")[:10] or lastmod,
         "valid_through": (posting.get("validThrough") or "")[:10] or None,
