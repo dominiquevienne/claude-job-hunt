@@ -6492,5 +6492,103 @@ class AHostVerdictCanBeTrueAndTheWrongAnswer(unittest.TestCase):
                          "exactly why it cannot be the answer")
 
 
+class ACountOfLocsIsNotACountOfAdvertisements(unittest.TestCase):
+    """**#154.** `irantalent.com` publishes 6 932 URLs under `/en/jobs/` and
+    **none is an advertisement** — they are category landing pages. The number
+    is the right order of magnitude for a country that size, stable,
+    reproducible, and it measures nothing.
+
+    **The assertions here are on the counter, not on the verdict.** The issue
+    asked for exactly that: *"0 advertisements retained of 6 932", not "the
+    guard refused"* — because a guard green on a denominator it shrank itself
+    proves nothing, and this suite has shipped that failure twice.
+
+    **And the signal is not a predicate on the URL**, which was the other thing
+    asked. `/en/jobs/banking-investment-jobs` and `/en/jobs/<slug>-<id>` have
+    the same shape on the same host; a pattern separating them condemns
+    `ergodotisi.com`, which serves `vacancy-4312e752-36722372` and
+    `senior-ai-engineer-91183625` side by side and means both.
+
+    What is asked of each page is *do you present yourself as one of many* —
+    pagination. Measured live 2026-09-05: **30 markers on each of two
+    irantalent category pages, 0 on advertisements from ergodotisi, keejob,
+    job.am, hellojob and jobsbotswana, and 1 on onape.td.** Six sites, three
+    continents, and the threshold is not tuned to a specimen.
+    """
+
+    LIST = ('<html><nav class="pagination"><a href="?page=2">2</a>'
+            '<a href="?page=3">3</a></nav><link rel="next" href="?page=2">'
+            '<a href="/en/jobs/x?page=4">4</a></html>')
+    RECORD = ('<html><h1>Senior AI Engineer</h1><p>Nicosia</p>'
+              '<a href="/en-CY/companies/acme">Acme</a></html>')
+    # `onape.td` advertisements carry exactly one stray marker.
+    RECORD_ONE = '<html><h1>Chef de base</h1><a href="/blog?page=2">blog</a></html>'
+
+    def _mod(self):
+        import importlib
+        return importlib.import_module("_records")
+
+    def test_the_specimen_returns_zero_of_six_thousand(self):
+        """**The counter, as the issue asked.** Not "it refused" — *how many
+        of how many*."""
+        m = self._mod()
+        urls = [f"https://x.example/en/jobs/cat-{i}" for i in range(6932)]
+        v = m.audit(urls, lambda u: self.LIST, sample_size=8, seed=1)
+        self.assertEqual(v["of"], 6932)
+        self.assertEqual(v["records"], 0, "a category page was counted as an "
+                                          "advertisement")
+        self.assertEqual(v["lists"], 8)
+        self.assertEqual(v["state"], "lists")
+
+    def test_a_real_board_is_counted(self):
+        """**The other direction, and without it a guard that refuses
+        everything passes the test above.**"""
+        m = self._mod()
+        urls = [f"https://y.example/en-CY/jobs/vacancy-{i}" for i in range(2644)]
+        v = m.audit(urls, lambda u: self.RECORD, sample_size=8, seed=1)
+        self.assertEqual(v["state"], "records")
+        self.assertEqual(v["records"], 8)
+        self.assertEqual(v["of"], 2644)
+
+    def test_one_stray_marker_is_not_a_list(self):
+        """`onape.td` carries exactly one `page=` in an unrelated link.
+        **Condemning it would be the false accusation**, which is the worse
+        direction: it invites a fix to code that was right."""
+        m = self._mod()
+        self.assertFalse(m.looks_like_list(self.RECORD_ONE))
+        self.assertEqual(m.markers(self.RECORD_ONE), 1)
+
+    def test_a_mixed_sample_refuses_rather_than_scaling(self):
+        """**Refused, not reduced.** A count quietly scaled is the same defect
+        wearing a different number."""
+        m = self._mod()
+        pages = [self.LIST, self.RECORD] * 4
+        it = iter(pages)
+        v = m.audit(list(range(100)), lambda u: next(it), sample_size=8, seed=1)
+        self.assertEqual(v["state"], "mixed")
+        self.assertIsNone(v.get("scaled"))
+        self.assertIn("refused", v["reason"])
+
+    def test_an_unreadable_sample_returns_no_figure(self):
+        """A figure from a sample that was never read is the defect itself."""
+        m = self._mod()
+        v = m.audit(list(range(50)), lambda u: None, sample_size=5)
+        self.assertEqual(v["state"], "unknown")
+        self.assertIsNone(v["share"])
+        self.assertEqual(v["unreadable"], 5)
+
+    def test_the_sample_is_random_not_the_head(self):
+        """**A contiguous slice from one end is not a sample.** On
+        `jobsbotswana.info` the last eight sitemap entries were one
+        advertiser's batch and gave a rate two and a half times the truth."""
+        m = self._mod()
+        seen = []
+        m.audit(list(range(1000)), lambda u: (seen.append(u), self.RECORD)[1],
+                sample_size=8, seed=4)
+        self.assertEqual(len(seen), 8)
+        self.assertNotEqual(seen, list(range(8)), "the sample is the head")
+        self.assertGreater(max(seen), 100, "the sample never left the start")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
