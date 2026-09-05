@@ -43,6 +43,7 @@ calling it a success.
 """
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -88,6 +89,10 @@ def main():
                    help="save a non-200 body too — with its status recorded, "
                         "which is the point")
     p.add_argument("--timeout", type=float, default=45)
+    p.add_argument("--json", action="store_true",
+                   help="emit the provenance record on stdout instead of the "
+                        "path — so a caller need not parse prose or re-read a "
+                        "file it just wrote")
     a = p.parse_args()
 
     parts = urllib.parse.urlsplit(a.url)
@@ -130,11 +135,20 @@ def main():
               file=sys.stderr)
         return EXIT_HTTP
 
-    rec = save(a.out, body, url=a.url, status=status, agent=UA)
+    # **The rate a measurement was taken at belongs in the record.** It was
+    # announced on stderr and lost, and it is a fact about our own conduct
+    # rather than about the body: a later reader could not tell whether a
+    # host's `Crawl-delay` had been honoured. `None` when the host sets none —
+    # which is a different fact from "we did not look".
+    rec = save(a.out, body, url=a.url, status=status, agent=UA,
+               crawl_delay_s=delay)
     print(f"[fetch-body] {a.out} — HTTP {rec['status']}, {rec['bytes']} bytes, "
           f"md5 {rec['md5'][:12]}, as {shown_token()}, "
           f"{rec['fetched_at']}", file=sys.stderr)
-    print(a.out)
+    if a.json:
+        print(json.dumps(rec, ensure_ascii=False, sort_keys=True))
+    else:
+        print(a.out)
     return 0 if status == 200 else EXIT_HTTP
 
 

@@ -7331,5 +7331,54 @@ class ADnsFailureIsTheResolversAnswerNotTheHosts(unittest.TestCase):
 
 
 
+class TheRateAMeasurementWasTakenAtIsPartOfItsProvenance(unittest.TestCase):
+    """Asked for by the session using the tool, and it is the right ask.
+
+    `bin/fetch-body.py` announced *"the host asks for 1.0s between requests"*
+    on stderr and then **lost it**. The rate a measurement was taken at is a
+    fact about our own conduct, not about the body: a later reader could not
+    tell whether a host's `Crawl-delay` had been honoured, and that is exactly
+    what a provenance record is for.
+
+    `null` when the host sets none — **a different fact from "we did not
+    look"**, which is why the key is always present.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def test_the_key_is_present_even_when_there_is_no_delay(self):
+        """**The failing direction.** A record that carried the key only when
+        a delay existed would read, on every other host, exactly like a record
+        written before the field was invented."""
+        rec = _provenance.save(os.path.join(self.dir, "a.txt"), b"x",
+                               url="https://h.example/r", status=200,
+                               agent="UA", crawl_delay_s=None)
+        self.assertIn("crawl_delay_s", rec)
+        self.assertIsNone(rec["crawl_delay_s"])
+
+    def test_a_delay_survives_the_round_trip_to_disk(self):
+        path = os.path.join(self.dir, "b.txt")
+        _provenance.save(path, b"x", url="https://h.example/r", status=200,
+                         agent="UA", crawl_delay_s=1.0)
+        _body, back = _provenance.load(path)
+        self.assertEqual(back["crawl_delay_s"], 1.0,
+                         "the delay did not reach the sidecar, so the record "
+                         "cannot say at what rate the body was taken")
+
+    def test_the_tool_passes_the_delay_it_announced(self):
+        """**Not that `save` accepts the field — that the tool sends it.** The
+        two are different, and the version that announced the delay on stderr
+        and dropped it would pass every other test in this class."""
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        src = open(os.path.join(repo, "bin", "fetch-body.py"),
+                   encoding="utf-8").read()
+        self.assertIn("crawl_delay_s=delay", src,
+                      "the tool computes a delay, waits for it, and does not "
+                      "record it — which is the defect this class exists for")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
