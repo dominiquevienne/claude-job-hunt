@@ -482,11 +482,20 @@ issue** — it is meant to work, and a report is the fastest way there.
 
 One Windows note worth acting on before you start: if OneDrive Backup is on,
 your real Documents folder is under `$HOME/OneDrive/Documents`, so pin the
-workspace explicitly and avoid hunting for files later:
+workspace explicitly and avoid hunting for files later — **in your shell
+profile, not in a one-off command**:
 
 ```bash
+# ~/.zshrc, ~/.bashrc, or the PowerShell profile
 export JOB_HUNT_HOME="$HOME/OneDrive/Documents/job_applications"
 ```
+
+**Where you put that line is the whole instruction, not a detail.** Typed at a
+prompt it lasts as long as that shell, and an assistant driving this plugin
+gets a fresh shell per command — measured 2026-09-05: two consecutive tool
+calls ran as PID 30257 and PID 30444, and a variable exported in the first was
+empty in the second. The profile *is* read, so the line above works from there
+and only from there.
 
 `doctor.sh` detects that case and tells you.
 
