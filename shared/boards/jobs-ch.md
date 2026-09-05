@@ -4,6 +4,8 @@
 <!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: CH -->
+<!-- overlap: jobstore.md · 18.6 % of Swiss ads shared · 2026-09-03 -->
+<!-- shares-platform: jobup.md · the same posting UUID appears on both — one platform, two brands -->
 
 Swiss board, German-speaking Switzerland. **Same platform as jobup.ch
 (JobCloud)**, and this file exists because "same platform" turned out to mean

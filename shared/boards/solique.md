@@ -5,6 +5,7 @@
 <!-- hosts: live.solique.ch -->
 <!-- script: solique.py -->
 <!-- countries: * -->
+<!-- overlap: job-room.md · 24 of job-room's 2 800 Swiss ads are Solique tenants · 2026-09-03 -->
 An ATS, not a board: one employer per tenant, no search across employers. Public
 HTML and JSON, unauthenticated, **no key, no cookie, no browser**.
 

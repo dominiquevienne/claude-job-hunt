@@ -5,6 +5,9 @@
 <!-- hosts: www.jobstore.com -->
 <!-- script: jobstore.py -->
 <!-- countries: MY SG -->
+<!-- overlap: hiringcafe.md · about 25 % of Swiss ads shared · 2026-09-03 -->
+<!-- overlap: jobup.md · 15.5 % of Swiss ads shared · 2026-09-03 -->
+<!-- overlap: jobs-ch.md · 18.6 % of Swiss ads shared · 2026-09-03 -->
 An aggregator running **26 country sites** off one host, `www.jobstore.com/<cc>/`.
 Switzerland carries **52 128 ads**.
 

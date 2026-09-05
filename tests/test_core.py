@@ -7935,5 +7935,99 @@ class TheRecordDescribesTheDocumentNotTheTransfer(unittest.TestCase):
 
 
 
+class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
+    """#164. Two cards describing the same shared ads is a redundancy this
+    repository already keeps by hand — `README.md:75` carries `jobstore`'s
+    18.6 % and 15.5 %, word for word, and so does `jobstore.md`. **What was
+    missing was never the second copy; it was the check that they agree.**
+
+    Of the three defects a single graph file would also have removed, two are
+    visible on their own: a one-way edge shows as a card that mentions a board
+    which does not mention it, and an orphan shows as a pointer to nothing.
+    **Only drift produces a repository that is wrong and looks clean** — and a
+    single file removes the drift by removing the second copy, which removes
+    the check with it.
+
+    **Two keys, not one.** `shares-platform:` records a property — the same
+    posting UUID on both brands — and carries no date because it does not age.
+    `overlap:` records a measurement and carries one. *In a single key the
+    property would age at the rate of the measurement*, and a reader could not
+    tell which half had gone stale.
+    """
+
+    KEYS = ("overlap", "shares-platform")
+
+    def _decls(self):
+        import re
+        pat = re.compile(r"<!--\s*(overlap|shares-platform):\s*(.*?)\s*-->")
+        out = []
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        for card in sorted(d.glob("*.md")):
+            for m in pat.finditer(card.read_text(encoding="utf-8")):
+                parts = [x.strip() for x in m.group(2).split("·")]
+                out.append((card.name, m.group(1), parts))
+        return out, d
+
+    def test_the_walk_sees_the_declarations(self):
+        decls, _d = self._decls()
+        self.assertGreaterEqual(
+            len(decls), 12,
+            f"only {len(decls)} declarations found; six pairs declared on both "
+            f"sides is twelve, so the extractor has narrowed")
+
+    def test_each_names_a_card_that_exists(self):
+        """**An orphan pointer.** A card removed leaves its declarations
+        behind on the other side, pointing at nothing."""
+        decls, d = self._decls()
+        bad = [(c, p[0]) for c, _k, p in decls if not (d / p[0]).exists()]
+        self.assertEqual(bad, [], "declarations naming a card that does not "
+                                  "exist: " + str(bad))
+
+    def test_each_is_declared_on_the_other_side_too(self):
+        """**A one-way edge.** One card claims a relation the other does not
+        know about, and a reader landing on the second sees a clean card."""
+        decls, _d = self._decls()
+        have = {(c, k, p[0]) for c, k, p in decls}
+        missing = sorted((c, k, o) for c, k, o in have
+                         if (o, k, c) not in have)
+        self.assertEqual(missing, [], "declared on one side only: "
+                                      + str(missing))
+
+    def test_the_two_copies_say_the_same_thing(self):
+        """**This is the one that cannot be seen by reading either card.** A
+        figure edited on one side and not the other leaves two cards that are
+        each well formed, and the repository is wrong while looking clean.
+
+        The figure and the date are compared, not the prose: an asymmetric
+        relation is worded differently on each side and still states one
+        number."""
+        decls, _d = self._decls()
+        byedge = {}
+        for c, k, p in decls:
+            byedge.setdefault((k, frozenset((c, p[0]))), []).append((c, p[1:]))
+        drift = []
+        for (k, edge), sides in byedge.items():
+            if len({tuple(v) for _c, v in sides}) > 1:
+                drift.append((k, sorted(edge), [v for _c, v in sides]))
+        self.assertEqual(drift, [], "the two copies disagree: " + str(drift))
+
+    def test_a_measured_overlap_carries_a_date_and_a_property_does_not(self):
+        """**Why there are two keys.** A property that acquired a date would
+        expire on a schedule nothing measured; a measurement without one would
+        never expire at all."""
+        decls, _d = self._decls()
+        for c, k, p in decls:
+            with self.subTest(card=c, key=k):
+                if k == "overlap":
+                    self.assertEqual(len(p), 3, f"{c}: wants <card> · <figure "
+                                                f"with unit> · <YYYY-MM-DD>")
+                    self.assertRegex(p[2], r"^\d{4}-\d{2}-\d{2}$")
+                    self.assertRegex(p[1], r"\d", f"{c}: no figure")
+                else:
+                    self.assertEqual(len(p), 2, f"{c}: a property carries no "
+                                                f"date — it does not age")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

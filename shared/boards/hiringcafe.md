@@ -6,6 +6,7 @@
 <!-- script: hiringcafe.py -->
 <!-- robots: suspended -->
 <!-- countries: * -->
+<!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 
 ## Route 2 of #102 is measured, and it is closed
 
