@@ -1,8 +1,11 @@
 # Board adapter — Platsbanken (Sweden)
 
+<!-- verified: 2026-09-05 -->
+
 <!-- hosts: arbetsformedlingen.se, jobsearch.api.jobtechdev.se -->
 <!-- script: platsbanken.py -->
 <!-- countries: SE -->
+<!-- witness: obtained on the QUANTITY, inconclusive on the VALUE. A second reading gives 41 606 ads and 68 397 posts against this card's 39 865 and 67 109 — the pair maps onto the pair, so what is counted is settled. **The values are not corroborated**: this card measures about 2 400 ads posted in twelve hours, so the interval carried roughly 19 200 arrivals for a net of +1 741 — **the net is 9 % of the gross**, and a total moving by a tenth of the flow through it is compatible with almost any earlier count · 2026-09-05 -->
 
 **39 865 live ads offering 67 109 posts**, from Arbetsförmedlingen — Sweden's
 public employment service — through the JobTech Dev open API. The **sixth
@@ -214,3 +217,27 @@ arbetsformedlingen.se         permits
 So the call costs nothing and closes a real gap, rather than deciding an
 arbitration. It asks per host **and per path**, and exits 7 on a refusal or 8
 on an unknown, with the guard's own words.
+
+## The two series diverge, and neither shows it alone
+
+Second reading, 2026-09-05, against this card's own figures:
+
+```
+ads     39 865 -> 41 606     +4.37 %
+posts   67 109 -> 68 397     +1.92 %
+posts per ad    1.683 -> 1.644   -2.35 %
+```
+
+**A third quantity, free, that neither number shows on its own.** Advertisers
+are posting more advertisements with fewer posts each — or the mix has shifted
+towards single-post employers. Which of the two, this cannot say.
+
+**And the divergence is worth more than either rate**, because the rates
+themselves are weak evidence here: at about 2 400 advertisements posted every
+twelve hours, the interval carried some 19 200 arrivals for a net of +1 741.
+*A ratio is a quotient of two numbers measured the same way at the same
+instant, so the flow that drowns each of them cancels in it.*
+
+*This is the opposite of `bumeran.md`, where eight independent members all rose
+against a nearly still stock, and the opposite of `ihararejobs`, where the URL
+set was identical to the unit.*

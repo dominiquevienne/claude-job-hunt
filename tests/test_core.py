@@ -8365,5 +8365,86 @@ class TheHeadingAgreesWithTheContentLine(unittest.TestCase):
 
 
 
+class ACardDatesItself(unittest.TestCase):
+    """`platsbanken.md` carried no `verified:` line, so **the date of its
+    figure lived only in prose** — five occurrences of 2026-09-01, none
+    attached to the count. Dating a drift against it meant reading the body and
+    guessing which of the two the date belonged to, which is what a declaration
+    line exists to prevent. *And the guard that checks declarations cannot see
+    this one: an absent key is not a wrong key.*
+
+    **Measured before writing this, and the third figure decides:**
+
+        97 cards
+        24 carry no `verified:`
+        24 of those 24 publish a figure
+         0 have nothing to date
+
+    That zero is not a loose predicate. The same test returns False on
+    constructed text with no count, and True on 97 of 97 real cards: **every
+    board card here carries a number**, so a rule requiring a date breaks no
+    legitimate case, because there are none.
+
+    **The list can only shrink**, and fails in both directions: a card that
+    loses its `verified:` is caught because it is unlisted, and one that gains
+    it is caught because it is still listed.
+    """
+
+    UNDATED = (
+        "adecco.md", "anefa.md", "arbeitsagentur.md",
+        "batiactu.md", "crit.md", "empleate.md",
+        "emploi-territorial.md", "fhf.md", "freework.md",
+        "hays-fr.md", "infoempleo.md", "jobology.md",
+        "jobsireland.md", "join.md", "labonnealternance.md",
+        "linkedin.md", "michaelpage.md", "oposiciones.md",
+        "oraclecloud.md", "personio.md", "pinpoint.md",
+        "randstad-fr.md", "recruitee.md", "turijobs.md",
+    )
+
+    def _cards(self):
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        return [p for p in sorted(d.glob("*.md")) if p.name != "README.md"]
+
+    def test_the_walk_sees_the_cards(self):
+        cards = self._cards()
+        self.assertGreaterEqual(
+            len(cards), 90,
+            "only %d cards walked; 97 on 2026-09-05" % len(cards))
+
+    def test_no_unlisted_card_is_undated(self):
+        undated = sorted(p.name for p in self._cards()
+                         if "<!-- verified:" not in p.read_text(encoding="utf-8"))
+        # **The detection counts itself.** *"No unlisted undated card"* is
+        # satisfied by *"no undated card at all"*, so a detector that finds
+        # nothing passes — measured, by mutation, on this very class and for
+        # the third time today. The scope counter catches a stopped walk; only
+        # this catches a predicate that never fires.
+        self.assertGreaterEqual(
+            len(undated), 20,
+            "the detector found %d undated cards; 24 were on the list when it "
+            "was frozen, so it is passing by finding nothing" % len(undated))
+        new = [n for n in undated if n not in self.UNDATED]
+        self.assertEqual(new, [], "these carry no `verified:` and are not on "
+                                  "the known list, so the date of their "
+                                  "figures lives only in prose: "
+                                  + ", ".join(new))
+
+    def test_the_list_holds_no_card_that_is_now_dated(self):
+        """**The shrinking direction.** A card dated and left listed turns the
+        list from a debt into a permanent excuse."""
+        dated = {p.name for p in self._cards()
+                 if "<!-- verified:" in p.read_text(encoding="utf-8")}
+        stale = sorted(n for n in self.UNDATED if n in dated)
+        self.assertEqual(stale, [], "dated and still listed as not: "
+                                    + ", ".join(stale))
+
+    def test_the_list_names_only_cards_that_exist(self):
+        names = {p.name for p in self._cards()}
+        gone = sorted(n for n in self.UNDATED if n not in names)
+        self.assertEqual(gone, [], "listed cards that no longer exist: "
+                                   + ", ".join(gone))
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
