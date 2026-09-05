@@ -755,7 +755,7 @@ def verdict(host, agents=None):
             out["reason"] = (
                 (f"this host closes everything to `User-agent: {token}` — "
                  f"**a refusal that names this project**, not a general "
-                 f"policy. Not swept."
+                 f"policy. Not swept." + _fetch_note(token)
                  if token != "*" else
                  "this host's robots.txt is `User-agent: * / Disallow: /` — "
                  "everything closed, evenly. Not swept.")
@@ -871,6 +871,38 @@ def _records_disagree(body, matched):
                 (d if kind == "disallow" else a).append(value)
         seen.add((tuple(sorted(set(d))), tuple(sorted(set(a)))))
     return len(seen) > 1
+
+
+def _fetch_note(token):
+    """Whether the refused group names a token a request from here can carry.
+
+    **A name for this project is not the same as a name we send.** `OUR_AGENTS`
+    holds six; `FETCH_TOKENS` holds the two a request can present as. A file
+    that refuses `anthropic-ai` and names nothing else has written a refusal
+    this project is bound by under our restrictive reading — and has *not*
+    named either token we could arrive with.
+
+    The distinction was invisible until 2026-09-05, when `albaniajobs.al` came
+    back as `a refusal that names this project` and the sentence was copied
+    onto a country page as *the one refusal actually written by an editor*.
+    True as written, and it reads as though the editor had shut the door on us
+    by name. **The verdict was right and the sentence it handed over was not**,
+    which is the failure mode a reason line exists to prevent.
+
+    This changes no verdict. `allowed()` stays restrictive, because whether a
+    refusal aimed at a sibling name binds us is the owner's arbitration and not
+    this module's — see `nos-agents-lecture-restrictive.md`. It changes only
+    what the refusal is reported to say.
+    """
+    if token in FETCH_TOKENS:
+        return (f" **`{token}` is one of the two tokens a request from here can "
+                f"present**, so this refusal names an agent we would arrive as.")
+    return (f" **`{token}` is a name for this project that this project never "
+            f"sends.** The two tokens a request can carry are "
+            f"`{'` and `'.join(FETCH_TOKENS)}`, and neither is named here — so "
+            f"the refusal binds us by our restrictive reading, not by the "
+            f"editor having named an agent we could arrive as. "
+            f"`identity()` says which token the rules leave open.")
 
 
 def group_for(body, agents=OUR_AGENTS):

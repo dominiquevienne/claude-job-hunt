@@ -6864,5 +6864,101 @@ class SweepFollowsTheResolutionAtTheRoot(unittest.TestCase):
         self.assertEqual(sum(1 for p in paths if a2[p]["allowed"]), 1)
 
 
+class ARefusedNameIsNotAlwaysANameWeSend(unittest.TestCase):
+    """`OUR_AGENTS` has six names; `FETCH_TOKENS` has the two we can arrive as.
+
+    **A refusal that names this project and a refusal that names an agent we
+    could present as are different facts, and until 2026-09-05 `verdict()` gave
+    them the same sentence.** `albaniajobs.al` refuses `anthropic-ai` — a name
+    for this project that no request from here ever carries — and came back as
+    *"a refusal that names this project"*. That sentence was copied onto a
+    country page as **the one refusal actually written by an editor**, against
+    two others attributed to a CDN template. It is true as written and it reads
+    as the editor having shut the door on us by name.
+
+    So this checks the sentence, not the verdict — and it checks **both
+    directions**, because a guard that only rejects the bad case can be
+    satisfied by a note that says nothing on either.
+
+    **The verdict itself is asserted unchanged.** Whether a refusal aimed at a
+    sibling name binds us is the owner's arbitration, not this module's, and
+    the restrictive reading stands (`nos-agents-lecture-restrictive.md`).
+    Without that third assertion this class could be made green by opening the
+    host, which would be the opposite of the intended change.
+    """
+
+    TEMPLATE = ("User-agent: *\nDisallow:\n\n"
+                "User-agent: {tok}\nDisallow: /\n")
+
+    def _verdict(self, token):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        body = self.TEMPLATE.format(tok=token).encode()
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda *a, **k: R(body)
+        try:
+            return _robots.verdict("h.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_name_we_never_send_is_reported_as_one(self):
+        import _robots
+        for tok in _robots.OUR_AGENTS:
+            if tok in _robots.FETCH_TOKENS:
+                continue
+            with self.subTest(token=tok):
+                v = self._verdict(tok)
+                self.assertIs(v["sweep"], False,
+                              f"{tok}: the restrictive reading must still bind")
+                self.assertIn(
+                    "never sends", v["reason"],
+                    f"`{tok}` is not a token a request can carry, and the "
+                    f"reason line does not say so. A country page copied this "
+                    f"sentence and published the refusal as the editor's, "
+                    f"aimed at us.")
+
+    def test_a_name_we_do_send_is_reported_as_one(self):
+        import _robots
+        for tok in _robots.FETCH_TOKENS:
+            with self.subTest(token=tok):
+                v = self._verdict(tok)
+                self.assertIn(
+                    "a request from here can present", v["reason"],
+                    f"`{tok}` IS a token we arrive as, and the reason line no "
+                    f"longer says so — a note that is silent in both cases "
+                    f"passes the other half of this class while telling a "
+                    f"reader nothing.")
+
+    def test_the_restrictive_verdict_is_unchanged(self):
+        """The sentence changed; the decision did not, and must not have."""
+        import _robots
+        for tok in _robots.OUR_AGENTS:
+            with self.subTest(token=tok):
+                v = self._verdict(tok)
+                self.assertIs(v["sweep"], False,
+                              f"{tok}: a sweep refusal stopped being one")
+                self.assertEqual(v["allow"], [],
+                                 f"{tok}: the refusing group grew an Allow")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
