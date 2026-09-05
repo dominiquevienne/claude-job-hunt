@@ -8585,5 +8585,117 @@ class TheTwoHalvesOfTheGuardAgreeOnEveryField(unittest.TestCase):
 
 
 
+class NoRequestLeavesUnderARefusalAndNoneWearsABrowsersName(unittest.TestCase):
+    """Two mutations survived the bench, and these two are not like the other
+    twelve.
+
+    **The other twelve make us publish wrong figures — grave, and retractable.
+    These two make us behave badly towards a third party**, and the host has no
+    way to tell us. *A wrong number can be withdrawn; a request that has been
+    sent cannot be recalled.*
+
+        `if not g["allowed"]:` -> `if False:`      GREEN
+        headers={"User-Agent": UA} -> Mozilla      GREEN
+
+    **And the second is worse than green.** This repository had that defect
+    this morning, fixed it, and wrote a guard so it would not return — a guard
+    that checks the tool does not *print* a browser's name. Nothing checked
+    what it *sends*. **The fix covered the instance and the guard covered the
+    wording of the fix**, which is why a mutation put Chrome back on the wire
+    with the suite untouched.
+
+    So both are exercised on the wire: the request object is intercepted and
+    inspected, and the refusal path is checked by counting requests rather than
+    by reading a branch.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _run(self, allowed):
+        """Run the tool with a stubbed guard; return the requests attempted."""
+        m = self._tool()
+        seen = []
+        real_open = m.urllib.request.urlopen
+        real_allowed = m.allowed
+        real_verdict = m.verdict
+
+        def spy(req, *a, **k):
+            seen.append(req)
+            raise m.urllib.error.URLError("counted, not sent")
+
+        m.urllib.request.urlopen = spy
+        m.allowed = lambda h, p, **kw: {"allowed": allowed,
+                                        "reason": "stubbed for this case"}
+        m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
+        argv = sys.argv
+        sys.argv = ["fetch-body.py", "https://refused.example/jobs",
+                    "-o", os.path.join(tempfile.mkdtemp(), "x.txt")]
+        try:
+            code = m.main()
+        except BaseException:                        # noqa: BLE001
+            code = None
+        finally:
+            sys.argv = argv
+            m.urllib.request.urlopen = real_open
+            m.allowed = real_allowed
+            m.verdict = real_verdict
+        return seen, code
+
+    def test_a_refusal_sends_nothing(self):
+        """**Counted, not read.** A branch that looks right and is never taken
+        reads the same as one that is."""
+        seen, code = self._run(allowed=False)
+        self.assertEqual(
+            seen, [], "a request left on a path the guard refused — the host "
+                      "said no and cannot tell us we ignored it")
+        self.assertEqual(code, 7, "a refusal must exit 7")
+
+    def test_an_indeterminate_sends_nothing_either(self):
+        """**Found by extending this class, not by the bench's list.**
+        Neutering the `None` branch left the suite green too: rules that could
+        not be read would have let a request through.
+
+        `CLAUDE.md` is explicit — *un INDÉTERMINÉ ne se sonde pas* — and an
+        unknown is the case where sending is least defensible, because we
+        cannot even say the host would have minded.
+        """
+        seen, code = self._run(allowed=None)
+        self.assertEqual(
+            seen, [], "a request left while the rules were unreadable: an "
+                      "unknown is not a permission")
+        self.assertEqual(code, 8, "an unreadable rules file must exit 8")
+
+    def test_a_permission_does_send(self):
+        """**The failing direction.** A tool that sent nothing ever would pass
+        the case above and fetch nothing at all."""
+        seen, _code = self._run(allowed=True)
+        self.assertEqual(len(seen), 1,
+                         "the guard permitted and no request was attempted")
+
+    def test_what_goes_on_the_wire_is_our_name(self):
+        """**The header, not the source.** The existing guard checks that the
+        tool does not print a browser's name; this one reads the header the
+        request actually carries."""
+        seen, _code = self._run(allowed=True)
+        ua = seen[0].get_header("User-agent") or ""
+        self.assertIn("Claude", ua,
+                      f"the request went out as {ua!r} — this project declares "
+                      f"itself or it does not fetch")
+        self.assertIn("claude-job-hunt", ua,
+                      "the agent string names no repository, so an operator "
+                      "reading it cannot find out who we are")
+        self.assertNotEqual(
+            ua.split("/")[0], "Chrome",
+            "the wire carries a browser's product token")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
