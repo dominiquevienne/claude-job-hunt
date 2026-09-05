@@ -40,6 +40,7 @@ from _robots import allowed as robots_allowed
 
 BASE = "https://www.hays.fr"
 SITEMAP = BASE + "/sitemap/fr-FR/job-sitemap.xml"
+from _pace import Pace
 from _ua import UA, browser_fallback
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 # **A `<loc>` can be wrapped in CDATA**, and this one is:
@@ -101,7 +102,23 @@ def fold(s):
     return re.sub(r"[^a-z0-9]", "", s.encode("ascii", "ignore").decode())
 
 
+TAG = "hays"
+
+# **One pacer per host, keyed here rather than at each call site**, so every
+# request through this wrapper is spaced — including ones added later.
+_PACERS = {}
+
+
+def pace_for(host, own=0.0):
+    if host not in _PACERS:
+        _PACERS[host] = Pace(host, own=own)
+        if _PACERS[host].delay:
+            print(f"[{TAG}] {_PACERS[host].source()}", file=sys.stderr)
+    return _PACERS[host]
+
+
 def get(url, gone_is_ok=False, retries=2):
+    pace_for(urllib.parse.urlsplit(url).netloc, own=0.5).wait()
     _robots_gate(url, 'hays')
     p = urllib.parse.urlsplit(url)
     safe = urllib.parse.urlunsplit(

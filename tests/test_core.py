@@ -1999,11 +1999,19 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
             raise ats.urllib.error.URLError("offline for this case")
 
         ats.urllib.request.urlopen = offline
+        # **The pacer asks the rules for this host, and `urlopen` is stubbed**,
+        # so the guard would retry three times with a growing wait — six
+        # seconds inside a suite that runs in two. Zeroing the back-off keeps
+        # this case about the gate; the retry itself is covered elsewhere.
+        import _robots
+        real_backoff = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
         try:
             ats.fetch("https://api.smartrecruiters.com/v1/companies/x")
         except BaseException:      # SystemExit included — fetch dies loudly
             pass
         finally:
+            _robots._BACKOFF = real_backoff
             ats.smartrecruiters_gate = real_gate
             ats.urllib.request.urlopen = real_open
         self.assertEqual(len(calls), 1,
@@ -7548,17 +7556,15 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
 
     UNPACED = (
         "adecco.py", "adzuna.py", "anefa.py",
-        "apec.py", "arbeitsagentur.py", "ats.py",
+        "apec.py", "arbeitsagentur.py",
         "batiactu.py", "bnecl.py", "bumeran.py",
         "computrabajo.py", "crit.py", "digitalrecruiters.py",
         "emploitic.py", "employtt.py", "encuentra24.py",
         "ergodotisi.py", "fachkraft.py", "fhf.py",
-        "flatchr.py", "francetravail.py", "freework.py",
-        "hays.py", "hellojob.py", "hellowork.py",
+        "flatchr.py", "francetravail.py", "freework.py", "hellojob.py", "hellowork.py",
         "hrge.py", "infoempleo.py", "jobam.py",
         "jobbkk.py", "jobivoire.py", "jobology.py",
-        "jobroom.py", "jobsbotswana.py", "jobsearchzm.py",
-        "jobsge.py", "jobsgovpk.py", "jobsireland.py",
+        "jobroom.py", "jobsbotswana.py", "jobsearchzm.py", "jobsgovpk.py", "jobsireland.py",
         "jobstore.py", "jobup.py", "kalibrr.py",
         "keejob.py", "lmisjm.py", "meteojob.py",
         "michaelpage.py", "mihnati.py", "mycareersfuture.py",

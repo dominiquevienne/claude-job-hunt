@@ -49,6 +49,7 @@ from datetime import datetime, timedelta, timezone
 
 from _robots import verdict as robots_verdict
 
+from _pace import Pace
 from _ua import UA
 PROVIDERS = ("greenhouse", "lever", "ashby", "smartrecruiters", "workable",
              "teamtailor", "join")
@@ -59,12 +60,32 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+TAG = "ats"
+
+# **One pacer per host, keyed here rather than at each call site**, so every
+# request through this wrapper is spaced — including ones added later.
+_PACERS = {}
+
+
+def pace_for(host, own=0.0):
+    if host not in _PACERS:
+        _PACERS[host] = Pace(host, own=own)
+        if _PACERS[host].delay:
+            print(f"[{TAG}] {_PACERS[host].source()}", file=sys.stderr)
+    return _PACERS[host]
+
+
 def fetch(url):
     # **The choke point.** Every SmartRecruiters request goes through here —
     # the listing, the ad, and the description fetch — so the override is
     # checked once per host rather than once per call site. Issue #121.
     if url.startswith(SR_API):
         smartrecruiters_gate()
+    # **The guard first, the rate second.** `api.lever.co` asks for
+    # `Crawl-delay: 1` and this script slept never. Waiting before knowing
+    # whether we may ask at all would spend the delay on a request that is
+    # about to be refused.
+    pace_for(urllib.parse.urlsplit(url).netloc).wait()
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=60)

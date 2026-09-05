@@ -99,3 +99,18 @@ an adapter built on it would rest on something that is going to change.
 
 **It is not the reason there is no adapter.** The reason is one line above:
 the operator says `Disallow: /`.
+
+## `sence.gob.cl` asks for ten seconds, and nothing here calls it
+
+Measured 2026-09-05 with `bin/fetch-body.py`, provenance beside the body:
+`User-agent: * / Crawl-delay: 10`, in a file whose own comment says it exists
+*"to prevent the crawling and indexing of certain parts of your site"*.
+
+**This is recorded and not acted on, because there is no adapter to pace.** It
+is one of six hosts among the 146 named by our cards that set a delay binding
+this project, and the only one of the six with no script behind it. **Writing a
+caller so the delay could be honoured would be fabricating the very thing this
+card exists to say does not exist** — see the title.
+
+If an adapter is ever built here, `_pace.Pace` reads the ten seconds from the
+host at run time; the number is not to be copied into the source.

@@ -52,9 +52,14 @@ from _robots import verdict as robots_verdict
 from _zero import zero_note
 
 BASE = "https://www.jobs.ge"
+from _pace import Pace
 from _ua import UA
 
-# **Published in robots.txt, so it is the default and not a suggestion.**
+# **Published in robots.txt, so it is the default and not a suggestion** — and
+# until 2026-09-05 this number was copied here by hand. It was right, and a
+# copied number drifts: the host can change it and this constant cannot know.
+# `Pace` reads it from `www.jobs.ge` at run time; this value survives only as
+# the floor for `--delay` and as what to use when the rules cannot be read.
 CRAWL_DELAY = 5.0
 
 EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
@@ -97,8 +102,24 @@ def note(msg):
     print(f"[jobs.ge] {msg}", file=sys.stderr)
 
 
+TAG = "jobsge"
+
+# **One pacer per host, keyed here rather than at each call site**, so every
+# request through this wrapper is spaced — including ones added later.
+_PACERS = {}
+
+
+def pace_for(host, own=0.0):
+    if host not in _PACERS:
+        _PACERS[host] = Pace(host, own=own)
+        if _PACERS[host].delay:
+            print(f"[{TAG}] {_PACERS[host].source()}", file=sys.stderr)
+    return _PACERS[host]
+
+
 def get(path, lang="ge", timeout=45):
     url = f"{BASE}/{lang}/{path}" if not path.startswith("http") else path
+    pace_for(urllib.parse.urlsplit(url).netloc, own=CRAWL_DELAY).wait()
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml",
