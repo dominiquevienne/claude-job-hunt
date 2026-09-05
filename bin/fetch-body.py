@@ -83,7 +83,11 @@ def main():
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("url")
-    p.add_argument("-o", "--out", required=True,
+    p.add_argument("--sitemaps", action="store_true",
+                   help="list the sitemaps this host declares, and stop. Reads "
+                        "only robots.txt, writes nothing unless -o is given, "
+                        "and fetches none of what it finds")
+    p.add_argument("-o", "--out",
                    help="where the body goes; the provenance goes beside it")
     p.add_argument("--allow-refusal", action="store_true",
                    help="save a non-200 body too — with its status recorded, "
@@ -95,6 +99,9 @@ def main():
                         "file it just wrote")
     a = p.parse_args()
 
+    if not a.sitemaps and not a.out:
+        print("ERROR: -o is required unless --sitemaps", file=sys.stderr)
+        return EXIT_HTTP
     parts = urllib.parse.urlsplit(a.url)
     if not parts.netloc:
         print(f"ERROR: {a.url} has no host", file=sys.stderr)
@@ -109,6 +116,26 @@ def main():
     if not g["allowed"]:
         print(f"REFUSED: {a.url}: {g['reason']}", file=sys.stderr)
         return EXIT_REFUSED
+
+    if a.sitemaps:
+        # **Only the declaration, and nothing it names.** A session wanting a
+        # sitemap could compose `/sitemap.xml` or do nothing, while 82 of 187
+        # rules bodies say where theirs is. Reading that answer authorises no
+        # fetch: whatever comes back still has its own guard to pass, on its
+        # own host — `merojob.com` declares its sitemaps on `sg.merojob.com`.
+        v = verdict(parts.netloc) or {}
+        maps = v.get("sitemaps") or []
+        if a.json:
+            print(json.dumps({"host": parts.netloc, "sitemaps": maps},
+                             ensure_ascii=False))
+        else:
+            for u in maps:
+                print(u)
+        if not maps:
+            print(f"[fetch-body] {parts.netloc} declares no sitemap. **That is "
+                  f"not permission to guess one** — 43.9 % of hosts declare, "
+                  f"and the rest have not told us.", file=sys.stderr)
+        return 0
 
     delay = (verdict(parts.netloc) or {}).get("crawl_delay")
     if delay:

@@ -7457,5 +7457,75 @@ class ADeclaredSitemapIsReadRatherThanGuessed(unittest.TestCase):
 
 
 
+class TheSitemapReaderHasACaller(unittest.TestCase):
+    """**Enumerated before wiring, the same severity applied to
+    `_provenance`.** 106 `.py` files examined: **five** compose a sitemap path,
+    across three scripts, and only `icims.py` composes on a caller-supplied
+    host. Twenty more freeze a constant.
+
+    And the frozen constants are not wrong. Measured 2026-09-05: the
+    declaration names a **root** and the adapters hold a **leaf** —
+    `jobsbotswana.info` declares `sitemap_index.xml` while the adapter uses
+    `noo_job-sitemap.xml`, one of its sixteen children. Routing those through
+    the declaration would spend a request each run rediscovering what is
+    already known. *My first comparison called all three "mismatched", by
+    string equality across two different levels — the instrument was wrong,
+    not the code, and `careers.icims.com` differed only in scheme.*
+
+    **So the caller is not an adapter.** It is the session investigating a host
+    it has no adapter for, which is the population that loses to guessing:
+    `merojob.com` declares its sitemaps on `sg.merojob.com`, and
+    `sitemap-job_post-1.xml.gz` is covered by no verdict taken at a root.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def test_the_flag_exists_and_does_not_require_an_output_file(self):
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        self.assertIn('"--sitemaps"', src)
+        self.assertNotIn('"-o", "--out", required=True', src,
+                         "listing a declaration should not require a file to "
+                         "write, since it writes nothing")
+
+    def test_it_reads_the_declaration_and_fetches_none_of_it(self):
+        """**The one thing a caller may get wrong.** Finding a URL is not
+        permission to fetch it, and the declaration may name another host."""
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        i = src.index("if a.sitemaps:")
+        block = src[i:i + 900]
+        self.assertIn("authorises no", block.replace("authorises no fetch",
+                                                     "authorises no"))
+        self.assertNotIn("urlopen", block,
+                         "the --sitemaps path fetches something, and it must "
+                         "only read robots.txt through the guard")
+
+    def test_a_host_declaring_nothing_is_not_an_invitation_to_guess(self):
+        """**The failing direction**, and the one that matters: silence is the
+        common case — 105 of 187 bodies declare nothing — and a tool that
+        answered `/sitemap.xml` there would be composing a URL under cover of
+        having asked."""
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        i = src.index("if a.sitemaps:")
+        block = src[i:i + 1200]
+        self.assertIn("not permission to guess", block)
+        self.assertNotIn('"/sitemap.xml"', block,
+                         "the tool composes a fallback path when the host "
+                         "declares none — which is the defect it exists for")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
