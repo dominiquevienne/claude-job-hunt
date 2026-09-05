@@ -7,7 +7,7 @@
 <!-- countries: ZM -->
 <!-- content: measured · 153 advertisements in `job_listing-sitemap.xml`, raw 153 / distinct 153, 0 duplicates · 2026-09-05T11:48Z -->
 <!-- witness: none found — no site-served counter, and the only candidate is a homepage facet, which is not exhaustive -->
-<!-- hosts-source: named by a "best job sites in Zambia" listing, 2026-09-04; no hostname composed -->
+<!-- hosts-source: named by a "best job sites in Zambia" listing; no hostname composed · 2026-09-04 -->
 
 **What the body serves was checked before the count was believed.** Title *Jobs
 in Zambia — Job Search Zambia*, 99 180 bytes, every linked host its own. The

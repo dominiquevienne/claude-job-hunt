@@ -7,7 +7,7 @@
 <!-- countries: ZM -->
 <!-- content: measured · 45 advertisements in `job_listing-sitemap.xml`, raw 45 / distinct 45, 0 duplicates · 2026-09-05T11:48Z -->
 <!-- witness: none found — no site-served counter; the homepage facet is not exhaustive -->
-<!-- hosts-source: named by a "best job sites in Zambia" listing, 2026-09-04; no hostname composed -->
+<!-- hosts-source: named by a "best job sites in Zambia" listing; no hostname composed · 2026-09-04 -->
 
 **The smallest of the three Zambian boards, and the only one publishing
 structured data** — its homepage references `schema.org`, which the other two do

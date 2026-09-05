@@ -7,7 +7,7 @@
 <!-- countries: ZM -->
 <!-- content: measured · 368 advertisements in `sitemap-jobs-1.xml`, raw 368 / distinct 368, 0 duplicates · 2026-09-05T11:45:51Z -->
 <!-- witness: none found — see below, and that is a finding rather than an omission -->
-<!-- hosts-source: named by a "best job sites in Zambia" listing, 2026-09-04; no hostname composed -->
+<!-- hosts-source: named by a "best job sites in Zambia" listing; no hostname composed · 2026-09-04 -->
 
 **The first Zambian board this repository carries. There were none.**
 
