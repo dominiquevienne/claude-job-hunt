@@ -5,8 +5,8 @@
 <!-- hosts: www.keejob.com -->
 <!-- script: keejob.py -->
 <!-- countries: TN -->
-<!-- content: measured · 827 advertisements in the sitemap, 25 of 25 sampled pages read · 2026-09-05 -->
-<!-- witness: the site's own "808 offres d'emploi trouvees" against 827 in the sitemap, measured 2026-09-05 -->
+<!-- content: measured · 808 advertisements in the sitemap, 25 of 25 sampled pages read · 2026-09-05 -->
+<!-- witness: the site's own count, read twice — 808 against a sitemap of 827 then 808, converged 2026-09-05 10:58 UTC; see the body -->
 
 **The only readable board of the eight Tunisian ranks measured on 2026-09-04** —
 rank 1 is a public service whose rules could not be read, rank 3 answers 403 to
@@ -19,12 +19,13 @@ keejob.py list --since 2026-08-20 --fetch        # with fields, one request each
 keejob.py ad --id 246110
 ```
 
-## 827, with no duplicates
+## 808, with no duplicates — and 827 eleven hours earlier
 
 ```
-sitemap-jobs.xml   827 <loc>, 827 distinct
-dates              28 distinct, 2026-08-05 → 2026-09-04
-                   all 827 within thirty days; busiest day 184 (22 %)
+2026-09-05 00:1x UTC   827 <loc>, 827 distinct, 0 duplicates
+                       28 dates, 2026-08-05 → 2026-09-04, all within thirty days
+2026-09-05 10:58 UTC   808 <loc>, 808 distinct, 0 duplicates
+                       28 dates, 2026-08-06 → 2026-09-05
 ```
 
 **That there are no duplicates is worth stating**, because it is not the usual
@@ -39,6 +40,33 @@ and that had to be checked rather than assumed.
 *Three of the seven children are declared over `http`, not `https`. The adapter
 follows only `sitemap-jobs.xml`, which is on `https`; the mixed scheme is
 recorded because it bites a caller who follows the index blindly.*
+
+## The witness, and it converged while this card was being written
+
+The site states its own count in two places on `/offres-emploi/` — the results
+line and the page title:
+
+```
+2026-09-05 00:1x UTC   sitemap 827      site "808 offres d'emploi trouvées"
+2026-09-05 10:58 UTC   sitemap 808      site "808 offres d'emploi trouvées"
+```
+
+**Two provenances, and they now agree exactly.** The earlier gap of nineteen ran
+the way the mechanism predicts — a sitemap keeps recently closed advertisements
+a while, so it sits above a live counter — and it closed within eleven hours.
+
+*This is the only figure on any of these cards to have been read twice at
+different times. The first reading alone would have shown a gap and left its
+direction as an argument; the second turns it into an observation.*
+
+**The window rolls.** `2026-08-06 → 2026-09-05` at the second reading against
+`2026-08-05 → 2026-09-04` at the first: thirty days that move, as on `job.am`.
+So 808 is what the board keeps, not a total.
+
+*A note on how the second reading nearly went wrong: `grep -c '<loc>'` returned
+**1** on a 146 KB file, because `-c` counts matching lines and this sitemap is
+five lines long. It looked exactly like a board that had emptied overnight.
+`grep -o … | wc -l` gives 808.*
 
 ## `strict=False` is not optional, and losing a third would be silent
 
