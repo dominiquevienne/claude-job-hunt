@@ -7616,6 +7616,10 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
                     if pat.search(nxt) and not re.search(r"attempt|retry", nxt):
                         inloop = True
             if inloop or n >= 2:
+                # **The presence of the name, which is all a scan can see.**
+                # That a wrapper actually calls it is asserted per adapter by
+                # exercising it — `test_the_measured_case_actually_waits`.
+                # This half answers only *which adapters have been touched*.
                 out[f.name] = "_pace" in src
         return out
 
@@ -7646,11 +7650,52 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
         self.assertEqual(stale, [], "paced and still listed as not: "
                                     + ", ".join(stale))
 
-    def test_the_measured_case_is_wired(self):
-        src = (pathlib.Path(SCRIPTS) / "icims.py").read_text(encoding="utf-8")
-        self.assertIn("_pace", src,
-                      "`careers.icims.com` asks for 5s and this is the adapter "
-                      "measured giving none")
+    def test_the_measured_case_actually_waits(self):
+        """**Exercised, not read.** The first version asserted that the string
+        `_pace` appeared in the source — so replacing the call with `pass` left
+        the import, the helper and the guard all green. Found by mutation
+        during a redundancy sweep: **that mutation turned no class red at
+        all.** *A guard that reads a name reads the name.*
+
+        `careers.icims.com` asks `crawl-delay: 5` and this adapter gave none
+        until 2026-09-05.
+        """
+        import icims
+        waits = []
+        real_open = icims.urllib.request.urlopen
+        real_pace = icims.Pace
+
+        class Spy:
+            def __init__(self, host, own=0.0):
+                self.host, self.delay, self.declared = host, 5.0, 5.0
+
+            def source(self):
+                return "spied"
+
+            def wait(self):
+                waits.append(self.host)
+                return 0.0
+
+        def refuse(*a, **k):
+            raise icims.urllib.error.URLError("no request in this case")
+
+        icims.urllib.request.urlopen = refuse
+        icims.Pace = Spy
+        icims._PACERS.clear()
+        try:
+            for _ in range(2):
+                try:
+                    icims.get("https://careers.icims.com/sitemap.xml")
+                except BaseException:                        # noqa: BLE001
+                    pass
+        finally:
+            icims.urllib.request.urlopen = real_open
+            icims.Pace = real_pace
+            icims._PACERS.clear()
+        self.assertEqual(
+            waits, ["careers.icims.com"] * 2,
+            "the pacer was not consulted on every request — imported and never "
+            "called reads exactly like wired")
 
 
 
