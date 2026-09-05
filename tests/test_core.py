@@ -6753,5 +6753,116 @@ class WhichOfOurTokensMayFetch(unittest.TestCase):
                             "key has lost the agents")
 
 
+class SweepFollowsTheResolutionAtTheRoot(unittest.TestCase):
+    """**#153.** A group carrying both `Allow: /` and `Disallow: /` resolves,
+    by the tie rule this module applies everywhere else, to *everything
+    permitted*. `verdict()` reported `sweep: False` there anyway.
+
+    **One file, two opposite answers from us**: `allowed(host, path)` said yes
+    to every path while `verdict()` said the host could not be swept. Safe in
+    both naive readings, and therefore defensible — but **indistinguishable
+    from an oversight**, because no line said it was a choice. The issue named
+    that third state as the thing to avoid, and it was the state we were in.
+
+    **`sweep` now follows the resolution at `/`.** The distinction that matters
+    is preserved: a whitelist — `Allow: /*/jobs/` beside `Disallow: /`, which
+    `bebee.com` publishes — still reports `sweep: False`, because `/` itself is
+    refused and there is no list to sweep blindly. Only the self-contradicting
+    group changes.
+
+    **The known population is two and it doubled in eight hours** — `bebee.com`
+    on 2026-09-04, `northcyprus.cv` the same evening — so the count is not
+    stable and is not used here to argue the change is small.
+    """
+
+    WHITELIST = "User-agent: ClaudeBot\nAllow: /*/jobs/\nDisallow: /\n"
+    CONTRADICTION = "User-agent: ClaudeBot\nAllow: /\nDisallow: /\n"
+    WALL = "User-agent: ClaudeBot\nDisallow: /\n"
+    OPEN = "User-agent: *\nDisallow: /admin/\n"
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://h.example/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _read(self, body, paths=("/",)):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body))
+        try:
+            v = _robots.verdict("h.example")
+            a = {p: _robots.allowed("h.example", p) for p in paths}
+            return v, a
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_a_self_contradicting_group_sweeps(self):
+        v, a = self._read(self.CONTRADICTION)
+        self.assertTrue(v["sweep"])
+        self.assertTrue(a["/"]["allowed"])
+
+    def test_a_whitelist_still_does_not_sweep(self):
+        """**The direction that a fix saying yes everywhere would break.**
+        `/` is refused, so there is no list to sweep — and the named family is
+        still open, which is #152's half."""
+        v, a = self._read(self.WHITELIST, ("/", "/x/jobs/1"))
+        self.assertFalse(v["sweep"])
+        self.assertFalse(a["/"]["allowed"])
+        self.assertTrue(a["/x/jobs/1"]["allowed"],
+                        "the whitelist stopped working; #152 regressed")
+
+    def test_a_plain_wall_still_does_not_sweep(self):
+        v, a = self._read(self.WALL)
+        self.assertFalse(v["sweep"])
+        self.assertFalse(a["/"]["allowed"])
+
+    def test_sweep_and_allowed_never_disagree_at_the_root(self):
+        """**The point of the change, asserted as the invariant it is.** Two
+        answers from one file was the defect; this is the property that
+        forbids it returning."""
+        for name, body in (("whitelist", self.WHITELIST),
+                           ("contradiction", self.CONTRADICTION),
+                           ("wall", self.WALL), ("open", self.OPEN)):
+            with self.subTest(file=name):
+                v, a = self._read(body)
+                self.assertEqual(
+                    bool(v["sweep"]), bool(a["/"]["allowed"]),
+                    f"{name}: verdict says sweep={v['sweep']} and allowed('/') "
+                    f"says {a['/']['allowed']} — one file, two answers")
+
+    def test_the_counter_not_only_the_verdict(self):
+        """The issue asked for the number of paths judged permitted, not just
+        the boolean: **a guard whose red can come from elsewhere proves
+        nothing.**"""
+        paths = ("/", "/x/jobs/1", "/anything", "/deep/er/still")
+        _v, a = self._read(self.CONTRADICTION, paths)
+        self.assertEqual(sum(1 for p in paths if a[p]["allowed"]), 4)
+        _v2, a2 = self._read(self.WHITELIST, paths)
+        self.assertEqual(sum(1 for p in paths if a2[p]["allowed"]), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

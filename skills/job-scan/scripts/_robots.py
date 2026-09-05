@@ -704,8 +704,37 @@ def verdict(host, agents=None):
     out["groups"] = matched
     out["group_conflict"] = _records_disagree(body, matched)
     if "/" in dis:
-        out["sweep"] = False
-        if allow:
+        # **`sweep` follows the resolution at the root, not the bare presence
+        # of `Disallow: /`.** #153.
+        #
+        # A group carrying both `Allow: /` and `Disallow: /` resolves — by the
+        # tie rule this module already applies in `allowed()` — to *everything
+        # permitted*. Reporting `sweep: False` there made one file give two
+        # opposite answers: `allowed(host, path)` said yes to every path while
+        # `verdict()` said the host could not be swept. **An incoherence
+        # between two of our own answers is worse than either choice**, and the
+        # conservative one was indistinguishable from an oversight because no
+        # line said it was a choice.
+        #
+        # The distinction this preserves: a whitelist — `Allow: /*/jobs/`
+        # beside `Disallow: /`, as `bebee.com` publishes — still reports
+        # `sweep: False`, because `/` itself is refused and there is no list to
+        # sweep. Only the self-contradicting group changes, and
+        # `northcyprus.cv` is the case that showed it.
+        root_a = max((_match_len(a, "/") for a in allow), default=-1)
+        root_d = max((_match_len(d, "/") for d in dis), default=-1)
+        out["sweep"] = root_a >= root_d >= 0
+        if out["sweep"]:
+            out["reason"] = (
+                f"`{final}` carries both `Allow: /` and `Disallow: /` for "
+                f"`User-agent: {token}`. **The tie goes to `Allow`** — the rule "
+                f"this module applies to every other path — so every path is "
+                f"permitted and the host sweeps. *A file that contradicts "
+                f"itself is read the same way here as anywhere else, rather "
+                f"than being treated as unreliable in one place and resolved "
+                f"in another.*"
+                + _named_note(matched, out.get("group_conflict")))
+        elif allow:
             # **`sweep: False` never meant "no path is open", and saying so
             # was half the defect.** A group carrying `Allow:` lines beside
             # `Disallow: /` is a whitelist: sweeping blindly stays refused,
