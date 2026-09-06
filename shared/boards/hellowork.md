@@ -132,7 +132,7 @@ No login, no account, no API key. France only.
 **Build the facet list with the script, not from memory:**
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/hellowork.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/hellowork.py" \
   facets --domaine informatique
 ```
 

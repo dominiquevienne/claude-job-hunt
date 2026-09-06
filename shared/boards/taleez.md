@@ -68,7 +68,7 @@ GET https://taleez.com/apply/<job slug>
 Both unauthenticated. `ufcv-emploi` returned **412 ads in a single call**.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/taleez.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/taleez.py" \
   jobs --tenant bertintechnologies --with-detail
 ```
 

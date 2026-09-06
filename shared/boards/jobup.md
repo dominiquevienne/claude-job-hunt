@@ -39,10 +39,10 @@ login.** An account is only needed to apply.
 
 ## Prerequisites
 
-1. **The sweep does not need the browser.** This file said the Chrome
-   extension was a prerequisite and that a user without it had no jobup sweep
+1. **The sweep does not need the browser.** This file said browser access
+   was a prerequisite and that a user without it had no jobup sweep
    at all. **That was wrong**, and it cost the two largest Swiss boards to
-   every user without the extension. Measured 2026-09-02, plain `curl`, no
+   every user without browser access. Measured 2026-09-02, plain `curl`, no
    cookie and no session: **the listing and 5 of 5 ads answered 200 in
    `text/html`**, and every ad carried a full `JobPosting` — see *The
    plain-HTTP route* below. Drive the browser if it is there; do not require

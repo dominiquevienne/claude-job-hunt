@@ -663,7 +663,7 @@ def verdict(host, agents=None):
             f"{got.get('why')}. **This is not an absent file and not an "
             f"unreadable one — the host replied, and the reply was no.** "
             f"Nothing here permits a sweep. Not swept.\n"
-            f"  **And since #120 this plugin declares `{_ua.TOKEN}`, so the "
+            f"  **And since #120 this plugin declares `{_ua.AGENT_NAME}`, so the "
             f"refusal may be a wall reacting to that rather than a policy the "
             f"operator wrote.** Measured on `emploi.batiactu.com` the day the "
             f"declaration shipped: 289 bytes of `robots.txt` to a browser "
@@ -1524,4 +1524,3 @@ def identity(host, path="/"):
         "ordinary route is closed. **The browser branch applies** — drive it "
         "with the plugin rather than presenting a third identity.")
     return out
-

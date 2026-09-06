@@ -130,7 +130,7 @@ Getting the pair is free and self-service; `shared/setup.md` section 5c is the
 click path.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/francetravail.py" token
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/francetravail.py" token
 ```
 
 ## Configuration

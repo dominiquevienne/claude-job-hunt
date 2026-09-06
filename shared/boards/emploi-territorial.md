@@ -28,7 +28,7 @@ POST /recherche_emploi_mobilite/    → page=N&ajax=1, one page of rows
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/emploiterritorial.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/emploiterritorial.py" \
   search --departement 69 --pages 5
 ```
 

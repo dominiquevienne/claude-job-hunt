@@ -38,7 +38,7 @@ then a token. The adapter reads it from `LBA_API_KEY` in the environment and
 
 ```bash
 export LBA_API_KEY=…
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/labonnealternance.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/labonnealternance.py" \
   search --departement 69
 ```
 

@@ -1,8 +1,6 @@
 ---
 name: job-report
 description: List the job applications recorded in the pipeline ledger between two dates, and count what was actually sent. Defaults to the current month (1st → today). Use when the user asks "how many applications this month?", "list my applications between X and Y", "combien de candidatures ce mois-ci ?", "récap de mes candidatures", or wants the volume of applications sent over a period — including for an unemployment-office declaration.
-user-invocable: true
-allowed-tools: Bash(*), Read
 ---
 
 # Applications report
@@ -22,26 +20,13 @@ applications whose status date falls inside a period.
 ## Run it
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/list_applications.py" [options]
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
+python3 "${JOB_HUNT_ROOT}/skills/job-report/scripts/list_applications.py" [options]
 ```
 
 *(`<this skill's folder>` used to stand where that path is — **a literal
 placeholder, not a variable**, in the one skill that already used
-`${CLAUDE_PLUGIN_ROOT}` twice elsewhere in this same file. Issue #112.)*
-
-**Then, once, quietly:**
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
-```
-
-**It prints nothing when the workspace is current**, which is the normal case
-— no version line, no reassurance. When a newer release exists it prints one
-short block naming it and the host commands that fetch it. **Pass it on as it
-is and carry on**: updating is the host's action, the plugin changes nothing,
-and the user's task is not interrupted for a version number. Cached for a day;
-every failure is silence. Issue #79.
+`${JOB_HUNT_ROOT}` twice elsewhere in this same file. Issue #112.)*
 
 With **no options**: applications **actually sent** — statuses `applied` *and*
 `rejected` — from the **1st of the current month** to **today**. That is the
@@ -133,7 +118,7 @@ filter.
 ### Applications that reached an interview
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/list_applications.py" --interviews
+python3 "${JOB_HUNT_ROOT}/skills/job-report/scripts/list_applications.py" --interviews
 ```
 
 **Volume sent is an effort metric; interviews obtained is the outcome one** —
@@ -157,7 +142,7 @@ like a meeting that did not happen.
 **Run this whenever a report is produced**, and put the result at the top:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/ledger.py" due --within 3
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/ledger.py" due --within 3
 ```
 
 A `` `FU:YYYY-MM-DD` `` marker is a date **somebody promised in a conversation**
@@ -175,7 +160,7 @@ is where the marker gets written in the first place. Issue #69.
 `cover-letter` offers to switch on an unconfigured board when the user pastes a
 URL from one (issue #80). **This skill does not, and should not be given the
 ability.** The offer's rule is that it rides in a question already being asked
-— and this skill asks none: it has no gate, and `AskUserQuestion` is not in its
+— and this skill asks none: it has no gate, and `question` is not in its
 `allowed-tools`. A report on a past period is also the wrong moment: the ad is
 weeks old and the interest has cooled, where a pasted URL is interest proved a
 minute ago.
@@ -198,9 +183,9 @@ between the status date and the `JR:` date finds it. When the user is heading
 for a declaration session, hand them both lists:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-report/scripts/jobroom_sync.py" plan
+python3 "${JOB_HUNT_ROOT}/skills/job-report/scripts/jobroom_sync.py" plan
 ```
 
 The same script carries the **duplicate gate** that any writing into job-room
-must pass — `check`, fed `get_page_text` and never `read_page`. See the
+must pass — `check`, fed `get_page_text` and never `browser_snapshot`. See the
 `job-room-ch` module for the rule and for why the distinction matters.

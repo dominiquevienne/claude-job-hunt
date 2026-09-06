@@ -67,7 +67,7 @@ GET  https://<host>/fr/annonce/<url>        one ad, with a JobPosting block
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/digitalrecruiters.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/digitalrecruiters.py" \
   jobs --domain recrutement.monoprix.fr
 ```
 

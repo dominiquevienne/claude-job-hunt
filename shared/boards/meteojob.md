@@ -81,7 +81,7 @@ roles *and* their commute towns, rather than one broad query per role.
 ## Building a search
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/meteojob.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/meteojob.py" \
   search --what "infirmier" --where "Lyon" --with-detail
 ```
 

@@ -1,8 +1,6 @@
 ---
 name: cover-letter
-description: Draft a tailored cover letter and a matching ATS-compliant resume for a specific job ad, after scoring the fit and estimating what the role pays for this candidate. Input is the job-ad URL; with no URL, it picks the highest-scoring `todo` ad from the pipeline ledger that job-scan maintains. The user's own profile documents are the source of truth — nothing is invented. Outputs markdown + PDF into a per-application folder, and can optionally fill a LinkedIn Easy Apply form in the user's own Chrome (the user always validates the send). Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "draft a cover letter for <URL>", "apply to this job <URL>", "tailor my resume for <URL>", or invokes it with no argument to take the next pending ad.
-user-invocable: true
-allowed-tools: Bash(*), Read, WebFetch, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
+description: Draft a tailored cover letter and a matching ATS-compliant resume for a specific job ad, after scoring the fit and estimating what the role pays for this candidate. Input is the job-ad URL; with no URL, it picks the highest-scoring `todo` ad from the pipeline ledger that job-scan maintains. The user's own profile documents are the source of truth — nothing is invented. Outputs markdown + PDF into a per-application folder, and can optionally fill a LinkedIn Easy Apply form in the user's own browser session (the user always validates the send). Runs a guided first-time setup if the workspace is not configured yet. Use when the user says "draft a cover letter for <URL>", "apply to this job <URL>", "tailor my resume for <URL>", or invokes it with no argument to take the next pending ad.
 ---
 
 # Tailored cover letter + resume
@@ -17,7 +15,7 @@ not in the record. If the ad requires something the user lacks, leave it out of
 the documents and flag the gap to them at the end.
 
 **Shared references** — in this plugin, one level above this skill's folder
-(`../../shared/…`, or `${CLAUDE_PLUGIN_ROOT}/shared/…`):
+(`../../shared/…`, or `${JOB_HUNT_ROOT}/shared/…`):
 
 | File | When |
 | :-- | :-- |
@@ -39,19 +37,6 @@ the documents and flag the gap to them at the end.
 JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
 test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
 ```
-
-**Then, once, quietly:**
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
-```
-
-**It prints nothing when the workspace is current**, which is the normal case
-— no version line, no reassurance. When a newer release exists it prints one
-short block naming it and the host commands that fetch it. **Pass it on as it
-is and carry on**: updating is the host's action, the plugin changes nothing,
-and the user's task is not interrupted for a version number. Cached for a day;
-every failure is silence. Issue #79.
 
 **No `config.yml` → first run.** Say so in one line, then follow
 `shared/setup.md` in full before drafting anything. A resume written from
@@ -142,14 +127,14 @@ ask for a feature request. But when following a board takes you to a **second,
 different board** — most often an employer-owned careers site or ATS reached
 through an outbound *apply* link (step 1b does this by design) — that is a board
 the user never mentioned, and you found it on your own initiative. **Ask them,
-with `AskUserQuestion`, whether to file a `board-request` for it, and prefill the
+with `question`, whether to file a `board-request` for it, and prefill the
 question with everything you already established**: the host, the vendor or "own
 ATS", the shape of a vacancy URL, whether the description is served without
 authentication, and how you got there. Asking costs one option in a question the
 gate is already putting to them; discovering the board a second time, months
 later, costs the whole investigation again.
 
-Fold it into the go/no-go gate's `AskUserQuestion` call rather than raising it on
+Fold it into the go/no-go gate's `question` call rather than raising it on
 its own — a second, separate prompt is the interruption the rule above exists to
 prevent.
 
@@ -161,7 +146,7 @@ their own config that changes their next scan** — and they have just proved
 their interest by handing you an ad from it.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/board_offer.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/board_offer.py" \
     check --board <adapter name>
 ```
 
@@ -187,7 +172,7 @@ the file it expects (`~/.adzuna.env`, say). When `requirements_declared` is
 implying there are none: 49 of 67 adapters carry that table, and the other 18
 have not been asked.
 
-**Where it goes: one more option in the go/no-go gate's `AskUserQuestion`**, the
+**Where it goes: one more option in the go/no-go gate's `question` call**, the
 same as the second-board case, and for the same reason. Two choices, not three:
 *enable it* (you write the `boards:` entry and say what still needs filling in)
 or *not now* (nothing is written, and nothing is remembered).
@@ -198,10 +183,10 @@ makes this silent from then on. Write it only if they ask for it — no
 `declined:` key is invented, because the state already exists and `dormant.py`
 already reads it.
 
-Then, in both cases: WebFetch the URL and extract **company**, **role**,
+Then, in both cases: `webfetch` the URL and extract **company**, **role**,
 **location**, **language of the ad**, key **responsibilities**, **required
 skills**, and any **must-haves**. LinkedIn URLs may 301 to a country host — if
-WebFetch reports a cross-host redirect, call it again with the redirect URL. If
+`webfetch` reports a cross-host redirect, call it again with the redirect URL. If
 the page is gated or empty, ask the user to paste the ad text.
 
 Set **`LANG`** = the ad's language. Everything in the candidate-facing documents
@@ -209,7 +194,7 @@ is written in `LANG`, whatever `languages.interface` says.
 
 ## 1b — Is the ad still open? Check before you spend anything
 
-**A successful WebFetch is not proof the ad accepts applications.** Boards serve
+**A successful `webfetch` is not proof the ad accepts applications.** Boards serve
 the full description of a closed ad, and the *"no longer accepting
 applications"* banner is rendered client-side — it never reaches the fetched
 markdown. The call that just gave you the responsibilities and the must-haves
@@ -348,7 +333,7 @@ offer the next row. Never draft a dossier for a role nobody can apply to.
 
 Seen on 2026-08-27, and it is the whole reason this step exists. A Senior PHP /
 Full-Stack role scored **86 %** — the strongest fit in the pipeline — on a
-description WebFetch returned in full. The ad was a month old with **200+
+description `webfetch` returned in full. The ad was a month old with **200+
 applicants**, and the employer's careers page listed six openings, none of them
 technical. That was reported at the gate as a reserve, and the dossier was
 written anyway. The role was gone: LinkedIn showed *"No longer accepting
@@ -369,7 +354,7 @@ settled it.** Two earlier ads in the same ledger died the same way at 77 % and
 
 ```bash
 test -d "$JOB_HUNT_HOME/profile/.text" || \
-  "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>"
+  "${JOB_HUNT_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>"
 ```
 
 **`candidate.md` and `repos.md` are not a skills inventory** — the inventory is
@@ -440,7 +425,7 @@ employer whose social-security system changes take-home and entitlements, or an
 agency posting whose advertised range is the agency's rather than the client's
 budget.
 
-Then ask whether to continue, with `AskUserQuestion`. Offer: proceed anyway,
+Then ask whether to continue, with `question`. Offer: proceed anyway,
 stop, and — where it makes sense — an angle that would change the framing (pitch
 a lead role rather than the hands-on one advertised). **Only continue to step 4
 once the user says so.** Never soften a bad ratio — or a poor range — to make
@@ -477,7 +462,7 @@ say nothing.
 **Read the directory before the row's notes, and before drafting.**
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/employers.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/employers.py" \
   lookup --name "<the employer>"
 ```
 
@@ -497,7 +482,7 @@ Issue #94.
 
 **And if no preference is recorded, ask — once for this employer, never once
 per ad.** `preference: null` means **never asked**, not neutral. Fold the
-question into the gate's own `AskUserQuestion`, where the user is already
+question into the gate's own `question` call, where the user is already
 judging this employer, and write the answer to `employers.md` on a yes:
 
 > **Cet employeur, vous le privilégiez, vous l'écartez, ou ni l'un ni l'autre ?**
@@ -522,7 +507,7 @@ not one verdict. Issue #95.
 the ad's own text:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/_licence.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/_licence.py" \
   --file <the ad> --licence "B" --vehicle yes
 ```
 
@@ -548,7 +533,7 @@ answer is exactly what produced #91. The question is asked, never the verdict.
 ### Business travel, when the ad asks — a degree, not a fact
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/_travel.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/_travel.py" \
   --file <the ad>
 ```
 
@@ -884,7 +869,7 @@ image, not the text.
 Apply". Never start this on your own: generating the dossier is the default end
 of the skill.
 
-This fills the LinkedIn **Easy Apply** form in the user's own Chrome. **You
+This fills the LinkedIn **Easy Apply** form in the user's own browser session. **You
 never submit it alone** — the final send is gated on the user.
 
 **Applies to LinkedIn Easy Apply only.** If the ad's button says *Apply* rather
@@ -895,14 +880,14 @@ and say which files to attach.
 
 ### 8.1 — Prerequisites and setup
 
-Read `shared/boards/linkedin.md` first. Its prerequisites are not optional:
-tell the user that this drives **their own Chrome**, that it requires the
-**Claude Chrome extension** installed and connected, and that they must be
-**logged in to LinkedIn themselves** before you begin — you work inside their
-session and never sign in for them.
+Read `shared/boards/linkedin.md` first and follow the native browser procedure
+in `shared/prerequisites.md`. Tell the user that this drives **their own browser
+session**, that they must be **logged in to LinkedIn themselves** before you
+begin, and that you work inside their session without signing in for them.
 
-Then `tabs_context_mcp{createIfEmpty:true}`, navigate to the job URL,
-`computer{wait:4}`, `screenshot`. If the page shows the logged-out layout, stop
+Call `openwork_execute` with `browser.open_url` for the job URL. Keep its
+returned `browser_url` and `target_id`, then use `browser_snapshot` and
+`browser_screenshot` as needed. If the page shows the logged-out layout, stop
 and ask them to log in.
 
 ### 8.2 — Open the modal and walk its steps
@@ -911,16 +896,16 @@ Click *Easy Apply* **exactly once** (see the constraints file for why a second
 click destroys the modal), `wait:2`, then loop until the primary button reads
 *Submit application*:
 
-1. `read_page` for field refs and button labels.
+1. `browser_snapshot` for field labels and controls.
 2. Fill what you can (8.3), upload the PDFs (8.4).
-3. `screenshot`, then a real click on *Next* / *Review*, `wait:2`.
+3. `browser_screenshot`, then a real `browser_click` on *Next* / *Review*.
 
 The modal is typically 2–5 steps: contact info → resume → work experience →
 education → review. **Screenshot each step before advancing** — that is the
 record of what was actually filled, and what you show the user at the gate.
 
 If the same step reappears after *Next*, a required field failed validation:
-`read_page` again (or `screenshot`, in the SDUI flow described in the
+`browser_snapshot` again (or `browser_screenshot`, in the SDUI flow described in the
 constraints file), find the error text, and fix it — or, if it is a question you
 must not answer, stop and hand over.
 
@@ -952,15 +937,14 @@ hitting one of them is expected, not a surprise.
 
 ### 8.4 — Attaching the PDFs
 
-**Never click a file input or an "Upload" button** — it opens a native picker
-you cannot control and the session hangs. Get the input's `ref` with
-`read_page`, then `file_upload` with absolute paths.
+**Do not click a file input or an "Upload" button** when it opens a native picker
+the browser tool cannot control. Use `browser_fill` only for fields the native
+browser exposes directly.
 
-**Expect to hand the upload to the user** in the SDUI flow, where there is no
-`ref` to give `file_upload`. That is a dead end by design: open the folder so
-the file is one click away, name the exact button and filename, ask them to
-confirm the selection moved, and ask them **not** to click *Next* — you resume
-from 8.2 so the remaining steps stay under the gate.
+**Expect to hand the upload to the user** when the native browser cannot control
+the picker. Open the folder so the file is one click away, name the exact button
+and filename, ask them to confirm the selection moved, and ask them **not** to
+click *Next* — you resume from 8.2 so the remaining steps stay under the gate.
 
 **Two fields carry stale data from previous applications. Check both, every
 time — they are the likeliest way to send the wrong document in the user's
@@ -1002,7 +986,7 @@ At the review step, **stop**. Show:
   *Follow <Company>* by default, which makes the user follow it publicly. Never
   silently accept or silently untick it: name it and let them choose.
 
-Then `AskUserQuestion`: **Send** (you click it on their go-ahead) · **I'll click
+Then `question`: **Send** (you click it on their go-ahead) · **I'll click
 it myself** (leave the modal untouched; treat the outcome as unconfirmed) ·
 **Fix a field** (apply the correction, re-gate) · **Cancel** (close the modal,
 change nothing in the ledger).
@@ -1074,7 +1058,7 @@ do I apply?".
 - LinkedIn Easy Apply → the LinkedIn job URL.
 - External ATS → **the company's own careers URL**, not the LinkedIn mirror, and
   say which ATS it is so they expect an account and bespoke questions.
-- **Verify it when you can.** If WebFetch 403s or the site blocks retrieval, say
+- **Verify it when you can.** If `webfetch` 403s or the site blocks retrieval, say
   so and give the route you *did* verify. Never present an unverified URL as
   confirmed — mark it explicitly as unverified.
 

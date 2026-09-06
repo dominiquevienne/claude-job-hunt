@@ -55,7 +55,7 @@ POST https://www.apec.fr/cms/webservices/rechercheOffre
 Unauthenticated, no account, no browser.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/apec.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/apec.py" \
   search --lieux 75 --lieux 92 --mots-cles "data engineer" --pages 3
 ```
 

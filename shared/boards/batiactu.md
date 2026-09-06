@@ -32,7 +32,7 @@ they are what this adapter uses:
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/batiactu.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/batiactu.py" \
   search --region ile-de-france --departement 75 --departement 92 --pages 5
 ```
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# claude-job-hunt — which adapters are due for re-verification.
+# opencode-job-hunt — which adapters are due for re-verification.
 #
 # THE FIELD IS A CONTRACT; A DATE IN THE PROSE IS A GUESS. This script used to
 # read every date it could find in a file and take the oldest as a verification
@@ -55,7 +55,7 @@ age_days() {   # $1 = YYYY-MM-DD
   echo $(( (TODAY_EPOCH - e) / 86400 ))
 }
 
-echo "claude-job-hunt — adapter re-verification report"
+echo "opencode-job-hunt — adapter re-verification report"
 echo "  today:     $(date '+%Y-%m-%d')"
 echo "  threshold: $DAYS day$([ "$DAYS" = 1 ] || echo s)"
 echo

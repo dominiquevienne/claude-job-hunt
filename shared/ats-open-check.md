@@ -101,8 +101,8 @@ tool matching those titles now reads every ad as unknown.
 
 **Closed in the browser, same day.** The layer rule says a complete `200`
 carrying a page nobody asked for is *substituted*, and a substituted response
-is one a browser may change — so it was opened in Chrome rather than left as
-an open question. **Chrome renders exactly what the plain client gets**: the
+is one a browser may change — so it was opened in the native browser rather than left as
+an open question. **The browser renders exactly what the plain client gets**: the
 same support page. The oracle is dead, and that is now a verdict rather than
 an unknown.
 
@@ -274,9 +274,9 @@ tenant; an identical page means the requisition does not resolve.
 
 #### The browser is not the easy fallback here
 
-Rendering the list in the Chrome extension is not the easy fallback it looks
+Rendering the list in the native browser is not the easy fallback it looks
 like. Observed 2026-08-20 on this tenant: **the portal only opens in the tab
-where the session was authenticated**, and the extension could not join that
+where the session was authenticated**, and a new browser target could not join that
 tab — a dossier was rendered and then abandoned. Unreadable headless *and*
 awkward in the browser is the same host, twice.
 

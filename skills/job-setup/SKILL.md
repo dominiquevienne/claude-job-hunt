@@ -1,8 +1,6 @@
 ---
 name: job-setup
 description: Set up or change the job-hunt workspace — where the files live, the profile, what the person is looking for, the boards, geography, languages, thresholds, credentials. Use when the user says "set up my job search", "configure le plugin", "I've moved", "j'ai déménagé", "I'm changing career", "je change de métier", "je me reconvertis", "add a job board", "ajoute un site d'emploi", "remove that board", "widen my search", "élargis ma recherche", "change my commute limit", "update my CV sources", "where are my files?", "mes fichiers sont où ?", "I want to look for something else", or asks to redo, revisit or correct any part of the configuration.
-user-invocable: true
-allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion
 ---
 
 # Setting up, and changing, the workspace
@@ -13,7 +11,7 @@ moved"*, *"I'm changing career"* and *"add a job board"* are the sentences that
 actually arrive, and a slash command is never reached by any of them. It was the
 only door to reconfiguration and it opened from one side. Issue #112.
 
-Run the setup procedure in `${CLAUDE_PLUGIN_ROOT}/shared/setup.md`. **Read that
+Run the setup procedure in `${JOB_HUNT_ROOT}/shared/setup.md`. **Read that
 file in full first** — it is the procedure, including the rule that **every
 input you ask for must come with the exact URL or command that produces it, and
 every rejected input must come with the reason and the fix.**
@@ -24,7 +22,7 @@ every rejected input must come with the reason and the fix.**
 creating anything — `shared/workspace.md` has the cascade:
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 ```
 
 - **Nothing named** → full setup. **If `config.yml` already exists, show the

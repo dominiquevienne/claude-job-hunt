@@ -26,7 +26,7 @@ GET /es/oferta-trabajo/<city>/<slug>/<id>   → the ad, inside __NEXT_DATA__
 **No browser, no account, no key.**
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/turijobs.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/turijobs.py" \
   search --ciudad barcelona --pais ES
 ```
 

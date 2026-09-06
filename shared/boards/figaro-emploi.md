@@ -10,7 +10,7 @@
 A large French generalist board — **244 815 ads in its own sitemap** — run by
 Figaro Classifieds, the group that also owns `cadremploi.md`.
 
-**This is a browser adapter.** It runs in the user's own Chrome, in their own
+**This is a browser adapter.** It runs in the user's own browser session, in their own
 session, like `linkedin.md`, `jobup.md`, `jobs-ch.md`, `indeed.md`,
 `cadremploi.md` and `softy.md`. There is no script in
 `skills/job-scan/scripts/` for it, and there cannot be one.
@@ -45,7 +45,7 @@ to a script, and it contains no ads.
 
 Same edge, same group, same conclusion as `cadremploi.md`: a refusal at the
 edge, not a rule to interpret. **Do not add a `figaroemploi.py`.** The same
-pages load normally in the user's Chrome, which is the only route this adapter
+pages load normally in the user's browser session, which is the only route this adapter
 takes.
 
 **One consequence that makes this adapter cheap:** once *any* page of the origin
@@ -56,8 +56,9 @@ runs as `fetch()` calls from one open tab. **Do not navigate once per ad.**
 
 ## Prerequisites
 
-The Claude extension connected to the user's Chrome. **No login is needed** —
-every measurement below was taken from a logged-out session. If a challenge
+OpenWork's native browser in the user's browser session. **No login is needed** —
+every measurement below was taken from a logged-out session. Follow
+`shared/prerequisites.md` for the browser procedure. If a challenge
 ever appears, **the user solves it, never the plugin**, exactly as on
 `indeed.md`.
 

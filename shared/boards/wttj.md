@@ -20,7 +20,7 @@ and from the user's own browser for the ads.
 
 ```
 discovery  →  skills/job-scan/scripts/wttj.py    plain HTTP, no browser
-reading    →  the user's Chrome, one navigation per ad
+reading    →  the user's browser session, one navigation per ad
 ```
 
 `robots.txt` publishes a sitemap index, and the sitemaps are served to a plain
@@ -53,10 +53,10 @@ before assuming it, and stop after the second success rather than the first.)*
 ## Discovery
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/wttj.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/wttj.py" \
   discover --locale fr --since 2026-09-01 --limit 200
 
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/wttj.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/wttj.py" \
   companies --locale fr --top 30
 ```
 

@@ -55,7 +55,7 @@ GET /rechercher/offres
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/anefa.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/anefa.py" \
   search --departement 29 --pages 5
 ```
 

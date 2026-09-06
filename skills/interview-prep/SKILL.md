@@ -1,8 +1,6 @@
 ---
 name: interview-prep
 description: Prepare a booked interview from an application already in the ledger, then debrief it afterwards. Builds a briefing sheet from what the employer actually received — the tailored resume and letter, the archived ad, the scoring gaps, the red lines — and after the meeting records what was answered, what was not, the next step and its date. Use when the user says "prepare my interview", "j'ai un entretien pour X", "fiche de préparation", "I have a call with <company> tomorrow", or reports back on a meeting that has happened.
-user-invocable: true
-allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch
 ---
 
 # Interview: prepare, then debrief
@@ -31,9 +29,8 @@ skill. Issues #50 and #69.
 
 ```bash
 JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
-S="${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts"
+S="${JOB_HUNT_ROOT}/skills/job-scan/scripts"
 test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
 python3 "$S/ledger.py" index --excluded-only
 ```
 
@@ -42,7 +39,7 @@ it:
 
 ```bash
 test -d "$JOB_HUNT_HOME/profile/.text" || \
-  "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>"
+  "${JOB_HUNT_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>"
 ```
 
 ### 1 — Which application, and what to do when there is none
@@ -59,7 +56,7 @@ they must not get is a thin sheet presented as a full one.**
 
 ### 2 — Ask about the meeting, in one batch
 
-**One `AskUserQuestion` call, with sensible defaults — never one question per
+**One `question` call, with sensible defaults — never one question per
 turn.** These are not the point of the skill; they are what it needs to stop
 guessing:
 

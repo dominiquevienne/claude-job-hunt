@@ -57,13 +57,13 @@ are employer postings, reached through a different door.
 
 **It needs no browser.** The `/api/search-jobs` endpoint answers 401, but the
 page is server-rendered: the whole result set sits in `__NEXT_DATA__`. So the
-adapter is plain HTTP — no Chrome extension, no login, no anti-bot challenge
-seen. It is the only sweep that still works when the extension is missing.
+adapter is plain HTTP — no browser, no login, no anti-bot challenge
+seen. It is the only sweep that still works without a browser.
 
 Use the script, not hand-rolled requests:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/hiringcafe.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/hiringcafe.py" \
   search --country CH --posted-within week --sort date --pages 3
 ```
 
@@ -148,7 +148,7 @@ on the wrong place, which is worse than an error.
 
 ## Prerequisites
 
-1. **Nothing.** No login, no account, no browser, no extension.
+1. **Nothing.** No login, no account, no browser.
 2. Say that plainly when the user enables it — after LinkedIn's requirements it
    sounds like something is missing.
 

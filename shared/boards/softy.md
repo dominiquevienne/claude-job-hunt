@@ -17,7 +17,7 @@ A French ATS for SMEs and mid-sized companies, and the third of the French ATS
 family here, after `taleez.md` and `flatchr.md`. One employer per careers site,
 at `https://<tenant>.softy.pro/offers`.
 
-**This is a browser adapter.** It runs in the user's own Chrome, in their own
+**This is a browser adapter.** It runs in the user's own browser session, in their own
 session, like `linkedin.md`, `jobup.md`, `jobs-ch.md`, `indeed.md` and
 `cadremploi.md`. There is no script in `skills/job-scan/scripts/`, and the
 reason is not technical.
@@ -54,8 +54,9 @@ undoing it silently would misrepresent the plugin to the site.
 
 ## Prerequisites
 
-The Claude extension connected to the user's Chrome. **No login is needed to
-scan** — every measurement below was taken from a logged-out session.
+OpenWork's native browser in the user's browser session. **No login is needed to
+scan** — every measurement below was taken from a logged-out session. Follow
+`shared/prerequisites.md` for the browser procedure.
 
 ## Configuration
 

@@ -41,7 +41,7 @@ named.** Question 1 of `shared/robots-policy.md` does not arise; question 2 —
 *is there a sanctioned door?* — is answered by the state publishing one.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/arbeitsagentur.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/arbeitsagentur.py" \
   read --wo Berlin --seit 7
 ```
 

@@ -136,7 +136,7 @@ endpoint, so if a directory ever surfaces it will probably be a Cegid one
 covering both products.)*
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/talentsoft.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/talentsoft.py" \
   jobs --tenant businessfrance-recrute --with-detail
 ```
 

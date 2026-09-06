@@ -68,7 +68,7 @@ permission where a board withheld it.** Concretely, and none of these bend:
 purpose.** `softy.md` describes a site whose `robots.txt` blocks no script at
 all but enumerates AI agents by name and refuses Anthropic's twice. The letter
 left the door open; the sweep was routed through the user's own browser anyway,
-because *"a plugin whose whole function is Claude reads job ads for you sits
+because *"a plugin whose whole function is OpenWork reading job ads for you sits
 inside the spirit of that refusal even when it is outside its letter"*. **That
 decision stands, and it is the shape of this whole page**: being a user-driven
 tool is a reason to read an ambiguous clause fairly, never a reason to argue

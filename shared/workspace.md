@@ -6,7 +6,7 @@ updating, reinstalling or deleting the plugin never touches the user's data.
 ## Resolving it — and saying where, before writing there
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 ```
 
 **`$HOME` is not the user's folder outside a terminal.** In CoWork it belongs
@@ -122,7 +122,7 @@ ad's row, is found only by luck.** Issue #94.
 **So read the directory before the row's notes**, mechanically:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/employers.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/employers.py" \
   lookup --name "<the employer>"
 ```
 

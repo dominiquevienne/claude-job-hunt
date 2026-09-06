@@ -37,7 +37,7 @@ GET https://careers.flatchr.io/vacancy/<slug>/         one ad, same shape
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/flatchr.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/flatchr.py" \
   jobs --tenant pokawa
 ```
 

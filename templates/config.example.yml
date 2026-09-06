@@ -1,4 +1,4 @@
-# claude-job-hunt — user configuration
+# opencode-job-hunt — user configuration
 #
 # Lives in your workspace, NOT in the plugin:
 #   $JOB_HUNT_HOME/config.yml     (default: ~/Documents/job_applications/config.yml)
@@ -144,8 +144,8 @@ boards:
     # Your own public profile URL. Used to rebuild the detail-page URLs the
     # setup asks you to print, and as a supplementary source where readable.
     profile_url: ""
-    # You must be logged in to LinkedIn, yourself, in the Chrome the Claude
-    # extension is connected to. The plugin never signs in for you.
+    # You must be logged in to LinkedIn yourself in OpenWork's browser. The
+    # plugin never signs in for you.
 
   jobup:
     # jobup.ch — French-speaking Switzerland. Scanning needs NO login.

@@ -33,7 +33,7 @@ portal and `/*.php` — not the ad path and not the sitemap.
 Parse by group.)*
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/hays.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/hays.py" \
   search --lieu paris --limit 20
 ```
 

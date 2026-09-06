@@ -44,7 +44,7 @@ from _secrets import get as secret_get
 from _secrets import missing_note
 
 API = "https://api.apprentissage.beta.gouv.fr/api/job/v1/search"
-ENV_KEY = "LBA_API_KEY"
+ACCESS_ENV = "LBA_API_KEY"
 
 # Measured: both lists are capped, and the cap does not move with radius.
 # A full-looking result is the ceiling, not the market.
@@ -77,9 +77,9 @@ def key():
     Not a config.yml key: that file is read aloud, pasted into issues and
     backed up, and a bearer token has no business in it.
     """
-    k = secret_get(ENV_KEY, "labonnealternance")
+    k = secret_get(ACCESS_ENV, "labonnealternance")
     if not k:
-        die(missing_note([ENV_KEY], "labonnealternance",
+        die(missing_note([ACCESS_ENV], "labonnealternance",
                          "La Bonne Alternance",
                          "api.apprentissage.beta.gouv.fr — create an account "
                          "and generate a token"))
@@ -103,7 +103,7 @@ def call(params):
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:200]
         if e.code in (401, 403):
-            die(f"the API rejected the key (HTTP {e.code}). Check {ENV_KEY}, "
+            die(f"the API rejected the key (HTTP {e.code}). Check {ACCESS_ENV}, "
                 "and that the token has not expired in the developer "
                 f"space.\n{detail}")
         die(f"La Bonne Alternance returned HTTP {e.code}: {detail}")

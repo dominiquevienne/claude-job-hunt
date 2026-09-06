@@ -32,7 +32,7 @@ does, and it is wrong in both directions.** Two boards on one page, measured
 
 | Site | `robots.txt` says | The pages do |
 | :-- | :-- | :-- |
-| **Glints** | 200, 587 bytes, permissive — nothing blocks a listing crawl | **403 to `curl` on every page**, 1.3 MB of firewall HTML — while a real Chrome loads everything |
+| **Glints** | 200, 587 bytes, permissive — nothing blocks a listing crawl | **403 to `curl` on every page**, 1.3 MB of firewall HTML — while a real browser loads everything |
 | **Kemnaker** | 200, looks open | **825 KB of `text/html`** — an Angular skeleton. There were never any rules |
 
 One permits and refuses; the other refuses nothing because it says nothing.
@@ -243,8 +243,8 @@ was the wrong verdict.**
 
 ### A site permission is never a manual task
 
-**"Authorise these three domains in the browser extension" was handed to a user
-as a blocking task. The permission was never missing** — the extension had been
+**"Authorise these three domains in the browser integration" was handed to a user
+as a blocking task. The permission was never missing** — the integration had been
 set to all sites throughout. The cost was three entries published with no
 verdict, and one blocking task that did not exist.
 
@@ -1038,7 +1038,7 @@ survey.** A reader who finds this file after us would be right to ask why it
 was not written here.
 
 **What the adapter does is a different act, and the file must say so rather
-than assume it.** `linkedin.md` drives **the user's own Chrome, in the user's
+than assume it.** `linkedin.md` drives **the user's own browser session, in the user's
 own session** — that is the person browsing their own account, not one of our
 agents fetching. **LinkedIn's file is precisely the document that declines to
 draw that distinction**, so this repository states it explicitly instead of
@@ -1079,7 +1079,7 @@ Five ways a request for `/robots.txt` returns something that is not one:
 
 | Shape | Where | What it looks like |
 | :-- | :-- | :-- |
-| **A `403` the browser denies** | eight sites in one day, incl. `104.com.tw` — two md5s for apex and `www`, and its search page loads fine in Chrome | a refusal |
+| **A `403` the browser denies** | eight sites in one day, incl. `104.com.tw` — two md5s for apex and `www`, and its search page loads fine in the browser | a refusal |
 | **A `202` with an empty body** | `tanqeeb` | an answer |
 | **An application shell** | a Jordanian LMIS (Next.js), `kemnaker.go.id` (Angular, **825 kB**) | a large permissive file |
 | **The home page, on any path** | `topjobs.lk` — **1 133 363 bytes** of the site's own front page, *and an invented URL returns the same* | **a very rich rules file** |

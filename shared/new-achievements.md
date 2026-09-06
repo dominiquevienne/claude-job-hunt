@@ -47,14 +47,14 @@ application.**
 
 **Only `job-scan`, and that is a constraint rather than a preference.**
 `job-report` cannot ask: its `allowed-tools` are `Bash(*), Read` and it holds
-no `AskUserQuestion` on purpose — it has no gate, and the same reasoning that
+no `question` on purpose — it has no gate, and the same reasoning that
 keeps the board offer out of it keeps this out too. **A skill that cannot ask
 must not improvise a question in prose**, so `job-report` says nothing here.
 `cover-letter` can ask and must not: a person writing an application is
 mid-task, and this question would interrupt it.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/achievements.py" due
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/achievements.py" due
 ```
 
 `due: false` → **say nothing at all.** No "I won't ask this time", no mention.

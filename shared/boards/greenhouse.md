@@ -43,7 +43,7 @@ boards:
 asked to guess.** Resolve each one at setup:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/ats.py" resolve "Elastic"
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/ats.py" resolve "Elastic"
 → {"provider": "greenhouse", "tenant": "elastic", "company": "Elastic"}
 ```
 

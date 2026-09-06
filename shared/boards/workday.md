@@ -72,7 +72,7 @@ https://swisscom.wd103.myworkdayjobs.com/SwisscomExternalCareers
 Find them from the employer's name:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/workday.py" resolve "Swisscom"
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/workday.py" resolve "Swisscom"
 → {"host": "swisscom.wd103.myworkdayjobs.com", "tenant": "swisscom", "site": "swisscomexternalcareers", …}
 → {"host": "swisscom.wd103.myworkdayjobs.com", "tenant": "swisscom", "site": "cablexexternalcareers", "company": "cablex"}
 ```

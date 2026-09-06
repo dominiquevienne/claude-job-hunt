@@ -44,7 +44,7 @@ rather than assuming Debian.
 | `pdftotext`, `pdfinfo` | `pdftotext -v` | Reading profile exports, page-count checks | macOS `brew install poppler` · Debian `sudo apt install -y poppler-utils` · Windows `winget install --id oschwartz10612.Poppler -e` |
 | `magick` + Pillow | `magick -version` | Signature image only | macOS `brew install imagemagick && python3 -m pip install --user Pillow` · Debian `sudo apt install -y imagemagick python3-pil` · Windows `winget install --id ImageMagick.ImageMagick -e` then `py -m pip install --user Pillow` |
 | Homebrew (macOS) | `brew --version` | Everything above, on macOS | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` — then follow its "Next steps", which set the `PATH` |
-| Claude Chrome extension | ask Claude to open a tab | All browser automation | Cannot be installed from a shell — see below |
+| OpenWork browser | `openwork_execute` with `browser.open_url` | Browser automation | Use the native browser procedure below |
 
 ## Rules when installing for the user
 
@@ -62,21 +62,26 @@ rather than assuming Debian.
 - **Never disable a check to move on.** A resume rendered without Noto Sans is
   not a resume rendered.
 
-## The Chrome extension is different
+## The OpenWork browser is native
 
-It cannot be installed from a shell, and it needs three things the user must do
-themselves. Give them as a numbered list, not a sentence:
+Use the OpenWork browser tools directly; do not discover or load another browser
+integration. To open a page, call `openwork_execute` with `browser.open_url` and
+the requested URL. Keep the returned `browser_url` and `target_id`; pass them to
+the subsequent browser operations. Use only the operation needed for the step:
 
-1. Install the **Claude extension for Chrome** — <https://claude.com/chrome>.
-2. **Sign in to it** with the same account.
-3. **Grant it permission for the site** you are about to use (`linkedin.com`,
-   and any board or portal the run touches). The extension asks per site; a
-   scan cannot read one page without it.
+1. `browser_list` to inspect existing targets when the active target is unknown.
+2. `browser_navigate` to change the URL of a known target.
+3. `browser_snapshot` to read the page and locate controls.
+4. `browser_click` and `browser_fill` for explicit user-approved interactions.
+5. `browser_eval` only for the page extraction the adapter names.
+6. `browser_screenshot` when a visual check or coordinate-free evidence is
+   required.
 
-Then ask the user to confirm, and re-test by opening a tab. Until they confirm,
-**do not retry the browser tools in a loop** — it fails identically every time.
+Ask before opening a page or interacting with it when the procedure requires
+user consent. Do not retry browser tools in a loop after a missing target or
+failed operation; report the failure and use the documented fallback.
 
-If they cannot or will not install it, say what still works without a browser:
+If the native browser is unavailable, say what still works without a browser:
 `cover-letter` accepts an ad URL, and falls back to pasted ad text when the page
 is gated. That is a complete, useful workflow — it just is not automated.
 

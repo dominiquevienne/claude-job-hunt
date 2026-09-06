@@ -9,7 +9,7 @@
 The reference board for French **cadres** alongside the APEC — one of the oldest,
 now part of the HelloWork group.
 
-**This is a browser adapter.** It runs in the user's own Chrome, in their own
+**This is a browser adapter.** It runs in the user's own browser session, in their own
 session, like `linkedin.md`, `jobup.md`, `jobs-ch.md` and `indeed.md`. There is
 no script in `skills/job-scan/scripts/` for it, and there cannot be one.
 
@@ -23,13 +23,14 @@ Cloudflare's *"Sorry, you have been blocked"* page rather than the site's.
 
 That is a refusal at the edge, not a rule to interpret, and getting past it
 would mean defeating bot detection — which this plugin does not do. **Do not
-add a `cadremploi.py`.** The same pages load normally in the user's Chrome,
+add a `cadremploi.py`.** The same pages load normally in the user's browser session,
 which is the only route this adapter takes.
 
 ## Prerequisites
 
-The Claude extension connected to the user's Chrome. **No login is needed to
-scan** — every measurement below was taken from a logged-out session. If a
+OpenWork's native browser in the user's browser session. **No login is needed to
+scan** — every measurement below was taken from a logged-out session. Follow
+`shared/prerequisites.md` for the browser procedure. If a
 challenge ever appears, **the user solves it, never the plugin**, exactly as on
 `indeed.md`.
 

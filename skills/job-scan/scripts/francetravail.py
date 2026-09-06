@@ -52,7 +52,7 @@ from _ua import UA
 SCOPE = "api_offresdemploiv2 o2dsoffre"
 
 ENV_ID = "FRANCE_TRAVAIL_CLIENT_ID"
-ENV_SECRET = "FRANCE_TRAVAIL_CLIENT_SECRET"
+CLIENT_AUTH_ENV = "FRANCE_TRAVAIL_CLIENT_SECRET"
 
 # Measured 2026-08-30 against the live API, from its own 400 messages:
 #   "La position de début doit être inférieure ou égale à 3000."
@@ -90,9 +90,9 @@ def creds():
     secret does not belong in it.
     """
     cid = secret_get(ENV_ID, "francetravail")
-    secret = secret_get(ENV_SECRET, "francetravail")
+    secret = secret_get(CLIENT_AUTH_ENV, "francetravail")
     if not cid or not secret:
-        die(missing_note([ENV_ID, ENV_SECRET], "francetravail",
+        die(missing_note([ENV_ID, CLIENT_AUTH_ENV], "francetravail",
                          "France Travail",
                          "francetravail.io — an account, an application, then "
                          "subscribe it to 'Offres d'emploi v2'"))

@@ -1,8 +1,6 @@
 ---
 name: board-request
 description: Report a board problem upstream so the fix reaches every user, not just this machine. Three modes — a board with no adapter yet (records what an adapter would need), an adapter that has stopped working (records the symptom, what changed and the evidence), and a finding that is not a board failure at all (an adapter that answered with the wrong data, a trap in a site's behaviour, a defect in one of the scripts, a method that turned out wrong). Invoked automatically by cover-letter when an ad URL comes from an unknown board, by job-scan when a board's sweep fails, whenever a run learns something that would be true for another user of this plugin, or directly when the user says "add support for <board>", "this board isn't supported", "the LinkedIn scan is broken", "jobup stopped working", "submit jobs.ch as a board".
-user-invocable: true
-allowed-tools: Bash(*), Read, Write, Edit, WebFetch, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---
 
 # Reporting upstream
@@ -44,19 +42,6 @@ every user's working scan.**
 So: work around it locally *and* report it. Never treat the local workaround as
 the resolution — say both happened, and give the issue URL as proof.
 
-**Then, once, quietly:**
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
-```
-
-**It prints nothing when the workspace is current**, which is the normal case
-— no version line, no reassurance. When a newer release exists it prints one
-short block naming it and the host commands that fetch it. **Pass it on as it
-is and carry on**: updating is the host's action, the plugin changes nothing,
-and the user's task is not interrupted for a version number. Cached for a day;
-every failure is silence. Issue #79.
-
 ## Which mode are you in?
 
 | Situation | Mode | Section |
@@ -85,7 +70,7 @@ These are **not** boards, and an adapter would be wasted on them:
 | A recruitment agency's own site | One agency posting client roles | Nothing |
 | An aggregator that only redirects | Every ad bounces to another site | Say so — an adapter would scrape a middleman |
 
-Decide from the URL and, if it is ambiguous, one `WebFetch` of the home page.
+Decide from the URL and, if it is ambiguous, one `webfetch` of the home page.
 When it is not a board, **say so plainly and move on** — do not file a request
 nobody can act on, and do not make the user feel their URL was a mistake.
 
@@ -108,14 +93,15 @@ is not.
 - **In-site apply flow?** <does it have its own "quick apply", or does it hand off?>
 - **Why it matters:** <one line, in the user's words>
 
-Reported <YYYY-MM-DD> from claude-job-hunt <version>.
+Reported <YYYY-MM-DD> from opencode-job-hunt commit <short commit>.
 ```
 
-If the Claude Chrome extension is connected and the user agrees, opening the
+If the OpenWork browser is available and the user agrees, opening the
 board's search page once and noting the result-card structure makes the report
-far more actionable. **Ask first, keep it to two or three page views, and never
-log in.** If the extension is absent, skip it — the report is still worth
-filing.
+far more actionable. Use the native browser procedure in
+`shared/prerequisites.md`. **Ask first, keep it to two or three page views, and
+never log in.** If the browser is unavailable, skip it — the report is still
+worth filing.
 
 **Record only what you observed.** A guessed selector is worse than a blank
 field: it produces an adapter that looks verified and returns the wrong ads.
@@ -134,27 +120,26 @@ from the outside and need different fixes, or no fix at all:
 | :-- | :-- | :-- |
 | Adapter broken | **The search legitimately has no results** | Run one of the user's queries by hand in the browser. Results on screen, none extracted → adapter. Nothing on screen either → not a bug |
 | Adapter broken | **The user is logged out**, or the session expired | The adapter's prerequisites block; the logged-out layout is usually obvious in a screenshot |
-| Adapter broken | **The run was on stale code** — the fix already shipped | `bin/version-check.py --print-version`, then compare against the closed issues. **See below: this one is not a symptom of the board at all.** |
+| Adapter broken | **The run was on stale code** — the fix already shipped | Record `git -C "$JOB_HUNT_ROOT" rev-parse --short HEAD`, then compare it against the closed issue's fix commit. **See below: this one is not a symptom of the board at all.** |
 | Adapter broken | **Anti-bot challenge** (`indeed.md` documents this as expected behaviour) | A challenge page. This is the *user's* to solve, and the adapter already says so — not an issue unless the challenge is new or now unsolvable |
 | Adapter broken | **The adapter answered, and the answer was wrong** | Nothing to tell apart — this is not a broken adapter and it is not nothing. It is **worse than a failure, because it does not announce itself**. Go to **2c** |
 
 ### A failure observed on stale code is not evidence about the board
 
-**Fill `Plugin version:` from the code that actually ran**, never from the
-repository:
+**Fill `Plugin commit:` from the code that actually ran:**
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py" --print-version
+git -C "${JOB_HUNT_ROOT}" rev-parse --short HEAD
 ```
 
-**Then check whether the running version is behind**, because the whole report
-depends on it:
+**Then compare that commit with the fix named by any matching closed issue.**
+If the checkout predates the fix, update it and reproduce before filing:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
+git -C "${JOB_HUNT_ROOT}" pull --ff-only
 ```
 
-**If it prints anything, stop and say so before filing.** A board that failed
+**If it updates anything, stop and say so before filing.** A board that failed
 under an old adapter tells you nothing about the board: the fix may have
 shipped weeks ago and the symptom would be a closed issue re-opened as a new
 one — *the most expensive shape a bug report can take*. Ask the user to update
@@ -178,7 +163,7 @@ Only when it is genuinely the adapter, write:
 # Board adapter broken — <board>
 
 - **Board:** <name> · adapter `shared/boards/<board>.md`
-- **Plugin version:** <version>
+- **Plugin commit:** <short commit>
 - **Observed:** <YYYY-MM-DD>
 - **Last known working:** <date, or "unknown" — check the ledger's Log for the last successful scan of this board>
 
@@ -201,7 +186,7 @@ could not determine it, write "not determined" — never guess a selector.>
 ## Evidence
 
 <The search URL used. The exact error text if there was one. What a screenshot
-or `read_page` showed instead of the expected structure. An example ad URL only
+or `browser_snapshot` showed instead of the expected structure. An example ad URL only
 if it is needed to reproduce.>
 
 ## Workaround applied for this user
@@ -209,7 +194,7 @@ if it is needed to reproduce.>
 <What was done so their run still produced something — board skipped, ad URL
 handled through cover-letter, manual paste. Or "none".>
 
-Reported <YYYY-MM-DD> from claude-job-hunt <version>.
+Reported <YYYY-MM-DD> from opencode-job-hunt commit <short commit>.
 ```
 
 **The `Last known working` line earns its place.** It bounds the change to a
@@ -261,7 +246,7 @@ must carry the search that established it.
 
 - **Kind:** wrong data · site behaviour · method · script defect · capability
 - **Where:** <adapter, script, or shared doc that carries the wrong thing — or "nowhere yet">
-- **Plugin version:** <version>
+- **Plugin commit:** <short commit>
 - **Observed:** <YYYY-MM-DD>
 
 ## What the run did
@@ -290,7 +275,7 @@ section.>
 
 <Local workaround, or "none — the run was correct once the finding was applied".>
 
-Reported <YYYY-MM-DD> from claude-job-hunt <version>.
+Reported <YYYY-MM-DD> from opencode-job-hunt commit <short commit>.
 ```
 
 **Say where the knowledge should live, not only that it is true.** Most of these
@@ -326,13 +311,13 @@ break.** If the user has `gh`:
 
 ```bash
 # A board — the prefix is the match
-gh issue list --repo dominiquevienne/claude-job-hunt \
+gh issue list --repo antomicblitz/opencode-job-hunt \
   --state open --search "<board> in:title" 2>/dev/null
 
 # A finding — no prefix to match, so search the claim's own words, and
 # **include closed issues**: a finding is usually closed by the fix that
 # records it, and filing it twice is filing a solved problem.
-gh issue list --repo dominiquevienne/claude-job-hunt \
+gh issue list --repo antomicblitz/opencode-job-hunt \
   --state all --search "<two or three words of the claim>" 2>/dev/null
 ```
 
@@ -365,7 +350,7 @@ logged-in session:
 - **A search URL can carry their query terms**, which describe what they are
   looking for and sometimes their salary or seniority filters. Usually harmless,
   occasionally not — name it, and offer to reduce it to the URL's *shape*.
-- **A screenshot, a `read_page` dump or an error trace can carry session
+- **A screenshot, a `browser_snapshot` dump or an error trace can carry session
   identifiers, a profile name, or recommended-jobs content keyed to them.**
   Never paste raw page dumps or cookies into an issue. Describe the structure —
   *"the results container no longer has a `data-job-id` attribute"* — rather than
@@ -379,7 +364,7 @@ gh auth status
 
 Authenticated? Then offer it, naming the account it would post under:
 
-> *"I can open an issue on `dominiquevienne/claude-job-hunt` as **@\<login\>**
+> *"I can open an issue on `antomicblitz/opencode-job-hunt` as **@\<login\>**
 > with the report below. Post it?"*
 
 Show the title and the full body first. On an explicit yes:
@@ -387,21 +372,21 @@ Show the title and the full body first. On an explicit yes:
 ```bash
 # New board
 gh issue create \
-  --repo dominiquevienne/claude-job-hunt \
+  --repo antomicblitz/opencode-job-hunt \
   --title "Board request: <board name>" \
   --body-file "$JOB_HUNT_HOME/board-requests/<slug>.md" \
   --label board-request
 
 # Broken adapter — different title prefix, and it is a bug
 gh issue create \
-  --repo dominiquevienne/claude-job-hunt \
+  --repo antomicblitz/opencode-job-hunt \
   --title "Board broken: <board name> — <one-line symptom>" \
   --body-file "$JOB_HUNT_HOME/board-requests/<slug>-broken-<YYYY-MM-DD>.md" \
   --label board-request --label bug
 
 # Finding — no prefix, and the title states what is true
 gh issue create \
-  --repo dominiquevienne/claude-job-hunt \
+  --repo antomicblitz/opencode-job-hunt \
   --title "<the claim itself, in one line>" \
   --body-file "$JOB_HUNT_HOME/board-requests/finding-<slug>-<YYYY-MM-DD>.md" \
   --label bug
@@ -441,7 +426,7 @@ if len(body) > 6000:                     # URLs have limits; do not silently tru
     body = body[:6000] + "\n\n…truncated — full report attached separately."
 prefix = "Board broken" if sys.argv[3] == "broken" else "Board request"
 q = urllib.parse.urlencode({"title": f"{prefix}: {sys.argv[2]}", "body": body})
-print(f"https://github.com/dominiquevienne/claude-job-hunt/issues/new?{q}")
+print(f"https://github.com/antomicblitz/opencode-job-hunt/issues/new?{q}")
 PY
 ```
 

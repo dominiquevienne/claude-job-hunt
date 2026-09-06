@@ -94,7 +94,7 @@ gets the search page pinned to the id. It is not invented, and it resolves:
 `q=<id>` returns exactly that record.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/oposiciones.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/oposiciones.py" \
   search --provincia BARCELONA --grupo A1
 ```
 

@@ -28,7 +28,7 @@ An operator who matches the token and then checks the address will find a
 mismatch, and the reading available to them is *spoofed*.
 
 **So the token is carried inside a string that says plainly what this is.** It
-names the plugin, its version and its repository. An operator matching
+names the plugin and its repository. An operator matching
 `Claude-User` in a `robots.txt` group gets the behaviour the decision intends;
 an operator reading the string sees that this is a personal tool on a personal
 machine, not Anthropic's fleet. **Both readings are true, which is the only
@@ -39,9 +39,9 @@ visible on the day — `shared/never-fail-silently.md` — not discovered in a
 count that quietly shrank. `blocked_note()` is what says it.
 """
 
-__all__ = ["UA", "TOKEN", "blocked_note"]
+__all__ = ["UA", "AGENT_NAME", "blocked_note"]
 
-TOKEN = "Claude-User"
+AGENT_NAME = "Claude-User"
 
 # **One string, and every adapter imports it.** Three files already declared
 # themselves honestly — `ats.py`, `jobroom.py`, `francetravail.py` — and 63
@@ -49,8 +49,8 @@ TOKEN = "Claude-User"
 # thing and send another.
 
 
-UA = (f"Mozilla/5.0 (compatible; {TOKEN}; claude-job-hunt/1.227.0; "
-      f"+https://github.com/dominiquevienne/claude-job-hunt)")
+UA = (f"Mozilla/5.0 (compatible; {AGENT_NAME}; opencode-job-hunt; "
+      f"+https://github.com/antomicblitz/opencode-job-hunt)")
 
 
 def blocked_note(host, status=None):
@@ -65,7 +65,7 @@ def blocked_note(host, status=None):
     """
     seen = f"HTTP {status}" if status else "a refusal"
     return (
-        f"{host} answered {seen}. **This plugin declares `{TOKEN}` since "
+        f"{host} answered {seen}. **This plugin declares `{AGENT_NAME}` since "
         f"#120**, so this may be the operator acting on that token — or an "
         f"ordinary bot wall that would have refused any client. **One "
         f"response cannot tell them apart.** If this host used to answer and "

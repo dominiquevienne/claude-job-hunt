@@ -85,7 +85,7 @@ JOBS = ROOT + "/pc/v6/jobs"
 DETAIL = ROOT + "/pc/v4/jobdetails/{}"
 SPEC = "https://jobsuche.api.bund.dev/openapi.yaml"
 # Printed in the operator's own OpenAPI description, for third parties.
-API_KEY = "jobboerse-jobsuche"
+PUBLIC_APPLICATION_ID = "jobboerse-jobsuche"
 from _ua import UA
 # page=101 answers 400. 100 pages of 100 is the whole window.
 PAGE_SIZE = 100
@@ -108,7 +108,7 @@ def note(msg):
 def api(url, retries=2, missing_ok=False):
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
-        "X-API-Key": API_KEY,
+        "X-API-Key": PUBLIC_APPLICATION_ID,
         "Accept": "application/json",
     })
     for attempt in range(retries + 1):
@@ -123,7 +123,7 @@ def api(url, retries=2, missing_ok=False):
                 # one-byte body. Only /pc/v6/jobs is live. Say so rather than
                 # letting a stale path read as a key problem.
                 die("403 from the API. The key is the published "
-                    f"{API_KEY!r}, and it works on /pc/v6/jobs — the older "
+                    f"{PUBLIC_APPLICATION_ID!r}, and it works on /pc/v6/jobs — the older "
                     "/pc/v4/app/jobs path in the same specification is dead "
                     f"and answers 403 for everyone.\n  {url}")
             if attempt == retries:

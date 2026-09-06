@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# claude-job-hunt — environment check.
+# opencode-job-hunt — environment check.
 #
 # Reports what is present, what is missing, what each missing piece blocks, and
 # the exact command to install it on THIS platform. Run it any time:
@@ -26,7 +26,7 @@ case "$PLATFORM" in
   windows)      command -v winget >/dev/null 2>&1 && PKG="winget" ;;
 esac
 
-echo "claude-job-hunt — environment check"
+echo "opencode-job-hunt — environment check"
 echo "  platform:        $PLATFORM ($(uname -s), $(uname -m))"
 echo "  package manager: ${PKG:-none detected}"
 echo "  shell:           ${BASH_VERSION:-unknown}"
@@ -193,12 +193,11 @@ echo
 
 # -------------------------------------------------------------- browser -----
 echo "Browser automation (scanning boards, filling application forms)"
-echo "  Cannot be probed from a shell. Two things are needed, both yours to set up:"
-echo "    1. the Claude extension for Chrome, installed and connected"
-echo "       — https://claude.com/chrome"
-echo "    2. you, logged in to the board in that Chrome (LinkedIn needs it; jobup.ch does not)
-  Neither is needed for the HiringCafe sweep, which is plain HTTP."
-echo "  Test it by asking Claude: \"open a tab on linkedin.com and tell me if I'm logged in\""
+echo "  Cannot be probed from a shell. OpenWork provides the browser tools."
+echo "  Log in to each board yourself in the OpenWork browser (LinkedIn needs it;"
+echo "  jobup.ch does not). The plugin never signs in for you."
+echo "  Test it in OpenWork: \"open linkedin.com and tell me if I'm logged in\""
+echo "  Browser access is not needed for HiringCafe or other plain-HTTP boards."
 echo
 
 # --------------------------------------------------------------- verdict ----

@@ -21,7 +21,7 @@ $JOB_HUNT_HOME/                 # default: ~/Documents/job_applications
 Resolve the workspace in every command, never hardcode it:
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 ```
 
 **And if it exits `3`, ask before creating anything.** Outside a terminal
@@ -54,7 +54,7 @@ And when what you receive is not what you expected, **never** answer with a bare
 5. **A way forward that is not "fix it"** — skip this input, supply it another
    way, or continue without it and revisit later. Setup must never dead-end.
 
-Ask in batches with `AskUserQuestion` where the options are closed (work modes,
+Ask in batches with `question` where the options are closed (work modes,
 thresholds, modules). Use plain questions for free text (name, home town).
 
 ---
@@ -107,7 +107,7 @@ plugin produces is checked against these files.** Without them the skill cannot
 work, and it must not invent a career.
 
 Offer three routes, in this order, and let the user pick with
-`AskUserQuestion`:
+`question`:
 
 ### Route A — read the pages in the user's own browser
 
@@ -145,7 +145,7 @@ Ask them to open their profile, then for each of the five sections:
 Read the page's text, then save it under the name the pipeline knows:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/save-profile-text.py" \
+python3 "${JOB_HUNT_ROOT}/skills/cover-letter/save-profile-text.py" \
   experience --stdin <<'TEXT'
 …the page text…
 TEXT
@@ -185,7 +185,7 @@ LinkedIn handle once known:
 Then collect them:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>" "$JOB_HUNT_HOME/profile"
+"${JOB_HUNT_ROOT}/skills/cover-letter/sync-sources.sh" "<Full Name>" "$JOB_HUNT_HOME/profile"
 ```
 
 **It also writes `profile/.text/`** — every PDF as plain text. That is not a convenience: the skills check a claimed skill against the record before scoring, and while that check cost a PDF extraction it was skipped in favour of grepping `candidate.md`, which is not an inventory. A candidate was told Confluence was not in their file; it is, with eight experiences behind it. Issue #63.
@@ -270,7 +270,7 @@ Four questions, then a generated table.
 
 1. **Home base.** *"Where should commutes be measured from? A town plus region,
    e.g. 'Bristol, England' — precise enough to estimate travel times."*
-2. **Maximum one-way commute**, in minutes (`AskUserQuestion`: 30 / 60 / 90 /
+2. **Maximum one-way commute**, in minutes (`question`: 30 / 60 / 90 /
    remote only). Explain what it does: an ad demanding regular presence beyond
    it is discarded **whatever its score**, because no stack fit buys back a
    commute that cannot be made.
@@ -297,7 +297,7 @@ address an official declaration expects, standing decisions with their lifting
 dates, which ATS they run.
 
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT:-.}/templates/employers.example.md" \
+cp "${JOB_HUNT_ROOT}/templates/employers.example.md" \
    "$JOB_HUNT_HOME/employers.md"
 ```
 
@@ -377,7 +377,7 @@ poste)`. A user corrects a hedged line; they skim past a confident one.
 
 ### Then six questions, and they are closed on purpose
 
-Use `AskUserQuestion` — one call, all six, each with the consequence stated in
+Use `question` — one call, all six, each with the consequence stated in
 the option text so nobody is choosing blind.
 
 | # | Question | Options | What it decides |
@@ -484,7 +484,7 @@ they build a selection.
 | **Sector = social, care, education** | sozialinfo.ch (CH) | — |
 | **Sector = trades, industry, technical** | fachkraft.ch (CH), persigo.ch (CH) | — |
 | **Reconversion (Q1)** | Broad boards only — HiringCafe, the national one, LinkedIn | **Drop the sector boards keyed to the old trade.** This is the case where a sector board is actively harmful: it fills the pipeline with exactly the work they are leaving |
-| **Wants LinkedIn / Easy Apply** | LinkedIn | Needs their own Chrome and their own logged-in session — say so before enabling, not after |
+| **Wants LinkedIn / Easy Apply** | LinkedIn | Needs their own logged-in browser session — say so before enabling, not after |
 
 Present it as: *"d'après vos réponses, je propose ces quatre — voici pourquoi
 chacune, et voici celles que j'ai écartées."* **Naming the exclusions matters as
@@ -582,27 +582,27 @@ itself.
 | Emploi Territorial | The **departments** they would work in — written any way, `69` or `069`. **No login, no browser, no key.** French local government: communes, départements, régions, CCAS. Offer it to anyone open to the fonction publique territoriale, and say the deadline is real — these ads close on a stated date. Without a department the sweep is the whole country, over 1 300 pages |
 | Cegid Talentsoft | The employers they would work for, **as careers host labels** — `businessfrance-recrute`, `groupeadp-recrute`. **`place-ep-recrute` is `choisirleservicepublic.gouv.fr`**, the state's public-service portal: offer it to anyone open to the fonction publique, and warn that its 51 708 posts are not a board to read whole. **No login, no browser, no key.** Ministries, airports, energy, large agencies. No directory exists, so ask for the URL; a wrong label does not 404, it fails to resolve. Worth saying: the listing already carries the address and the date, so a scan is useful without opening a single ad |
 | DigitalRecruiters | The employers they would work for, **as careers hostnames** — `recrutement.monoprix.fr`. **No login, no browser, no key.** French retail, franchise networks and large service groups; the biggest boards of any ATS here. No directory exists — the site is on the employer's own domain, so ask for the URL. Warn them the listing has no description or date, and that reading the ads is deliberately paced |
-| Softy | The employers they would work for, **as careers URLs** — `<tenant>.softy.pro`. **No login to scan, but it needs their own Chrome** with the extension connected. Say why, because it is not a limitation: the site asks AI crawlers not to read it, so the sweep goes through their session instead. Warn them an ad can span several towns and the listing shows only the first |
+| Softy | The employers they would work for, **as careers URLs** — `<tenant>.softy.pro`. **No login to scan, but it needs their own browser session**. Say why, because it is not a limitation: the site asks AI crawlers not to read it, so the sweep goes through their session instead. Warn them an ad can span several towns and the listing shows only the first |
 | Flatchr | The employers they would work for, **as careers URLs** — `<tenant>.flatchr.io`. **No login, no browser, no key**, and no detail option: one request returns the ads with their full text. Like Taleez there is **no resolver** — its sitemap belongs to the marketing site and lists no vacancies at all — so ask for the URL and never guess a tenant |
 | Taleez | The employers they would work for, **as careers URLs** — `<tenant>.taleez.com`. **No login, no browser, no key.** The French SME/ETI ATS, and like umantis there is **no resolver**: no directory, no cross-tenant search, and the sitemaps carry no job URLs. Ask for the URL and never guess a tenant. Warn them the listing has **no description**, so reading the ads costs one request each |
 | Greenhouse / Lever / Ashby / SmartRecruiters | A list of **employers** they would actually work for. **No login, no browser.** These answer "is my target employer hiring?", never "who is hiring near me?" — a user with nobody in mind gains nothing, so offer them only when the user names employers. Resolve each tenant token with `ats.py resolve "<employer>"`; never ask the user to guess it. **On SmartRecruiters that resolution is not optional**: a wrong tenant answers `200` with zero postings there, so a guessed token looks exactly like an employer with nothing open |
 | France Travail | Their **departments** (`"75"`, `"69"` — strings, leading zero kept) or an **INSEE commune code** plus a radius. **No login, no browser** — but it needs an API key, free from francetravail.io. Walk them through it with section 5c; do not ask for the key before they have enabled the board. France only |
 | job-room.ch | The cantons they would work in (official uppercase codes), or a point and a radius of at least 10 km. **No login, no browser.** Switzerland only. Reaches the SMEs, foundations and staffing agencies HiringCafe misses |
 | Adzuna | Their ISO-2 country, from the nineteen it serves. **No login, no browser** — but it needs a free key from developer.adzuna.com, and its budget is the smallest here: **250 calls a day for every country together**. Walk them through it with section 5e |
-| HiringCafe | Their ISO-2 country code. **No login, no browser, no extension** — it is plain HTTP, and the only sweep that works without Chrome. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
-| LinkedIn | Their own profile URL, and they must be logged in themselves, in the Chrome the Claude extension is connected to |
+| HiringCafe | Their ISO-2 country code. **No login, no browser** — it is plain HTTP, and the only sweep that works without a browser. Worldwide; thin in emerging markets, and blind to the Swiss ATS (Refline, Ostendis, Umantis) |
+| LinkedIn | Their own profile URL, and they must be logged in themselves in the OpenWork browser session |
 | jobup.ch | Nothing — **no login needed to scan.** Swiss ads, French-speaking Switzerland |
 | randstad.ch | Nothing — **no login, no browser.** The staffing agency's Swiss board, ~985 ads nationwide. The employer is never named. Note for Romandie users: its structured data is absent on Geneva-area ads, which the adapter handles but which makes those ads slightly thinner |
 | persigo.ch | Nothing — **no login, no browser.** A staffing agency, mostly central Switzerland, trades and technical roles. Warn them of two things: the employer is never named, and the board keeps ads for over a year with no date on the listing — so a large result count is not a large number of current openings |
 | sozialinfo.ch | Nothing — **no login, no browser.** Switzerland's social sector. Worth offering to anyone in social work, care, education or the public sector; pointless otherwise. Unlike the agency boards it names the employer, and every ad carries a postcode the ORP form wants |
 | fachkraft.ch / sta.jobs | Nothing — **no login, no browser.** Swiss trades and industry. **Offer `www.fachkraft.ch` and nothing else**: it is the umbrella for sta.jobs and stellenpartner.ch, which add no ads and double every row. Warn them the employer is never named |
 | Michael Page | Their country domain — `www.michaelpage.ch`, `.fr`, `.de`, `.co.uk` … **No default**: guessing it searches the wrong market. **No login, no browser.** Warn them the employer is never named on this board, so they cannot research the company before applying, and the ledger cannot dedup it against the employer's own ATS |
-| Cadremploi | A **list of `motscles` / `ville` searches**, `ville` written `<slug>-<code postal>` — `paris-75`, `lyon-69`. **No login to scan, but it needs their own Chrome** with the extension connected, because the site blocks scripted access outright. Say that before enabling it: it is the only French board here that cannot run headless |
-| Figaro Emploi | A **list of searches**, each one a `departement` (`69`), a `ville` (`lyon-69000`) or a `region` (`fr-ara`), optionally narrowed by a `metier` slug. **No login to scan, but it needs their own Chrome** with the extension connected — Cloudflare blocks scripted access, exactly as on Cadremploi. Mention it when they ask for **Keljob**: that is this board now |
+| Cadremploi | A **list of `motscles` / `ville` searches**, `ville` written `<slug>-<code postal>` — `paris-75`, `lyon-69`. **No login to scan, but it needs their own browser session**, because the site blocks scripted access outright. Say that before enabling it: it is the only French board here that cannot run headless |
+| Figaro Emploi | A **list of searches**, each one a `departement` (`69`), a `ville` (`lyon-69000`) or a `region` (`fr-ara`), optionally narrowed by a `metier` slug. **No login to scan, but it needs their own browser session** — Cloudflare blocks scripted access, exactly as on Cadremploi. Mention it when they ask for **Keljob**: that is this board now |
 | Jobology | A **list of `site` / `metier` searches**, optionally a `region`. The `site` is one of nine sector boards — ask which sector fits them: santé (`jobvitae.fr`), distribution (`distrijob.fr`), transport (`jobtransport.com`), tourisme-hôtellerie (`clicandtour.fr`), énergie, maritime, sport, environnement, supply chain. **No browser, no account.** Slugs are the site's own vocabulary — `jobology.py metiers --site <site>` lists them, and a wrong one returns an empty board with no error |
 | Batiactu | A **list of searches**, each a `region` (21 slugs, the **pre-2016** map — `aquitaine`, not `nouvelle-aquitaine`) or a `metier`, plus `departements` — which they should almost always give, because the site's own region filter matches the employer's name and returns jobs anywhere in France. **No browser, no compte.** Offer it only for BTP, construction and building trades |
 | ANEFA | A **list of `departements`**, written as the real numbers — `29`, `2A`, `971` — the adapter translates them. **No browser, no compte.** Offer it for farm, seasonal and rural work. Warn them of one thing: **the ads name no employer**, so a letter goes to a farm the ad describes without naming |
-| Welcome to the Jungle | Nothing to configure for discovery — but it **needs their own Chrome** with the extension connected to read the ads, because every page answers an anti-bot challenge that their browser passes and a script does not. Ask which **companies** or which **date window** they want: the board is 88 222 ads and the useful narrowing is `--company` and `--since`. Warn them that `/fr/` is a language, not a country — the country is only known once an ad is read |
+| Welcome to the Jungle | Nothing to configure for discovery — but it **needs their own browser session** to read the ads, because every page answers an anti-bot challenge that their browser passes and a script does not. Ask which **companies** or which **date window** they want: the board is 88 222 ads and the useful narrowing is `--company` and `--since`. Warn them that `/fr/` is a language, not a country — the country is only known once an ad is read |
 | Adecco France | A **narrowing** — `ville` (free, matches the URL slug), `region` (the department spelled out, but it costs a fetch per candidate) or `since`. **No browser, no compte.** Tell them what it is before enabling: 13 293 interim and CDI ads with a salary on two in three, but **the employer is always Adecco** — the client company is described and never named, so no pre-application research and no dedup key |
 | Randstad France | A **list of `ville`**, spelled as in the URL — it is reliable here and free. `departement` works too but costs a fetch per candidate. **No browser, no compte.** Same warning as Adecco: **the employer is Randstad France on every ad**, the client is never named. Note for them: this is *not* `randstad.ch`, which the plugin also covers |
 | Crit | A **`since` date** above all — its URLs are UUIDs, so the date is the only filter that costs nothing, and it is a real per-ad date. `departements` works but reads every ad to find them (60 read for 1 kept, measured). **No browser, no compte.** Worth telling them: it is the only French board here that gives a **real salary range on every ad**, and the employer is the local Crit branch rather than the client |
@@ -676,7 +676,7 @@ in step 0, and if that was a different conversation, resolve it again rather
 than asking them to remember:
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 echo "$JOB_HUNT_HOME/credentials.env"
 ```
 
@@ -799,7 +799,7 @@ themselves and you say nothing further.
 ### Then check it, and say what the check proved
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/francetravail.py" token
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/francetravail.py" token
 ```
 
 Run this before finishing setup. A board that is switched on and unverified
@@ -911,7 +911,7 @@ Say this, in one message, in this order:
 
 ### The question, and the three answers it can have
 
-`AskUserQuestion`, single select, no default:
+`question`, single select, no default:
 
 - **Enable it** — they accept the override for their own workspace.
 - **Leave it off** — a hard no.
@@ -1070,7 +1070,7 @@ given; give the facts below once and ask.
 
 ### The question, and the three answers it can have
 
-`AskUserQuestion`, single select, **no default and nothing pre-ticked**:
+`question`, single select, **no default and nothing pre-ticked**:
 
 - **Enable it** — they accept the override for their own workspace.
 - **Leave it off** — a hard no. The board is skipped and says so on every run
@@ -1100,7 +1100,7 @@ rule, saying the key is missing and what it would cost.
 
 ## 6 — Thresholds and document preferences
 
-- **Apply-from threshold** (`AskUserQuestion`: 70 selective / 55 broad / 40
+- **Apply-from threshold** (`question`: 70 selective / 55 broad / 40
   urgent). Frame it honestly: a lower threshold means more applications and more
   rejections, and it is the right setting when time or income is short. This
   number is a **default, not a rule** — every application still passes a
@@ -1131,7 +1131,7 @@ moment it is enabled, not just when it is used.
 **Handwritten signature.** If the user wants one on their cover letters:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/make-signature.sh" <scan.pdf|scan.png> "$JOB_HUNT_HOME/signature.png"
+"${JOB_HUNT_ROOT}/skills/cover-letter/make-signature.sh" <scan.pdf|scan.png> "$JOB_HUNT_HOME/signature.png"
 ```
 
 Tell them how to produce the input: sign a **blank white sheet** with a dark

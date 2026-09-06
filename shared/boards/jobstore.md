@@ -15,7 +15,7 @@ Switzerland carries **52 128 ads**.
 
 **It is a hybrid adapter, and not by preference.** Discovery is plain HTTP —
 sitemaps and the search page both answer 200. **Reading an ad needs the user's
-own Chrome**: the ad page answers a plain client with **HTTP 403 and a
+own browser session**: the ad page answers a plain client with **HTTP 403 and a
 5 832-byte "Just a moment…" interstitial**, and renders normally in a real
 browser.
 
@@ -24,7 +24,7 @@ That split is the layer rule from `shared/robots-policy.md` doing its work: a
 Nothing else here does.
 
 **Everything below was verified on 2026-09-02** — the sitemaps and search over
-plain HTTP, the ad page and its apply button in Chrome.
+plain HTTP, the ad page and its apply button in the browser.
 
 ## Count `job-*.xml` and nothing else
 
@@ -65,7 +65,7 @@ Pagination works — `page=2` returns a different set of 15.
 
 ## What the browser sees
 
-The same ad, opened in Chrome, renders in full after the interstitial clears:
+The same ad, opened in the browser, renders in full after the interstitial clears:
 title, employer with a link to its company page and a review score, job type
 and level, location, **a salary range** — *CHF 6 000 – CHF 8 500 (Monthly)* —
 and the whole description.
@@ -132,9 +132,9 @@ boards:
 | `delay` | no | Seconds between requests, default 1.5 |
 
 **Prerequisites are split.** `count`, `search` and `corpus` need nothing —
-no key, no cookie, no browser. **Reading an ad needs the Claude extension for
-Chrome**; without it, the sweep still discovers ads and the user opens them
-themselves.
+no key, no cookie, no browser. **Reading an ad needs OpenWork's native browser**;
+without it, the sweep still discovers ads and the user opens them themselves.
+Follow `shared/prerequisites.md` for the browser procedure.
 
 ## Zero-shaped answers
 

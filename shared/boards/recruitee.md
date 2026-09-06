@@ -37,7 +37,7 @@ same shape as `workable.md` and `flatchr.md`.
 is not disallowed, and no crawler or AI agent is named.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/recruitee.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/recruitee.py" \
   jobs --tenant gmk
 ```
 

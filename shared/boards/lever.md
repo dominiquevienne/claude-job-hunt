@@ -37,7 +37,7 @@ boards:
 Resolve each token at setup rather than guessing it:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/ats.py" resolve "Caseware"
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/ats.py" resolve "Caseware"
 → {"provider": "lever", "tenant": "caseware", "company": "Caseware"}
 ```
 

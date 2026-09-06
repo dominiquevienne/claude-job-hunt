@@ -217,15 +217,15 @@ so the two numbers are now reconciled and there are three outcomes:
 The third row is stricter than what it replaces: five rows of forty-eight parse
 perfectly well and used to clear duplicates that were plainly there.
 
-### Feed it `get_page_text`, never `read_page`
+### Feed it complete page text, never only the visible rows
 
-**The job-room list is virtualised.** `read_page` returns only the rows
-currently on screen — **5 exposed out of 48** on a measured run — so a check
-built on it sees almost nothing and clears entries that are plainly there.
-`get_page_text` returns every entry of the period. The script rejects
-`read_page`-shaped input rather than trusting it.
+**The job-room list is virtualised.** A visible `browser_snapshot` can return
+only the rows currently on screen — **5 exposed out of 48** on a measured run —
+so a check built on it sees almost nothing and clears entries that are plainly
+there. Use `browser_eval` to extract the complete period text. The script
+rejects visible-row-shaped input rather than trusting it.
 
-`get_page_text` does **not** carry the state of the radio buttons, so it cannot
+Complete page text does **not** carry the state of the radio buttons, so it cannot
 tell you the *Résultat de l'offre de service*. That is what `plan`'s second list
 is for; the two are complementary and neither replaces the other.
 
@@ -257,16 +257,15 @@ their behalf**.
 
 ### Prerequisites — say both out loud before starting
 
-1. **The Claude Chrome extension must be installed and connected.** This step
-   drives the user's own browser; without the extension there is no browser at
-   all. If it is missing, say so plainly and fall back to handing them the
+1. **OpenWork's native browser must be available.** This step
+   drives the user's own browser. If it is unavailable, say so plainly and fall back to handing them the
    captured values to type in themselves — which is a perfectly good outcome.
 2. **The user must log in to job-room.ch first, themselves.** It is an
    authenticated space tied to their AVS number and their ORP file. The plugin
    works *inside their existing session*: it never signs in for them, never
    handles their credentials, and never touches their account settings. Ask
    them to log in and confirm before anything is opened:
-   *"open <https://www.job-room.ch> in Chrome, log in, and tell me when you're
+   *"open <https://www.job-room.ch> in OpenWork's browser, log in, and tell me when you're
    in — I work in your session and I won't sign in for you."*
 
 If the page comes back logged out, name it, give the URL, and wait. Do not try
@@ -277,7 +276,7 @@ to work around the login.
 **Order of operations, and it is not negotiable:**
 
 1. `plan` — what the period is missing, and what it has wrong.
-2. Open the period, capture the listing with `get_page_text`.
+2. Open the period and capture the complete listing with `browser_eval`.
 3. `check` — and enter **only** the rows it calls safe.
 4. Fill the form.
 
@@ -321,7 +320,7 @@ whole period read before its deadline, not each row at the moment of typing —
 so after saving, the module owes the user three things:
 
 ```bash
-# re-capture the listing with get_page_text, then:
+# re-capture the complete listing with browser_eval, then:
 python3 "<…>/jobroom_sync.py" periods --jobroom-text listing.txt
 ```
 

@@ -28,7 +28,7 @@ returns the employer's whole board, descriptions included** — the same shape a
 `workable.md` and `flatchr.md`.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/personio.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/personio.py" \
   jobs --tenant ottonova
 ```
 

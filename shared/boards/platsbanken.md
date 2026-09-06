@@ -32,7 +32,7 @@ an open-data product of the Swedish state, published as such at
 `jobtechdev.se`.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/platsbanken.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/platsbanken.py" \
   search --kommun 0180 --sedan 2026-09-01T00:00:00
 ```
 

@@ -51,7 +51,7 @@ ad detail path**, which is what this adapter reads, and the apply paths are
 never requested.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/randstadfr.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/randstadfr.py" \
   search --ville royan
 ```
 

@@ -1,8 +1,6 @@
 ---
 name: interview-rehearsal
 description: Rehearse an interview in writing. The agent plays the people on the other side of the table — with drawn facets the candidate does not see: technical depth, managerial and commercial skill, warmth or hostility, and fear of being replaced by the candidate. Three optional parameters (the ad URL, the resume sent, the facets); with none, it starts from the candidate's own profile and draws the rest. Ends in a mandatory debrief where the agent drops the character, reveals the sealed draw and scores the rehearsal against named bases. Use when the user says "fais-moi passer un entretien", "simulate an interview", "répète l'entretien avec moi", "mock interview", or asks to practise before a booked meeting.
-user-invocable: true
-allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch
 ---
 
 # Rehearse the interview, then drop the character
@@ -36,7 +34,7 @@ Ask nothing first — the request is explicit that the profile is enough to
 start. Resolve the workspace, never hardcode it:
 
 ```bash
-JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
+JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 ```
 
 Three parameters, **all optional**: the ad URL, the resume sent, and the
@@ -47,7 +45,7 @@ facets. Anything not given is drawn.
 ## Phase 1 — the draw, and why it is sealed
 
 ```bash
-S="${CLAUDE_PLUGIN_ROOT:-.}/skills/interview-rehearsal"
+S="${JOB_HUNT_ROOT}/skills/interview-rehearsal"
 python3 "$S/rehearse.py" draw \
   --out "$JOB_HUNT_HOME/rehearsals/2026-09-04-acme.json" --interviewers 2
 ```

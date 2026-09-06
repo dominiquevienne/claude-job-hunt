@@ -43,7 +43,7 @@ of the sitemap the file points at.)*
 `VacancyTypeId`, `ContractTypeId`, `NaceCode`, `RemoteOrBlendedJobType`.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/jobsireland.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/jobsireland.py" \
   search --location Dublin --kind job
 ```
 

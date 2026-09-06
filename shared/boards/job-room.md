@@ -46,7 +46,7 @@ traps.
 Use the script:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/jobroom.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/jobroom.py" \
   search --canton VD --canton GE --online-since 7 --pages 3
 ```
 

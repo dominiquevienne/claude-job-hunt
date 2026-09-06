@@ -29,7 +29,7 @@ repository: nothing to mistake for a locale, unlike `wttj.md`, where `/fr/`
 turned out to mean the language.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/adecco.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/adecco.py" \
   search --ville lorient --limit 20
 ```
 

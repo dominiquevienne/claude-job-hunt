@@ -1769,8 +1769,8 @@ class OneDeclaredIdentity(unittest.TestCase):
         verification and this runs from the user's own address."""
         ua = self._ua.UA
         self.assertIn("Claude-User", ua)
-        self.assertIn("claude-job-hunt", ua)
-        self.assertIn("github.com/dominiquevienne/claude-job-hunt", ua)
+        self.assertIn("opencode-job-hunt", ua)
+        self.assertIn("github.com/antomicblitz/opencode-job-hunt", ua)
 
     def test_no_adapter_declares_its_own_agent(self):
         import glob
@@ -4666,7 +4666,7 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
 
     **The demonstration is mine, from the same day.** Shipping #137 put
 
-        python3 "${CLAUDE_PLUGIN_ROOT:-.}/…/_travel.py" --file <the ad>
+        python3 "${JOB_HUNT_ROOT}/…/_travel.py" --file <the ad>
 
     into **two** `SKILL.md` files while the module had no `__main__`. The
     command did not exist, in both files, and the suite was green. It was
@@ -4719,7 +4719,7 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
         r"""Every command line in a fenced block that names a `.py`.
 
         **The hyphen matters and cost three false findings.** A pattern of
-        `[a-z0-9_]+\.py` reads `version-check.py` as `check.py` and reports
+        `[a-z0-9_]+\.py` reads `openwork-setup.py` as `setup.py` and reports
         three files that do not exist — the measurement behind this class
         invented its own defects twice before producing a number.
         """
@@ -4790,15 +4790,13 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
     def test_the_unusual_forms_are_still_read(self):
         """**The other half of the mutation.** A guard that only reads
         `python3 path/to/x.py` would be green on this corpus by seeing almost
-        none of it. These four shapes all appear in the documents and must all
+        none of it. These three shapes all appear in the documents and must all
         resolve."""
         root, _docs = self._docs()
         shapes = {
-            'python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"':
-                "version-check.py",
-            'JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/'
+            'JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/'
             'workspace-path.py")"': "workspace-path.py",
-            'python3 "${CLAUDE_PLUGIN_ROOT}/skills/cover-letter/'
+            'python3 "${JOB_HUNT_ROOT}/skills/cover-letter/'
             'save-profile-text.py" --in x': "save-profile-text.py",
             'python3 "$S/_travel.py" --file ad.md': "_travel.py",
         }
@@ -5118,84 +5116,6 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
             out.append(script.group(1)[:-3] if script.group(1).endswith(".py")
                        else script.group(1))
         return out
-
-
-class TheDeclaredVersionIsTheReleasedVersion(unittest.TestCase):
-    """**Two files carry the version, and until now nothing said so.**
-
-    `.claude-plugin/plugin.json` is the manifest; `skills/job-scan/scripts/`
-    `_ua.py` hard-codes the same number into the `User-Agent` every adapter
-    sends to every third party. Twenty-six releases on 2026-09-04 bumped both,
-    because a human did it by hand and remembered.
-
-    **`release.yml` bumps only the manifest.** Its first unattended run would
-    have published a version whose declared agent announced the previous one,
-    and every release after it would have widened the gap — *the number we
-    tell other people we are* drifting away from the number we released.
-
-    This is the species already named twice in this suite: **two numbers, two
-    provenances, one assumed quantity.** The assumption held only while the
-    hand that moved one moved the other.
-
-    **The third provenance is the tag**, and it has already broken once:
-    v1.209.0 was tagged onto a tree still declaring 1.208.0. So the newest tag
-    is checked here too — `release.yml` computes the next version from the
-    manifest but decides *whether to run* from the tag, and a disagreement
-    between them makes it compute a number that already exists.
-    """
-
-    def _root(self):
-        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    def _manifest(self):
-        import json
-        p = os.path.join(self._root(), ".claude-plugin", "plugin.json")
-        with open(p, encoding="utf-8") as fh:
-            return json.load(fh)["version"]
-
-    def _agent(self):
-        import re
-        p = os.path.join(self._root(), "skills", "job-scan", "scripts",
-                         "_ua.py")
-        with open(p, encoding="utf-8") as fh:
-            src = fh.read()
-        hits = re.findall(r"claude-job-hunt/([0-9]+\.[0-9]+\.[0-9]+)", src)
-        self.assertEqual(len(hits), 1,
-                         f"_ua.py declares {len(hits)} versions; the bump in "
-                         f"release.yml rewrites exactly one and fails loudly "
-                         f"otherwise, so this number is load-bearing")
-        return hits[0]
-
-    def test_the_agent_announces_the_released_version(self):
-        self.assertEqual(
-            self._agent(), self._manifest(),
-            "_ua.py and plugin.json disagree: the agent we send to every "
-            "third party is not the version we published")
-
-    def test_the_newest_tag_agrees_with_the_manifest(self):
-        """**Not a duplicate of the case above.** That one compares two files
-        in the tree; this compares the tree to what was actually published. A
-        tag ahead of the manifest makes the next automated release compute a
-        version that already exists, and it wedges: `git describe` skips a tag
-        that is not an ancestor, so it recomputes the same number forever.
-        """
-        import subprocess
-        try:
-            out = subprocess.run(
-                ["git", "describe", "--tags", "--abbrev=0"],
-                cwd=self._root(), capture_output=True, text=True, timeout=20)
-        except (OSError, subprocess.SubprocessError):
-            self.skipTest("git is not available here")
-        if out.returncode != 0:
-            self.skipTest("no tags reachable from HEAD (a shallow checkout)")
-        tag = out.stdout.strip().lstrip("v")
-        if not tag:
-            self.skipTest("git describe said nothing")
-        self.assertEqual(
-            tag, self._manifest(),
-            f"the newest reachable tag is v{tag} but the manifest says "
-            f"{self._manifest()}; whichever moved without the other, the "
-            f"automated release will compute a version that already exists")
 
 
 class HostsAreDeclaredOrDeclaredInapplicable(unittest.TestCase):
@@ -8689,7 +8609,7 @@ class NoRequestLeavesUnderARefusalAndNoneWearsABrowsersName(unittest.TestCase):
         self.assertIn("Claude", ua,
                       f"the request went out as {ua!r} — this project declares "
                       f"itself or it does not fetch")
-        self.assertIn("claude-job-hunt", ua,
+        self.assertIn("opencode-job-hunt", ua,
                       "the agent string names no repository, so an operator "
                       "reading it cannot find out who we are")
         self.assertNotEqual(

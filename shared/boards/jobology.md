@@ -57,7 +57,7 @@ are not, exactly as on `hellowork.md`. **The script refuses any URL containing
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/jobology.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/jobology.py" \
   search --site jobvitae.fr --metier infirmier --pages 5
 ```
 

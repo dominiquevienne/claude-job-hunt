@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Sweep jobup.ch and jobs.ch over plain HTTP — no browser, no cookie, no login.
 
-**The adapter files made the Chrome extension a prerequisite**, so a user
-without it had no Swiss sweep at all, on the two largest boards in this
-repository. Measured 2026-09-02: twelve ads and three listing pages answer
+**The adapter files made a browser prerequisite**, so a user
+without native browser access had no Swiss sweep at all, on the two largest
+boards in this repository. Measured 2026-09-02: twelve ads and three listing pages answer
 `200` to a plain request, and **the structured data is in the HTML that
 arrives**. Issue #68.
 

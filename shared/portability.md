@@ -10,7 +10,7 @@ writing any shell, and before assuming a command exists.
 ## One implementation, not three
 
 There are no `.ps1` or `.cmd` equivalents of the `.sh` scripts, and there should
-not be. Claude Code runs shell commands through **Git Bash** on native Windows
+not be. The host runs shell commands through **Git Bash** on native Windows
 and through a normal shell in WSL, on macOS and on Linux — so a portable `.sh`
 file is the *only* format that is literally the same code everywhere.
 

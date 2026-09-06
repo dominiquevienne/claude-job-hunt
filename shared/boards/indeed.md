@@ -63,7 +63,7 @@ broken adapter.
 
 ## Prerequisites — read the bot-detection section first
 
-1. **The Claude extension for Chrome**, installed and connected.
+1. **OpenWork's native browser**, following `shared/prerequisites.md`.
 2. **Indeed challenges automated-looking traffic.** See below. This is the
    defining constraint of this adapter, not a footnote.
 3. Whether browsing requires a login was **not verified** — the session used
@@ -294,7 +294,7 @@ ad above.** The action is to drop them, never to repair the identifier — which
 is why the line-break test, and not the id's shape, is the one to filter on.
 
 **A note on reading these cards.** Dumping a list of raw `data-jk` values or a
-card's `innerHTML` can trip the extension's own content filter, which returns
+card's `innerHTML` can trip the browser tool's own content filter, which returns
 `[BLOCKED: Cookie/query string data]` — sixteen-character hex strings look like
 session tokens to it. That is the filter doing its job, not evidence about the
 card. Extract the fields you need rather than raw markup.

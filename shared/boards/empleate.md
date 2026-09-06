@@ -97,7 +97,7 @@ what its own search box calls. `open/master/*` publishes the code tables —
 value seen in the data.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/empleate.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/empleate.py" \
   search --provincia MADRID --desde 2026-09-01
 ```
 

@@ -29,7 +29,7 @@ training section, the RSS export and `/login/` — and leave `/ofertasdetrabajo/
 entirely open. Only `msnbot` gets a `Crawl-delay`, of 5.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/infoempleo.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/infoempleo.py" \
   search --lugar madrid --limit 20
 ```
 

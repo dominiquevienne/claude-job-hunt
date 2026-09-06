@@ -34,7 +34,7 @@ GET /offres/<uuid>       → the ad
 ```
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/crit.py" \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/crit.py" \
   search --since 2026-09-01 --limit 40
 ```
 

@@ -45,7 +45,7 @@ handle.
 asked — is refused with the rest.**
 
 **So no automated fetch of LinkedIn by our agents is permitted by that file,
-and this adapter does not make one.** It drives **the user's own Chrome, in
+and this adapter does not make one.** It drives **the user's own browser session, in
 the user's own logged-in session**: that is the person browsing their own
 account, which their own use of the site governs, not a crawler.
 
@@ -65,18 +65,15 @@ Browser automation here is not a background capability: it needs two things
 from the user, and both fail silently-looking ways if they are missing. **Tell
 the user before you start, not after the first error.**
 
-1. **The Claude extension for Chrome must be installed and connected.** Without
-   it there is no browser at all — the `mcp__claude-in-chrome__*` tools are
-   simply absent or return no connected browser. If you cannot reach a tab,
-   say exactly that: *"this step drives your own Chrome and needs the Claude
-   Chrome extension installed and connected; without it I can still produce
-   your documents, but I cannot open or fill anything for you."* Then continue
-   with everything that does not need a browser rather than stopping the run.
-2. **The user must already be logged in to the site, in that Chrome, before
+1. **OpenWork's native browser must be available.** Follow
+   `shared/prerequisites.md` §The OpenWork browser is native. If it cannot open a
+   target, say exactly that and continue with everything that does not need a
+   browser rather than stopping the run.
+2. **The user must already be logged in to the site, in that browser, before
    you begin.** This automation works *inside their session* — it does not and
    must not authenticate on their behalf, and it never handles their password.
    Ask them to log in first, in as many words, and wait for confirmation:
-   *"open <site> in Chrome and log in, then tell me when you're in — I work in
+   *"open <site> in OpenWork's browser and log in, then tell me when you're in — I work in
    your session and I won't sign in for you."*
 
 If a page comes back showing the logged-out layout, that is the diagnosis:
@@ -86,28 +83,23 @@ login wall, and never fill a credential field.
 
 ## Setup
 
-Load the browser tools in ONE call:
-
-```
-ToolSearch "select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__javascript_tool,mcp__claude-in-chrome__browser_batch,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__form_input,mcp__claude-in-chrome__file_upload,mcp__claude-in-chrome__tabs_create_mcp"
-```
-
-Then `tabs_context_mcp{createIfEmpty:true}` and work in that tab. **This runs in
-the user's own logged-in Chrome** — say so before starting, since it acts under
-their identity. If a page returns the logged-out layout, stop and ask them to
-log in rather than trying to authenticate.
+Call `openwork_execute` with `browser.open_url`, then retain the returned
+`browser_url` and `target_id` for every subsequent `browser_*` call. **This runs
+in the user's own logged-in browser** — say so before starting, since it acts
+under their identity. If a page returns the logged-out layout, stop and ask
+them to log in rather than trying to authenticate.
 
 ## The constraint table
 
 | Constraint | Consequence |
 | :-- | :-- |
-| The automated tab is **usually** `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps **times out the 45 s CDP budget**. Never sleep in page JS — use `computer{action:"wait"}` between steps inside a `browser_batch`. **It is not an invariant** — see the last trap |
+| The automated tab is **usually** `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps can time out. Never sleep in page JS; perform one browser action, then take a fresh snapshot. **It is not an invariant** — see the last trap |
 | The results list is virtualized **and** the tab is hidden | Only the **first ~7 job cards** ever hydrate. Scrolling the list (window, container, or `scrollIntoView`) does **not** hydrate more. Do not fight it: run **more, narrower searches** instead of trying to read 25 results from one |
-| The job description pane only loads on a **real** mouse click on a card | `element.click()` from JS updates the URL but renders nothing. `/jobs/view/<id>/` standalone renders nothing either. You must `screenshot` → read the card's y-position → `computer{left_click}` at those coordinates |
+| The job description pane only loads on a **real** mouse click on a card | `element.click()` from JS updates the URL but renders nothing. `/jobs/view/<id>/` standalone renders nothing either. Use `browser_snapshot`, then `browser_click` on the card's returned reference |
 | `fetch()` of `/jobs/view/...` or `/jobs-guest/jobs/api/...` | Returns HTTP **999** or an empty body. There is no API shortcut |
 | `localStorage` is unavailable in the injected world | Silently no-ops. Accumulate results in the tool output, not in the page |
-| Returning `location.href` (or anything carrying a query string or cookie) from `javascript_tool` | The whole result is replaced by `[BLOCKED: Cookie/query string data]`. **Never return URLs from page JS** — rebuild them from the job ID |
-| Modal buttons ignore synthetic clicks | Same rule as the cards: `screenshot`, then a real `computer{left_click}` at the coordinates you read off it |
+| Returning `location.href` (or anything carrying a query string or cookie) from `browser_eval` | The result may be blocked as sensitive data. **Never return URLs from page JS** — rebuild them from the job ID |
+| Modal buttons ignore synthetic clicks | Same rule as the cards: take a fresh `browser_snapshot`, then use `browser_click` |
 
 ## Pace
 
@@ -240,7 +232,7 @@ this paragraph was written.
 
 **`document.hidden === true` is the normal case, not a guarantee — and the
 click rule follows from it.** Observed once, on 2026-08-28, while the user had
-the Chrome window in the foreground: `document.hidden` was `false`, and the
+the browser window in the foreground: `document.hidden` was `false`, and the
 description pane **rendered on plain navigation, with no click at all**. The
 moment the window went back to the background, `hidden` returned to `true` and
 the pane stayed empty — verified after 6 s and again after a further 8 s, so it
@@ -254,7 +246,8 @@ not control and must never assume.
 
 ## Extracting one job description
 
-After a real click on the card, plus `computer{wait:4}`:
+After a real `browser_click` on the card, take a fresh snapshot and use
+`browser_eval` for the extraction:
 
 ```js
 const q=s=>(document.querySelector(s)?.innerText||'').replace(/\s+/g,' ').trim();
@@ -268,8 +261,8 @@ JSON.stringify({
 **Confirm `t` matches the ad you meant to open** — the list re-orders between
 visits, so the card at a given y-coordinate is not stable across navigations.
 
-Several clicks on the same search page chain nicely in one `browser_batch`
-(click → wait → extract, repeated): one screenshot, then 3–6 descriptions.
+For several cards, repeat click → snapshot → extract. Confirm the title after
+each click; never assume the list retained its order.
 
 ## Easy Apply — established 2026-08-26, NOT re-verified since
 
@@ -286,13 +279,13 @@ next time an Easy Apply is run for real.
 
 LinkedIn has been migrating Easy Apply to an SDUI flow (the job link carries
 `openSDUIApplyFlow=true`, and the modal footer reads *Application powered by
-Workable*). In that flow `read_page` and `find` return the underlying job page
+Workable*). In that flow `browser_snapshot` can return the underlying job page
 and report **no modal at all**, even though it is plainly on screen.
 
-Do **not** conclude the modal failed to open. Take a `screenshot`, confirm it
-visually, and drive the whole flow by coordinates: `computer{left_click}` on
-fields, `computer{type}` for text, `cmd+a` then `Delete` to clear a field before
-retyping. `form_input` needs a `ref` and is unusable there; so is `file_upload`.
+Do **not** conclude the modal failed to open. Take a `browser_screenshot` and
+confirm it visually. If the controls remain absent from `browser_snapshot`,
+hand the modal to the user rather than driving an application form by guessed
+coordinates.
 
 Scrolling in that flow needs care too: the modal has its own scroll container,
 and a `scroll` aimed at its upper half often scrolls the page *behind* it. Aim
@@ -309,14 +302,9 @@ that appears, close it with its **X**: *Discard* throws the application away and
 
 ## Never click a file input or an "Upload" button
 
-It opens a native file picker that cannot be seen or controlled, and the session
-hangs. Use `read_page` or `find` to get the input's `ref`, then `file_upload`
-with an absolute path.
-
-When there is no `ref` — the SDUI flow above — **this is a dead end by design,
-not a failure to route around**. Hand it to the user: open the folder so the
-file is one click away, name the exact button and the exact filename, and ask
-them not to advance the form until you resume.
+It opens a native file picker outside the browser tool boundary. Hand it to the
+user: open the folder so the file is one click away, name the exact button and
+the exact filename, and ask them not to advance the form until you resume.
 
 ## Never trigger a native dialog
 

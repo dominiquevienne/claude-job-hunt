@@ -1,19 +1,17 @@
 ---
 name: job-scan
 description: Look for jobs that fit this person and keep the shortlist up to date. Sweeps the job boards they have switched on, scores every ad against what their own documents actually say, and records what it found so the same ad is never proposed twice. Use when the user says "find me some jobs", "trouve-moi des offres", "look for roles that fit me", "cherche des postes pour moi", "scan the boards", "refresh my job list", "quoi de neuf cette semaine ?", "any new openings?", "scan LinkedIn", "scan jobup", names any single job site, or before writing a cover letter. Around seventy boards are supported across some forty countries — public employment services, employers' own career sites, national and sector boards; the list is in this skill's own § Which boards, and none is ever scanned until the user switches it on.
-user-invocable: true
-allowed-tools: Bash(*), Read, Write, Edit, AskUserQuestion, ToolSearch, mcp__claude-in-chrome__*
 ---
 
 # Job scan → pipeline ledger
 
-Sweep a job board in the user's logged-in Chrome, score each ad against their
+Sweep a job board in the user's logged-in browser session, score each ad against their
 real profile, and write the results into the **ledger** that the `cover-letter`
 skill reads and updates.
 
 **Shared references — read the ones a step points to, not all of them up front.**
 They live in this plugin, one level above this skill's folder
-(`../../shared/…`, or `${CLAUDE_PLUGIN_ROOT}/shared/…`):
+(`../../shared/…`, or `${JOB_HUNT_ROOT}/shared/…`):
 
 | File | When |
 | :-- | :-- |
@@ -78,7 +76,7 @@ is where that happens.
 ```bash
 JOB_HUNT_HOME="${JOB_HUNT_HOME:-$HOME/Documents/job_applications}"
 test -f "$JOB_HUNT_HOME/config.yml" && cat "$JOB_HUNT_HOME/config.yml"
-S="${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts"
+S="${JOB_HUNT_ROOT}/skills/job-scan/scripts"
 python3 "$S/ledger.py" count                    # rows, and where the bytes are
 python3 "$S/ledger.py" index --excluded-only    # the exclusion set: id + status
 python3 "$S/ledger.py" rows --status todo       # the only rows this run edits
@@ -96,20 +94,6 @@ thousand.
 474 rows carry one; splitting a row on `|` shifts every column after it and
 produces a wrong *status*, which means an ad silently re-proposed or silently
 buried. `ledger.py` handles it — an `awk` one-liner does not. Issue #77.
-
-**Then, once, quietly:**
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py"
-```
-
-**It prints nothing when the workspace is current**, which is the normal case
-— no version line, no reassurance. When a newer release exists it prints one
-short block naming the release and the host commands that fetch it. **Pass it
-on as it is and carry on with the task**: updating is the host's action, the
-plugin changes nothing, and a job hunt is not interrupted for a version
-number. The answer is cached for a day, and every failure — no network, a rate
-limit, a timeout — is silence. Issue #79.
 
 **No `config.yml` → this is a first run.** Say so in one line, then follow
 `shared/setup.md` in full before scanning anything. Do not improvise a profile
@@ -214,7 +198,7 @@ this skill owns the scoring, the ledger and the reporting.
 **Run this once, at the same time as reading `config.yml`:**
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/dormant.py" due \
+python3 "${JOB_HUNT_ROOT}/skills/job-scan/scripts/dormant.py" due \
   --config "$JOB_HUNT_HOME/config.yml"
 ```
 
@@ -239,7 +223,7 @@ For each board the script reports as due:
    cheap; a re-check that turns into a full sweep is how this feature ends up
    switched off wholesale.
 2. **Never probe a browser board on your own.** LinkedIn, jobup, jobs.ch and
-   Indeed run in the user's own Chrome under their own account. For those, a
+    Indeed run in the user's own browser session under their own account. For those, a
    passed date means *offering* the re-check and waiting for a yes.
 3. **Report it as a measurement, next to the one that put it to sleep** — counts
    against counts, so the user is comparing like with like:
@@ -268,19 +252,18 @@ in its broken-adapter mode — and say plainly in the report that the re-check d
 not happen, rather than letting a silent failure read as another empty quarter.
 
 Then the adapter's **prerequisites block**, which is not optional: the user must
-be told that this drives their own Chrome, that it needs the Claude Chrome
-extension installed and connected, and that they must be logged in to the board
-themselves first. If the extension is absent, follow `shared/prerequisites.md`
-— help them install it, and offer the no-browser route meanwhile.
+be told that this drives their own browser session and that they must be logged
+in to the board themselves first. Follow `shared/prerequisites.md` for the
+OpenWork browser procedure and offer the no-browser route meanwhile.
 
 **Read that block rather than assuming it.** Most adapters do not drive the
 browser at all. `hiringcafe.md`, `job-room.md`, `france-travail.md`, `apec.md`,
 `meteojob.md`, `hellowork.md` and the ATS family (`workday.md`,
-`greenhouse.md`, `lever.md`, `ashby.md`, `workable.md`, `teamtailor.md`, `swissdevjobs.md`, `taleez.md`, `flatchr.md`, `digitalrecruiters.md`, `talentsoft.md`, `emploi-territorial.md`, `labonnealternance.md`, `jobology.md`, `batiactu.md`, `anefa.md`, `adecco.md`, `randstad-fr.md`, `crit.md`, `hays-fr.md`, `empleate.md`, `oposiciones.md`, `infoempleo.md`, `turijobs.md`, `arbeitsagentur.md`, `jobsireland.md`, `platsbanken.md`, `personio.md`, `recruitee.md`, `pinpoint.md`, `oraclecloud.md`, `stepstone.md`, `mycareersfuture.md`, `kalibrr.md`, `jobup.md`, `jobs-ch.md`, `jobbkk.md`, `adzuna.md`, `computrabajo.md`, `icims.md`, `vieclam24h.md`, `philjobnet.md`) are plain HTTP, and `jobstore.md` is plain HTTP for discovery but needs the browser to read an ad, and need no extension,
-no login and no Chrome. Only `linkedin.md`,
+`greenhouse.md`, `lever.md`, `ashby.md`, `workable.md`, `teamtailor.md`, `swissdevjobs.md`, `taleez.md`, `flatchr.md`, `digitalrecruiters.md`, `talentsoft.md`, `emploi-territorial.md`, `labonnealternance.md`, `jobology.md`, `batiactu.md`, `anefa.md`, `adecco.md`, `randstad-fr.md`, `crit.md`, `hays-fr.md`, `empleate.md`, `oposiciones.md`, `infoempleo.md`, `turijobs.md`, `arbeitsagentur.md`, `jobsireland.md`, `platsbanken.md`, `personio.md`, `recruitee.md`, `pinpoint.md`, `oraclecloud.md`, `stepstone.md`, `mycareersfuture.md`, `kalibrr.md`, `jobup.md`, `jobs-ch.md`, `jobbkk.md`, `adzuna.md`, `computrabajo.md`, `icims.md`, `vieclam24h.md`, `philjobnet.md`) are plain HTTP, and `jobstore.md` is plain HTTP for discovery but needs the browser to read an ad, and need no browser,
+no login and no browser. Only `linkedin.md`,
 `indeed.md`, `cadremploi.md`, `figaro-emploi.md`, `softy.md` and `wttj.md` (for reading; its discovery half is plain HTTP) need the user's own browser — and of those,
 only LinkedIn needs them logged in. Announcing requirements a board does not have costs the user a
-setup they did not need — and when the extension really is missing, HiringCafe
+setup they did not need — and when the native browser is unavailable, HiringCafe
 is a sweep that still runs, not just a fallback to `cover-letter`.
 
 The adapter's constraint table is the difference between a scan that works and
@@ -406,9 +389,10 @@ the reason on the next run — but **never rewrite an `applied`, `rejected` or
 ## 4 — Read the descriptions of the survivors
 
 The description is only readable through a **real click** on the card — see
-`shared/boards/linkedin.md` for the click-by-coordinates procedure and the
-extraction snippet. Several clicks on one search page chain in a single
-`browser_batch`: one screenshot, then three to six descriptions.
+`shared/prerequisites.md` for the native browser procedure and
+`shared/boards/linkedin.md` for the board-specific extraction snippet. Several
+clicks on one search page may be chained with the native browser operations:
+one screenshot, then three to six descriptions.
 
 Confirm the extracted title matches the ad you meant to open; the list re-orders
 between visits.
@@ -620,13 +604,13 @@ Then report: how many ads were scanned, how many are new, the top matches with
 their scores, and **what was discarded and why**. The discards matter — they are
 what the user does not have to look at again.
 
-**Name the version that produced the run**, in the same block as the counts:
+**Name the commit that produced the run**, in the same block as the counts:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/version-check.py" --print-version
+git -C "${JOB_HUNT_ROOT}" rev-parse --short HEAD
 ```
 
-One line — *job-scan v1.92.0* — and it makes every report above
+One line — *job-scan commit abc1234* — and it makes every report above
 self-diagnosing. A run on 2026-09-02 executed from plugin cache **1.52.0**
 while the repository was at 1.85.1, reproduced a board failure fixed 53
 releases earlier, and **nothing in the run said which code had produced it**.
