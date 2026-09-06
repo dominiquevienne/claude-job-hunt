@@ -716,7 +716,7 @@ nothing.
 **What is measured here, and what is not.** The failure behaviour below was
 **measured on this repository on 2026-09-04**. The two "no" cells in the table
 above are **not** — they are established by issues #109 and #110, from the
-code and its history, and **nobody has run this plugin under CoWork to watch
+code and its history, and **nobody has run this plugin in a sandboxed app session to watch
 `$HOME` resolve or an `export` survive.** The instruction is built on that
 reasoning, and an onboarding is followed without being re-read, so it says
 which of its claims were watched and which were argued.

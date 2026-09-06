@@ -255,7 +255,7 @@ Sample output, verbatim from a real run:
 
 ## Reading one ad
 
-**The standalone ad page renders fully** — `navigate` to it and read. No
+**The standalone ad page renders fully** — use `browser_navigate` and read. No
 coordinate clicking, no click-through from the results list. This is the single
 biggest difference from LinkedIn.
 

@@ -279,8 +279,8 @@ Quoting a keyword (`keywords: '"Laravel"'`) makes most boards match it strictly
 — four results instead of six hundred of noise. Unquoted keywords are matched
 very loosely, so **always sanity-check the titles**.
 
-For each search: `navigate` → wait → extract the cards with the adapter's
-snippet.
+For each search: `browser_navigate` → fresh `browser_snapshot` → extract the
+cards with the adapter's snippet.
 
 If the user asked for a different perimeter than the configured one, use theirs
 for this run — and offer to save it into `config.yml` if they want it to stick.

@@ -250,10 +250,11 @@ def parse_jobroom_text(text: str) -> list[dict]:
         Darwin Partners SA
         Service Delivery Manager / Coordinateur Applicatif IT
 
-    That shape is what `get_page_text` returns. `read_page` must NOT be used as
-    the source: the list is virtualised and exposes only the visible rows (5 of
-    48 measured), so a check built on it would see almost nothing and report
-    "no duplicate" for entries that are plainly there.
+    That shape is what complete page text captured with `browser_eval` returns.
+    `browser_snapshot` must NOT be used as the source: the list is virtualised
+    and exposes only the visible rows (5 of 48 measured), so a check built on it
+    would see almost nothing and report "no duplicate" for entries that are
+    plainly there.
     """
     lines = [l.strip() for l in text.splitlines()]
     entries = []
@@ -372,7 +373,7 @@ def run_check(plan: dict, text: str) -> dict:
                 "<Year>` heading with a count under it. **This is a failure to "
                 "read the page, not an empty period**: an empty period still "
                 "prints its heading and `Nombre saisi: 0`. Capture the listing "
-                "again with get_page_text (never read_page — the list is "
+                "again with browser_eval (never browser_snapshot — the list is "
                 "virtualised) and check it is the /work-efforts page."
             ),
             "existing_count": 0,
@@ -387,7 +388,7 @@ def run_check(plan: dict, text: str) -> dict:
                 f"capture is exactly what this refusal is for** — five rows of "
                 f"forty-eight parse perfectly well and would clear duplicates "
                 f"that are plainly there. NOTHING is written. Re-capture with "
-                f"get_page_text and make the two numbers agree."
+                f"browser_eval and make the two numbers agree."
             ),
             "existing_count": len(existing),
             "declared_count": declared,
@@ -568,14 +569,14 @@ def main() -> int:
 
     c = sub.add_parser("check", help="refuse anything already in job-room")
     c.add_argument("--jobroom-text", required=True,
-                   help="file holding the job-room period listing (get_page_text output; "
+                   help="file holding the job-room period listing (browser_eval output; "
                         "use '-' for stdin)")
 
     d = sub.add_parser("periods",
                        help="the control periods and their transmission dates")
     d.add_argument("--jobroom-text", required=True,
                    help="file holding the job-room period listing "
-                        "(get_page_text output; use '-' for stdin)")
+                        "(browser_eval output; use '-' for stdin)")
 
     m = sub.add_parser("mark-synced", help="record that job-room is now up to date")
     m.add_argument("--entries", type=int, default=None,

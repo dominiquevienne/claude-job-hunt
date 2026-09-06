@@ -78,7 +78,8 @@ Construction 183, Thales 170.
 
 ## Reading, in the browser
 
-Navigate to the ad URL, wait for load, then read the `JobPosting` from
+Use `browser_navigate` for the ad URL, take a fresh `browser_snapshot`, then
+read the `JobPosting` from
 `script[type="application/ld+json"]`. The ad page also redirects
 `/companies/` to `/companies-v1/`; follow it, the content is the same.
 

@@ -8,7 +8,9 @@ const SKILLS_PATH = path.join(REPO_ROOT, "skills")
 
 const JOB_SETUP_COMMAND = {
   description: "Set up or change the job-hunt workspace",
-  template: "Load the `job-setup` skill and follow its instructions.",
+  template:
+    "Load the `job-setup` skill and follow its instructions.\n\n" +
+    "Arguments: $ARGUMENTS",
 }
 
 export const OpenWorkJobHuntPlugin = async () => ({

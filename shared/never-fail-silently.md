@@ -506,11 +506,10 @@ wrong, a capability nobody had noticed.
 | **Yes** — the site behaves that way for everyone, the script carries that defect, the method was wrong | **Upstream**, through `board-request` |
 | **No** — this user's config, their credentials, their profile, one search that genuinely has no results, a network blip that did not reproduce | **Local.** Say it in the run's output and stop there |
 
-**A local workaround reaches nobody and does not survive.** The plugin runs from
-a version-pinned cache
-(`~/.claude/plugins/cache/claude-job-hunt/claude-job-hunt/<version>/`) and the
-next update overwrites it. The issue is the only route by which one user's
-finding becomes every user's fix.
+**A local workaround reaches nobody and does not survive cleanly.** OpenWork's
+loader points at this checkout, so an edit here affects only this installation
+and can conflict with the next `git pull`. The issue is the route by which one
+user's finding becomes every user's fix.
 
 ### The narrow trigger was not enough, and the repository's own history says so
 

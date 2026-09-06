@@ -183,18 +183,21 @@ makes this silent from then on. Write it only if they ask for it — no
 `declined:` key is invented, because the state already exists and `dormant.py`
 already reads it.
 
-Then, in both cases: `webfetch` the URL and extract **company**, **role**,
+Then, in both cases: open the URL with `openwork_execute` and
+`browser.open_url`, retain the returned `browser_url` and `target_id`, and use
+`browser_snapshot`/`browser_eval` to extract **company**, **role**,
 **location**, **language of the ad**, key **responsibilities**, **required
 skills**, and any **must-haves**. LinkedIn URLs may 301 to a country host — if
-`webfetch` reports a cross-host redirect, call it again with the redirect URL. If
-the page is gated or empty, ask the user to paste the ad text.
+the native browser reports a cross-host redirect, use `browser_navigate` on the
+known target to that URL and extract it again. If the page is gated or empty,
+ask the user to paste the ad text.
 
 Set **`LANG`** = the ad's language. Everything in the candidate-facing documents
 is written in `LANG`, whatever `languages.interface` says.
 
 ## 1b — Is the ad still open? Check before you spend anything
 
-**A successful `webfetch` is not proof the ad accepts applications.** Boards serve
+**A successful page extraction is not proof the ad accepts applications.** Boards serve
 the full description of a closed ad, and the *"no longer accepting
 applications"* banner is rendered client-side — it never reaches the fetched
 markdown. The call that just gave you the responsibilities and the must-haves
@@ -333,7 +336,7 @@ offer the next row. Never draft a dossier for a role nobody can apply to.
 
 Seen on 2026-08-27, and it is the whole reason this step exists. A Senior PHP /
 Full-Stack role scored **86 %** — the strongest fit in the pipeline — on a
-description `webfetch` returned in full. The ad was a month old with **200+
+description the native browser returned in full. The ad was a month old with **200+
 applicants**, and the employer's careers page listed six openings, none of them
 technical. That was reported at the gate as a reserve, and the dossier was
 written anyway. The role was gone: LinkedIn showed *"No longer accepting
@@ -893,7 +896,8 @@ and ask them to log in.
 ### 8.2 — Open the modal and walk its steps
 
 Click *Easy Apply* **exactly once** (see the constraints file for why a second
-click destroys the modal), `wait:2`, then loop until the primary button reads
+click destroys the modal), take a fresh `browser_snapshot`, then loop until the
+primary button reads
 *Submit application*:
 
 1. `browser_snapshot` for field labels and controls.
@@ -938,7 +942,7 @@ hitting one of them is expected, not a surprise.
 ### 8.4 — Attaching the PDFs
 
 **Do not click a file input or an "Upload" button** when it opens a native picker
-the browser tool cannot control. Use `browser_fill` only for fields the native
+OpenWork's browser cannot control. Use `browser_fill` only for fields the native
 browser exposes directly.
 
 **Expect to hand the upload to the user** when the native browser cannot control
@@ -996,7 +1000,8 @@ approval from an earlier ad in the same session — one approval, one applicatio
 
 ### 8.6 — Confirm it actually went out
 
-After the send, `wait:3` + `screenshot`. Only a visible confirmation (*Your
+After the send, take a fresh `browser_snapshot` and `browser_screenshot`. Only a
+visible confirmation (*Your
 application was sent*, or the card now marked *Applied*) counts. If you cannot
 see one — or the user chose to click it themselves and has not confirmed — the
 application is **unconfirmed**: write `todo` with a `dossier generated <date>,
@@ -1058,7 +1063,8 @@ do I apply?".
 - LinkedIn Easy Apply → the LinkedIn job URL.
 - External ATS → **the company's own careers URL**, not the LinkedIn mirror, and
   say which ATS it is so they expect an account and bespoke questions.
-- **Verify it when you can.** If `webfetch` 403s or the site blocks retrieval, say
+- **Verify it when you can.** If the native browser returns 403 or the site blocks
+  retrieval, say
   so and give the route you *did* verify. Never present an unverified URL as
   confirmed — mark it explicitly as unverified.
 

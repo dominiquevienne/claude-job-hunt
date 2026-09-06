@@ -2,9 +2,10 @@
 """Where the user's files go — resolved, and **said out loud before anything is
 written there.**
 
-**`$HOME` is not the user's folder outside a terminal.** In CoWork it is a
-container's, so a resume, a cover letter, a PDF and the ledger land somewhere
-the person will never find in their file manager. Issue #109.
+**`$HOME` is not necessarily the user's folder outside a terminal.** In a
+sandboxed app session it can belong to the sandbox, so a resume, a cover letter,
+a PDF and the ledger land somewhere the person will never find in their file
+manager. Issue #109.
 
 **And the expensive failure is not a crash, it is a silent success.** The scan
 runs, the letters are written, the ledger fills. Nothing errors. `README.md`

@@ -1748,7 +1748,7 @@ class AnInvocationThatCannotSucceed(unittest.TestCase):
 class OneDeclaredIdentity(unittest.TestCase):
     """One user-agent, in one module, imported by all of them. #120, #124.
 
-    The repository **obeyed `Claude-User`'s rules and announced Chrome** — 63
+    The repository **obeyed `Claude-User`'s rules and announced a browser client** — 63
     files carried a browser string while `_robots.OUR_AGENTS` already bound
     the guard to `claude-user`, and `job-room.md` argued its position in the
     language of that very class. Three files declared themselves honestly and
@@ -3501,7 +3501,7 @@ class PresenceIsNotBehaviour(unittest.TestCase):
     | guard | how it stayed green |
     | :-- | :-- |
     | `_tls` is routed | import kept, `context=None` passed to `urlopen` |
-    | the declared agent is sent | `_ua` imported, a Chrome string in the header |
+    | the declared agent is sent | `_ua` imported, a browser string in the header |
     | the SmartRecruiters gate exists | the gate's body replaced by `return True` |
     | that gate refuses | `if not allowed:` replaced by `if False:` |
 
@@ -4096,7 +4096,7 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
     with both of its guards left out.
 
     That file was written for #109 against one trap: **`$HOME` is not the
-    person's folder outside a terminal — in CoWork it is a container's.** Its
+    person's folder outside a terminal — in a sandbox it can be the sandbox's.** Its
     cascade takes a folder the user *named* first, then `JOB_HUNT_HOME`, then
     `<home>/Documents/job_applications` **only if `Documents` is writable**,
     and then refuses, with a question to put to the person.
@@ -4108,7 +4108,7 @@ class OneResolverForFilesAndKeys(unittest.TestCase):
     success, which is the failure #109 exists against.**
 
     It also mattered for a reason that had not been connected to it: of the
-    three places a key may live, **the environment does not survive CoWork's
+    three places a key may live, **the environment may not survive an app-hosted shell's
     shell reset (#110) and `~/.<name>.env` is inside the container (#109)**.
     The workspace file is the only one left, so the resolver that finds it is
     the whole path.
@@ -7123,7 +7123,7 @@ class TheToolDoesNotPrintThatItIsABrowser(unittest.TestCase):
         real = m.UA
         try:
             m.UA = ("Mozilla/5.0 (compatible; Claude-User; "
-                    "claude-job-hunt/9.9.9; +https://example.invalid)")
+                    "opencode-job-hunt/9.9.9; +https://example.invalid)")
             self.assertEqual(m.shown_token(), "Claude-User")
         finally:
             m.UA = real
@@ -8142,8 +8142,8 @@ class TheFetcherUsesTheSameTlsChainAsTheGuard(unittest.TestCase):
     `CERTIFICATE_VERIFY_FAILED` in the same minute the guard declared the host
     readable at 8 456 bytes.**
 
-    That is not a cosmetic asymmetry. `CLAUDE.md` names this tool as the only
-    way to fetch, so a host the guard can read and the fetcher cannot makes
+    That is not a cosmetic asymmetry. The repository's canonical guidance names
+    this tool as the only way to fetch, so a host the guard can read and the fetcher cannot makes
     that rule inapplicable on exactly the hosts that need it most — and it is
     invisible while nobody fetches such a host with the canonical tool.
 
@@ -8522,7 +8522,7 @@ class NoRequestLeavesUnderARefusalAndNoneWearsABrowsersName(unittest.TestCase):
     this morning, fixed it, and wrote a guard so it would not return — a guard
     that checks the tool does not *print* a browser's name. Nothing checked
     what it *sends*. **The fix covered the instance and the guard covered the
-    wording of the fix**, which is why a mutation put Chrome back on the wire
+    wording of the fix**, which is why a mutation put a browser identity back on the wire
     with the suite untouched.
 
     So both are exercised on the wire: the request object is intercepted and
@@ -8583,7 +8583,7 @@ class NoRequestLeavesUnderARefusalAndNoneWearsABrowsersName(unittest.TestCase):
         Neutering the `None` branch left the suite green too: rules that could
         not be read would have let a request through.
 
-        `CLAUDE.md` is explicit — *un INDÉTERMINÉ ne se sonde pas* — and an
+        The repository's canonical robots policy is explicit — *un INDÉTERMINÉ ne se sonde pas* — and an
         unknown is the case where sending is least defensible, because we
         cannot even say the host would have minded.
         """
@@ -8900,7 +8900,7 @@ class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
     extra requests each to hosts that already replied.
 
     **The verdict does not change.** A 400 is still `unreachable`, still an
-    unknown, and an unknown is still not probed — `CLAUDE.md`. Only how many
+    unknown, and an unknown is still not probed — the canonical robots policy. Only how many
     times we ask changes.
     """
 

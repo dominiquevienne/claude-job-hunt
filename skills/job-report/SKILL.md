@@ -160,8 +160,8 @@ is where the marker gets written in the first place. Issue #69.
 `cover-letter` offers to switch on an unconfigured board when the user pastes a
 URL from one (issue #80). **This skill does not, and should not be given the
 ability.** The offer's rule is that it rides in a question already being asked
-— and this skill asks none: it has no gate, and `question` is not in its
-`allowed-tools`. A report on a past period is also the wrong moment: the ad is
+— and this skill asks none: it has no gate, and the `question` operation is not
+available here. A report on a past period is also the wrong moment: the ad is
 weeks old and the interest has cooled, where a pasted URL is interest proved a
 minute ago.
 
@@ -187,5 +187,6 @@ python3 "${JOB_HUNT_ROOT}/skills/job-report/scripts/jobroom_sync.py" plan
 ```
 
 The same script carries the **duplicate gate** that any writing into job-room
-must pass — `check`, fed `get_page_text` and never `browser_snapshot`. See the
+must pass — `check`, fed complete listing text captured with `browser_eval` and
+never `browser_snapshot`. See the
 `job-room-ch` module for the rule and for why the distinction matters.

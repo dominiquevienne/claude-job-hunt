@@ -46,8 +46,8 @@ one trade out of twenty.
 application.**
 
 **Only `job-scan`, and that is a constraint rather than a preference.**
-`job-report` cannot ask: its `allowed-tools` are `Bash(*), Read` and it holds
-no `question` on purpose — it has no gate, and the same reasoning that
+`job-report` cannot ask: it has no `question` operation on purpose — it has no
+gate, and the same reasoning that
 keeps the board offer out of it keeps this out too. **A skill that cannot ask
 must not improvise a question in prose**, so `job-report` says nothing here.
 `cover-letter` can ask and must not: a person writing an application is

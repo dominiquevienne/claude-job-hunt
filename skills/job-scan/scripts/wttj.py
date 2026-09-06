@@ -254,7 +254,7 @@ def _summary(kept, seen):
     print(f"[wttj] {kept} ads discovered out of {seen} in the sitemaps",
           file=sys.stderr)
     print("[wttj] these are URLs, not ads. Reading them needs the user's "
-          "Chrome — see shared/boards/wttj.md. A locale is NOT a country: "
+          "browser session — see shared/boards/wttj.md. A locale is NOT a country: "
           "/fr/ ads were measured in Cologne, Rio de Janeiro and Martinique.",
           file=sys.stderr)
 

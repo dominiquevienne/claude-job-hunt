@@ -302,7 +302,7 @@ that appears, close it with its **X**: *Discard* throws the application away and
 
 ## Never click a file input or an "Upload" button
 
-It opens a native file picker outside the browser tool boundary. Hand it to the
+It opens a native file picker outside OpenWork's browser boundary. Hand it to the
 user: open the folder so the file is one click away, name the exact button and
 the exact filename, and ask them not to advance the form until you resume.
 

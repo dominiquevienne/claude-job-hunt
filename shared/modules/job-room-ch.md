@@ -187,7 +187,7 @@ is an inaccurate official declaration; a missing one is a search that does not
 count. Both are invisible in a row count.
 
 ```bash
-# capture the period listing with get_page_text, then:
+# capture the complete period listing with browser_eval, then:
 python3 "<…>/jobroom_sync.py" check --jobroom-text listing.txt
 ```
 

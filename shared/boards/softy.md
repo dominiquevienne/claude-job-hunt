@@ -42,8 +42,8 @@ User-agent: Google-Extended, Bytespider, cohere-ai   Disallow: /
 
 Nothing there blocks a script, and `taleez.md` and `flatchr.md` fetch far more
 freely on sites that say less. But the publisher **enumerated the AI agents and
-said no, Anthropic's twice** — and a plugin whose whole function is *Claude
-reads job ads for you* sits inside the spirit of that refusal even when it is
+said no, Anthropic's twice** — and an AI-assisted job-search tool that reads
+job ads for a user sits inside the spirit of that refusal even when it is
 outside its letter.
 
 So the sweep goes through the user's own browser instead, where the fetch is a

@@ -9,9 +9,10 @@ updating, reinstalling or deleting the plugin never touches the user's data.
 JOB_HUNT_HOME="$(python3 "${JOB_HUNT_ROOT}/bin/workspace-path.py")"
 ```
 
-**`$HOME` is not the user's folder outside a terminal.** In CoWork it belongs
-to a container, so a resume, a letter, a PDF and the ledger land somewhere the
-person will never find in their file manager.
+**`$HOME` is not necessarily the user's folder outside a terminal.** In a
+sandboxed app session it can belong to the sandbox, so a resume, a letter, a
+PDF and the ledger land somewhere the person will never find in their file
+manager.
 
 **And the expensive failure is not a crash, it is a silent success.** The scan
 runs, the letters are written, the ledger fills, nothing errors — and
@@ -35,7 +36,7 @@ guess turns an invisible failure into one sentence:
 > *"I'll put your job-search files in `<path>`. Is that where you want them?"*
 
 **A sentence, not an environment variable.** `export JOB_HUNT_HOME` in a shell
-profile is exactly what a CoWork user will not do.
+profile is exactly what a user in an app-hosted session should not have to do.
 
 **Say where the files go before writing any**, and never hardcode a path or
 write into the plugin directory — a plugin update replaces it.

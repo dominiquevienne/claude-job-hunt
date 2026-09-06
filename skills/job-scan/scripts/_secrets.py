@@ -2,7 +2,7 @@
 """Credentials: the environment first, then a file in the user's workspace.
 
 **"From the environment, and from nowhere else" is unworkable outside a
-terminal.** In CoWork the shell is reset between calls, so an exported variable
+terminal.** In an app-hosted shell the environment may reset between calls, so an exported variable
 does not survive from one to the next — `set -a; . ~/.adzuna.env; set +a` is
 not merely tedious there, it **cannot work**. Issue #110.
 
@@ -70,7 +70,7 @@ def _resolver():
     left out**, and those two were the whole point of #109: it took
     `JOB_HUNT_HOME`, else `<home>/Documents/job_applications` the moment
     `Documents` merely *existed*, and it could not be handed the folder the
-    user had named. In CoWork `$HOME` is a container's — so a `Documents`
+    user had named. In a sandboxed app session `$HOME` can be the sandbox's — so a `Documents`
     inside it satisfied that test and the credentials were read from a path
     the person will never see. **A silent success, which is the failure #109
     was opened against.**

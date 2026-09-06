@@ -70,7 +70,8 @@ These are **not** boards, and an adapter would be wasted on them:
 | A recruitment agency's own site | One agency posting client roles | Nothing |
 | An aggregator that only redirects | Every ad bounces to another site | Say so — an adapter would scrape a middleman |
 
-Decide from the URL and, if it is ambiguous, one `webfetch` of the home page.
+Decide from the URL and, if it is ambiguous, ask before one read of the home
+page in OpenWork's native browser.
 When it is not a board, **say so plainly and move on** — do not file a request
 nobody can act on, and do not make the user feel their URL was a mistake.
 

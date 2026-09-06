@@ -125,7 +125,7 @@ def credentials():
     """The environment first, then a credentials file in the workspace.
 
     **"From the environment, and from nowhere else" was unworkable outside a
-    terminal.** In CoWork the shell is reset between calls, so an exported
+    terminal.** In an app-hosted shell the environment may reset between calls, so an exported
     variable does not survive from one to the next: `set -a; . ~/.adzuna.env;
     set +a` is not merely tedious there, it **cannot work**. Issue #110.
 
