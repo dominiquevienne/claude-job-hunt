@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """What this plugin says it is, in one place. Issue #120, point 1 of #124.
 
-**The repository obeyed `Claude-User`'s rules and announced Chrome.** 63 files
+**The repository obeyed `Claude-User`'s rules and announced a browser client.** 63 files
 carried `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) …` while
 `_robots.OUR_AGENTS` already bound the guard to `claude-user`, and
 `shared/boards/job-room.md` argued its position in as many words:
@@ -10,7 +10,7 @@ carried `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) …` while
     API, unauthenticated, a handful of times, for one user's own job search.
 
 **That is the `Claude-User` class exactly** — and an operator reading the
-request saw a Chrome browser. The decision on #120 (2026-09-03, by the
+request saw a browser client. The decision on #120 (2026-09-03, by the
 repository's owner) is to declare it, because the mechanism in #124 cannot
 branch on *"`Claude-User` is allowed"* without it.
 
@@ -45,7 +45,7 @@ AGENT_NAME = "Claude-User"
 
 # **One string, and every adapter imports it.** Three files already declared
 # themselves honestly — `ats.py`, `jobroom.py`, `francetravail.py` — and 63
-# announced Chrome; the split is exactly how a repository comes to plead one
+# announced a browser client; the split is exactly how a repository comes to plead one
 # thing and send another.
 
 
@@ -59,7 +59,7 @@ def blocked_note(host, status=None):
     **A block that arrives after this declaration is information, not noise.**
     It may be the operator acting on the token we now send — which is the
     system working — and it may be an ordinary bot wall that would have
-    refused Chrome too. The two are not distinguishable from one response,
+    refused browser clients too. The two are not distinguishable from one response,
     **and saying so is the point**: a run that silently returns less is how a
     declaration turns into a quiet loss of coverage.
     """

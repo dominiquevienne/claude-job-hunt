@@ -4,7 +4,7 @@ browser.
 
 Jobstore runs 26 country sites off one host, `www.jobstore.com/<cc>/`, and
 this adapter is **hybrid by necessity**: discovery is plain HTTP, **reading an
-ad needs the user's Chrome**, because the ad page answers a plain client with
+ad needs the user's browser session**, because the ad page answers a plain client with
 **HTTP 403 and a 5 832-byte "Just a moment…" interstitial** while the search
 page and the sitemaps answer 200.
 

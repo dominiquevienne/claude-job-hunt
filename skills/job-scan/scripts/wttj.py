@@ -2,7 +2,7 @@
 """Discover job ads on welcometothejungle.com — sitemap side only.
 
 **This script does half the job, and the half it does not do needs the user's
-Chrome.** Read `shared/boards/wttj.md` before using it.
+browser session.** Read `shared/boards/wttj.md` before using it.
 
   discovery  →  this script, plain HTTP, sanctioned by robots.txt
   reading    →  the browser, because every HTML page answers a WAF challenge
