@@ -3,7 +3,9 @@
 <!-- verified: 2026-09-07 -->
 
 <!-- hosts: www.jobrapide.org -->
-<!-- script: none -->
+<!-- host-forms: www.jobrapide.org -->
+<!-- host-forms-basis: read — `jobrapide.py:BASE`, the single literal; no tenant and no second host · 2026-09-07 -->
+<!-- script: jobrapide.py -->
 <!-- countries: TD CM CG CI BJ BI MR ML SD SN -->
 <!-- countries-basis: 30 ad slugs from archive pages 1 / 3000 / 6181 of ~6 182 — 20 name a country, 10 name none; TD is 9 of the 20, a PLURALITY and not the whole · 2026-09-07 -->
 <!-- content: measured · homepage 236 373 o, 391 internal link OCCURRENCES — 143 `/region/`, 122 `/offres/`, 33 `/secteur/` — which are only 65 DISTINCT `/offres/` URLs; the paginated archive lives at `/recrutement/offres/<category>/page/N/` and announces 6 182 pages at 10-11 ads each, so of the order of 66 000 items, ESTIMATED and never counted; zero `JobPosting`, the `ld+json` is `@type: Article` · 2026-09-07 -->
@@ -124,6 +126,56 @@ own, which is why page 3000 is in the set.*
 **No structured job data:** the single `ld+json` block declares
 `@type: Article`, and `JobPosting` appears zero times. *An adapter here would
 have to parse HTML.*
+
+## Shipped 2026-09-07, and three things were measured that the card did not have
+
+### Consecutive pages overlap, and not by a fixed amount
+
+```
+page 1 ∩ page 2   2 advertisements
+page 2 ∩ page 3   0
+page 3 ∩ page 4   1
+40 rows read, 37 distinct — 7.5 % duplicated on this sample
+```
+
+**So `pages × 10` over-counts, and the overlap is not a constant offset that
+could be subtracted.** The adapter deduplicates by URL and **reports how many
+it dropped**: that figure is a property of the board, not an artefact to hide.
+
+*The estimate above — about 6 182 pages at roughly 10.7 each, of the order of
+66 000 — was taken without this correction. It is not made more precise here:
+three samples plus a duplicate rate from four pages is still an estimate, and
+saying so is cheaper than a number nobody can defend.*
+
+### The dates are on the archive page, so `--since` costs no extra request
+
+```
+<h3><a href="/offres/<category>/<slug>/">title</a></h3>
+<b>Publié le: <a href="/2026/09/07/">7 septembre 2026</a></b>
+<ul class="post-categories"><li><a>Avis de recrutement</a>
+```
+
+**The date is taken from the `/YYYY/MM/DD/` permalink, not from the French
+sentence beside it** — one is a machine's and the other is a month name.
+
+### Reading the country per advertisement was tried and abandoned
+
+**On 37 distinct slugs the extractor named a country for 26 and nothing for
+11 — and three of those eleven are `mamoudzou-france`, `grand-est-strasbourg`
+and `caritas-suisse`.**
+
+> **This board carries advertisements outside the ten countries this card
+> declares, and an extractor that knows only African names calls them "no
+> country".**
+
+*A narrow extractor does not return less, it returns false, and its silence
+has the shape of an absence* — **which is the defect this card already records
+having made once, reproduced on the first attempt at the same task.**
+
+**So `countries` on a row carries the board's declared jurisdictions and
+nothing is claimed per advertisement.** The ten stand as *seen in slugs*, and
+the scope is now known to be **wider than the ten**, by at least two European
+locations in 37 slugs. *That is a bound, not a count.*
 
 ## Pace
 
