@@ -1589,6 +1589,64 @@ silence read our way.**
    `/job-\d+\.xml$`. Nothing shared said an index could hold anything but
    ads.*
 
+7. **Three signals could tell an advertisement from what sits beside it. Only
+   the PATH decided.** Measured on Nepal's three readable boards on
+   2026-09-07, one adapter each:
+
+   ```
+   kumarijob    /<employer>/<id>-<slug>   against two files of FACETS
+   merojob      /<slug>  vs  /etender/    15 940 tenders set aside
+   merorojgari  /job/<slug>/              200/200 · 200/200 · 183/183
+   ```
+
+   - **The NAME sorts nothing, and it fails in both directions.** On
+     `merojob.com` a filename that does not say "job" holds 15 940 tenders; on
+     `kumarijob.com` two that DO say job — `sitemap-job-listings.xml`,
+     `sitemap-other-job-listings.xml` — hold only facets. **A filter built
+     against one lets the other through**, and reading every file whose name
+     says job would report 227 there against a true 167.
+   - **`lastmod` sorts FACETS from content and NOT the natures.** It looks like
+     a predicate and the counter-example is plain: `sitemap-tender_post-1.xml.gz`
+     carries `2026-09-02`, as recent as the jobs file's `2026-09-07`. *Both
+     regenerate. On `kumarijob.com` it does separate — the facet files are
+     frozen at 2026-05-22 — which is exactly why one board is not enough to
+     adopt it.*
+   - **The PATH sorted all three**, and it is the only one that did.
+
+   **Report the rejection with a COUNT, never assume the named file is
+   clean.** *`merojob.py` prints how many entries under `/etender/` it dropped;
+   `0 of 239` is the check reporting that the file stayed what it was named,
+   and a non-zero would be the file changing under us. "The filter worked" is
+   not a measurement.*
+
+   **AND THE DENOMINATOR IS THREE BOARDS IN ONE COUNTRY.** *Three of three in
+   one market is not three of three in the world — the same warning this file
+   carries about a rule that held four times in Africa and fell in Nepal. The
+   path is what to TRY first, not a law.*
+
+8. **A sitemap date is not the advertisement's date, and it lies differently on
+   every board.** Same three boards, same day, three distinct failures:
+
+   ```
+   kumarijob    the FILE's date          2 values over 167 entries
+   merojob      an INERT middle layer    an ad posted 09-07 is listed 09-04
+   merorojgari  the entry is EARLIER     an ad posted 07-31 listed under 07-20
+   ```
+
+   **`merojob` is the sharpest**: its index says the child regenerated at
+   `2026-09-07T03:00`, the child's own entries say `09-03` and `09-04`, and the
+   advertisements span `08-24` to `09-07`. **Three layers, and only the deepest
+   is true** — the middle one is neither the regeneration nor the posting, and
+   it is the one a reader takes for a date.
+
+   **So `--since` is refused without `--fetch` on all three**, in code, with
+   exit 8. *A filter on a listing date returns all or nothing on two of them and
+   silently drops live advertisements on the third — and looks like a working
+   filter in every case.*
+
+   > **The conclusion is not "sitemap dates are wrong". It is that none is
+   > believed without being checked against the advertisement.**
+
 ## Which commands ask the host, and which do not
 
 **Every command that reads advert content asks first.** Measured coverage,
