@@ -1690,6 +1690,65 @@ look alike and do not bind alike. **`shared/reading-terms.md` holds that rule**
 board's terms say about resale, and no reading of a prose document is a reason
 to revisit the four questions above.
 
+## `Content-Signal` says what a use may be, where our tokens say who we are
+
+**A new axis, and the first host that uses it against a use is on record.**
+`www.portaljob-madagascar.com`, read 2026-09-07, serves the Cloudflare managed
+block with:
+
+```
+User-agent: *
+Content-Signal: search=yes, ai-train=no, use=reference
+Allow: /
+```
+
+and the file states, above it, that **any restriction expressed this way is an
+express reservation of rights under Article 4 of EU Directive 2019/790** on
+copyright in the digital single market.
+
+**This is orthogonal to everything else in this document.** `ClaudeBot` and
+`Claude-User` answer *who is asking*; `Content-Signal` answers *what the
+content may then be used for*. **A host can permit the request and refuse a
+use** — this one does exactly that, since its `*` group carries `Allow: /`.
+
+### Our reading, and it is not a loophole
+
+**`ai-train=no` is not this project's use.** This repository reads job
+advertisements on behalf of a person who is looking for work, presents them to
+that person, and **trains nothing**. `use=reference` is the value that covers
+reading a document to refer to its contents, and `search=yes` covers indexing
+them for retrieval.
+
+*So the signal permits what we do and refuses something we do not do.* **We
+comply by continuing to not do it**, which is worth stating plainly rather than
+leaving as an absence.
+
+### The part that will not rediscover itself
+
+> **Anyone who later wants to train a model on a corpus gathered by this
+> project must treat `ai-train=no` as already answered: no.**
+
+**This is the only half of this section that needs writing down.** The
+permission side re-derives itself from the file on the next read; *the refusal
+does not, because the day someone reaches for this corpus as training data
+they will not re-read the `robots.txt` files of September 2026.* **A corpus
+outlives the signal that governed it**, and a `Content-Signal` obeyed once at
+fetch time is not obeyed forever by accident.
+
+**A host carrying `ai-train=no` therefore taints its rows for that purpose
+permanently**, whatever else those rows are later merged into. If a corpus
+cannot say which host each row came from, it cannot honour this — which is a
+further reason the provenance rules in this repository are not bookkeeping.
+
+### Prevalence: one
+
+**One host, found on 2026-09-07 while re-measuring a card.** Nothing here says
+how many carry it, and the signal is recent enough that the answer would be
+different next month. *Do not extrapolate from one, and do not treat its
+absence elsewhere as a permission — a file that says nothing about a use has
+neither granted nor restricted it, which the specification states in its own
+words.*
+
 ## A third party's broken infrastructure is not ours to fix — with one exception
 
 Decided 2026-09-03, on `empleate.gob.es`. **The general rule is the short

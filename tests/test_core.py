@@ -8194,6 +8194,42 @@ class ADirectiveAboveAnyGroupIsNotAnAbsence(unittest.TestCase):
         self.assertIs(self._allowed(self.WELL_FORMED, "/admin/x")["allowed"],
                       False)
 
+    FOREIGN_GROUP = ("User-agent: Googlebot-Image\n"
+                     "Disallow: /uploads/articles\n")
+
+    def test_a_file_whose_only_group_names_someone_else_says_so(self):
+        """**Found an hour after #180 shipped, on `kariera.mk`.**
+
+        That file names `Googlebot-Image` and nothing else — no `*`, no record
+        for us. The first draft of the #180 message called it *"no group at
+        all — this file contains no `User-agent:` line"*, which was false
+        three times over: it has a group, it has a `User-agent:` line, and it
+        has directives.
+
+        *The condition `not group and not has_star_group` is true both when a
+        file has no groups and when it has groups addressed to other
+        crawlers.* **The verdict was right in both cases and the sentence was
+        wrong in one** — the misdescribed species, shipped by the change that
+        existed to remove a misdescription.
+        """
+        a = self._allowed(self.FOREIGN_GROUP, "/anything")
+        self.assertIs(a["allowed"], True)
+        self.assertIn("googlebot-image", a["reason"].lower(),
+                      "the reason must name whose rules these are: "
+                      + a["reason"][:160])
+        self.assertNotIn("no `User-agent:` line", a["reason"],
+                         "this file has one: " + a["reason"][:160])
+        self.assertNotIn("in `*`", a["reason"])
+
+    def test_the_two_groupless_shapes_do_not_share_a_sentence(self):
+        """A file with no groups and a file with foreign groups are different
+        facts, and a reader acts on the sentence."""
+        no_groups = self._allowed(self.ORPHANED, "/job/x-1/")["reason"]
+        foreign = self._allowed(self.FOREIGN_GROUP, "/job/x-1/")["reason"]
+        self.assertNotEqual(no_groups, foreign)
+        self.assertIn("no group at all", no_groups)
+        self.assertIn("named agent", foreign)
+
     def test_a_file_with_no_directives_at_all_still_opens(self):
         """**An absence of rules is an open door** — that is settled
         elsewhere in this module, and #180 must not disturb it. A groupless

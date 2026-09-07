@@ -944,6 +944,13 @@ def verdict(host, agents=None):
     # claims, without re-parsing the body it never receives.
     out["orphan_rules"] = orphan_rules(body)
     out["has_star_group"] = bool(_groups_named(body, ("*",)))
+    # **Every agent token the file names**, so a reason can say whose rules
+    # these are instead of asserting there are none. `kariera.mk` names
+    # `Googlebot-Image` and nothing else: no `*`, no record for us — and the
+    # first draft of the #180 message called that "no `User-agent:` line",
+    # which was false three times in one sentence.
+    out["agents_named"] = sorted(
+        {a for agents, _r in _groups(body) for a in agents if a})
     if "/" in dis:
         # **`sweep` follows the resolution at the root, not the bare presence
         # of `Disallow: /`.** #153.
@@ -1681,6 +1688,22 @@ def allowed(host, path, agents=None):
                 f"operator wrote a refusal for this path. "
                 f"{len(orphans)} directive(s) sit above any group here. "
                 f"An indeterminate is not probed.")
+            return _named(_carry(out))
+        named = v.get("agents_named") or []
+        if not g and not v.get("has_star_group") and named:
+            # **The file has groups; none of them is ours and none is `*`.**
+            # Distinct from a file with no groups at all, and the difference
+            # is not cosmetic: here an operator wrote rules and addressed them
+            # to somebody else, which is a decision about that crawler and
+            # silence about us.
+            shown = ", ".join(f"`{n}`" for n in named[:4])
+            out["reason"] = (
+                f"`{v['host']}` addresses its rules to {len(named)} named "
+                f"agent(s) — {shown}"
+                + (", …" if len(named) > 4 else "")
+                + " — and declares **no `*` group and no record for this "
+                  "project**. Nothing here binds us: this is silence towards "
+                  "us, not a permission written for us.")
             return _named(_carry(out))
         if not g and not v.get("has_star_group"):
             # **#180. There was no group, and the sentence used to invent
