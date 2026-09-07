@@ -171,8 +171,14 @@ expected between 5 % and 15 %.*
                             no job listing in its navigation
 ```
 
-**`www.rwangaforas.com` is `bestzambiajobs.com`'s exact shape** — a credible
-name, listed as a portal, serving something else entirely. *That is the case
+**`www.rwangaforas.com` is the same FAMILY as `bestzambiajobs.com` — a credible
+name, listed as a portal, serving something else entirely — but not the same
+shape, and the earlier wording that said «&nbsp;exact shape&nbsp;» was too strong.**
+*`bestzambiajobs.com` was **repurposed**: it serves working content, a Turkish
+streaming site with a title and a sitemap. This one is **parked**: 709 bytes and
+nobody running anything.* **The parked sub-species announces itself in one grep —
+`ap:"parking"` — and the repurposed one does not**, which is why a check built on
+that marker would pass `bestzambiajobs.com` cleanly. See `bestzambiajobs.md`. *That is the case
 #162 says vanishes without trace every time a retraction works. It did not
 vanish here, because this card names it beside the source that named it.*
 
