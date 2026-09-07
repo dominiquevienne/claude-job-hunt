@@ -9,6 +9,7 @@
 <!-- countries: FJ SB -->
 <!-- countries-basis: measured — `FJ` from the board's jurisdiction, `SB` because 1 of 10 sampled advertisements declares `addressCountry: "Solomon Islands"` and the adapter reads the country from the advertisement rather than the board · 2026-09-07 -->
 <!-- content: measured · 190 advertisements inside a sitemap of 3 152 URLs; the other 2 962 are 2 790 company pages, 45 blog posts, 37 categories, 34 job-search pages, 23 cities, 14 states, 11 countries and 8 more · 2026-09-07 -->
+<!-- overlap: ejobsfiji.md · 6 shared advertisements, title match confirmed on the employer 6 of 6; 9 read on ejobsfiji and 190 on myjobsfiji, both from their own sitemaps · 2026-09-07 -->
 <!-- witness: none published by the site; 190 is the count of `/job/<id>/<slug>/` entries in its own sitemap, and Fiji's country page recorded 224 on 2026-09-04 · 2026-09-07 -->
 
 **Fiji's first adapter**, and the widest gap this repository has measured
@@ -112,8 +113,13 @@ ad 999999 pas-une-annonce           exit 3
 **Fiji's three other named hosts are not covered here**, and one sentence
 about them had to be measured before it could stay.
 
-`ejobsfiji.com` is open with 14 advertisements. `fiji.gov.fj` is indeterminate
-and was not probed.
+`ejobsfiji.com` was built the same evening — `ejobsfiji.md`. It holds 9
+advertisements, and **6 of them are also here**, confirmed on the employer 6
+of 6. *The relation is asymmetric: six is two thirds of that board and three
+per cent of this one.* **And the slug is not an identifier on this side
+either** — 190 advertisements under 184 distinct slugs.
+
+`fiji.gov.fj` is indeterminate and was not probed.
 
 **`sptojobslink.com`: this card first said it serves the blocked body «in HTTP
 200, which is the one place a status-code check cannot see it».** *That was
