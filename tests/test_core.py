@@ -5972,10 +5972,17 @@ class AWhitelistIsNotAWall(unittest.TestCase):
         _robots.urllib.request.urlopen = (
             lambda r, timeout=None, **k: self._Resp(body))
         try:
-            return (_robots.verdict("bebee.example"),
-                    {p: _robots.allowed("bebee.example", p) for p in (
-                        "/es/jobs/x", "/en/people/y", "/dashboard/", "/api/v1",
-                        "/")})
+            # **Pinned to `claudebot`.** #152 is about reading a whitelist
+            # in the group that names us; `bebee.com` writes it under
+            # `ClaudeBot`. The default token became `claude-user` on
+            # 2026-09-07 and falls to `*` here, which would leave the
+            # longest-match code this class exists to exercise **unreached** —
+            # the second guard species, green and testing nothing.
+            ag = ("claudebot",)
+            return (_robots.verdict("bebee.example", ag),
+                    {p: _robots.allowed("bebee.example", p, agents=ag)
+                     for p in ("/es/jobs/x", "/en/people/y", "/dashboard/",
+                               "/api/v1", "/")})
         finally:
             _robots.urllib.request.urlopen = real
             _robots._CACHE.clear()
@@ -6856,8 +6863,17 @@ class SweepFollowsTheResolutionAtTheRoot(unittest.TestCase):
         _robots.urllib.request.urlopen = (
             lambda r, timeout=None, **k: self._Resp(body))
         try:
-            v = _robots.verdict("h.example")
-            a = {p: _robots.allowed("h.example", p) for p in paths}
+            # **Pinned to `claudebot`, because that is what these fixtures
+            # name.** Their subject is the tie rule — `Allow: /` beside
+            # `Disallow: /` — which is the same whatever token asks. Since
+            # 2026-09-07 the default token is `claude-user`, which none of
+            # these bodies mentions, so the default would answer *nothing
+            # matches, everything permitted* and this class would be
+            # measuring the token policy instead of the resolution it exists
+            # for. The token policy has its own class.
+            ag = ("claudebot",)
+            v = _robots.verdict("h.example", ag)
+            a = {p: _robots.allowed("h.example", p, agents=ag) for p in paths}
             return v, a
         finally:
             _robots.urllib.request.urlopen = real
@@ -9788,6 +9804,193 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+
+class ANamedRefusalBindsOnlyItsOwnToken(unittest.TestCase):
+    """**Decided by the owner on 2026-09-07, against the pilot session's
+    advice, and recorded in `CLAUDE.md` §2 quater.**
+
+        A named refusal of `ClaudeBot` does NOT bind `Claude-User`.
+        They are two distinct tokens; the group naming one does not apply
+        to the other, and that is the standard semantics of the file.
+
+    **This class replaces the assertion it reverses; it does not delete it.**
+    Until today `allowed()` defaulted to `OUR_AGENTS` — six names a site may
+    use *about* us, four of which we never send — and unioned their refusals,
+    so a host that closed `ClaudeBot` and left `*` open was reported closed
+    under a token it never mentioned. Thirteen boards sat behind that.
+
+    *Without this file saying so, a later session finds a permissive guard,
+    reads it as a regression, and restores the old one — and the arbitration
+    gets paid for twice. The "rank rule" cost eleven hours here because a
+    verdict about our own configuration travelled as a fact about sites. A
+    dated comment is what separates a decision from a bug.*
+
+    **Both directions, and the second is the one that matters.** A change that
+    merely stopped refusing would pass the first case and fail the second: it
+    is the file naming `Claude-User` that shows the guard was *aligned* rather
+    than *switched off*.
+    """
+
+    # `bebee.com`'s shape: a permissive `*`, and us named and closed.
+    CLAUDEBOT_CLOSED = ("User-Agent: *\n"
+                        "Allow: /\n"
+                        "Disallow: /dashboard/\n"
+                        "\n"
+                        "User-Agent: ClaudeBot\n"
+                        "Disallow: /\n")
+
+    # The mirror: the token we actually prefer to send is the one named.
+    CLAUDE_USER_CLOSED = ("User-Agent: *\n"
+                          "Allow: /\n"
+                          "\n"
+                          "User-Agent: Claude-User\n"
+                          "Disallow: /\n")
+
+    BOTH_CLOSED = ("User-Agent: *\n"
+                   "Allow: /\n"
+                   "\n"
+                   "User-Agent: ClaudeBot\n"
+                   "Disallow: /\n"
+                   "\n"
+                   "User-Agent: Claude-User\n"
+                   "Disallow: /\n")
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+
+        def read(self):
+            return self._b
+
+        def geturl(self):
+            return "https://named.example/robots.txt"
+
+        def getcode(self):
+            return 200
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _ask(self, body, path="/"):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(body))
+        try:
+            return (_robots.allowed("named.example", path),
+                    _robots.identity("named.example", path))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_claudebot_refused_and_star_open_is_permitted(self):
+        """**Direction one — the thirteen boards.**"""
+        a, ident = self._ask(self.CLAUDEBOT_CLOSED)
+        self.assertIs(a["allowed"], True,
+                      "a group naming `ClaudeBot` closed a path for "
+                      "`Claude-User`, which the owner's decision of "
+                      "2026-09-07 says it does not")
+        self.assertEqual(a["group"], "*",
+                         "the group that decided should be the one that "
+                         "applies to the token we send")
+        self.assertEqual(ident["token"], "claude-user")
+        self.assertEqual(ident["state"], "http")
+
+    def test_a_named_group_still_bites_the_token_it_names(self):
+        """**Direction two — aligned, not switched off.**
+
+        *My first version of this case asserted that a file naming
+        `Claude-User` to refuse it must come back refused by default. It comes
+        back permitted, and the code is right: `*` opens `ClaudeBot`, so a
+        token may still carry the request. The decision does not say "a named
+        refusal is ignored"; it says it binds the token it names.*
+
+        So the discriminating question is asked **per token**: does the named
+        group still refuse the token it names? A change that had merely
+        stopped honouring named groups would answer yes here and be caught.
+        """
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (
+            lambda r, timeout=None, **k: self._Resp(self.CLAUDE_USER_CLOSED))
+        try:
+            mine = _robots.allowed("named.example", "/",
+                                   agents=("claude-user",))
+            other = _robots.allowed("named.example", "/",
+                                    agents=("claudebot",))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertIs(mine["allowed"], False,
+                      "the group naming `Claude-User` stopped refusing "
+                      "`Claude-User` — that is not alignment, that is the "
+                      "guard switched off")
+        self.assertEqual(mine["group"], "claude-user")
+        self.assertIs(other["allowed"], True,
+                      "and it must not spread to the token it does not name")
+
+    def test_both_named_and_refused_leaves_no_token(self):
+        """And when neither may go, the refusal carries a real rule rather
+        than a silent `None` — the caller has to be able to print why."""
+        a, ident = self._ask(self.BOTH_CLOSED)
+        self.assertIs(a["allowed"], False)
+        self.assertTrue(a["reason"])
+        self.assertIsNone(ident["token"])
+        self.assertEqual(ident["state"], "browser")
+
+    def test_the_fallback_direction(self):
+        """`Claude-User` closed, `ClaudeBot` open: the other token carries it.
+
+        Without this, `_token_agents` could return the first token
+        unconditionally and both cases above would still pass.
+        """
+        a, ident = self._ask(self.CLAUDE_USER_CLOSED
+                             + "\nUser-Agent: ClaudeBot\nAllow: /\n")
+        self.assertIs(a["allowed"], True)
+        self.assertEqual(ident["token"], "claudebot",
+                         "`Claude-User` is refused by name here, so the "
+                         "request must fall to the other token rather than "
+                         "to nothing")
+
+    def test_an_unreadable_file_is_not_a_permission(self):
+        """The third state survives the alignment: unknown stays unknown."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+        def boom(*_a, **_k):
+            raise OSError("no answer")
+
+        _robots.urllib.request.urlopen = boom
+        # The retry backoff is real seconds and nothing here tests the clock;
+        # this case took 7 s of the suite before the sleep was stubbed.
+        slept = _robots.time.sleep
+        _robots.time.sleep = lambda *_a, **_k: None
+        try:
+            a = _robots.allowed("silent.example", "/x")
+        finally:
+            _robots.time.sleep = slept
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        self.assertIsNone(a["allowed"],
+                          "an unreadable file became a permission — the "
+                          "alignment must not touch the third state")
 
 class AGuardOnAPathIsNotAGuardOnTheURL(unittest.TestCase):
     """`urlsplit` splits; 54 call sites of 55 kept only the first half.

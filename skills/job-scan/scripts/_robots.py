@@ -695,6 +695,21 @@ def verdict(host, agents=None):
     # verdict being reused, not the fetch. Issue #99.
     # `OUR_AGENTS` is defined below this function, so the default is resolved
     # here rather than at definition time.
+    # **`OUR_AGENTS` stays the default HERE, and that is not an oversight.**
+    #
+    # `verdict()` reports *what this file says about us* — six names a site
+    # may use, including four we never send. That reporting is what
+    # `ARefusedNameIsNotAlwaysANameWeSend` exists for, and narrowing this
+    # default to the one token we present destroyed it: twelve cases went red
+    # because the module could no longer say *this host names `anthropic-ai`
+    # and we never send that*.
+    #
+    # **Reading and deciding are two questions.** `allowed()` decides and is
+    # aligned to the token as of 2026-09-07; `verdict()` reads. The
+    # consequence is named rather than hidden: `verdict(host)["sweep"]` is
+    # still the union answer, so a caller using it to decide a sweep gets the
+    # conservative one. That is a real gap and it is written down, not a
+    # coincidence that happens to be safe.
     agents = tuple(agents) if agents else OUR_AGENTS
     # **The cache key carries the agents.** Since 2026-09-05 this function is
     # asked the same host under one token and then the other, and a key of the
@@ -1362,6 +1377,31 @@ def _match_len(pattern, path):
     return len(m.group(0)) if m else -1
 
 
+# **`Claude-User` first, and the order is the decision.** This project is
+# driven by a person's request and that is the token which says so; `ClaudeBot`
+# is the fallback for a host that refuses the first by name and permits the
+# second. Same order as `identity()`, which is the point of the alignment.
+PREFERRED_TOKENS = ("claude-user", "claudebot")
+
+
+def _token_agents(host, path):
+    """The token a request would actually carry, as a one-element tuple.
+
+    Asks each token its own question and takes the first permitted one. When
+    **neither** is permitted it returns both, so the caller gets a refusal
+    with a real rule behind it rather than a silent `None`.
+
+    **This chooses; it does not retry.** `shared/robots-policy.md` forbids
+    rotating agents *after* a refusal and that is untouched: the choice is
+    made from the rules, before any request for content leaves, and a 403
+    received under the chosen token stays a refusal.
+    """
+    for tok in PREFERRED_TOKENS:
+        if allowed(host, path, agents=(tok,))["allowed"]:
+            return (tok,)
+    return FETCH_TOKENS
+
+
 def allowed(host, path, agents=None):
     """May `path` be fetched on `host`? **Longest match wins, `Allow` on a tie.**
 
@@ -1437,7 +1477,29 @@ def allowed(host, path, agents=None):
                                 if result.get("reason") else head)
         return result
 
-    agents = tuple(agents) if agents else OUR_AGENTS
+    # **Decided per token, by the owner on 2026-09-07.**
+    #
+    # A group naming `ClaudeBot` to refuse it does **not** bind `Claude-User`.
+    # They are two distinct tokens; the group that names one does not apply to
+    # the other, and that is the standard semantics of the file. Until today
+    # this default unioned six names we might be *called*, so a host that
+    # closed `ClaudeBot` and left `*` open was reported closed under a token it
+    # never mentioned. Thirteen boards sat behind that.
+    #
+    # **The pilot session recommended the opposite** — that a host which names
+    # us to refuse us has said no, whichever token carries the request — and
+    # the decision was taken against that advice, in full view of it. It is
+    # recorded in `CLAUDE.md` §2 quater. *This comment exists so that a future
+    # session reads a decision here and not a bug*: the guard that asserted
+    # the old reading was replaced, not deleted, for the same reason.
+    #
+    # **`OUR_AGENTS` keeps its job.** Six names a site may use *about* us is
+    # still the right set for reading what a file says; it was never the right
+    # set for deciding what a request may carry, and those are two questions.
+    if agents is None:
+        agents = _token_agents(host, path)
+    else:
+        agents = tuple(agents)
     v = verdict(host, agents)
     out = {"host": v["host"], "requested_host": v.get("requested_host"),
            "path": path, "allowed": True, "rule": None, "kind": None,
