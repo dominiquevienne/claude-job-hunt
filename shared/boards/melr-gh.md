@@ -42,7 +42,11 @@ external hosts linked from the homepage  : moys.gov.gh, presidency.gov.gh,
 **So GLMIS is a lead and not a host.** *Composing `glmis.gov.gh` from the
 acronym is exactly what this repository forbids: a hostname is read, never
 built.* **Whoever follows this must find the address declared somewhere, not
-derive it.**
+derive it.** *Done on 2026-09-07: the host was obtained from a search
+index carrying the pages' own titles, confirmed by fetching it, and it
+is a board — `glmis.md`. **The provenance is written there because it is
+weaker than usual**, and because `glmis.gov.gh` is exactly what the
+acronym would have produced.*
 
 **Three of the four job-shaped paths on this site are news articles and a PDF
 about a national green-jobs strategy.** A path that contains the word *job* is
