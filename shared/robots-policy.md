@@ -648,9 +648,10 @@ hays        403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
 kariera.mk  403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root AND sitemap
 sptojobslink 403 25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root, /sitemap.xml AND
                                                                 the wp-sitemap.xml its rules declare
+tala-com.com 403 25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root, read twice
 ```
 
-**Four unrelated hosts, four countries, four operators, the same refusal to
+**Five unrelated hosts, five countries, five operators, the same refusal to
 the byte** — `Your request was blocked.` The third and fourth were added the same day, both
 with the two-fetch control already applied. **The fourth also corrected a
 claim that had been repeated rather than measured**: a country page recorded
@@ -674,6 +675,25 @@ page load. **The fingerprint triages first, for nothing:**
   where the browser question is worth paying for and where the answer matters.
 
 *It does not replace the check. It says which hosts are worth checking.*
+
+### The fifth member settles a case this repository had left open
+
+**`www.tala-com.com` is the host that made this question concrete.** It names
+`ClaudeBot` and forbids it nothing, and answers 403 to our declared identity
+on every path — *rules open, infrastructure closed, in a country of a hundred
+million people whose rank-1 board refuses.* Until now the nature of that 403
+was unknown, and «the operator decided something» was as available a reading
+as «a vendor answered».
+
+**It is the vendor.** `Your request was blocked.`, 25 bytes, the same md5 as
+four unrelated hosts in four other countries, stable across two reads taken
+before any comparison.
+
+*So the browser question on this host is worth its cost, and it is worth it on
+the fingerprint rather than on the hope*: nobody wrote that page about us. It
+remains a **candidate** — driving the browser is a separate decision, and the
+bound against defeating an anti-robot control has not been tested here,
+because a static 403 is not a challenge.
 
 ### Fetch the same URL **twice** before comparing two md5s across hosts
 
