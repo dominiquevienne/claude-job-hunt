@@ -5,7 +5,7 @@
 <!-- hosts: per-country -->
 <!-- script: none -->
 <!-- countries: DZ EG PS SY YE -->
-<!-- content: indeterminate · rules unreadable on 6 of 6 hosts queried, HTTP 202 with a 0-byte body · 2026-09-05 -->
+<!-- content: indeterminate · rules unreadable on 6 of the 7 hosts known, HTTP 202 with a 0-byte body; the seventh was never queried here · 2026-09-05 -->
 <!-- witness: none — nothing was fetched beyond robots.txt, and nothing could be -->
 
 **No adapter exists and none can be written until this changes.** The state is
@@ -23,8 +23,30 @@ they were not the same five:
     egypt.tanqeeb.com        2026-09-04   issue #155 body   HTTP 202   0 bytes
     yemen.tanqeeb.com        2026-09-04   issue #155 body   HTTP 202   0 bytes
     palestine.tanqeeb.com    2026-09-04   issue #155 comment, 21:15   HTTP 202   0 bytes
+    iraq.tanqeeb.com         2026-09-05   another session, relayed    NOT QUERIED HERE
 
 `d41d8cd98f00b204e9800998ecf8427e` is the md5 of the empty string, on all six.
+
+**A seventh host exists and was never queried here.** `iraq.tanqeeb.com` was
+found on 2026-09-05 by another session, while it was instructing Iraq, and it
+reported the same `202` with an empty body. **This card holds no artefact for
+it** — no provenance record, no body, no md5 — so its row says `NOT QUERIED
+HERE` rather than repeating a result on someone else's word.
+
+**The counter said `6 of 6` and was internally consistent.** *That is what made
+it dangerous: `6 of 6` reads as "everything was looked at", and nothing in the
+card contradicted it.* **The list was short, not the count wrong** — and a
+short list with a matching total is invisible to every check that compares the
+two.
+
+**`countries:` is deliberately NOT extended to `IQ`.** *That line declares
+recruitment jurisdictions established by measurement, and nothing about
+`iraq.tanqeeb.com` is measured here.* **Declaring a country on a relayed
+sighting would put an unmeasured country into every aggregate that groups by
+this field.**
+
+**The 2026-09-07 revision is editorial, not a re-measurement** — `verified:`
+is left at 2026-09-05 on purpose, and no host was contacted for it.
 
 **The apex is not a country and adds none**; `countries:` carries the five
 country subdomains.
