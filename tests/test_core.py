@@ -9578,5 +9578,53 @@ class ARefusalLeavesARecord(unittest.TestCase):
 
 
 
+class NoGroupAtAllIsNotTheStarGroup(unittest.TestCase):
+    """`group_for` answered `"*"` both when a catch-all record applied and when
+    **nothing applied at all.** One value, two facts — and no caller could tell
+    them apart, because the module did not.
+
+    It surfaced trying to align `allowed()` with `identity()`: on a body naming
+    `ClaudeBot` and carrying no catch-all, `claude-user` came back *permitted
+    by `*`* while matching nothing, and `/` would have become readable on a
+    file whose every line says otherwise.
+
+    *Same family as a field never carried reading as `None`, one layer down and
+    worse:* **that was an absence that looked like an answer; this is an answer
+    that covered two facts, and it does not look like a hole.**
+    """
+
+    def test_nothing_applies_says_so(self):
+        token, dis, allow, matched = _robots.group_for(
+            "User-Agent: ClaudeBot\nAllow: /a\nDisallow: /\n",
+            agents=("claude-user",))
+        self.assertIsNone(token, "a token matching no record at all was "
+                                 "reported as governed by `*`")
+        self.assertEqual((dis, allow, matched), ([], [], []))
+
+    def test_a_catch_all_that_exists_is_reported(self):
+        """**The failing direction.** Returning `None` whenever we are not
+        named would erase the catch-all, which governs most hosts."""
+        token, dis, _allow, _m = _robots.group_for(
+            "User-agent: *\nDisallow: /x\n", agents=("claude-user",))
+        self.assertEqual(token, "*")
+        self.assertEqual(dis, ["/x"])
+
+    def test_being_named_still_wins(self):
+        token, _d, _a, matched = _robots.group_for(
+            "User-agent: *\nAllow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n",
+            agents=("claudebot",))
+        self.assertEqual(token, "claudebot")
+        self.assertEqual(matched, ["claudebot"])
+
+    def test_an_empty_catch_all_is_still_a_catch_all(self):
+        """A `*` record with no directives is a record. Reading it as absent
+        would put it back in the same bucket as no record at all."""
+        token, dis, allow, _m = _robots.group_for(
+            "User-agent: *\nDisallow:\n", agents=("claude-user",))
+        self.assertEqual(token, "*")
+        self.assertEqual((dis, allow), ([""], []))
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

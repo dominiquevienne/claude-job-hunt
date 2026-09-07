@@ -255,6 +255,12 @@ def _looks_like_rules(body):
     return bool(_DIRECTIVE.search(body or ""))
 
 
+# **The body is a property of the host, the verdict is a property of the host
+# *and* the agents.** `_CACHE` keys on both, so asking the same file about two
+# tokens fetched it twice — and once `allowed()` began consulting `identity()`,
+# an ordinary call became three requests for one document. A test counting
+# requests caught it. *A cache keyed more finely than the thing it caches
+# fetches the same bytes once per key.*
 def _fetch(host):
     """Read one host's file, and report **which host actually answered**.
 
@@ -1174,10 +1180,27 @@ def group_for(body, agents=OUR_AGENTS):
             if n in want and n not in matched:
                 matched.append(n)
     if not matched:
+        # **`"*"` and "nothing applies" were the same answer, and they are two
+        # facts.** This returned `"*"` whether or not a `*` record existed: on
+        # a file reading `User-agent: ClaudeBot / Allow: /*/jobs/ / Disallow: /`
+        # — no catch-all at all — `claude-user` came back permitted by matching
+        # **nothing**, reported as permitted by `*`.
+        #
+        # No caller could tell the difference, because the module did not. *The
+        # site authorises us* and *the site says nothing about us* are not the
+        # same permission, and a token permitted by silence must not outrank a
+        # token the file addresses by name. `None` says which one this is.
+        #
+        # Same family as a field never carried reading as `None`, one layer
+        # down and worse: **that was an absence that looked like an answer;
+        # this is an answer that covered two facts, and it does not look like a
+        # hole.**
+        star = [(names, rules) for names, rules in _groups(body)
+                if "*" in names]
+        if not star:
+            return None, [], [], []
         dis, allow = [], []
-        for names, rules in _groups(body):
-            if "*" not in names:
-                continue
+        for _names, rules in star:
             for kind, value in rules:
                 (dis if kind == "disallow" else allow).append(value)
         return "*", dis, allow, []
