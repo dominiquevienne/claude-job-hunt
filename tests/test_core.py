@@ -3835,6 +3835,25 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
         UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW
     """.split())
 
+    # **Codes for jurisdictions ISO 3166-1 does not name.** Kept apart from
+    # `ISO` rather than folded into it: a set called `ISO` that quietly holds
+    # a code ISO never assigned would make every later reader believe this
+    # corpus is standard where it is not. **A convention declared is not a
+    # standard borrowed.**
+    #
+    # `XK` — Kosovo. ISO assigns it nothing at all, so *every* two-letter code
+    # for it is a convention; `XK` is the one the European Commission, the
+    # IMF, the World Bank and Unicode CLDR use, and it lies in the
+    # user-assigned range ISO reserves for exactly this. **The alternative was
+    # not a better code, it was declaring Kosovo to be `RS`** — which the
+    # Atlas already refuses: it carries Kosovo as its own recruitment
+    # jurisdiction, under `KOS`, and has since it was drawn.
+    #
+    # **This set does not soften the guard.** `ZZ`, `XX` and a typo like `XZ`
+    # are still refused; the exception is one code, written down, with the
+    # body that assigns it named.
+    NON_ISO = frozenset({"XK"})
+
     def _cards(self):
         import glob
         import re
@@ -3860,9 +3879,10 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
             for code in countries.split():
                 if code == "*":
                     continue
-                if code not in self.ISO:
+                if code not in self.ISO and code not in self.NON_ISO:
                     bad.append(f"{card}: {code}")
-        self.assertEqual(bad, [], "not ISO 3166-1 alpha-2: " + ", ".join(bad))
+        self.assertEqual(bad, [], "neither ISO 3166-1 alpha-2 nor a declared "
+                                  "non-ISO jurisdiction: " + ", ".join(bad))
 
     def test_a_card_with_an_adapter_says_where_it_reaches(self):
         """**The direction that closes the Atlas hole.** A board shipped
