@@ -146,6 +146,16 @@ def load(path):
             f"somebody asked which host each came from.")
     with open(side, encoding="utf-8") as f:
         rec = json.load(f)
+    if rec.get("body_kept") is False:
+        # **A deliberate absence, not a missing file.** A refusal leaves its
+        # record and not its twenty-five bytes; saying so beats letting
+        # `open()` raise a bare *no such file*, which reads like the loss this
+        # module exists to prevent.
+        raise FileNotFoundError(
+            f"{path} was never written: the record says `body_kept: false`. "
+            f"This is a fetch that happened and returned HTTP "
+            f"{rec.get('status')} — the body was not kept on purpose. Read the "
+            f"record beside it.")
     with open(path, "rb") as f:
         body = f.read()
     return body, rec
@@ -189,3 +199,55 @@ def audit(root, suffixes=(".txt", ".xml", ".html", ".json", ".bin")):
         "orphans": sorted(orphans),
         "orphan_count": len(orphans),
     }
+
+def record(path, body, *, url, status, agent, fetched_at=None, **extra):
+    """Write the provenance of a fetch **whose body is not kept.**
+
+    A refusal has no body worth storing — twenty-five bytes of *Your request
+    was blocked* — but it is the measurement that most needs a record, and it
+    was the only one never getting one.
+
+    **`bin/fetch-body.py` returned on a non-2xx before it saved anything.** An
+    audit of seventy records held on 2026-09-07 found **seventy carrying status
+    200 and not one refusal.** That is the wrong way round: *a 200 can be
+    re-checked whenever you like, because the body is there to re-read. A
+    refusal is taken once, has no body to keep, and it is the one that decides
+    a country has no board.*
+
+    It leaves the same sidecar, with `body_kept: false` and the figures of what
+    did arrive, so an audit sees a fetch that happened and a body deliberately
+    not stored — **which is a different fact from a body nobody attributed.**
+    """
+    rec = describe(body, url=url, status=status, agent=agent,
+                   fetched_at=fetched_at, body_kept=False, **extra)
+    path = str(path)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(sidecar_for(path), "w", encoding="utf-8") as f:
+        json.dump(rec, f, ensure_ascii=False, indent=1, sort_keys=True)
+        f.write("\n")
+    return rec
+
+
+def refusals(root):
+    """Every record under `root` for a fetch that was not a 2xx.
+
+    **The count that matters is this one, not the count of well-formed
+    records.** A tree holding no refusal at all passes any check that only
+    inspects the records present.
+    """
+    out = []
+    for base, _dirs, files in os.walk(str(root)):
+        for name in files:
+            if not name.endswith(SUFFIX):
+                continue
+            try:
+                with open(os.path.join(base, name), encoding="utf-8") as f:
+                    rec = json.load(f)
+            except Exception:                                   # noqa: BLE001
+                continue
+            if isinstance(rec.get("status"), int) and not (
+                    200 <= rec["status"] < 300):
+                out.append((os.path.join(base, name), rec))
+    return sorted(out)

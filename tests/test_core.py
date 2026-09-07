@@ -73,6 +73,7 @@ Run: `python3 -m unittest discover -s tests -v`
 import argparse
 import hashlib
 import io
+import json
 import os
 import pathlib
 import re
@@ -9454,6 +9455,126 @@ class TheOfflineCheckBlocksBeforeItChecks(unittest.TestCase):
         a network call — which is how two tests were first mis-reported as
         reaching the network."""
         self.assertIn('"127.0.0.1"', self._src())
+
+
+
+class ARefusalLeavesARecord(unittest.TestCase):
+    """**The measurement that closes a board was the only one leaving no
+    trace.** `bin/fetch-body.py` returned on a non-2xx before it wrote
+    anything, and an audit of seventy records held on 2026-09-07 found
+    **seventy carrying status 200 and not one refusal.**
+
+    That is the wrong way round. *A 200 can be re-checked whenever you like,
+    because the body is there to re-read. A refusal is taken once, has no body
+    worth keeping, and it is the one that decides a country has no board.*
+    Verdicts of `none possible` across this repository rest on a line that
+    scrolled past, not on a record.
+
+    **And it makes a question unanswerable.** Nine 403s on a published page
+    cannot now be shown to have been measured under our declared identity
+    rather than a browser string, because the tool of the day sent Chrome and
+    reported success on any status — *two defects both leaning towards the
+    conclusion, and no artefact to separate them.*
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _run(self, status, extra=()):
+        m = self._tool()
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/robots.txt"
+
+            def getcode(self):
+                return status
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        # **`m.urllib.request` is the global module object**, so replacing
+        # `urlopen` on it replaces it for every test in the process. Left
+        # unrestored, this stub served 25 bytes to two loopback tests that
+        # stand up their own HTTP server, and they failed with figures from a
+        # host they never contacted. *A stub that is not restored is not a
+        # stub, it is a change to the interpreter.*
+        real_open = m.urllib.request.urlopen
+        m.urllib.request.urlopen = lambda *a, **k: R(b"Your request was blocked.")
+        m.allowed = lambda h, p, **kw: {"allowed": True, "reason": "stub"}
+        m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
+        out = os.path.join(self.dir, "x.txt")
+        argv, stdout = sys.argv, sys.stdout
+        sys.argv = ["f", "https://h.example/robots.txt", "-o", out, *extra]
+        sys.stdout = io.StringIO()
+        try:
+            return m.main(), out
+        finally:
+            m.urllib.request.urlopen = real_open
+            sys.argv, sys.stdout = argv, stdout
+
+    def test_a_refusal_writes_its_record(self):
+        code, out = self._run(403)
+        self.assertNotEqual(code, 0)
+        side = out + _provenance.SUFFIX
+        self.assertTrue(os.path.exists(side),
+                        "the refusal left no record: the one measurement that "
+                        "closes a board is the one nothing attests")
+        with open(side, encoding="utf-8") as fh:
+            rec = json.load(fh)
+        self.assertEqual(rec["status"], 403)
+        self.assertIs(rec["body_kept"], False)
+        self.assertIn("Claude", rec["agent"],
+                      "the record does not say which identity was refused, "
+                      "which is the question it exists to answer")
+
+    def test_the_body_of_a_refusal_is_not_kept(self):
+        """**The failing direction.** Writing the body would put a refusal page
+        into the corpus — 5 587 bytes of a 403 once entered a fingerprint table
+        as `robots.txt`, md5 included."""
+        _code, out = self._run(403)
+        self.assertFalse(os.path.exists(out))
+
+    def test_a_tree_with_no_refusal_record_is_visible_as_such(self):
+        """**The denominator, and it is the guard that counts.** A check that
+        only inspects the records present passes on a tree holding none — which
+        is exactly the state this repository was in, seventy for seventy."""
+        self.assertEqual(_provenance.refusals(self.dir), [],
+                         "the fixture is not empty, so this proves nothing")
+        self._run(403)
+        found = _provenance.refusals(self.dir)
+        self.assertEqual(len(found), 1,
+                         "a refusal happened and `refusals()` finds none")
+        self.assertEqual(found[0][1]["status"], 403)
+
+    def test_a_success_is_not_counted_as_a_refusal(self):
+        self._run(200)
+        self.assertEqual(_provenance.refusals(self.dir), [],
+                         "a 200 was counted as a refusal, so the count means "
+                         "nothing")
+
+    def test_a_body_deliberately_not_kept_says_so(self):
+        """A record whose body was never written is a different fact from a
+        body nobody attributed, and `load()` must not confuse them."""
+        _code, out = self._run(403)
+        with self.assertRaises(FileNotFoundError) as cm:
+            _provenance.load(out)
+        self.assertIn("body_kept", str(cm.exception))
 
 
 

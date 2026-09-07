@@ -56,7 +56,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts"))
 
-from _provenance import save          # noqa: E402
+from _provenance import record, save  # noqa: E402
 import _tls                           # noqa: E402
 from _robots import allowed, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
@@ -249,6 +249,16 @@ def main():
               f"**A readable body is not an answer — the code decides.** Pass "
               f"--allow-refusal to keep it; its status travels in the record.",
               file=sys.stderr)
+        # **The refusal is recorded even though the body is not kept.** This
+        # returned here, before any write, and an audit of seventy records
+        # found seventy 200s and not one refusal — *the measurement that
+        # closes a board was the only one leaving no trace.* A 200 can be
+        # re-checked because its body is there; a refusal is taken once.
+        body, undone = decoded(body, enc)
+        record(a.out, body, url=a.url, status=status, agent=UA,
+               final_url=(landed if landed and landed != a.url else None),
+               content_encoding=undone,
+               crawl_delay_s=delay)
         return EXIT_HTTP
 
     # **The rate a measurement was taken at belongs in the record.** It was
