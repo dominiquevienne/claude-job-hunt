@@ -9405,5 +9405,49 @@ class ABenchFileSaysWhenItIsFinished(unittest.TestCase):
 
 
 
+class TheOfflineCheckBlocksBeforeItChecks(unittest.TestCase):
+    """`bin/tests-offline.py` verifies its own block in both directions — and
+    **no self-check catches its own absence.** Removing the `_block()` call
+    leaves the self-check silent and every probe succeeding, so the tool
+    reports a clean run having blocked nothing.
+
+    That one has to be asserted from outside, which is here.
+    """
+
+    def _src(self):
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return open(os.path.join(repo, "bin", "tests-offline.py"),
+                    encoding="utf-8").read()
+
+    def test_the_block_runs_before_the_self_check(self):
+        src = self._src()
+        i, j = src.index("def main("), src.index("wrong = _self_check()")
+        self.assertIn("_block()", src[i:j],
+                      "the self-check runs before anything is blocked, so it "
+                      "would pass on a tool that blocks nothing")
+
+    def test_the_self_check_probes_each_block_by_name(self):
+        """Checking one path reports the health of that path. Two of three
+        were unexercised when this was written, and removing either changed
+        nothing observable."""
+        src = self._src()
+        for probe in ("getaddrinfo", "socket.connect"):
+            with self.subTest(probe=probe):
+                self.assertIn(f'"{probe}"', src)
+
+    def test_it_probes_the_connect_path_by_address(self):
+        """**A hostname sends the probe through the resolver first**, which is
+        already blocked — so the connect probe passed for the wrong reason and
+        removing its guard was invisible. TEST-NET-1 resolves nowhere."""
+        self.assertIn("192.0.2.1", self._src())
+
+    def test_loopback_stays_allowed(self):
+        """A block that refuses `127.0.0.1` reports every local test server as
+        a network call — which is how two tests were first mis-reported as
+        reaching the network."""
+        self.assertIn('"127.0.0.1"', self._src())
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
