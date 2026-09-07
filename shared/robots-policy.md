@@ -665,6 +665,35 @@ page load. **The fingerprint triages first, for nothing:**
 
 *It does not replace the check. It says which hosts are worth checking.*
 
+### Fetch the same URL **twice** before comparing two md5s across hosts
+
+**Some refusal bodies carry a per-request element, so their md5 moves while
+their size does not.** Measured 2026-09-07: six refusals of about 5.5 KB
+returned a *different* md5 on every request at constant byte count — the
+`cf-ray` identifier was inside the body. Any cross-host comparison over those
+six is void, and it is void in the direction that looks like a finding: every
+host appears to have written its own refusal, so every host looks worth a
+browser.
+
+**The same instrument is right on one family and wrong on the other, and
+nothing in the numbers says which.** The 25-byte body above is stable across
+requests and across hosts; the 5.5 KB one is stable across neither. Both are
+vendor defaults. Only a second fetch of the *same* URL separates them:
+
+```
+same URL, twice  ->  md5 identical    the fingerprint means something
+same URL, twice  ->  md5 differs      the body is per-request; compare sizes
+                                      and structure, never the digest
+```
+
+*A digest that changes between two fetches of one URL cannot establish that two
+hosts differ. It cannot establish anything.*
+
+**This rule is not specific to `cf-ray`.** A timestamp, a request id, a nonce in
+an inline script, or a rotating asset hash all produce it. The check costs one
+extra request and it is the only thing that tells you whether the next hundred
+comparisons mean anything.
+
 ## A refusal nobody wrote — the vendor default
 
 Question 1 asks whether the refusal is aimed at us. There is an answer none of
