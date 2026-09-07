@@ -10026,7 +10026,13 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
     was decided.
     """
 
-    def _resolve(self, *, xdg=None, env=None, prefer=None):
+    def _resolve(self, *, xdg=None, env=None, prefer=None, pathmod=None):
+        """Resolve, optionally **under another platform's path semantics.**
+
+        `pathmod` swaps the module's `os.path`. `ntpath` is importable
+        everywhere and normalises the way Windows does, so the cases below run
+        under both and a POSIX literal cannot pass unnoticed on a Mac.
+        """
         import importlib.util
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         spec = importlib.util.spec_from_file_location(
@@ -10035,7 +10041,10 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
         spec.loader.exec_module(mod)
         saved = {k: os.environ.get(k) for k in ("XDG_CONFIG_HOME",
                                                 "JOB_HUNT_HOME")}
+        real_path = mod.os.path
         try:
+            if pathmod is not None:
+                mod.os.path = pathmod
             for key, value in (("XDG_CONFIG_HOME", xdg),
                                ("JOB_HUNT_HOME", env)):
                 if value is None:
@@ -10044,11 +10053,26 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
                     os.environ[key] = value
             return mod, mod.resolve(prefer)
         finally:
+            mod.os.path = real_path
             for k, v in saved.items():
                 if v is None:
                     os.environ.pop(k, None)
                 else:
                     os.environ[k] = v
+
+    @staticmethod
+    def _same(path, pathmod=None):
+        """The path as `resolve()` returns it, on this platform.
+
+        **`resolve()` normalises with `os.path.abspath`**, and on Windows
+        `/from/prefer` normalises to `D:\\from\\prefer`. The first version of
+        this class compared against POSIX literals: green on macOS and Linux,
+        **red on both Windows cells**, and it took the release down for two
+        commits. *The code was right; the case was written on one platform's
+        separator.*
+        """
+        pathmod = pathmod or os.path
+        return pathmod.abspath(pathmod.expanduser(path))
 
     def _xdg_with(self, tmp, workspace):
         d = os.path.join(tmp, "xdg", "claude-job-hunt")
@@ -10060,20 +10084,46 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
     def test_all_three_present_and_contradicting(self):
         """**The order, not the reading.** Each source in turn must win over
         the ones below it while they are all sitting there disagreeing."""
+        import ntpath
+        import posixpath
         import tempfile
+        # **Both platforms' semantics, on whatever machine this runs.** The
+        # first version of this case compared against POSIX literals: green
+        # here, red on both Windows cells, and it blocked the release for two
+        # commits. *`ntpath` normalises the way Windows does and imports
+        # everywhere* — so the separator can no longer decide the result.
+        for pathmod in (posixpath, ntpath):
+            with self.subTest(paths=pathmod.__name__):
+                with tempfile.TemporaryDirectory() as tmp:
+                    xdg = self._xdg_with(tmp, "/from/config")
+                    _m, (p, src, ask) = self._resolve(
+                        xdg=xdg, env="/from/env", prefer="/from/prefer",
+                        pathmod=pathmod)
+                    self.assertEqual(
+                        (p, ask), (self._same("/from/prefer", pathmod), None),
+                        src)
+                    _m, (p, src, _a) = self._resolve(xdg=xdg, env="/from/env",
+                                                     pathmod=pathmod)
+                    self.assertEqual(
+                        p, self._same("/from/env", pathmod),
+                        "`config.yml` overtook the environment; the decided "
+                        "order puts JOB_HUNT_HOME first")
+
+        # **The third step is checked under this machine's paths only, and the
+        # reason is a limit of the simulation rather than of the rule.**
+        # Swapping `os.path` for `ntpath` changes how the module *builds* the
+        # config path, while the fixture on disk was written with the real
+        # separator — so the file is simply not found, and the failure would
+        # be my simulation's, not the code's. On a real Windows both halves
+        # use the same module. *An artefact that looks like a finding is worse
+        # than no coverage, so the boundary is stated instead of papered over.*
         with tempfile.TemporaryDirectory() as tmp:
             xdg = self._xdg_with(tmp, "/from/config")
-            _m, (p, src, ask) = self._resolve(xdg=xdg, env="/from/env",
-                                              prefer="/from/prefer")
-            self.assertEqual((p, ask), ("/from/prefer", None), src)
-            _m, (p, src, _a) = self._resolve(xdg=xdg, env="/from/env")
-            self.assertEqual(p, "/from/env",
-                             "`config.yml` overtook the environment; the "
-                             "decided order puts JOB_HUNT_HOME first")
             _m, (p, src, _a) = self._resolve(xdg=xdg)
-            self.assertEqual(p, "/from/config",
-                             "the remembered folder was not read, so the "
-                             "question comes back every session — #142")
+            self.assertEqual(
+                p, self._same("/from/config"),
+                "the remembered folder was not read, so the question comes "
+                "back every session — #142")
             self.assertIn("earlier", src)
 
     def test_reading_never_creates_the_configuration_directory(self):
@@ -10106,7 +10156,8 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
                 os.environ["XDG_CONFIG_HOME"] = xdg
                 written = mod.remember("/named/once")
                 self.assertTrue(os.path.isfile(written))
-                self.assertEqual(mod.from_config(), "/named/once")
+                self.assertEqual(mod.from_config(),
+                                 self._same("/named/once"))
             finally:
                 if saved is None:
                     os.environ.pop("XDG_CONFIG_HOME", None)
@@ -10127,10 +10178,51 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
                 fh.write("boards:\n  ignored: yes\n# workspace: /commented\n")
             _m, (p, src, _a) = self._resolve(xdg=os.path.join(tmp, "xdg"),
                                              env="/from/env")
-            self.assertEqual(p, "/from/env", src)
+            self.assertEqual(p, self._same("/from/env"), src)
             _m, (p, src, ask) = self._resolve(xdg=os.path.join(tmp, "xdg"))
-            self.assertNotEqual(p, "/commented",
+            self.assertNotEqual(p, self._same("/commented"),
                                 "a commented-out line was read as a value")
+
+    def test_the_cascade_holds_under_windows_path_semantics(self):
+        """**The case that would have caught the red CI, on this machine.**
+
+        `resolve()` normalises with `os.path.abspath`, and on Windows
+        `/from/prefer` becomes `D:\\from\\prefer`. The first version of this
+        class compared against POSIX literals: green on macOS and Linux, **red
+        on both Windows cells**, and it blocked the release for two commits.
+
+        *I cannot run Windows. `ntpath` is available everywhere and normalises
+        the same way* — `ntpath.abspath("/from/prefer")` is `'\\from\\prefer'`
+        here. Swapping the module's `os.path` for it makes this case fail on
+        any machine if an expectation goes back to a hard-coded separator.
+
+        **A guard that cannot fail where the defect lives is inert**, and a
+        guard that only runs on the platform where the defect is invisible is
+        the same thing wearing a green tick.
+        """
+        import ntpath
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            xdg = self._xdg_with(tmp, "/from/config")
+            mod, _ = self._resolve(xdg=xdg)
+            real = mod.os.path
+            saved = os.environ.get("XDG_CONFIG_HOME")
+            try:
+                mod.os.path = ntpath
+                os.environ["XDG_CONFIG_HOME"] = xdg
+                path, _src, _ask = mod.resolve("/from/prefer")
+                self.assertEqual(path, ntpath.abspath("/from/prefer"))
+                self.assertNotEqual(
+                    path, "/from/prefer",
+                    "under Windows semantics the separator changes, and an "
+                    "expectation written as a POSIX literal would pass here "
+                    "and fail there — which is exactly what happened")
+            finally:
+                mod.os.path = real
+                if saved is None:
+                    os.environ.pop("XDG_CONFIG_HOME", None)
+                else:
+                    os.environ["XDG_CONFIG_HOME"] = saved
 
     def test_prefer_has_a_production_caller_now(self):
         """The issue's own title, answered by the code rather than by a count.
