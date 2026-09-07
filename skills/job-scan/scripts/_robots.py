@@ -940,6 +940,10 @@ def verdict(host, agents=None):
     out["group"] = token
     out["groups"] = matched
     out["group_conflict"] = _records_disagree(body, matched)
+    # **#180.** Carried so a caller sees what the file says and no group
+    # claims, without re-parsing the body it never receives.
+    out["orphan_rules"] = orphan_rules(body)
+    out["has_star_group"] = bool(_groups_named(body, ("*",)))
     if "/" in dis:
         # **`sweep` follows the resolution at the root, not the bare presence
         # of `Disallow: /`.** #153.
@@ -1371,6 +1375,40 @@ def group_for(body, agents=OUR_AGENTS):
     return token, dis, allow, matched
 
 
+def _groups_named(body, names):
+    """Records whose agent set contains any of `names`. Presence, not rules —
+    a `*` group with nothing in it still exists, and `_star_group()` returning
+    `[]` cannot tell that apart from no `*` group at all."""
+    want = {n.lower() for n in names}
+    return [r for agents, r in _groups(body) if agents & want]
+
+
+def orphan_rules(body):
+    """`Disallow`/`Allow` lines that sit above any `User-agent:` line.
+
+    **They bind nobody.** RFC 9309 §2.2.1 makes a group start at its
+    `User-agent` line, so a directive written before the first one belongs to
+    no group and the common parsers ignore it — as this module does.
+
+    **But ignoring it silently is how `allowed: True` came to be reported with
+    the words "no `Disallow` matches this path in `*`" on a file that is
+    nothing but seven `Disallow` lines and has no `*` group at all.**
+    `ihararejobs.com` refuses `/admin/`, `/candidate/` and `/vacancy/apply/`
+    that way. The value is defensible; the sentence was false in both halves.
+    Issue #180.
+
+    Returns `[(kind, value), …]` as written, so a caller can show the operator
+    what it decided not to obey.
+    """
+    for agents, rules in _groups(body):
+        if not agents:
+            return [(k, v) for k, v in rules if k in ("disallow", "allow")]
+        # A record with agents means the file has groups; anything orphaned
+        # can only come first, so the search stops here.
+        break
+    return []
+
+
 def _star_group(body):
     """The `Disallow` and `Allow` rules that bind `*`, as written.
 
@@ -1605,7 +1643,67 @@ def allowed(host, path, agents=None):
         # the `*` group it is the general policy leaving this path alone; in a
         # record that names us it is this operator having written a rule about
         # this project and put nothing in our way. Issue #117.
-        g = v.get("group") or "*"
+        g = v.get("group")
+        orphans = v.get("orphan_rules") or []
+        # **#180, decided 2026-09-07: a malformed refusal is still an
+        # intention.** This repository judges intention, not syntax — «a
+        # refusal written in the rules is an intention; we do not get round it
+        # by any route». Seven `Disallow:` aimed at `/admin/`, `/candidate/`
+        # and `/vacancy/apply/` say what the operator wants whatever the file's
+        # state.
+        #
+        # **The verdict is `None`, not `False`.** Inventing a refusal would be
+        # as wrong as inventing a permission; we do not know which agents these
+        # bind. `None` is the third state this module already has, it is
+        # falsy, and a caller that has never heard of it fails closed.
+        #
+        # **And it is per PATH, not per host.** The intention concerns the
+        # paths written down. Returning `None` for every path would close a
+        # board on directives that never mentioned it — `ihararejobs.com`
+        # refuses seven paths and serves its inventory from two others it
+        # never names.
+        o_dis = max(((_match_len(pat, path), pat)
+                     for k, pat in orphans if k == "disallow" and pat),
+                    default=(-1, None))
+        o_allow = max(((_match_len(pat, path), pat)
+                       for k, pat in orphans if k == "allow" and pat),
+                      default=(-1, None))
+        if o_dis[0] >= 0 and o_allow[0] < o_dis[0]:
+            out.update(allowed=None, certain=False, rule=o_dis[1],
+                       kind="orphan-disallow")
+            out["reason"] = (
+                f"**INDETERMINATE.** `{v['host']}` writes "
+                f"`Disallow: {o_dis[1]}`, which matches this path — but the "
+                f"file contains **no `User-agent:` line at all**, so that "
+                f"directive belongs to no group and binds no named agent "
+                f"(RFC 9309 §2.2.1). *We cannot establish that it is aimed at "
+                f"us, and we will not read it as permission either*: the "
+                f"operator wrote a refusal for this path. "
+                f"{len(orphans)} directive(s) sit above any group here. "
+                f"An indeterminate is not probed.")
+            return _named(_carry(out))
+        if not g and not v.get("has_star_group"):
+            # **#180. There was no group, and the sentence used to invent
+            # one.** `v.get("group") or "*"` turned «nothing matched» into
+            # «the `*` group says nothing», which on `ihararejobs.com` — seven
+            # `Disallow` lines and not one `User-agent:` — was false in both
+            # halves at once. Ignoring an orphaned directive is defensible;
+            # reporting it as an absent one is not.
+            shown = ", ".join(f"`{k.title()}: {val}`" for k, val in orphans[:3])
+            out["reason"] = (
+                f"`{v['host']}` declares **no group at all** — this file "
+                f"contains no `User-agent:` line, so there is no record for "
+                f"this path to match, and none for `*` either."
+                + (f" **It does carry {len(orphans)} directive(s) above any "
+                   f"`User-agent:` line** — {shown}"
+                   + (", …" if len(orphans) > 3 else "")
+                   + ". Those bind no agent under RFC 9309 §2.2.1 and are "
+                     "not applied here, but the operator wrote them: treat "
+                     "them as an intention before fetching those paths."
+                   if orphans else
+                   " The file is empty of directives as well as of groups."))
+            return _named(_carry(out))
+        g = g or "*"
         out["reason"] = (
             f"no `Disallow` matches this path in `{g}` — "
             + ("the group that **names this project**, so this is a decision "

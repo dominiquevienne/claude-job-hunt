@@ -8109,6 +8109,109 @@ class TheRecordDescribesTheDocumentNotTheTransfer(unittest.TestCase):
 
 
 
+class ADirectiveAboveAnyGroupIsNotAnAbsence(unittest.TestCase):
+    """#180. `ihararejobs.com` serves seven `Disallow:` lines and **no
+    `User-agent:` line at all** — `/login/`, `/static/`, `/register/`,
+    `/candidate/`, `/employer_admin/`, `/admin/`, `/vacancy/apply/`.
+
+    Under RFC 9309 §2.2.1 a group starts at its `User-agent` line, so those
+    directives belong to no group and the common parsers ignore them. This
+    module ignored them too, and said so in words that were **false in both
+    halves at once**: *"no `Disallow` matches this path in `*`"*, on a file
+    that is nothing but `Disallow` lines and has no `*` group.
+
+    **Decided 2026-09-07: a malformed refusal is still an intention.** The
+    verdict is `None`, not `True` and not `False` — inventing a refusal would
+    be as wrong as inventing a permission, and `None` is falsy, so a caller
+    that has never heard of the third state fails closed.
+
+    **And it is per path.** Returning `None` for the whole host would close a
+    board on directives that never named it: this host refuses seven paths and
+    serves its inventory from `/job/` and `/sitemap.xml`, which it never
+    mentions.
+
+    *Prevalence is unmeasured — one host, and the earlier `robots.txt` corpora
+    are no longer on disk. This guard pins the behaviour, not its reach.*
+    """
+
+    ORPHANED = ("Disallow: /login/\n"
+                "Disallow: /admin/\n"
+                "Disallow: /vacancy/apply/\n")
+    WELL_FORMED = ("User-agent: *\n"
+                   "Disallow: /admin/\n")
+    NO_RULES_AT_ALL = "# nothing here\n"
+
+    def _allowed(self, body, path):
+        """**The memo entry is a dict with the shape `_fetch` writes**, not a
+        tuple. A stub of the wrong shape raises inside `verdict()`, which
+        looks like the guard failing rather than the fixture being wrong."""
+        import _robots
+        host = "orphan.test"
+        key = (host, _robots._FETCH)
+        _robots._CACHE[key] = {
+            "state": "read", "status": 200, "body": body,
+            "bytes": len(body.encode()), "final": host,
+            "vendor": {}, "read_at": "2026-09-07T00:00:00Z", "attempts": 1,
+        }
+        try:
+            return _robots.allowed(host, path)
+        finally:
+            for k in [k for k in _robots._CACHE if k[0] == host]:
+                _robots._CACHE.pop(k, None)
+            for k in [k for k in _robots._ALIAS if k[0] == host]:
+                _robots._ALIAS.pop(k, None)
+
+    def test_an_orphaned_disallow_makes_its_own_path_indeterminate(self):
+        a = self._allowed(self.ORPHANED, "/admin/tools")
+        self.assertIsNone(a["allowed"],
+                          "a `Disallow` the operator wrote must not read as "
+                          "permission because the file forgot its group; "
+                          f"got {a['allowed']!r} — {a['reason'][:120]}")
+        self.assertFalse(a["certain"])
+
+    def test_a_path_no_orphan_touches_stays_allowed(self):
+        """**The half that keeps this from closing the board.** The intention
+        concerns the paths written down and no others."""
+        a = self._allowed(self.ORPHANED, "/job/some-vacancy-1/")
+        self.assertIs(a["allowed"], True,
+                      "a path none of the orphaned rules matches is not "
+                      f"indeterminate: {a['reason'][:120]}")
+
+    def test_the_reason_never_invents_a_star_group(self):
+        """The defect that started #180: `v.get("group") or "*"` turned
+        *nothing matched* into *the `*` group says nothing*."""
+        a = self._allowed(self.ORPHANED, "/job/some-vacancy-1/")
+        self.assertNotIn("in `*`", a["reason"],
+                         "this file has no `*` group and the reason claims "
+                         "one: " + a["reason"][:160])
+        self.assertIn("no `User-agent:` line", a["reason"])
+
+    def test_a_well_formed_file_is_untouched(self):
+        """**Mutation in the other direction.** The change must not turn a
+        normal file's verdicts into indeterminates."""
+        self.assertIs(self._allowed(self.WELL_FORMED, "/jobs/1")["allowed"],
+                      True)
+        self.assertIs(self._allowed(self.WELL_FORMED, "/admin/x")["allowed"],
+                      False)
+
+    def test_a_file_with_no_directives_at_all_still_opens(self):
+        """**An absence of rules is an open door** — that is settled
+        elsewhere in this module, and #180 must not disturb it. A groupless
+        file is only indeterminate where it carries a matching refusal."""
+        a = self._allowed(self.NO_RULES_AT_ALL, "/anything")
+        self.assertIs(a["allowed"], True, a["reason"][:140])
+
+    def test_the_orphaned_rules_travel_in_the_verdict(self):
+        """A caller must be able to show the operator what was not obeyed
+        without re-parsing a body it never receives."""
+        import _robots
+        self.assertEqual(
+            [v for k, v in _robots.orphan_rules(self.ORPHANED)],
+            ["/login/", "/admin/", "/vacancy/apply/"])
+        self.assertEqual(_robots.orphan_rules(self.WELL_FORMED), [],
+                         "a rule inside a group is not orphaned")
+
+
 class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
     """#164. Two cards describing the same shared ads is a redundancy this
     repository already keeps by hand — `README.md:75` carries `jobstore`'s

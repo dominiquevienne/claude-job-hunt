@@ -146,10 +146,11 @@ SOFT_404 = re.compile(r"<h1[^>]*>\s*Browse Jobs\s*</h1>", re.I)
 MONTHS = {"jan": 1, "feb": 2, "march": 3, "april": 4, "may": 5, "june": 6,
           "july": 7, "aug": 8, "sept": 9, "oct": 10, "nov": 11, "dec": 12}
 
-# The seven paths the rules file refuses without naming an agent. #180 asks
-# what the guard should do; this module does not touch them either way.
-REFUSED_BY_INTENT = ("/login/", "/static/", "/register/", "/candidate/",
-                     "/employer_admin/", "/admin/", "/vacancy/apply/")
+# **#180 is decided, so this module keeps no copy of the refused list.**
+# `allowed()` now returns `None` — INDETERMINATE — for a path an orphaned
+# `Disallow` matches, and `gate()` already stops on `None`. A second list here
+# would be somewhere for the two to drift apart, and it claimed a *refusal*
+# (exit 7) where the repository has decided we cannot establish one (exit 8).
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -163,17 +164,7 @@ def note(msg):
 
 def gate(url):
     parts = urllib.parse.urlsplit(url)
-    path = full_path(parts)
-    # **The file's intent, which its own syntax hides from the guard.** Its
-    # seven `Disallow:` lines sit above any `User-agent:`, so they bind nobody
-    # and `allowed()` returns True for all of them (#180). We stay off them.
-    for refused in REFUSED_BY_INTENT:
-        if path.startswith(refused):
-            die(f"{url}: `{refused}` is refused by this host's rules file. "
-                f"The guard says otherwise because the directive sits above "
-                f"any `User-agent:` line and so binds no agent — see #180.",
-                EXIT_REFUSED)
-    a = robots_allowed(parts.netloc, path)
+    a = robots_allowed(parts.netloc, full_path(parts))
     if a["allowed"] is None:
         die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
     if not a["allowed"]:

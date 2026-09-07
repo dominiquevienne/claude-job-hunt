@@ -62,10 +62,24 @@ answers `allowed: True` for every one of them — **issue #180**.
 /login/  /static/  /register/  /candidate/  /employer_admin/  /admin/  /vacancy/apply/
 ```
 
-**This adapter refuses all seven itself**, in `gate()`, before the guard is
-consulted, and says why in the message. *The behaviour of `allowed()` is
-defensible under RFC 9309; its stated reason — «no `Disallow` matches this
-path in `*`» — is not, because there are seven and there is no `*`.*
+**#180 was decided the same day, and the guard now handles it** — this
+adapter keeps no list of its own. `allowed()` returns **`None`**,
+INDETERMINATE, for a path an orphaned `Disallow` matches, and `gate()` stops
+on `None` with exit 8.
+
+*Not `True`, because a malformed refusal is still an intention and this
+repository judges intention rather than syntax. Not `False`, because inventing
+a refusal is as wrong as inventing a permission — we cannot establish which
+agents these bind. `None` is falsy, so a caller that has never heard of the
+third state fails closed.*
+
+**And it is per path, not per host.** Returning `None` for everything would
+have closed this board on directives that never mention it: the inventory is
+under `/job/` and `/sitemap.xml`, and `/` itself stays `True`.
+
+The reason was false as well as the verdict thin — *«no `Disallow` matches
+this path in `*`»* on a file that is nothing but `Disallow` lines and has no
+`*` group. It now names the malformation and quotes the rule.
 
 The inventory is under `/job/` and `/sitemap.xml`, neither of which the file
 names.
