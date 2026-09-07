@@ -5,8 +5,8 @@
 <!-- hosts: api.job-room.ch, www.job-room.ch -->
 <!-- script: jobroom.py -->
 <!-- countries: CH -->
-<!-- overlap: sozialinfo.md · 27 ads in common · 2026-09-03 -->
-<!-- overlap: solique.md · 24 Solique tenants among 2 800 job-room ads FETCHED — **the denominator is a fetched count, not the board's size**, so no share is computed from it · 2026-09-03 -->
+<!-- overlap: sozialinfo.md · 27 ads in common across 26 distinct employers; sozialinfo holds 720 read against a stated 729 (2026-09-02) and job-room's own size is not established · 2026-09-03 -->
+<!-- overlap: solique.md · 24 Solique ADS shared — **not tenants: solique documents 6 in all** — found in a 2 800-ad job-room FETCH, which is a fetched count and not either board's size, so no share is computable · 2026-09-03 -->
 **Re-verified 2026-09-02**: a keyword search returned 50 cards on the documented route.
 
 Switzerland's **public employment service portal**, run by SECO. It carries the

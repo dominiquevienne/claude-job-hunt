@@ -5,7 +5,7 @@
 <!-- hosts: live.solique.ch -->
 <!-- script: solique.py -->
 <!-- countries: * -->
-<!-- overlap: job-room.md · 24 Solique tenants among 2 800 job-room ads FETCHED — **the denominator is a fetched count, not the board's size**, so no share is computed from it · 2026-09-03 -->
+<!-- overlap: job-room.md · 24 Solique ADS shared — **not tenants: solique documents 6 in all** — found in a 2 800-ad job-room FETCH, which is a fetched count and not either board's size, so no share is computable · 2026-09-03 -->
 An ATS, not a board: one employer per tenant, no search across employers. Public
 HTML and JSON, unauthenticated, **no key, no cookie, no browser**.
 

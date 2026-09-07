@@ -4,7 +4,7 @@
 <!-- script: jobup.py -->
 <!-- verified: 2026-09-02 -->
 <!-- countries: CH -->
-<!-- overlap: jobstore.md · 18.6 % of Swiss ads shared · 2026-09-03 -->
+<!-- overlap: jobstore.md · 18.6 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
 <!-- shares-platform: jobup.md · the same posting UUID appears on both — one platform, two brands -->
 
 Swiss board, German-speaking Switzerland. **Same platform as jobup.ch

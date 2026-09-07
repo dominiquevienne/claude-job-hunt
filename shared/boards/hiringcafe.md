@@ -7,7 +7,7 @@
 <!-- witness: none found — the per-facet totals (11 541 for Boise, 4 646 for data scientist) are the page's own claim, and no second source states them; the sitemaps that would corroborate answer 403 · 2026-09-07 -->
 <!-- robots-note: the rules refuse `/*?page=*` and `/*&page=*` by hand, so the browser route is one page of 20 per facet; neither `ClaudeBot` nor `Claude-User` is named in the file — only meta-externalagent and Applebot-Extended · 2026-09-07 -->
 <!-- countries: * -->
-<!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
+<!-- overlap: jobstore.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
 
 ## Route 2 of #102 is measured, and it is closed
 
