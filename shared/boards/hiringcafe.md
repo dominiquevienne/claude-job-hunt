@@ -4,7 +4,7 @@
 
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
-<!-- robots: suspended -->
+<!-- robots: refused at transport on every permitted path — `/`, `/jobs`, `/job`, `/recently-posted-jobs` all answer HTTP 403 with the same 25-byte body `9ccabba20b9f`, while the rules file permits them; and `/*?searchState=*` is refused in writing to `User-agent: *` · 2026-09-07 -->
 <!-- countries: * -->
 <!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 
@@ -479,3 +479,26 @@ justify not interrogating the host would be circular.
 
 The verdict it carries is dated 2026-09-03 and says so. **Re-measuring means
 lifting the suspension first, which is a decision rather than a code path.**
+
+## What is measurable here today, and what is not
+
+**Re-read 2026-09-07**: `robots.txt` is byte-identical to the 2026-09-05
+reading — 1 158 bytes, md5 `529adb109a6b`. So the rules have not moved.
+
+```
+/*?searchState=*        refused in writing to `User-agent: *`
+/  /jobs  /job  /recently-posted-jobs      permitted by the rules
+                                           HTTP 403, 25 bytes, md5 9ccabba20b9f
+```
+
+**Four requests, one per path, guard taken on each.** The plain-HTTP adapter
+cannot reach anything: what the file permits, the edge refuses.
+
+**And the two refusals are not the same fact.** `/*?searchState=*` is a rule —
+it binds every client, a browser included. The 403 on the other four is
+infrastructure, and *nothing measured here says whether it refuses everyone or
+refuses us*. `cadremploi.md`, the one board here that uses a browser, answers
+403 **to every client including a browser**, which is why
+`shared/robots-policy.md` treats it as blocked rather than refused. **That
+distinction has not been measured for this host**, and it is the distinction
+the policy turns on.
