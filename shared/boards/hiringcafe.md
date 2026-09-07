@@ -1,6 +1,6 @@
 # Board adapter — HiringCafe
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-07 -->
 
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
@@ -40,6 +40,52 @@ actor, which is the distinction the managed-block family cost us.
 infrastructure closed*, after `tala-com.com`** — and `identity()` classifies it
 `http`, because it decides on the rules and not on what the host does next.
 That gap is real and is recorded rather than patched here.
+
+### Re-measured 2026-09-07 11:19-11:24 UTC — it holds, and one path does not
+
+**Two days apart, the same result: the six sitemaps, `/` and `/jobs` all answer
+403 with the same 25-byte body.** *A behaviour seen once is dated and could be
+an intermittence; seen twice, two days apart, it is the host's settled
+posture.*
+
+**But `/robots.txt` answers 200, 1 158 bytes, from the same edge in the same
+minute.**
+
+```
+/robots.txt   HTTP 200   1 158 o   md5 529adb109a6b
+/             HTTP 403      25 o   md5 9ccabba20b9f
+/jobs         HTTP 403      25 o   md5 9ccabba20b9f
+six sitemaps  HTTP 403      25 o   md5 9ccabba20b9f   (all six, same body)
+```
+
+> **The edge is not dark to us: it serves the file that permits, and refuses
+> every path that file permits.** *That is a sharper statement of «&nbsp;rules
+> open, infrastructure closed&nbsp;» than the card carried — the two answers come
+> from the same host, the same client and the same declared identity, minutes
+> apart.*
+
+**And the fingerprint family is larger than the five named above.** Measured
+here on 2026-09-07, each host fetched **twice**:
+
+```
+jobstore.com    403   25 o   md5 9ccabba20b9f   x2, IDENTICAL
+www.hays.fr     403   25 o   md5 9ccabba20b9f   x2, IDENTICAL
+```
+
+**Fetching twice is the precondition, not a precaution**: a refusal body that
+carries a rendering element — a `cf-ray` inside the body rather than the header
+— changes md5 on every request, and any cross-host comparison of it is void.
+*These do not move, so the comparison is sound.* **Seven hosts now, of which
+these two carry this session's own provenance and the other five are the
+2026-09-05 measurement above.**
+
+*`www.hays.fr` declares `Crawl-delay: 10` and it was obeyed — **a host that
+refuses at the edge still gets its declared rate honoured**, because the rate
+is written by the operator and the refusal is not.*
+
+**What this does NOT establish**: whether the 403 targets this client or every
+client. *That question is settled by reading one of these hosts in a real
+browser, and it has not been done here.*
 
 A **meta-board**: HiringCafe crawls employer career pages across some forty ATS
 platforms and republishes them under one search. Worldwide — every country
