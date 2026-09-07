@@ -48,6 +48,7 @@ import urllib.error
 import urllib.request
 
 from _decode import decode_body
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 from _zero import zero_note
 
@@ -117,8 +118,34 @@ def pace_for(host, own=0.0):
     return _PACERS[host]
 
 
+def gate_path(url):
+    """Ask on the exact URL, at the point every request passes. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send — so
+    the owner's decision of 2026-09-07 reached `allowed()` and reached this
+    module not at all. **And a sweep verdict is not a path verdict:**
+    `hiringcafe.com` answers `sweep: True` above its own reason, *"this host
+    refuses 17 path(s) to `*`"*.
+
+    The pre-flight `sweep` check stays: it is a **report** about the host,
+    and this is the **decision** about the path.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal, and `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", EXIT_REFUSED)
+
+
 def get(path, lang="ge", timeout=45):
     url = f"{BASE}/{lang}/{path}" if not path.startswith("http") else path
+    gate_path(url)
     pace_for(urllib.parse.urlsplit(url).netloc, own=CRAWL_DELAY).wait()
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,

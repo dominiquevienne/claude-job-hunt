@@ -7712,6 +7712,20 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
         def refuse(*a, **k):
             raise icims.urllib.error.URLError("no request in this case")
 
+        # **The guard runs before the pacer and would decide this case.**
+        # Since #176 `icims.get` asks `robots_allowed` first — the documented
+        # order, because waiting before knowing whether we may ask spends the
+        # delay on a request about to be refused. Left live, it reaches the
+        # network for `careers.icims.com` and this case stops being about
+        # pace at all.
+        real_gate = icims.robots_allowed
+        icims.robots_allowed = lambda *a, **k: {
+            "allowed": True, "reason": "stubbed", "rule": None, "kind": None,
+            "group": "*", "certain": True, "state": "read",
+            "crawl_delay": None, "sitemaps": [], "ignored": [],
+            "content_signal": None, "group_conflict": False,
+            "host": "careers.icims.com",
+            "requested_host": "careers.icims.com", "path": "/sitemap.xml"}
         icims.urllib.request.urlopen = refuse
         icims.Pace = Spy
         icims._PACERS.clear()
@@ -7722,6 +7736,7 @@ class AnAdapterThatFetchesTwiceConsultsTheHostsRate(unittest.TestCase):
                 except BaseException:                        # noqa: BLE001
                     pass
         finally:
+            icims.robots_allowed = real_gate
             icims.urllib.request.urlopen = real_open
             icims.Pace = real_pace
             icims._PACERS.clear()
@@ -8840,14 +8855,30 @@ class EveryPacedAdapterActuallyWaits(unittest.TestCase):
         # `gate` sent `hays` to the network — the suite went from 2 s to 15 s
         # and the slowdown was the only sign. A test that reaches the network
         # is a test whose result depends on a host.
+        # **The two module entries, not only the names built on them.** A
+        # list of gate names has to be edited every time an adapter calls its
+        # guard something new — `gate_path` arrived with #176 and this list
+        # did not know it, so four adapters went to the network and the
+        # pacing cases failed for a reason that had nothing to do with pace.
+        # Stubbing `robots_allowed` and `robots_verdict` neutralises every
+        # shape, whatever the wrapper is called.
         gates = {n: getattr(m, n) for n in
-                 ("gate", "_robots_gate", "smartrecruiters_gate", "check_host")
+                 ("gate", "gate_path", "_robots_gate", "smartrecruiters_gate",
+                  "check_host", "robots_allowed", "robots_verdict")
                  if hasattr(m, n)}
         m.urllib.request.urlopen = refuse
         m.Pace = Spy
         m._PACERS.clear()
+        permit = {"allowed": True, "sweep": True, "reason": "stubbed",
+                  "rule": None, "kind": None, "group": "*", "certain": True,
+                  "state": "read", "crawl_delay": None, "sitemaps": [],
+                  "ignored": [], "content_signal": None,
+                  "group_conflict": False, "host": host,
+                  "requested_host": host, "path": "/"}
         for n in gates:
-            setattr(m, n, lambda *a, **k: None)
+            # A wrapper wants nothing back; `robots_allowed` wants a verdict.
+            setattr(m, n, (lambda *a, **k: dict(permit))
+                    if n.startswith("robots_") else (lambda *a, **k: None))
         # **The back-off is real and it really sleeps.** Refusing the request
         # makes each adapter retry, and the class took eight seconds — the
         # slowdown was the only sign that a test had started waiting. Sleep is
@@ -9812,6 +9843,155 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+
+class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
+    """#176. The owner's decision reached `allowed()`, and `allowed()` was
+    reached by none of these.
+
+    On 2026-09-07 the owner settled that a named refusal of `ClaudeBot` does
+    not bind `Claude-User`. That was applied to `allowed()`. **Fifteen
+    adapters decided on `verdict(host)["sweep"]` and on nothing else** — and
+    `sweep` is computed under `OUR_AGENTS`, six names a site may use *about*
+    us, four of which we never send. *So the decision reached the module and
+    not the boards it was taken for.*
+
+    **And a sweep verdict is not a path verdict, which is the second defect
+    hidden in the first.** `hiringcafe.com` answers `sweep: True` directly
+    above its own reason — *"this host refuses 17 path(s) to `*` and not the
+    site as a whole"*. An adapter deciding on `sweep` fetches paths the rules
+    close, whatever token it presents.
+
+    **`verdict()`'s default is deliberately untouched.** Narrowing it turned
+    twelve cases red: it is what lets the module say *this host names
+    `anthropic-ai`, which we never send*. `verdict()` **reads**; `allowed()`
+    **decides**. The pre-flight sweep check stays where it is, as a report.
+
+    **The population is the concerned, not the participants.** A case counting
+    callers of `allowed()` would have been green at nought of nought on the
+    morning this was written. This one is the list of adapters that ask
+    `verdict()` — and every one of them must refuse a path the rules close.
+    """
+
+    UNKNOWN = {"allowed": None, "reason": "could not be read", "rule": None,
+               "kind": "unknown", "group": None, "certain": False,
+               "state": "unreachable", "crawl_delay": None, "sitemaps": [],
+               "ignored": [], "content_signal": None, "group_conflict": False,
+               "host": "h.example", "requested_host": "h.example",
+               "path": "/x"}
+    REFUSED = dict(UNKNOWN, allowed=False, reason="the rules refuse this path",
+                   rule="/", kind="disallow", group="*", certain=True,
+                   state="read")
+
+    # **Every adapter that asks `verdict()`, with the entry that reaches its
+    # requests.** Written out so that an adapter added tomorrow appears as a
+    # missing row rather than as nothing at all — the shape a positional or
+    # computed population cannot give.
+    ENTRIES = {
+        "applifly": ("gate_path", "https://h.example/x?p=1"),
+        "ats": ("gate", "https://h.example/x?p=1"),
+        "bumeran": ("get", "https://h.example/x?p=1"),
+        "employtt": ("get", "https://h.example/x?p=1"),
+        "encuentra24": ("get", "/x?p=1"),
+        "hrge": ("gate", "https://h.example/x?p=1"),
+        "icims": ("get", "https://h.example/x?p=1"),
+        "jobsge": ("get", "x?p=1"),
+        "jobsgovpk": ("get", "https://h.example/x?p=1"),
+        "jobup": ("get", "https://h.example/x?p=1"),
+        "oraclecloud": ("get", ("h.example", "/r", "q=1")),
+        "personio": ("get", "https://h.example/x?p=1"),
+        "philjobnet": ("gate_path", "https://h.example/x?p=1"),
+        "successfactors": ("get", "https://h.example/x?p=1"),
+        "ssge": ("get", "https://h.example/x?p=1"),
+        "taleez": ("fetch", "https://h.example/x?p=1"),
+        "umantis": ("fetch", "https://h.example/x?p=1"),
+        "vieclam24h": ("get", "/x?p=1"),
+        "workday": ("get", "https://h.example/x?p=1"),
+    }
+
+    def _population(self):
+        """The adapters that ask `verdict()` — read from their source.
+
+        **`bin/host-drift.py` is not here and must not be**: it *reports*
+        `sweep` in a column, which is what `verdict()` is for.
+        """
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        found = []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)[:-3]
+            if name.startswith("_"):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            if "robots_verdict(" in src:
+                found.append(name)
+        return found
+
+    def test_the_table_covers_every_adapter_that_asks_verdict(self):
+        found = set(self._population())
+        self.assertGreaterEqual(len(found), 15,
+                                f"only {len(found)} adapters ask `verdict()` "
+                                f"— the scan stopped matching them")
+        self.assertEqual(sorted(found - set(self.ENTRIES)), [],
+                         "an adapter asks `verdict()` and this case does not "
+                         "know how to reach its requests, so it is exercising "
+                         "nothing about it")
+
+    def test_none_of_them_fetches_a_path_the_rules_refuse(self):
+        import contextlib
+        import importlib
+        import io
+        bad = []
+        for name in sorted(self._population()):
+            entry, arg = self.ENTRIES[name]
+            mod = importlib.import_module(name)
+            for want, verdict in ((7, self.REFUSED), (8, self.UNKNOWN)):
+                seen = []
+                real_g = mod.robots_allowed
+                real_o = mod.urllib.request.urlopen
+
+                def spy(req, *a, **k):
+                    seen.append(req)
+                    raise AssertionError("counted, not sent")
+
+                mod.robots_allowed = lambda *a, **k: dict(verdict)
+                mod.urllib.request.urlopen = spy
+                code = None
+                try:
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        try:
+                            fn = getattr(mod, entry)
+                            fn(*arg) if isinstance(arg, tuple) else fn(arg)
+                        except SystemExit as e:
+                            code = e.code
+                        except BaseException:            # noqa: BLE001
+                            pass
+                finally:
+                    mod.robots_allowed = real_g
+                    mod.urllib.request.urlopen = real_o
+                if seen:
+                    bad.append(f"{name}: a request left on a refused path")
+                elif code != want:
+                    bad.append(f"{name}: exited {code}, not {want}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_verdict_keeps_reading_under_every_name_we_may_be_called(self):
+        """**The direction that a fix narrowing `verdict()` would break.**
+
+        Reading and deciding are two questions. `verdict()` must still be able
+        to report a refusal aimed at a name we never send — that is what
+        `ARefusedNameIsNotAlwaysANameWeSend` is for, and narrowing this
+        default turned twelve of its cases red.
+        """
+        import _robots
+        self.assertGreater(len(_robots.OUR_AGENTS), len(_robots.FETCH_TOKENS),
+                           "`verdict()` reads under the names a site may use "
+                           "about us; shrinking that set to the tokens we send "
+                           "makes the module unable to report them")
+        for token in _robots.FETCH_TOKENS:
+            self.assertIn(token, _robots.OUR_AGENTS)
 
 class OneReaderForTheScriptKey(unittest.TestCase):
     r"""#159, and the measurement pointed away from the issue's proposal.

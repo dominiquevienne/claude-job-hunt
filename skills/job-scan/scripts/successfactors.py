@@ -34,6 +34,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
 from _ua import UA
@@ -43,12 +44,35 @@ LOCALE_RE = re.compile(r"locale[=:]\s*['\"]?([a-z]{2}_[A-Z]{2})")
 DESC_RE = re.compile(r'(?is)<div[^>]*(?:class|id)="[^"]*joblayouttoken[^"]*"[^>]*>(.*)')
 
 
+def gate_path(url):
+    """Ask on the exact URL, before anything leaves. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send — so
+    the owner's decision of 2026-09-07 reached `allowed()` and never reached
+    here. **And a sweep verdict is not a path verdict:** `hiringcafe.com`
+    answers `sweep: True` above its own reason, *"this host refuses 17
+    path(s) to `*`"*.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal: `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
+
+
 def die(msg, code=2):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(code)
 
 
 def get(url):
+    gate_path(url)
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(url, headers={"User-Agent": UA}), timeout=45)
@@ -78,6 +102,7 @@ def get_with_url(url):
 
 def post(host, body):
     url = f"https://{host}{API}"
+    gate_path(url)
     data = json.dumps(body).encode()
     try:
         r = urllib.request.urlopen(urllib.request.Request(

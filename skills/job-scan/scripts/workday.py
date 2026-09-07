@@ -28,10 +28,33 @@ import urllib.request
 
 from _hiringcafe import refusal
 from _decode import decode_body
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
 from _ua import UA
 PAGE = 20  # a limit above 20 is answered with HTTP 400
+
+
+def gate_path(url):
+    """Ask on the exact URL, before anything leaves. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send — so
+    the owner's decision of 2026-09-07 reached `allowed()` and never reached
+    here. **And a sweep verdict is not a path verdict:** `hiringcafe.com`
+    answers `sweep: True` above its own reason, *"this host refuses 17
+    path(s) to `*`"*.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal: `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
 
 
 def die(msg, code=2):
@@ -44,6 +67,7 @@ def cxs(a, suffix=""):
 
 
 def post(url, body):
+    gate_path(url)
     try:
         r = urllib.request.urlopen(urllib.request.Request(
             url, data=json.dumps(body).encode(),
@@ -68,6 +92,7 @@ def a_host_of(url):
 
 
 def get(url):
+    gate_path(url)
     try:
         r = urllib.request.urlopen(urllib.request.Request(
             url, headers={"User-Agent": UA, "accept": "application/json"}),
@@ -214,6 +239,10 @@ def cmd_sites(a):
     v = robots_verdict(a.host)
     if not v["sweep"]:
         die(f"{a.host}: {v['reason']}", 8 if v["sweep"] is None else 7)
+    # **This one is NOT gated, and the exception is the point.** It reads
+    # `/robots.txt` itself to list the `Allow:` prefixes a tenant publishes;
+    # asking the guard for permission to read the rules file would be
+    # circular, and the guard reads that same file to answer anything at all.
     req = urllib.request.Request(f"https://{a.host}/robots.txt",
                                  headers={"User-Agent": UA})
     try:

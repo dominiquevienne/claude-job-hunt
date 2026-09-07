@@ -55,6 +55,7 @@ import urllib.request
 from _decode import decode_body
 from _zero import zero_note
 
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
 BASE = "https://philjobnet.gov.ph"
@@ -65,6 +66,28 @@ GRID = "ctl00$BodyContentPlaceHolder$GridView1"
 CARD = re.compile(r'<div class="jobcard".*?(?=<div class="jobcard"|\Z)', re.S)
 ADLINK = re.compile(r'href="(/job-vacancies/job/([a-z0-9-]+-(\d+)))"')
 HIDDEN = re.compile(r'<input[^>]*type="hidden"[^>]*>', re.I)
+
+
+def gate_path(url):
+    """Ask on the exact URL, before anything leaves. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send — so
+    the owner's decision of 2026-09-07 reached `allowed()` and never reached
+    here. **And a sweep verdict is not a path verdict:** `hiringcafe.com`
+    answers `sweep: True` above its own reason, *"this host refuses 17
+    path(s) to `*`"*.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal: `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
 
 
 def die(msg, code=2):
@@ -96,6 +119,7 @@ class Session:
         self.last_html = ""
 
     def get(self, url):
+        gate_path(url)
         try:
             with self.op.open(url, timeout=45) as r:
                 self.last_html = decode_body(r.read(), r.headers)[0]

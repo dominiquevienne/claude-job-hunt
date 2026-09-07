@@ -71,6 +71,7 @@ import urllib.request
 
 from _decode import decode_body
 from _microdata import items as md_items
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 from _zero import zero_note
 
@@ -85,6 +86,28 @@ EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
 # The shell, identified by what it *is* rather than by its length: a script
 # that reloads the page with a `source` parameter taken from the referrer.
 SHELL = re.compile(r"document\.referrer[\s\S]{0,400}?location\.href", re.I)
+
+
+def gate_path(url):
+    """Ask on the exact URL, before anything leaves. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send — so
+    the owner's decision of 2026-09-07 reached `allowed()` and never reached
+    here. **And a sweep verdict is not a path verdict:** `hiringcafe.com`
+    answers `sweep: True` above its own reason, *"this host refuses 17
+    path(s) to `*`"*.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal: `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", EXIT_REFUSED)
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -131,6 +154,7 @@ class Client:
             "Accept": "text/html,application/xhtml+xml",
             "Accept-Language": f"{self.language},en;q=0.8",
         })
+        gate_path(u)
         try:
             with self._opener.open(req, timeout=45) as r:
                 body = decode_body(r.read(), r.headers)[0]

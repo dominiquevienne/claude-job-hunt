@@ -38,6 +38,7 @@ import time
 import urllib.error
 import urllib.request
 
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
 from _sitemap import locs as sitemap_locs
@@ -60,7 +61,35 @@ def die(msg, code=2):
     sys.exit(code)
 
 
+def gate(url):
+    """Ask on the exact URL, at the point every request passes. #176.
+
+    **This module decided on `verdict(host)["sweep"]` and nothing else.**
+    `sweep` answers *is this host closed in one block* under `OUR_AGENTS` —
+    six names a site may use **about** us, four of which we never send. So the
+    owner's decision of 2026-09-07, that a named refusal binds only the token
+    it names, reached `allowed()` and reached this module not at all.
+
+    **And a sweep verdict is not a path verdict.** `hiringcafe.com` answers
+    `sweep: True` above its own reason — *"this host refuses 17 path(s) to
+    `*`"* — so deciding on `sweep` alone fetches paths the rules close.
+
+    The pre-flight `sweep` check stays where it is: it is a **report** about
+    the host, and this is the **decision** about the path.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal, and `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
+
+
 def fetch(url, as_json=False):
+    gate(url)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "application/json" if as_json else "text/html",
