@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: careers.flatchr.io -->
+<!-- host-forms: {tenant}.flatchr.io, careers.flatchr.io -->
+<!-- host-forms-basis: read — `flatchr.py:38` and `:39`; TWO hosts, one declared above and one not, and a single-form declaration would look complete while missing half · 2026-09-07 -->
 <!-- script: flatchr.py -->
 <!-- countries: * -->
 **No tenant directory was found. Searched 2026-09-02**, after `taleez.md` and

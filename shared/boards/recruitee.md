@@ -12,6 +12,8 @@ which is the half that matters here: this adapter reads
 Nothing in either file refuses it.
 
 <!-- hosts: jobs.recruitee.com, tellent.recruitee.com -->
+<!-- host-forms: {tenant}.recruitee.com -->
+<!-- host-forms-basis: read — `recruitee.py:145`; same reduction to the tenant label at `:136`, so the form is closed · 2026-09-07 -->
 <!-- script: recruitee.py -->
 <!-- countries: * -->
 

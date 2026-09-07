@@ -25,6 +25,8 @@ RFC 9309, rather than letting the first win.)*
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: api.digitalrecruiters.com -->
+<!-- host-forms: api.digitalrecruiters.com, {careers-site host} -->
+<!-- host-forms-basis: EXERCISED — refuses without `--domain`: *white-label, there is no tenant directory*. `digitalrecruiters.py:45` is the API literal, `:47` builds `AD_URL` on a host the card does not name · 2026-09-07 -->
 <!-- script: digitalrecruiters.py -->
 <!-- countries: * -->
 **Re-verified 2026-09-02** on the question that decides how this adapter is

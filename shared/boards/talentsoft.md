@@ -25,6 +25,8 @@ RFC 9309, rather than letting the first win.)*
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: talent-soft.com -->
+<!-- host-forms: {tenant}.talent-soft.com -->
+<!-- host-forms-basis: read — `talentsoft.py:40` · 2026-09-07 -->
 <!-- script: talentsoft.py -->
 <!-- countries: * -->
 **Re-verified 2026-09-02** on the tenant-directory question, with the search

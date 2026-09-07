@@ -6,6 +6,8 @@ should name the host that answers, and `bin/host-drift.py` lists a `www.`
 difference without raising it.)*
 
 <!-- hosts: www.pinpointhq.com -->
+<!-- host-forms: {tenant}.pinpointhq.com -->
+<!-- host-forms-basis: read — `pinpoint.py:164`; a full hostname passed as the tenant is reduced to its label by `host()` (`:155`) and the platform suffix re-appended, so the form is closed · 2026-09-07 -->
 <!-- script: pinpoint.py -->
 <!-- countries: * -->
 

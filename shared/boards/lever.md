@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: api.lever.co -->
+<!-- host-forms: api.lever.co, api.eu.lever.co -->
+<!-- host-forms-basis: read — `ats.py:194` iterates both literals in order. **US and EU are disjoint and a tenant lives on exactly one**, so declaring only the first would leave half the tenants on a host this card does not name · 2026-09-07 -->
 <!-- script: ats.py -->
 <!-- countries: * -->
 **Re-verified 2026-09-02**: an unknown tenant still answers **404 on both hosts**, US and EU.

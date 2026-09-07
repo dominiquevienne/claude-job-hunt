@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-03 -->
 
 <!-- hosts: api.p.hr.ge -->
+<!-- host-forms: api.p.hr.ge, {host} -->
+<!-- host-forms-basis: EXERCISED — `www.hr.ge` fetched 2026-09-07. `hrge.py:88` is the API literal, `:264` the brand host; the card declares only the first · 2026-09-07 -->
 <!-- script: hrge.py -->
 <!-- countries: GE -->
 **No key, no cookie, no browser.** Every brand's `robots.txt` is **109 bytes**,

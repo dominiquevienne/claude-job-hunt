@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: umantis.com -->
+<!-- host-forms: {host} -->
+<!-- host-forms-basis: read — `umantis.py:92`; `--host` is REQUIRED with no default · 2026-09-07 -->
 <!-- script: umantis.py -->
 <!-- countries: * -->
 **No tenant directory was found. Searched 2026-09-02:**

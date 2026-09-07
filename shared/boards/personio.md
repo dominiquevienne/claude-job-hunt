@@ -1,6 +1,8 @@
 # Board adapter — Personio (DACH ATS)
 
 <!-- hosts: jobs.personio.de -->
+<!-- host-forms: {tenant}.jobs.personio.de, {any hostname supplied verbatim} -->
+<!-- host-forms-basis: EXERCISED — `ottonova.jobs.personio.de` fetched 2026-09-07. And `host()` (`personio.py:99`) returns a supplied hostname UNCHANGED when it contains a dot, so **this set is not enumerable** — that second form is the honest declaration, not a hedge · 2026-09-07 -->
 <!-- script: personio.py -->
 <!-- countries: DE AT CH -->
 

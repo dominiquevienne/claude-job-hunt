@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: teamtailor.com -->
+<!-- host-forms: {tenant}.teamtailor.com -->
+<!-- host-forms-basis: read — `ats.py:556`; the guard at `:552` is taken on the same constructed host · 2026-09-07 -->
 <!-- script: ats.py -->
 <!-- countries: * -->
 **Re-verified 2026-09-02 against three tenants for the fetch, and against

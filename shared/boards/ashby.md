@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: api.ashbyhq.com (fetched by the script) · jobs.ashbyhq.com (the public board) -->
+<!-- host-forms: api.ashbyhq.com -->
+<!-- host-forms-basis: read — `ats.py:268` builds it as a literal. The `hosts:` line above names `jobs.ashbyhq.com`, which no code path fetches · 2026-09-07 -->
 <!-- script: ats.py -->
 <!-- countries: * -->
 <!-- content: out-of-domain · the API host refuses: HTTP 401 to /robots.txt, so the guard returns `allowed: False` and `ats.py --provider ashby` now exits 7 without fetching · 2026-09-07 -->

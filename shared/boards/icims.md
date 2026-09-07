@@ -3,6 +3,8 @@
 <!-- verified: 2026-09-02 -->
 
 <!-- hosts: careers.icims.com -->
+<!-- host-forms: {host} -->
+<!-- host-forms-basis: read — `icims.py:189`; `--host` is REQUIRED with no default, and `check_host()` guards that same argument, so guard and fetch agree · 2026-09-07 -->
 <!-- script: icims.py -->
 <!-- countries: * -->
 An ATS: **one employer per site, no search across employers.** It earns an
