@@ -1,12 +1,12 @@
 # Board adapter — Rozee (Pakistan)
 
-<!-- verified: 2026-09-05 -->
+<!-- verified: 2026-09-07 -->
 
 <!-- hosts: www.rozee.pk -->
 <!-- script: none -->
 <!-- countries: PK -->
 <!-- content: measured · order of magnitude 52 readable advertisements, from 2 607 `<loc>` in `jobs.xml` of which the `.php` form is 52; 4 292 URLs in the index of which 1 685 are not advertisements · 2026-09-05 -->
-<!-- witness: none found — the site serves no counter, and the sitemap's own totals count pages rather than advertisements -->
+<!-- witness: none found — the site serves no counter, and the sitemap's own totals count pages rather than advertisements. **And none is possible from 2026-09-07**: the host answers 403 to its own `robots.txt`, so nothing above can be re-read · figures 2026-09-05, closure 2026-09-07 -->
 <!-- hosts-source: declared by `www.mihnati.com/robots.txt`, read with `bin/fetch-body.py` · 2026-09-05 -->
 
 **Not built, and the figure is why.** Found because `mihnati.com` — a card of
@@ -94,9 +94,60 @@ believing they are enumerating a Saudi board.** `_robots.sitemaps_for()` returns
 that URL as written, host included, precisely so the reader can see where it
 points before asking for it.
 
-## Access
+## Access — CLOSED since some time between 2026-09-05 and 2026-09-07
 
-`www.rozee.pk` permits this project's tokens on the paths above; the guard is
-taken per path before any fetch, as always. **No adapter is written**: at an
-order of magnitude of 52 advertisements in a file whose last update is three
-months old, the board does not carry what the count first suggested.
+**On 2026-09-05 this host permitted this project's tokens, and everything above
+was measured under that permission. It no longer does.**
+
+```
+2026-09-07 16:02 UTC      www.rozee.pk   AND   rozee.pk
+  GET /robots.txt   HTTP 403
+  state = refused · kind = host-closed · rule = "/"
+  allowed("/") = False · certain = True
+```
+
+**This is a change of the HOST's state, not a correction of this card.** *Every
+figure above was taken while the door was open and is quoted with its date; a
+card corrected for an error and a card overtaken by the world read the same
+once rewritten, and only the second one asks the next reader to **re-measure**
+rather than to distrust the author.*
+
+### `host-closed` is not `disallowed`, and the difference decides what may be done
+
+**It is NOT the shape the 2026-09-07 decision covers.** *There, the rules opened
+a path and a firewall closed that same path — so the browser branch applies.*
+**Here the rules file ITSELF answers 403**, so nothing is known about what the
+host permits: `host-closed` is the prudent verdict, not the true one.
+
+**And no fingerprint exists to tell a provider wall from the operator.**
+`bin/fetch-body.py` stopped at the guard, **before the request** — so there are
+no bytes, no vendor header and no md5 to compare against the 25-byte body this
+repository holds on ten hosts. *The record is a `rules-refusal`, and
+`_provenance` carries no `status`, no `bytes` and no `vendor` for it precisely
+because there was no response.*
+
+**What would settle it is one page load in a human browser** — the module says
+so itself, and forbids the alternative: *do not rotate, do not retry under
+another agent string.* **That question belongs to the repository's owner and is
+carried to them; it is not sounded from here.**
+
+### The house is NOT closed — only this host
+
+```
+www.rozgar.pk    read · allowed = True · refuses 2 paths to `*`: /beta/, /demo/
+www.mihnati.com  read · allowed = True · refuses 17, among them /rozee-a/, /rozee-b/
+www.rozee.pk     refused, host-closed          <- this card
+```
+
+**`rozee.pk` is the only one of the three that carries an inventory, and the
+only one that is shut.** *Written down because a reader who closes the house on
+this card's evidence would be closing two hosts that answer.*
+
+### And no adapter, for two independent reasons now
+
+**Before this host closed there was already one**: at an order of magnitude of
+52 advertisements in a file whose last update is three months old, the board
+does not carry what the count first suggested. **The closure is a second and
+sufficient reason, and the first has not gone away** — *if the door reopens, the
+52 and the June `lastmod` are still what awaits, and both need re-measuring
+before anyone writes a line.*
