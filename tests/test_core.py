@@ -88,6 +88,7 @@ sys.path.insert(0, os.path.join(
     "skills", "job-scan", "scripts"))
 
 import importlib.util     # noqa: E402
+from _cards import card_script            # noqa: E402
 
 import _decode           # noqa: E402
 import _language          # noqa: E402
@@ -3088,9 +3089,9 @@ class EveryCardDeclaresItsScript(unittest.TestCase):
                 continue
             with open(path, encoding="utf-8") as fh:
                 head = fh.read(4000)
-            m = re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", head)
-            if m:
-                out.setdefault(m.group(1), []).append(name)
+            driver = card_script(head)
+            if driver:
+                out.setdefault(driver, []).append(name)
         return out
 
     def _adapters(self):
@@ -3298,15 +3299,15 @@ class DocumentedInvocationsAreReal(unittest.TestCase):
             if os.path.basename(path).lower() == "readme.md":
                 continue
             text = open(path, encoding="utf-8").read()
-            m = _re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", text)
-            if not m:
+            driver = card_script(text)
+            if not driver:
                 continue
-            sp = os.path.join(scripts, m.group(1))
+            sp = os.path.join(scripts, driver)
             if not os.path.exists(sp):
                 continue          # the declaration guard owns that failure
             subs, opts, dyn_sub, dyn_opt = self._shape(sp)
             card = os.path.basename(path)[:-3]
-            cmds = self._commands(text, m.group(1))
+            cmds = self._commands(text, driver)
             if cmds:
                 with_cmd += 1
             for sub, used, raw in cmds:
@@ -3847,9 +3848,8 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 head = fh.read(4000)
             co = re.search(r"<!--\s*countries:\s*(.+?)\s*-->", head)
-            sc = re.search(r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->", head)
             out[name[:-3]] = (co.group(1) if co else None,
-                              sc.group(1) if sc else None)
+                              card_script(head))
         return out
 
     def test_every_declared_code_is_a_real_one(self):
@@ -5126,12 +5126,11 @@ class TheExemptedApiRoutesStillIdentifyThemselves(unittest.TestCase):
                 f"{os.path.basename(path)} declares an unknown robots value "
                 f"{decl.group(1)!r}; the vocabulary is closed, because a value "
                 f"nothing reads is an absence with extra steps")
-            script = re.search(r"<!--\s*script:\s*([^\s>]+)", src)
+            driver = card_script(src)
             self.assertIsNotNone(
-                script, f"{os.path.basename(path)} claims a robots exemption "
+                driver, f"{os.path.basename(path)} claims a robots exemption "
                         f"but names no script, so nothing can check it")
-            out.append(script.group(1)[:-3] if script.group(1).endswith(".py")
-                       else script.group(1))
+            out.append(driver[:-3] if driver.endswith(".py") else driver)
         return out
 
 
@@ -5258,10 +5257,9 @@ class HostsAreDeclaredOrDeclaredInapplicable(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 src = fh.read()
             hosts = re.search(r"<!--\s*hosts:\s*(.*?)\s*-->", src)
-            script = re.search(r"<!--\s*script:\s*([^\s>]+)", src)
             values = ([h.strip() for h in hosts.group(1).split(",") if h.strip()]
                       if hosts else None)
-            out.append((name, values, script.group(1) if script else None, root))
+            out.append((name, values, card_script(src), root))
         return out
 
     def test_every_card_declares_its_hosts_or_says_why_not(self):
@@ -6098,13 +6096,17 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
             if name == "README":
                 continue
             with open(path, encoding="utf-8") as fh:
-                m = re.search(r"<!--\s*script:\s*([^\s>]+)", fh.read())
+                src = fh.read()
             # **`script: none` is a declaration that nothing ships.**
             # `tanqeeb.md` says so and was reported as an unlisted shipped
             # adapter — the guard read the presence of the field as the
             # presence of a script, which is the same error as counting a key
             # instead of a value.
-            if m and m.group(1).lower() not in ("none", "-", "—"):
+            #
+            # **This was the only one of six readers that handled `none` on
+            # purpose**, and it is now the rule rather than the exception:
+            # `card_script` carries this test everywhere. #159.
+            if card_script(src):
                 out.add(name)
         return out
 
@@ -9809,6 +9811,176 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+
+class OneReaderForTheScriptKey(unittest.TestCase):
+    r"""#159, and the measurement pointed away from the issue's proposal.
+
+    The issue asked for a `driver:` key to say what `script:` was being asked to
+    say. **Seven cards declare `script: none` and six places read the key, in
+    two different shapes:**
+
+        r"<!--\s*script:\s*([a-z0-9_]+\.py)\s*-->"    skips `none`
+        r"<!--\s*script:\s*([^\s>]+)"                  captures "none"
+
+    The first is **right by accident** — `none` has no `.py`, so the match
+    fails and the caller sees nothing, which happens to be correct. The second
+    carried the string `"none"` onward as a filename. *One reader handled it on
+    purpose; one was latent.*
+
+    **A second key would have to be kept in step with a first key that is
+    already read six ways.** So there is no new key: `card_script()` is the one
+    reader, and the test that one site did deliberately is now the rule.
+    """
+
+    def test_a_declared_absence_is_not_a_script_name(self):
+        from _cards import card_script
+        for word in ("none", "None", "NONE", "-", "—", "n/a", ""):
+            with self.subTest(word=word):
+                self.assertIsNone(card_script(f"<!-- script: {word} -->"),
+                                  f"{word!r} came back as a script name")
+
+    def test_a_real_name_survives(self):
+        """The direction that catches a reader which simply returns `None`."""
+        from _cards import card_script
+        self.assertEqual(card_script("<!-- script: jobup.py -->"), "jobup.py")
+        self.assertEqual(card_script("# t\n<!-- hosts: a.example -->\n"
+                                     "<!-- script: ats.py -->\n"), "ats.py")
+
+    def test_the_accidental_reader_would_now_fail_loudly(self):
+        """**The mutation the issue asks for, run as a case.**
+
+        The `.py` pattern was correct only because `scripts/none` does not
+        exist. Create that file and the old readers would have happily built a
+        path to it. `card_script` decides on the declared word, so a file of
+        that name changes nothing.
+        """
+        import os
+        import tempfile
+        from _cards import card_script
+        with tempfile.TemporaryDirectory() as tmp:
+            open(os.path.join(tmp, "none"), "w").close()
+            self.assertIsNone(card_script("<!-- script: none -->"),
+                              "a file named `none` on disk changed the "
+                              "reading of a declared absence — the answer "
+                              "must come from the card, not the filesystem")
+            self.assertTrue(os.path.exists(os.path.join(tmp, "none")),
+                            "the mutation did not apply")
+
+    def test_no_call_site_reads_the_key_with_its_own_regex(self):
+        """Six readers became one, and a seventh must not appear quietly.
+
+        **Read from the file, because the object here is that no other reader
+        exists** — there is nothing to exercise about code that is absent.
+
+        **What it does not see:** a call split across lines. It is written to
+        catch a seventh reader appearing the way the first six were written —
+        one line, one `re.search` — and it says so rather than implying more.
+        """
+        import re as _re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        offenders = []
+        for base, _dirs, files in os.walk(root):
+            if ".git" in base or "__pycache__" in base:
+                continue
+            for name in files:
+                if not name.endswith(".py") or name == "_cards.py":
+                    continue
+                path = os.path.join(base, name)
+                with open(path, encoding="utf-8") as fh:
+                    src = fh.read()
+                for line in src.splitlines():
+                    # **A call, not a mention.** The first version of this
+                    # matched the pattern *text* and so fired on the docstring
+                    # above, which quotes the two old readers on purpose — the
+                    # guard reddening on its own documentation, for the second
+                    # time this week.
+                    if "card_script" in line:
+                        continue
+                    if not _re.search(r"\b(?:search|findall|match)\s*\(",
+                                      line):
+                        continue
+                    if _re.search(r"script:\\s", line):
+                        offenders.append(f"{name}: {line.strip()[:60]}")
+        self.assertEqual(offenders, [], "; ".join(offenders))
+
+
+class ADeclaredPlatformSharingIsActuallyConsulted(unittest.TestCase):
+    """#170. `jobup` and `jobs-ch` share the posting UUID; step 3 compared
+    whole ledger ids and let seven advertisements through in one morning, one
+    of them the twin of a row already at status `applied`.
+
+    **The declaration existed the whole time.** Both cards carry
+    `shares-platform:`, a test checked the line was well formed, and **no code
+    ever asked it a question** — a step wired end to end that nobody walks.
+
+    *One adapter serves both brands:* `jobup.py` builds `f"{site}:{ident}"`
+    from the same `identifier.value`, so the two ledger ids differ by their
+    prefix and by nothing else.
+    """
+
+    def test_the_same_uuid_under_two_prefixes_is_one_posting(self):
+        """**The direction that must redden.**"""
+        from _cards import same_posting_ids
+        sibs = {"jobup": ["jobs-ch"], "jobs-ch": ["jobup"]}
+        got = same_posting_ids("jobs-ch:5f2c-abcd", sibs)
+        self.assertIn("jobup:5f2c-abcd", got,
+                      "the twin id was not produced, so a ledger holding it "
+                      "would not be consulted — this is #170")
+        self.assertIn("jobs-ch:5f2c-abcd", got)
+
+    def test_two_different_uuids_stay_two_postings(self):
+        """**The direction that must stay green**, or the expansion would
+        collapse unrelated advertisements into one."""
+        from _cards import same_posting_ids
+        sibs = {"jobup": ["jobs-ch"], "jobs-ch": ["jobup"]}
+        a = set(same_posting_ids("jobup:aaaa", sibs))
+        b = set(same_posting_ids("jobs-ch:bbbb", sibs))
+        self.assertEqual(a & b, set(),
+                         "two different postings were made to overlap")
+
+    def test_a_board_with_no_sibling_is_left_alone(self):
+        from _cards import same_posting_ids
+        self.assertEqual(same_posting_ids("keejob:1", {"jobup": ["jobs-ch"]}),
+                         ["keejob:1"])
+        # An id with no namespace is returned alone: guessing a prefix for it
+        # would invent an identity.
+        self.assertEqual(same_posting_ids("bare-id", {}), ["bare-id"])
+
+    def test_the_pairing_is_read_from_the_cards_not_hard_coded(self):
+        """A third brand joining is covered by its card, not by a list here.
+
+        **And the convention is asserted rather than assumed**: the card's file
+        name is also the ledger prefix its adapter writes, which is true and
+        was nowhere checked.
+        """
+        from _cards import platform_siblings
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sibs = platform_siblings(os.path.join(root, "shared", "boards"))
+        self.assertEqual(sibs.get("jobup"), ["jobs-ch"])
+        self.assertEqual(sibs.get("jobs-ch"), ["jobup"])
+
+        # The prefixes the adapter actually writes, read from its own source.
+        import jobup
+        self.assertEqual(sorted(jobup.SITES), ["jobs-ch", "jobup"],
+                         "the adapter's brand keys and the card names have "
+                         "drifted apart, so the expansion would produce ids "
+                         "the ledger never contains")
+
+    def test_step_three_tells_the_reader_to_do_it(self):
+        """A helper nothing invokes is the defect this issue is about.
+
+        `job-scan` is a skill: its consumer is a reader, so the check is a
+        documented step and this asserts the step names the function.
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "SKILL.md"),
+                  encoding="utf-8") as fh:
+            skill = fh.read()
+        self.assertIn("same_posting_ids", skill,
+                      "step 3 does not name the expansion, so the module "
+                      "would be as unconsulted as the declaration was")
+        self.assertIn("shares-platform", skill)
 
 class EveryATSProviderAsksBeforeItFetches(unittest.TestCase):
     """#175. Five provider APIs, two of them asked, and the refusing one was

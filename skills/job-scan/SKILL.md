@@ -341,6 +341,47 @@ Nothing stopped it until the ledger refused to write an id it already had,
 which is *after* it had been scored and listed as a find. The adapter had
 published the answer on the same row. #136.
 
+### Two brands, one platform: expand the id before you compare it
+
+**`jobup.ch` and `jobs.ch` are one platform under two names, and they publish
+the same posting under the same UUID.** One adapter serves both; the ledger id
+is `<brand>:<uuid>`, so the *same advertisement* reaches step 3 as
+
+```
+  jobup:5f2c…            already in the ledger, status `applied`
+  jobs-ch:5f2c…          "new"
+```
+
+**A set lookup on the whole ledger id says these are different, because as
+strings they are.** Seven advertisements passed both checks in one morning on
+a real scan, one of them the twin of a row already at `applied` — #170.
+
+**The pairing is declared, not remembered.** Both cards carry
+
+```
+  <!-- shares-platform: jobs-ch.md · the same posting UUID appears on both -->
+```
+
+and until #170 **nothing read it**: a test checked the line was well formed and
+no code ever asked it a question. *A declaration written, guarded for shape and
+never consumed is a step wired end to end that nobody walks.*
+
+**So expand each candidate id across its platform's siblings and test every
+form against the step 0 exclusion set:**
+
+```python
+from _cards import platform_siblings, same_posting_ids
+sibs = platform_siblings(f"{PLUGIN}/shared/boards")
+for form in same_posting_ids(row["ledger_id"], sibs):
+    if form in seen:                 # the step 0 exclusion set
+        discard(row, f"already held as {form}")
+```
+
+**This is a third check, not a replacement.** `duplicate_of` catches a board
+that names the other board's row; this catches a board that shares the other
+board's *identifier space* without naming anything. **They fail on different
+things**, which is why both are here.
+
 **Then, and only then, the employer's name.** It is the fallback for boards
 that do not declare syndication, and it must be matched **as a substring, in
 both directions**, never as an exact cell:
