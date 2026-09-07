@@ -443,6 +443,40 @@ check the field against something it should correlate with, as
 `oposiciones.md` does by comparing `estadoPlazoF` with the closing date it
 claims to describe.
 
+## A parser that tries once returns a confident zero
+
+**`angolaemprego.com` publishes a `JobPosting` on every advertisement, and a
+single-attempt reader finds none.**
+
+```
+json.loads(block)   ->  Invalid control character at: line 5 column 33
+```
+
+A raw newline sits inside a string value. `json.loads` refuses the whole
+block, the reader moves to the next one, finds no `JobPosting` anywhere, and
+returns nothing — **on every advertisement of the site.**
+
+> **Nothing distinguishes «&nbsp;this page has no structured data&nbsp;» from
+> «&nbsp;this page has structured data I could not parse&nbsp;».**
+
+**`json.loads(..., strict=False)` accepts control characters inside strings**,
+and trying the strict form first then the lenient one costs nothing on a
+well-formed block. *Several adapters here already do it; on this board it is
+the difference between reading every advertisement and reading none.*
+
+**This is the third shape of manufactured zero recorded on 2026-09-07**, and
+all three read like a measurement:
+
+```
+a zero from one's own request rate    22 of 23 failed after 32 requests in 90 s
+a zero from a pattern that cannot match   `\ballowed\(` against `robots_allowed(`
+a zero from a parser that gives up first  a control character in a JSON string
+```
+
+*The first two are recorded in `plausible-and-false.md` and in #176. The
+common shape is that the tool reports honestly about what it saw, and what it
+saw was made by the tool.*
+
 ## An empty result deserves a second reading. A full one deserves a different one
 
 **Everything above is about a board lying to you. This is about your own

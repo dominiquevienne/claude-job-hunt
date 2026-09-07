@@ -505,6 +505,39 @@ other's input.
 common.** Two tenants of one vendor measured on different dates corroborate;
 five country queries served from one pool do not.
 
+## A satisfied instrument is not a sufficient one
+
+**The instrument that separates an archive from a stock is the count of
+distinct dates.** A sitemap where every entry carries the same `lastmod` is
+one regeneration stamp; a sitemap with hundreds of distinct dates was written
+over time. *That reasoning is sound and it is not enough.*
+
+```
+jobartis.com        2 525 distinct dates   AND  7 130 advertisements on
+                                                2026-01-26 of 2018 — 18 %
+angolaemprego.com     355 distinct days    AND    103 on 2026-08-14 — 2.8 %
+```
+
+**The first passes the distinct-dates test and hides an import of eighteen
+per cent.** *The instrument is satisfied by exactly the thing it should have
+caught*: an import spreads across no dates at all, so it cannot lower a
+distinct-date count, and the 2 525 other days it sits among make the file look
+like a decade of steady publishing.
+
+**What the count of distinct dates guarantees:** the file was not written in
+one pass. **What it does not:** that any particular day is ordinary. Those are
+different claims, and only the first is what the count measures.
+
+**So look at the busiest day, and publish it as a share.** The count alone
+says nothing — 103 is large for a small board and small for a large one — and
+it is the ratio that separates a publication from an import.
+
+**Two boards do not make a law.** *18 % and 2.8 % are two points; no threshold
+is proposed here, and «&nbsp;beyond X&nbsp;% in one day it is an import&nbsp;»
+is not a rule this can support.* **Publish the two figures and let the reader
+judge**, exactly as `shared/` does for the path criterion that held three
+times out of three and is still written as a criterion rather than a law.
+
 ## An instrument has a domain, and a result from outside it reads like a result
 
 **The fabrication sieve compares sets of title words across boards.** Two
