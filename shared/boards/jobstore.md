@@ -6,7 +6,7 @@
 <!-- script: jobstore.py -->
 <!-- countries: * -->
 <!-- content: measured · 52 128 advertisements on the Swiss site, from the six `job-*.xml` children; the aggregator runs 26 country sites and only Switzerland was counted · 2026-09-02 -->
-<!-- witness: none found — the card records no site-served total for the Swiss site, and the one number the index offers is the sum of all twelve children, **250 000+, five times the truth**: a decoy rather than a witness · 2026-09-02 -->
+<!-- witness: none possible — no site-served total exists for the Swiss site, and the one number the index offers is the sum of all twelve children, **250 000+, five times the truth**: a decoy rather than a witness. **And the 52 128 can no longer be re-read**: `www.jobstore.com` answers HTTP 403 to a scripted request, 25 bytes, md5 `9ccabba20b9f`, fetched TWICE on 2026-09-07 with a stable fingerprint — the rules permit and the transport refuses · 2026-09-02, refusal 2026-09-07 -->
 <!-- overlap: hiringcafe.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 <!-- overlap: jobup.md · 15.5 % of Swiss ads shared · 2026-09-03 -->
 <!-- overlap: jobs-ch.md · 18.6 % of Swiss ads shared · 2026-09-03 -->
