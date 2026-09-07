@@ -643,12 +643,17 @@ and the md5 of what came back — without keeping the body. That record made a
 comparison possible that was not, and it answered on the first two hosts tried:
 
 ```
-jobstore  403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
-hays      403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
+jobstore    403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
+hays        403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
+kariera.mk  403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root AND sitemap
 ```
 
-**Two unrelated hosts, two countries, two operators, the same refusal to the
-byte.** That is a shared piece of infrastructure answering, not two editors
+**Three unrelated hosts, three countries, three operators, the same refusal to
+the byte** — `Your request was blocked.` The third was added the same day, on
+a host reached for an unrelated reason, and it arrived with the two-fetch
+control already applied: the body is stable across two reads, so the
+comparison is not being made against something that carries a per-request
+element. That is a shared piece of infrastructure answering, not two editors
 deciding — the same reasoning as *a Cloudflare refusal is not the editor's*,
 moved from the rules file to the transport, and **measurable for the first
 time** because the body's fingerprint is now recorded even though the body is
