@@ -132,6 +132,9 @@ list --place zzz_pas_un_lieu              exit 2 — before the fix, 9 486 ads
 ad --id 99999999!9                        exit 3
 ```
 
-**Two other Cuban hosts remain unmeasured** — `yellocu.com` and
-`revolico.com`, both recorded open with no declared sitemap. This card says
-nothing about them.
+**The two other Cuban hosts were measured the same evening**, and neither
+adds coverage: `yellocu.md` is a business directory that carries no employment
+word at all, and `revolico.md` answers the root with a Cloudflare challenge —
+the one thing the browser branch is forbidden to defeat.
+
+*So this is not one third of Cuba's coverage. It is Cuba's coverage.*
