@@ -23,6 +23,28 @@ within 500 characters of `def fetch`, which a correct insertion broke.
 `Request` object carries. Capture the argument `urlopen` was given. *A guard
 that reads a name reads the name.*
 
+### And a guard that reads a *window* reads the layout
+
+Two instances in two days, both of the misdescribed species, both failing on
+code that was right:
+
+* a test asserted `smartrecruiters_gate()` appears within 500 characters of
+  `def fetch` — a correct reordering of the call pushed it out;
+* a test asserted `scrub(tree)` appears within 400 characters of the test-run
+  line — **a comment added above it pushed it out.**
+
+**Nothing about the behaviour moved either time.** A window measures how the
+file is laid out, and prose is the part of a file that moves most: the second
+break was caused by documenting the very thing the guard checks.
+
+**Read the enclosing structure instead** — the function body, the loop body,
+the block that must contain the call. `src[start:end]` bounded by the `for` and
+what follows it survives any amount of comment; `src[i:i+400]` does not.
+
+*Better still, exercise it: the only reason these read source at all is that
+what they check is a shell command, and running one to prove it is called costs
+more than it is worth. Where the thing can be called, call it.*
+
 ## A predicate that never fires cannot be told from one that finds nothing
 
 **Count what the walk examined, and exercise the predicate on cases the
