@@ -8,12 +8,13 @@
 <!-- script: ofertapune.py -->
 <!-- countries: XK -->
 <!-- content: measured · 481 advertisements from one request to the homepage, 481 distinct slugs, 0 unreadable blocks; no sitemap is declared and none was composed · 2026-09-07 -->
+<!-- overlap: kosovajob.md · 148 shared advertisements, slug match confirmed on the employer 148 of 148; 481 read on ofertapune and 566 on kosovajob, both from one request and neither board states a total · 2026-09-07 -->
 <!-- witness: none found — the site states no total, and 481 is the count of rows it rendered rather than a figure it publishes · 2026-09-07 -->
 
 **Kosovo's first adapter.** Its country page named six hosts on 2026-09-04 and
 built none: two answer 403 on `/robots.txt` itself, one is a client-rendered
 application, one is general classifieds, and two were open and unmeasured.
-**This is one of the two, and it serves its whole inventory in one request.**
+**This was the first of those two to be built; `kosovajob.md` is the other, measured hours later, and it is the larger.** *«&nbsp;Serves its whole inventory in one request&nbsp;» is what this card said before that measurement — it returns 481 rows from one request, and the site states no total, so «&nbsp;whole&nbsp;» was never something this measurement could show.*
 
 ## What the other Kosovar hosts do, re-measured
 
@@ -94,6 +95,23 @@ swallowing.
 *`<th` counted `<thead` on 2026-09-04; `faqe` — Albanian for «page» — matched
 `perfaqesues`, «representative», an hour before this; and this.* **A delimiter
 has to say what follows it.**
+
+## 148 of these 481 are also on `kosovajob`
+
+**Measured the same day, once Kosovo's other open host was built.** The two
+boards share this template — `jobListCnts`, `jobListTitle date=`,
+`jobListCity` — and **the same advertisement leads both homepages**. They do
+not share a database: Sonnecto's *Call Agent (Deutsch)* is `109849` here and
+`47268` there.
+
+The slug is the only key both boards offer, and **it is an identifier here and
+not there** — 481 advertisements carry 481 distinct slugs on this side, while
+566 carry 516 on the other. So the intersection was confirmed against the
+employer: **148 of 148 agree.**
+
+**Do not add the two boards up.** 481 + 566 is not Kosovo's inventory, and
+neither figure is a claim about everything either board holds — both are what
+one request returned.
 
 ## No structured data anywhere
 

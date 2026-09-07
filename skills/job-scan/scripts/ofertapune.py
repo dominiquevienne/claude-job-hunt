@@ -254,6 +254,13 @@ def cmd_ad(a):
         # lands on `/jobs?id=<n>`, and that number is the one the listing
         # markup carries.
         "id": ident,
+        # **The same fallback as `list`, and it says which one it took.**
+        # Both routes key on the number when they have it and on the slug when
+        # they do not; without this field a slug-keyed row is indistinguishable
+        # from a number-keyed one, and the day the redirect stops the ledger
+        # would silently start a second identity for advertisements it already
+        # holds. *A defect behind a path that works never surfaces on its own.*
+        "id_source": "redirect" if ident else "slug — the redirect gave no id",
         "ledger_id": f"ofertapune:{ident or a.slug}",
         "title": clean(h1.group(1)) if h1 else None,
         "employer": clean(emp.group(1)) if emp else None,
