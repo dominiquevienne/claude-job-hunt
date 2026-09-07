@@ -508,3 +508,35 @@ refuses us*. `cadremploi.md`, the one board here that uses a browser, answers
 `shared/robots-policy.md` treats it as blocked rather than refused. **That
 distinction has not been measured for this host**, and it is the distinction
 the policy turns on.
+
+## The browser reaches what plain HTTP cannot, on paths the rules permit — 2026-09-07
+
+**Measured, not reasoned.** `/jobs` renders in a browser and carries a browse
+tree; every link under it is `/jobs/<state>`, `/jobs/<city>` or
+`/jobs/<title>` — **all permitted, and none of them goes through
+`?searchState=`.**
+
+`/jobs/boise-id`, guard taken on that exact path first, carries **real
+advertisements**:
+
+```
+11 541 jobs at 1 849 companies in Boise, ID     stated by the page
+per ad: title · employer · location · workplace type · commitment
+        posted age (6h, 1d) · requirements · sometimes a salary band
+pagination 1…10
+```
+
+**So the two refusals really are two different facts, and only one of them
+binds here.** `/*?searchState=*` is written in the rules and binds every
+client; the 403 on `/jobs` is the edge, and the browser passes it — which is
+what `shared/robots-policy.md` records as the ordinary case, **nine sites of
+eleven**, with `HTTP 403` first in its *a browser can change the result*
+column.
+
+**No anti-robot challenge was presented.** Had one appeared, the run stops and
+records it: *this plugin never asks its user to defeat one.*
+
+**What is not established:** whether the `/jobs/<…>` tree reaches the whole
+board or a curated slice of it, and whether its per-page totals are the
+board's or the filter's. The 11 541 for one city is the page's own claim and
+has no second source here.
