@@ -9806,6 +9806,218 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+
+class ACardNeverShipsATemplateMarker(unittest.TestCase):
+    """A card that declares a shipped script and announces `PLACEHOLDER` is
+    worse than an absent card, **because it counts.**
+
+    Written 2026-09-07 after a peer session read the shared working tree
+    mid-flight and reported exactly that on `main` — where it was not. *The
+    reading was wrong and the risk was not*: the branch did carry template
+    markers, and nothing but the author's attention stood between them and a
+    commit.
+
+    **Three lines, and the class is closed.** It scans every declaration
+    comment in every card, not just `content:`, because the marker that ships
+    is the one nobody thought to check.
+    """
+
+    MARKERS = ("PLACEHOLDER", "TODO", "FIXME", "XXX", "<state>", "TBD")
+
+    def test_no_declaration_line_carries_one(self):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cards = sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                              "*.md")))
+        self.assertGreaterEqual(
+            len(cards), 20,
+            "the card corpus has vanished — this case would pass on nothing")
+        bad, seen = [], 0
+        for path in cards:
+            if os.path.basename(path) == "README.md":
+                continue    # the spec: it documents the shapes, markers and all
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for line in re.findall(r"<!--\s*[a-z-]+:.*?-->", src, re.S):
+                seen += 1
+                for marker in self.MARKERS:
+                    if marker in line:
+                        bad.append(f"{os.path.basename(path)}: {marker} in "
+                                   f"{line[:60]}")
+        self.assertGreaterEqual(seen, 40,
+                                f"only {seen} declaration lines found — the "
+                                f"scan stopped matching them")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_it_would_catch_one(self):
+        """The negative control, on a card built for the purpose.
+
+        Without it this is a scan that has never seen a positive, and a scan
+        that has never fired is a scan nobody knows the shape of.
+        """
+        import tempfile
+        line = "<!-- content: PLACEHOLDER_CONTENT -->"
+        self.assertTrue(any(m in line for m in self.MARKERS),
+                        "the marker list no longer matches the shape it was "
+                        "written for")
+        clean = "<!-- content: measured · 52 of 160 · 2026-09-07 -->"
+        self.assertFalse(any(m in clean for m in self.MARKERS),
+                         "a well-formed line is being reported as a template")
+        del tempfile
+
+class ARulesRefusalIsRecordedAndIsNotATransportRecord(unittest.TestCase):
+    """The refusal that sends no packet had no trace at all.
+
+    `record()` covers the transport: a request went out and an edge answered
+    403. This covers the other one, and **they are not the same measurement** —
+    that is what the exit codes separate:
+
+        exit 2   the transport refused a path the rules PERMIT
+        exit 7   the RULES refuse this path — no request was made
+
+    `emploi.batiactu.com` closed on exit 7 and left nothing behind, and under
+    the guard as it stood every blocked host closed exactly that way. *The
+    measurement that shuts a board without a packet leaving was the one nobody
+    could re-read.*
+
+    **It shipped inside `fbec807` and untested.** That commit's message
+    describes the dropped-query defect and says nothing about this, so the
+    feature would have reached the release notes invisible and unexercised.
+    This class is the exercise; the omission is recorded in the commit that
+    adds it.
+    """
+
+    def _record(self, tmp, body, path="/private/x"):
+        import _provenance
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+        class _R:
+            def read(self_inner):
+                return body.encode("utf-8")
+
+            def geturl(self_inner):
+                return "https://rules.example/robots.txt"
+
+            def getcode(self_inner):
+                return 200
+
+            @property
+            def headers(self_inner):
+                return {"Content-Type": "text/plain"}
+
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *a):
+                return False
+
+        _robots.urllib.request.urlopen = lambda r, timeout=None, **k: _R()
+        try:
+            g = _robots.allowed("rules.example", path)
+            rec = _provenance.rules_refusal(
+                os.path.join(tmp, "not-fetched.html"),
+                decision=g, rules=_robots.rules_fingerprint("rules.example"),
+                token="Claude-User",
+                url="https://rules.example" + path)
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+        return g, rec
+
+    BODY = ("User-agent: *\n"
+            "Allow: /\n"
+            "Disallow: /private/\n")
+
+    def test_it_carries_what_decided_and_no_invented_response(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            g, rec = self._record(tmp, self.BODY)
+        self.assertIs(g["allowed"], False, "the fixture must refuse, or this "
+                                           "class is exercising nothing")
+        self.assertEqual(rec["kind"], "rules-refusal")
+        self.assertEqual(rec["rule"], "/private/")
+        self.assertEqual(rec["rule_kind"], "disallow")
+        self.assertEqual(rec["group"], "*")
+        self.assertEqual(rec["token"], "Claude-User")
+        self.assertEqual(rec["path"], "/private/x")
+        self.assertEqual(rec["url"], "https://rules.example/private/x")
+
+        # **No response fields, because there was no response.** Absent, not
+        # `null`: a reader scanning for a status must find nothing rather than
+        # a value that reads like an answer the host never gave.
+        for absent in ("status", "bytes", "md5", "vendor"):
+            self.assertNotIn(absent, rec,
+                             f"{absent!r} describes a response, and this "
+                             f"refusal never made a request")
+
+        # The file that decided, fingerprinted.
+        self.assertEqual(rec["rules"]["bytes"], len(self.BODY))
+        self.assertEqual(rec["rules"]["status"], 200)
+        self.assertTrue(rec["rules"]["md5"])
+        self.assertTrue(rec["rules"]["read_at"])
+
+    def test_the_sidecar_is_on_disk_and_no_body_is_written(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._record(tmp, self.BODY)
+            names = sorted(os.listdir(tmp))
+        self.assertEqual(names, ["not-fetched.html.provenance.json"],
+                         "a rules refusal must leave its record and no body: "
+                         "there is no body, and an empty file would look "
+                         "like a fetch that returned nothing")
+
+    def test_refusals_finds_it_although_it_has_no_status(self):
+        """**The half that would have gone quiet.** `refusals()` filtered on a
+        non-2xx status; a rules refusal has none, so the listing would have
+        kept reporting zero for the class that closes boards."""
+        import tempfile
+        from _provenance import refusals
+        with tempfile.TemporaryDirectory() as tmp:
+            self._record(tmp, self.BODY)
+            found = refusals(tmp)
+        self.assertEqual(len(found), 1, "the rules refusal is invisible to "
+                                        "`refusals()`")
+        self.assertEqual(found[0][1]["kind"], "rules-refusal")
+
+    def test_a_permitted_path_records_nothing_here(self):
+        """The other direction: this must not fire on a path that is open, or
+        it is a writer rather than a guard."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            g, rec = self._record(tmp, self.BODY, path="/public/x")
+        self.assertIs(g["allowed"], True)
+        self.assertIsNone(rec["rule"],
+                          "a permitted path has no rule that bit; a record "
+                          "naming one would be fiction")
+
+    def test_rules_fingerprint_sends_nothing_of_its_own(self):
+        """It reads the memo `_fetch` left and never asks again.
+
+        A guard in this suite counts every request that leaves after a
+        refusal, and it caught this function fetching. On a cold cache it must
+        say so rather than reach for the file.
+        """
+        import _robots
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        real = _robots.urllib.request.urlopen
+
+        def boom(*_a, **_k):
+            raise AssertionError("rules_fingerprint made a request")
+
+        _robots.urllib.request.urlopen = boom
+        try:
+            got = _robots.rules_fingerprint("never-read.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+        self.assertEqual(got["state"], "not-read-in-this-process")
+        self.assertIsNone(got.get("md5"))
+
 class ANamedRefusalBindsOnlyItsOwnToken(unittest.TestCase):
     """**Decided by the owner on 2026-09-07, against the pilot session's
     advice, and recorded in `CLAUDE.md` §2 quater.**
