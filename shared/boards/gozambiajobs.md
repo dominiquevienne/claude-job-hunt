@@ -112,6 +112,77 @@ board's own and not one the adapter invented.
 The word was removed and both are spared, checked in both directions. They are
 counted and reported; `--jobs-only` drops them and is never the default.
 
+## The Zambian overlap, attempted 2026-09-07 — a FLOOR, not a count
+
+**Three boards, three list invocations, no advertisement opened.**
+
+```
+gozambiajobs  357        jobsearchzm  160        jobzambia  45
+raw sum 562              intersection: see below
+```
+
+*The counts moved again while this was written: 357 here against 358 an hour
+earlier and 368 two days before; `jobsearchzm` reads 160 against the 153 on
+its own card. **Three boards that move, so this is dated to the hour.***
+
+### There is no shared identifier, and the only available key is title-derived
+
+Each adapter emits an id in **its own** namespace — `gozambiajobs:<numeric>`,
+`jobsearchzm:<slug>`, `jobzambia:<slug>` — and no board declares another's
+row. Without opening 562 pages there is no employer field either. **What
+remains is the slug, and a slug is made from the title.**
+
+**So this is not an identifier comparison and it is not fuzzy matching
+either**: it is exact equality of the full slug, after stripping the numeric
+prefix `gozambiajobs` puts in front of its own.
+
+### The key's limit is measured inside one board, which settles it
+
+```
+slugs carried by MORE THAN ONE gozambiajobs advertisement : 28
+    accountant ×5 · multiple-positions ×4 · security-guards ×3 · chef ×3
+```
+
+**A title-derived key is demonstrably not an advertisement identifier — not
+even within a single board.** *The weight of a match is the improbability of
+the string, exactly as a shared 25-byte refusal body says less than a shared
+1 836-byte rules file.*
+
+### What the key finds, weighed one by one
+
+```
+jobsearchzm ∩ gozambiajobs   5 matches
+    senior-infrastructure-engineer-improving-access-activity      56 ch · 1:1
+    senior-programs-officer-entrepreneurship-and-graduate-…       67 ch · 1:1
+    finance-and-administration-assistant-front-office-manager     57 ch · 1:1
+    environmental-social-specialist                               31 ch · 1:1
+    legal-company-secretary                                       23 ch · 1:1  <- short
+jobzambia   ∩ gozambiajobs   1 match
+    multiple-positions                                            18 ch · 1:4  <- AMBIGUOUS
+jobsearchzm ∩ jobzambia      0
+triple                        0
+```
+
+**`multiple-positions` matches one `jobzambia` advertisement against four
+distinct `gozambiajobs` ones. That is not an intersection, it is a generic
+label**, and it is the negative control this measurement needed.
+
+### The number, with the direction of its error
+
+> **At least four advertisements are shared between `jobsearchzm` and
+> `gozambiajobs`. Nothing is established between `jobzambia` and either.**
+
+**Four is a FLOOR.** The key can only see an overlap when two boards slugify
+the *same title text*; the same vacancy posted under differently-worded
+titles is invisible to it. **So the true overlap is ≥ 4 and its ceiling is
+unknown**, and `562 − 4 = 558` is an **upper** bound on the union, never the
+union.
+
+*What this does establish: the three are not each other's mirrors. What it
+does not: any rate, any percentage, any statement that the overlap is small.*
+**Measuring it properly costs 562 page fetches for the employer field, and
+that price is the finding too.**
+
 ## What this adds that `jobsearchzm` does not — unmeasured, and named as such
 
 **Zambia already has `jobsearchzm.md` (153 advertisements) and
