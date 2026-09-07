@@ -9337,8 +9337,27 @@ class PaceArithmeticIsTestedAndNotOnlyItsWiring(unittest.TestCase):
                         "pacer waited the whole interval again")
         self.assertGreater(slept, 0.0)
 
-    def test_the_first_request_waits_for_nothing(self):
-        self.assertEqual(self._pace(10.0, 0.0).wait(), 0.0)
+    def test_the_first_request_waits_for_nothing_on_an_unclaimed_host(self):
+        """**Rewritten by #179, and the qualifier is the whole change.**
+
+        This case asserted that *the first request waits for nothing*, full
+        stop. That was true while pacing lived in one process's memory, and it
+        is now false on purpose: **the first request of a new process waits if
+        another process has just hit the same host.** That is what #179 is
+        for — thirty-two requests reached one host in ninety seconds, nine
+        from one tool and twenty-three from another, each impeccable alone.
+
+        *The property that survives is narrower and still worth holding*: with
+        nothing claimed, nothing is waited for. **A pacer that slept on an
+        unclaimed host would be a delay, not a spacing.**
+        """
+        import _pace
+        p = self._pace(10.0, 0.0)
+        try:
+            os.remove(_pace._slot_path(p.host))
+        except OSError:
+            pass
+        self.assertEqual(p.wait(), 0.0)
 
     def test_unreadable_rules_invent_no_rate_either(self):
         """**The branch the other cases never reach.** When the guard raises,
