@@ -1843,10 +1843,18 @@ class EveryNetworkReaderAsksOrSaysWhyNot(unittest.TestCase):
                              "with a 1-byte 403. The docstring's human "
                              "reading was of www.arbeitsagentur.de, a "
                              "different host. HELD: same class",
-        "hiringcafe.py": "refuses from the record by design (#123): a guard "
-                         "call is itself a request, and collection from this "
-                         "host is suspended",
     }
+
+    # **`hiringcafe.py` was here and is not any more, 2026-09-07.** Its reason
+    # read *"refuses from the record by design: a guard call is itself a
+    # request, and collection from this host is suspended"* — sound while
+    # nothing fetched. **But `ad` never stopped fetching**: it opened
+    # `/job/<slug>` and asked nobody. *An exemption written for one command
+    # outlived the command it described, and the card kept declaring it
+    # because it was right about the other one.* `get()` takes the guard now,
+    # and `search` still refuses from the record without opening a socket —
+    # which is asserted separately, because that is the property the exemption
+    # was really protecting.
 
     def _network_readers(self):
         import glob

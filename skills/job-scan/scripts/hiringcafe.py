@@ -33,6 +33,7 @@ import urllib.request
 
 import _hiringcafe
 from _hiringcafe import refusal
+from _robots import allowed as robots_allowed
 from _locations import drop_report, matches_city
 
 BASE = "https://hiringcafe.com/"
@@ -87,6 +88,23 @@ class Throttled(Exception):
 # backed-off attempts added nothing. **So the retry is kept, because one day's
 # refusal does not erase the other day's success, and it is bounded, because
 # no measurement pays for the extra eighty seconds.**
+def gate(url):
+    """**The guard, on the exact path, before anything leaves.**
+
+    This module carried a `robots:` exemption on its card — declared while
+    collection was suspended, so nothing fetched and no guard was needed. But
+    `ad` never stopped fetching: it opens `/job/<slug>` and asked nobody.
+    *An exemption written for one command outlived the command it described*,
+    and the card kept declaring it because the card was right about `search`.
+    """
+    parts = urllib.parse.urlsplit(url)
+    a = robots_allowed(parts.netloc, parts.path or "/")
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
+
+
 def get(url, attempts=3, first_wait=20.0):
     """Fetch with a timed backoff.
 
@@ -96,6 +114,7 @@ def get(url, attempts=3, first_wait=20.0):
     pages of 6. **So the remedy is waiting, not retrying quickly** — the waits
     are 20 s, 40 s, 80 s rather than the usual second or two.
     """
+    gate(url)
     wait = first_wait
     for attempt in range(1, attempts + 1):
         try:

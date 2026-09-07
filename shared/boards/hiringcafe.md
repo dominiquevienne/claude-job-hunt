@@ -4,7 +4,7 @@
 
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
-<!-- robots: suspended -->
+<!-- witness: none found — the per-facet totals (11 541 for Boise, 4 646 for data scientist) are the page's own claim, and no second source states them; the sitemaps that would corroborate answer 403 · 2026-09-07 -->
 <!-- countries: * -->
 <!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 
@@ -540,3 +540,73 @@ records it: *this plugin never asks its user to defeat one.*
 board or a curated slice of it, and whether its per-page totals are the
 board's or the filter's. The 11 541 for one city is the page's own claim and
 has no second source here.
+
+## The browser route — what to open, and where it stops
+
+**This is a browser route on a board that also has a script.** `hiringcafe.py`
+keeps its two commands and both are still correct: `search` refuses because
+`/*?searchState=*` is refused **in the rules**, and `ad` is licit but answers
+403 to a script. Nothing below changes either. *The rule binds every client;
+the 403 does not.*
+
+### The tree, all of it permitted
+
+```
+/jobs                     browse index — counts, no advertisements
+/jobs/<state>             e.g. /jobs/california
+/jobs/<city>              e.g. /jobs/boise-id
+/jobs/<title>             e.g. /jobs/data-scientist
+/job/<slug>               one advertisement
+```
+
+Guard taken on the exact path before each navigation. **None of these goes
+through `?searchState=`**, which is the one route that stays closed.
+
+### What a facet page carries, measured 2026-09-07
+
+`/jobs/boise-id` — *11 541 jobs at 1 849 companies*, and `/jobs/data-scientist`
+— *4 646 jobs at 1 687 companies*. Per advertisement: title, employer with a
+one-line description and ticker where listed, location, workplace type,
+commitment, posted age (`6h`, `1d`, `3mo`), a requirements summary, the tools
+named, and a salary band on roughly a third.
+
+**`/jobs` itself carries no advertisement.** It is an index of counts, and
+counting its links would count facets — the defect `_records.py` exists for,
+where 6 932 URLs held no advertisement at all.
+
+### Where it stops, and this is a hard limit
+
+**Twenty advertisements per page, pagination shown as 1…10 — so at most 200 per
+facet, against a stated 4 646.** *That is a render bound, not a content bound*,
+and the difference has already manufactured a figure in this repository. **Do
+not report a facet's stated total as what this route retrieved.**
+
+**And the pagination is buttons, not links.** Its target cannot be read before
+clicking, so **nothing here establishes that page 2 avoids `?searchState=`** —
+and a click is a request like any other. *This route is documented for page one
+until somebody establishes where page two goes.* The measurement that would
+settle it: click once, read the resulting URL, and stop if it carries
+`searchState`.
+
+Reach is widened by facets rather than by depth: state, city, title, and
+`title jobs in <city>` cross-links are all separate pages of up to 200.
+
+### Pace, and the two stops
+
+One page load at a time, at reading speed, in the user's own Chrome — the same
+terms as `cadremploi.md`.
+
+**A challenge stops the run.** A captcha, an interstitial or a *prove you are
+human* page is reported and the run ends there. **This plugin never asks its
+user to defeat one**, and that is not a preference: it is the line that
+separates this route from what it would otherwise become.
+
+**A 403 in the browser stops it too.** It would mean the edge refuses a person,
+which is a different fact from refusing a script, and it is recorded rather
+than retried.
+
+### Why there is no script for this route
+
+The same reason as `cadremploi.md`: every content path answers 403 to a
+scripted request. Adding `hiringcafe.py --browser` would be a name for
+something that cannot work. **The script keeps the refusal it already has.**
