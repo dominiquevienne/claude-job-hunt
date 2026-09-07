@@ -4,7 +4,7 @@
 
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
-<!-- robots: refused at transport on every permitted path — `/`, `/jobs`, `/job`, `/recently-posted-jobs` all answer HTTP 403 with the same 25-byte body `9ccabba20b9f`, while the rules file permits them; and `/*?searchState=*` is refused in writing to `User-agent: *` · 2026-09-07 -->
+<!-- robots: suspended -->
 <!-- countries: * -->
 <!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 
@@ -481,6 +481,12 @@ The verdict it carries is dated 2026-09-03 and says so. **Re-measuring means
 lifting the suspension first, which is a decision rather than a code path.**
 
 ## What is measurable here today, and what is not
+
+**`robots: suspended` is still the right word, and it now means something
+narrower.** Collection is suspended pending an arbitration, not because the
+rules are unread: they are read, they permit four paths, and the edge refuses
+all four. *That key's vocabulary is closed on purpose — a value nothing reads
+is an absence with extra steps — so the measurement lives here.*
 
 **Re-read 2026-09-07**: `robots.txt` is byte-identical to the 2026-09-05
 reading — 1 158 bytes, md5 `529adb109a6b`. So the rules have not moved.
