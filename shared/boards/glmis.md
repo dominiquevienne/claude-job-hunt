@@ -4,9 +4,9 @@
 
 <!-- hosts: www.glmis.gov.gh, glmis.gov.gh -->
 <!-- hosts-source: NOT composed, and the provenance is weaker than usual — see below · 2026-09-07 -->
-<!-- script: none -->
+<!-- script: glmis.py -->
 <!-- countries: GH -->
-<!-- content: measured · 10 advertisements rendered server-side on `/Jobs/Joblistings`, ids 5407–5424; no pagination marker found, so 10 is one request's yield and NOT the board's size · 2026-09-07 -->
+<!-- content: measured · 12 distinct advertisements over 7 requests (unfiltered plus the six declared job types), ids 2312–5424; two queries returned exactly 10, so a per-query cap is not ruled out and no total is derivable · 2026-09-07 -->
 <!-- witness: none found — the page states no total, and the id range is evidence of more rather than a count of them · 2026-09-07 -->
 
 **Ghana had a country page and zero adapters.** `melr-gh.md`, its only card,
@@ -72,6 +72,66 @@ Posted 3 days ago · Apply · Job Description
 which is consistent with `countries` listing recruitment jurisdictions rather
 than workplaces. *A card counting this as a Ghanaian workplace would be wrong
 in a way the field is designed to prevent.*
+
+## Shipped 2026-09-07 — `glmis.py`, and no total is stated
+
+**There is no pagination, and that was established before any count.**
+
+```
+markup searched for   pagination · pager · page-link · PageNumber
+                      pageIndex · LoadMore · data-page · next
+found                 none, on any of them
+the listing is        <form method="get" id="jobFilterForm"
+                            action="/Jobs/Joblistings">
+```
+
+**So reach comes from the form's own filters, and the module composes
+nothing** — neither a page number nor an advertisement id. *The ids run
+2312…5424; enumerating them would be composition of exactly the kind that
+naming this host from its acronym would have been.*
+
+### The sweep, and its per-facet yield
+
+```
+(no filter)        10 returned · 10 new
+Full-time (1)      10 returned ·  1 new
+Part-time (2)       0 returned ·  0 new     <- a real empty facet
+Contract (3)        1 returned ·  0 new
+Temporary (4)       1 returned ·  1 new
+Internship (5)      0 returned ·  0 new
+Volunteer (6)       0 returned ·  0 new
+                   ------------------------
+12 distinct over 7 requests · ids 2312 … 5424 · 0 unreadable
+```
+
+**Two queries returned exactly ten — the same number the unfiltered view
+returns — so a per-query cap of ten is not ruled out**, and more may sit
+behind those two. **This is a union, not a total, and none is stated.**
+
+*A filtered query surfaced id 2312, which the unfiltered listing does not
+show: the id space is far denser than what is published.*
+
+### The filter values are declared, and an unknown one is refused
+
+Every value comes from the form's own `<select>`: six job types, three
+workplace types, sixteen regions, twenty-two subsectors. **A value the module
+does not know is refused rather than sent** — submitting an unknown id would
+be composing a facet.
+
+*`regionStateId` and `subSectorId` are accepted as single filters and
+deliberately not swept: each extra dimension multiplies requests on a host
+that publishes about a dozen advertisements.*
+
+### What is parsed, and what is deliberately not split
+
+`id`, `title`, `subsector`, and `job_type` / `workplace` **matched against the
+declared vocabularies rather than inferred**. The employer and the place sit
+side by side in the card with no markup between them, so **they travel whole
+as `card_text` rather than being split at a guessed boundary.**
+
+**`--strict` prints every card the parser could not read**, one per line. On
+2026-09-07 that number is nought of twelve — *and it is printed rather than
+assumed, because a narrow extractor does not return less, it returns false.*
 
 ## What an adapter would face
 
