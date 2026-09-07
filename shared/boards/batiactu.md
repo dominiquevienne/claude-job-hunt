@@ -3,6 +3,8 @@
 <!-- hosts: emploi.batiactu.com -->
 <!-- script: batiactu.py -->
 <!-- countries: FR -->
+<!-- content: indeterminate · the host refuses its own `robots.txt` with HTTP 403, so the guard returns `allowed=False` and the adapter emits nothing; whether that refusal is the operator's or a provider's wall is NOT established · 2026-09-07 -->
+<!-- witness: none possible — nothing can be fetched while the rules file itself answers 403 -->
 
 **9 984 offres** of French construction and public works — the largest sector
 this repository had no coverage for at all. `jobology.md` reaches transport,
@@ -197,6 +199,49 @@ Applications go through the site, which needs an account
 create accounts and does not fill credential fields.** Hand the user the ad URL
 with their documents.
 
+## This adapter emits nothing today, and it was exercised to find out
+
+**Measured 2026-09-07.** *Not read from the code — run, with the invocation this
+card's own options describe.*
+
+```
+$ batiactu.py search --region alsace
+exit 7 · 0 lines on stdout
+ERROR: https://emploi.batiactu.com/offre-emploi-BTP/localisation/alsace:
+       HTTP 403 — the host refuses to serve its rules file
+```
+
+**Both hosts answer the same way&nbsp;:** `emploi.batiactu.com` and
+`www.batiactu.com` return `403` on `/robots.txt`, so `allowed=False`, and the
+adapter dies before a single request for content leaves.
+
+**France keeps its other boards&nbsp;; this one costs one country's worth of
+nothing.** *The card is kept rather than deleted&nbsp;: a board that closed is a
+fact, and deleting it would make the next reader rediscover it.*
+
+### Whose refusal is it? Not established, and the adapter says so first
+
+**The adapter's own error carries the doubt&nbsp;:** *"since #120 this plugin
+declares `Claude-User`, so the refusal may be a wall reacting to that rather
+than a policy the operator wrote."*
+
+> **It refuses and doubts the cause in the same sentence, which is what a
+> verdict about someone else's infrastructure should do.**
+
+**And the doubt is not resolvable from what this repository holds.** *A `403`
+on `/robots.txt` produces a **rules-refusal** record — token, rule, `rule_kind`,
+and a `rules` block that is correctly null because there was no file to
+fingerprint. **It carries no `server` header.*** Vendor headers are recorded on
+**transport** refusals only.
+
+**So the one field that would separate "a provider's default closes us" from
+"this operator closed us" is absent exactly where the question is sharpest.**
+*Nine hosts were shown on 2026-09-07 to share a byte-identical 25-byte
+Cloudflare refusal; whether `batiactu` is a tenth cannot be checked, because
+its refusal is at the rules layer and that layer records no vendor.*
+
+**Nothing was fetched to find out.** *Reaching past the guard to read a header
+is the one thing that must not be done to answer "may we fetch".*
 ## Pace, and the note on access
 
 One request per page of 20, plus one per ad read — `--no-details` skips the
