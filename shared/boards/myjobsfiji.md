@@ -109,8 +109,28 @@ ad 51290 sawmill-worker             salary_fjd_min 6.10 · unit HOUR
 ad 999999 pas-une-annonce           exit 3
 ```
 
-**Fiji's three other named hosts are not covered here.** `ejobsfiji.com` is
-open with 14 advertisements; `sptojobslink.com` serves the 25-byte
-`Your request was blocked.` body — **in HTTP 200**, which is the one place a
-status-code check cannot see it; `fiji.gov.fj` is indeterminate and was not
-probed.
+**Fiji's three other named hosts are not covered here**, and one sentence
+about them had to be measured before it could stay.
+
+`ejobsfiji.com` is open with 14 advertisements. `fiji.gov.fj` is indeterminate
+and was not probed.
+
+**`sptojobslink.com`: this card first said it serves the blocked body «in HTTP
+200, which is the one place a status-code check cannot see it».** *That was
+read off Fiji's country page and repeated, not measured.* Measured here:
+
+```
+GET /                 403   25 bytes   md5 9ccabba20b9f4ec7d18bd6644579e5bf
+GET /wp-sitemap.xml   403   25 bytes   (the sitemap its own rules declare)
+GET /sitemap.xml      403   25 bytes   (twice — identical)
+```
+
+**403 at the root, not 200 anywhere**, so the striking half of the sentence
+was the false half. What is true is duller and more useful: **this is the
+fourth host on that exact fingerprint**, after `jobstore`, `hays` and
+`kariera.mk` — a vendor default, not this operator's words.
+
+*And the verdict is taken at the root:* its rules declare `wp-sitemap.xml`
+rather than `/sitemap.xml`, so a refusal measured only on the conventional
+path would not have said whether the board was closed. Both are refused, and
+so is `/`.

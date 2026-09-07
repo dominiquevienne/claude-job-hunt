@@ -646,12 +646,17 @@ comparison possible that was not, and it answered on the first two hosts tried:
 jobstore    403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
 hays        403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
 kariera.mk  403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root AND sitemap
+sptojobslink 403 25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, root, /sitemap.xml AND
+                                                                the wp-sitemap.xml its rules declare
 ```
 
-**Three unrelated hosts, three countries, three operators, the same refusal to
-the byte** — `Your request was blocked.` The third was added the same day, on
-a host reached for an unrelated reason, and it arrived with the two-fetch
-control already applied: the body is stable across two reads, so the
+**Four unrelated hosts, four countries, four operators, the same refusal to
+the byte** — `Your request was blocked.` The third and fourth were added the same day, both
+with the two-fetch control already applied. **The fourth also corrected a
+claim that had been repeated rather than measured**: a country page recorded
+it as serving this body under HTTP *200*, which would have made it the one
+member of the family a status check cannot see. It answers 403, like the other
+three: the body is stable across two reads, so the
 comparison is not being made against something that carries a per-request
 element. That is a shared piece of infrastructure answering, not two editors
 deciding — the same reasoning as *a Cloudflare refusal is not the editor's*,
