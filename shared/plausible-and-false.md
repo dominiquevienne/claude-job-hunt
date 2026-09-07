@@ -589,6 +589,54 @@ a count that division dresses as one. **The reader who sees 91 % cannot
 recover 22; the reader who sees `20 : 2` cannot lose it.** Small denominators
 are where this bites, and small denominators are where measurements start.
 
+## Sharing a markup is not sharing a meaning
+
+**Two hosts can serve the same template and give the same field two different
+kinds of value.** Measured 2026-09-07 on Kosovo's two boards, which serve
+identical class names — `jobListCnts`, `jobListCntsInner`, `jobListTitle
+date=`, `jobListCity`, `jobListExpires` — and lead their homepages with the
+same advertisement:
+
+```
+field              kosovajob.com            ofertapune.net
+jobListExpires     a COUNTDOWN, `15 ditë`   a DATE, `21.09.2026`
+ids=               a POSITION counter,      the ADVERTISEMENT's id,
+                   "5 0 100", "6 0 101"     "109849"
+```
+
+A reader carried across from the first board to the second returns `None` on
+every row — **or worse, parses the `15` as a day.** And reading `ids=` as an
+identifier mints a ledger key that changes every time the page is reordered:
+*a key derived from a position is not a key.*
+
+**The danger is specific to recognition.** An unfamiliar page is read field by
+field because there is no alternative; a familiar template is the one case
+where a reader believes it already knows what a name means, and skips exactly
+the check that would catch this. **The saving is the defect.**
+
+### And the same evidence does not establish a shared operator
+
+The two boards above also share **148 advertisements**, which makes a common
+database the obvious reading. It is wrong: *the same Sonnecto vacancy is
+`109849` on one and `47268` on the other*, and one loads its logos from a CDN
+that appears nowhere in the other's markup. **A shared template names a
+supplier; identifiers and asset origins name an operator.**
+
+*So `shares-platform:` was written on the card and then withdrawn rather than
+reworded* — in this repository that key asserts the same posting ids on both
+brands, and the measurement says the opposite. **A key filled with the wrong
+thing reads exactly like a key filled with the right thing.**
+
+**What to do, and it costs a minute.** On a host whose markup resembles an
+adapter you already have:
+
+1. **Read the VALUE of every reused field**, not its class name.
+2. **Compare an identifier for one item present on both**, and the origin its
+   assets are served from, before claiming any relation between the two.
+3. If the two boards share items, say what was matched on and **whether that
+   key is an identifier on each side separately** — `recepsioniste` is worn by
+   six different vacancies on one of these two and by one on the other.
+
 ## The rules
 
 **1. Make the confusion impossible in the name, not in the documentation.** A

@@ -72,9 +72,12 @@ the check is present because five of six listed URLs bounced to the root on
 
 ## What is not measured
 
-**The other two Angolan boards.** `www.jobartis.com` (38 547 archive, 202
-since 1 August) and `angoemprego.com` (1 451 archive, 874 since 1 August) are
-named on the country page, guarded open, and unbuilt. *And the overlap
+**The other two Angolan boards, both built since.** `www.jobartis.com`
+(40 882 archive, 216 since 1 August — see `jobartis.md`) and
+`angoemprego.com` (1 451 archive, 874 since 1 August) were named on the
+country page, guarded open, and unbuilt when this card was written.
+
+**Corrected 2026-09-07: 38 547 -> 40 882.** *That figure counted the `/emprego-<slug>` form alone; the board serves 2 294 more under a bare `/<slug>`, and they are advertisements — see `jobartis.md`, which was built from the same sitemap.* **The flow moved too, 202 -> 216, and that is not a correction**: both were right on their days, two days apart. *One number changed because it had been measured wrongly and the other because the board grew, and nothing in either number says which.* *And the overlap
 between the three was measured at 0.0 %, 0.1 % and 0.0 % on matched windows —
 the first conclusive negative of that instrument, because Angola is the first
 country where both of its preconditions held: one language throughout, and

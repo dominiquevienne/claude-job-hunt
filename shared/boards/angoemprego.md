@@ -11,9 +11,11 @@
 <!-- witness: none found — the site states no total; the country page's 1 451 of 2026-09-04 is an earlier reading of the same files, not a second source · 2026-09-07 -->
 
 **The smallest archive of the three Angolan boards and the largest flow.**
-`jobartis.com` holds 38 547 advertisements and published 202 since 1 August;
+`jobartis.com` holds 40 882 advertisements and published 216 since 1 August;
 this one holds 1 434 and published 924. **That inversion is why it was built
-second and the largest was not built at all.**
+second and the largest was built last.**
+
+**Corrected 2026-09-07: 38 547 -> 40 882.** *That figure counted the `/emprego-<slug>` form alone; the board serves 2 294 more under a bare `/<slug>`, and they are advertisements — see `jobartis.md`, which was built from the same sitemap.* **The flow moved too, 202 -> 216, and that is not a correction**: both were right on their days, two days apart. *One number changed because it had been measured wrongly and the other because the board grew, and nothing in either number says which.*
 
 ## The advertisements are in their own files, and the files are named
 
@@ -89,7 +91,7 @@ than one absent.**
 
 ## What remains
 
-**`jobartis.com` is unbuilt and its 38 547 are an archive**, not a market.
+**`jobartis.com` was built on 2026-09-07 and its 40 882 are an archive**, not a market — 18.5 % of the file carries one 2018 date. *This card said «unbuilt» and «38 547»; both are superseded.*
 And the country page records that it serves 435 bytes to the guard and 14 050
 bytes of HTML to a browser identity — **that has not been re-verified here,
 and checking it would mean presenting a second identity after a first
