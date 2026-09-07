@@ -78,6 +78,12 @@ def get(url, timeout=45):
     """Fetch, and **decode with what the response declares.**"""
     parts = urllib.parse.urlsplit(url)
     a = robots_allowed(parts.netloc, full_path(parts))
+    # **An unknown is not a refusal, and `not None` is `True` for both.**
+    # Exit 7 says *the rules refuse this path*; exit 8 says *the rules could
+    # not be read*. Flattening them tells a sweep an editor closed a host when
+    # nobody knows.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", EXIT_REFUSED)
     req = urllib.request.Request(url, headers={

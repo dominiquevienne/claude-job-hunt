@@ -9808,6 +9808,134 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+class AnUnknownIsNotARefusalAtTheCallSite(unittest.TestCase):
+    """`not None` is `True`, and 41 adapters exited 7 on an unreadable file.
+
+    The three codes exist to separate three facts, and `bin/fetch-body.py`
+    separates them:
+
+        exit 2   the transport refused a path the rules PERMIT
+        exit 7   the RULES refuse this path
+        exit 8   INDETERMINATE — the rules could not be read
+
+    **The adapters flattened 8 into 7.** `computrabajo.py`, exercised with the
+    invocation its own card documents, printed *robots.txt could not be read*
+    and exited **7** — the message says unknown, the exit code says refused,
+    and they are in the same output.
+
+    **The miscount is not hypothetical: 24 hosts carry the empty-`202`
+    signature that produces exactly this state** — eighteen `computrabajo`,
+    six `tanqeeb`. If each exits 7, a sweep collecting codes records 24
+    editorial refusals that do not exist, and files `computrabajo` beside
+    `api.adzuna.com`, which closes by decision. **Two species, one label, on
+    the channel machines read.**
+
+    **`vieclam24h.py` was worse and in the other direction.** It tested
+    `is False` and so **fetched** on `None`: an unreadable rules file treated
+    as a permission, which is #118 decided inside the module and reintroduced
+    at the call site. *There the request goes out and nothing records that
+    nobody knew.*
+
+    **Exercised, not read** — each adapter is called with a stubbed verdict and
+    its exit code is taken from the `SystemExit` it raises. A source scan for
+    `is None` would pass on `bnecl.py` as this migration first left it: the
+    branch was inserted **above** the assignment it reads, which compiles
+    perfectly and raises `UnboundLocalError`.
+    """
+
+    UNREADABLE = {"allowed": None, "reason": "robots.txt could not be read",
+                  "rule": None, "kind": "unknown", "group": None,
+                  "certain": False, "state": "unreachable",
+                  "crawl_delay": None, "sitemaps": [], "ignored": [],
+                  "content_signal": None, "group_conflict": False,
+                  "host": "h.example", "requested_host": "h.example",
+                  "path": "/x"}
+    REFUSED = dict(UNREADABLE, allowed=False, reason="refuses this path",
+                   rule="/", kind="disallow", group="*", certain=True,
+                   state="read")
+
+    # **Named, with its reason, rather than counted.** `tenant_offer` walks a
+    # redirect chain and reports what it reached; it tests `is not True`, so it
+    # stops on both states, and its note carries the module's own words — which
+    # differ between them. It sets no exit code because it is not a command
+    # that fails, and an exemption without a reason is how a list rots.
+    NOT_A_COMMAND = ("tenant_offer",)
+
+    def _codes(self, mod, entry, shape, filler):
+        import contextlib
+        import io
+        out = {}
+        for label, verdict in (("unknown", self.UNREADABLE),
+                               ("refused", self.REFUSED)):
+            real = mod.robots_allowed
+            mod.robots_allowed = lambda *a, **k: dict(verdict)
+            try:
+                with contextlib.redirect_stderr(io.StringIO()):
+                    fn = getattr(mod, entry)
+                    rest = ["exercise"] * filler
+                    if shape == "url":
+                        fn("https://h.example/x", *rest)
+                    elif shape == "path":
+                        fn("/x", *rest)
+                    else:
+                        fn(page=1)
+                out[label] = None
+            except SystemExit as e:
+                out[label] = e.code
+            except BaseException as e:                       # noqa: BLE001
+                out[label] = type(e).__name__
+            finally:
+                mod.robots_allowed = real
+        return out
+
+    def test_an_unreadable_file_exits_8_and_a_refusal_exits_7(self):
+        import importlib
+        # Reuse the entry discovery rather than keep a second copy of it: two
+        # populations drifting apart is how one of them stops covering.
+        reachable, unreachable = AGuardOnAPathIsNotAGuardOnTheURL()._population()
+        self.assertEqual(unreachable, [], "unreachable adapters are that "
+                                          "class's business, and it is green")
+        self.assertGreaterEqual(len(reachable), 45)
+
+        bad = []
+        for name, (entry, shape, filler) in sorted(reachable.items()):
+            if name in self.NOT_A_COMMAND:
+                continue
+            mod = importlib.import_module(name)
+            got = self._codes(mod, entry, shape, filler)
+            if got["unknown"] != 8 or got["refused"] != 7:
+                bad.append(f"{name}: unknown->{got['unknown']} "
+                           f"refused->{got['refused']}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_the_exempt_one_still_stops_on_both(self):
+        """**The exemption is checked, not granted.** It may skip the exit
+        code; it may not skip stopping."""
+        import contextlib
+        import importlib
+        import io
+        mod = importlib.import_module("tenant_offer")
+        for verdict in (self.UNREADABLE, self.REFUSED):
+            with self.subTest(state=verdict["state"]):
+                real_g = mod.robots_allowed
+                real_o = mod.urllib.request.urlopen
+                mod.robots_allowed = lambda *a, **k: dict(verdict)
+
+                def must_not_send(*_a, **_k):
+                    raise AssertionError("a HEAD left after the guard said no")
+
+                mod.urllib.request.urlopen = must_not_send
+                try:
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        try:
+                            mod.chain("https://h.example/x")
+                        except (SystemExit, AttributeError, TypeError):
+                            pass
+                finally:
+                    mod.robots_allowed = real_g
+                    mod.urllib.request.urlopen = real_o
+
 class ACardNeverShipsATemplateMarker(unittest.TestCase):
     """A card that declares a shipped script and announces `PLACEHOLDER` is
     worse than an absent card, **because it counts.**
@@ -9994,6 +10122,66 @@ class ARulesRefusalIsRecordedAndIsNotATransportRecord(unittest.TestCase):
         self.assertIsNone(rec["rule"],
                           "a permitted path has no rule that bit; a record "
                           "naming one would be fiction")
+
+    def test_a_refused_rules_file_still_names_who_answered(self):
+        """**Where nothing else can be measured, this is the whole evidence.**
+
+        A 403 on `/robots.txt` leaves no file to fingerprint: `bytes` and
+        `md5` are correctly `None`. Nine hosts share a 25-byte Cloudflare
+        refusal byte for byte, and whether a tenth belongs to them was
+        unanswerable while the record dropped the headers — *the response
+        carried them; the record threw them away.*
+
+        Measured the day this shipped: `emploi.batiactu.com` answers
+        `server: Apache`, so it is **not** the tenth. The field settled the
+        question on its first use.
+
+        And the status travels: 403, 429 and 451 are three different facts and
+        the record read `status: null` for all of them.
+        """
+        import _robots
+        import urllib.error
+
+        class _Refuses:
+            headers = {"server": "Apache", "set-cookie": "a=b",
+                       "cf-ray": "deadbeef-ZRH"}
+            code = 403
+            reason = "Forbidden"
+
+            def read(self):
+                return b""
+
+        def refuse(*_a, **_k):
+            raise urllib.error.HTTPError(
+                "https://refuses.example/robots.txt", 403, "Forbidden",
+                _Refuses.headers, None)
+
+        real = _robots.urllib.request.urlopen
+        slept = _robots.time.sleep
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = refuse
+        _robots.time.sleep = lambda *_a, **_k: None
+        try:
+            _robots.allowed("refuses.example", "/x")
+            got = _robots.rules_fingerprint("refuses.example")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots.time.sleep = slept
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+        self.assertEqual(got["state"], "refused")
+        self.assertEqual(got["status"], 403,
+                         "403, 429 and 451 are three facts and this read "
+                         "`null` for all three")
+        self.assertIsNone(got["md5"], "there is no body to fingerprint, and "
+                                      "inventing one would be worse")
+        self.assertEqual(got["vendor"].get("server"), "Apache")
+        self.assertEqual(got["vendor"].get("cf-ray"), "deadbeef-ZRH")
+        self.assertNotIn("set-cookie", got["vendor"],
+                         "the allowlist let through a header that has no "
+                         "business in a record we keep, compare and publish")
 
     def test_rules_fingerprint_sends_nothing_of_its_own(self):
         """It reads the memo `_fetch` left and never asks again.

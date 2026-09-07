@@ -96,6 +96,12 @@ def _robots_gate(path):
     operator writes their own file is the day a transcription would be wrong.
     """
     a = robots_allowed("lmis.gov.jm", path)
+    # **An unknown is not a refusal, and `not None` is `True` for both.**
+    # Exit 7 says *the rules refuse this path*; exit 8 says *the rules could
+    # not be read*. Flattening them tells a sweep an editor closed a host when
+    # nobody knows.
+    if a["allowed"] is None:
+        die(f"{BASE}{path}: {a['reason']}", EXIT_UNKNOWN)
     if not a["allowed"]:
         die(f"{BASE}{path}: {a['reason']}", EXIT_REFUSED)
     return a

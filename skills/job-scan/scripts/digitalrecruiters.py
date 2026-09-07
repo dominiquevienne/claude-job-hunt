@@ -85,6 +85,15 @@ def _robots_gate(url, tag, exit_code=7):
     if not parts.netloc:
         return None
     a = robots_allowed(parts.netloc, full_path(parts))
+    # **An unknown is not a refusal, and `not None` is `True` for both.**
+    # Exit 7 says *the rules refuse this path*; exit 8 says *the rules could
+    # not be read*. Flattening them tells a sweep that an editor closed a host
+    # when nobody knows — and 24 hosts carry the empty-`202` signature that
+    # produces exactly this state, so the miscount would be 24 refusals that
+    # do not exist. **Dying in both cases stays right; what the dying process
+    # declares does not.**
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", exit_code)
     if a.get("requested_host") and a["host"] != a["requested_host"]:

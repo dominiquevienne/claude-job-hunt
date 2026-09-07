@@ -73,6 +73,11 @@ from _ua import UA
 
 JOBS_SITEMAP = "https://ss.ge/sitemap-jobs.xml"
 EXIT_BROKEN, EXIT_REFUSED, EXIT_PARTIAL = 2, 7, 6
+# **Used since the module was written and never defined.** The line
+# that reads it sits behind `sweep is None`, which no test reached, so
+# it raised `NameError` instead of exiting 8 — a defect behind a branch
+# nothing took. Found by exercising the branch, 2026-09-07.
+EXIT_UNKNOWN = 8
 
 AD_RE = re.compile(r"https://jobs\.ss\.ge/(?P<lang>[a-z]{2})/details/"
                    r"(?P<slug>[^\"<&]*?)-(?P<id>\d+)")
@@ -118,6 +123,9 @@ def get(url, timeout=90):
     parts = urllib.parse.urlsplit(url)
     if parts.netloc and parts.netloc != "jobs.ss.ge":
         verd = robots_allowed(parts.netloc, full_path(parts))
+        # An unknown is not a refusal: `not None` is `True` for both.
+        if verd["allowed"] is None:
+            die(f"{url}: {verd['reason']}", EXIT_UNKNOWN)
         if not verd["allowed"]:
             die(f"{url}: {verd['reason']} **The jobs sitemap advertises files "
                 f"under this path anyway** — a conflict between two of the "

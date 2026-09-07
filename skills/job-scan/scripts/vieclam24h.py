@@ -111,6 +111,13 @@ def get(path):
     parts = urllib.parse.urlsplit(url)
     if parts.netloc:
         a = robots_allowed(parts.netloc, full_path(parts))
+        # **This tested `is False` and FETCHED on `None`.** An unreadable
+        # rules file is not a permission — that is #118, decided inside the
+        # module and reintroduced here at the call site, where it is the
+        # dangerous direction: the request goes out and nothing records that
+        # nobody knew.
+        if a["allowed"] is None:
+            die(f"{url}: {a['reason']}", 8)
         if a["allowed"] is False:
             die(f"{url}: {a['reason']}", 7)
     req = urllib.request.Request(url, headers={

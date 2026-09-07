@@ -153,6 +153,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _provenance import vendor_headers
+
 import _tls
 import _ua
 
@@ -367,6 +369,13 @@ def rules_fingerprint(host):
         "bytes": got.get("bytes"),
         "md5": (hashlib.md5(body.encode("utf-8")).hexdigest()
                 if isinstance(body, str) else None),
+        # **Who answered, and on a rules refusal it is all there is.** When
+        # `/robots.txt` itself returns 403 there is no file to fingerprint:
+        # `bytes` and `md5` are correctly `None`, and without this the record
+        # cannot say whether the host is the tenth carrying a vendor's default
+        # or an editor who decided. The response carried these headers; the
+        # record used to drop them.
+        "vendor": got.get("vendor") or {},
         "read_at": got.get("read_at"),
     }
 
@@ -383,6 +392,26 @@ def _read_at():
 
 
 def _fetch_once(url, host, timeout):
+    """Wrapper: **who answered, stamped once for ten exits.**
+
+    A rules refusal is where the question *vendor or editor?* is sharpest and
+    where nothing else can be measured — a 403 on `/robots.txt` leaves no file
+    to fingerprint, so `bytes` and `md5` are correctly `None` and the headers
+    are the only evidence there is. **The response carried them; the record
+    threw them away.**
+
+    `_read_once` returns from ten places. Stamping each is a fix per call site
+    and the eleventh ships bare, so the headers are captured where a response
+    exists — two points — and applied where every return passes.
+    """
+    seen = {}
+    got = _read_once(url, host, timeout, seen)
+    if seen.get("vendor"):
+        got.setdefault("vendor", seen["vendor"])
+    return got
+
+
+def _read_once(url, host, timeout, seen):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         # **The guard has to reach the file before it can read it.** Two hosts
@@ -405,6 +434,7 @@ def _fetch_once(url, host, timeout):
             # happened when a direct read and this message were set side by
             # side and the difference was published as the site changing size.
             # Issue #130.
+            seen["vendor"] = vendor_headers(r.headers)
             raw = r.read()
             nbytes = len(raw)
             body = raw.decode("utf-8", "replace")
@@ -492,6 +522,11 @@ def _fetch_once(url, host, timeout):
             return {"state": "read", "body": body, "final": final,
                     "status": status, "bytes": nbytes}
     except urllib.error.HTTPError as e:
+        # **At the top of the handler, not in front of one of its exits.** A
+        # 403 on `/robots.txt` leaves nothing else to measure — no body to
+        # fingerprint, no rules to read — so the headers are the whole
+        # evidence, and they must survive whichever branch this takes.
+        seen["vendor"] = vendor_headers(e.headers)
         if e.code in (404, 410):
             return {"state": "absent", "status": e.code,
                     "why": f"HTTP {e.code} — no robots.txt published. **This "
@@ -505,6 +540,11 @@ def _fetch_once(url, host, timeout):
             # whose reason reads *absence of a file is not a refusal* — true
             # of a 404 and false here. Issue #118.
             return {"state": "refused",
+                    # **The code, because 403, 429 and 451 are three facts.**
+                    # A refusal record read `status: null` beside
+                    # `state: refused`, so nothing said whether the host was
+                    # blocking us, rate-limiting us, or citing a legal demand.
+                    "status": e.code,
                     "why": f"HTTP {e.code} — the host refuses to serve its "
                            f"rules file" + _storage_note(e)}
         # **A 4xx is an answer; a 5xx may be an incident.** The retry is not

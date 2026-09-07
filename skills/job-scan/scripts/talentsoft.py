@@ -117,6 +117,10 @@ def check_robots(url):
     """
     parts = urllib.parse.urlsplit(url)
     a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal: `not None` is `True` for both, and 7 would
+    # report an editor's decision where nobody could read the rules.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", 7)
     if a.get("requested_host") and a["host"] != a["requested_host"]:
