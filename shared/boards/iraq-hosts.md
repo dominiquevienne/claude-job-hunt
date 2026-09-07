@@ -5,6 +5,7 @@
 <!-- hosts: careeriraq.com, works-jobsiq.com, vacanciesiniraq.com, www.t9iq.com, jobs.krd, taeen.iq, ngosjobs-bids.com, www.employiq.net, masteriraq.com, iqjscout.com, eshjob.com, www.iraqhire.com, www.kurdistanjob.com, pharmajobs.skpi.krd, www.evtc-krg.org, lvtd.gov.iq, kar.molsa.gov.krd, www.hawa.jobs, atgroup.iq -->
 <!-- script: none -->
 <!-- countries: IQ -->
+<!-- hosts-source: all 19 named by `jobsiniraq.github.io`, a directory of job platforms in Iraq that names 103 distinct hosts; **no hostname was composed**, and the hosts DISCARDED here are recorded with the rest so this source's error rate is computable — see #162 · 2026-09-07 -->
 <!-- content: measured · 19 hosts guarded and 10 fetched; the only server-rendered board declares 1 advertisement through 7 of its own facet counts; 0 `JobPosting` across the 10 · 2026-09-07 -->
 <!-- witness: `works-jobsiq.com` states its own total through every facet of its listing — title, country, governorate, city, experience, contract type, industry, all reading `1` · 2026-09-07 -->
 
