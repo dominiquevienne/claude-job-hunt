@@ -5,6 +5,7 @@
 <!-- hosts: hiringcafe.com -->
 <!-- script: hiringcafe.py -->
 <!-- witness: none found — the per-facet totals (11 541 for Boise, 4 646 for data scientist) are the page's own claim, and no second source states them; the sitemaps that would corroborate answer 403 · 2026-09-07 -->
+<!-- robots-note: the rules refuse `/*?page=*` and `/*&page=*` by hand, so the browser route is one page of 20 per facet; neither `ClaudeBot` nor `Claude-User` is named in the file — only meta-externalagent and Applebot-Extended · 2026-09-07 -->
 <!-- countries: * -->
 <!-- overlap: jobstore.md · about 25 % of Swiss ads shared · 2026-09-03 -->
 
@@ -523,7 +524,8 @@ advertisements**:
 11 541 jobs at 1 849 companies in Boise, ID     stated by the page
 per ad: title · employer · location · workplace type · commitment
         posted age (6h, 1d) · requirements · sometimes a salary band
-pagination 1…10
+pagination 1…10          the widget only — nine of those ten are refused
+                         in the rules, see *Where it stops* below
 ```
 
 **So the two refusals really are two different facts, and only one of them
@@ -574,22 +576,71 @@ named, and a salary band on roughly a third.
 counting its links would count facets — the defect `_records.py` exists for,
 where 6 932 URLs held no advertisement at all.
 
-### Where it stops, and this is a hard limit
+### Where it stops — the rules stop it, and my earlier figure was ten times too large
 
-**Twenty advertisements per page, pagination shown as 1…10 — so at most 200 per
-facet, against a stated 4 646.** *That is a render bound, not a content bound*,
-and the difference has already manufactured a figure in this repository. **Do
-not report a facet's stated total as what this route retrieved.**
+**Twenty advertisements on page one, and page two is refused in the rules.**
+Measured 2026-09-07 on `/jobs/boise-id`:
 
-**And the pagination is buttons, not links.** Its target cannot be read before
-clicking, so **nothing here establishes that page 2 avoids `?searchState=`** —
-and a click is a request like any other. *This route is documented for page one
-until somebody establishes where page two goes.* The measurement that would
-settle it: click once, read the resulting URL, and stop if it carries
-`searchState`.
+```
+page one                   20 advertisements, counted
+the rules, verbatim        Disallow: /*?page=*
+                           Disallow: /*&page=*
+```
 
-Reach is widened by facets rather than by depth: state, city, title, and
-`title jobs in <city>` cross-links are all separate pages of up to 200.
+**So the licit reach of one facet is 20, not 200.** *I published 200 in this
+file this morning — twenty per page times a pagination widget reading 1…10 —
+and that is a render bound read as a permitted bound, which is the confusion
+this very card warns about one level down, where `_records.py` counts facets
+as advertisements.* **The widget shows ten pages; nine of them are refused.**
+
+**And it is refused in the RULES, which is the refusal that binds a browser
+too.** Not the edge 403 that a browser passes — a `Disallow` written by hand,
+in both the `?` and the `&` form, in a file carrying its author's own comments
+(*"Non-canonical duplicates"*, *"Private/admin areas"*). **On this one host the
+two refusals have two different authors: the editor decided about pagination,
+the vendor decided about us.**
+
+**Correcting a second claim of mine in the same paragraph: the pagination is
+links, not buttons.** Its targets read straight off the page, and reading them
+is what found the rule that forbids them:
+
+```
+label "1"   ->  /jobs/boise-id
+label "2"   ->  /jobs/boise-id?page=1      <- zero-indexed
+label "10"  ->  /jobs/boise-id?page=9
+```
+
+*The label is one ahead of the parameter.* Anyone building `?page=2` for the
+second page would have skipped one and reported the third — a trap that is now
+moot here, because none of those URLs may be fetched, but the shape is general.
+
+**I wrote that the target could not be read before clicking, and it is printed
+in the markup.** The claim came from a screenshot: rendered as chips, the
+controls look like buttons. *An appearance was reported as a property.*
+
+### Reach comes from the facet graph, and every page declares it
+
+Depth is closed; breadth is not, and the site publishes its own index of it.
+`/jobs/boise-id` carries four tabs — *Top jobs in Boise*, *More Boise job
+titles*, *Nearby cities*, *Jobs across Idaho* — and the first alone holds
+**43 links**, every one of the form `/jobs/<title>-<city>`:
+
+```
+/jobs/warehouse-boise-id   /jobs/rn-boise-id   /jobs/data-engineer-boise-id …
+```
+
+**All permitted, all page-one-of-20, and each one names its own neighbours.**
+So the route is a graph walk over `/jobs/<facet>`, twenty advertisements a
+node, never a descent into pages. *That was already the preferred shape; it is
+now the only permitted one.*
+
+**What twenty per node does not give you is a total.** `/jobs/boise-id` claims
+11 541 jobs and this route can see twenty of them; facets overlap by
+construction — a nurse job in Boise sits under `nurse-boise-id`, `rn-boise-id`,
+`healthcare-boise-id` and `boise-id` at once. **Count distinct ad ids, never
+sum the nodes.** Two of the twenty on page one share a title and an employer
+(*Prep Cook — Broadway Chili's*, six hours and seven hours old) with different
+requirement summaries, so even within one node identity needs the id.
 
 ### Who refuses the script, and it is not the editor
 
