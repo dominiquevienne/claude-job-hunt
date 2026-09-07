@@ -102,6 +102,19 @@ has gone stale before.
 | job.am (Armenia) | `jobam.md` | **Shipped.** **A rolling thirty-day window, not a size** — 1 185 advertisements on 2026-09-04, and the window lost a whole day between two readings two hours apart. Rank 1 refuses us. `employmentType` is Armenian free text and is renamed rather than passed on |
 | *your board here* | — | See *Writing an adapter* below |
 
+**Three rows above rest on a HiringCafe measurement that can no longer be
+taken.** *`job-room` («&nbsp;the Swiss SMEs and foundations HiringCafe
+misses&nbsp;»), `umantis` («&nbsp;HiringCafe does not index at all&nbsp;») and
+`Pinpoint` («&nbsp;5th most common ATS in a 360-card HiringCafe sample&nbsp;»)
+were measured 2026-09-03; since 2026-09-05 the licit route answers zero,
+re-measured 2026-09-07 and unchanged (`hiringcafe.md`).*
+
+**The figures stand and so do the three adapters. What is gone is the ability to
+re-take them** — and for the two that are zeros, that matters more than for the
+sample: **a zero of indexation is not a property of the board it is about, it is
+the state of an index on a date.** *A stale percentage invites a challenge; a
+stale zero is simply believed.*
+
 ## When a shipped adapter stops working
 
 Boards redesign, and an adapter that was verified against the live site stops

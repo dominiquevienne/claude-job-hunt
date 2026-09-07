@@ -64,6 +64,12 @@ share **one key**, and the symptom is that an ad silently replaces another.
 Three of ten iCIMS ads in a HiringCafe sample sat on an employer's own domain,
 so an adapter that knows only `*.icims.com` misses roughly a third of them.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 **And the platform host is read, never built.** A branded page names it in its
 own markup, and `icims.py resolve --url <branded URL>` reads it out:
 

@@ -29,6 +29,12 @@ Fondation des 4 Marronniers, the International Skating Union. Present: Manor,
 Hospice général, Siemens. That is the Romandie SME, foundation and staffing
 layer, and it is exactly the gap `hiringcafe.md` documents.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 ## No browser, and a strict API
 
 ```
@@ -223,6 +229,17 @@ HiringCafe indexes *zero* across 771 Swiss ads (`hiringcafe.md`). So job-room
 earns its place twice: for the SMEs and foundations, and as the only supplier of
 `apply.refline.ch` and `recruitingapp-*.umantis.com` URLs, which
 `shared/ats-open-check.md` turns into open/closed answers.
+
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
+> **And a zero of indexation is not a property of this board: it is the state of
+> an index on a date.** *A stale percentage invites a challenge; a stale zero is
+> simply believed — it carries no visible margin, and nothing in its shape says
+> it was measured rather than observed.*
 
 The same sweep surfaced two more oracle hosts: **28 `ohws.prospective.ch`** ads
 across 15 employers and **24 `live.solique.ch`** ads across 6 tenants. Both are

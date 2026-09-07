@@ -31,6 +31,17 @@ it.** Zero of 771 Swiss ads came from umantis (`hiringcafe.md`), so the SMEs,
 communes, clinics and institutes that run on it are invisible to every sweep
 that ships today.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
+> **And a zero of indexation is not a property of this board: it is the state of
+> an index on a date.** *A stale percentage invites a challenge; a stale zero is
+> simply believed — it carries no visible margin, and nothing in its shape says
+> it was measured rather than observed.*
+
 Read by `skills/job-scan/scripts/umantis.py`. Public HTML, **no key, no cookie,
 no browser** — except on the tenants noted in trap 3.
 

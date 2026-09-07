@@ -138,6 +138,17 @@ indexes Solique ads — 24 across the documented tenants in a 2 800-ad sweep
 (`job-room.md`) — and it is where the three sitemap-less tenants came from.
 HiringCafe indexes no Solique ad at all.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
+> **And a zero of indexation is not a property of this board: it is the state of
+> an index on a date.** *A stale percentage invites a challenge; a stale zero is
+> simply believed — it carries no visible margin, and nothing in its shape says
+> it was measured rather than observed.*
+
 A tenant name is the path segment of any of its ad URLs, and it is
 case-insensitive (`ktzh` and `KTZH` both answer).
 

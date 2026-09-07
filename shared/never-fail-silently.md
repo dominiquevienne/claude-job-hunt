@@ -77,6 +77,14 @@ like data:
 | LinkedIn, a results page | `(25)` in `<title>` | the unread-messages badge — the same `(25)` appeared on 2 259 results and on 2 |
 | **LinkedIn, a search with no matches** | the *no matching jobs* banner **and seven live ads**, inside the results container | browsing-history suggestions on a query whose true answer is zero — **the second board to do this**, and the container scoping that separates them on a normal page does not separate them here |
 
+**The two HiringCafe rows above can no longer be re-run.** *Taken 2026-09-03;
+since 2026-09-05 every content path on that host answers 403 to a scripted
+request — re-measured 2026-09-07 and unchanged
+(`shared/boards/hiringcafe.md`).* **Anyone reproducing them today gets a
+refusal, not the documented behaviour** — and a refusal read as the failure
+mode these rows describe would be the trap this file exists to name, sprung by
+this file.
+
 ### What follows from it
 
 **1. Never convert an empty result into a statement about the market.** *"No ads

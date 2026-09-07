@@ -12,6 +12,12 @@ home market it is **the largest ATS family there is**: 108 of 223 Swiss
 HiringCafe cards, 48 %, ahead of Workday. It had no adapter for fifteen country
 pages.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 **Everything below was measured against the live site on 2026-08-31.**
 
 ## Configuration

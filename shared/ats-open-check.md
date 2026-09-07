@@ -79,6 +79,12 @@ one employer at a time, and reaches the Swiss SMEs, communes and institutes that
 HiringCafe does not index at all. This section stays as the open/closed oracle;
 that file is for listing a board.
 
+> **That zero was measured on HiringCafe on 2026-09-03 and cannot be taken
+> again**: since 2026-09-05 the licit route answers zero, re-measured 2026-09-07
+> and unchanged (`shared/boards/hiringcafe.md`). **A zero of indexation is not a
+> property of the board it is about — it is the state of an index on a date.**
+> *A stale percentage invites a challenge; a stale zero is simply believed.*
+
 ### Jobvite — **the signal is gone as of 2026-09-02. Do not use this section.**
 
 Re-tested 2026-09-02 with a plain client. **Every request to
@@ -321,6 +327,12 @@ vacancy viewer with no id, which is why it renders "no longer available".
 
 **Where the URLs come from:** job-room carries them. HiringCafe indexes no
 Refline ad at all (`shared/boards/hiringcafe.md`), so job-room is the route.
+
+> **That zero was measured on HiringCafe on 2026-09-03 and cannot be taken
+> again**: since 2026-09-05 the licit route answers zero, re-measured 2026-09-07
+> and unchanged (`shared/boards/hiringcafe.md`). **A zero of indexation is not a
+> property of the board it is about — it is the state of an index on a date.**
+> *A stale percentage invites a challenge; a stale zero is simply believed.*
 
 ### Prospective — the only host that gives a status code AND an expiry date
 

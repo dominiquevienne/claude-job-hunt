@@ -71,6 +71,12 @@ tenants --country NL` reads HiringCafe's cards and extracts the Recruitee hosts
 from their apply URLs — which is how the six tenants measured for this adapter
 were found, 22 in two pages of Dutch cards.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 **It is a hint, not a census.** HiringCafe indexes a fraction of Recruitee, so
 an employer missing from that list is not an employer without a board. Ask the
 user for the careers URL when they have one.

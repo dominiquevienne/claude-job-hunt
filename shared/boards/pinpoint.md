@@ -13,6 +13,12 @@ One employer at a time, by tenant. Pinpoint is a UK-origin ATS, and **the fifth
 most common provider in a 360-card HiringCafe sample** — 24 ads, ahead of ADP,
 Taleo, UltiPro and Avature. Each tenant publishes its board as public JSON.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 **Measured on 684 postings across five tenants on 2026-09-01.**
 
 ## Access

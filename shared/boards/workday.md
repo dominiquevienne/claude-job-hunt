@@ -22,6 +22,12 @@ workday.py sites --host swisscom.wd103.myworkdayjobs.com
 So the `site` coordinate does not have to be guessed: **the tenant names it**.
 `resolve` found two of Swisscom's three through HiringCafe.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 **Read the list before sweeping it.** Novartis names
 `Internal_Careers_for_Acquired_Entities` alongside its public site — a tenant
 lists the sites it has opened to crawlers, not the sites a jobseeker should be

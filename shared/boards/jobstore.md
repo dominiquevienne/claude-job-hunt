@@ -109,6 +109,12 @@ HiringCafe, 18.6% with jobs.ch, 15.5% with jobup**. Of 1 056 Swiss employers
 those three surface, **82.5% do not appear on Jobstore** — and the reverse
 holds, which is why it is worth having.
 
+> **The HiringCafe measurement behind this is no longer reproducible.** Taken
+> 2026-09-03; since 2026-09-05 the licit route answers zero — re-measured
+> 2026-09-07 and unchanged, so a settled posture and not an intermittence
+> (`shared/boards/hiringcafe.md`). *The figure stands and so does the
+> conclusion; what is gone is the ability to take it again.*
+
 ## Configuration
 
 ```yaml
