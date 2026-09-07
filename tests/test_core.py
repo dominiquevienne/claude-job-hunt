@@ -9402,10 +9402,20 @@ class ABenchFileSaysWhenItIsFinished(unittest.TestCase):
         src = open(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "bin", "mutation-bench.py"), encoding="utf-8").read()
-        i = src.index("code, err = run(a.test.split(), tree, a.timeout)")
-        self.assertIn("scrub(tree)", src[i:i + 400],
+        # **The loop body, not a window of characters.** This read the 400
+        # characters after the test-run line and broke on a correct insertion
+        # — the third species in `writing-a-guard.md`, produced by me in the
+        # commit that documents it. What matters is that the clean-up happens
+        # inside the per-mutation loop, so the loop is what is read.
+        start = src.index("for tag, path, before, after in muts:")
+        end = src.index("out.write(json.dumps({\"done\"", start)
+        body = src[start:end]
+        self.assertIn("scrub(tree)", body,
                       "the tree is not cleaned between mutations, so what one "
                       "run writes is present for the next")
+        self.assertIn("__pycache__", body,
+                      "bytecode survives a fast rewrite: a restored source ran "
+                      "as its mutated self twice in one day")
         self.assertIn('"clean"', src,
                       "restoring tracked files leaves untracked artefacts, "
                       "which is how two files named `None` survived a restore")
@@ -9623,6 +9633,82 @@ class NoGroupAtAllIsNotTheStarGroup(unittest.TestCase):
             "User-agent: *\nDisallow:\n", agents=("claude-user",))
         self.assertEqual(token, "*")
         self.assertEqual((dis, allow), ([""], []))
+
+
+
+class ThreeRefusalsThreeCodes(unittest.TestCase):
+    """**A rules refusal, an unreadable rules file, and a server refusing a
+    permitted path are three facts**, and this repository spent a day
+    separating them. `bin/fetch-body.py` keeps them apart by exit code:
+
+        7  the rules refuse this path
+        8  indeterminate — the rules could not be read
+        2  the transport refuses a path the rules permit
+
+    **The third had no code of its own until the refusal record was added.**
+    Answering `7` there would say *the host wrote a refusal* about a host whose
+    file grants the path — collapsing the distinction that decides whether the
+    browser branch applies at all.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _code(self, guard, status=200):
+        m = self._tool()
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/x"
+
+            def getcode(self):
+                return status
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        real_open = m.urllib.request.urlopen
+        m.urllib.request.urlopen = lambda *a, **k: R(b"Your request was blocked.")
+        m.allowed = lambda h, p, **kw: guard
+        m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        argv, stdout = sys.argv, sys.stdout
+        sys.argv = ["f", "https://h.example/x", "-o", os.path.join(d, "x")]
+        sys.stdout = io.StringIO()
+        try:
+            return m.main()
+        finally:
+            m.urllib.request.urlopen = real_open
+            sys.argv, sys.stdout = argv, stdout
+
+    def test_the_three_are_distinct(self):
+        rules = self._code({"allowed": False, "reason": "the rules refuse"})
+        unknown = self._code({"allowed": None, "reason": "unreadable"})
+        transport = self._code({"allowed": True, "reason": "permitted"}, 403)
+        self.assertEqual(rules, 7)
+        self.assertEqual(unknown, 8)
+        self.assertEqual(transport, 2)
+        self.assertEqual(len({rules, unknown, transport}), 3,
+                         "two of the three facts share a code, so a caller "
+                         "reading it cannot tell which happened")
+
+    def test_a_permitted_path_that_serves_is_not_a_refusal(self):
+        """**The failing direction.** A tool answering non-zero on everything
+        would satisfy the case above by accident."""
+        self.assertEqual(
+            self._code({"allowed": True, "reason": "permitted"}, 200), 0)
 
 
 

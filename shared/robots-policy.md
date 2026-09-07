@@ -634,6 +634,37 @@ retry with another agent string, do not go to the browser to get around it.
 `shared/boards/cadremploi.md` uses a browser because a script is *blocked*;
 nothing of the kind applies to a site that has told you no.
 
+
+## A refusal body shared between unrelated hosts is a vendor default
+
+**The md5 of a refusal sorts before a browser does.** Since 2026-09-07 a
+refused fetch leaves a record — status, bytes, the identity that was refused,
+and the md5 of what came back — without keeping the body. That record made a
+comparison possible that was not, and it answered on the first two hosts tried:
+
+```
+jobstore  403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
+hays      403  25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf
+```
+
+**Two unrelated hosts, two countries, two operators, the same refusal to the
+byte.** That is a shared piece of infrastructure answering, not two editors
+deciding — the same reasoning as *a Cloudflare refusal is not the editor's*,
+moved from the rules file to the transport, and **measurable for the first
+time** because the body's fingerprint is now recorded even though the body is
+not.
+
+**What it changes in practice.** The question *does this 403 refuse a client or
+refuse everyone* is answered by opening a browser, which costs a session and a
+page load. **The fingerprint triages first, for nothing:**
+
+- a host whose refusal body is shared with unrelated hosts is answering with a
+  vendor default — the browser is worth trying;
+- a host whose refusal body is **its own** has decided something, and that is
+  where the browser question is worth paying for and where the answer matters.
+
+*It does not replace the check. It says which hosts are worth checking.*
+
 ## A refusal nobody wrote — the vendor default
 
 Question 1 asks whether the refusal is aimed at us. There is an answer none of

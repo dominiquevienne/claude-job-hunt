@@ -177,6 +177,15 @@ def main():
                 open(f, "w", encoding="utf-8").write(src.replace(before, after, 1))
                 code, err = run(a.test.split(), tree, a.timeout)
                 open(f, "w", encoding="utf-8").write(src)
+                # **Bytecode outlives a fast rewrite.** Twice in one day a
+                # restored source ran as its mutated self: the source said
+                # `2, 7, 8` and the module answered `7, 7, 8`, because the
+                # `.pyc` was written between two edits within the resolution
+                # of the staleness check. *`inspect.getsource` reads the file,
+                # so the code and the behaviour disagree and only one of them
+                # is visible.*
+                run(["find", ".", "-name", "__pycache__", "-exec", "rm",
+                     "-rf", "{}", "+"], tree, 30)
                 # **Between two mutations, not only after the last one.**
                 left = dirty(tree)
                 scrub(tree)

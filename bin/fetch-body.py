@@ -61,6 +61,19 @@ import _tls                           # noqa: E402
 from _robots import allowed, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
 
+# **Three codes for three facts, and they are not interchangeable.** This
+# repository spent a day establishing that a refusal written in the rules, an
+# unreadable rules file, and a server refusing a permitted path are different
+# things; the exit codes keep them apart:
+#
+#     7  the RULES refuse this path            `api.adzuna.com`
+#     8  INDETERMINATE — rules unreadable      DNS dead, 403 on robots.txt
+#     2  the TRANSPORT refuses a path the rules PERMIT
+#
+# **The third was the one with no code of its own**, and it now takes `2`
+# rather than `7`. Answering `7` there would say *the host wrote a refusal*
+# about a host whose file grants the path — collapsing the distinction that
+# decides whether the browser branch even applies.
 EXIT_HTTP, EXIT_REFUSED, EXIT_UNKNOWN = 2, 7, 8
 
 
