@@ -80,6 +80,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 from _sitemap import count_says, locs as sitemap_locs
 from _zero import zero_note
@@ -123,7 +124,38 @@ def note(msg):
     print(f"[hr.ge] {msg}", file=sys.stderr)
 
 
+def gate(url):
+    """Ask on the exact URL, at the point every request passes. #175.
+
+    **This module guarded `www.hr.ge` and fetched `api.p.hr.ge`** — the same
+    shape as `ats.py`/Ashby, where the host the card named permitted and the
+    host the script asked for refused.
+
+    Here the second host answers **404** to `/robots.txt`, so the guard
+    returns permitted and nothing goes wrong today. *That is what makes it
+    worth fixing now:* a defect behind a permission is invisible while the
+    permission lasts and comes back as a fresh outage the day the host
+    publishes a file — at the worst moment and blamed on the wrong cause.
+
+    `cmd_tenants --check` sent one request per tenant with no guard at all.
+
+    The gesture is not invented here: `icims.py` already guards its host **and
+    its neighbour**, with *"Per HOST, never per family"* in its own comment.
+    This extends it to the two modules that omitted it.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc:
+        return
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal, and `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", EXIT_REFUSED)
+
+
 def get(url, timeout=90, as_json=False):
+    gate(url)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "application/json" if as_json else "text/html,*/*;q=0.8",

@@ -2,9 +2,58 @@
 
 <!-- verified: 2026-09-02 -->
 
-<!-- hosts: jobs.ashbyhq.com -->
+<!-- hosts: api.ashbyhq.com (fetched by the script) · jobs.ashbyhq.com (the public board) -->
 <!-- script: ats.py -->
 <!-- countries: * -->
+<!-- content: out-of-domain · the API host refuses: HTTP 401 to /robots.txt, so the guard returns `allowed: False` and `ats.py --provider ashby` now exits 7 without fetching · 2026-09-07 -->
+
+## STOPPED — the host this adapter reads refuses us
+
+**Measured 2026-09-07:**
+
+```
+allowed("api.ashbyhq.com", "/posting-api/job-board/<tenant>")
+    allowed False · kind host-closed · certain True
+    HTTP 401 — the host replied, and the reply was no.
+```
+
+**`ats.py --provider ashby` exits 7 and sends nothing.** The other four
+providers are unaffected: `boards-api.greenhouse.io`, `api.lever.co`,
+`apply.workable.com` and `<tenant>.teamtailor.com` are all permitted, measured
+the same minute.
+
+**This adapter read that host on every run since the provider was added**, and
+no exemption covered it — checked both ways. `shared/robots-policy.md` names
+the four keyed-API adapters that skip the guard and `ats` is not among them;
+the owner's #100 decision needs a door explicitly closed **and** a keyed API,
+and this endpoint asks for no key.
+
+### The `hosts:` line pointed at the wrong host, and that is why nobody saw it
+
+**This card declared `jobs.ashbyhq.com`. The script fetches
+`api.ashbyhq.com`.** One permits and the other refuses:
+
+```
+jobs.ashbyhq.com   allowed True    <- what the card named
+api.ashbyhq.com    allowed False   <- what the script asks for
+```
+
+**So an audit that reads `hosts:` and consults the guard comes back green**,
+and its green says nothing about what the adapter does. *That is #173 in its
+sharpest form: not a card that is out of date, but a card that is accurate
+about a host nobody fetches.* Both hosts are declared now, with which is which.
+
+**And what let the code itself hide it was a true, incomplete enumeration.**
+`smartrecruiters_gate`'s docstring lists four verified hosts and every word of
+it is still correct; Ashby is the one of the seven it does not mention, and it
+is the one that refuses. *Nothing distinguishes a true partial list from an
+exhaustive one* — which that same docstring says four lines earlier, about
+SmartRecruiters.
+
+**The guard now sits at `fetch()`**, the choke point every provider passes
+through, rather than beside two of them. A provider added tomorrow is covered
+by having been written.
+
 **Re-verified 2026-09-02**: an unknown job board still answers a clean **404**.
 
 Ashby is an ATS, not a board. Each employer publishes its job board as public

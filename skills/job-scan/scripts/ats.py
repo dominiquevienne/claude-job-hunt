@@ -47,6 +47,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
 from _pace import Pace
@@ -75,12 +76,48 @@ def pace_for(host, own=0.0):
     return _PACERS[host]
 
 
+def gate(url):
+    """Ask before fetching, **per host and per path, on the URL itself.**
+
+    #175. This module fetched five provider APIs and consulted the guard for
+    two of them. `api.ashbyhq.com` answers **HTTP 401 to `/robots.txt`** — the
+    host replied and the reply was no — and `ats.py --provider ashby` read it
+    anyway, on every run, since the provider was added.
+
+    **No exemption covered it, and that was checked in both directions.**
+    `shared/robots-policy.md` names the four keyed-API adapters that skip the
+    guard — `adzuna`, `arbeitsagentur`, `francetravail`, `labonnealternance` —
+    and `ats` is not among them. The owner's #100 decision needs a door
+    explicitly closed **and** a keyed API; this endpoint asks for no key.
+
+    **What let it hide is an enumeration that was true and incomplete.**
+    `smartrecruiters_gate`'s docstring lists four verified hosts and every word
+    of it is still correct; Ashby is simply the one of the seven it does not
+    mention, and it is the one that refuses. *Nothing distinguishes a true
+    partial list from an exhaustive one* — which the same docstring says four
+    lines earlier, about SmartRecruiters.
+
+    So the guard goes at the choke point rather than beside each provider: a
+    provider added tomorrow is covered by having been written, not by somebody
+    remembering.
+    """
+    parts = urllib.parse.urlsplit(url)
+    a = robots_allowed(parts.netloc, full_path(parts))
+    # An unknown is not a refusal, and `not None` is `True` for both.
+    if a["allowed"] is None:
+        die(f"{url}: {a['reason']}", 8)
+    if not a["allowed"]:
+        die(f"{url}: {a['reason']}", 7)
+
+
 def fetch(url):
-    # **The choke point.** Every SmartRecruiters request goes through here —
-    # the listing, the ad, and the description fetch — so the override is
-    # checked once per host rather than once per call site. Issue #121.
+    # **The choke point, and it is not only SmartRecruiters'.** This comment
+    # read *every SmartRecruiters request goes through here* and was true; the
+    # narrow framing is what left the other four providers unasked. Issue #121
+    # put the override here; #175 put the guard here.
     if url.startswith(SR_API):
         smartrecruiters_gate()
+    gate(url)
     # **The guard first, the rate second.** `api.lever.co` asks for
     # `Crawl-delay: 1` and this script slept never. Waiting before knowing
     # whether we may ask at all would spend the delay on a request that is

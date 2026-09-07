@@ -9809,6 +9809,194 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+class EveryATSProviderAsksBeforeItFetches(unittest.TestCase):
+    """#175. Five provider APIs, two of them asked, and the refusing one was
+    among the three that were not.
+
+        allowed("api.ashbyhq.com", "/posting-api/job-board/<tenant>")
+        -> allowed False · kind host-closed · certain True
+           HTTP 401 — the host replied, and the reply was no.
+
+    `ats.py --provider ashby` read it anyway, on every run, since the provider
+    was added. **No exemption covered it**, checked in both directions:
+    `shared/robots-policy.md` names the four keyed-API adapters that skip the
+    guard and `ats` is not one, and #100 needs a door explicitly closed *and* a
+    keyed API — this endpoint asks for no key.
+
+    **What let it hide is an enumeration that was true and incomplete.**
+    `smartrecruiters_gate`'s docstring lists four verified hosts and every word
+    is still correct; Ashby is the one of the seven it does not name, and it is
+    the one that refuses. *A true partial list is indistinguishable from an
+    exhaustive one.*
+
+    **The assertion is that nothing leaves**, not that an exit code is right. A
+    conformity defect is about the request, and a test that only reads the code
+    would pass on a version that fetched first and died after.
+    """
+
+    PERMITTED = {"allowed": True, "reason": "permitted", "rule": None,
+                 "kind": None, "group": "*", "certain": True, "state": "read",
+                 "crawl_delay": None, "sitemaps": [], "ignored": [],
+                 "content_signal": None, "group_conflict": False,
+                 "host": "h.example", "requested_host": "h.example",
+                 "path": "/x"}
+    REFUSED = dict(PERMITTED, allowed=False, reason="the reply was no",
+                   rule="/", kind="host-closed")
+    UNKNOWN = dict(PERMITTED, allowed=None, reason="could not be read",
+                   kind="unknown", certain=False, state="unreachable")
+
+    # Every URL `fetch()` is asked for, one per provider, as the module builds
+    # them. **Listed here so a provider added without a guard shows up as a
+    # missing row rather than as nothing at all.**
+    URLS = {
+        "greenhouse": "https://boards-api.greenhouse.io/v1/boards/x/jobs",
+        "lever": "https://api.lever.co/v0/postings/x?mode=json",
+        "ashby": "https://api.ashbyhq.com/posting-api/job-board/x",
+        "workable": "https://apply.workable.com/api/v1/widget/accounts/x",
+        "teamtailor": "https://x.teamtailor.com/jobs.json",
+    }
+
+    def _run(self, url, verdict):
+        import contextlib
+        import io
+        import ats
+        seen = []
+        real_g, real_o = ats.robots_allowed, ats.urllib.request.urlopen
+        real_p = ats.pace_for
+        ats.robots_allowed = lambda *a, **k: dict(verdict)
+        ats.pace_for = lambda _h: type("P", (), {"wait": lambda self: None})()
+
+        def spy(req, *a, **k):
+            seen.append(req)
+            raise AssertionError("counted, not sent")
+
+        ats.urllib.request.urlopen = spy
+        code = None
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    ats.fetch(url)
+                except SystemExit as e:
+                    code = e.code
+                except BaseException:                        # noqa: BLE001
+                    pass
+        finally:
+            ats.robots_allowed, ats.urllib.request.urlopen = real_g, real_o
+            ats.pace_for = real_p
+        return seen, code
+
+    def test_a_refusal_stops_every_provider_before_the_request(self):
+        for name, url in sorted(self.URLS.items()):
+            with self.subTest(provider=name):
+                seen, code = self._run(url, self.REFUSED)
+                self.assertEqual(seen, [],
+                                 f"{name}: a request left for a host whose "
+                                 f"rules refuse it")
+                self.assertEqual(code, 7, f"{name}: exited {code}, not 7")
+
+    def test_an_unreadable_file_stops_them_too_and_says_8(self):
+        for name, url in sorted(self.URLS.items()):
+            with self.subTest(provider=name):
+                seen, code = self._run(url, self.UNKNOWN)
+                self.assertEqual(seen, [],
+                                 f"{name}: a request left while nobody could "
+                                 f"read the rules — an unknown is not a "
+                                 f"permission")
+                self.assertEqual(code, 8, f"{name}: exited {code}, not 8")
+
+    def test_a_permitted_host_still_goes_through(self):
+        """**The direction that catches a guard which simply refuses.**
+
+        Without it, deleting the body of `fetch()` would pass both cases
+        above.
+        """
+        for name, url in sorted(self.URLS.items()):
+            with self.subTest(provider=name):
+                seen, code = self._run(url, self.PERMITTED)
+                self.assertEqual(len(seen), 1,
+                                 f"{name}: the guard permitted and the module "
+                                 f"did not fetch")
+                # The stub raises once the request has left, so the module
+                # dies on the network rather than on the guard. **What is
+                # asserted is that it got that far** — the code here belongs
+                # to the stub, not to a verdict.
+                self.assertNotIn(code, (7, 8),
+                                 f"{name}: exited {code} on a permitted host")
+
+    def test_hrge_asks_on_the_host_it_fetches_not_the_one_it_guards(self):
+        """**The second occurrence, and it is latent rather than active.**
+
+        `hrge.py` guarded `www.hr.ge` and fetched `api.p.hr.ge` — the Ashby
+        shape exactly. The second host answers **404** to `/robots.txt`, so the
+        guard permits and nothing goes wrong today.
+
+        *That is precisely why it is worth a case:* a defect behind a
+        permission is invisible while the permission lasts, and returns as a
+        fresh outage the day the host publishes a file — at the worst moment
+        and blamed on the wrong cause. **A test written only against today's
+        404 would be green and would prove nothing**, so the verdict is
+        stubbed to refuse.
+        """
+        import contextlib
+        import importlib
+        import io
+        mod = importlib.import_module("hrge")
+        seen = []
+        real_g, real_o = mod.robots_allowed, mod.urllib.request.urlopen
+
+        def spy(req, *a, **k):
+            seen.append(req)
+            raise AssertionError("counted, not sent")
+
+        for verdict, want in ((self.REFUSED, 7), (self.UNKNOWN, 8)):
+            with self.subTest(state=verdict["state"]):
+                seen.clear()
+                mod.robots_allowed = lambda *a, **k: dict(verdict)
+                mod.urllib.request.urlopen = spy
+                code = None
+                try:
+                    with contextlib.redirect_stderr(io.StringIO()):
+                        try:
+                            mod.get("https://api.p.hr.ge/public-portal/x")
+                        except SystemExit as e:
+                            code = e.code
+                        except BaseException:            # noqa: BLE001
+                            pass
+                finally:
+                    mod.robots_allowed = real_g
+                    mod.urllib.request.urlopen = real_o
+                self.assertEqual(seen, [], "a request left for the API host")
+                self.assertEqual(code, want)
+
+        # And the other direction, or this passes on a `get` that never fetches.
+        seen.clear()
+        mod.robots_allowed = lambda *a, **k: dict(self.PERMITTED)
+        mod.urllib.request.urlopen = spy
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    mod.get("https://api.p.hr.ge/public-portal/x")
+                except BaseException:                    # noqa: BLE001
+                    pass
+        finally:
+            mod.robots_allowed = real_g
+            mod.urllib.request.urlopen = real_o
+        self.assertEqual(len(seen), 1,
+                         "the guard permitted and the module did not fetch")
+
+    def test_the_guard_is_at_the_choke_point_not_beside_one_provider(self):
+        """A provider added tomorrow must be covered by having been written.
+
+        `smartrecruiters_gate` was per-provider and that is exactly how three
+        providers ended up unasked; the assertion is that `fetch` itself is
+        what refuses, for a URL belonging to no known provider.
+        """
+        seen, code = self._run("https://a-provider-added-later.example/api",
+                               self.REFUSED)
+        self.assertEqual(seen, [])
+        self.assertEqual(code, 7)
+
 class AnUnknownIsNotARefusalAtTheCallSite(unittest.TestCase):
     """`not None` is `True`, and 41 adapters exited 7 on an unreadable file.
 
