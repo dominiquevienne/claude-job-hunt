@@ -3,6 +3,50 @@
 <!-- verified: 2026-09-03 -->
 <!-- hosts: melr.gov.gh -->
 <!-- countries: GH -->
+<!-- script: none -->
+<!-- content: out-of-domain · a ministry site, not a board: 71 941 o of server-rendered HTML, zero `JobPosting`, and its single employment route `/6/7/job-seekers` answers HTTP 404 · 2026-09-07 -->
+<!-- witness: none possible — there is no count to witness; the page names GLMIS as holding the vacancies and gives no address for it · 2026-09-07 -->
+
+## Measured 2026-09-07 — it is not a board, and the board it points at has no address here
+
+**`content:` was absent, which does not mean "measured at zero": it means
+nobody had opened the body.** It has been opened.
+
+```
+GET /                        200 · 71 941 o · no redirect
+                             « Ministry of Labour, Jobs & Employment »
+                             121 <a href> · 2 <form> · 18 <script>
+                             JobPosting 0 · ld+json 0
+GET /robots.txt              404 — an ABSENCE, which is knowledge
+GET /6/7/job-seekers         404 · 355 o        <- the one employment route
+```
+
+**The verdict was taken at the root and by fetching, not by guarding.** *A
+`robots.txt` survives a domain's change of use and says nothing about what is
+served today; here there is no rules file at all, and a 404 there is an
+absence rather than a refusal.*
+
+### The site names its own job board and never addresses it
+
+Its visible text reads *"GLMIS offers a variety of jobs vacancies for people
+seeking employment. Hundreds of jobs…"*, and the navigation entry **Job
+Seekers** points at the path that answers 404.
+
+```
+mentions of `glmis` anywhere in the body : 1, and it is the bare word
+external hosts linked from the homepage  : moys.gov.gh, presidency.gov.gh,
+                                           nlcghana.com, yea.gov.gh, ndpc.gov.gh
+                                           — no GLMIS among them
+```
+
+**So GLMIS is a lead and not a host.** *Composing `glmis.gov.gh` from the
+acronym is exactly what this repository forbids: a hostname is read, never
+built.* **Whoever follows this must find the address declared somewhere, not
+derive it.**
+
+**Three of the four job-shaped paths on this site are news articles and a PDF
+about a national green-jobs strategy.** A path that contains the word *job* is
+not a vacancy route.
 
 **There is nothing to read here, and the reason is stronger than "not a job
 board": the site serves one page under every URL.**

@@ -3,6 +3,35 @@
 <!-- verified: 2026-09-03 -->
 <!-- hosts: skillingpakistan.gov.pk -->
 <!-- countries: PK -->
+<!-- script: none -->
+<!-- content: measured · 0 advertisements — `/jobs` renders a table server-side whose only row reads "No jobs available" · 2026-09-07 -->
+<!-- witness: none possible — a board that states its own emptiness leaves no count for a second source to confirm · 2026-09-07 -->
+
+## It IS a job board, and it is empty
+
+**`content:` was absent, which does not mean "measured at zero": it means
+nobody had opened the body.** It has been opened, and the answer is a zero
+that was *read* rather than inferred.
+
+```
+GET /            200 · 54 294 o · « Home - Skilling Pakistan »
+GET /robots.txt  200 · 24 o · permits everyone
+GET /jobs        200 · 704 683 o · « Latest Jobs - Skilling Pakistan »
+                 <table> : 1
+                   header  Title | Province | Country | Gender | Job Type
+                   row 1   « No jobs available »
+```
+
+**This is the distinction `out-of-domain` would have destroyed.** *It is not a
+site that turned out to serve something else — it is a jobs page, rendered
+server-side, with a table whose columns are a vacancy's fields, and nothing in
+it today.* **A board that states its own emptiness is a different fact from a
+host that has no board, and the two would look identical in a column.**
+
+**Zero is dated.** The page is server-rendered, so the emptiness is the
+server's answer and not a script that failed to run — *which is what a 704 KB
+page with no advertisement would otherwise suggest.* **Re-reading it costs one
+request and no adapter is warranted until it is not empty.**
 
 Pakistan's TVET portal (National Vocational and Technical Training
 Commission). `robots.txt` closes nothing — `sweep: True`, no rule matched.
