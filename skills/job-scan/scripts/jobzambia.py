@@ -47,6 +47,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
+from _pace import Pace
 from _robots import allowed as robots_allowed
 from _ua import UA
 
@@ -82,8 +83,28 @@ def gate(url):
         die(f"{url}: {a['reason']}", EXIT_REFUSED)
 
 
+_PACER = None
+
+
+def pacer(host):
+    """One request per advertisement under `--fetch`, so the host's rate binds.
+
+    The board declares no `Crawl-delay` today; `Pace` reads it live rather than
+    trusting that, because *a rate absent at the time of writing is not a rate
+    absent for ever* — and a host that starts asking would be ignored by an
+    adapter that decided once.
+    """
+    global _PACER
+    if _PACER is None:
+        _PACER = Pace(host)
+        if _PACER.delay:
+            note(_PACER.source())
+    return _PACER
+
+
 def get(url):
     gate(url)
+    pacer(urllib.parse.urlsplit(url).netloc).wait()
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
