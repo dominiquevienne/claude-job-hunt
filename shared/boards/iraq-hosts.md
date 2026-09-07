@@ -134,6 +134,66 @@ named, guarded and fetched, and none offers a surface worth writing against.*
 - **nothing about what the three refusing hosts serve** — a refusal is not a
   description.
 
+## The census — and the first bounded error rate for a source (#162)
+
+**The 19 hosts above mix two sources and were chosen because they looked like
+boards. That is the selection bias #162 names, reproduced.** So the source was
+censused instead: `jobsiniraq.github.io` marks its listed portals mechanically
+with `data-testid="link-portal-N"`, and there are **23 of them**.
+
+> **The directory MENTIONS 103 hosts; it LISTS 23 as portals.** The other 80 are
+> per-portal social links, analytics, employer sites and ATS vendor names.
+> *Six of the 19 above — `careeriraq.com`, `masteriraq.com`, `works-jobsiq.com`,
+> `www.employiq.net`, `www.iraqhire.com`, `atgroup.iq` — are **not** on the
+> portal list, so `masteriraq.com` being no job board is **not** this source's
+> error. It was nearly counted as one.*
+
+**A census, not a sample: 23 is measurable whole, so there is no draw to
+pre-register and no seed. The denominator is the population.** *The expected
+distribution was written before the first new measurement: 15-18 true portals,
+3-5 real but not Iraq-specific, 1-3 dead or not portals at all — an error rate
+expected between 5 % and 15 %.*
+
+```
+5   TRUE PORTALS       ngosjobs-bids · vacanciesiniraq · job-helper
+                       jobzone.ai · kar.molsa.gov.krd (Kurdish labour ministry,
+                       server-rendered, 4 340 characters of Kurdish)
+2   NOT IRAQ-SPECIFIC  linkedin.com · www.bayt.com — real, worldwide
+7   REFUSED            iqjscout · eshjob · aweza.co · kurdistanjob
+                       pharmajobs.skpi.krd · evtc-krg · unjobs.org
+6   INDETERMINATE      lvtd.gov.iq · hawa.jobs · iraq.tanqeeb.com
+                       lezan.app · taeen.iq · jobs.krd
+3   THE SOURCE WAS WRONG
+      www.rwangaforas.com   709 o, `window._trfd.push({ap:"parking"})`
+                            and `LANDER_SYSTEM="PW"` — a PARKED DOMAIN
+      www.t9iq.com          a Blogger site, 82 platform markers
+      job.studio            « a virtual marketplace where talent is traded »,
+                            no job listing in its navigation
+```
+
+**`www.rwangaforas.com` is `bestzambiajobs.com`'s exact shape** — a credible
+name, listed as a portal, serving something else entirely. *That is the case
+#162 says vanishes without trace every time a retraction works. It did not
+vanish here, because this card names it beside the source that named it.*
+
+### The rate, and why it is a bound and not a number
+
+**3 of 23 is 13.0 %. But 6 hosts cannot be classified**, so the true rate lies
+in **[13.0 %, 39.1 %]** — every indeterminate could turn out either way.
+
+**The prediction is half confirmed and half not.** *«&nbsp;1 to 3 dead or not
+portals&nbsp;» landed on exactly 3. «&nbsp;3 to 5 not Iraq-specific&nbsp;» landed on 2.
+And the interval is too wide to confirm or refute the 5-15 % expectation.*
+
+> **A census removed the selection problem and did not produce a demonstrable
+> rate.** *What blocks it now is neither disappearance nor selection: it is that
+> six hosts refuse to say what they are — four render client-side and two never
+> answer.* **The obstacle has changed, and it is narrower each time.**
+
+**An indeterminate is not missing data to discard.** *Dropping the six would put
+the rate at 3 of 17 — 17.6 % — and would rebuild, on a smaller scale, the very
+bias this census exists to remove.*
+
 ## Pace
 
 Guards taken on the exact path, in a turn of its own, before every fetch.
