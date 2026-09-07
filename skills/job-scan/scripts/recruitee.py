@@ -77,7 +77,7 @@ import urllib.request
 from _child import run as child_run
 from _locations import matches_city
 from _decode import decode_body
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 
 from _ua import UA
 TAG_RE = re.compile(r"<[^>]+>")
@@ -108,7 +108,7 @@ def _robots_gate(url, tag, exit_code=7):
     parts = urllib.parse.urlsplit(url)
     if not parts.netloc:
         return None
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", exit_code)
     if a.get("requested_host") and a["host"] != a["requested_host"]:

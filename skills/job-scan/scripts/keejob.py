@@ -74,7 +74,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _ua import UA
 
 BASE = "https://www.keejob.com"
@@ -104,7 +104,7 @@ def note(msg):
 def gate(url):
     """Per path, never per host."""
     parts = urllib.parse.urlsplit(url)
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if a["allowed"] is None:
         die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
     if not a["allowed"]:

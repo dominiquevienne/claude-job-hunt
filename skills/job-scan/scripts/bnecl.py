@@ -52,7 +52,7 @@ import urllib.request
 
 from _decode import decode_body
 from _ldjson import label, one, postings
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _sitemap import count_says, locs as sitemap_locs
 from _zero import zero_note
 
@@ -77,7 +77,7 @@ def note(msg):
 def get(url, timeout=45):
     """Fetch, and **decode with what the response declares.**"""
     parts = urllib.parse.urlsplit(url)
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", EXIT_REFUSED)
     req = urllib.request.Request(url, headers={

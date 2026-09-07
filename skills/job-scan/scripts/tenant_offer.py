@@ -57,7 +57,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from dormant import read_boards            # noqa: E402  the config parser
 
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _ua import UA
 DEFAULT_CONFIG = os.path.join(
     os.environ.get("JOB_HUNT_HOME",
@@ -132,7 +132,7 @@ def final_url(url, follow=True):
         # kind of access. Being user-directed is not an exemption; it is a
         # class operators address. So this asks, per host and per path.
         parts = urllib.parse.urlsplit(current)
-        gate = robots_allowed(parts.netloc, parts.path or "/")
+        gate = robots_allowed(parts.netloc, full_path(parts))
         if gate["allowed"] is not True:
             note(f"stopping at {current} — {gate['reason']} **No HEAD was "
                  f"sent to this hop.** The chain so far is reported; the "

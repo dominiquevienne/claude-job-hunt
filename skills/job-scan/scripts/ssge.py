@@ -64,7 +64,7 @@ import urllib.error
 import urllib.request
 
 from _decode import decode_body
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 from _sitemap import count as sitemap_count
 from _sitemap import count_says, locs as sitemap_locs
@@ -117,7 +117,7 @@ def get(url, timeout=90):
     # families refused when only the English *listing* families are.
     parts = urllib.parse.urlsplit(url)
     if parts.netloc and parts.netloc != "jobs.ss.ge":
-        verd = robots_allowed(parts.netloc, parts.path)
+        verd = robots_allowed(parts.netloc, full_path(parts))
         if not verd["allowed"]:
             die(f"{url}: {verd['reason']} **The jobs sitemap advertises files "
                 f"under this path anyway** — a conflict between two of the "
@@ -181,8 +181,8 @@ def cmd_families(a):
     # and are **not** refused; the English *listing* families are at
     # `/en/jobs/sitemap-listing-N.xml` and **are**.
     refused = [u for u in f["all"]
-               if not robots_allowed("ss.ge",
-                                     urllib.parse.urlsplit(u).path)["allowed"]]
+               if not robots_allowed(
+                   "ss.ge", full_path(urllib.parse.urlsplit(u)))["allowed"]]
     note(f"{len(refused)} of the {len(f['all'])} sub-sitemaps sit under a "
          f"path `ss.ge/robots.txt` refuses by name — the **English listing** "
          f"families under `/en/jobs/`. The English *advertisement* families "

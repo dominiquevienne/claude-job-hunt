@@ -56,9 +56,9 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts"))
 
-from _provenance import record, save, vendor_headers  # noqa: E402
+from _provenance import record, rules_refusal, save, vendor_headers  # noqa: E402
 import _tls                           # noqa: E402
-from _robots import allowed, verdict  # noqa: E402
+from _robots import allowed, full_path, rules_fingerprint, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
 
 # **Three codes for three facts, and they are not interchangeable.** This
@@ -195,13 +195,27 @@ def main():
 
     # **The guard is taken on the exact path, in this order, before anything
     # leaves.** Not on the root, and not after.
-    g = allowed(parts.netloc, parts.path or "/")
-    if g["allowed"] is None:
-        print(f"ERROR: {a.url}: {g['reason']}", file=sys.stderr)
-        return EXIT_UNKNOWN
-    if not g["allowed"]:
-        print(f"REFUSED: {a.url}: {g['reason']}", file=sys.stderr)
-        return EXIT_REFUSED
+    g = allowed(parts.netloc, full_path(parts))
+    if g["allowed"] is None or not g["allowed"]:
+        code = EXIT_UNKNOWN if g["allowed"] is None else EXIT_REFUSED
+        print(f"{'INDETERMINATE' if code == EXIT_UNKNOWN else 'REFUSED'}: "
+              f"{a.url}: {g['reason']}", file=sys.stderr)
+        # **The refusal that leaves no packet is still a measurement.** It was
+        # the one class with no trace: `emploi.batiactu.com` closed on exit 7
+        # and left nothing, and every host blocked in the rules closes exactly
+        # this way. A separate record from the transport's, because there is
+        # no response here to describe — only the file that decided, the rule
+        # that bit, and the token we would have sent.
+        if a.out:
+            rules_refusal(a.out, decision=g, url=a.url,
+                          rules=rules_fingerprint(parts.netloc),
+                          token=shown_token(),
+                          # An INDETERMINATE is not a refusal and is not
+                          # probed; recording it says which of the two closed
+                          # the door.
+                          outcome=("indeterminate" if code == EXIT_UNKNOWN
+                                   else "refused"))
+        return code
 
     if a.sitemaps:
         # **Only the declaration, and nothing it names.** A session wanting a

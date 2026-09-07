@@ -35,7 +35,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 
 BASE = "https://{}.talent-soft.com"
 LIST = "/offre-de-emploi/liste-offres.aspx?page={}&LCID={}"
@@ -116,7 +116,7 @@ def check_robots(url):
     A refusal **stops the command** with exit 7 and the module's own words.
     """
     parts = urllib.parse.urlsplit(url)
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", 7)
     if a.get("requested_host") and a["host"] != a["requested_host"]:

@@ -76,7 +76,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _decode import decode_body
 
 API = "https://jobsearch.api.jobtechdev.se/search"
@@ -109,7 +109,7 @@ def api(**params):
     # knowledge — and `arbetsformedlingen.se` permits. So the call costs
     # nothing and closes a real gap, rather than deciding an arbitration.
     parts = urllib.parse.urlsplit(url)
-    gate = robots_allowed(parts.netloc, parts.path or "/")
+    gate = robots_allowed(parts.netloc, full_path(parts))
     if gate["allowed"] is not True:
         die(f"{parts.netloc}{parts.path}: {gate['reason']}",
             8 if gate["allowed"] is None else 7)

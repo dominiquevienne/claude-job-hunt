@@ -144,6 +144,8 @@ resembles an absence, and `shared/plausible-and-false.md` is about exactly that
 inference. It hands a person something to decide with.
 """
 
+import datetime
+import hashlib
 import random
 import re
 import time
@@ -261,6 +263,13 @@ def _looks_like_rules(body):
 # an ordinary call became three requests for one document. A test counting
 # requests caught it. *A cache keyed more finely than the thing it caches
 # fetches the same bytes once per key.*
+# **The memo lives in `_CACHE`, not beside it.** A second cache was added here
+# once and nothing cleared it: 65 tests failed because one case's stub body
+# outlived its case. Anything a test must be able to forget goes in the dict
+# tests already clear.
+_FETCH = "\0fetch"
+
+
 def _fetch(host):
     """Read one host's file, and report **which host actually answered**.
 
@@ -270,9 +279,15 @@ def _fetch(host):
     Returning only the body would hand the caller the right rules under the
     wrong name. Issue #99.
     """
+    if (host, _FETCH) in _CACHE:
+        return _CACHE[(host, _FETCH)]
     url = f"https://{host}/robots.txt"
     for attempt, timeout in enumerate(_TIMEOUTS, start=1):
         got = _fetch_once(url, host, timeout)
+        # **Stamped here, not at each exit.** `_fetch_once` returns from ten
+        # places; dating them one by one is a fix per call site, and the
+        # eleventh would ship undated. This is the one point they all pass.
+        got["read_at"] = _read_at()
         got["attempts"] = attempt
         # **Only an unknown is worth asking again.** `absent`, `refused` and
         # `unreadable` are answers; repeating a question a host has already
@@ -280,6 +295,7 @@ def _fetch(host):
         if (got["state"] != "unreachable"
                 or not got.get("transient", True)
                 or attempt == len(_TIMEOUTS)):
+            _CACHE[(host, _FETCH)] = got
             return got
         # Spaced, and jittered so a sweep of many hosts does not retry in
         # lockstep. A slow host used to be a permissive host (#118); it is now
@@ -294,6 +310,76 @@ def _fetch(host):
 # would otherwise be granted by a dropped packet.
 _TIMEOUTS = (15, 25, 40)
 _BACKOFF = (1.5, 4.0)
+
+
+def full_path(parts):
+    """The path **and its query**, as the rules see it.
+
+    `urlsplit` separates them and every guard call but one dropped the second
+    half — 54 call sites of 55 asked about `/jobs/boise-id` and then fetched
+    `/jobs/boise-id?page=1`. **Those are different questions and `hiringcafe`
+    answers them differently**: the first is permitted, the second is refused
+    by `Disallow: /*?page=*`, written by hand in both the `?` and `&` form.
+
+    A request went out to that refused path on 2026-09-07 because of this.
+
+    **Every `Disallow` aimed at a query was invisible to this repository**, and
+    invisible in the safe-looking direction: the guard returned *permitted* for
+    a path the host refuses, and a false permission leaves no trace at all —
+    the fetch succeeds, the body is real, nothing looks wrong.
+
+    The one call site that was right, `vieclam24h.py`, is also the one whose
+    test exercises a URL carrying a query. *That is the whole difference.*
+    """
+    path = parts.path or "/"
+    return f"{path}?{parts.query}" if parts.query else path
+
+
+def rules_fingerprint(host):
+    """Identify the rules file that decided, without asking for it again.
+
+    Reads what `_fetch` already holds for this host in this process — **no new
+    request leaves.** A refusal in the rules has no remote body of its own to
+    fingerprint: the request never went out. What can be fingerprinted is the
+    file that refused it, and that is what a later reader needs in order to
+    tell *the host changed its mind* from *we asked a different question*.
+
+    Carries `final_url` separately because a redirect can cross hosts: `ss.ge`
+    sends to `jobs.ss.ge`, which publishes different rules. **A record naming
+    only the host asked would attribute one file to another.**
+    """
+    got = _CACHE.get((host, _FETCH))
+    if got is None:
+        # **It does not fetch to fill this in.** The caller is on a refusal
+        # path; a record is not worth a request, and a guard in this
+        # repository counts every request that leaves after a refusal.
+        return {"url": f"https://{host}/robots.txt",
+                "state": "not-read-in-this-process"}
+    body = got.get("body")
+    return {
+        "url": f"https://{host}/robots.txt",
+        # **A host, and named as one.** `_fetch` reports *which host
+        # answered*, not a URL; a key called `final_url` holding `ss.ge`
+        # would be read as an address by everything downstream.
+        "final_host": got.get("final"),
+        "state": got.get("state"),
+        "status": got.get("status"),
+        "bytes": got.get("bytes"),
+        "md5": (hashlib.md5(body.encode("utf-8")).hexdigest()
+                if isinstance(body, str) else None),
+        "read_at": got.get("read_at"),
+    }
+
+
+def _read_at():
+    """When the rules were read, in UTC, to the second.
+
+    **A rules refusal is dated by the file that decided it.** Without this the
+    only date such a record could carry is the moment somebody thought to
+    write it down, which is a fact about us and not about the host.
+    """
+    return datetime.datetime.now(datetime.timezone.utc).replace(
+        microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _fetch_once(url, host, timeout):

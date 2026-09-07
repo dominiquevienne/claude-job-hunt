@@ -47,7 +47,7 @@ import urllib.request
 
 from _decode import decode_body
 from _ldjson import label, one, postings, absent_reason
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _sitemap import locs as sitemap_locs
 from _ua import UA
 from _zero import zero_note
@@ -70,7 +70,7 @@ def note(msg):
 def gate(url):
     """Per path — the file refuses `/partenaires/` and nothing else."""
     parts = urllib.parse.urlsplit(url)
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if a["allowed"] is None:
         die(f"{url}: {a['reason']}", EXIT_UNKNOWN)
     if not a["allowed"]:

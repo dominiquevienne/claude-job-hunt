@@ -67,7 +67,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 
 from _zero import zero_note
 
@@ -155,7 +155,7 @@ def _robots_gate(url, tag, exit_code=7):
     parts = urllib.parse.urlsplit(url)
     if not parts.netloc:
         return None
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", exit_code)
     if a.get("requested_host") and a["host"] != a["requested_host"]:

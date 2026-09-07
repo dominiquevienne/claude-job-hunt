@@ -66,7 +66,7 @@ from _zero import zero_note
 from _sitemap import locs as sitemap_locs
 
 from _robots import verdict as robots_verdict
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 
 BASE = "https://vieclam24h.vn"
 from _ua import UA
@@ -110,8 +110,7 @@ def get(path):
     url = path if path.startswith("http") else BASE + path
     parts = urllib.parse.urlsplit(url)
     if parts.netloc:
-        a = robots_allowed(parts.netloc, (parts.path or "/") +
-                           (("?" + parts.query) if parts.query else ""))
+        a = robots_allowed(parts.netloc, full_path(parts))
         if a["allowed"] is False:
             die(f"{url}: {a['reason']}", 7)
     req = urllib.request.Request(url, headers={

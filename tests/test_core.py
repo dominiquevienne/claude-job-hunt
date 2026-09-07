@@ -908,6 +908,12 @@ class RobotsRetry(unittest.TestCase):
         for state in ("read", "absent", "refused", "unreadable"):
             with self.subTest(state=state):
                 self.calls = []
+                # **`_fetch` memoises now, and this case asks the same host
+                # four times on purpose.** Without the clear, subtests two to
+                # four are answered from case one's memo and the retry logic
+                # they exist to exercise is never reached — a green that means
+                # *not run*.
+                _robots._CACHE.clear()
                 self._answer(state)
                 got = _robots._fetch("x.example")
                 self.assertEqual(len(self.calls), 1)
@@ -9781,6 +9787,175 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
                       "the record can only ever say *the same short string*")
 
 
+
+
+class AGuardOnAPathIsNotAGuardOnTheURL(unittest.TestCase):
+    """`urlsplit` splits; 54 call sites of 55 kept only the first half.
+
+    **A request went out to a refused path on 2026-09-07 because of this.**
+    `bin/fetch-body.py` asked about `/jobs/boise-id`, was told yes, and then
+    fetched `/jobs/boise-id?page=1`, which `hiringcafe.com` refuses by hand in
+    both the `?` and the `&` form. The guard did its job on the question it was
+    asked, and it was asked the wrong one.
+
+    **The failure direction is the invisible one.** A dropped query can only
+    turn a refusal into a permission — never the reverse — and a false
+    permission leaves nothing behind: the fetch succeeds, the body is real,
+    nothing looks wrong. This class exists because there was no other way to
+    notice.
+
+    **The one call site that was right, `vieclam24h.py`, is also the only one
+    whose test exercised a URL carrying a query.** That is the whole
+    difference, and it is why this is an exercise and not a source scan: a
+    guard that reads the source reads the layout, which broke twice this week.
+    """
+
+    URL = "https://h.example/jobs/boise-id?page=1&x=2"
+
+    def _population(self):
+        """Every module whose guard call sits in a function taking a `url`.
+
+        **The names are collected, not the count.** Two modules guard a path
+        their caller composed (`lmisjm` fetches exactly what it guards,
+        `mihnati` slices the whole remainder including the query) and neither
+        is reachable this way — they are asserted by name below, so a third
+        one appearing cannot hide inside a number.
+        """
+        import ast
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        reachable, unreachable = {}, []
+        for path in sorted(glob.glob(os.path.join(scripts, "*.py"))):
+            name = os.path.basename(path)[:-3]
+            if name.startswith("_"):
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            # **Selected on splitting a URL and asking the guard — never on
+            # the fix itself.** Keying on `full_path(` made the population
+            # shrink under exactly the mutation this class exists to catch:
+            # revert one adapter and it leaves the set, so the guard stayed
+            # green on 53 innocent files. Measured by mutating `keejob.py` on
+            # 2026-09-07 — 0 assertions fired.
+            if "robots_allowed(" not in src or "urlsplit(" not in src:
+                continue
+            entry = None
+            for node in ast.walk(ast.parse(src)):
+                if not isinstance(node, ast.FunctionDef):
+                    continue
+                seg = ast.get_source_segment(src, node) or ""
+                if "robots_allowed(" not in seg:
+                    continue
+                args = [a.arg for a in node.args.args]
+                # **Three entry shapes, because there are three.** Dispatching
+                # on `url` alone left `platsbanken` and `vieclam24h` out, and
+                # I had named two *other* modules as the exceptions from an
+                # earlier survey rather than from this measurement — a guessed
+                # exemption list is an exemption list that stops matching.
+                if args and args[0] in ("url", "path"):
+                    # **How many more positionals have no default.**
+                    # `_robots_gate(url, tag, exit_code=7)` needs two, and
+                    # calling it with one raised a `TypeError` that the
+                    # `except BaseException` below swallowed — 37 adapters
+                    # reported *never reached the guard* when the truth was
+                    # *never called properly*. A catch-all around the exercise
+                    # turns a broken exercise into a finding.
+                    needed = len(args) - len(node.args.defaults)
+                    entry = (node.name, args[0], max(0, needed - 1))
+                elif not args and node.args.kwarg:
+                    entry = (node.name, "kwargs", 0)
+                if entry:
+                    break
+            if entry:
+                reachable[name] = entry
+            else:
+                unreachable.append(name)
+        return reachable, unreachable
+
+    def test_every_guarded_fetch_asks_about_the_query_too(self):
+        import importlib
+        reachable, unreachable = self._population()
+
+        # **The denominator is asserted, not assumed.** A guard green on a
+        # population it shrank itself proves nothing, and this repository has
+        # shipped that twice.
+        self.assertGreaterEqual(
+            len(reachable), 45,
+            f"only {len(reachable)} adapters reachable — either the guard "
+            f"stopped finding them or they stopped splitting URLs")
+        self.assertEqual(
+            sorted(unreachable), [],
+            "an adapter guards a path this exercise cannot reach. Give its "
+            "entry one of the three shapes, or check it by hand and name it "
+            "here — but a name written from memory is how this list rots")
+
+        for name, (entry, shape, filler) in sorted(reachable.items()):
+            with self.subTest(adapter=name):
+                mod = importlib.import_module(name)
+                seen = []
+
+                def spy(host, path, *a, **k):
+                    seen.append(path)
+                    return {"allowed": True, "reason": "stubbed for the test",
+                            "crawl_delay": None, "sitemaps": [], "rule": None,
+                            "kind": None, "group": "*", "certain": True,
+                            "state": "read", "host": host,
+                            "requested_host": host, "path": path,
+                            "ignored": [], "content_signal": None,
+                            "group_conflict": False}
+
+                real_guard = mod.robots_allowed
+                real_open = mod.urllib.request.urlopen
+                mod.robots_allowed = spy
+                mod.urllib.request.urlopen = self._refuse_to_send
+                try:
+                    try:
+                        fn = getattr(mod, entry)
+                        rest = ["exercise"] * filler
+                        if shape == "url":
+                            fn(self.URL, *rest)
+                        elif shape == "path":
+                            fn("/jobs/boise-id?page=1&x=2", *rest)
+                        else:
+                            fn(page=1)
+                    except BaseException:            # noqa: BLE001
+                        pass                          # the fetch after it
+                finally:
+                    mod.robots_allowed = real_guard
+                    mod.urllib.request.urlopen = real_open
+
+                self.assertTrue(
+                    seen, f"{name}.{entry} never reached the guard")
+                self.assertIn(
+                    "page=1", seen[0],
+                    f"{name}.{entry} asked the guard about {seen[0]!r} and "
+                    f"would then fetch {self.URL!r}. **Those are different "
+                    f"questions**, and hosts answer them differently.")
+
+    @staticmethod
+    def _refuse_to_send(*_a, **_k):
+        raise AssertionError("no request leaves during this exercise")
+
+    def test_full_path_keeps_the_query_and_invents_nothing(self):
+        """Both directions, on the helper itself.
+
+        A helper that always appended `?` would pass every case above while
+        corrupting every path without a query — the guard would be green on
+        a corpus it had spoiled.
+        """
+        import urllib.parse as up
+        cases = [
+            ("https://h.example/a?page=1", "/a?page=1"),
+            ("https://h.example/a", "/a"),
+            ("https://h.example", "/"),
+            ("https://h.example/?", "/"),
+            ("https://h.example/a?b=c&d=e", "/a?b=c&d=e"),
+            ("https://h.example/a#frag", "/a"),
+        ]
+        for url, want in cases:
+            with self.subTest(url=url):
+                self.assertEqual(_robots.full_path(up.urlsplit(url)), want)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -33,7 +33,7 @@ import urllib.request
 
 import _hiringcafe
 from _hiringcafe import refusal
-from _robots import allowed as robots_allowed
+from _robots import allowed as robots_allowed, full_path
 from _locations import drop_report, matches_city
 
 BASE = "https://hiringcafe.com/"
@@ -98,7 +98,7 @@ def gate(url):
     and the card kept declaring it because the card was right about `search`.
     """
     parts = urllib.parse.urlsplit(url)
-    a = robots_allowed(parts.netloc, parts.path or "/")
+    a = robots_allowed(parts.netloc, full_path(parts))
     if a["allowed"] is None:
         die(f"{url}: {a['reason']}", 8)
     if not a["allowed"]:

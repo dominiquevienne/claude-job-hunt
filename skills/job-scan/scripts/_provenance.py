@@ -230,6 +230,74 @@ def record(path, body, *, url, status, agent, fetched_at=None, **extra):
     return rec
 
 
+RULES_REFUSAL = "rules-refusal"
+
+
+def rules_refusal(path, *, decision, rules, token, url=None, decided_at=None,
+                  **extra):
+    """Record a refusal **taken from the rules, before anything left.**
+
+    `record()` above covers the transport: a request went out and an edge
+    answered 403. This covers the other one, and they are not the same
+    measurement — that is what the three exit codes separate, and merging them
+    would lose it:
+
+        exit 2   the transport refused a path the rules PERMIT
+        exit 7   the RULES refuse this path — no request was made
+
+    **The majority class had no trace at all.** `emploi.batiactu.com` closed
+    with exit 7 and left nothing behind, and under the current `allowed()`
+    every one of the thirteen blocked hosts closes exactly that way. *The
+    measurement that shuts a board without a single packet leaving was the one
+    nobody could re-read.*
+
+    **A rules refusal has no remote body to fingerprint.** There is no status,
+    no bytes, no vendor header, because there was no response: inventing those
+    fields would make it look like a transport record with empty values. What
+    it carries instead is **the file that decided** (`rules`, from
+    `_robots.rules_fingerprint`), **the rule that bit** (`decision["rule"]` and
+    its `kind`), **the group that applied**, and **the token we would have
+    presented** — which matters precisely where a file names one of our two
+    and is silent about the other.
+
+    `token` is what the request WOULD have carried, not a name a site uses
+    about us. The two are different sets and confusing them has already
+    produced a wrong sentence under a right verdict.
+    """
+    rec = {
+        "kind": RULES_REFUSAL,
+        # **No `status` key at all.** Not `null`: absent. A reader scanning for
+        # a status finds nothing rather than a value that could be mistaken
+        # for a response that never happened.
+        # **A path is called a path.** `decision["path"]` is
+        # `/jobs/boise-id?page=1`, not an address; a key named `url` holding it
+        # is read as one downstream, which is the mislabel `final_host` had an
+        # hour earlier in the same delivery.
+        "path": decision.get("path"),
+        "url": url,
+        "host": decision.get("host"),
+        "requested_host": decision.get("requested_host"),
+        "rule": decision.get("rule"),
+        "rule_kind": decision.get("kind"),
+        "group": decision.get("group"),
+        "certain": decision.get("certain"),
+        "rules_state": decision.get("state"),
+        "token": token,
+        "rules": dict(rules or {}),
+        "decided_at": decided_at or _now(),
+        "body_kept": False,
+    }
+    rec.update(extra)
+    path = str(path)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(sidecar_for(path), "w", encoding="utf-8") as f:
+        json.dump(rec, f, ensure_ascii=False, indent=1, sort_keys=True)
+        f.write("\n")
+    return rec
+
+
 def refusals(root):
     """Every record under `root` for a fetch that was not a 2xx.
 
@@ -247,8 +315,13 @@ def refusals(root):
                     rec = json.load(f)
             except Exception:                                   # noqa: BLE001
                 continue
-            if isinstance(rec.get("status"), int) and not (
-                    200 <= rec["status"] < 300):
+            # **Both refusals, and a rules refusal has no status.** Testing
+            # only the status would have kept reporting zero on the class
+            # that closes boards — the very hole this pair was written for.
+            refused = rec.get("kind") == RULES_REFUSAL or (
+                isinstance(rec.get("status"), int)
+                and not 200 <= rec["status"] < 300)
+            if refused:
                 out.append((os.path.join(base, name), rec))
     return sorted(out)
 
