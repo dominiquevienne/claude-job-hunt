@@ -70,16 +70,40 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "skills", "job-scan", "scripts"))
 
+from _cards import host_forms  # noqa: E402
+
 HOSTS_RE = re.compile(r"(?im)^<!--\s*hosts:\s*(.+?)\s*-->\s*$")
 
 
 def declared(path):
+    """The hosts this card names, **plus the ones its script actually reaches.**
+
+    `hosts:` names the board. **`host-forms:` names what the script fetches**,
+    and they are not always the same host: `ashby.md` declared
+    `jobs.ashbyhq.com` while `ats.py` fetched `api.ashbyhq.com` — the first
+    permits, the second answers `HTTP 401`.
+
+    **So this report used to consult the guard about a host nobody fetches.**
+    Its green said *the declared host has not moved*, which was true and was
+    not the question. Six cards were in that position. #173, #175.
+
+    Literal forms only: a template like `{tenant}.recruitee.com` names no host
+    to ask about, and inventing a tenant to fill it in would be asking about a
+    site that may not exist.
+    """
     with open(path, encoding="utf-8") as f:
-        head = f.read(4000)
-    m = HOSTS_RE.search(head)
+        src = f.read()
+    m = HOSTS_RE.search(src[:4000])
     if not m:
         return None
-    return [h.strip().lower() for h in m.group(1).split(",") if h.strip()]
+    out = [h.strip().lower() for h in m.group(1).split(",") if h.strip()]
+    for form in host_forms(src):
+        if "{" in form:
+            continue
+        h = form.strip().lower()
+        if h and h not in out:
+            out.append(h)
+    return out
 
 
 def main():

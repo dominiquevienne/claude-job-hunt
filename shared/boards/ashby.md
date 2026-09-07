@@ -2,7 +2,7 @@
 
 <!-- verified: 2026-09-02 -->
 
-<!-- hosts: api.ashbyhq.com (fetched by the script) · jobs.ashbyhq.com (the public board) -->
+<!-- hosts: jobs.ashbyhq.com -->
 <!-- host-forms: api.ashbyhq.com -->
 <!-- host-forms-basis: read — `ats.py:268` builds it as a literal. The `hosts:` line above names `jobs.ashbyhq.com`, which no code path fetches · 2026-09-07 -->
 <!-- script: ats.py -->

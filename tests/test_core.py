@@ -9845,6 +9845,173 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+class EveryDeclaredHostFormIsReachedByItsScript(unittest.TestCase):
+    """#173. Twelve cards declare `host-forms:` and nothing read the key.
+
+    The author of those declarations wrote in her own commit that nothing
+    consumes them — **which is exactly what #159 calls "an absence with extra
+    steps"**. This is the reader.
+
+    **The key exists because `hosts:` names the board and the script often
+    reaches something else.** `ashby.md` declared `jobs.ashbyhq.com` while
+    `ats.py` fetched `api.ashbyhq.com`; the first permits and the second
+    refuses with `HTTP 401`. *An audit that read `hosts:` and consulted the
+    guard came back green about a host nobody fetches* — #175, and it is the
+    one failure mode a card cannot show by being out of date, because it was
+    accurate about the wrong object.
+
+    **Three grammars, checked three ways:**
+
+        api.lever.co             literal   -> must appear in the source
+        {tenant}.recruitee.com   template  -> its suffix must appear
+        {host}                   supplied  -> nothing to match, so the
+                                              `-basis` must cite the code
+
+    **A card may declare several forms, and two need it:** `lever` reaches
+    `api.lever.co` and `api.eu.lever.co` — disjoint, a tenant lives on exactly
+    one — and `flatchr` reaches a fixed host **and** a tenant template.
+    """
+
+    def _cards(self):
+        import glob
+        from _cards import card_script, host_forms
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(root, "skills", "job-scan", "scripts")
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            name = os.path.basename(path)
+            if name == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            forms = host_forms(src)
+            if not forms:
+                continue
+            out.append((name[:-3], src, forms, card_script(src), scripts))
+        return out
+
+    def test_the_key_is_actually_declared_somewhere(self):
+        """**The denominator, asserted.** A reader with nothing to read is a
+        green that means *nobody wrote any*, and this class would pass on an
+        empty corpus without saying so."""
+        cards = self._cards()
+        self.assertGreaterEqual(
+            len(cards), 10,
+            f"only {len(cards)} card(s) declare `host-forms:` — either they "
+            f"were removed or the reader stopped matching the key")
+
+    def test_every_form_is_reachable_in_the_script(self):
+        from _cards import basis_citations, form_suffix
+        bad = []
+        for card, src, forms, script, scripts in self._cards():
+            if not script:
+                bad.append(f"{card}: declares host-forms and no script")
+                continue
+            path = os.path.join(scripts, script)
+            if not os.path.exists(path):
+                bad.append(f"{card}: names {script}, which does not exist")
+                continue
+            with open(path, encoding="utf-8") as fh:
+                code = fh.read()
+            cited = basis_citations(src)
+            for form in forms:
+                suffix = form_suffix(form)
+                if suffix is None:
+                    # The caller supplies the host: there is nothing in the
+                    # form for the code to contain, so the basis must point at
+                    # the line that takes it.
+                    if not cited:
+                        bad.append(f"{card}: {form!r} is supplied by the "
+                                   f"caller and the basis cites no line, so "
+                                   f"nothing here can be checked")
+                    continue
+                if suffix not in code:
+                    bad.append(f"{card}: {form!r} — {suffix!r} appears "
+                               f"nowhere in {script}")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_no_basis_cites_a_line_that_is_not_there(self):
+        """Dead citations, and this repository has shipped four at once."""
+        from _cards import basis_citations
+        bad = []
+        for card, src, _forms, _script, scripts in self._cards():
+            for filename, line in basis_citations(src):
+                path = os.path.join(scripts, filename)
+                if not os.path.exists(path):
+                    bad.append(f"{card}: cites {filename}, which is not there")
+                    continue
+                with open(path, encoding="utf-8") as fh:
+                    n = sum(1 for _ in fh)
+                if line > n:
+                    bad.append(f"{card}: cites {filename}:{line} and the file "
+                               f"has {n} lines")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_hosts_is_a_list_of_hostnames_and_not_prose(self):
+        """**Written because I put prose in it.** #175 left `ashby.md` with
+
+            <!-- hosts: api.ashbyhq.com (fetched by the script) · … -->
+
+        and `bin/host-drift.py` splits that field on commas, so the whole
+        sentence became one hostname and the guard was asked about it.
+
+        *The explanation belongs in the body; that is what the body is for,
+        and `host-forms:` now carries the distinction the sentence was making.*
+        A machine-read field that accepts prose stops being machine-read
+        without anything saying so.
+        """
+        import glob
+        import re as _re
+        from _cards import declarations
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        bad, seen = [], 0
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            if os.path.basename(path) == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                value = declarations(fh.read()).get("hosts")
+            if not value:
+                continue
+            for host in value.split(","):
+                host = host.strip()
+                if not host:
+                    continue
+                seen += 1
+                if not _re.fullmatch(r"[a-z0-9.*_{}-]+", host):
+                    bad.append(f"{os.path.basename(path)}: {host[:52]!r}")
+        self.assertGreaterEqual(seen, 40,
+                                f"only {seen} host value(s) read — the scan "
+                                f"stopped finding the field")
+        self.assertEqual(bad, [], "; ".join(bad))
+
+    def test_a_form_that_matches_nothing_is_caught(self):
+        r"""**The mutation, as a case** — and both directions of the matcher.
+
+        Written after a day in which a pattern tried on one positive was taken
+        for tried: `^NAM` returned Panama, `<th` counted `<thead`,
+        `grep -i 'allow:'` counted `Disallow:`, and `\ballowed\(` could not
+        match `robots_allowed(` at all.
+        """
+        from _cards import form_suffix
+        # must be caught
+        self.assertEqual(form_suffix("api.nowhere.example"),
+                         "api.nowhere.example")
+        self.assertEqual(form_suffix("{tenant}.nowhere.example"),
+                         ".nowhere.example")
+        # must NOT be caught: nothing in it to match
+        self.assertIsNone(form_suffix("{host}"))
+        self.assertIsNone(form_suffix("{any hostname supplied verbatim}"))
+        # and a real card exercised end to end, both ways
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "scripts",
+                               "recruitee.py"), encoding="utf-8") as fh:
+            code = fh.read()
+        self.assertIn(form_suffix("{tenant}.recruitee.com"), code)
+        self.assertNotIn(form_suffix("{tenant}.nowhere.example"), code)
+
 class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
     """#176. The owner's decision reached `allowed()`, and `allowed()` was
     reached by none of these.

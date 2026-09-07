@@ -94,6 +94,59 @@ def shares_platform(src):
     return names
 
 
+def host_forms(src):
+    """The hostname shapes a card's script actually reaches.
+
+    `hosts:` names the board; **the script often reaches something else** —
+    `ashby.md` declared `jobs.ashbyhq.com` while `ats.py` fetched
+    `api.ashbyhq.com`, and one permits where the other refuses. An audit that
+    read `hosts:` and asked the guard came back green about a host nobody
+    fetches (#175).
+
+    Three grammars, and they are checked differently:
+
+        api.lever.co                  a literal — must appear in the source
+        {tenant}.recruitee.com        a template — its suffix must appear
+        {host}                        the caller supplies it — nothing to
+                                      match, so the card's `-basis` line has
+                                      to cite the code instead
+
+    Returns the forms as written, in order. **A card may declare several**:
+    `lever` reaches two disjoint hosts, US and EU, and a tenant lives on
+    exactly one of them; `flatchr` reaches a fixed host **and** a tenant
+    template.
+    """
+    value = declarations(src).get("host-forms", "")
+    return [f.strip() for f in value.split(",") if f.strip()]
+
+
+def form_suffix(form):
+    """What of a form can be matched against source, or `None`.
+
+    `{tenant}.recruitee.com` -> `.recruitee.com`; `api.lever.co` -> itself;
+    `{host}` -> `None`, because there is nothing in it that the code could
+    contain. **`None` is not a pass**: the caller must then check the basis.
+    """
+    if "{" not in form:
+        return form
+    tail = form[form.rindex("}") + 1:].strip()
+    return tail or None
+
+
+CITATION = re.compile(r"\b([a-z0-9_]+\.py):(\d+)\b")
+
+
+def basis_citations(src, key="host-forms-basis"):
+    """`[(file, line)]` cited by a `-basis` line, as written.
+
+    A basis that cites a line is checkable; one that does not is prose. This
+    repository has shipped four dead citations at once, so the numbers are
+    read rather than trusted.
+    """
+    value = declarations(src).get(key, "")
+    return [(f, int(n)) for f, n in CITATION.findall(value)]
+
+
 def platform_siblings(boards_dir):
     """`{prefix: [sibling prefixes]}` for every card that declares a sharing.
 
