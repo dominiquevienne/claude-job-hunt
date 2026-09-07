@@ -350,6 +350,45 @@ sampled, meaning the platform hosts the application form; the plugin hands the
 user the ad URL and their documents, and **the user applies themselves**. No
 account is created and no credential field is filled.
 
+## The rules limit the sweep, and the limit is ours to declare
+
+**Measured 2026-09-07, one `robots.txt` per host.** *Ten of these eleven hosts
+carry `Disallow` rules that target a **query string** — 8 to 32 rules each —
+and this adapter builds one: `path += f"?page={page}"`.*
+
+**`totaljobs.com` is the case to hold on to.** It carries both:
+
+```
+Disallow: /jobs*?page=*
+Allow:    /jobs/*?page=2$
+```
+
+**Page 2 is permitted by name and the rest is refused.** *An operator who
+thought about it: be indexed once, not paginated.* **The guard reads that
+correctly** — `?page=2` is allowed because the longer `Allow` wins, `?page=3`
+is not.
+
+**And the guard only began reading it on 2026-09-07.** *Before `fbec807` it
+compared the path without the query, so every `?page=` looked like the bare
+path and passed. The window was 2026-09-03 to 2026-09-07 — four days in which
+a new guard asked an incomplete question.* **What went out in that window is
+not knowable: a false permission leaves no trace, because the fetch succeeds
+and the body is real.**
+
+### What this does to a count from this board, and why it will look like something else
+
+> **A sweep of `totaljobs.com` now stops after page 2. "N advertisements" from
+> that host means pages 1 and 2, not the board.**
+
+**The adapter `die()`s on the refusal rather than truncating silently**, so the
+stop is loud — *but the number already printed is not.*
+
+**Read a drop in coverage here as OUR boundary, not as a board shrinking.**
+*This is `jobstore.md`'s trap — a count of what could be read, published as a
+count of what exists — except that here the boundary is one we introduced by
+fixing a defect, so the drop arrives with a ready-made explanation.* **A
+correct guard makes a board look smaller, and nothing in the number says so.**
+
 ## Pace
 
 No rate limit is published and there is no `429` — the platform simply stops
