@@ -49,9 +49,36 @@ pacing only.** A retry after a refusal answers a different question, is driven
 by the response rather than the rules, and belongs where it already is.
 """
 
+import os
+import re
+import tempfile
 import time
 
 import _robots
+
+
+# **The slot file, and why it is not in the workspace.** Spacing is a fact
+# about this machine's traffic, not about the user's job search: it belongs in
+# the temp directory, which is writable everywhere and disposable. *Writing to
+# a configuration directory because a tool ran is a side effect, and #142
+# settled that.*
+_SLOTS = os.path.join(tempfile.gettempdir(), "claude-job-hunt-pace")
+
+# A claim further ahead than this is not a claim, it is a clock that moved or a
+# process that died holding one. **Ignoring it is safer than honouring it**:
+# the worst case is one request too early, against a wait of unbounded length.
+_MAX_CLAIM = 300.0
+
+
+def _slot_path(host):
+    """One file per host. **Never one file for everything.**
+
+    Two different hosts must not slow each other down — a global pace would
+    turn one slow site into a tax on every other, and that is not what any of
+    them asked for.
+    """
+    safe = re.sub(r"[^a-z0-9._-]", "_", (host or "").lower())[:80] or "_"
+    return os.path.join(_SLOTS, safe)
 
 
 class Pace:
@@ -84,16 +111,62 @@ class Pace:
                     f"{self.host} asks for nothing")
         return f"no spacing: {self.host} asks for none and this adapter set none"
 
+    def _claim(self):
+        """Reserve this host's next slot **across processes**, and return it.
+
+        `self._last` lives in one process's memory, and `None` on the first
+        call means *fire now*. **So every new process fired immediately**,
+        whatever another had just done: on 2026-09-07 nine requests from
+        `bin/fetch-body.py` and twenty-three from a sweep reached
+        `emploisburkina.bf` in ninety seconds, each impeccably paced in its
+        own process, and the host stopped answering. **Twenty-two of
+        twenty-three failed, and a zero drawn from that would have been
+        indistinguishable from an empty board.** #179.
+
+        Each caller writes the slot it has taken *before* sleeping, so a
+        second process reads a claim rather than an empty file. The
+        read-modify-write is not locked — the window is microseconds against a
+        wait of seconds, and `os.replace` is atomic on both platforms this
+        repository runs on. *A lock would need `fcntl` on one and `msvcrt` on
+        the other, and this does not need one.*
+        """
+        path = _slot_path(self.host)
+        now = time.time()
+        try:
+            with open(path, encoding="utf-8") as fh:
+                claimed = float(fh.read().strip() or 0.0)
+        except (OSError, ValueError):
+            claimed = 0.0
+        if claimed > now + _MAX_CLAIM:
+            claimed = 0.0
+        target = max(now, claimed)
+        try:
+            os.makedirs(_SLOTS, exist_ok=True)
+            tmp = f"{path}.{os.getpid()}"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                fh.write(repr(target + self.delay))
+            os.replace(tmp, path)
+        except OSError:
+            # **A temp directory we cannot write is not a licence to hurry.**
+            # The in-process spacing below still applies; only the
+            # cross-process half is lost, and it is lost quietly rather than
+            # turning into no spacing at all.
+            pass
+        return target
+
     def wait(self):
-        """Sleep only for the part of the interval that has not already passed."""
+        """Sleep for whatever of this host's interval has not already passed —
+        **counting requests made by other processes.**"""
         if not self.delay:
             self._last = time.monotonic()
             return 0.0
-        now = time.monotonic()
-        if self._last is None:
-            self._last = now
-            return 0.0
-        slept = max(0.0, self.delay - (now - self._last))
+        target = self._claim()
+        slept = max(0.0, target - time.time())
+        # The in-process view still applies: it is cheaper than a file read and
+        # it is what the existing cases exercise.
+        if self._last is not None:
+            slept = max(slept, self.delay - (time.monotonic() - self._last))
+        slept = max(0.0, slept)
         if slept:
             time.sleep(slept)
         self._last = time.monotonic()

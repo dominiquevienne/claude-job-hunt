@@ -298,6 +298,47 @@ def rules_refusal(path, *, decision, rules, token, url=None, decided_at=None,
     return rec
 
 
+def transport_failure(path, *, url, error, agent, attempted_at=None,
+                      **extra):
+    """Record a request that never got an answer — **with its NATURE.**
+
+    A refusal has a status; this has none, and the temptation is to write
+    `null` and move on. **That is what happened on 2026-09-07**: a sweep
+    recorded `code: null` for twenty-two of twenty-three URLs and discarded
+    the exception, so the file could not say whether the host had refused,
+    timed out, reset the connection or failed to resolve.
+
+    > *A record that cannot say why is why a card cannot say what.*
+
+    The four are different facts and they lead to different conduct: a refusal
+    is the host's answer, a timeout may be ours, a reset is often a rate
+    limit, and a DNS failure is not about the host at all. **`kind` carries
+    the exception's class and `detail` its message**, so the distinction
+    survives the process that saw it.
+    """
+    rec = {
+        "kind": "transport-failure",
+        "url": url,
+        "error": type(error).__name__ if isinstance(error, BaseException)
+                 else "unknown",
+        "detail": str(error)[:300],
+        "agent": agent,
+        # No `status`, no `bytes`, no `md5`: nothing answered. **Absent, not
+        # `null`** — the same rule the rules-refusal record follows.
+        "attempted_at": attempted_at or _now(),
+        "body_kept": False,
+    }
+    rec.update(extra)
+    path = str(path)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(sidecar_for(path), "w", encoding="utf-8") as f:
+        json.dump(rec, f, ensure_ascii=False, indent=1, sort_keys=True)
+        f.write("\n")
+    return rec
+
+
 def refusals(root):
     """Every record under `root` for a fetch that was not a 2xx.
 
@@ -318,7 +359,8 @@ def refusals(root):
             # **Both refusals, and a rules refusal has no status.** Testing
             # only the status would have kept reporting zero on the class
             # that closes boards — the very hole this pair was written for.
-            refused = rec.get("kind") == RULES_REFUSAL or (
+            refused = rec.get("kind") in (RULES_REFUSAL,
+                                          "transport-failure") or (
                 isinstance(rec.get("status"), int)
                 and not 200 <= rec["status"] < 300)
             if refused:

@@ -9320,9 +9320,17 @@ class PaceArithmeticIsTestedAndNotOnlyItsWiring(unittest.TestCase):
         """A pacer that sleeps the full interval regardless of elapsed time
         doubles the wait on any adapter that does work between requests."""
         import time
+        import _pace
         p = self._pace(10.0, 0.0)
         p.wait()
+        # **The pacer has two clocks now, and simulating one simulates half.**
+        # `_last` is this process's view; the slot file is the host's, shared
+        # across processes since #179. Winding back only the first leaves a
+        # claim ten seconds ahead and the wait is real rather than an
+        # arithmetic error.
         p._last = time.monotonic() - 9.0
+        with open(_pace._slot_path(p.host), "w", encoding="utf-8") as fh:
+            fh.write(repr(time.time() - 9.0 + p.delay))
         slept = p.wait()
         self.assertLess(slept, 2.0,
                         "nine of the ten seconds had already passed and the "
@@ -10215,6 +10223,209 @@ class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
         self.assertIn("resolve(a.prefer)", src,
                       "the CLI stopped passing --prefer into resolve(), which "
                       "is the only production path into it")
+
+
+class PacingSurvivesTheProcess(unittest.TestCase):
+    """#179. `Pace` kept its last-request time in memory, so a new process
+    fired immediately whatever another had just done.
+
+    **Found by doing it.** On 2026-09-07, nine requests from
+    `bin/fetch-body.py` and twenty-three from a sweep reached
+    `emploisburkina.bf` in ninety seconds — *each impeccably paced inside its
+    own process* — and the host stopped answering. **Twenty-two of
+    twenty-three failed**, and a zero drawn from that would have been
+    indistinguishable from an empty board, which is exactly what six earlier
+    probes had suggested.
+
+    > **Two tools pacing correctly can hammer a host together, and neither can
+    > see it.**
+    """
+
+    HOST = "pace-test.example"
+
+    def setUp(self):
+        import _pace
+        self.slot = _pace._slot_path(self.HOST)
+        self._clear()
+        # **`Pace.__init__` asks `_robots.verdict`, which goes to the network
+        # and sleeps between retries.** `_pace.time` is the `time` module
+        # itself, so patching `_pace.time.sleep` patches it for `_robots` too
+        # — and this class's first version counted 1.5 s and 4.8 s of
+        # somebody else's back-off as its own pacing. *The same global-stub
+        # leak that served 25 bytes to two unrelated cases earlier today.*
+        self._real_verdict = _pace._robots.verdict
+        _pace._robots.verdict = lambda *a, **k: {}
+
+    def tearDown(self):
+        import _pace
+        _pace._robots.verdict = self._real_verdict
+        self._clear()
+
+    def _clear(self):
+        try:
+            os.remove(self.slot)
+        except OSError:
+            pass
+
+    def test_a_second_process_waits_for_the_first(self):
+        """**The direction that must redden.** Two `Pace` objects that share
+        nothing but the host stand for two processes: the second must wait."""
+        import _pace
+        first = _pace.Pace(self.HOST, own=2.0)
+        second = _pace.Pace(self.HOST, own=2.0)
+        slept = []
+        real = _pace.time.sleep
+        _pace.time.sleep = lambda s: slept.append(s)
+        try:
+            first.wait()
+            second.wait()
+        finally:
+            _pace.time.sleep = real
+        self.assertTrue(slept, "the second pacer did not wait at all — its "
+                               "view of the host is its own process only, "
+                               "which is #179")
+        self.assertGreater(max(slept), 1.0,
+                           f"it waited {max(slept):.2f}s of a 2s interval")
+
+    def test_one_process_at_the_right_rate_stays_green(self):
+        """**The direction that a fix sleeping on everything would break.**
+
+        A single pacer whose interval has already elapsed must not sleep: the
+        point is spacing, not delay.
+        """
+        import _pace
+        p = _pace.Pace(self.HOST, own=0.05)
+        p.wait()
+        _pace.time.sleep(0.12)
+        slept = p.wait()
+        self.assertLess(slept, 0.05,
+                        f"slept {slept:.3f}s although the interval had passed")
+
+    def test_two_hosts_do_not_slow_each_other(self):
+        """**Per host, never global.** One slow site must not tax every other.
+        """
+        import _pace
+        other = "pace-other.example"
+        try:
+            os.remove(_pace._slot_path(other))
+        except OSError:
+            pass
+        a = _pace.Pace(self.HOST, own=5.0)
+        b = _pace.Pace(other, own=5.0)
+        slept = []
+        real = _pace.time.sleep
+        _pace.time.sleep = lambda s: slept.append(s)
+        try:
+            a.wait()
+            b.wait()
+        finally:
+            _pace.time.sleep = real
+            try:
+                os.remove(_pace._slot_path(other))
+            except OSError:
+                pass
+        self.assertEqual(slept, [],
+                         f"a claim on {self.HOST} delayed a request to "
+                         f"{other}: pacing became global")
+
+    def test_a_claim_from_the_far_future_is_ignored(self):
+        """A crashed process or a clock change must not block for ever.
+
+        *Firing one request early is the lesser fault against a wait of
+        unbounded length* — and the alternative fails closed in the direction
+        that looks like the tool being broken.
+        """
+        import _pace
+        import time as _t
+        os.makedirs(os.path.dirname(self.slot), exist_ok=True)
+        with open(self.slot, "w", encoding="utf-8") as fh:
+            fh.write(repr(_t.time() + 86400))
+        slept = []
+        real = _pace.time.sleep
+        _pace.time.sleep = lambda s: slept.append(s)
+        try:
+            _pace.Pace(self.HOST, own=1.0).wait()
+        finally:
+            _pace.time.sleep = real
+        self.assertEqual(slept, [], "a stale claim a day ahead was honoured")
+
+    def test_an_unwritable_slot_directory_does_not_mean_no_spacing(self):
+        """**A temp directory we cannot write is not a licence to hurry.**"""
+        import _pace
+        real_makedirs = _pace.os.makedirs
+        _pace.os.makedirs = lambda *a, **k: (_ for _ in ()).throw(
+            OSError("read-only"))
+        slept = []
+        real_sleep = _pace.time.sleep
+        _pace.time.sleep = lambda s: slept.append(s)
+        try:
+            p = _pace.Pace(self.HOST, own=1.0)
+            p.wait()
+            p.wait()
+        finally:
+            _pace.os.makedirs = real_makedirs
+            _pace.time.sleep = real_sleep
+        self.assertTrue(slept, "with no slot file the in-process spacing was "
+                               "lost too, so the failure turned into no "
+                               "spacing at all")
+
+
+class AFailedRequestRecordsWhatFailed(unittest.TestCase):
+    """#179, second half. `code: null` is an absence; refusal, timeout, reset
+    and DNS are data.
+
+    **A sweep wrote `null` twenty-two times on 2026-09-07 and discarded the
+    exception**, so nothing could say whether the host had refused, timed out
+    or reset — and those lead to different conduct. *A refusal is the host's
+    answer; a timeout may be ours; a reset is often a rate limit; a DNS
+    failure is not about the host at all.*
+
+    > **A record that cannot say why is why a card cannot say what.**
+    """
+
+    def test_the_exception_class_and_message_survive(self):
+        import tempfile
+        from _provenance import transport_failure
+        with tempfile.TemporaryDirectory() as tmp:
+            err = TimeoutError("timed out after 45s")
+            rec = transport_failure(os.path.join(tmp, "x.html"),
+                                    url="https://h.example/x", error=err,
+                                    agent="Claude-User")
+            self.assertEqual(rec["kind"], "transport-failure")
+            self.assertEqual(rec["error"], "TimeoutError")
+            self.assertIn("45s", rec["detail"])
+            self.assertEqual(rec["url"], "https://h.example/x")
+            # **Absent, not null**: nothing answered, so nothing is described.
+            for absent in ("status", "bytes", "md5", "vendor"):
+                self.assertNotIn(absent, rec)
+
+    def test_two_different_failures_are_distinguishable(self):
+        """The whole point: the record must separate what the old one merged.
+        """
+        import tempfile
+        from _provenance import transport_failure
+        with tempfile.TemporaryDirectory() as tmp:
+            a = transport_failure(os.path.join(tmp, "a.html"),
+                                  url="https://h.example/a",
+                                  error=TimeoutError("slow"), agent="x")
+            b = transport_failure(os.path.join(tmp, "b.html"),
+                                  url="https://h.example/b",
+                                  error=ConnectionResetError("reset by peer"),
+                                  agent="x")
+        self.assertNotEqual(a["error"], b["error"])
+
+    def test_refusals_lists_it(self):
+        """It is a failed measurement, so the listing that exists to find
+        failed measurements must return it."""
+        import tempfile
+        from _provenance import refusals, transport_failure
+        with tempfile.TemporaryDirectory() as tmp:
+            transport_failure(os.path.join(tmp, "x.html"),
+                              url="https://h.example/x",
+                              error=OSError("boom"), agent="x")
+            found = refusals(tmp)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0][1]["kind"], "transport-failure")
 
 class EveryDeclaredHostFormIsReachedByItsScript(unittest.TestCase):
     """#173. Twelve cards declare `host-forms:` and nothing read the key.

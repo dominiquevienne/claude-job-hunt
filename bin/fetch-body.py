@@ -56,7 +56,8 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts"))
 
-from _provenance import record, rules_refusal, save, vendor_headers  # noqa: E402
+from _provenance import (record, rules_refusal, save,  # noqa: E402
+                         transport_failure, vendor_headers)
 import _tls                           # noqa: E402
 from _robots import allowed, full_path, rules_fingerprint, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
@@ -268,7 +269,13 @@ def main():
         enc = (e.headers.get("Content-Encoding") or "").strip().lower()
         heads = vendor_headers(e.headers)
     except (urllib.error.URLError, OSError) as e:
-        print(f"ERROR: {a.url}: {e}", file=sys.stderr)
+        print(f"ERROR: {a.url}: {type(e).__name__}: {e}", file=sys.stderr)
+        # **A failure that leaves no record is the one that gets misread.** A
+        # sweep wrote `code: null` twenty-two times on 2026-09-07 and threw the
+        # exception away; nothing could then say whether the host had refused,
+        # timed out or reset. #179.
+        if a.out:
+            transport_failure(a.out, url=a.url, error=e, agent=UA)
         return EXIT_HTTP
 
     if status != 200 and not a.allow_refusal:
