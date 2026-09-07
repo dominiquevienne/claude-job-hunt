@@ -24,6 +24,7 @@ become false. Issue #109.
 | :-- | :-- |
 | `--prefer <path>` | A folder the user named or connected. **The caller passes it; nothing invents one** |
 | `JOB_HUNT_HOME` | The explicit override, unchanged — **the terminal path works exactly as before** |
+| `~/.config/claude-job-hunt/config.yml` | **What the person told us once.** Honours `XDG_CONFIG_HOME`. Read only; `--remember` is the one thing that writes it, and only after they have named a folder. **Its absence is the ordinary case, not an error** — and an unreadable one is treated as absent, because refusing to start over a stray character in an optional file is worse than the problem it guards |
 | `<home>/Documents/job_applications` | Only if `<home>/Documents` **exists and is writable**. On a Mac or a Linux desktop it does, which is why nothing changes there |
 | **nothing** | **No fallback is invented.** Exit `3`, and one question to the person |
 
@@ -36,6 +37,23 @@ guess turns an invisible failure into one sentence:
 
 **A sentence, not an environment variable.** `export JOB_HUNT_HOME` in a shell
 profile is exactly what a CoWork user will not do.
+
+**And the sentence used to be asked again every session** — #142. The only two
+places that could hold the answer were the environment, which does not survive
+where the question is asked, and `config.yml`, which lives *inside* the folder
+being looked for. **The third row above is what breaks that circle**, and the
+owner chose it on 2026-09-07 from four candidates: it is portable, it honours
+`XDG_CONFIG_HOME`, and a person can find and edit it without us.
+
+```bash
+# when they name one, resolve and keep it in the same call
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py" \
+        --prefer "/the/folder/they/named" --remember
+```
+
+**`--prefer` and `--remember` are a pair**: one carries the answer as it is
+given, the other keeps it. *`--prefer` had been wired end to end with no
+caller but a test; it is not dead code, it is the step this path needed.*
 
 **Say where the files go before writing any**, and never hardcode a path or
 write into the plugin directory — a plugin update replaces it.

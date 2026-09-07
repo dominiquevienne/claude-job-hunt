@@ -8263,6 +8263,143 @@ class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
 
 
 
+class ASourceErrorRateIsAnIntervalAndNamesItsUnclassified(unittest.TestCase):
+    """**#162. A discarded host leaves no trace, so a source's error rate is
+    indemonstrable — and the tempting repair is to publish one anyway.**
+
+    On 2026-09-07 a directory of Iraqi job portals was censused: 23 hosts, 3
+    that were not portals at all, and **6 that could not be classified** — four
+    render client-side, two never answer. `3/23` is 13.0 %; `3/17`, obtained by
+    dropping the six, is 17.6 % — **a single number, more convincing, and it
+    rebuilds on a smaller scale the very selection the census removed.**
+
+    So a card may publish such a rate only in a shape that cannot hide the
+    unclassified:
+
+        <!-- source-error-rate: 3 of 23 · unclassified 6 · [13.0 % ; 39.1 %]
+             · 2026-09-07 -->
+
+    **The bounds are checked against the counts, not trusted.** The low bound
+    assumes every unclassified host is fine; the high bound assumes every one
+    is an error. *A rate whose two bounds are equal is a claim that nothing is
+    unclassified, and the guard makes that claim say so.*
+
+    **WHAT THIS GUARD DOES NOT DO, and it is the larger half of #162.** It does
+    not oblige anyone to write a card for a host that was evaluated and thrown
+    away — *nothing in this repository knows what was evaluated and thrown
+    away, which is the fact the issue reports.* **A guard counting existing
+    cards against existing cards would be inert and would read green.** This
+    one only fires on a card that makes a claim; it cannot fire on a card
+    nobody wrote.
+
+    **And it is prospective**: exactly one card carries the key today. It is
+    written so the second one cannot be sloppier than the first.
+    """
+
+    KEY = "source-error-rate"
+
+    def _rates(self):
+        import glob
+        import os
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            if os.path.basename(path) == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for m in re.finditer(r"<!--\s*%s:\s*(.*?)\s*-->" % self.KEY, src):
+                out.append((os.path.basename(path),
+                            [x.strip() for x in m.group(1).split("\u00b7")]))
+        return out
+
+    @staticmethod
+    def parse(parts):
+        """`(errors, population, unclassified, low, high, date)` or None.
+
+        **Returned rather than asserted** so the shape can be exercised on
+        inputs the repository does not contain — the lesson of `share_a_market`
+        two classes above: a predicate that never fires cannot be told from one
+        that finds nothing.
+        """
+        import re
+        if len(parts) != 4:
+            return None
+        m1 = re.fullmatch(r"(\d+) of (\d+)", parts[0])
+        m2 = re.fullmatch(r"unclassified (\d+)", parts[1])
+        m3 = re.fullmatch(r"\[\s*([\d.]+) % ; ([\d.]+) %\s*\]", parts[2])
+        m4 = re.fullmatch(r"\d{4}-\d{2}-\d{2}", parts[3])
+        if not (m1 and m2 and m3 and m4):
+            return None
+        return (int(m1.group(1)), int(m1.group(2)), int(m2.group(1)),
+                float(m3.group(1)), float(m3.group(2)), parts[3])
+
+    def test_the_shape_is_exercised_on_inputs_the_corpus_does_not_hold(self):
+        """**The half that keeps this class honest while one card carries the
+        key.** Each line below must come back the stated way."""
+        ok = ["3 of 23", "unclassified 6", "[13.0 % ; 39.1 %]", "2026-09-07"]
+        self.assertIsNotNone(self.parse(ok))
+        for bad, why in (
+                (["3 of 23", "unclassified 6", "13.0 %", "2026-09-07"],
+                 "a point, not an interval"),
+                (["3 of 23", "unclassified 6", "[13.0 % ; 39.1 %]"],
+                 "no date"),
+                (["3 of 23", "[13.0 % ; 39.1 %]", "2026-09-07", "x"],
+                 "no unclassified count"),
+                (["three of 23", "unclassified 6", "[13.0 % ; 39.1 %]",
+                  "2026-09-07"], "a figure in letters is invisible to search"),
+        ):
+            with self.subTest(why=why):
+                self.assertIsNone(self.parse(bad), why)
+
+    def test_the_bounds_follow_from_the_counts(self):
+        """**The arithmetic, on whatever the corpus holds.** The low bound is
+        `errors / population`; the high bound is `(errors + unclassified) /
+        population`. *Rounding to one decimal is allowed and nothing else is.*
+        """
+        for card, parts in self._rates():
+            with self.subTest(card=card):
+                p = self.parse(parts)
+                self.assertIsNotNone(
+                    p, f"{card}: wants <n> of <N> · unclassified <k> · "
+                       f"[<lo> % ; <hi> %] · <YYYY-MM-DD>")
+                errors, pop, unc, lo, hi, _d = p
+                self.assertGreater(pop, 0, f"{card}: empty population")
+                self.assertLessEqual(
+                    errors + unc, pop,
+                    f"{card}: {errors} errors and {unc} unclassified exceed a "
+                    f"population of {pop}")
+                self.assertAlmostEqual(
+                    lo, round(100.0 * errors / pop, 1), places=1,
+                    msg=f"{card}: low bound is not errors/population")
+                self.assertAlmostEqual(
+                    hi, round(100.0 * (errors + unc) / pop, 1), places=1,
+                    msg=f"{card}: high bound is not (errors+unclassified)/"
+                        f"population")
+
+    def test_an_interval_that_collapsed_claims_nothing_is_unclassified(self):
+        """**The direction that would otherwise pass silently.** `[13.0 % ;
+        13.0 %]` beside `unclassified 6` is a rate that dropped its
+        unclassified while still counting them — the exact repair this guard
+        exists to forbid."""
+        for card, parts in self._rates():
+            p = self.parse(parts)
+            if not p:
+                continue
+            _e, _n, unc, lo, hi, _d = p
+            with self.subTest(card=card):
+                if unc:
+                    self.assertGreater(
+                        hi, lo, f"{card}: {unc} unclassified but a single "
+                                f"value — dropping them is what makes a rate "
+                                f"look clean")
+                else:
+                    self.assertEqual(hi, lo, f"{card}: nothing unclassified, "
+                                             f"so the bounds coincide")
+
+
 class TheFetcherUsesTheSameTlsChainAsTheGuard(unittest.TestCase):
     """`empleate.gob.es` omits the intermediate certificate its own chain
     needs; `_tls` supplies it. The guard imported that module and the canonical
@@ -9845,6 +9982,153 @@ class ARefusalRecordsWhoAnswered(unittest.TestCase):
 
 
 
+
+
+class TheWorkspaceCascadeKeepsTheOrderThatWasDecided(unittest.TestCase):
+    """#142, and the order is the owner's decision of 2026-09-07.
+
+        prefer=           the answer being given right now, this turn
+        JOB_HUNT_HOME     the environment, when there is one
+        config.yml        what the person told us once
+        ~/Documents       the last guess, and only if it is writable
+        (nothing)         a question, never an invented directory
+
+    **`prefer=` was wired end to end and its only caller was a test.** The
+    tempting repairs were both wrong: wiring a caller somewhere to make the
+    counter go green *manufactures* a use, and deleting it loses a step the
+    new path needs. **The question that settles it is whether the decided
+    cascade needs it** — and it does: `prefer` is what carries the answer as
+    the person gives it, and `--remember` is what writes that answer down.
+    So the issue closes by construction rather than by a counter.
+
+    **The case that matters is the one where all three are present and
+    disagree.** A test that only checks *`config.yml` is read* stays green if
+    `JOB_HUNT_HOME` stops preceding it — and the precedence is the part that
+    was decided.
+    """
+
+    def _resolve(self, *, xdg=None, env=None, prefer=None):
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "wsp", os.path.join(root, "bin", "workspace-path.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        saved = {k: os.environ.get(k) for k in ("XDG_CONFIG_HOME",
+                                                "JOB_HUNT_HOME")}
+        try:
+            for key, value in (("XDG_CONFIG_HOME", xdg),
+                               ("JOB_HUNT_HOME", env)):
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+            return mod, mod.resolve(prefer)
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+    def _xdg_with(self, tmp, workspace):
+        d = os.path.join(tmp, "xdg", "claude-job-hunt")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "config.yml"), "w", encoding="utf-8") as fh:
+            fh.write(f"workspace: {workspace}\n")
+        return os.path.join(tmp, "xdg")
+
+    def test_all_three_present_and_contradicting(self):
+        """**The order, not the reading.** Each source in turn must win over
+        the ones below it while they are all sitting there disagreeing."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            xdg = self._xdg_with(tmp, "/from/config")
+            _m, (p, src, ask) = self._resolve(xdg=xdg, env="/from/env",
+                                              prefer="/from/prefer")
+            self.assertEqual((p, ask), ("/from/prefer", None), src)
+            _m, (p, src, _a) = self._resolve(xdg=xdg, env="/from/env")
+            self.assertEqual(p, "/from/env",
+                             "`config.yml` overtook the environment; the "
+                             "decided order puts JOB_HUNT_HOME first")
+            _m, (p, src, _a) = self._resolve(xdg=xdg)
+            self.assertEqual(p, "/from/config",
+                             "the remembered folder was not read, so the "
+                             "question comes back every session — #142")
+            self.assertIn("earlier", src)
+
+    def test_reading_never_creates_the_configuration_directory(self):
+        """**The border.** A tool that puts a file in someone's configuration
+        directory because it ran has had a side effect, not a feature. The
+        file's absence is the ordinary case."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            xdg = os.path.join(tmp, "never")
+            # **No `JOB_HUNT_HOME`, and that is the whole case.** The first
+            # version passed one, so `from_config()` was never reached and the
+            # case went green on a branch it did not enter: mutating the read
+            # to `makedirs` left it passing. *The second species — unexercised,
+            # and it reads exactly like a guard that found nothing.*
+            self._resolve(xdg=xdg)
+            self.assertFalse(os.path.exists(xdg),
+                             "reading the configuration created it")
+            self.assertFalse(
+                os.path.exists(os.path.join(xdg, "claude-job-hunt")),
+                "reading created the tool's own subdirectory")
+
+    def test_remember_writes_and_the_next_run_reads_it(self):
+        """The one thing that writes, and it round-trips."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            xdg = os.path.join(tmp, "xdg")
+            mod, _ = self._resolve(xdg=xdg)
+            saved = os.environ.get("XDG_CONFIG_HOME")
+            try:
+                os.environ["XDG_CONFIG_HOME"] = xdg
+                written = mod.remember("/named/once")
+                self.assertTrue(os.path.isfile(written))
+                self.assertEqual(mod.from_config(), "/named/once")
+            finally:
+                if saved is None:
+                    os.environ.pop("XDG_CONFIG_HOME", None)
+                else:
+                    os.environ["XDG_CONFIG_HOME"] = saved
+
+    def test_an_unreadable_config_is_treated_as_absent(self):
+        """**Both directions on the parser.** A stray line must not settle
+        anything, and must not stop the cascade either: refusing to start
+        because of a character in an optional file is worse than the problem.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            d = os.path.join(tmp, "xdg", "claude-job-hunt")
+            os.makedirs(d)
+            with open(os.path.join(d, "config.yml"), "w",
+                      encoding="utf-8") as fh:
+                fh.write("boards:\n  ignored: yes\n# workspace: /commented\n")
+            _m, (p, src, _a) = self._resolve(xdg=os.path.join(tmp, "xdg"),
+                                             env="/from/env")
+            self.assertEqual(p, "/from/env", src)
+            _m, (p, src, ask) = self._resolve(xdg=os.path.join(tmp, "xdg"))
+            self.assertNotEqual(p, "/commented",
+                                "a commented-out line was read as a value")
+
+    def test_prefer_has_a_production_caller_now(self):
+        """The issue's own title, answered by the code rather than by a count.
+
+        **`--prefer` and `--remember` are the pair**: one carries the answer,
+        the other keeps it. A parameter reachable only from a test was the
+        defect; a parameter the documented flow depends on is not.
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "bin", "workspace-path.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn('"--remember"', src)
+        self.assertIn("def remember(", src)
+        self.assertIn("resolve(a.prefer)", src,
+                      "the CLI stopped passing --prefer into resolve(), which "
+                      "is the only production path into it")
 
 class EveryDeclaredHostFormIsReachedByItsScript(unittest.TestCase):
     """#173. Twelve cards declare `host-forms:` and nothing read the key.

@@ -27,6 +27,36 @@ creating anything — `shared/workspace.md` has the cascade:
 JOB_HUNT_HOME="$(python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py")"
 ```
 
+### When the person names a folder, write it down — #142
+
+**The question used to come back every session**, because the only two places
+that could hold the answer were the environment, which does not survive
+outside a terminal, and `config.yml`, which lives *inside* the folder we are
+trying to find.
+
+**There is now a third, and it is read between them:**
+
+```
+prefer=           the answer being given right now, this turn
+JOB_HUNT_HOME     the environment, when there is one
+config.yml        ~/.config/claude-job-hunt/config.yml — what they told us once
+~/Documents       the last guess, and only if it is writable
+(nothing)         a question, never an invented directory
+```
+
+**So when they name a folder, pass it and keep it in the same call:**
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT:-.}/bin/workspace-path.py" \
+        --prefer "/the/folder/they/named" --remember
+```
+
+**`--remember` is the only thing that writes there.** Reading never creates
+the file or its directory: a tool that puts something in someone's
+configuration directory because it ran has had a side effect, not a feature.
+**Its absence is the ordinary case**, and the line it writes says how to undo
+it.
+
 - **Nothing named** → full setup. **If `config.yml` already exists, show the
   current configuration first and ask which sections to revisit** rather than
   re-asking everything. Somebody who says *"reconfigure"* rarely means *all of

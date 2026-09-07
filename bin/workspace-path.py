@@ -53,8 +53,78 @@ def _writable_dir(path):
     return os.path.isdir(path) and os.access(path, os.W_OK)
 
 
+def config_path():
+    """Where a remembered answer lives. **Honours `XDG_CONFIG_HOME`.**
+
+    Chosen by the owner on 2026-09-07, from four candidates, and this is the
+    one that is portable and that a person can find and edit without us.
+    """
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(_home(), ".config")
+    return os.path.join(base, "claude-job-hunt", "config.yml")
+
+
+def from_config(path=None):
+    """The workspace this machine has been told to use, or `None`.
+
+    **It reads; it never creates.** Writing into somebody's configuration
+    directory because a tool ran is a side effect, not a feature — the file's
+    absence is the ordinary case and not an error. `--remember` is the one
+    thing that writes, and only after the person has named a folder.
+
+    Parsed by hand, one key. `dormant.py` settled that idiom for the
+    workspace's own `config.yml`: *a tool that needs a pip install before it
+    can read its own config has moved the problem, not solved it.* This file
+    holds one line, and an unreadable one is treated as absent rather than
+    fatal — **the cascade below it still works, and refusing to start because
+    of a stray character in an optional file would be worse than the
+    problem.**
+    """
+    path = path or config_path()
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.split("#", 1)[0].rstrip()
+                if not line or line[0].isspace():
+                    continue
+                key, sep, value = line.partition(":")
+                if sep and key.strip() == "workspace":
+                    value = value.strip().strip("'\"")
+                    if value:
+                        return os.path.abspath(os.path.expanduser(value))
+    except OSError:
+        return None
+    return None
+
+
+def remember(path, config=None):
+    """Write the named folder down, so the question is asked once.
+
+    **Called only from `--remember`.** Returns the file it wrote.
+    """
+    config = config or config_path()
+    os.makedirs(os.path.dirname(config), exist_ok=True)
+    with open(config, "w", encoding="utf-8") as fh:
+        fh.write("# Written by claude-job-hunt. Delete this file to be asked "
+                 "again.\n")
+        fh.write(f"workspace: {path}\n")
+    return config
+
+
 def resolve(prefer=None):
-    """`(path, source, ask)` — `ask` is a sentence when nothing is settled."""
+    """`(path, source, ask)` — `ask` is a sentence when nothing is settled.
+
+    **The order was set by the owner on 2026-09-07:**
+
+        prefer=           the answer being given right now, this turn
+        JOB_HUNT_HOME     the environment, when there is one
+        config.yml        what the person told us once
+        ~/Documents       the last guess, and only if it is writable
+        (nothing)         a question, never an invented directory
+
+    `prefer` sits above the environment because it is not a stored source at
+    all: it is what the person is saying as we ask. The three below it are
+    the ones that persist, and their order is the decision.
+    """
     home = _home()
     if prefer:
         p = os.path.abspath(os.path.expanduser(prefer))
@@ -62,6 +132,9 @@ def resolve(prefer=None):
     env = os.environ.get("JOB_HUNT_HOME")
     if env:
         return os.path.abspath(os.path.expanduser(env)), "JOB_HUNT_HOME", None
+    saved = from_config()
+    if saved:
+        return saved, "the folder you named earlier", None
     docs = os.path.join(home, "Documents")
     if _writable_dir(docs):
         return os.path.join(docs, FOLDER), "your Documents folder", None
@@ -84,6 +157,10 @@ def main():
     p.add_argument("--json", action="store_true", dest="as_json")
     p.add_argument("--create", action="store_true",
                    help="create it — only after the user has agreed")
+    p.add_argument("--remember", action="store_true",
+                   help="write the folder down so the question is asked once "
+                        "— only after the user has named one. Nothing else "
+                        "here writes to the configuration directory.")
     a = p.parse_args()
 
     path, source, ask = resolve(a.prefer)
@@ -97,6 +174,13 @@ def main():
         return EXIT_ASK
     if a.create:
         os.makedirs(path, exist_ok=True)
+    if a.remember:
+        # **The only write, and it is opt-in.** Reading must never create:
+        # a tool that puts a file in someone's configuration directory
+        # because it ran has had a side effect, not a feature.
+        written = remember(path)
+        print(f"[workspace] remembered in {written} — delete that file to be "
+              f"asked again.", file=sys.stderr)
     if not a.as_json:
         # **Say where, in words, before anything is written.** A path printed
         # on stdout is for the shell; this line is for the person.
