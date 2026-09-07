@@ -8294,6 +8294,25 @@ class ASourceErrorRateIsAnIntervalAndNamesItsUnclassified(unittest.TestCase):
 
     **And it is prospective**: exactly one card carries the key today. It is
     written so the second one cannot be sloppier than the first.
+
+    **ITS BLIND SPOT, written down because a guard that covers one sub-species
+    of a defect and not the other is worse than none — with it, one believes
+    one has looked.** Declaring `unclassified 0 · [13.0 % ; 13.0 %]` is
+    internally consistent and passes here, and it may be a lie about the world:
+    nothing in this repository can tell whether six hosts really were
+    classifiable. *The guard checks that a stated interval matches stated
+    counts. It cannot check that the counts match reality* — that stays a
+    reading of the bodies, one host at a time, and no key replaces it.
+
+    Mutated on a throwaway worktree, 2026-09-07, both directions: a reduced
+    denominator, `errors + unclassified` exceeding the population, a missing
+    date, a figure spelled out in letters, a collapsed interval and a hidden
+    unclassified count all turn it red; the honest line and a genuine
+    `unclassified 0` stay green. **Two earlier bench runs produced green from a
+    mutation that never applied** — the restore pulled a file from `HEAD` that
+    did not yet carry the key, and the anchors matched prose as well as the
+    declaration. *Both were caught by an assertion in the bench, not by reading
+    its output.*
     """
 
     KEY = "source-error-rate"
