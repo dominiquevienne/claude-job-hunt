@@ -591,6 +591,27 @@ settle it: click once, read the resulting URL, and stop if it carries
 Reach is widened by facets rather than by depth: state, city, title, and
 `title jobs in <city>` cross-links are all separate pages of up to 200.
 
+### Who refuses the script, and it is not the editor
+
+Recorded 2026-09-07, from the refusal's own provenance:
+
+```
+hiringcafe.com   403   25 bytes   md5 9ccabba20b9f…   server: cloudflare
+```
+
+**The same refusal body, to the byte, as `www.jobstore.com` and
+`www.hays.fr`** — three unrelated operators in three countries — and the header
+names the same vendor on all three. *Twenty-five bytes of a standard sentence
+would be weak evidence on its own: the shared `robots.txt` fingerprint carried
+its weight over 1 836 bytes, where a string that long does not recur by
+chance.* **`server: cloudflare` is what turns *the same string* into *the same
+vendor*.**
+
+**So this site did not decide to close to us — it bought a service whose
+default closes us.** That sentence existed here for rules files; this is it
+demonstrated at the transport, on a host whose rules permit the paths its edge
+refuses.
+
 ### Pace, and the two stops
 
 One page load at a time, at reading speed, in the user's own Chrome — the same

@@ -56,7 +56,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "skills", "job-scan", "scripts"))
 
-from _provenance import record, save  # noqa: E402
+from _provenance import record, save, vendor_headers  # noqa: E402
 import _tls                           # noqa: E402
 from _robots import allowed, verdict  # noqa: E402
 from _ua import UA                    # noqa: E402
@@ -248,9 +248,11 @@ def main():
                                     context=ctx) as r:
             status, body, landed = r.getcode(), r.read(), r.geturl()
             enc = (r.headers.get("Content-Encoding") or "").strip().lower()
+            heads = vendor_headers(r.headers)
     except urllib.error.HTTPError as e:
         status, body, landed = e.code, e.read(), e.geturl()
         enc = (e.headers.get("Content-Encoding") or "").strip().lower()
+        heads = vendor_headers(e.headers)
     except (urllib.error.URLError, OSError) as e:
         print(f"ERROR: {a.url}: {e}", file=sys.stderr)
         return EXIT_HTTP
@@ -271,7 +273,11 @@ def main():
         record(a.out, body, url=a.url, status=status, agent=UA,
                final_url=(landed if landed and landed != a.url else None),
                content_encoding=undone,
-               crawl_delay_s=delay)
+               crawl_delay_s=delay,
+               # **Who answered, not only that we were refused.** Without
+               # these the record can say *the same 25-byte body* and no more,
+               # and 25 bytes of a standard sentence is expected to be shared.
+               vendor=heads)
         return EXIT_HTTP
 
     # **The rate a measurement was taken at belongs in the record.** It was
@@ -287,7 +293,7 @@ def main():
     wire = len(body)
     body, undone = decoded(body, enc)
     rec = save(a.out, body, url=a.url, status=status, agent=UA,
-               crawl_delay_s=delay,
+               crawl_delay_s=delay, vendor=heads,
                final_url=(landed if landed and landed != a.url else None),
                content_encoding=undone,
                encoded_bytes=(wire if undone else None))

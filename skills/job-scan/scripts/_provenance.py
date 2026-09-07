@@ -251,3 +251,36 @@ def refusals(root):
                     200 <= rec["status"] < 300):
                 out.append((os.path.join(base, name), rec))
     return sorted(out)
+
+
+# **The headers that name infrastructure, and only those.**
+#
+# A refusal record carried status, bytes, md5, identity, time and rate — and no
+# header at all. So *"the same 25-byte body"* was all it could say, and 25
+# bytes is short and generic: the shared `robots.txt` fingerprint carried its
+# weight over **1 836 bytes**, where a string that long does not recur by
+# chance. **A very short standard sentence is *expected* to be shared**, and
+# two vendors emitting it independently would look identical.
+#
+# `server` and `cf-ray` turn *same string* into *same vendor, named*.
+#
+# **An allowlist, not the whole set.** Response headers carry `set-cookie` and
+# other things that have no business in a record we keep, compare and publish.
+# These six name who answered and nothing about who asked.
+VENDOR_HEADERS = ("server", "cf-ray", "via", "x-served-by", "x-cache",
+                  "x-amz-cf-pop")
+
+
+def vendor_headers(headers):
+    """The infrastructure-naming headers present, lowercased, or `{}`."""
+    if not headers:
+        return {}
+    out = {}
+    for h in VENDOR_HEADERS:
+        try:
+            v = headers.get(h)
+        except Exception:                                       # noqa: BLE001
+            v = None
+        if v:
+            out[h] = str(v)[:120]
+    return out

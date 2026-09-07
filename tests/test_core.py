@@ -9712,5 +9712,75 @@ class ThreeRefusalsThreeCodes(unittest.TestCase):
 
 
 
+class ARefusalRecordsWhoAnswered(unittest.TestCase):
+    """A refusal record carried status, bytes, md5, identity, time and rate —
+    **and no header at all**. So the strongest thing it could say was *the same
+    25-byte body*, and that is weak evidence.
+
+    **Twenty-five bytes is short and generic.** The shared `robots.txt`
+    fingerprint carried its weight over **1 836 bytes**, where a string that
+    long does not recur by chance. *A very short standard sentence is expected
+    to be shared*, and two vendors emitting it independently would look
+    identical. The reserve was right and it was raised against the instrument
+    by the session that built the comparison.
+
+    `server` and `cf-ray` turn *same string* into **same vendor, named** —
+    measured the same afternoon on three unrelated hosts in three countries,
+    all `server: cloudflare`.
+
+    **An allowlist, not the whole header set.** Response headers carry
+    `set-cookie` and other things with no business in a record we keep, compare
+    and publish. These name who answered and nothing about who asked.
+    """
+
+    class H:
+        def __init__(self, d):
+            self.d = d
+
+        def get(self, k, default=None):
+            return self.d.get(k, default)
+
+    def test_the_vendor_naming_headers_are_kept(self):
+        got = _provenance.vendor_headers(self.H({
+            "server": "cloudflare", "cf-ray": "a373ef6349cab159-ZRH"}))
+        self.assertEqual(got, {"server": "cloudflare",
+                               "cf-ray": "a373ef6349cab159-ZRH"})
+
+    def test_nothing_else_is_kept(self):
+        """**The failing direction, and the one that matters.** Recording the
+        whole header set would put cookies and session material into a record
+        this repository keeps, compares and publishes."""
+        got = _provenance.vendor_headers(self.H({
+            "server": "nginx",
+            "set-cookie": "session=secret; HttpOnly",
+            "authorization": "Bearer x",
+            "x-request-id": "abc"}))
+        self.assertEqual(got, {"server": "nginx"})
+        self.assertNotIn("set-cookie", got)
+        self.assertNotIn("authorization", got)
+
+    def test_absent_headers_produce_no_field(self):
+        """An empty dict, not keys with `None` — a header that is not there and
+        a header that is empty are the same fact here, and neither is a value
+        worth carrying."""
+        self.assertEqual(_provenance.vendor_headers(self.H({})), {})
+        self.assertEqual(_provenance.vendor_headers(None), {})
+        self.assertEqual(_provenance.vendor_headers(self.H({"server": ""})), {})
+
+    def test_a_long_value_is_bounded(self):
+        got = _provenance.vendor_headers(self.H({"server": "x" * 500}))
+        self.assertLessEqual(len(got["server"]), 120)
+
+    def test_the_tool_records_them_on_a_refusal(self):
+        src = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bin", "fetch-body.py"), encoding="utf-8").read()
+        i = src.index("record(a.out, body,")
+        self.assertIn("vendor=heads", src[i:i + 500],
+                      "a refusal is recorded without saying who answered, so "
+                      "the record can only ever say *the same short string*")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
