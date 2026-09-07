@@ -694,6 +694,79 @@ an inline script, or a rotating asset hash all produce it. The check costs one
 extra request and it is the only thing that tells you whether the next hundred
 comparisons mean anything.
 
+## Three shapes of refusal, and only one of them a browser would open
+
+**Measured on `shared/` alone on 2026-09-07, without a single request.** *Two
+sessions arrived at "nine" and at "two" the same evening and neither was wrong:
+they were counting different shapes, and a third shape neither had isolated.*
+
+```
+(1) the RULES permit, the CONTENT answers 403, bare 25-byte body
+    -> the only shape a browser decision would open
+(2) the ROBOTS.TXT ITSELF answers 403 or 401  ->  host-closed
+    -> reading that file by hand says what the rules say, and nothing about
+       whether the host serves an inventory
+(3) a CHALLENGE page, md5 different on every request
+    -> the owner's second bound: never ask anyone to defeat an antirobot
+       control. Excluded from any count of what could be opened.
+```
+
+**Shape (2) is the one that gets mistaken for a host to be opened.** *It is
+worth settling — it is the owner's bound 0, whether a 403 is aimed at a client
+or at everyone — but a rules file read by hand does not add a readable board.*
+
+### What this repository ATTESTS, shape by shape
+
+```
+(1) with status, fingerprint and provenance                            6
+      hiringcafe.com · jobstore.com · www.hays.fr
+      iqjscout.com · eshjob.com · www.iraqhire.com
+(1) NAMED without the same evidence                                    5
+      tala-com.com          "first specimen", no fingerprint quoted
+      kariera.mk · sptojobslink.com · northcyprus.cv · jobs.af
+        -> `hiringcafe.md` says the same body is served "with HTTP 200 OR
+           403": the fingerprint matches and the STATUS is not established
+(2) host-closed                                                        3
+      batiactu · rozee (since 2026-09-07) · api.ashbyhq.com (401)
+(3) challenge page, per-request md5                                    6
+      counted here and excluded from what a browser would open
+```
+
+*Command: `grep -rn '9ccabba20b9f' shared/`, plus `host-closed` and the six of
+the 5.5 KB family named in the section above. 2026-09-07.*
+
+### The fact that decides — none of the six is the last of its country
+
+```
+hiringcafe · jobstore        countries: *      worldwide meta-boards
+www.hays.fr                  FR, 17 other adapters declare France
+iqjscout · eshjob · iraqhire IQ, and `iraq-hosts.md` finds 5 open portals there
+```
+
+**So opening shape (1) would add six hosts and no country.** *The two hosts
+whose inventory is unreachable for a different reason — rendered client-side,
+`bebee` and `portaljob-madagascar` — add one country, Madagascar.* **Eight
+hosts, one country, on 2026-09-07.**
+
+### And the limit of this count, which is the point of it
+
+**Eight is what the repository ATTESTS, not what exists.** *The six of shape (3)
+have no card. The four regional hosts of shape (1) live in one sentence of
+`hiringcafe.md`. A host measured, refused, and never written up appears
+nowhere.*
+
+> **This repository keeps what a session decided to write down, and the rest
+> lives in a thread nobody else reads.**
+
+**That is issue #162 on another object, and it has already cost a figure given
+to the repository's owner as a basis for decision** — *"nine hosts, seven
+countries at zero coverage", served in the morning and not reproducible from
+`shared/` by the evening.*
+
+**The count above prescribes, so it expires**: it stops being true the day
+anyone writes up one more host. *Re-derive it from the command rather than
+quoting this number.*
+
 ## A refusal nobody wrote — the vendor default
 
 Question 1 asks whether the refusal is aimed at us. There is an answer none of
