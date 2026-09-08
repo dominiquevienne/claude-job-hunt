@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read a board card's declarations — **once, and the same way everywhere.**
 
-    from _cards import declarations, card_script, shares_platform
+    from _cards import declarations, card_script, same_postings
 
 A card in `shared/boards/` opens with HTML comments that declare facts about
 the board: which hosts it covers, which script drives it, what was measured,
@@ -25,11 +25,11 @@ to be kept in step with a first key that is already read six ways.*
 **So: no new key. One reader, and the existing guard becomes the rule instead
 of an exception repaired afterwards.**
 
-WHAT `shares-platform:` IS FOR, AND WHY IT WAS INERT — #170
+WHAT `same-postings:` IS FOR, AND WHY IT WAS INERT — #170
 
 `jobup.md` and `jobs-ch.md` both declare:
 
-    <!-- shares-platform: … · the same posting UUID appears on both -->
+    <!-- same-postings: … · the same posting UUID appears on both -->
 
 **Nothing consumed it.** One test checked the line was well formed; no code
 ever asked it a question. So `job-scan` step 3 compared **whole ledger ids** —
@@ -78,14 +78,21 @@ def card_script(src):
     return value
 
 
-def shares_platform(src):
+def same_postings(src):
     """The card names that share this board's posting identifiers.
+
+    **Renamed from `shares_platform` / `shares-platform:` on 2026-09-08.** The
+    old name read as *«the same platform software»*; the key asserts *«the same
+    advertisement identifier appears on both»*. **Two sessions filled it wrongly
+    within two days** — one for two hosts sharing a template with different id
+    spaces, one for two hosts sharing an operator across different countries —
+    and in both cases the name is what invited the writing.
 
     Returns bare card names without the `.md` — `["jobs-ch"]` — because that
     name is also the ledger prefix the adapter writes. **That correspondence is
     a convention, so it is asserted in the suite rather than assumed here.**
     """
-    value = declarations(src).get("shares-platform", "")
+    value = declarations(src).get("same-postings", "")
     names = []
     for chunk in re.split(r"[·,]", value):
         m = re.match(r"\s*([a-z0-9][a-z0-9._-]*\.md)\b", chunk)
@@ -158,7 +165,7 @@ def platform_siblings(boards_dir):
         if not name.endswith(".md") or name == "README.md":
             continue
         with open(os.path.join(boards_dir, name), encoding="utf-8") as fh:
-            sibs = shares_platform(fh.read())
+            sibs = same_postings(fh.read())
         if sibs:
             out[name[:-3]] = sibs
     return out

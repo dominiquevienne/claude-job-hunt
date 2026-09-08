@@ -622,7 +622,7 @@ database the obvious reading. It is wrong: *the same Sonnecto vacancy is
 that appears nowhere in the other's markup. **A shared template names a
 supplier; identifiers and asset origins name an operator.**
 
-*So `shares-platform:` was written on the card and then withdrawn rather than
+*So `same-postings:` — then named `shares-platform:` — was written on the card and then withdrawn rather than
 reworded* — in this repository that key asserts the same posting ids on both
 brands, and the measurement says the opposite. **A key filled with the wrong
 thing reads exactly like a key filled with the right thing.**

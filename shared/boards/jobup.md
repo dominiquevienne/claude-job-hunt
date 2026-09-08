@@ -5,7 +5,8 @@
 <!-- verified: 2026-09-02 -->
 <!-- countries: CH -->
 <!-- overlap: jobstore.md · 15.5 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
-<!-- shares-platform: jobs-ch.md · the same posting UUID appears on both — one platform, two brands -->
+<!-- same-postings: jobs-ch.md · the same posting UUID appears on both — one platform, two brands -->
+<!-- (anciennement `shares-platform:`, renommé le 08.09.2026 — le nom affirmait une parenté de plateforme là où la clé affirme des annonces identiques) -->
 
 Swiss board, French-speaking Switzerland. Same platform as jobs.ch (JobCloud).
 **The sibling has now been verified** (`jobs-ch.md`, 2026-08-28): same DOM, same

@@ -42,7 +42,7 @@ would be the newest.
 declares `https://info.jobartis.com/…` as its second sitemap **by name**. The
 advertisement page carries an `m.jobartis.com` button.
 
-### And `shares-platform:` does NOT apply here — it was written and withdrawn
+### And `same-postings:` does NOT apply here — it was written and withdrawn
 
 *In this repository that key asserts **the same postings on both brands**, and
 a guard checks it against the two cards' own `countries:`.* **Angola and RD
@@ -50,7 +50,8 @@ Congo share no market, so they cannot share advertisements** — the guard said
 so, and it was right.
 
 **This is the second time in two days the key has been filled with something
-it does not mean.** *The Kosovo pair got it for «same template, different id
+it does not mean** — and the second is why it was renamed the same day, from
+`shares-platform:` to `same-postings:`. *The Kosovo pair got it for «same template, different id
 spaces»; this got it for «same operator, different countries».* **Both times
 the name read as «same platform software» and the key means «same postings».**
 

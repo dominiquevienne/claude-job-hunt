@@ -8248,6 +8248,88 @@ class ADirectiveAboveAnyGroupIsNotAnAbsence(unittest.TestCase):
                          "a rule inside a group is not orphaned")
 
 
+class TheRenamedKeyLeavesNoSilentOldName(unittest.TestCase):
+    """**`shares-platform:` was renamed to `same-postings:` on 2026-09-08**,
+    because the name asserted one thing and the key meant another.
+
+    ```
+    the NAME read as   the same platform software
+    the KEY asserts    the same advertisement identifier on both cards
+    ```
+
+    **Two sessions filled it wrongly within two days, for two different wrong
+    reasons**, and the name invited both:
+
+    | written for | why it was wrong |
+    | :-- | :-- |
+    | two Kosovar hosts sharing a **template**, ids `109849` vs `47268` | a shared template is a supplier, not shared postings |
+    | two Jobartis hosts sharing an **operator**, Angola and RD Congo | different markets cannot share advertisements |
+
+    **The market guard catches only the second.** *The Kosovar pair share the
+    market `XK`, so nothing in this suite would have reddened on it* — it was
+    caught by a person reading what the key means. **This guard does not close
+    that hole and does not pretend to**: it stops the old name coming back, and
+    it keeps both failures written down where the next writer will look.
+    """
+
+    def _cards(self):
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        return sorted(d.glob("*.md")), d
+
+    def test_no_card_still_declares_the_old_key(self):
+        """A card carrying `shares-platform:` would be **silently ignored** —
+        `_cards.same_postings()` now asks for the new name only, so the old one
+        reads as a comment and step 3 stops de-duplicating."""
+        import re
+        cards, _d = self._cards()
+        bad = [c.name for c in cards
+               if re.search(r"<!--\s*shares-platform\s*:", c.read_text(encoding="utf-8"))]
+        self.assertEqual(bad, [],
+                         "these declare the renamed key, which nothing reads: "
+                         + ", ".join(bad))
+
+    def test_the_reader_asks_for_the_new_name(self):
+        import _cards
+        src = "<!-- same-postings: jobs-ch.md · the same posting UUID -->"
+        self.assertEqual(_cards.same_postings(src), ["jobs-ch"])
+        old = "<!-- shares-platform: jobs-ch.md · the same posting UUID -->"
+        self.assertEqual(_cards.same_postings(old), [],
+                         "the old key must not keep working, or the rename is "
+                         "cosmetic and two spellings drift apart")
+
+    def test_the_old_name_stays_searchable(self):
+        """**Two sessions wrote the old name; a third may search for it.** It
+        must survive somewhere a `grep` will find, on both cards that carry the
+        key and in the skill that documents it."""
+        # **The two cards that were RENAMED, by name.** A first draft required
+        # the old name on every card carrying `same-postings:` — which reddens
+        # on a card written today that never had the old name, for a reason
+        # that has nothing to do with correctness. *Third species: it fails on
+        # correct code.* It was found by mutating, not by re-reading: the
+        # false red arrived on the Kosovo case and hid the answer that case
+        # was asked for.
+        _cards_dir = self._cards()[1]
+        renamed = ("jobup.md", "jobs-ch.md")
+        missing = [n for n in renamed
+                   if "shares-platform" not in
+                   (_cards_dir / n).read_text(encoding="utf-8")]
+        self.assertEqual(missing, [],
+                         "these were renamed without leaving the old name "
+                         "findable: " + ", ".join(missing))
+        carriers = [c.name for c in self._cards()[0]
+                    if "same-postings:" in c.read_text(encoding="utf-8")]
+        self.assertTrue(carriers, "no card carries the key at all")
+        skill = (pathlib.Path(SCRIPTS).parent / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("shares-platform", skill)
+
+    def test_both_wrong_reasons_are_written_down(self):
+        """**Borne ② of the rename.** If only one failure is recorded, the next
+        session meets the other and believes it is the uncovered case."""
+        src = (pathlib.Path(SCRIPTS) / "_cards.py").read_text(encoding="utf-8")
+        self.assertIn("template", src)
+        self.assertIn("operator", src)
+
+
 class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
     """#164. Two cards describing the same shared ads is a redundancy this
     repository already keeps by hand — `README.md:75` carries `jobstore`'s
@@ -8270,18 +8352,18 @@ class AnOverlapIsDeclaredOnBothSidesAndTheCopiesAgree(unittest.TestCase):
     prevents one introduced later. *The redundancy defends against drift and
     against nothing else.*
 
-    **Two keys, not one.** `shares-platform:` records a property — the same
+    **Two keys, not one.** `same-postings:` records a property — the same
     posting UUID on both brands — and carries no date because it does not age.
     `overlap:` records a measurement and carries one. *In a single key the
     property would age at the rate of the measurement*, and a reader could not
     tell which half had gone stale.
     """
 
-    KEYS = ("overlap", "shares-platform")
+    KEYS = ("overlap", "same-postings")
 
     def _decls(self):
         import re
-        pat = re.compile(r"<!--\s*(overlap|shares-platform):\s*(.*?)\s*-->")
+        pat = re.compile(r"<!--\s*(overlap|same-postings):\s*(.*?)\s*-->")
         out = []
         d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
         for card in sorted(d.glob("*.md")):
@@ -11017,7 +11099,8 @@ class ADeclaredPlatformSharingIsActuallyConsulted(unittest.TestCase):
     of them the twin of a row already at status `applied`.
 
     **The declaration existed the whole time.** Both cards carry
-    `shares-platform:`, a test checked the line was well formed, and **no code
+    `same-postings:` — then named `shares-platform:` — a test checked the
+    line was well formed, and **no code
     ever asked it a question** — a step wired end to end that nobody walks.
 
     *One adapter serves both brands:* `jobup.py` builds `f"{site}:{ident}"`
@@ -11086,7 +11169,7 @@ class ADeclaredPlatformSharingIsActuallyConsulted(unittest.TestCase):
         self.assertIn("same_posting_ids", skill,
                       "step 3 does not name the expansion, so the module "
                       "would be as unconsulted as the declaration was")
-        self.assertIn("shares-platform", skill)
+        self.assertIn("same-postings", skill)
 
 class EveryATSProviderAsksBeforeItFetches(unittest.TestCase):
     """#175. Five provider APIs, two of them asked, and the refusing one was

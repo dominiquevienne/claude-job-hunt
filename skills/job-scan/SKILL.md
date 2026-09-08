@@ -359,7 +359,8 @@ a real scan, one of them the twin of a row already at `applied` — #170.
 **The pairing is declared, not remembered.** Both cards carry
 
 ```
-  <!-- shares-platform: jobs-ch.md · the same posting UUID appears on both -->
+  <!-- same-postings: jobs-ch.md · the same posting UUID appears on both -->
+  <!-- anciennement `shares-platform:` — renommé le 08.09.2026 -->
 ```
 
 and until #170 **nothing read it**: a test checked the line was well formed and
