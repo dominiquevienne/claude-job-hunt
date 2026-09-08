@@ -5,9 +5,19 @@
   angoemprego.py ad --slug gerente-de-balcao
 
 **The smallest archive of the three Angolan boards and the largest flow.**
-`jobartis.com` holds 38 547 advertisements and published 202 since 1 August;
+`jobartis.com` holds 40 882 advertisements and published 216 since 1 August;
 this one holds 1 434 and published 924. *That inversion is the whole reason
-this board was built second and the largest was not built at all.*
+this board was built second.*
+
+**Corrected 2026-09-08: 38 547 -> 40 882, and 202 -> 216.** *The old figure
+counted the `/emprego-<slug>` form alone and missed 2 294 advertisements under
+a bare `/<slug>`; the correction was made on 2026-09-07 in `jobartis.md`,
+`angoemprego.md`, `angolaemprego.md` and the README — and **this docstring was
+the one place it did not reach**, because a docstring is not a card and nothing
+greps it.* **The clause «&nbsp;and the largest was not built at all&nbsp;» is
+also removed: `jobartis.py` shipped on 2026-09-07**, so the sentence explaining
+why this adapter exists had begun explaining a state of the repository that no
+longer held.
 
 WORDPRESS JOB MANAGER: THE ADVERTISEMENTS ARE IN THEIR OWN FILES
 
