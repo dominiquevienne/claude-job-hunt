@@ -402,6 +402,37 @@ The shape generalises past sitemaps: a JSON-LD ad page that yields no
 announces N pages is unread, not empty. **A correct pattern is a fact that
 expires. An invariant catches the next wrapper without being told about it.**
 
+### The count has to come from somewhere other than your own reader
+
+**Two cards written an hour apart, 2026-09-08, are the pair that shows it.**
+
+| | `jobs-af.md` | `kariera-mk.md` |
+| :-- | :-- | :-- |
+| the count | `meta.totalItems: 242` | none exists |
+| who says it | **the site** | **my extraction** |
+| a broken reader prints | 0, next to a 242 that contradicts it | 0, and nothing contradicts it |
+
+**`jobs.af` also supplies the negative half of its own lesson.** *A cold load of
+its listing renders no cards **and displays `Active Jobs (0)`.*** **A page with
+no cards invites a second look; a page stating a count of zero looks like an
+answer** — and the same URL reached by in-page navigation shows 242.
+
+**And the two counters need not both be the site's to disagree usefully — they
+can both be yours, which is worse.** On one 368 624-byte company page:
+
+```
+25   literal occurrences of the status marker      <- correct
+41   a DOM walk over the SAME bytes                <- wrong
+```
+
+*The walk used `closest('div,li,article')` as the card boundary, and that
+ancestor holds several cards, so a card with no marker inherited a sibling's.*
+**A card boundary taken from `closest()` over-counts, and it over-counts
+upward** — *the direction that makes a finding look stronger.* **It was caught
+by changing instruments for an unrelated reason, never by re-reading the code**,
+which parses fine. *The false number was also hiding the answer: `25` against a
+declared `+24` settled a semantics the card had published as unsettled.*
+
 ### And the same rule applies to what we print
 
 The paragraphs above were written as if this were only about reading a board.
