@@ -9491,6 +9491,91 @@ class ABypassAnnouncesItselfWhereItHappens(unittest.TestCase):
         self.assertIn("announce_bypass(url)", fetch)
 
 
+class ACardIsNeverOlderThanAMeasurementItCarries(unittest.TestCase):
+    r"""**A card cannot be older than a figure inside it.** `verified:` and
+    nothing else fixes a card's age — `shared/boards/README.md` — so a
+    `content:` line dated after `verified:` means either the card was
+    re-measured without bumping its age, or one of the two dates is wrong.
+    *Either way `adapter-age.sh` files the card as older than it is, and the
+    re-verification queue is sorted on that.*
+
+    **Measured 2026-09-08 before writing this: 135 cards, 56 carry a dated
+    `content:`, and three failed** — `gozambiajobs`, `melr-gh`,
+    `skillingpakistan`, all three re-measured on 2026-09-07 by commits that say
+    so, with `verified:` left behind.
+
+    **What this does NOT assert is that the two dates are equal.** *Eight cards
+    differ legitimately: `jobstore` carries `verified: 2026-09-08` and a count
+    from 2026-09-02 because the route was re-exercised and the counts were
+    not.* **That difference is the distinction the header exists to record, and
+    a guard demanding equality would delete it.**
+
+    **And the obvious guard — «&nbsp;every `content:` must carry a date&nbsp;» —
+    is deliberately not written**: 56 of 56 dated lines already end with one and
+    0 lack it, so the assertion could not fail on today's corpus. *An assertion
+    that cannot fail at its first writing is the inert species.*
+    """
+
+    # The declaration ends with its own date. **Read the TRAILING date, not the
+    # maximum**: the two agree on all 56 cards today, and they stop agreeing the
+    # day a card writes «&nbsp;deadlines to 2026-10-31&nbsp;» in its prose — at
+    # which point `max()` would fail a card that is perfectly correct.
+    TRAILING = re.compile(r"·\s*(\d{4}-\d{2}-\d{2})(?:T[0-9:.]+Z)?\s*$")
+
+    def _cards(self):
+        d = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "shared", "boards")
+        return [os.path.join(d, f) for f in sorted(os.listdir(d))
+                if f.endswith(".md")]
+
+    def _pairs(self):
+        out = []
+        for path in self._cards():
+            if os.path.basename(path) == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            v = re.search(r"<!--\s*verified:\s*(\d{4}-\d{2}-\d{2})\s*-->", src)
+            c = re.search(r"<!--\s*content:(.*?)-->", src, re.S)
+            if not (v and c):
+                continue
+            t = self.TRAILING.search(c.group(1).strip())
+            if t:
+                out.append((os.path.basename(path), v.group(1), t.group(1)))
+        return out
+
+    def test_no_card_carries_a_measurement_newer_than_itself(self):
+        bad = [f"{n}: verified {v} but content {c}"
+               for n, v, c in self._pairs() if c > v]
+        self.assertEqual(bad, [], "a card cannot be older than a figure it "
+                                  "carries: " + "; ".join(bad))
+
+    def test_a_content_older_than_the_card_is_allowed(self):
+        """**The direction that must stay open**, asserted on a constructed
+        pair rather than on the corpus.
+
+        *A first version required that some real card carry an older
+        `content:` — eight do today. But a repository that re-counted
+        everything on one day would satisfy the rule and fail that assertion:
+        **a guard reddening on correct work is the mis-described species**, and
+        this suite spent 2026-09-08 removing three of them.* The predicate is
+        exercised directly instead, so it cannot depend on what the corpus
+        happens to look like.
+        """
+        older = [("x.md", "2026-09-08", "2026-09-02")]
+        self.assertEqual([f"{n}" for n, v, c in older if c > v], [],
+                         "re-exercising a route without re-counting is "
+                         "legitimate, and the two headers exist to say so")
+        newer = [("y.md", "2026-09-02", "2026-09-08")]
+        self.assertEqual([f"{n}" for n, v, c in newer if c > v], ["y.md"],
+                         "and a count newer than the card must still fail")
+
+    def test_the_check_reaches_a_real_population(self):
+        """**An empty pair list satisfies the assertion vacuously.**"""
+        self.assertGreaterEqual(len(self._pairs()), 40)
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none

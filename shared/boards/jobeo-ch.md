@@ -37,6 +37,12 @@ Disallow: /api/  ·  Disallow: /jobsearch/api/
 *So `/jobsearch/offers?page=2` is refused outright while `/jobs?page=2` is
 permitted — and permitted or not, both return the same twenty.*
 
+**One route was not tried, and `meteojob.md` documents it**: *narrower searches
+rather than deeper pages.* `Allow: /jobs?*` permits filter parameters, so
+`/jobs?what=…&where=…` should each return their own twenty — **which is how the
+`meteojob.py` adapter works around the same rules.** *It should transpose; it
+was not exercised here, and «&nbsp;should&nbsp;» is not «&nbsp;was&nbsp;».*
+
 **This is the same shape as `meteojob.md`**, whose card records one search page
 and no licit pagination. *The listing payload names `app.meteojob.title`: the
 two boards run the same engine, and the constraint is the engine's.*

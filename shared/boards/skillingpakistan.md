@@ -1,6 +1,6 @@
 # Assessed, adapter deferred — Skilling Pakistan
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-07 -->
 <!-- hosts: skillingpakistan.gov.pk -->
 <!-- countries: PK -->
 <!-- script: none -->
@@ -89,3 +89,5 @@ repository's cards end with *"Verified against the live site"* for a reason.
 `No jobs available`. When it stops appearing, the table is the whole listing
 (server-rendered, no pagination links, no AJAX route in the page) and the
 adapter is half an hour's work.
+
+*`verified:` corrected 2026-09-08 from 2026-09-03 to 2026-09-07 (#188-adjacent guard): this card's `content:` carries a measurement of 2026-09-07 and the commit that wrote it exercised the host, so the card's age was understated. **The measurement was right and the header was behind** — `adapter-age.sh` was filing it older than it is.*

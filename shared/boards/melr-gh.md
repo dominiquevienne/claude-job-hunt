@@ -1,6 +1,6 @@
 # Assessed, no adapter — MELR (Ghana, Ministry of Labour, Jobs and Employment)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-07 -->
 <!-- hosts: melr.gov.gh -->
 <!-- countries: GH -->
 <!-- script: none -->
@@ -99,3 +99,5 @@ The page also carries mojibake in its own stored content — `GHANAâ€™S` fo
 double-encoded at the source, not a decoding fault**: `_decode.py` reads the
 declaration and gets it right. Recorded so nobody re-opens it as an encoding
 bug.
+
+*`verified:` corrected 2026-09-08 from 2026-09-03 to 2026-09-07 (#188-adjacent guard): this card's `content:` carries a measurement of 2026-09-07 and the commit that wrote it exercised the host, so the card's age was understated. **The measurement was right and the header was behind** — `adapter-age.sh` was filing it older than it is.*

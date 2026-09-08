@@ -1,6 +1,6 @@
 # Board adapter — Go Zambia Jobs (Zambia)
 
-<!-- verified: 2026-09-05 -->
+<!-- verified: 2026-09-07 -->
 
 <!-- hosts: www.gozambiajobs.com, gozambiajobs.com -->
 <!-- script: gozambiajobs.py -->
@@ -221,3 +221,5 @@ the domain's change of use. **No adapter, and no country page should count it.**
 `jobsearchzm.com` and `jobzambia.com` were guarded on 2026-09-04 and both permit;
 **neither has been counted.** They are named here so that a later reader knows
 the country was not exhausted.
+
+*`verified:` corrected 2026-09-08 from 2026-09-05 to 2026-09-07 (#188-adjacent guard): this card's `content:` carries a measurement of 2026-09-07 and the commit that wrote it exercised the host, so the card's age was understated. **The measurement was right and the header was behind** — `adapter-age.sh` was filing it older than it is.*

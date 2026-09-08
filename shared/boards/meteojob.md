@@ -218,3 +218,22 @@ documented above rather than engineered around — which is the whole point.
 **Re-exercised 2026-09-08**: `search --what infirmier --where Lyon` returns
 **20 advertisements**, and the adapter says plainly that *«&nbsp;that is the cap,
 not the result count&nbsp;»* — the distinction issue #181 is about.
+
+## The pagination constraint is the ENGINE's, not this host's — 2026-09-08
+
+**`jobeo.ch` publishes the same rules**: `Disallow: *?*` with `Allow: /jobs?*`,
+`/api/` and `/jobsearch/api/` disallowed, one page of 20 and no query parameter
+that moves the window. *And its listing payload names `app.meteojob.title` —
+the two boards run the same software.*
+
+> **So «&nbsp;one search is 20 ads&nbsp;» is a property of the platform, not of
+> `meteojob.com`.** *A session reading this card alone would take it for a
+> quirk of one host and be surprised by the next one.*
+
+**`shared/boards/jobeo-ch.md` carries the measurement on that side**: 20
+reachable against a self-declared `"total":1130`.
+
+**And the workaround this card documents — run more, narrower searches — has
+not been tried on `jobeo.ch`.** *It should transpose, since the same
+`Allow: /jobs?*` permits filter parameters there, but «&nbsp;should&nbsp;» is
+not «&nbsp;was&nbsp;».*
