@@ -44,7 +44,16 @@ on:
     # est la contention, qui ne distingue pas quel ordonnanceur on emploie.
     # Elle a été appliquée à la classe rencontrée et pas à l'espèce.
     # **Correctif de conformité, sur une cause établie et non devinée.**
-    - cron: "17 10,22 * * *"
+    # **Le créneau du matin est RETIRÉ — décision du propriétaire du dépôt,
+    # 08.09.2026, issue #178.** Mesuré sur sept tirs : `startedAt - createdAt`
+    # vaut **0 s sur les sept** et le job dure 7 à 18 s — donc le retard n'est
+    # ni une file d'attente ni un travail lent : il est **entièrement dans la
+    # dépêche de l'événement planifié**, en amont de tout ce que nous
+    # contrôlons. Le matin tirait 190, 204 et 336 min après l'heure ; le soir
+    # 97, 99, 109 et 129. **Deux distributions disjointes sur n=3 et n=4** — et
+    # un seul matin sous 129 min annulerait la séparation, ce qui est écrit
+    # parce que trois points ne font pas une loi.
+    - cron: "17 22 * * *"
   workflow_dispatch:
     inputs:
       allow_red_ci:
