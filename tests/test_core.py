@@ -12874,5 +12874,70 @@ class AGuardOnAPathIsNotAGuardOnTheURL(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertEqual(_robots.full_path(up.urlsplit(url)), want)
 
+class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
+    """#181. Three adapters printed the anchor and divided by it.
+
+    The sentence `6295 <loc>: N advertisement(s)` is the discriminant: a
+    reader that stopped parsing prints `6295 <loc>: 0`, which no empty board
+    can produce. All three computed a ratio over `len(rows)` in that same
+    sentence, so the zero case raised `ZeroDivisionError` — **the anchor was
+    destroyed on exactly the path it exists for**, and `ejobsfiji` also called
+    `max()` on an empty sequence one line later.
+
+    **What this asserts is behaviour, not shape.** It drives each `cmd_list`
+    with an extraction that returns nothing and requires the documented exit
+    code and both figures in the message. A regex over the source would pass
+    on a rewrite that moved the division.
+    """
+
+    CASES = (
+        ("ihararejobs", lambda: ([], {"loc": 6295, "category": 0,
+                                      "duplicate": 0})),
+        ("ejobsfiji",   lambda: ([], 3152)),
+        ("myjobsfiji",  lambda: ([], 3152, ["2026-09-07"])),
+    )
+
+    def _run(self, name, fake_entries):
+        import argparse, importlib, io as _io, sys as _sys
+        from contextlib import redirect_stderr
+        _sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "skills", "job-scan", "scripts"))
+        mod = importlib.import_module(name)
+        original, mod.entries = mod.entries, fake_entries
+        err = _io.StringIO()
+        try:
+            with redirect_stderr(err):
+                with self.assertRaises(SystemExit) as caught:
+                    mod.cmd_list(argparse.Namespace(
+                        since=None, fetch=False, limit=None))
+        finally:
+            mod.entries = original
+        return caught.exception.code, err.getvalue()
+
+    def test_a_zero_extraction_exits_partial_and_names_both_figures(self):
+        for name, fake in self.CASES:
+            with self.subTest(adapter=name):
+                code, msg = self._run(name, fake)
+                self.assertEqual(code, 6, f"{name}: expected EXIT_PARTIAL")
+                self.assertIn("0 advertisement(s)", msg,
+                              f"{name}: the zero is not stated")
+                # **The other side of the anchor.** Without the second figure
+                # the message says "nothing found" and not "the file is there
+                # and this reader got nothing out of it".
+                self.assertRegex(msg, r"(6295|3152)",
+                                 f"{name}: the anchor's other figure is absent")
+
+    def test_it_does_not_raise_zerodivision(self):
+        """The failure mode as it actually was, named."""
+        for name, fake in self.CASES:
+            with self.subTest(adapter=name):
+                try:
+                    self._run(name, fake)
+                except ZeroDivisionError:  # pragma: no cover
+                    self.fail(f"{name}: the ratio still divides by the count "
+                              f"that is zero here")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -310,6 +310,16 @@ def card(url, row, posting, mode):
 
 def cmd_list(a):
     rows, counts = entries()
+    # **The ratio divided by the count that is zero in the one case this
+    # sentence exists for.** `<loc>` beside advertisements is the anchor: a
+    # reader that stopped parsing prints `6295 <loc>: 0`, which no empty board
+    # can produce. Dividing by `len(rows)` raised ZeroDivisionError instead,
+    # so the anchor was destroyed on exactly its own path. #181.
+    if not rows:
+        die(f"{counts['loc']} `<loc>` in the sitemap and 0 advertisement(s) "
+            f"parsed. **A sitemap with URLs and no advertisements is a "
+            f"reading that failed, not an empty board** — the file is there "
+            f"and this reader got nothing out of it.", EXIT_PARTIAL)
     note(f"{counts['loc']} <loc>: {len(rows)} advertisement(s), "
          f"{counts['category']} category page(s), {counts['duplicate']} "
          f"duplicate(s). **Counting the file would report the board "

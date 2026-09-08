@@ -247,6 +247,13 @@ def card(row, post, mode):
 
 def cmd_list(a):
     ads, other, stamps = entries()
+    # Same shape as `ejobsfiji`: the ratio divides by the count that is zero
+    # when the anchor matters. #181.
+    if not ads:
+        die(f"0 advertisement(s) against {other} other URL(s) in the same "
+            f"sitemap. **The file was read and yielded no advertisement** — "
+            f"that is a reading that failed, not a board without jobs.",
+            EXIT_PARTIAL)
     note(f"{len(ads)} advertisement(s) and {other} other URL(s) in the "
          f"sitemap. **Counting the file would report this board "
          f"{(len(ads) + other) / len(ads):.0f}× larger** — the rest is a "

@@ -211,6 +211,15 @@ def card(row, post, mode):
 
 def cmd_list(a):
     ads, other = entries()
+    # **Two failures on the zero path, not one**: the ratio divides by
+    # `len(ads)` and `max()` below runs on an empty sequence. The anchor —
+    # advertisements beside the other URLs of the same file — is what tells a
+    # quiet board from a stopped reader, and it was unreachable. #181.
+    if not ads:
+        die(f"0 advertisement(s) against {other} other URL(s) in the same "
+            f"sitemap. **The file was read and yielded no advertisement** — "
+            f"that is a reading that failed, not a board without jobs.",
+            EXIT_PARTIAL)
     note(f"{len(ads)} advertisement(s) and {other} other URL(s). "
          f"**The other {other} are company pages, blog posts and static "
          f"pages** — counting the file would report this board "
