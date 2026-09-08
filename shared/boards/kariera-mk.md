@@ -105,7 +105,7 @@ claims 228, which is more.** *A city page that stops at exactly 200 is a
 rendering cap, and a cap cannot be read as a count* — the same shape as the
 1 000-at-the-first-file trap this repository has already paid for.
 
-### 282 is a FLOOR — the site declares ads the feed does not show
+### 282 IS NOT THE INVENTORY — the site declares ads the feed does not show
 
 **Cards carry an employer grouping**, `+21 огласи` or `+ еден оглас`, so one
 card can stand for several advertisements. *That makes 282 a count of cards
@@ -185,8 +185,8 @@ a browser** — holds 41 654 `<loc>`:
 /tag/      1 116      /oglas/       300      /state-job/   37
 ```
 
-**17 604 is the stock; 282 is the flux, and neither is an estimate of the
-other.** *Nothing on the page distinguishes them, and the larger number is the
+**17 604 is the stock; the flux is at least 391, and neither is an estimate
+of the other.** *Nothing on the page distinguishes them, and the larger number is the
 one that gets quoted.*
 
 ### Two counts that were nearly published and are not
@@ -204,12 +204,13 @@ browser, which is what `job-scan` already drives; this card records the recipe
 and the numbers, not a Python adapter.
 
 **North Macedonia is no longer at zero *reachable* inventory** — at least
-282 advertisements are readable today by the route this repository already
+391 advertisements are readable today by the route this repository already
 owns.
 
 **And this card is nude at the list level, by its own admission.** *Every
-number above except the groupings comes from one reader of mine: if my
-extraction stopped working, 282 and 0 would be two outputs of the same
+number above comes from a reader of mine — the 391 as much as the 282, since
+counting status markers on 53 company pages is still my counting: if my
+extraction stopped working, the figure and 0 would be two outputs of one
 instrument and nothing here would tell them apart.* **The site states no total
 of its own that I could find** — no result counter, no declared pagination —
 *and the employer groupings, which are the one figure the site does state, do
