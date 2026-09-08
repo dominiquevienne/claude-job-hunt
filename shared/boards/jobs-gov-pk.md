@@ -1,6 +1,6 @@
 # Board adapter — NEXT (Pakistan, jobs.gov.pk)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: jobs.gov.pk -->
 <!-- script: jobsgovpk.py -->
 <!-- countries: PK -->
@@ -70,3 +70,6 @@ rules were read and **none were invented**. `www.jobs.gov.pk` does not resolve.
 **It is slow.** The 3.5 MB listing timed out at 30 s and answered at 60 s.
 `get()` allows 90 s and says, on failure, that a timeout here is not an empty
 board.
+
+**Re-exercised 2026-09-08**: `search` returns **1 511 advertisements**, of which
+**1 428 state a salary**.

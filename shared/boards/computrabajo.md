@@ -2,7 +2,7 @@
 
 <!-- hosts: co.computrabajo.com, cl.computrabajo.com, pe.computrabajo.com, mx.computrabajo.com, ar.computrabajo.com, ec.computrabajo.com, ve.computrabajo.com, cr.computrabajo.com, pa.computrabajo.com, gt.computrabajo.com, bo.computrabajo.com, do.computrabajo.com, uy.computrabajo.com, sv.computrabajo.com, hn.computrabajo.com, ni.computrabajo.com, py.computrabajo.com, pr.computrabajo.com -->
 <!-- script: computrabajo.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY US -->
 
 **Eighteen national sites, one adapter, and one rule file with no exception.**

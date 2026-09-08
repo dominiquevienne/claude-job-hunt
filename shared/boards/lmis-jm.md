@@ -1,6 +1,6 @@
 # Board adapter — LMIS Jamaica (Ministry of Labour and Social Security)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: lmis.gov.jm -->
 <!-- script: lmisjm.py -->
 <!-- countries: JM -->
@@ -141,3 +141,7 @@ python3 $S search                      # 16, the whole board
 python3 $S search --keyword counsellor # narrowed here, not by the endpoint
 python3 $S ad --id 15276 --with-text
 ```
+
+**Re-exercised 2026-09-08**: `search` returns **17 advertisements — the whole
+board in one request**, and `count` says 17. *Two counts from two commands,
+agreeing.*

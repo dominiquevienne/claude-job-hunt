@@ -1,6 +1,6 @@
 # Board adapter — Mihnati (Saudi Arabia)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: www.mihnati.com -->
 <!-- script: mihnati.py -->
 <!-- countries: SA -->
@@ -90,3 +90,6 @@ enumerates a Saudi board.** `_robots.sitemaps_for()` returns the URL as
 written, host included, so the reader sees where it points before asking for
 it — that is the whole reason declarations are not rewritten to the host that
 served them.
+
+**Re-exercised 2026-09-08**: `latest` returns **18 advertisements**, and **18 of
+18 pages carry the `JobPosting` twice** — counted, not doubled.

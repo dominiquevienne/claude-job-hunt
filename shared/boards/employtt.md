@@ -1,6 +1,6 @@
 # Board adapter — EmployTT (Trinidad and Tobago)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: employtt.gov.tt -->
 <!-- script: employtt.py -->
 <!-- countries: TT -->
@@ -82,3 +82,7 @@ One request is the sweep.
 `Concealed`, which is **the board's own word for a figure it was not given** —
 not a missing field and not a parse failure. Counted on the value, never on
 the key being present.
+
+**Re-exercised 2026-09-08**: `search` returns **20 advertisements**. *Salary: 0
+of 20 state a figure; the rest print «&nbsp;Concealed&nbsp;», which is the
+board's own word.*

@@ -2,7 +2,7 @@
 
 <!-- hosts: www.jobup.ch -->
 <!-- script: jobup.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: CH -->
 <!-- overlap: jobstore.md · 15.5 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
 <!-- same-postings: jobs-ch.md · the same posting UUID appears on both — one platform, two brands -->
@@ -452,3 +452,7 @@ reading failure or the end of the results* and omitted the one that was
 happening: **a query this site does not answer with structured data.** Naming
 two of three is not a false statement and it had the same effect as one — it
 pointed at *the board is broken*.
+
+**Re-exercised 2026-09-08**: `search --site jobup --term informatique` returns
+**20 advertisements over 1 page**, and `--site jobs-ch` the same. *Salary: 0 of
+20 carry a figure on either site — the block is present and empty (#67).*
