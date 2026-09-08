@@ -61,3 +61,73 @@ sitemap, fetched and compared set-wise — but not in the adapter**, which is
 the distinction #181 is about.
 
 *Corrected in `emploitic.md` in the same pass as this audit.*
+
+
+---
+
+# RECOUNTED 2026-09-08 — the two columns above were the wrong shape
+
+**The audit above answered one question and was read as answering another.**
+*It asked whether an adapter prints a count not derived from its own
+extraction, and 20 of 100 do. That number is unchanged.* **What was wrong is
+that "the other 80" was read as "80 adapters that cannot tell an empty board
+from an unread one", and the repository holds two further mechanisms the audit
+never looked for.**
+
+## Four columns, and they overlap on purpose
+
+```
+1  EXTERNAL ANCHOR — resolves the ambiguity          20 / 100
+   a total read from the response, or count_says
+
+2  FAILURE GUARD — catches a failure, not a truncation   100 / 100
+   every adapter defines die() and calls it with EXIT_UNKNOWN
+   on the guard/read path itself
+
+3  DECLARED AMBIGUITY — does not resolve, but says so    22 / 100
+   `_zero.zero_note()`: prints what a zero cannot distinguish
+
+4  SILENCE — none of the three                            0 / 100
+```
+
+**`_zero.py` is the mechanism the first audit missed entirely**, and it is the
+most interesting of the three: *it does not answer the question, it tells the
+reader the question is open.* **Its docstring names the case it exists for —
+Adzuna Switzerland returning 12 666 for `Entwickler` and 0 for `développeur`,
+HTTP 200, no error.**
+
+**Overlap, which is what makes these columns rather than a ranking:**
+
+```
+anchor AND failure guard   20        anchor AND declared ambiguity    9
+failure guard AND _zero    22        all three                        9
+
+9 adapters hold both an anchor and a declaration: `adzuna.py` · `bnecl.py` · `bumeran.py` · `encuentra24.py` · `hrge.py` · `kalibrr.py` · `lmisjm.py` · `mycareersfuture.py` · `stepstone.py`
+13 declare the ambiguity WITHOUT resolving it
+```
+
+## Two things this recount contradicts, one of them mine
+
+**The failure-guard column is universal, so it separates nothing.** *Saying
+"4 adapters have `count_says`" made failure protection look rare; it is total.*
+**A count that every member satisfies is not a finding about members** — it is a
+property of the repository, and it belongs in one sentence rather than a column.
+
+**And my own prediction was wrong.** *I wrote that the recount would put the
+figure "nearer 16 than 20".* **It is still 20.** *I expected the trichotomy to
+shrink the anchor column and it did not touch it: what the trichotomy changed is
+everything AROUND that number, not the number.* **An estimate offered as a
+correction is still an estimate**, and this one leaned the same way the original
+error did — toward believing the published figure was too generous.
+
+## What was read and what was matched
+
+```
+column 1   8 of 100 read by hand (4 positive, 4 negative), all agreeing
+column 2   3 of 100 read — die() defined per script, called with EXIT_UNKNOWN
+           on the read path in ofertapune, jobartis, mycareer
+column 3   2 of 100 read — zero_note() genuinely called in adzuna and jobbkk
+```
+
+**13 of 100 read in total; 87 classified by pattern.** *The same limit as
+before, and the same reason for stating it.*
