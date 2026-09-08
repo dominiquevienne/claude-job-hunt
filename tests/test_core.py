@@ -8248,6 +8248,115 @@ class ADirectiveAboveAnyGroupIsNotAnAbsence(unittest.TestCase):
                          "a rule inside a group is not orphaned")
 
 
+class TheFetcherEncodesWhatUrllibCannotSend(unittest.TestCase):
+    """**The guard that ties a call-site fix to the shared tool.**
+
+    `adecco.py:100` has carried a percent-encoder since 2026-09-03, with its
+    reason: *"`côtes-darmor`, `drôme` … urllib raises an ascii"*. **The shared
+    fetcher never received it.** On 2026-09-08 that cost 368 of 423 URLs on
+    `zaposli.me` — 87 % of a Montenegrin board — to a tool `CLAUDE.md` names as
+    the only way to fetch.
+
+    **A second occurrence in waiting is not found by re-reading**, because the
+    place it lives has never been written. It was found by changing alphabet.
+    *So this class exists to make the third impossible: it asserts the
+    behaviour on BOTH, and it fails if either loses it.*
+
+    Cases below include three supplied by the session that wrote the adapter
+    fix — a UUID slug, a query-string id, and a Cuban path carrying literal
+    parentheses that must NOT be escaped.
+    """
+
+    @staticmethod
+    def _fetcher():
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "bin", "fetch-body.py")
+        spec = importlib.util.spec_from_file_location("_fb", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    UNTOUCHED = [
+        ("plain ascii", "https://merojob.com/sales-officer-1120"),
+        ("uuid slug", "https://emploiscongo.com/emploi-unops-"
+                      "121ff0dd-0723-4790-b2ae-7e24d3e245c1"),
+        ("query id", "https://ejobsfiji.com/jobs/view?id=1120"),
+        ("already escaped", "https://x.me/a%20b"),
+        ("literal parentheses", "https://cubisima.com/empleos/ofertas/-/"
+                                "Cualquier_Municipio(La_Habana)"),
+        ("query with & and =", "https://x.me/a/b?q=1&r=2"),
+        # **These two exercise the ascii short-circuit and nothing else.** A
+        # `urlsplit`/`urlunsplit` round-trip DROPS a trailing empty `?` or `#`,
+        # so without the early return an ASCII address would come back altered.
+        # *Found by mutation: removing the short-circuit left every other case
+        # green, because the inner conditions already spare an ascii path. A
+        # mutation that cannot fail is not a test of the branch it removes.*
+        ("trailing empty query", "https://x.me/a?"),
+        ("trailing empty fragment", "https://x.me/a#"),
+    ]
+
+    NEEDS_ENCODING = [
+        ("montenegrin path", "https://zaposli.me/posao/1/a/radnik-mž",
+         "https://zaposli.me/posao/1/a/radnik-m%C5%BE"),
+        ("french path", "https://x.fr/emploi/drôme",
+         "https://x.fr/emploi/dr%C3%B4me"),
+        ("non-ascii query", "https://x.me/a?q=ž", "https://x.me/a?q=%C5%BE"),
+        ("escape kept beside an accent", "https://x.me/dép/a%20b",
+         "https://x.me/d%C3%A9p/a%20b"),
+    ]
+
+    def test_an_ascii_address_comes_back_byte_identical(self):
+        """**The negative control, and it is what allows touching a tool three
+        sessions use.** A fetcher that rewrote working addresses would be a
+        worse defect than the one it fixes."""
+        w = self._fetcher().wire_url
+        for name, url in self.UNTOUCHED:
+            with self.subTest(case=name):
+                self.assertEqual(w(url), url)
+
+    def test_a_non_ascii_address_is_encoded(self):
+        w = self._fetcher().wire_url
+        for name, url, want in self.NEEDS_ENCODING:
+            with self.subTest(case=name):
+                self.assertEqual(w(url), want)
+
+    def test_encoding_twice_changes_nothing(self):
+        """**`quote()` escapes `%` under its default `safe`.** A first draft
+        used it and turned `%C5%BE` into `%25C5%25BE` — the session had told
+        two peers the opposite in writing. *Idempotence is asserted, not
+        reasoned about.*"""
+        w = self._fetcher().wire_url
+        for name, url in self.UNTOUCHED + [(n, u) for n, u, _ in
+                                           self.NEEDS_ENCODING]:
+            with self.subTest(case=name):
+                once = w(url)
+                self.assertEqual(w(once), once)
+
+    def test_the_adapter_that_found_it_first_still_carries_its_own(self):
+        """**The tie.** `adecco.py` fixed this at its call site five days
+        earlier and the tool did not learn. If that encoder is ever removed as
+        "redundant", this fails and says where to look."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        src = open(os.path.join(root, "skills", "job-scan", "scripts",
+                                "adecco.py"), encoding="utf-8").read()
+        self.assertIn("urllib.parse.quote", src,
+                      "adecco.py lost its own percent-encoder; the shared "
+                      "fetcher has one now, but this adapter builds its URLs "
+                      "before handing them over")
+
+    def test_the_fetcher_sends_the_encoded_form_and_not_the_raw_one(self):
+        """**The wiring, not only the arithmetic.** A perfect `wire_url` that
+        nothing calls is the defect this repository names as *câblé jusqu'au
+        bout, et personne n'y entre*."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        src = open(os.path.join(root, "bin", "fetch-body.py"),
+                   encoding="utf-8").read()
+        self.assertIn("Request(wire_url(a.url)", src,
+                      "fetch-body.py builds its Request from the raw URL: the "
+                      "encoder exists and is not on the path that fetches")
+
+
 class TheRenamedKeyLeavesNoSilentOldName(unittest.TestCase):
     """**`shares-platform:` was renamed to `same-postings:` on 2026-09-08**,
     because the name asserted one thing and the key meant another.
