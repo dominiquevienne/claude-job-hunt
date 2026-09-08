@@ -63,8 +63,15 @@ page 700    XXXXXXXXX        page 1397   XXXXXXXX
 **Live advertisements sit behind dead ones** — the order is by posting date and
 expiry is a per-advertisement deadline, so the two do not agree. *Stopping at
 the first badge ends on page 12 and loses the five live advertisements after
-it.* **Pages 1 and 2 confirm the heuristic and they are adjacent, which is
-exactly why they are not a sample** — the pages that refute it are 12 and 13.
+it.*
+
+> **Pages 1 and 2 confirmed the heuristic, and they are adjacent — which is
+> exactly why they were not a sample. Adjacency is the condition under which
+> two different orderings coincide**, so a rule about ordering checked on
+> neighbours is checked on nothing.
+
+**The pages that refute it are 12 and 13**, and they were read because a
+reviewer asked for spread pages rather than the next one.
 
 ## Why the site's own filter is trusted
 

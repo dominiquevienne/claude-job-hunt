@@ -1,5 +1,7 @@
 # Board adapter — Oracle Recruiting Cloud
 
+<!-- verified: 2026-09-08 -->
+
 <!-- hosts: per-tenant -->
 <!-- script: oraclecloud.py -->
 <!-- countries: * -->

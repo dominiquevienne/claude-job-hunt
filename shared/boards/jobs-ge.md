@@ -1,6 +1,6 @@
 # Board adapter — jobs.ge (Georgia, independent)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.jobs.ge -->
 <!-- script: jobsge.py -->
@@ -10,7 +10,8 @@ cookie, no browser — and no pagination.**
 
 **The home page carries every live vacancy**: **308** distinct ad ids on
 2026-09-03, identical on both language versions, with no `page` parameter
-anywhere on it. **A complete sweep costs one request.**
+anywhere on it. **A complete sweep costs one request.** *Re-exercised
+2026-09-08: **310** distinct ids, still in one request, still no pagination.*
 
 ## `robots.txt`, and a rate limit that is read rather than chosen
 

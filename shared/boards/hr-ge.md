@@ -1,6 +1,6 @@
 # Board adapter — HR.ge (six Georgian brands, one API)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.p.hr.ge -->
 <!-- host-forms: api.p.hr.ge, {host} -->
@@ -29,6 +29,21 @@ markup.
 | 4 | `www.doctor.ge` | 38 249 | 64 |
 | 5 | `www.chefs.ge` | 38 345 | 160 |
 | 6 | `www.bankers.ge` | 38 185 | **0** |
+
+**Re-exercised 2026-09-08** with `tenants --check`, which compares against
+the figures above and prints the drift itself:
+
+```
+tenant 1 www.hr.ge      1 062 -> 1 080   (+18)     tenant 3 career.ge   0 -> 0
+tenant 2 www.cv.ge      1 062 -> 1 080   (+18)     tenant 6 bankers.ge  0 -> 0
+tenant 4 www.doctor.ge     64 ->    44   (-20)
+tenant 5 www.chefs.ge     160 ->   153   (-7)
+```
+
+**The two brands that share a corpus still move together to the advertisement**,
+and the two that publish employer pages still publish no advertisement. *The
+drift is what a five-day-old board should look like; the structure is what the
+card asserts, and it held.*
 
 Tenants **7 upward answer `500`**, which is where the enumeration stops.
 

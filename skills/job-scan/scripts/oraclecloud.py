@@ -190,8 +190,13 @@ def page(host, site, limit, offset):
 def as_date(ms):
     """`Distance` is PostedDate in milliseconds. Prove it rather than assume."""
     try:
-        return datetime.datetime.utcfromtimestamp(float(ms) / 1000).date(
-            ).isoformat()
+        # **`utcfromtimestamp` is deprecated and printed a warning on every
+        # run**, on stderr, where this adapter's own findings are printed —
+        # noise beside the lines a reader is meant to act on. The replacement
+        # is value-identical: both were run on 0, a board date, a negative and
+        # the year-9999 bound on 2026-09-08 and agreed on all four.
+        return datetime.datetime.fromtimestamp(
+            float(ms) / 1000, datetime.timezone.utc).date().isoformat()
     except Exception:  # noqa: BLE001 - a non-timestamp is the interesting case
         return None
 

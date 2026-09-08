@@ -9041,7 +9041,7 @@ class ACardDatesItself(unittest.TestCase):
         "hays-fr.md", "infoempleo.md", "jobology.md",
         "jobsireland.md", "join.md", "labonnealternance.md",
         "linkedin.md", "michaelpage.md", "oposiciones.md",
-        "oraclecloud.md", "personio.md", "pinpoint.md",
+        "personio.md", "pinpoint.md",
         "randstad-fr.md", "recruitee.md", "turijobs.md",
     )
 

@@ -1,6 +1,6 @@
 # Board adapter — iCIMS
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: careers.icims.com -->
 <!-- host-forms: {host} -->
