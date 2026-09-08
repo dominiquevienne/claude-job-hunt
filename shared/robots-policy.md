@@ -816,6 +816,51 @@ are open.*
 identical to the byte, which makes the same result *expected* — expected is not
 measured, and each is visited before it is declared.
 
+### Visiting the eleven — what the fingerprint could not say
+
+**A refusal fingerprint says who answered, never what the host serves.**
+Visited 2026-09-08 between 05:12 and 05:22 UTC, in a real browser, asking three
+questions only: *is there an inventory · how many live ads are visible, with
+employer, city and date · which country.*
+
+| host | inventory | visible | country |
+| :-- | :-- | :-- | :-- |
+| `kariera.mk` | yes | ~30 on the front page | MK |
+| `jobs.af` | yes | **242 active**, employer · city · closing date on each | AF |
+| `eshjob.com` | yes | **1 735 results**, 87 pages, newest 16 s old | IQ |
+| `iqjscout.com` | **redirects to `yadanoo.com`** | **1 780 live**, per-country | 12, MENA |
+| `sptojobslink.com` | yes | ~100 on page 1, date · city · category, **no employer** | Pacific, 8+ |
+| `hiringcafe.com` | yes | **30 922 jobs · 5 109 companies** | worldwide |
+| `www.hays.fr` | yes | **not established** — see below | FR |
+| `northcyprus.cv` · `www.tala-com.com` · `www.jobstore.com` | **not visited** | this session's own browser permissions refuse those domains | — |
+
+**Two of the seven are not what this file said they were.**
+
+**`www.iraqhire.com` is not a board.** Its own footer reads: *"This is a free
+demo result from the Wayback Machine Downloader. It is not a complete
+website."* The listing answers `No Record`, and the notice says © 2025. **It is
+a resurrected static shell of a dead site** — the `bestzambiajobs` class, where
+a `robots.txt` outlives the site that wrote it and nothing in the file says so.
+
+**`iqjscout.com` is now `yadanoo.com`**, a MENA-wide board, not an Iraqi one:
+UAE 847 · Qatar 308 · Saudi 191 · **Iraq 163** · Egypt 134 · Jordan 39 ·
+Kuwait 28 · Lebanon 24 · Bahrain 21 · Syria 14 · Tunisia 9 · Oman 2, counts the
+site states as live. *`iraq-hosts.md` names it as an Iraqi host; it is a
+regional one that happens to carry Iraq.*
+
+**And the count for `www.hays.fr` is withheld because the pattern that produced
+it was wrong.** `([\d][\d\s,.]*)\s*(offres|jobs|emplois)` returned
+`"2026 Offres"` — **the year, adjacent to the word.** *A number matched next to
+the right noun is not a count of anything, and it is the shape that gets
+published because it looks like a measurement.*
+
+**What this settles about Iraq.** `IQ` had one card, `script: none`, and this
+file called its five portals "identified, not reached". **Two of them serve
+live inventory to a browser right now** — 1 735 at `eshjob.com` and 163 at
+`yadanoo.com` — *and a third, `iraqhire`, serves nothing at all and never
+will.* **The country's coverage question is answerable; it was not being
+asked.**
+
 ### The fact that decides — none of the six is the last of its country
 
 ```
