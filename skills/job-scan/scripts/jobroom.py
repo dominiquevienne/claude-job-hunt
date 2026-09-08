@@ -185,9 +185,16 @@ def to_text(markup):
     return re.sub(r"\n\s*\n\s*\n+", "\n\n", txt).strip()
 
 
+# **The values are CARD names, not host names — #188, 2026-09-08.**
+# `www.jobs.ch` used to map to `jobs.ch`, with a point, while the twin map in
+# `_cards.platform_siblings()` is keyed by card filename — `jobs-ch`, with a
+# hyphen. *One character, and the two namespaces never met*: a
+# `duplicate_of: jobs.ch:<uuid>` could not reach a single `jobup:` or
+# `jobs-ch:` line of the ledger. **Each of the three places was right on its
+# own; their junction did not exist.**
 BOARD_REF = {
     "www.jobup.ch": "jobup",
-    "www.jobs.ch": "jobs.ch",
+    "www.jobs.ch": "jobs-ch",
 }
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 

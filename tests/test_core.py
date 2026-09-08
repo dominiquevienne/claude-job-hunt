@@ -1310,10 +1310,18 @@ class UrlWithoutAScheme(unittest.TestCase):
         # draft of this case truncated it — the test failed for its own
         # fixture rather than for the defect, which is the shape of vacuous
         # negative this suite already carries a lesson about.
+        #
+        # **The expected value changed on 2026-09-08 (#188), and this test is
+        # why the defect lived.** It asserted `jobs.ch:` — the HOST spelling —
+        # which is what `BOARD_REF` emitted and what nothing in the ledger
+        # could ever match. *A test that pins the defective value defends it:
+        # the suite was green, and green meant «&nbsp;still wrong in the way we
+        # wrote down&nbsp;».* The prefix is now the CARD name, `jobs-ch`, which
+        # is the namespace `_cards.platform_siblings()` is keyed in.
         bare = ("www.jobs.ch/de/stellenangebote/detail/"
                 "fdb4a6bd-97c7-4ff0-97d3-0d2cb63f9153/")
         self.assertEqual(self.jobroom.duplicate_of(bare),
-                         "jobs.ch:fdb4a6bd-97c7-4ff0-97d3-0d2cb63f9153")
+                         "jobs-ch:fdb4a6bd-97c7-4ff0-97d3-0d2cb63f9153")
         self.assertEqual(self.jobroom.duplicate_of(bare),
                          self.jobroom.duplicate_of("https://" + bare))
 
@@ -9200,6 +9208,86 @@ class TheUzbekAdapterDoesNotCarryAgeOrSex(unittest.TestCase):
                     or bare.startswith("return") and "None" in bare):
                 self.fail("this line looks like it skips an advertisement on "
                           "an age or sex label: " + bare)
+
+
+class EveryEmittedPrefixNamesABoardThisRepositoryKnows(unittest.TestCase):
+    """**#188, 2026-09-08.** `jobroom.py` emitted `duplicate_of: jobs.ch:<uuid>`
+    — derived from the HOST — while the twin map is keyed by card FILENAME,
+    `jobs-ch`. *One character, a point against a hyphen, and the two namespaces
+    never met*: on a 614-line ledger, 5 lines carried `jobs.ch:`, 16 carried
+    `jobs-ch:` and 114 carried `jobup:`, and no `jobs.ch:` id could reach any
+    of the others.
+
+    **Each of the three places was correct on its own; their junction did not
+    exist.** *A test exercising `same_posting_ids` on the prefixes that already
+    work stays green on this — it only ever asks about keys that exist.*
+
+    **The closure is against CARD NAMES, not against `platform_siblings()`
+    keys**, and the difference is not pedantic: `francetravail.py` emits
+    `meteojob:`, and `meteojob.md` declares no twin, so it is legitimately
+    absent from the siblings map. *Asserting `⊆ platform_siblings()` would
+    redden on a correct emitter* — the guard would fail on code that is right,
+    which is the mis-described species.
+    """
+
+    def _cards_module(self):
+        spec = importlib.util.spec_from_file_location(
+            "_c188", os.path.join(SCRIPTS, "_cards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _load(self, name):
+        spec = importlib.util.spec_from_file_location(
+            "_m188_" + name, os.path.join(SCRIPTS, name + ".py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _boards(self):
+        return os.path.join(os.path.dirname(SCRIPTS), "..", "..",
+                            "shared", "boards")
+
+    def _card_names(self):
+        return {f[:-3] for f in os.listdir(self._boards())
+                if f.endswith(".md") and f != "README.md"}
+
+    def emitted(self):
+        """Every prefix an adapter can put in front of a `duplicate_of` id.
+
+        **Adding a `duplicate_of` emitter means adding it here.** *That is a
+        cost, and it is the point: the alternative is a scan that guesses which
+        string literals are prefixes, which fails silently on the next shape.*
+        """
+        out = set(self._load("jobroom").BOARD_REF.values())
+        out |= {b for b, _rx in
+                self._load("francetravail").DUPLICATE_HOSTS.values()}
+        return out
+
+    def test_every_emitted_prefix_names_a_card(self):
+        names = self._card_names()
+        stray = sorted(p for p in self.emitted() if p not in names)
+        self.assertEqual(stray, [], "these prefixes name no card, so nothing "
+                                    "in the ledger can ever match them: "
+                                    + ", ".join(stray))
+
+    def test_a_prefix_whose_card_declares_twins_reaches_them(self):
+        """**The half that #188 actually cost.** Naming a card is not enough if
+        the id still cannot reach the twin."""
+        c = self._cards_module()
+        sibs = c.platform_siblings(self._boards())
+        for p in sorted(self.emitted()):
+            if p in sibs:
+                with self.subTest(prefix=p):
+                    got = c.same_posting_ids(p + ":x", sibs)
+                    for twin in sibs[p]:
+                        self.assertIn(twin + ":x", got)
+
+    def test_the_check_is_not_vacuous(self):
+        """**Written because an empty set satisfies any inclusion.** If the
+        emitters ever stop being found, the two tests above pass while
+        checking nothing."""
+        self.assertGreaterEqual(len(self.emitted()), 3)
 
 
 class ACardDatesItself(unittest.TestCase):
