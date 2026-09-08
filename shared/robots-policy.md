@@ -747,23 +747,72 @@ or at everyone — but a rules file read by hand does not add a readable board.*
 
 ### What this repository ATTESTS, shape by shape
 
+> **REMEASURED 2026-09-08 04:45–04:47 UTC — the two-bucket split below is
+> WITHDRAWN.** *It was a split in our records, not in the world.* Every host of
+> shape (1) was refetched at its root, **twice each** (bound 2), with
+> `bin/fetch-body.py --allow-refusal`. **All eleven now answer 403 with the
+> same 25 bytes and the same md5, stable across both reads** — so
+> "with evidence" and "named without the same evidence" no longer name two
+> different things.
+
 ```
-(1) with status, fingerprint and provenance                            6
-      hiringcafe.com · jobstore.com · www.hays.fr
+(1) rules open, transport refuses, vendor default                     11
+    403 · 25 bytes · md5 9ccabba20b9f4ec7d18bd6644579e5bf · md5 stable ×2
+      hiringcafe.com · www.jobstore.com · www.hays.fr
       iqjscout.com · eshjob.com · www.iraqhire.com
-(1) NAMED without the same evidence                                    5
-      tala-com.com          "first specimen", no fingerprint quoted
-      kariera.mk · sptojobslink.com · northcyprus.cv · jobs.af
-        -> `hiringcafe.md` says the same body is served "with HTTP 200 OR
-           403": the fingerprint matches and the STATUS is not established
+      www.tala-com.com · kariera.mk · sptojobslink.com
+      northcyprus.cv · jobs.af
 (2) host-closed                                                        3
       batiactu · rozee (since 2026-09-07) · api.ashbyhq.com (401)
-(3) challenge page, per-request md5                                    6
-      counted here and excluded from what a browser would open
+(3) challenge page, per-request md5                            6, or 7
+      www.bayt.com belongs here (2026-09-08) — but the six of the 5.5 KB
+      family are NOWHERE NAMED in this file, so whether it is one of them
+      or a seventh cannot be said. **A member cannot be added to a set
+      whose members are not listed.**
 ```
 
-*Command: `grep -rn '9ccabba20b9f' shared/`, plus `host-closed` and the six of
-the 5.5 KB family named in the section above. 2026-09-07.*
+**`www.bayt.com` was the declared first candidate and the measurement removed
+it.** Its 5 507-byte body is titled `Attention Required! | Cloudflare` and
+contains `captcha`; **its two reads differ**, diverging at byte 3 268. That is
+an antirobot control, and bound 2 forbids defeating one. *It belonged to shape
+(3) all along; nothing but a fetch could say so.* **Its size — 5 507 bytes,
+moving md5 — is exactly the 5.5 KB family measured on 2026-09-07, so it may
+well have been one of the six already counted.** *That family was recorded as
+a cardinal and never as members, which is precisely what makes the question
+unanswerable now.*
+
+**A card that CITES the fingerprint is not a card that suffers it.** Sweeping
+`shared/boards/` for `9ccabba2…` returns two cards, and `myjobsfiji.md` is one
+of them — **for `sptojobslink.com`, a neighbouring host it measured**, not for
+itself. `myjobsfiji.com` answers **HTTP 200 with 307 925 bytes** at
+2026-09-08 04:47:36Z and its adapter reads 190 advertisements, exactly as its
+own `content:` line always said. *Read as its own status, that block would
+have manufactured a member that changed state and a contradiction with the
+card — neither of which happened.* **The instrument that enumerates this
+population reads `hosts:`, never a body quoted in prose.**
+
+*Command: the twelve roots fetched twice each, `bin/fetch-body.py
+--allow-refusal`, 2026-09-08 04:45–04:47 UTC; provenance beside each body.*
+
+### Bound 0 is SETTLED on one member, and it inverts the verdict
+
+**The owner's bound 0 asks whether a 403 is aimed at a client or at everyone.**
+For this family it is now measured, once:
+
+```
+kariera.mk   our declared HTTP client, twice, 04:45Z   403, 25 bytes
+kariera.mk   a real browser,                 04:53Z   the full board
+```
+
+**The browser was served roughly thirty live advertisements** — employer, city
+and expiry date each — plus the site's news column. **No captcha, no challenge,
+no interstitial.** *The 403 is aimed at the client, not at everyone: the vendor
+default is answering a client it does not recognise, and the operator's pages
+are open.*
+
+**This is measured on `kariera.mk` alone.** The other ten serve a body
+identical to the byte, which makes the same result *expected* — expected is not
+measured, and each is visited before it is declared.
 
 ### The fact that decides — none of the six is the last of its country
 
@@ -772,6 +821,17 @@ hiringcafe · jobstore        countries: *      worldwide meta-boards
 www.hays.fr                  FR, 17 other adapters declare France
 iqjscout · eshjob · iraqhire IQ, and `iraq-hosts.md` finds 5 open portals there
 ```
+
+> **NOT RECOMPUTED SINCE, and the population has grown from six to eleven.**
+> The three lines above cover `hiringcafe`, `jobstore`, `hays` and the three
+> Iraqi hosts. **The five added members — `tala-com.com`, `kariera.mk`,
+> `sptojobslink.com`, `northcyprus.cv`, `jobs.af` — are not in this
+> computation**, and four of them belong to jurisdictions no card assesses.
+> *Measured 2026-09-08: `MK` has one card and it declares `script: none`; `AF`
+> has no card at all; `IQ` likewise has one card with no script, so the five
+> open portals it names are portals **identified**, not inventory reached.*
+> **So the sentence below is true of the six and unestablished for the
+> eleven — in either direction.**
 
 **So opening shape (1) would add six hosts and no country.** *The two hosts
 whose inventory is unreachable for a different reason — rendered client-side,
