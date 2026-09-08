@@ -355,3 +355,73 @@ drives, and what the route would return.*
 *My own run printed the refusal message; the shell captured the status of a
 pipe rather than the interpreter's, so I did not verify `9`.*
 
+
+## The browser route, exercised — 2026-09-08 09:57 UTC (#194)
+
+**The rules open and a live antirobot control closes.** *Our declared client
+gets 403 with a moving fingerprint at constant size — a per-request token, not
+a static refusal.* **A browser loading the board page gets the token because it
+IS a browser, and no challenge is presented: we do not solve the control, we do
+not meet it.**
+
+**This is not DOM scraping.** *The endpoint returns JSON; only the page's
+CONTEXT is needed.* The route is: drive the browser to `/job-board/te/1`, then
+call `/kjs/job_board/search` from that page.
+
+```
+guard, taken first and separately
+  /  ·  /job-board/te/1  ·  /kjs/job_board/search  ·  /api/job_board/search
+  all: read · allowed=True · certain=True · group *
+
+counts read from the page context, 2026-09-08T09:57:22Z
+  Indonesia    count 1116   from_alternative false   38 fields per ad
+  Philippines  count  778   from_alternative false
+```
+
+**The 1 116 confirms this card's own 2026-09-08 column by an independent
+read**, six days after the 1 045 of 2026-09-02. *And the Philippines came back
+to 778 after reading 777 at 09:39 — a ±1 drift over eighteen minutes, which is
+what a live board looks like and what a single reading cannot tell you.*
+
+### The pagination closes exactly on the declared count
+
+```
+offset=1100 country=Indonesia   16 rows   count 1116      1100 + 16 = 1116
+offset=1120                      0 rows   count  819      <- the fallback
+offset=5000                      0 rows   count  819
+no country at all               20 rows   count  819
+```
+
+> **Overrunning the offset returns the fallback list, and
+> `from_alternative` is `false` on it** — exactly as the unfiltered call
+> already documented in `kalibrr.py`. *The flag does not mark this case either.*
+> **The discriminant is the count collapsing to ~819, not the flag**, and that
+> is why `--country` is required and why an offset past the end must be treated
+> as the end rather than as a page.
+
+*The fallback reads 819 today against the 818 recorded on 2026-09-02 — the
+substituted list moves too.*
+
+### The converted salary, measured rather than recalled
+
+```
+50 Indonesian ads read · 14 carry a salary
+14 of 14:  salary_currency "PHP"  ·  salary_currency_orig "IDR"
+           converted_salary true  ·  salary_interval "month"
+```
+
+**Both flags are present on `/kjs`.** *`kalibrr.py`'s docstring said this
+endpoint drops them and only `/api` keeps them; that is corrected there with
+its date.* **The adapter's conduct was right for another reason and stays
+right**: it emits `salary_php_*` and never `salary_min`.
+
+### What this route is, and what it is not
+
+**No script ships for it.** *This repository has no adapter that drives a
+browser — `indeed.md`, `cadremploi.md` and `softy.md` are cards without a
+`script:` for the same reason: the browser tools belong to the Claude session,
+not to the plugin a user installs.* **So the deliverable is this section: a
+route exercised once, with its guard, its counts and its traps, precise enough
+to be followed by a session that has a browser.**
+
+`kalibrr.py` is unchanged in what it does — the HTTP route, which exits 9.

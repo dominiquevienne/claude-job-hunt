@@ -38,8 +38,17 @@ THE SALARY IS CONVERTED TO PHILIPPINE PESOS AND THE LABEL DOES NOT SAY SO.
 Every salaried ad on this endpoint carries `salary_currency: "PHP"` —
 including the Indonesian ones, whose amounts arrive as
 `22962.742977478316`, a rupiah figure converted at some rate. The sibling
-endpoint `/api/job_board/search` keeps the two fields this one drops:
+endpoint `/api/job_board/search` keeps the two fields this one dropped:
 `salary_currency_orig: "IDR"` and `converted_salary: true`.
+
+**CORRECTED 2026-09-08: `/kjs` now carries both fields.** Measured through the
+browser route on 50 Indonesian ads — 14 carry a salary and **14 of 14 read
+`salary_currency: "PHP"`, `salary_currency_orig: "IDR"`, `converted_salary:
+true`**, at `salary_interval: "month"`. *Either the endpoint gained them since
+2026-09-02 or the first reading missed them; nothing measured says which.*
+**The conduct below does not change** — emitting `salary_php_*` and never
+`salary_min` is right either way — but the REASON stated above ("this one
+drops") is no longer true of the endpoint.
 
 Read an Indonesian `base_salary` as pesos and you are wrong by a factor of
 about 250. **This adapter therefore never emits `salary_min`.** It emits
