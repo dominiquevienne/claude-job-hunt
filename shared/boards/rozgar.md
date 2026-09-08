@@ -1,6 +1,6 @@
 # Board adapter — Rozgar (Pakistan)
 
-<!-- verified: 2026-09-05 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.rozgar.pk -->
 <!-- script: none -->
@@ -52,3 +52,30 @@ A feed, a sitemap that moves, or a listing page carrying `JobPosting`. **Any of
 the three turns `indeterminate` into a number.** Until then this card records
 that the question was asked and on which paths — which is the whole difference
 between an unread board and an unexamined one.
+
+## Re-measured 2026-09-08 — the listing endpoint answers 200 with an error
+
+**Guard re-taken and it opens.** `robots.txt` disallows only `/beta/` and
+`/demo/` and declares the sitemap; nothing here refuses us.
+
+```
+/jobs           HTTP 200,  31 bytes:  b'Passing data should be an array'
+/sitemap.xml    HTTP 200,  3 <loc>,   every lastmod 2020-08-20
+   /  ·  /how-it-works  ·  /post-job
+/               HTTP 200, 327 209 bytes, 0 `JobPosting`, TWO internal links —
+                both asset paths, so the navigation is in the bundle
+```
+
+> **`/jobs` is not empty and not refused: it is a framework error string served
+> with a success code.** *«&nbsp;A readable body is not an answer — the code
+> decides&nbsp;» has an inverse, and this is it: the code says 200 and the body
+> says the handler broke.*
+
+**Nothing measured here says the board has no advertisements**; it says the one
+enumerable surface answers an error, the sitemap has been frozen for five
+years, and the front page ships its routes inside a bundle. **Still
+`indeterminate`, and now for a reason that names its own next step:** read the
+bundle's route table, or find the API the front end calls.
+
+*And the sitemap's own contents are the clearest thing on this host:
+`/post-job` is in it and no job is.*

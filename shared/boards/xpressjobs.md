@@ -6,7 +6,7 @@
 <!-- script: none -->
 <!-- countries: LK -->
 <!-- hosts-source: `xpressjobs.lk` named on Sri Lanka's country page 2026-09-02; it redirects, and the guard reports the rules as read from `xpress.jobs` · 2026-09-08 -->
-<!-- content: indeterminate · the sitemap holds 8 815 URLs and **zero advertisements** — 8 725 are `/Organization/` employer profiles and 53 are listing, sector and per-employer pages; every route returns the same 1 766-byte client-side shell · 2026-09-08 -->
+<!-- content: measured · 4 356 live advertisements, declared by the board's own `recordCount` and independently confirmed by the pagination — 217 full pages of 20 plus 16 — read through `/api/jobs/searchJobs`, which `robots.txt` permits · 2026-09-08 -->
 <!-- witness: none — the site states «over 12,000 organizations», which is a claim about employers and not a count of advertisements -->
 
 **Sri Lanka's country page listed this host as *«à instruire»* on 2026-09-02.
@@ -110,3 +110,54 @@ issued for `ln2.ceynet.asia`; `labourdept.gov.lk` is broken while
 `labourmin.gov.lk` renders. `ikman.lk` — classifieds with a jobs section —
 remains genuinely uninstructed, and its rules file **explicitly allows nine AI
 agents including `ClaudeBot` and `anthropic-ai`**, with a comment saying so.
+
+## The advertisements are behind an API the site's own front end calls
+
+**This card said `indeterminate` because every route returns the same
+1 766-byte shell.** *That was true, and it stayed true of the routes: an
+employer page (`/Organization/85/ceylon-tours`) and a sector page
+(`/jobs/sector/accounting`) both return that identical shell — two more route
+families, same answer.*
+
+**The listing is a JSON API**, found by loading one page in a browser and
+reading the requests it made:
+
+```
+/api/jobs/searchJobs?page=1&pageSize=20&keyword=&locations=&sectors=
+      &jobTypes=&careerLevels=&sortBy=SortedCreateDate+DESC
+      &byCVLess=false&byWalkIn=false
+/api/jobs/allSectors     /api/home/locations     /api/jobs/searchFilterOptions
+```
+
+> **The browser was used to DISCOVER the path and not to read the board.**
+> *`robots.txt` permits `/api/jobs/searchJobs` — `allowed=True`, `certain=True`
+> — so the reading itself goes through the ordinary guarded fetcher.*
+
+**And the path was not in the bundle.** *4 317 800 bytes of React, and a search
+for `/api/` strings returns nothing: the URL is assembled at run time.* **Six
+routes and a full bundle read said «&nbsp;not here&nbsp;»; one page load said
+where.**
+
+## The count, and its anchor is not ours
+
+```
+recordCount declared on every item, page 1     4 354
+recordCount declared on page 218               4 356
+pagination      217 full pages x 20 + 16   =   4 356
+page 400                                       0 items, no overlap with page 1
+```
+
+**Two independent computations agree**: the board's own field and the
+arithmetic of its pagination. *That is the external anchor issue #181 asks for
+— a number that does not come from our own reader.*
+
+**And it moved by two between two requests**, minutes apart. *A live stock, not
+an archive: `expireDayCountDown` is 14 on the three advertisements sampled.*
+
+## What is still not established
+
+- **no advertisement page was opened** — the fields above are the listing API's;
+- **the 8 725 `/Organization/` sitemap entries were not crossed** against the
+  employers in the API, so how much of the employer corpus is hiring is unknown;
+- **no adapter**, and the API's parameters (`sectors`, `locations`,
+  `careerLevels`) were not exercised beyond the unfiltered query.

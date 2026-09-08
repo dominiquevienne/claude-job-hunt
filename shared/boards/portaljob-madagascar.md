@@ -1,6 +1,6 @@
 # Board adapter — PortalJob Madagascar (open, readable, and not enumerable)
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.portaljob-madagascar.com -->
 <!-- script: none -->
@@ -137,3 +137,53 @@ have.
 `jobstore.md` is refused, `tanqeeb.md` is unreadable at the rules layer, and
 this one serves a page that contains nothing — three different facts that a
 single "no" would flatten.*
+
+## Re-measured 2026-09-08 — still indeterminate, and better bounded
+
+**Guard re-taken and it opens**: `/`, `/robots.txt` and every candidate below
+answer `read`, `allowed=True`, `certain=True`.
+
+**Six routes tried, six HTTP 404 — and they are real negatives**, because the
+application answers a miss with an Inertia payload whose `component` is `404`:
+
+```
+/offres  /offre  /emplois  /emploi  /secteur/<slug>  /<slug>      all 404
+```
+
+*So «&nbsp;no listing found&nbsp;» here is not «&nbsp;the page was silent&nbsp;»
+— the app distinguishes a route from a miss, and said miss six times.*
+
+**The JS bundle names the page components** — `pages/emploi/Index.vue`,
+`pages/front/secteur/Liste.vue`, `pages/front/secteur/Show.vue` — **and a
+component name is not a route.** *There is no route table in the bundle read
+(264 432 o): no Ziggy object, and no string of the shape `/x/y` at all.*
+
+> **What remains is exactly one thing: the route table.** *It is server-side or
+> in a chunk not loaded on the home page, and finding it by trying paths cost
+> six requests for six 404s — which is the measurement that says to stop
+> trying.*
+
+## Its `robots.txt` carries a Content-Signal, and we do not act on it
+
+```
+User-agent: *
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: /
+```
+
+**The guard opens because of the 2026-09-07 decision** — a group naming
+`ClaudeBot` does not bind `Claude-User` — *and that decision is about
+`User-agent` groups, not about content signals.*
+
+**`ai-input` is absent from this signal**, and the file's own preamble says an
+absent signal «&nbsp;neither grants nor restricts&nbsp;». *`ai-train=no` does not
+describe what this plugin does.* **So nothing here forbids the reading — on
+this host.**
+
+**But `_robots.py` recognises `Content-Signal` only as evidence that a body IS
+a rules file; it never acts on it**, and its own docstring says `ai-input=no`
+«&nbsp;is a tenant asking not to be read into an AI system — which is what this
+plugin does&nbsp;». *That gap is general and not this card's to close.*
