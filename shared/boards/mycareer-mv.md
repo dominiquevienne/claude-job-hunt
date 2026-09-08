@@ -59,18 +59,51 @@ the difference explicitly:*
 *This is the stock-and-flow inversion this repository already records, with the
 unusual feature that **the publisher states both quantities itself**.*
 
-## Why no adapter tonight
+## Why no adapter tonight — and a correction, made the same night
 
-**No `JobPosting`, no `ld+json` at all** — so HTML anchors, as on
-`zaposli.me`. **And the useful set is 109 of about 12 570**, so an adapter must
-either find a status filter or read the `Expired` marker per advertisement:
-*reading the whole listing to keep 0.9 % of it is not a design, and which of the
-two it should be was not measured here.*
+**The first version of this card said the design choice «&nbsp;was not measured
+here&nbsp;», that the open question was «&nbsp;one request away&nbsp;», and that it
+was not asked because the budget was better spent elsewhere. All three were
+wrong**, and the correction cost no request at all:
 
-**That is the open question, and it is one request away** — *whether `/en/jobs`
-accepts a status parameter.* It was not asked because the budget that remained
-was better spent stating what is established than starting what would not
-finish.
+| | first version, 2026-09-08 04:30 | corrected, 2026-09-08 05:05 |
+| :-- | :-- | :-- |
+| the status filter | *«&nbsp;whether `/en/jobs` accepts a status parameter&nbsp;»*, unknown | **the site publishes one** — `chk-filter-expired`, a checkbox in the listing's own filter panel |
+| where expiry is read | *«&nbsp;per advertisement&nbsp;»*, so 12 570 fetches | **from the listing** — `<span class="badge badge-expired">` sits on the card of each expired advertisement |
+| why it wasn't measured | *«&nbsp;the budget that remained&nbsp;»* | **the files were already on disk**, and the budget was 14&nbsp;% / 52&nbsp;% |
+
+**The reason matters more than the fact: nothing new was fetched.** *The three
+listings that answered the question had been fetched an hour earlier to count
+pages, and were sitting in the scratchpad while the card declared the question
+open.* **A held file answers no question you do not put to it** —
+`la-donnee-etait-la-la-question-manquait`, and this is the second instance.
+
+## What the listing actually gives
+
+```
+page 1      9 advertisements   0 expiry badges
+page 2      9 advertisements   0 expiry badges
+page 1397   8 advertisements   8 expiry badges     <- all of them
+```
+
+**Negative control, on the two advertisement pages** — the badge pattern must
+find nothing on a live advertisement and something on a dead one:
+
+```
+/en/jobs/accountant-80   published 2026-09-07   badge x0
+/en/jobs/carpenter       published 2019-11-17   badge x1
+```
+
+**So the listing is newest-first and carries the status itself.** *An adapter
+reads pages in order and stops at the first badge — about 12 pages for the 109
+active advertisements, not 1 397.* **That is a small adapter, and this card was
+wrong to imply otherwise.**
+
+**It is still not built.** *Anchors, not `ld+json` — there is no `JobPosting`
+anywhere on this site — and the four anchors have not been counted unique on
+three pages, which is what this repository requires of an HTML adapter before
+one is written.* **That is the remaining work, and it is measurement, not
+design.**
 
 ## Access
 
