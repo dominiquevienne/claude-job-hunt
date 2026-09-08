@@ -316,6 +316,15 @@ def card(row, post, how):
 
 def cmd_list(a):
     rows, per_file = entries()
+    if not rows:
+        # **`max()` below raises on an empty sequence**, so the zero path
+        # crashed instead of reporting — and the per-file counts, which are the
+        # anchor, were never printed. #181.
+        die(f"the named sitemaps hold "
+            f"{' + '.join(f'{k}:{v}' for k, v in per_file.items())} "
+            f"= {sum(per_file.values())} `<loc>` and **0 advertisement(s) were "
+            f"parsed**. The files are there and this reader got nothing out of "
+            f"them — a reading that failed, not an empty board.", EXIT_PARTIAL)
     total = sum(per_file.values())
     # **Counted once, before any filter.** `rows` is about to be narrowed by
     # `--since` and `--limit`, and a duplicate count taken after that would

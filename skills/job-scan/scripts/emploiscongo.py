@@ -264,6 +264,11 @@ def read_ad(url):
 
 def cmd_list(a):
     rows, counts, was_gz = entries()
+    if not rows:
+        die(f"{sum(counts.values())} sitemap entr(y|ies) and **0 "
+            f"advertisement(s) parsed** ({counts}). The file was read and "
+            f"yielded no advertisement — a reading that failed, not an empty "
+            f"board. #181", EXIT_PARTIAL)
     note(f"{counts['emploi']} advertisement(s) under `/emploi-` and "
          f"**{counts['bare']} under a bare slug** (gzip={was_gz}); "
          f"{counts['not-an-ad']} entr(y|ies) are not advertisements. "

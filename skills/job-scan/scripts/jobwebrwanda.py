@@ -245,6 +245,12 @@ def card(row, post, mode):
 
 def cmd_list(a):
     ads, other = entries()
+    if not ads:
+        # `max()` ran BEFORE any count was printed, so this path produced a
+        # traceback and no figures at all. #181.
+        die(f"0 advertisement(s) against {other} other entr(y|ies) in the same "
+            f"sitemap. The file was read and yielded no advertisement — a "
+            f"reading that failed, not an empty board.", EXIT_PARTIAL)
     newest = max((r["posted"] or "") for r in ads)
     note(f"{len(ads)} advertisement(s) and {other} other entr(y|ies) in "
          f"`job_listing-sitemap.xml`. **Most recent: {newest}** — this board "
