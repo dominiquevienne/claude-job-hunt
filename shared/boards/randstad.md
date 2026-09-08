@@ -1,6 +1,6 @@
 # Board adapter — randstad.ch
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.randstad.ch -->
 <!-- script: randstad.py -->
@@ -106,3 +106,7 @@ after contact.
 A full walk is 33 requests. `--with-detail` adds one per kept ad, so filter with
 `--search` and `--place` first — the listing card already carries a 600-character
 teaser to filter on.
+
+**Re-exercised 2026-09-08**: `list` emits **1 001 advertisements over 34
+pages**. *One count, and it is ours* — nothing here would separate a broken
+extractor from an empty board (#181).

@@ -1,6 +1,6 @@
 # Board adapter — swissdevjobs.ch
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: swissdevjobs.ch -->
 <!-- script: swissdevjobs.py -->
@@ -126,3 +126,6 @@ paused ad — `check` reports it as `paused` rather than guessing what it means.
 The site's bundle links **germantechjobs.de** and **devjob.ro**, run by the same
 team with what looks like the same front end. If they expose an equivalent
 `jobsLight`, this adapter's shape would cover three countries. **Not verified.**
+
+**Re-exercised 2026-09-08**: `list --tech PHP --tech Laravel` keeps **8 of 183
+postings**. *Two counts, the filtered and the whole.*

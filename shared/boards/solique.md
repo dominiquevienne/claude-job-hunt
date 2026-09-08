@@ -1,6 +1,6 @@
 # Board adapter — Solique
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: live.solique.ch -->
 <!-- script: solique.py -->
@@ -162,3 +162,6 @@ their documents.
 
 One `list` per tenant is one to three requests. The JSON routes return the whole
 board in a single call, descriptions included, so there is nothing to page.
+
+**Re-exercised 2026-09-08**: `tenants` lists **13 tenant names** in the sitemap
+index. *Names, not boards* — the card's own 2026-09-02 warning stands.

@@ -1,6 +1,6 @@
 # Board adapter — persigo.ch
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.persigo.ch -->
 <!-- script: persigo.py -->
@@ -111,3 +111,8 @@ after contact.
 
 One request for the whole board. `--with-detail` is where the cost is: one per
 kept ad, so narrow with `--search`, `--place` and `--type` first.
+
+**Re-exercised 2026-09-08**: `list` emits **888, reads 888, and the board
+states 888 (complete)**. *Three counts, and the third is the board's own — so a
+broken parser here shows 888 against 0 rather than a quiet zero.* **This is the
+shape issue #181 is looking for.**

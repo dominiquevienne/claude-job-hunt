@@ -1,6 +1,6 @@
 # Board adapter — sozialinfo.ch
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.sozialinfo.ch -->
 <!-- script: sozialinfo.py -->
@@ -107,3 +107,8 @@ it does not mediate. Hand the user the ad URL and their documents.
 
 One request for the whole board. `--with-description` costs one per kept ad, so
 filter with `--search` and `--place` first.
+
+**Re-exercised 2026-09-08**: `list` emits **720, reads 720, board states 744 —
+24 short**, and the adapter names the fix (raise `--pages` until the two agree).
+*The board's own total is printed beside ours, which is what makes the shortfall
+visible at all* (#181).

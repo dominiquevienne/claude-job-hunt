@@ -2,7 +2,7 @@
 
 <!-- hosts: www.totaljobs.com, www.jobsite.co.uk, www.caterer.com, www.irishjobs.ie, www.nijobs.com, www.jobs.ie, www.stepstone.de, www.stepstone.at, www.stepstone.be, www.stepstone.nl -->
 <!-- script: stepstone.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: DE AT BE NL GB IE -->
 
 **One platform, eleven domains, six inventories, six countries.** Totaljobs,
@@ -412,3 +412,24 @@ python3 $S count  --site jobs-ie --keyword chef     # 225 reported, 224 literal
 python3 $S search --site cwjobs --keyword x        # refuses, with the measurement
 python3 $S search --site jobsite --keyword chef --pages 3   # refuses, robots ceiling
 ```
+
+## The platform went silent, and the exit code says success — 2026-09-08
+
+**`search --site totaljobs --keyword chef --location london` returns zero
+advertisements at the documented `--delay` and again at `--delay 8`.** The
+adapter says so plainly:
+
+```
+[stepstone] THE SWEEP IS INCOMPLETE — the platform stopped answering.
+            Re-run later at a slower --delay rather than immediately.
+exit code: 0
+```
+
+**The message distinguishes an incomplete sweep from an empty market; the exit
+code does not.** *A caller reading only the status records a zero as a success,
+which is the failure issue #181 exists for* — here in its mildest form, because
+the warning is at least printed. **Reported rather than changed: an exit code
+is behaviour, and this card's board is not this session's to re-specify.**
+
+*Nothing here says the board is empty or the adapter is broken* — it says the
+platform did not answer us today, twice, at two speeds.
