@@ -10,9 +10,36 @@
 <!-- content: measured · 558 advertisements in `job_listing-sitemap.xml` out of 559 `<loc>`, the extra being `/jobs/` itself; 167 distinct dates 2019-05-08 → 2026-06-24, busiest day 8 (1.4 %), and **0 dated on or after 2026-08-01** · 2026-09-08 -->
 <!-- witness: none published by the site; 558 is the count of `/jobs/<slug>/` entries in its own sitemap. Rwanda's country page recorded «201 offres vivantes» on 2026-09-04 — a different question, and see below · 2026-09-08 -->
 
-**Rwanda's first adapter**, and the board that served as the *control* when
-the fabricated network was screened: its 1 % title overlap with the Rwandan
-node is what made the network's 19–40 % mean something.
+**Rwanda's first adapter.**
+
+> **CORRECTION, 2026-09-08.** This card first said, as a statement of fact,
+> that this board *«served as the control when the fabricated network was
+> screened: its 1 % title overlap with the Rwandan node is what made the
+> network's 19–40 % mean something»*. **Neither figure was measured here, and
+> the second is contested.**
+>
+> Both are quoted from Rwanda's country page, which reports *«recouvrement des
+> ensembles de mots de titre, trois tirages indépendants, n = 193 des deux
+> côtés»* — a **vocabulary** overlap, not an exact one — and tabulates
+> 40/35/28/25/19/18 % against other network nodes and **1 %** against this
+> board.
+>
+> **The network transversal reports different numbers for the same
+> quantity**: node × node vocabulary at 53–61 %, and exact overlap at
+> 0.0–1.2 %. *Two artefacts of this project, same measure, same kind of pair,
+> results that do not meet.* Which is right is not settled, and this card
+> does not settle it.
+>
+> **`jobwebrwanda.py` computes no overlap of any kind.** It reads a board.
+> What this adapter contributes to that question is *access to a corpus*, not
+> a measurement — and the commit that introduced it, `934070f`, repeats the
+> unattributed version in its message.
+
+*What may still be true, and is worth someone measuring properly:* Rwanda's
+page calls the independent control it lacked **anglophone and African at
+once** — the Fijian witness holds language and not continent, the Chadian one
+continent and not language. **This board holds both.** That is a reason to
+measure, not a measurement.
 
 ## The most evenly spread board measured here, and it has stopped
 
