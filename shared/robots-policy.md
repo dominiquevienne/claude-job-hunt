@@ -778,6 +778,33 @@ whose inventory is unreachable for a different reason — rendered client-side,
 `bebee` and `portaljob-madagascar` — add one country, Madagascar.* **Eight
 hosts, one country, on 2026-09-07.**
 
+> **CORRECTION, 2026-09-08 — `portaljob-madagascar` is not one of them.** It is
+> an Inertia application: **the server renders a real response and puts the
+> page's data in a `data-page` attribute**, 3 783 bytes of it. The count of
+> zero `<a>` that classified it here is exactly what a working Inertia response
+> looks like. *Its inventory is unreachable because no listing route is
+> declared anywhere* — in the shell or in its 264 kB bundle, whose only literal
+> path is `/build/` — **not because it is rendered client-side.**
+>
+> **`xpress.jobs` (Sri Lanka) is a real member of this shape, and it is the
+> stricter case.** Every route — `/Jobs`, `/jobs/sector/<x>`,
+> `/Organization/<id>/jobs` — returns the **same 1 766-byte React shell**,
+> checked for `data-page`, `__NEXT_DATA__`, `application/json` and
+> `__INITIAL_STATE__`: none present. Its sitemap holds **8 815 URLs and zero
+> advertisements**, and its API base is computed at runtime — `Na()+"api/"` in
+> a 4.3 MB bundle — so **finding the endpoint would mean executing the bundle,
+> not reading it**.
+>
+> *The distinction the two hosts force:* **«the shell is empty» and «the shell
+> is full and the route is unknown» are different facts, and the same `<a>`
+> count reads them alike.** The check that separates them is to look for a
+> payload carrier before concluding, which is now written on
+> `portaljob-madagascar.md` as its corrected control.
+>
+> **The eight-and-one count above is untouched in its arithmetic and wrong in
+> one of its members.** *It says of itself that it expires and should be
+> re-derived from the command rather than quoted; this is one reason why.*
+
 ### And the limit of this count, which is the point of it
 
 **Eight is what the repository ATTESTS, not what exists.** *The six of shape (3)
