@@ -1,6 +1,6 @@
 # Board adapter — PhilJobNet (Philippines)
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: philjobnet.gov.ph -->
 <!-- script: philjobnet.py -->
@@ -164,3 +164,16 @@ S=skills/job-scan/scripts/philjobnet.py
 python3 $S search --pages 3          # 27 unique over 3 pages, no overlap
 python3 $S ad --url "https://philjobnet.gov.ph/job-vacancies/job/sales-clerk-1460623"
 ```
+
+## An intermittent, seen once in four — 2026-09-08
+
+**`search --pages 3` exited 6 once**, reporting `{"partial": true,
+"pages_read": 1, "reason": "pagination stopped advancing"}`. **Three
+consecutive runs immediately after returned code 0 with 30 lines and 30
+distinct ids**, and `--pages 1/2/3/5` scale to 10/20/30/50 — the pagination
+does advance.
+
+> **Recorded rather than chased or dismissed.** *Nothing in a single response
+> separates a deployment from an intermittence*, and one run in four is neither
+> a defect to fix nor a figure to publish. **A later session seeing exit 6 here
+> should re-run before concluding anything.**

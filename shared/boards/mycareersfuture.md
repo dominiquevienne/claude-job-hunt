@@ -1,6 +1,6 @@
 # Board adapter — MyCareersFuture (Singapore)
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.mycareersfuture.gov.sg, www.mycareersfuture.gov.sg -->
 <!-- script: mycareersfuture.py -->
@@ -310,3 +310,6 @@ python3 $S count  --keyword chef --categories "Not A Category"    # 400, refused
 python3 $S search --keyword "software engineer" --limit 2
 python3 $S ad     --id 000044467a0b9375302c967f0d840312           # the F&B chef ad
 ```
+
+**Re-exercised 2026-09-08**: `count --keyword chef` returns **1 924 matches**
+against 2 049 on 2026-09-02. *Both are right on their day.*

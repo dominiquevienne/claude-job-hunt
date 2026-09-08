@@ -1,6 +1,6 @@
 # Board adapter — Kalibrr (Indonesia and the Philippines)
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.kalibrr.com -->
 <!-- script: kalibrr.py -->
@@ -262,3 +262,15 @@ python3 $S count  --country Philippines --keyword "software engineer"
 python3 $S count  --country Indonesia --keyword zzzzqqqq     # refuses, exit 3
 python3 $S search --country Philippines --limit 2
 ```
+
+## Refused at the transport — 2026-09-08
+
+**`count --country Indonesia` exits 9.** The host answers **HTTP 403** to this
+client while its rules permit the path, so this is the shape the 2026-09-07
+decision opens to a browser — *the host says it opens, and the firewall is not
+contradicting it, it does not know who we are.*
+
+**What settles it is borne 0: is the 403 served to this client or to
+everyone?** **This session could not check — the browser pass is refused by its
+own permission settings**, and that refusal is surfaced rather than handed to
+another session. *Nothing here says the board is closed.*
