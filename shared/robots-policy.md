@@ -800,8 +800,10 @@ population reads `hosts:`, never a body quoted in prose.**
 For this family it is now measured, once:
 
 ```
-kariera.mk   our declared HTTP client, twice, 04:45Z   403, 25 bytes
-kariera.mk   a real browser,                 04:53Z   the full board
+kariera.mk   our declared HTTP client, twice, 04:45Z    403, 25 bytes
+kariera.mk   a real browser,  between 04:48 and 04:54Z   the full board
+             (bounded by the 04:47:36Z fetch before it and the 04:53:59Z
+              clock after it — the visit itself was not timestamped)
 ```
 
 **The browser was served roughly thirty live advertisements** — employer, city
