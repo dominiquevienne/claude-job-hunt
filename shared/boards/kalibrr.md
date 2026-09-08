@@ -274,3 +274,55 @@ contradicting it, it does not know who we are.*
 everyone?** **This session could not check — the browser pass is refused by its
 own permission settings**, and that refusal is surfaced rather than handed to
 another session. *Nothing here says the board is closed.*
+
+## Bound 0 answered — 2026-09-08, from a session that could open it
+
+**The 403 is served to this client, not to everyone.** *Checked by a second
+session because the first one's browser permissions refused the domain — a
+refusal in one session is not a fact about a host, which is why the sentence
+above was worth writing rather than resolving.*
+
+```
+adapter, our declared client   /kjs/job_board/search?...&country=Indonesia   403
+same endpoint, from the page   /kjs/job_board/search?...&country=Indonesia   200
+browser on /job-board/te/1     the board renders — employer, city, salary,
+                               contract type, recency, deadline. NO challenge.
+```
+
+**No captcha, no interstitial, nothing to defeat**, so the owner's second bound
+is not engaged.
+
+### The site states its own counts, and the pager closes on them
+
+```
+country=Indonesia     count 1115        country=Philippines   count 775
+offset    0 -> 100 jobs
+offset  500 -> 100 jobs
+offset 1100 ->  15 jobs      1100 + 15 = 1115
+215 ids returned across the three pages, 215 distinct
+```
+
+**`count` is the API's own field**, so it is the figure that does not come from
+reading our own output — *if the extraction broke, `count` would still say
+1 115 and the difference between "empty board" and "I read nothing" would stay
+visible.* **1 890 advertisements across the two declared countries**, and the
+id check rules out overlap on the three pages where it was done, not on all
+twelve.
+
+**38 fields per advertisement** — `name`, `company_name`, `function`,
+`activation_date`, `application_end_date`, `education_level`,
+`number_of_openings`, `is_work_from_home`, `is_hybrid`, `base_salary`,
+`maximum_salary`, `google_location`, `description` and more. *Real fields, not
+prose.*
+
+### What is not claimed
+
+**The adapter still fails**, and this card does not say otherwise: `kalibrr.py`
+speaks to the endpoint as our declared client and is refused. *What is
+established is that the route exists through the browser `job-scan` already
+drives, and what the route would return.*
+
+**And the exit code is quoted from the section above, not re-observed here.**
+*My own run printed the refusal message; the shell captured the status of a
+pipe rather than the interpreter's, so I did not verify `9`.*
+
