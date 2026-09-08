@@ -9009,6 +9009,57 @@ class TheHeadingAgreesWithTheContentLine(unittest.TestCase):
 
 
 
+class TheBoardRenamedItsAdvertisementLinks(unittest.TestCase):
+    r"""**`jobbkk.py` returned zero on four keywords in two languages** on
+    2026-09-08, while the board served 1.24 MB of results: every advertisement
+    link had become `/jobs/detailurgent/`, and the extractor matched only
+    `/jobs/detail/`.
+
+    *The adapter did not crash and did not report an error.* It printed «&nbsp;page
+    1 carried no result card — stopping&nbsp;», which is the same line it prints
+    for a search that legitimately matches nothing. **A rename is
+    indistinguishable from an empty market in that output**, and the card's own
+    documented invocation was the thing that stopped working.
+
+    **Both forms serve the same page** — HTTP 200 and an identical `<title>` on
+    `162598/785832` — so the ad-URL template is untouched and only the
+    extraction widened.
+
+    **The two forms are named rather than matched by `detail\w*`**: a third
+    form should make this adapter stop, not be swallowed. That is what the
+    negative cases below assert, and removing the `(?:urgent)?` group reddens
+    the first while removing the parenthesis boundary reddens the third.
+    """
+
+    def _detail(self):
+        spec = importlib.util.spec_from_file_location(
+            "_jobbkk", os.path.join(SCRIPTS, "jobbkk.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.DETAIL
+
+    def test_it_reads_both_forms_and_only_those_two(self):
+        d = self._detail()
+        for href, want in (
+                ('href="/jobs/detail/1/2"', True),
+                ('href="/jobs/detailurgent/1/2"', True),
+                ('href="/jobs/detailpremium/1/2"', False),
+                ('href="/jobs/lists/1/x"', False),
+                ('href="/jobs/detail/abc/2"', False)):
+            with self.subTest(href=href):
+                self.assertEqual(bool(d.search(href)), want, href)
+
+    def test_the_ad_template_still_uses_the_short_form(self):
+        """**Measured, not assumed**: `/jobs/detail/162598/785832` answered 200
+        on 2026-09-08 with the same title as the `detailurgent` form, so
+        widening the extractor must not drag the URL template with it."""
+        spec = importlib.util.spec_from_file_location(
+            "_jobbkk2", os.path.join(SCRIPTS, "jobbkk.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod.AD, "/jobs/detail/{company}/{job}")
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none

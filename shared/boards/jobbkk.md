@@ -1,6 +1,6 @@
 # Board adapter — JOBBKK (Thailand)
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.jobbkk.com -->
 <!-- script: jobbkk.py -->
@@ -216,3 +216,38 @@ python3 $S search --keyword "โปรแกรมเมอร์" --limit 3
 python3 $S search --keyword "โปรแกรมเมอร์" --pages 8   # stops itself at the repeat
 python3 $S ad --id 40904/844353
 ```
+
+## The links were renamed, and the adapter reported an empty market — 2026-09-08
+
+**`search` returned zero on four keywords in two languages** — `โปรแกรมเมอร์`,
+`พนักงาน`, `programmer`, `sales` — **while the board served 1.24 MB of
+results.** Every advertisement link had become `/jobs/detailurgent/`; the
+extractor matched only `/jobs/detail/`.
+
+```
+result page, 2026-09-08     25 links, all /jobs/detailurgent/, 0 of any other form
+page 2                      25 more, 0 shared with page 1
+/jobs/detail/162598/785832        HTTP 200
+/jobs/detailurgent/162598/785832  HTTP 200, identical <title>
+```
+
+> **The adapter printed «&nbsp;page 1 carried no result card — stopping&nbsp;»,
+> which is the line it prints for a search that legitimately matches nothing.**
+> *A rename and an empty market are the same output here — and the invocation
+> that stopped working is the one this card documents.*
+
+**Both forms serve the same advertisement**, so only the extraction was
+widened; `AD` is unchanged. **The two forms are named rather than matched by
+`detail\w*`** — a third form must stop this adapter, not be swallowed —
+and `tests/test_core.py::TheBoardRenamedItsAdvertisementLinks` asserts it,
+reddening on each of three mutations: dropping `(?:urgent)?`, widening to
+`detail\w*`, and loosening `\d+` to `\w+`.
+
+**Re-exercised after the fix**: `--keyword โปรแกรมเมอร์ --pages 8` reads 6 pages
+and stops itself at the repeat, 130 advertisements.
+
+**Two measurements this card does not explain**, recorded rather than
+diagnosed: **18 of those 130 titles contain the keyword** — this board matches
+broadly — and **16 of 130 carry no `occupation`, `industry` or `job_format`.**
+*Whether those are sparse on the board or missed by the card parser was not
+established here.*

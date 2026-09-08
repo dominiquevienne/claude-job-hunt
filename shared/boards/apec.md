@@ -1,6 +1,6 @@
 # Board adapter — apec.fr
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.apec.fr -->
 <!-- script: apec.py -->

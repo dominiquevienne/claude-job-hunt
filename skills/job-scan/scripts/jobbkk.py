@@ -73,7 +73,14 @@ from _ua import UA
 ALL_PROVINCES = "ทุกจังหวัด"
 ALL_CATEGORIES = "ทั้งหมด"
 
-DETAIL = re.compile(r'href="/jobs/detail/(\d+)/(\d+)"')
+# **Two link forms, and only the second is served today.** On 2026-09-08
+# every advertisement link on a result page is `/jobs/detailurgent/`;
+# `/jobs/detail/` returns zero. **Both resolve to the same page** — HTTP
+# 200 and an identical `<title>` on `162598/785832` — so `AD` below is
+# unchanged and only the extraction widened. *The two forms are named
+# rather than matched by `detail\w*`: a third form should make this
+# adapter stop, not be swallowed silently.*
+DETAIL = re.compile(r'href="/jobs/detail(?:urgent)?/(\d+)/(\d+)"')
 
 
 def die(msg, code=2):

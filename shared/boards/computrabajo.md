@@ -320,3 +320,23 @@ python3 $S search --country co --keyword programador --limit 3
 python3 $S search --country co --keyword programador --pages 3
 python3 $S search --country co --keyword x --sal 2000000   # refuses, quoting robots.txt
 ```
+
+## Its rules file became unreadable — 2026-09-08
+
+```
+co.computrabajo.com        unreachable   allowed=None   certain=False
+www.computrabajo.com.mx    unreachable   allowed=None   certain=False
+cl.computrabajo.com        unreachable   allowed=None   certain=False
+pe.computrabajo.com        unreachable   allowed=None   certain=False
+```
+
+**`/robots.txt` answers HTTP 202 with a zero-byte body, on four national hosts,
+after three attempts.** *A 2xx that is not 200 is not the document, and an empty
+body states nothing.*
+
+**This is an indeterminate — not a refusal and not a permission — and an
+indeterminate is not sounded.** `computrabajo.py` exits **8** on the invocation
+this card documents, which is the correct behaviour: *it refuses rather than
+guessing.* **Nothing here says the board changed**; it says we cannot currently
+read what it permits. **Re-take the guard before concluding anything about this
+board.**

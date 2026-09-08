@@ -1,6 +1,6 @@
 # Board adapter — hellowork.com
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.hellowork.com -->
 <!-- script: hellowork.py -->
