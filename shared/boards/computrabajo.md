@@ -3,7 +3,8 @@
 <!-- hosts: co.computrabajo.com, cl.computrabajo.com, pe.computrabajo.com, mx.computrabajo.com, ar.computrabajo.com, ec.computrabajo.com, ve.computrabajo.com, cr.computrabajo.com, pa.computrabajo.com, gt.computrabajo.com, bo.computrabajo.com, do.computrabajo.com, uy.computrabajo.com, sv.computrabajo.com, hn.computrabajo.com, ni.computrabajo.com, py.computrabajo.com, pr.computrabajo.com -->
 <!-- script: computrabajo.py -->
 <!-- verified: 2026-09-08 -->
-<!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY US -->
+<!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY PR -->
+<!-- countries-basis: read — the eighteen `hosts:` above end in `pr.computrabajo.com`, the body's own list reads `… py pr`, and `computrabajo.py:58` declares `pr`. **`US` stood here alone against all four, and the title says Latin America** · 2026-09-08 -->
 <!-- content: indeterminate · exercised on all four sole-route countries (`co`, `bo`, `py`, `uy`) and each exits 8 — `robots.txt` answers HTTP 202 with a 0-byte body, so the guard cannot be read and nothing was fetched. **An unknown, not a zero** · 2026-09-08 -->
 
 **Eighteen national sites, one adapter, and one rule file with no exception.**
