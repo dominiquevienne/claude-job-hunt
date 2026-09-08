@@ -1,6 +1,6 @@
 # Board adapter — Haufe / Abacus umantis
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: umantis.com -->
 <!-- host-forms: {host} -->
@@ -192,3 +192,6 @@ hand the user the vacancy URL and their documents, as for any external ATS.
 
 Boards are small and requests are cheap. One `/Jobs` per employer per run, plus
 one request per vacancy read, is the whole cost.
+
+**Re-exercised 2026-09-08**: `list --host jobs.bobst.com` returns **10 of 10
+vacancies**. *Two counts, and the second is the host's own.*

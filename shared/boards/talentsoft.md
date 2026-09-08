@@ -22,7 +22,7 @@ reads**. `<tenant>.talent-soft.com` answers for itself and is unaffected.
 *(Two `User-agent: *` records in one file is the case `_robots.py` merges per
 RFC 9309, rather than letting the first win.)*
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: talent-soft.com -->
 <!-- host-forms: {tenant}.talent-soft.com -->
@@ -270,3 +270,6 @@ Hand the user the ad URL with their documents.
 Two requests for a 19-ad employer, plus one per ad with `--with-detail`, spaced
 by `--delay` (default 1s). These are public careers pages served as HTML, read
 unauthenticated, for one person's job search.
+
+**Re-exercised 2026-09-08**: `jobs --tenant businessfrance-recrute` returns
+**20 cards**.

@@ -1,6 +1,6 @@
 # Board adapter — ss.ge (Georgia, classifieds)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: ss.ge -->
 <!-- script: ssge.py -->
@@ -171,3 +171,7 @@ python3 $S sitemap --limit 5
 python3 $S sitemap                  # 1 705 from 1 740 <loc>
 python3 $S ad --url "https://jobs.ss.ge/ka/details/molare-88215005"   # exits 6
 ```
+
+**Re-exercised 2026-09-08**: `families` runs; **8 of the 56 sub-sitemaps sit
+under a path `ss.ge/robots.txt` refuses by name**, and the adapter says so
+rather than sweeping them.

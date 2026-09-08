@@ -1,6 +1,6 @@
 # Board adapter — Vieclam24h (Vietnam)
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: vieclam24h.vn -->
 <!-- script: vieclam24h.py -->
@@ -208,3 +208,6 @@ python3 $S search --keyword "ke toan" --limit 2     # 973 matching, 33 pages
 python3 $S ad --url "https://vieclam24h.vn/ke-toan/ke-toan-tong-hop-c17p73id3054296.html"
 python3 $S sitemap --limit 3
 ```
+
+**Re-exercised 2026-09-08**: `search` **exits 7** — `vieclam24h.vn` refuses
+`/tim-kiem-viec-lam-nhanh` to our token. *Not swept, and not silently obeyed.*

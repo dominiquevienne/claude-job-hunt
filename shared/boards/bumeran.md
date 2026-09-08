@@ -2,7 +2,7 @@
 
 <!-- hosts: www.bumeran.com.ar, www.bumeran.com.mx, www.bumeran.com.pe, www.bumeran.com.ve, www.konzerta.com, www.laborum.cl, www.multitrabajos.com, www.zonajobs.com.ar -->
 <!-- script: bumeran.py -->
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: AR CL PE MX EC VE PA -->
 
 **One platform wearing national brands, and the tell is a filename.** Every one
@@ -211,3 +211,6 @@ python3 $S discover --host laborum.pe           # no avisos sitemap declared
 python3 $S search --site multitrabajos.com --keyword contador --limit 3
 python3 $S facets --site konzerta.com --limit 10
 ```
+
+**Re-exercised 2026-09-08**: `sites` runs, and the adapter repeats its own
+warning that *«&nbsp;these counts are dated measurements, not properties&nbsp;»*.

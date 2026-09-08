@@ -1,6 +1,6 @@
 # Board adapter — meteojob.com
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.meteojob.com -->
 <!-- script: meteojob.py -->
@@ -214,3 +214,7 @@ retry loop, and the User-Agent is never rotated to get around one.
 This adapter reads only the paths the site's own robots.txt leaves open, at
 human pace, for one person's job search. The cap that comes with that is
 documented above rather than engineered around — which is the whole point.
+
+**Re-exercised 2026-09-08**: `search --what infirmier --where Lyon` returns
+**20 advertisements**, and the adapter says plainly that *«&nbsp;that is the cap,
+not the result count&nbsp;»* — the distinction issue #181 is about.

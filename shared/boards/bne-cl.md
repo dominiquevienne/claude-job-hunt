@@ -1,6 +1,6 @@
 # Board adapter — BNE (Chile, Bolsa Nacional de Empleo)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: www.bne.gob.cl, bne.cl -->
 <!-- script: bnecl.py -->
 <!-- countries: CL -->
@@ -143,3 +143,6 @@ python3 $S sitemap --limit 5              # 7 928, all advertisements
 python3 $S ad --id 2026-082609            # accents intact, encoding reported
 python3 $S search --keyword vendedor --read 8 --limit 2
 ```
+
+**Re-exercised 2026-09-08**: `sitemap` reports **7 682 advertisement URLs of
+7 682 `<loc>`** — every entry is an advertisement.

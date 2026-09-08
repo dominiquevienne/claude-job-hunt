@@ -2,7 +2,7 @@
 
 <!-- hosts: per-tenant -->
 <!-- script: workday.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: * -->
 
 **The tenant's own `robots.txt` lists its career sites — `workday.py sites`
@@ -194,3 +194,12 @@ them do it — as for any external ATS.
 One request per page of results, one per posting read in full. A narrowed sweep
 of a watchlist is a few dozen. An unnarrowed sweep of Hitachi is a hundred —
 which is the reason trap 7 exists.
+
+**Re-exercised 2026-09-08**: `list --host swisscom.wd103.myworkdayjobs.com
+--tenant swisscom --site swisscomexternalcareers` returns **20 of 86**, and says
+so — `raise --pages to go further`.
+
+**And its `resolve` example is refused** — like `ats.py resolve`, it searches
+through HiringCafe, whose `robots.txt` refuses `?searchState=` to
+`User-agent: *` since 2026-09-03 (#123). **The adapter exits 7 and makes no
+request**; `list` is unaffected.

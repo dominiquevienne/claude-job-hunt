@@ -2,7 +2,7 @@
 
 <!-- hosts: per-tenant -->
 <!-- script: applifly.py -->
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: CH -->
 
 A Swiss applicant-tracking system. **Employers front it with their own vanity
@@ -206,3 +206,7 @@ python3 $S search --host jobs.meanquest.ch --limit 3
 python3 $S ad --url "https://jobs.meanquest.ch/job/view-job.php?id=1453&language=fr&source=applifly"
 python3 $S ad --url "https://jobs.meanquest.ch/job/view-job.php"   # refuses: no id
 ```
+
+**Re-exercised 2026-09-08**: `search --host jobs.meanquest.ch` — the host this
+card names — **exits 7**: the tenant's own rules refuse the path. *Applifly is
+per-tenant, so this is a verdict on one tenant and on nothing else.*

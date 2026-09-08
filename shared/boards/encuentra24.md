@@ -1,6 +1,6 @@
 # Board adapter — Encuentra24 (twelve countries, one host)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.encuentra24.com -->
 <!-- script: encuentra24.py -->
@@ -171,3 +171,6 @@ python3 $S prefixes                                  # 24, read from robots.txt
 python3 $S search --prefix panama-es --limit 5
 python3 $S ad --url "https://www.encuentra24.com/panama-es/empleos-ofertas-de-trabajos/asesores-de-ventas-bilingue/32412571"
 ```
+
+**Re-exercised 2026-09-08**: `prefixes` runs and states that these are the
+site's own path prefixes, *not a country list this adapter invented*.

@@ -1,6 +1,6 @@
 # Board adapter — Taleez
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: taleez.com -->
 <!-- script: taleez.py -->
@@ -191,3 +191,6 @@ large tenants behind a decision rather than sweeping them nightly.
 
 These are public careers pages read through the endpoint the pages themselves
 use, unauthenticated, for one person's job search. Keep the pace human.
+
+**Re-exercised 2026-09-08**: `jobs --tenant bertintechnologies` returns **27
+cards**.

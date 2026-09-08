@@ -1,6 +1,6 @@
 # Board adapter — welcometothejungle.com
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.welcometothejungle.com -->
 <!-- script: wttj.py -->
@@ -161,3 +161,5 @@ advertises. Reading is one navigation per ad in the user's own session, so it is
 paced by the person, not by a loop: narrow with `--company` and `--since`
 before reading anything. The search page — `Disallow: /*?` and
 `*/jobs?query=*` — is never requested.
+
+**Re-exercised 2026-09-08**: `sitemaps` lists **9 gzipped job-listing files**.

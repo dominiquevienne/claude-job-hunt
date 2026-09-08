@@ -2,7 +2,7 @@
 
 <!-- hosts: per-tenant -->
 <!-- script: successfactors.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: * -->
 
 An ATS, not a board: one employer per host, no search across employers.
@@ -165,3 +165,8 @@ session was authenticated — hand the user the URL and their documents.
 
 One `list` per employer is a handful of POSTs. `--with-description` multiplies
 it by the number of postings kept; filter first, read second.
+
+**Re-exercised 2026-09-08**: `list --host jobs.bcv.ch` **exits 7** —
+`jobs.bcv.ch` refuses `/services/recruiting/v1/jobs` to our token. *A refusal on
+one tenant is a refusal on that tenant*, and this card's other hosts were not
+asked.
