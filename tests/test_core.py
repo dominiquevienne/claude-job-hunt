@@ -9436,15 +9436,29 @@ class ABypassAnnouncesItselfWhereItHappens(unittest.TestCase):
         del real_print
         return said[0]
 
-    def test_a_bypass_says_so(self):
+    def test_a_bypass_says_what_is_crossed_before_what_it_costs(self):
+        """**#192, 2026-09-08.** The first version of this test asserted the
+        word `BYPASSED` and the cost, and stayed green on a banner that never
+        said what the host had written. *A guard on a marker word passes a
+        banner that lies by omission.*
+
+        **Consenting to a risk is not consenting to an act**: the announcement
+        has to carry the NATURE of the refusal — `User-agent: * / Disallow: /`,
+        the group addressed to everybody — and not only its consequence.
+        """
         mod = self._ats()
         out = self._run(mod, True, mod.SR_API + "/acme/postings")
-        self.assertIn("BYPASSED", out)
-        for owed in ("api.smartrecruiters.com", "address that gets blocked",
-                     "override_robots"):
+        for owed, why in (
+                ("User-agent: * / Disallow: /", "the refusal, verbatim"),
+                ("everybody", "that the group addresses everyone"),
+                ("api.smartrecruiters.com", "the host"),
+                ("address that gets blocked", "what it costs the user"),
+                ("override_robots", "how to undo it")):
             with self.subTest(owed=owed):
-                self.assertIn(owed, out, "the announcement must name the host, "
-                                         "the cost and how to undo it")
+                self.assertIn(owed, out, "the announcement must carry " + why)
+        self.assertLess(out.index("Disallow: /"),
+                        out.index("address that gets blocked"),
+                        "what is crossed comes before what it costs")
 
     def test_nothing_is_announced_when_nothing_is_bypassed(self):
         """**The half that keeps the banner worth reading.**"""
@@ -9459,7 +9473,7 @@ class ABypassAnnouncesItselfWhereItHappens(unittest.TestCase):
         mod = self._ats()
         first = self._run(mod, True, mod.SR_API + "/acme/postings")
         second = self._run(mod, True, mod.SR_API + "/acme/postings?page=2")
-        self.assertIn("BYPASSED", first)
+        self.assertIn("Disallow: /", first)
         self.assertEqual(second, "", "a line repeated once a request is noise, "
                                      "not consent")
 

@@ -620,10 +620,25 @@ raised again. Until an adapter exists the step configures nothing and says so:
 the stance is recorded under `pending_decisions.ams`, outside `boards:`, because
 a board switched on with no adapter behind it reads as a bug.
 
-**The run says it out loud**, every time, in the output the user reads:
+**The run says it out loud**, every time, in the output the user reads —
+**and it says what is crossed before what it costs** (#192, 2026-09-08):
 
-> `ams: robots.txt override ACTIVE — jobs.ams.at disallows /public/emps/ to all
-> agents but LinkedInBot. You enabled this. See shared/robots-policy.md`
+> `ams: ROBOTS REFUSAL CROSSED — jobs.ams.at disallows /public/emps/ to every
+> agent but LinkedInBot, and this run is reading it anyway because you enabled
+> the override. What it costs you: the address that gets blocked is yours, not
+> this project's. To stop: remove the override from config.yml. See
+> shared/robots-policy.md`
+
+**The order is the point, and it is not cosmetic.** *A banner that opens on the
+consequence — «&nbsp;you might get blocked&nbsp;» — asks the reader to accept a
+risk they run. A banner that opens on the refusal asks them to accept an act
+they perform.* **Consenting to a risk is not consenting to an act**, and the
+first wording of the SmartRecruiters banner made exactly that substitution.
+
+*Note that AMS and SmartRecruiters do not refuse the same way — AMS scopes a
+path and names an exception, SmartRecruiters writes `User-agent: * /
+Disallow: /` to everybody. **Each banner states its own host's refusal; the
+order is shared, the words are not.***
 
 **Pace as if you were welcome.** One request at a time, a real delay between
 them, no parallelism. An override is not a licence to be expensive.

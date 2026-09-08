@@ -130,15 +130,23 @@ def announce_bypass(url):
         return
     _SR_ANNOUNCED = True
     parts = urllib.parse.urlsplit(url)
-    print(f"[bypass] robots.txt guard BYPASSED for {parts.netloc}{parts.path} "
-          f"— {SR_HOST} disallows everything to all agents but LinkedInBot, "
-          f"and this run is reading it anyway. **You enabled this**, and the "
-          f"address that gets blocked is yours, not this project's. To stop: "
-          f"remove `boards.smartrecruiters.override_robots` from config.yml, "
-          f"or drop `--override-robots`. One request at a time, and this run "
-          f"stops on the first block rather than retrying. See "
-          f"shared/robots-policy.md and shared/boards/smartrecruiters.md.",
-          file=sys.stderr)
+    # **What is crossed comes first, what it costs comes second — #192.** The
+    # previous wording opened on the consequence («&nbsp;the address that gets
+    # blocked is yours&nbsp;») and never said what the site had actually
+    # written. *Consenting to a risk is not consenting to an act*: a reader
+    # told «&nbsp;you might get blocked&nbsp;» agrees to a risk they run, while
+    # a reader told «&nbsp;this site refused everyone and you are going in
+    # anyway&nbsp;» agrees to what they are doing.
+    print(f"[bypass] ROBOTS REFUSAL CROSSED for {parts.netloc}{parts.path} — "
+          f"{SR_HOST} publishes `User-agent: * / Disallow: /`. **That group is "
+          f"not an anti-crawler clause: it is the one addressed to everybody, "
+          f"and it refuses everything.** This run is reading the host anyway, "
+          f"because you enabled the override. What it costs you: the address "
+          f"that gets blocked is yours, not this project's. To stop: remove "
+          f"`boards.smartrecruiters.override_robots` from config.yml, or drop "
+          f"`--override-robots`. One request at a time, and this run stops on "
+          f"the first block rather than retrying. See shared/robots-policy.md "
+          f"and shared/boards/smartrecruiters.md.", file=sys.stderr)
 
 
 def fetch(url):
@@ -392,11 +400,14 @@ def smartrecruiters_gate(a=None):
     allowed = _SR_OVERRIDE or getattr(a, "override_robots", False)
     if not allowed:
         die(f"{SR_HOST}: {v['reason']}\n"
-            f"  **This board is skipped, not silently obeyed.** Reading it "
+            f"  **{SR_HOST} publishes `User-agent: * / Disallow: /` — the "
+            f"group addressed to everybody, refusing everything. This board is "
+            f"skipped, not silently obeyed.** Reading it anyway "
             f"needs `boards.smartrecruiters.override_robots: true` in "
             f"config.yml, which `shared/setup.md` sets only after telling you "
-            f"what it costs — and what it costs is **your own address**, not "
-            f"this project's: the block lands on the machine making the "
+            f"what is crossed and what it costs — and what it costs is **your "
+            f"own address**, not this project's: the block lands on the "
+            f"machine making the "
             f"requests.\n"
             f"  **It does not generalise.** Greenhouse, Workable and Lever "
             f"publish files of the same kind that permit, and are read "

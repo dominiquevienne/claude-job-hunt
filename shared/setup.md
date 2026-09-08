@@ -1095,12 +1095,22 @@ rule, saying the key is missing and what it would cost.
 **And the run says it out loud, once, every time the guard is actually
 bypassed:**
 
-> `[bypass] robots.txt guard BYPASSED for api.smartrecruiters.com/v1/companies/…
-> — api.smartrecruiters.com disallows everything to all agents but LinkedInBot,
-> and this run is reading it anyway. You enabled this, and the address that
-> gets blocked is yours, not this project's. To stop: remove
-> `boards.smartrecruiters.override_robots` from config.yml, or drop
-> `--override-robots`.`
+> `[bypass] ROBOTS REFUSAL CROSSED for api.smartrecruiters.com/v1/companies/…
+> — api.smartrecruiters.com publishes `User-agent: * / Disallow: /`. That group
+> is not an anti-crawler clause: it is the one addressed to everybody, and it
+> refuses everything. This run is reading the host anyway, because you enabled
+> the override. What it costs you: the address that gets blocked is yours, not
+> this project's. To stop: remove `boards.smartrecruiters.override_robots` from
+> config.yml, or drop `--override-robots`.`
+
+**What is crossed comes first, what it costs comes second — #192,
+2026-09-08.** *The earlier wording opened on the consequence and never said
+what the site had written.* **Consenting to a risk is not consenting to an
+act**: a reader told «&nbsp;you might get blocked&nbsp;» agrees to a risk they
+run; a reader told «&nbsp;this site refused everybody and you are going in
+anyway&nbsp;» agrees to what they are doing. *And this repository is public —
+the switch ships to whoever installs the plugin, and the owner's consent covers
+the owner.*
 
 **The line is printed by the code that performs the bypass, not by the code
 that decides it — #187, 2026-09-08.** *Until then the banner was printed one

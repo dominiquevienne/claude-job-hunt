@@ -254,6 +254,30 @@ list --provider smartrecruiters --tenant Evooq --override-robots   exit 0,  8 po
 > `fetch()` is later edited. **The #175 guard is untouched everywhere else**,
 > and a test asserts that for Ashby, Greenhouse and Lever by name.
 
+### What the announcement says first — #192, 2026-09-08
+
+**`api.smartrecruiters.com` publishes `User-agent: * / Disallow: /`.** *That
+group is not an anti-crawler clause: it is the one addressed to everybody, and
+it is the least ambiguous refusal a site can write.*
+
+**The banner names that refusal before it names the cost.** *The earlier wording
+opened on «&nbsp;the address that gets blocked is yours&nbsp;» — a consequence —
+and never said what the host had actually written.*
+
+> **Consenting to a risk is not consenting to an act.** *A reader told
+> «&nbsp;you might get blocked&nbsp;» agrees to a risk they run. A reader told
+> «&nbsp;this site refused everybody and you are going in anyway&nbsp;» agrees
+> to what they are doing.*
+
+**Four places say the same thing** — the banner, the message printed when the
+key is absent, `shared/setup.md`, and this card — *and the test asserts the
+NATURE of the refusal is in the banner, not only its cost: a guard that checks
+a `[bypass]` line was printed stays green on a banner that lies by omission,
+which is what had happened.*
+
+*This repository is public: the switch ships to whoever installs the plugin,
+and the owner's consent covers the owner.*
+
 *A test that checks `smartrecruiters_gate()` is called stays green on the old
 defect — it was called. What was missing is a test of the composition, and the
 general form is: **wherever a choke point carries more than one guard, exercise
