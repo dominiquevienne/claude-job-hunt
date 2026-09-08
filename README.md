@@ -45,6 +45,15 @@ plugin says which folder before it writes anything in it.
   afterwards**: what was answered, what was **not**, the next step and its
   date, and your own read of the room. One skill for both, because the useful
   half of a debrief is which of your prepared questions came back unanswered.
+- **`linkedin-watch`** — **the openings your network mentions and nobody
+  posts on a board.** Reads your LinkedIn feed in your own Chrome and reports
+  the leads — *"my team is hiring", a connection resharing an opening* — with
+  the scope you choose: posts alone, or posts and their comments. **It writes a
+  report of its own and never the ledger**, because a post has no structured
+  employer, no location and often no URL, and folding an inferred inventory into
+  a measured one would corrupt the coverage counters silently. *It never claims
+  the feed is exhausted: the feed is algorithmic, there is no total to compare
+  against, and it says how many posts it saw and where it stopped instead.*
 - **`linkedin-profile`** — **survey your own LinkedIn profile and show the
   gap.** Reads the profile in your own Chrome, section by section, reads the
   documents in `profile/`, and prints the difference: what is absent, what
@@ -538,6 +547,7 @@ five PDFs remain as a fallback for anyone who prefers them.
 /interview-rehearsal             # rehearse one, from your profile alone
 /interview-rehearsal <company>   # …or from the application in your ledger
 /linkedin-profile                # survey your LinkedIn and show what's missing
+/linkedin-watch                  # leads hiding in your network's posts
 /job-report                      # applications sent this month
 /job-report --interviews         # the ones that reached a meeting
 /job-report --from 2026-07-01 --to 2026-07-31
