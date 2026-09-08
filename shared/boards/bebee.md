@@ -5,7 +5,7 @@
 <!-- hosts: bebee.com -->
 <!-- script: bebee.py -->
 <!-- countries: CH -->
-<!-- content: measured · the sitemap index `robots.txt` declares holds 3 407 children, of which 2 102 are job files over 99 countries; the nine numbered Swiss files carry 432 533 addresses under `/ch/jobs/`, 8 x 50 000 + 32 533, spanning 2026-03-27 to 2026-09-07 · 2026-09-08 -->
+<!-- content: measured · the sitemap index `robots.txt` declares moved from 3 407 children and 2 102 job files in the morning to 3 799 and 2 494 in the afternoon of the same day — **this index moves within a day**, so a single reading of it is a moment and not a size; the Swiss country held 9 numbered files carrying 432 533 addresses under `/ch/jobs/` (8 x 50 000 + 32 533) spanning 2026-03-27 to 2026-09-07, and its `delta-` files went from 4 to 10 across the same day · 2026-09-08 -->
 <!-- witness: none — nothing was fetched beyond the homepage and `robots.txt`, and the homepage carries no inventory to corroborate -->
 
 **This is not a job board. It is a platform whose navigation names six
