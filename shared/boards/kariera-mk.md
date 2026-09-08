@@ -1,16 +1,17 @@
-# Board adapter — Kariera.mk (North Macedonia): rules silent, transport closed
+# Board adapter — Kariera.mk (North Macedonia): refused to our client, open to a browser
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: kariera.mk -->
 <!-- script: none -->
 <!-- countries: MK -->
-<!-- content: indeterminate · the root and `/sitemap.xml` both answer HTTP 403 with 25 bytes, `Your request was blocked.`, md5 9ccabba20b9f4ec7d18bd6644579e5bf — the same body byte for byte as `jobstore` and `hays`, so nothing of this board was read · 2026-09-07 -->
-<!-- witness: none — nothing was served, and the count this card does not give is the one a reader would want -->
+<!-- content: measured · 282 live advertisements on the front-page feed once exhausted (one click of `Вчитај уште огласи…`, 27 → 282 distinct `/job/` URLs, the control then disappears); every one of the 282 carries a card marker, 260 `активен до` + 22 `плата од` = 282; read in a browser because the HTTP route answers 403 · 2026-09-08 -->
+<!-- witness: 282 live advertisements, and the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
 
-**Only the apex was fetched.** `www.kariera.mk` serves the apex's rules and
-the guard reports it as such; this card claims nothing about that form, and
-declares no `host-forms:` because it declares no script to reach them.
+**The apex is the only form measured.** `www.kariera.mk` serves the apex's
+rules and the guard reports it as such; this card claims nothing about that
+form, and declares no `host-forms:` because it declares no script to reach
+them. *The 2026-09-08 browser reading below also used the apex throughout.*
 
 **North Macedonia's named board, and the first card for it.** It has been
 mentioned in this repository since 2026-09-05 with no status established;
@@ -60,18 +61,79 @@ fetched twice first: the body does not change between reads, so the
 fingerprint is comparable across hosts rather than carrying a per-request
 element.
 
-## What follows, and what does not
+## What follows — the browser opens it, and that is measured
 
-**Rules open a path and infrastructure refuses that same path.** Under the
-decision of 2026-09-07 that makes this host a **candidate for a browser
-adapter** — the shared refusal body is precisely the signal that says the
-browser is worth its cost here, because nobody wrote this page about us.
+**2026-09-08. The refusal above is aimed at the client, not at everyone.**
+Same host, same day: our declared HTTP client is refused twice at 04:45 UTC,
+and a real browser is served the board between 04:48 and 04:54 UTC. **No
+captcha, no challenge, no interstitial** — nothing to defeat, so the owner's
+second bound is not engaged. *This is the measurement the previous version of
+this card said it was not making.*
 
-**It is a candidate and not a plan.** Driving the browser is not this
-session's to start, and this card does not claim the board would be readable
-that way — only that the reason it is unreadable now is infrastructure rather
-than an editor's decision.
+### The feed, and where its number comes from
 
-**North Macedonia stays at zero coverage.** *That is a statement about this
-host and this date, not about the country:* a second Macedonian board is named
-in the coverage queue and has not been measured here.
+The front page carries the whole live inventory behind one control.
+
+```
+GET /                          27 distinct /job/ URLs
+click "Вчитај уште огласи…"   -> POST /APICalls.aspx/JobsLazy
+                              282 distinct /job/ URLs, control gone
+advertisement URL             /job/<22-char id>/<slug>
+```
+
+**One click exhausts it.** *The control does not reappear, so 282 is the end
+of the feed and not a page of it.*
+
+**282 is a count of advertisements and not of links, and the difference is
+load-bearing.** Every one of the 282 carries a card marker — **260 `активен
+до` (active until) + 22 `плата од` (salary from) = 282**, a clean partition.
+*A `/job/` link on its own is not an advertisement:* the Bitola page below
+holds 106 such links of which **96 carry no marker at all.**
+
+### The second anchor confirms on the small city and cannot speak on the large
+
+| | feed attributes | the city's own page says |
+| :-- | --: | :-- |
+| Битола / Bitola | 9 | **10 marked** (of 106 `/job/` links) |
+| Скопје / Skopje | 228 | **exactly 200**, all marked, no load-more |
+
+**Bitola agrees within one**, and the one is unexplained — most likely a card
+my city pattern missed, not a missing advertisement.
+
+**Skopje neither confirms nor contradicts: 200 is a round number and the feed
+claims 228, which is more.** *A city page that stops at exactly 200 is a
+rendering cap, and a cap cannot be read as a count* — the same shape as the
+1 000-at-the-first-file trap this repository has already paid for.
+
+### The archive is 17 604, and it answers a different question
+
+`sitemap.xml` — **refused to our HTTP client, HTTP 200 and 8 447 801 bytes to
+a browser** — holds 41 654 `<loc>`:
+
+```
+/job/     17 604      /article/  16 147      /company/  6 229
+/tag/      1 116      /oglas/       300      /state-job/   37
+```
+
+**17 604 is the stock; 282 is the flux, and neither is an estimate of the
+other.** *Nothing on the page distinguishes them, and the larger number is the
+one that gets quoted.*
+
+### Two counts that were nearly published and are not
+
+**`2026 JOBS` and `2026 Offres`** — the copyright year adjacent to the right
+noun, produced twice in one morning by a `(\d[\d,]*)\s*(jobs|offres)`
+pattern, on this board's neighbour and on `hays.fr`. *An integer, on the right
+page, beside the right word.* **A number adjacent to the right noun is the
+count of nothing.**
+
+## What this card still does not claim
+
+**No script ships, and `script: none` says so.** The route here is the
+browser, which is what `job-scan` already drives; this card records the recipe
+and the numbers, not a Python adapter.
+
+**North Macedonia is no longer at zero *reachable* inventory** — 282
+advertisements are readable today by the route this repository already owns.
+*A second Macedonian board is named in the coverage queue and is still not
+measured here.*
