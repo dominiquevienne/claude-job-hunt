@@ -819,9 +819,14 @@ measured, and each is visited before it is declared.
 ### Visiting the eleven — what the fingerprint could not say
 
 **A refusal fingerprint says who answered, never what the host serves.**
-Visited 2026-09-08 between 05:12 and 05:22 UTC, in a real browser, asking three
-questions only: *is there an inventory · how many live ads are visible, with
-employer, city and date · which country.*
+Visited 2026-09-08 **between 04:54 and 05:11 UTC**, in a real browser, asking
+three questions only: *is there an inventory · how many live ads are visible,
+with employer, city and date · which country.*
+
+> **The window first written here was 05:12–05:22 and it named a time that had
+> not happened yet.** *It came from a running estimate rather than a clock, the
+> third time in this session that a precise-looking time was written from
+> memory.* **These two bounds are readings.**
 
 | host | inventory | visible | country |
 | :-- | :-- | :-- | :-- |
