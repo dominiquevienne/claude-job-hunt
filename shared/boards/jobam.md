@@ -1,11 +1,11 @@
 # Board adapter — job.am (Armenia)
 
-<!-- verified: 2026-09-04 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: job.am -->
 <!-- script: jobam.py -->
 <!-- countries: AM -->
-<!-- content: measured · rolling window read in full, 15 of 15 randomly sampled pages parsed · 2026-09-04 -->
+<!-- content: measured · 1 172 `<loc>`, 1 172 distinct, across 26 dates 2026-08-10 → 2026-09-08 — **a rolling window and not the size of the board**, the oldest day leaving entire · 2026-09-08 -->
 <!-- witness: none found — the site publishes facet counts that overlap and do not sum to a total -->
 
 **Rank 1 in Armenia refuses us, so this is the country's readable market.**

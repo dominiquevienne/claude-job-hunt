@@ -5,6 +5,7 @@
 <!-- hosts: vieclam24h.vn -->
 <!-- script: vieclam24h.py -->
 <!-- countries: VN -->
+<!-- content: indeterminate · exercised and exits 7 — the sitemap host `cdn1.vieclam24h.vn` answers HTTP 403 to its own rules file with a 111-byte object-storage `AccessDenied` document, so nothing was read · 2026-09-08 -->
 
 > **The `search` command is refused by `robots.txt` and now stops.** The file
 > closes `/*?q` to `User-agent: *`, and the search loop fetched

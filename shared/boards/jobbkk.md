@@ -5,6 +5,8 @@
 <!-- hosts: www.jobbkk.com -->
 <!-- script: jobbkk.py -->
 <!-- countries: TH -->
+<!-- content: measured · 1 045 rows for `--keyword engineer`. **The search REQUIRES a keyword**, so no board total is reachable by this route and 1 045 sizes a query, not the board · 2026-09-08 -->
+<!-- witness: none possible by this route — the search REQUIRES a keyword and the adapter prints no report at all (1 045 rows emitted, stderr empty), so nothing corroborates the figure and a zero here would be a bare silence · 2026-09-08 -->
 Thailand's largest board by volume, and **the first Thai adapter here**. Plain
 HTML, **no key, no cookie, no account, no browser**.
 

@@ -4,6 +4,7 @@
 <!-- script: computrabajo.py -->
 <!-- verified: 2026-09-08 -->
 <!-- countries: CO CL PE MX AR EC VE PA CR GT HN NI SV DO BO PY UY US -->
+<!-- content: indeterminate · exercised on all four sole-route countries (`co`, `bo`, `py`, `uy`) and each exits 8 — `robots.txt` answers HTTP 202 with a 0-byte body, so the guard cannot be read and nothing was fetched. **An unknown, not a zero** · 2026-09-08 -->
 
 **Eighteen national sites, one adapter, and one rule file with no exception.**
 `co cl pe mx ar ec ve cr pa gt bo do uy sv hn ni py pr` — every one of them

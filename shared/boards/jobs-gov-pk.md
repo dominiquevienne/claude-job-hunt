@@ -4,6 +4,8 @@
 <!-- hosts: jobs.gov.pk -->
 <!-- script: jobsgovpk.py -->
 <!-- countries: PK -->
+<!-- content: measured · 1 511 advertisements of which **1 508 are marked expired, so 3 are live**; and the site's own header reads `3 total / 1508 expired`, which is not arithmetic — **its counter and its cards disagree** · 2026-09-08 -->
+<!-- witness: the site's own header, and it REFUTES rather than confirms — it reads `3 total / 1508 expired` while the markup carries 1 511 cards of which 1 508 are expired; the counter and the cards do not agree · 2026-09-08 -->
 
 Pakistan's national employment exchange. **No key, no cookie, no browser, no
 endpoint** — one GET returns every advertisement it holds.

@@ -4,6 +4,8 @@
 <!-- hosts: www.mihnati.com -->
 <!-- script: mihnati.py -->
 <!-- countries: SA -->
+<!-- content: measured · 18 advertisements, and they are **the home page's strip rather than the board** — the category, channel and search routes answer 200 with no advertisement link, drawing their results by script · 2026-09-08 -->
+<!-- witness: none — 18 is the home page's strip, and the category, channel and search routes draw their results by script, so no second listing corroborates it · 2026-09-08 -->
 
 A Saudi job board running on Rozee's platform, **and the platform shows
 through in ways that change the data.**

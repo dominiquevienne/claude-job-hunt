@@ -1,11 +1,11 @@
 # Board adapter — Jobs Botswana (Botswana)
 
-<!-- verified: 2026-09-05 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: jobsbotswana.info -->
 <!-- script: jobsbotswana.py -->
 <!-- countries: BW -->
-<!-- content: measured · 367 sitemap entries read, 20 of 20 sampled pages parsed; the site lists ~5 123 · 2026-09-05 -->
+<!-- content: measured · 299 advertisements in a sitemap of 300 `<loc>` on 2026-09-08 — the one difference is the `/jobs/` listing page. **The sitemap held 367 when this card was written, so it has shrunk by 68**; the site's own listing separately states 5 123, a nine-year archive, and that figure was NOT remeasured today · 2026-09-08 -->
 <!-- witness: SECOND SOURCE, and it REFUTES rather than confirms. The site's own listing states 5 123 against this card's 367 — a factor of fourteen. **It establishes that 367 was mis-named**: the sitemap carries about nine months of a nine-year archive, which the body measures. *Somebody looked* is not *the figure is confirmed*, and a second source is immune to flow but exposed to the two sides answering different questions — which is exactly what happened here · 2026-09-05 -->
 
 **Rank 4 in Botswana, and what rank 1 does is refuse us** — the managed
@@ -19,7 +19,7 @@ jobsbotswana.py list --limit 20 --live --fetch    # newest first, expired droppe
 jobsbotswana.py ad --slug workshop-manager-bango-trading
 ```
 
-## 367 in the sitemap — and the site lists about 5 123
+## 299 in the sitemap today, 367 when this card was written — and the site lists about 5 123
 
 **The sitemap is a recent slice, not the board.** Measured 2026-09-05: the
 site's own listing reports **`Showing 1–15 of 5123 jobs`**, and its pagination

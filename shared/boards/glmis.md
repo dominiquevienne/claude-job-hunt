@@ -1,12 +1,12 @@
 # Board adapter — GLMIS (Ghana)
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.glmis.gov.gh, glmis.gov.gh -->
 <!-- hosts-source: NOT composed, and the provenance is weaker than usual — see below · 2026-09-07 -->
 <!-- script: glmis.py -->
 <!-- countries: GH -->
-<!-- content: measured · 12 distinct advertisements over 7 requests (unfiltered plus the six declared job types), ids 2312–5424; two queries returned exactly 10, so a per-query cap is not ruled out and no total is derivable · 2026-09-07 -->
+<!-- content: measured · **10 advertisements, and the adapter itself calls it a suspected cap** — the unfiltered listing returns exactly ten and so does `jobTypeId=1`, and the site has no pagination · 2026-09-08 -->
 <!-- witness: none found — the page states no total, and the id range is evidence of more rather than a count of them · 2026-09-07 -->
 
 **Ghana had a country page and zero adapters.** `melr-gh.md`, its only card,

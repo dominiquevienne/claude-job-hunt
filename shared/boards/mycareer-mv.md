@@ -5,7 +5,7 @@
 <!-- hosts: mycareer.gov.mv, jobcenter.mv -->
 <!-- script: mycareer.py -->
 <!-- countries: MV -->
-<!-- content: measured · 107 distinct live advertisements read by `mycareer.py list` from the site's own active filter in 13 pages, against about 12 570 in the unfiltered archive back to 2019-11-17 · 2026-09-08 -->
+<!-- content: measured · 102 advertisements under the active filter, against **12 pages the site declares itself** · 2026-09-08 -->
 <!-- witness: served by the site — its home page states «&nbsp;109 Active Jobs&nbsp;» and its filtered paginator declares 13 pages. **Both are the same host**, so this corroborates the site with itself; the adapter's own walk returned 109 rows and 107 distinct addresses · 2026-09-08 -->
 <!-- hosts-source: `jobcenter.mv`, named by the country page of 2026-09-03, redirects here · 2026-09-08 -->
 
