@@ -131,3 +131,54 @@ column 3   2 of 100 read — zero_note() genuinely called in adzuna and jobbkk
 
 **13 of 100 read in total; 87 classified by pattern.** *The same limit as
 before, and the same reason for stating it.*
+
+
+---
+
+# THE DISCRIMINANT IS NECESSARY AND NOT SUFFICIENT — 2026-09-08, from `xpressjobs`
+
+**The test above asks whether an adapter prints a quantity that does not come
+from counting its own extracted items.** *`xpressjobs` passes it: `recordCount`
+is the board's own field, carried on every row, and a broken extraction would
+not change it.* **And it counts the wrong thing.**
+
+```
+recordCount               4 364     row slots the pager will serve
+218 x 20 + 4              4 364     the same slots, counted differently
+distinct advertisements   2 761     what the question was about
+duplicate rows            1 603     37 % of what was served
+```
+
+> **An anchor can be genuinely EXTERNAL and still measure a DIFFERENT
+> QUANTITY.** *Column 1 assumed that "not from our extraction" implied "the same
+> grandeur", and nothing implied it.*
+
+**So `recordCount` is a real anchor against FAILURE — if the reader broke it
+would still say 4 364 — and a false one against the question asked.** *The two
+protections are not the same protection, and an adapter can hold one while
+appearing to hold both.*
+
+**And the agreement that looked like corroboration was guaranteed.** *`218 × 20
++ 4` and `recordCount` count the same objects; their concordance could not
+fail, and it was quoted in an assignment as "two independent calculations
+agree".* **Two computations of one quantity are one computation.**
+
+### Why this one survives a sample
+
+```
+first 500 rows      15 duplicates     3 %      reads as churn
+all 219 pages    1 603 duplicates    37 %      reads as a defect
+```
+
+**A head sample returns a rate indistinguishable from ordinary noise.** *Nothing
+short of reading every page and keying on the identifier separates them* — which
+is exactly the cost the anchor was supposed to avoid.
+
+### What this does to the 20
+
+**It does not reduce them, and it is not a recount.** *Each of the twenty prints
+something external; whether that something counts advertisements is a separate
+question, and it has been asked of ONE of them.* **The column should be read as
+"has an anchor", never as "the anchor answers the question".**
+
+*Asking it of the other nineteen is one exercise each, and it is not done here.*
