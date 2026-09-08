@@ -93,7 +93,7 @@ import urllib.request
 
 from _decode import decode_body
 from _pace import Pace
-from _robots import allowed as robots_allowed, full_path
+from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
 BASE = "https://www.emploiscongo.com"
@@ -153,7 +153,7 @@ _PACE = Pace("www.emploiscongo.com", own=5.0)
 def get(url, binary=False):
     gate(url)
     _PACE.wait()
-    req = urllib.request.Request(url, headers={
+    req = urllib.request.Request(wire_url(url), headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
         "Accept-Language": "fr-CD,fr;q=0.9,en;q=0.8",

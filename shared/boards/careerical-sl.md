@@ -83,6 +83,29 @@ reader.** *Without that third path, a third of this board is lost silently* —
 and a shift in these counts is the site changing its markup, which would
 otherwise be invisible.
 
+### «None in valid JSON» means blocks present and unreadable, not blocks absent
+
+The two read the same in a sentence and say opposite things about a site.
+Measured on one advertisement carrying **two** `ld+json` blocks:
+
+```
+block 0  (WebPage/@graph)   raw strict OK · raw lax OK · unescaped both OK
+block 1  (JobPosting)       raw strict ✗  · raw lax ✗  · unescaped strict ✗ · unescaped lax ✗
+```
+
+**The site emits valid JSON-LD for its page furniture and invalid JSON-LD for
+its job data.** *That is a narrower and more useful fact than «no structured
+data».*
+
+**And `strict=False` was tried before concluding** — four attempts on that
+block, four failures. *It is load-bearing on `angolaemprego`, where a raw
+control character inside a string made a single-attempt parser read every
+advertisement as empty; a lax parser has no opinion about a truncated
+`@context` or an unescaped quote.* The adapter tries it on both JSON attempts
+anyway: **the day this board adds a control character, the cost of not trying
+is the field reader taken for the wrong reason** — and the counts in `read_by`
+would move without the site's markup having got any worse.
+
 ## The place is in the wrong fields
 
 ```

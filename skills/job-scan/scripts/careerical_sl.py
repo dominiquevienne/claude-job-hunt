@@ -93,7 +93,7 @@ import urllib.request
 
 from _decode import decode_body
 from _pace import Pace
-from _robots import allowed as robots_allowed, full_path
+from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
 BASE = "https://sierra.careerical.com"
@@ -143,7 +143,7 @@ _PACE = Pace("sierra.careerical.com", own=1.5)
 def get(url):
     gate(url)
     _PACE.wait()
-    req = urllib.request.Request(url, headers={
+    req = urllib.request.Request(wire_url(url), headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
         "Accept-Language": "en-SL,en;q=0.9",
@@ -232,18 +232,25 @@ def posting_on(page):
         text = html_mod.unescape(block.strip())
         if '"JobPosting"' not in text:
             continue
-        try:
-            d = json.loads(text)
-            if isinstance(d, dict):
-                return d, "json"
-        except ValueError:
-            pass
-        try:
-            d = json.loads(CONTEXT_CUT.sub("{", text, count=1))
-            if isinstance(d, dict):
-                return d, "json after `@context` repair"
-        except ValueError:
-            pass
+        # **`strict=False` is tried on both attempts, and it changes nothing
+        # here.** It exists for raw control characters inside a string, which
+        # is what made it load-bearing on `angolaemprego`; the defects on this
+        # board are a truncated `@context` value and unescaped quotes, and a
+        # lax parser has no opinion about either. *Measured on 2 blocks of the
+        # same page: the JobPosting block fails raw and unescaped, strict and
+        # lax — four attempts, four failures.* It is tried anyway, because the
+        # day this board adds a control character the cost of not trying is a
+        # third path taken for the wrong reason.
+        for repair in (False, True):
+            body = CONTEXT_CUT.sub("{", text, count=1) if repair else text
+            for strict in (True, False):
+                try:
+                    d = json.loads(body, strict=strict)
+                except ValueError:
+                    continue
+                if isinstance(d, dict):
+                    how = "json after `@context` repair" if repair else "json"
+                    return d, (how if strict else how + ", lax")
         got = fields_by_hand(text)
         if got.get("title") or got.get("datePosted"):
             return got, "fields — the block is not valid JSON"

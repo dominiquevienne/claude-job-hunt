@@ -75,7 +75,7 @@ import urllib.request
 
 from _decode import decode_body
 from _pace import Pace
-from _robots import allowed as robots_allowed, full_path
+from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
 BASE = "https://www.cubisima.com"
@@ -136,7 +136,7 @@ _PACE = Pace("www.cubisima.com", own=1.5)
 def get(url):
     gate(url)
     _PACE.wait()
-    req = urllib.request.Request(url, headers={
+    req = urllib.request.Request(wire_url(url), headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/json;q=0.9",
         "Accept-Language": "es-CU,es;q=0.9,en;q=0.8",
