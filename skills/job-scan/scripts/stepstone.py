@@ -135,6 +135,24 @@ VOID = {"br", "img", "input", "path", "use", "source", "meta", "hr"}
 PAYLOAD = re.compile(r'data-atx-onpageview-payload="([^"]+)"')
 
 
+def sweep_exit_code(truncated):
+    """0 when the sweep finished, 6 when the platform cut it short.
+
+    **Until 2026-09-08 this decision did not exist**: the sweep printed «&nbsp;THE
+    SWEEP IS INCOMPLETE&nbsp;» and exited 0, so a caller reading the status
+    recorded an interrupted sweep — zero advertisements included — as a
+    success. *An honest line on a channel nobody reads programmatically
+    protects nobody.*
+
+    **6 is this repository's existing code for a partial result**, not a new
+    one. It is a function rather than an inline `sys.exit` so that both
+    branches can be exercised without the platform: the complete path must
+    still return 0, and a test that only ever saw the truncated path would be
+    the unexercised species.
+    """
+    return 6 if truncated else 0
+
+
 def die(msg, code=2):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(code)
@@ -449,6 +467,7 @@ def cmd_search(a):
     if sess.truncated:
         note("THE SWEEP IS INCOMPLETE — the platform stopped answering. "
              "Re-run later at a slower --delay rather than immediately.")
+    sys.exit(sweep_exit_code(sess.truncated))
 
 
 def cmd_ad(a):

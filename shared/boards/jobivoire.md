@@ -1,6 +1,6 @@
 # Board adapter — JobIvoire (Côte d'Ivoire)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: www.jobivoire.ci, jobivoire.ci -->
 <!-- siblings: jobivoire.ci 2026-09-04 agree -->
 <!-- script: jobivoire.py -->
@@ -79,3 +79,60 @@ reaches the field as text. Unescaped to a fixed point, as in `employtt.py`.
 
 `--urls-only` is one request per page — 324 for the board. Reading the fields
 is one request per advertisement on top.
+
+## The board moved its URL scheme, and the adapter reported an empty market
+
+**On 2026-09-08 `search` returned ZERO** and printed its «&nbsp;a search that
+matches nothing and a market that has nothing look identical from here&nbsp;»
+line — **while already holding the fact that distinguishes them**:
+
+```
+[jobivoire] page 1: HTTP 404 — stopping.
+[jobivoire] ZERO RESULTS for this search. **This is a finding, not an answer** …
+```
+
+> **The adapter knew the page was gone and its summary said the market might be
+> empty.** *A 404 is not an absence of advertisements; the information existed
+> one line above and did not reach the conclusion.*
+
+**Three things had moved, and each hid the next:**
+
+```
+listing   /job?page=N        -> 404   |  /jobs?page=N        -> 200
+ad links  /job/details/<id>              /job/<id>
+ad URL    built inline at THREE call sites
+```
+
+*The site itself answered 200 with twelve advertisement links on its front
+page throughout* — **the board never went quiet, one path moved.**
+
+**The address is now built by `ad_url` in one place**, because a repair that is
+per-call-site and whose datum is central has to be made three times or not at
+all — and the usual way the second occurrence is found is by re-reading.
+`tests/test_core.py::TheAdvertisementAddressIsBuiltInOnePlace` fails if a call
+site rebuilds it, and reddens under exactly that mutation. **The reader accepts
+both forms and the builder emits one**; a third form stops the adapter rather
+than being swallowed.
+
+## The volume, and the comparison this card refuses to make
+
+```
+2026-09-03   /job?page=N     324 pages, 323 x 12 + 8 = 3 884       (path now 404)
+2026-09-08   /jobs?page=N      8 pages,   7 x 12 + 5 =    89
+2026-09-08   /sitemap.xml    235 <loc>, of which        89 ads     0 under /job/details/
+```
+
+**Two independent instruments agree on 89 today** — the listing's own
+pagination, which ends cleanly at page 8 (pages 9, 20 and 100 return the same
+156 769-byte empty page), and the sitemap, which is a different mechanism
+entirely. *That is corroboration; the two do not share a reader.*
+
+> **What this card does NOT say is that the board fell from 3 884 to 89.** *The
+> 3 884 was counted on a path that now answers 404, so the two figures have
+> different provenances and no comparison between them is licit.* **Whether the
+> old listing paginated over the same population is not established, and
+> nothing measured here would settle it.**
+
+**And the card's old warning has inverted**: it said the sitemap was a trap
+holding 227 of 3 884 — six per cent. **Today the sitemap holds all 89**, and
+its two `lastmod` dates are 2026-09-06 and 2026-09-07.

@@ -9060,6 +9060,80 @@ class TheBoardRenamedItsAdvertisementLinks(unittest.TestCase):
         self.assertEqual(mod.AD, "/jobs/detail/{company}/{job}")
 
 
+class AnInterruptedSweepDoesNotExitSuccess(unittest.TestCase):
+    """**`stepstone.py` printed «&nbsp;THE SWEEP IS INCOMPLETE&nbsp;» and exited
+    0**, measured 2026-09-08 on the invocation its own card documents — twice,
+    at two delays, returning zero advertisements each time.
+
+    *The message distinguished an interrupted sweep from an empty market; the
+    channel tools read did not.* **A caller checking the status recorded the
+    zero as a success**, which is issue #181 in its mildest form.
+
+    **Both branches are asserted**, because a test that only ever saw the
+    truncated one would be the unexercised species: a complete sweep must
+    still return 0.
+    """
+
+    def _fn(self):
+        spec = importlib.util.spec_from_file_location(
+            "_stepstone", os.path.join(SCRIPTS, "stepstone.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.sweep_exit_code
+
+    def test_a_truncated_sweep_is_not_a_success(self):
+        self.assertEqual(self._fn()(True), 6)
+
+    def test_a_complete_sweep_still_succeeds(self):
+        """**The direction that keeps the fix honest.** Returning 6 always
+        would pass the test above and break every complete run."""
+        self.assertEqual(self._fn()(False), 0)
+
+
+class TheAdvertisementAddressIsBuiltInOnePlace(unittest.TestCase):
+    r"""**`jobivoire.py` built its advertisement URL inline at three call
+    sites**, and on 2026-09-08 the board moved `/job/details/<id>` to
+    `/job/<id>`. *A repair that is per-call-site and whose datum is central has
+    to be made three times or not at all* — and the way the second occurrence
+    is normally found is by re-reading, which is exactly what does not happen.
+
+    **So the three were replaced by `ad_url` and this guard ties them
+    together.** It fails if any call site rebuilds the address from `BASE`,
+    which is what a future edit would naturally do.
+
+    *The listing path moved too — `/job` answered 404 while the site's own
+    front page answered 200 with twelve advertisement links — so the adapter's
+    zero was a moved path, not an empty Ivorian market.*
+    """
+
+    def _src(self):
+        with open(os.path.join(SCRIPTS, "jobivoire.py"), encoding="utf-8") as f:
+            return f.read()
+
+    def test_no_call_site_rebuilds_the_address(self):
+        src = self._src()
+        body = src.split("def ad_url(", 1)[1]
+        after = body.split("\n\n\n", 1)[1] if "\n\n\n" in body else ""
+        stray = re.findall(r'f"\{BASE\}/job/[^"]*\{slug\}[^"]*"', after)
+        self.assertEqual(stray, [], "these rebuild the ad address instead of "
+                                    "calling ad_url(): " + "; ".join(stray))
+
+    def test_the_builder_and_the_reader_are_not_the_same_shape(self):
+        """**The reader accepts both forms and the builder emits one.** A
+        third form must stop this adapter rather than be swallowed, so the
+        reader names its two alternatives instead of loosening to `/job/.*`."""
+        spec = importlib.util.spec_from_file_location(
+            "_jobivoire", os.path.join(SCRIPTS, "jobivoire.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(mod.AD_LINK.search("/job/details/abc-1"))
+        self.assertTrue(mod.AD_LINK.search("/job/7sQ9JvjWB"))
+        for no in ("/jobs", "/jobs?page=2", "/jobivoire-premium", "/job/"):
+            with self.subTest(no=no):
+                self.assertFalse(mod.AD_LINK.search(no), no)
+        self.assertEqual(mod.ad_url("XYZ"), mod.BASE + "/job/XYZ")
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none

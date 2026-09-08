@@ -6,7 +6,8 @@ Côte d'Ivoire's job board. `robots.txt` is two lines and closes nothing:
 that exists should not be used.
 
   GET /job?page=<n>          → 12 advertisement links; 324 pages
-  GET /job/details/<slug>    → one advertisement, with a clean `JobPosting`
+  GET /job/<slug>            → one advertisement, with a clean `JobPosting`
+  (it was /job/details/<slug> until 2026-09-08; both forms are read, one is built)
 
 **THE SITEMAP IS A TRAP, AND THAT IS WHY THIS PAGINATES.** Measured
 2026-09-03:
@@ -60,12 +61,33 @@ from _ua import UA
 from _zero import zero_note
 
 BASE = "https://www.jobivoire.ci"
-LIST = BASE + "/job"
+# **The listing is `/jobs`, plural.** `/job` answered 404 «&nbsp;Page
+# introuvable&nbsp;» on 2026-09-08 while the site itself answered 200 with
+# twelve advertisement links on its front page — *the board did not go quiet,
+# one path moved.*
+LIST = BASE + "/jobs"
 PER_PAGE = 12
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
 EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 
-AD_LINK = re.compile(r"/job/details/([^\"'?#\s]+)")
+# **Two forms, both named.** The advertisements were at `/job/details/<id>`
+# and are at `/job/<id>` on 2026-09-08. *Naming them rather than loosening to
+# `/job/.*` keeps a third form stopping this adapter instead of being
+# swallowed*, and `/jobs` cannot match because the literal requires `/job/`.
+AD_LINK = re.compile(r"/job/(?:details/)?([A-Za-z0-9_-]+)")
+
+
+def ad_url(slug):
+    """The advertisement address, in ONE place.
+
+    **It was built inline at three call sites** and the board moved
+    `/job/details/<id>` to `/job/<id>` on 2026-09-08, so the repair had to be
+    made three times or not at all. *A correction that is per-call-site and
+    whose datum is central needs the two tied together in the same turn —
+    otherwise the second occurrence is found by re-reading, which is how the
+    first one survived.* `tests/test_core.py` asserts no call site rebuilds it.
+    """
+    return f"{BASE}/job/{slug}"
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -145,7 +167,7 @@ def card(slug, posting):
     return {
         "id": slug,
         "ledger_id": f"jobivoire:{slug}",
-        "url": f"{BASE}/job/details/{slug}",
+        "url": ad_url(slug),
         "title": posting.get("title"),
         # **The employer is never named here.** `hiringOrganization.name` is
         # the board's own placeholder on 12 of 12 sampled, with `sameAs`
@@ -169,7 +191,7 @@ def card(slug, posting):
 
 
 def read_ad(slug, with_text=False):
-    url = f"{BASE}/job/details/{slug}"
+    url = ad_url(slug)
     code, page = get(url)
     if code != 200:
         die(f"{url}: HTTP {code}", EXIT_GONE)
@@ -214,7 +236,7 @@ def cmd_search(a):
                 continue
             seen.append(slug)
             if a.urls_only:
-                print(json.dumps({"url": f"{BASE}/job/details/{slug}"},
+                print(json.dumps({"url": ad_url(slug)},
                                  ensure_ascii=False))
             else:
                 print(json.dumps(read_ad(slug, a.with_text),
