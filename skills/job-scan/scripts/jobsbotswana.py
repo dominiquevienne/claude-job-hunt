@@ -34,9 +34,9 @@ WHAT WAS MEASURED, 2026-09-05
 
 **`lastmod` equals `datePosted` on ten of ten checked**, so the sitemap's date
 is the posting date and not a regeneration stamp. That had to be checked:
-`myjobsfiji.com` gave every one of its 3 187 entries the same `lastmod`, and a
+`myjobsfiji.com` gave every one of its entries the same `lastmod`, and a
 freshness count taken from it would have been a count of one afternoon's
-rebuild.
+rebuild. *Its count lives in `myjobsfiji.md`, dated; it is not copied here.*
 
 **Expired advertisements stay in the file.** Of the ten oldest, five have a
 `validThrough` in the past. `--live` filters on it; without the flag everything

@@ -58,8 +58,10 @@ averaged away.
 
 **44 distinct dates for 1 434 advertisements, and not one day carrying a
 single advertisement.** *That is what a regeneration stamp looks like* —
-`myjobsfiji.com` gave all 3 187 of its entries one `lastmod`, and a freshness
-count taken from it would have counted one afternoon's rebuild.
+`myjobsfiji.com` gave *every* entry in its sitemap one `lastmod`, and a
+freshness count taken from it would have counted one afternoon's rebuild. *The
+count of that sitemap belongs to `myjobsfiji.md`, which dates it and separates
+its advertisements from its other URLs; it is not repeated here.*
 
 ```
 lastmod 2026-08-18 · datePosted 2026-08-18     4 of 4 sampled

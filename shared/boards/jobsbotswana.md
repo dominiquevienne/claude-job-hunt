@@ -55,9 +55,10 @@ products, four of taxonomies, and pages and posts.
 lastmod == datePosted on 10 of 10 checked
 ```
 
-**The last line is the one that matters.** `myjobsfiji.com` gave all 3 187 of
-its entries the same `lastmod`, so a freshness count taken from it would have
-counted one afternoon's rebuild. Here the two agree, so the sitemap's date is
+**The last line is the one that matters.** `myjobsfiji.com` gave *every*
+entry in its sitemap the same `lastmod`, so a freshness count taken from it
+would have counted one afternoon's rebuild — *see `myjobsfiji.md` for the
+count, which it dates and splits between advertisements and other URLs.* Here the two agree, so the sitemap's date is
 usable — but it is usable *because it was compared*, not because it is a date.
 
 **Expired advertisements stay in the file.** Of the ten oldest, five have a

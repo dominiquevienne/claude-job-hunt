@@ -346,6 +346,41 @@ change, and the net-to-flow objection does not arise.
 it does not protect against; a line that only says *witness* invites the
 strongest reading of the weakest evidence.
 
+### A figure about another board is cited by reference, never by value
+
+**A card owns the counts of its own board. Everywhere else, the same number is a
+quotation with no provenance** — no unit, no command, no hour — *and those are
+the three things a published count must carry.*
+
+**Measured 2026-09-08.** `myjobsfiji.com`'s sitemap size appeared in **six**
+files — three cards and three adapter docstrings — **and in none of them was it
+dated**, while `myjobsfiji.md` itself published a different number *and*
+separated its 190 advertisements from its other URLs. **None of the six was
+wrong relative to the others**, which is exactly the failure: *six copies of one
+measurement age together, so no comparison between them ever reveals it.* The
+owning card had superseded them without ever declaring a correction, because its
+author was measuring their own board and had no reason to look outward.
+
+**And two of the six were docstrings**, which no re-reading of a card reaches.
+
+> **Delete the number, keep the argument.** The six all carried the same
+> methodological point — *«&nbsp;every entry shares one `lastmod`, so a freshness
+> count would count one afternoon&nbsp;»* — **and that point is true whatever the
+> count is.** The figure was decoration, and decoration that ages.
+
+**So: name the other board and point at its card.** *If a reader needs the
+count, `myjobsfiji.md` has it, dated, with the distinction the borrowed copies
+had lost.*
+
+**The check runs on the old value, after the cards are fixed:**
+
+```bash
+grep -rn '<the superseded figure>' shared/ skills/ bin/
+```
+
+*A correction made in the cards is complete from the point of view of whoever
+makes it, and incomplete without any symptom.*
+
 ### `countries:` — the markets the board serves, not the market we measured
 
 ```

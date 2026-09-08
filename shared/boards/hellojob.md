@@ -16,9 +16,9 @@ reckoning.**
 Everywhere else it had to be inferred: `jobsbotswana.info` keeps expired
 advertisements among the live ones and only a `validThrough` separates them,
 `ihararejobs.com` gives 64 % of its entries the date of the measurement, and
-`myjobsfiji.com` gives all 3 187 the same one. **An adapter that is told which
-advertisements are live cannot be wrong about it**, and that is worth more than
-volume.
+`myjobsfiji.com` gives *every* entry the same one. **An adapter that is told
+which advertisements are live cannot be wrong about it**, and that is worth
+more than volume.
 
 ```
 hellojob.py counts                              # both files, with URL and time

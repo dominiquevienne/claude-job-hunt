@@ -64,8 +64,8 @@ THE DATES ARE PUBLICATION DATES, AND THAT WAS CHECKED RATHER THAN ASSUMED
 carrying a single advertisement**, which is what a regeneration stamp looks
 like.* **It is not one**: the sitemap's date is the advertisement's own, on
 four of four. **A suspicion checked and refuted is worth as much as one
-confirmed**, and `myjobsfiji.com` — 3 187 entries under one `lastmod` — is
-why it gets checked at all.
+confirmed**, and `myjobsfiji.com` — its whole sitemap under one
+`lastmod` — is why it gets checked at all.
 
 `baseSalary` IS present and is NOT emitted: it reads `currency: USD` with an
 empty `value` on an Angolan board, where the currency is the kwanza. *The same

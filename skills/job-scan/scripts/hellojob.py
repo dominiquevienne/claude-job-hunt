@@ -12,9 +12,9 @@ files, by the site's own reckoning.**
 Everywhere else this had to be inferred: `jobsbotswana.info` keeps expired
 advertisements among the live ones and only a `validThrough` separates them,
 `ihararejobs.com` gives 64 % of its entries the date of the measurement, and
-`myjobsfiji.com` gives all 3 187 the same one. **An adapter that is told which
-advertisements are live cannot be wrong about it**, and that is worth more than
-the volume.
+`myjobsfiji.com` gives *every* entry the same one. **An adapter that is told
+which advertisements are live cannot be wrong about it**, and that is worth
+more than the volume.
 
 WHAT WAS MEASURED — URL, TIME, RAW COUNT AND DISTINCT COUNT
 
