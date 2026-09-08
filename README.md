@@ -45,6 +45,15 @@ plugin says which folder before it writes anything in it.
   afterwards**: what was answered, what was **not**, the next step and its
   date, and your own read of the room. One skill for both, because the useful
   half of a debrief is which of your prepared questions came back unanswered.
+- **`linkedin-profile`** — **survey your own LinkedIn profile and show the
+  gap.** Reads the profile in your own Chrome, section by section, reads the
+  documents in `profile/`, and prints the difference: what is absent, what
+  diverges, and what neither source covers. **It writes nothing and asks
+  nothing** — the point is to see the gap before anything is changed. *It
+  enumerates the fields from the form itself rather than from a list kept here,
+  because a list would be right on the day it was written; and it never
+  proposes a figure, a scope or a team size you have not stated, because a
+  number nobody said has to be defended in the interview.*
 - **`interview-rehearsal`** — **sit the interview before you sit it.** The
   agent plays the people across the table, with facets you are not told:
   technical depth, managerial and commercial instinct, warmth or hostility,
@@ -528,6 +537,7 @@ five PDFs remain as a fallback for anyone who prefers them.
 /interview-prep                  # …or the debrief, after the meeting
 /interview-rehearsal             # rehearse one, from your profile alone
 /interview-rehearsal <company>   # …or from the application in your ledger
+/linkedin-profile                # survey your LinkedIn and show what's missing
 /job-report                      # applications sent this month
 /job-report --interviews         # the ones that reached a meeting
 /job-report --from 2026-07-01 --to 2026-07-31
