@@ -95,8 +95,8 @@ an hour's.*
 **And 368 of these 423 addresses were unreachable by this repository's own
 fetcher until 2026-09-08.** *Montenegrin slugs carry `ž`, `č`, `š`, `ć`, `đ`;
 `bin/fetch-body.py` passed the raw URL to `urllib`, which raises on non-ASCII.
-**87 % of this board** was invisible to the tool `CLAUDE.md` names as the only
-way to fetch — fixed in `786e234`, and this card is the case that found it.*
+**87 % of this board** was invisible to `bin/fetch-body.py`, the fetcher every
+adapter here goes through — fixed in `786e234`, and this card is the case that found it.*
 
 ## What this card does not establish
 
