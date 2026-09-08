@@ -5,6 +5,65 @@ and each adapter owns one site. Sixty-seven ship today, each verified against
 the live site — count the rows below rather than trusting this sentence, which
 has gone stale before.
 
+## The uncovered-board queue cannot be re-derived from this directory
+
+**Re-derived 2026-09-08 on request, and the result is that the question has the
+wrong source.** *Written down because «the queue is empty» and «the queue is not
+here» read alike and are not the same.*
+
+### What the derivation gives
+
+```
+129 cards · 199 hosts declared by a `hosts:` field, `www.` normalised
+ 23 cards declare no script
+      of those:  4 measured · 8 indeterminate · 3 out-of-domain · 8 no content field
+212 hosts named in a card's prose and declared by no `hosts:` field
+ 40 of those named in a sentence that mentions a board, advertisements or a sitemap
+  0 that are a buildable board this repository has measured and not built
+```
+
+**Each of the forty was opened.** They are CDNs (`cdn.kosovajob.com`), sitemap
+hosts (`info.jobartis.com`), vendor sites (`cegid.com`, `talentsoft.com`),
+application shells (`rozeegpt.ai`, `recruit-ai.co`), network nodes
+(`sierraleonejobsearch.com`), hosts already measured as empty (`career.ge`,
+`bankers.ge` — *«a full sitemap and no advertisement»*), and one excluded on
+positive evidence (`laborum.pe`, whose own `robots.txt` describes a different
+stack, in a country two adapters already reach).
+
+### Why that is a statement about the directory and not about the world
+
+**The queue of nineteen built on 2026-09-05 came from the country pages — 186
+artefacts — not from `shared/boards`.** *This derivation reads only the
+directory, so it can only find a board some card already mentions.* **A host
+measured in a thread and never written up is invisible to it**, which is issue
+#162 on this object.
+
+> **«Empty from here» is not «empty».** *The instrument and the population do
+> not match, and saying so is the result.*
+
+### The instrument, and the two defects it passed through
+
+**A host pattern is bounded from below, not from above** — and bounding it
+twice introduced a new over-count each time:
+
+```
+grep -rl 'job.am'          9 files, incl. bestzambiajobs.md   `.` is a wildcard
+grep -rlF 'job.am'         still over-counts: substring of `job.amazon`
+text match, any card       json.loads · value.value · html.unescape
++ real-TLD requirement     robots-policy.md · ats.py · workday.py
+                           **`.md` is Moldova and `.py` is Paraguay**
++ exclude by file EXISTENCE — not by extension, which would lose two countries
+```
+
+**Four controls, both directions, all passing:** `sptojobslink.com` must appear
+(named everywhere, declared nowhere); `rozee.pk` must not (declared as
+`www.rozee.pk`); `robots-policy.md` and `ats.py` must not.
+
+*And the decisive instrument is neither `grep` nor `grep -F`: it is the
+`hosts:` field.* **On the four files a text search returns for `job.am`, one
+declares it and three merely mention it** — which is the difference between a
+board being covered and a card naming it.
+
 ## Which boards are available
 
 | Board | File | Status |
