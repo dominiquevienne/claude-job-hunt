@@ -50,13 +50,13 @@ import urllib.request
 from _decode import decode_body
 from _ldjson import label, one, postings, absent_reason
 from _robots import allowed as robots_allowed, full_path
-from _sitemap import locs as sitemap_locs
+from _sitemap import count_says, locs as sitemap_locs
 from _ua import UA
-from _zero import zero_note
 
 BASE = "https://emploitic.com"
 JOBS_SITEMAP = BASE + "/sitemap-jobs.xml"
-EXIT_BROKEN, EXIT_GONE, EXIT_REFUSED, EXIT_UNKNOWN = 2, 3, 7, 8
+EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
+EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 AD_PATH = re.compile(r"/offres-d-emploi/")
 
 
@@ -147,13 +147,51 @@ def read_ad(url, with_text=False):
     return row
 
 
+def ad_urls(raw):
+    """Advertisement URLs, and the file's OWN `<loc>` count beside them.
+
+    **The raw count is the anchor** (#181). `AD_PATH` is a pattern over URL
+    shapes; if the site changes one, the filtered list falls to zero while the
+    file still holds thousands — and a run printing only the filtered count
+    would report `0 advertisements` with nothing to contradict it.
+
+    Returned together so no call site can print one without the other. *A
+    correction made per call site over a central datum needs the guard binding
+    them written in the same pass*, or the second occurrence is found by
+    re-reading, which is to say not found.
+
+    *This module no longer imports `_zero.zero_note`: that sentence DECLARES an
+    ambiguity a run cannot settle, and the refusals below SETTLE it by naming
+    the file's count beside ours. The declaration was right while nothing
+    better existed; its absence is not a regression.*
+    """
+    every = sitemap_locs(raw)
+    return every, [u for u in every if AD_PATH.search(u)]
+
+
+def _refuse_zero(raw, every, urls):
+    """The two zeros here are different findings and are not merged."""
+    if not every:
+        die(f"{JOBS_SITEMAP}: {count_says(raw)}", EXIT_PARTIAL)
+    if not urls:
+        die(f"{JOBS_SITEMAP}: {len(every)} `<loc>` in the file and **0 matched "
+            f"the advertisement shape**. The sitemap is there and this reader "
+            f"recognised none of it — `AD_PATH` no longer matches what the "
+            f"site publishes. **That is a reading that failed, not a board "
+            f"without advertisements.**", EXIT_PARTIAL)
+
+
 def cmd_sitemap(a):
     code, raw = get(JOBS_SITEMAP)
     if code != 200:
         die(f"{JOBS_SITEMAP}: HTTP {code}")
-    urls = [u for u in sitemap_locs(raw) if AD_PATH.search(u)]
+    every, urls = ad_urls(raw)
+    _refuse_zero(raw, every, urls)
     direct = sum(1 for u in urls if "/entreprises/" not in u)
-    note(f"{len(urls)} advertisement URL(s): {direct} under "
+    note(f"{len(every)} `<loc>` in the file, {len(urls)} advertisement URL(s) "
+         f"— the file's own count beside ours, so a pattern that stopped "
+         f"matching could not read as an empty board. Of the {len(urls)}: "
+         f"{direct} under "
          f"`/offres-d-emploi/` and {len(urls) - direct} under "
          f"`/entreprises/<company>/offres-d-emploi/`. **Both shapes are "
          f"advertisements** — three of the second were opened across the "
@@ -167,10 +205,8 @@ def cmd_search(a):
     code, raw = get(JOBS_SITEMAP)
     if code != 200:
         die(f"{JOBS_SITEMAP}: HTTP {code}")
-    urls = [u for u in sitemap_locs(raw) if AD_PATH.search(u)]
-    if not urls:
-        note(zero_note("emploitic"))
-        return
+    every, urls = ad_urls(raw)
+    _refuse_zero(raw, every, urls)
     kept, styled_titles = 0, 0
     for u in urls[:a.limit] if a.limit else urls:
         row = read_ad(u, a.with_text)

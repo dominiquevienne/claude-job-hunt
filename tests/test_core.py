@@ -12939,5 +12939,56 @@ class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
                               f"that is zero here")
 
 
+class EmploiticSeparatesItsTwoZeros(unittest.TestCase):
+    """#181. `AD_PATH` is a pattern over URL shapes, and a pattern expires.
+
+    The module filtered the sitemap and reported only the filtered count, so a
+    shape change would have printed `0 advertisement URL(s)` with nothing to
+    contradict it — the file's own `<loc>` count was computed and discarded.
+
+    **Two zeros, two findings**, and they are not merged: no `<loc>` at all is
+    an unreadable file, while `<loc>` present with none matching is a reader
+    that no longer recognises what the site publishes.
+    """
+
+    def _mod(self):
+        import importlib, os as _os, sys as _sys
+        _sys.path.insert(0, _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+            "skills", "job-scan", "scripts"))
+        return importlib.import_module("emploitic")
+
+    def _refuse(self, raw, every, urls):
+        import io as _io
+        from contextlib import redirect_stderr
+        err = _io.StringIO()
+        with redirect_stderr(err):
+            with self.assertRaises(SystemExit) as caught:
+                self._mod()._refuse_zero(raw, every, urls)
+        return caught.exception.code, err.getvalue()
+
+    def test_no_loc_at_all_is_an_unreadable_file(self):
+        code, msg = self._refuse(b"<urlset></urlset>", [], [])
+        self.assertEqual(code, 6)
+        self.assertNotIn("0 matched", msg,
+                         "an empty file must not be reported as a pattern miss")
+
+    def test_loc_present_and_none_matching_names_both_counts(self):
+        every = [f"https://emploitic.com/x/{i}" for i in range(4317)]
+        code, msg = self._refuse(b"<urlset/>", every, [])
+        self.assertEqual(code, 6)
+        self.assertIn("4317", msg,
+                      "the file's own count is the anchor and must be printed")
+        self.assertIn("0 matched", msg)
+
+    def test_it_does_not_fire_when_there_is_something_to_report(self):
+        """The other direction: a guard that always fires guards nothing."""
+        every = ["https://emploitic.com/offres-d-emploi/a/b-xyz12"]
+        try:
+            self._mod()._refuse_zero(b"<urlset/>", every, every)
+        except SystemExit:  # pragma: no cover
+            self.fail("the guard fired on a healthy read")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
