@@ -1,13 +1,15 @@
-# Board adapter — XpressJobs (Sri Lanka): open, moved, and rendered client-side
+# Board adapter — XpressJobs (Sri Lanka): shipped, and its own total counts slots
 
 <!-- verified: 2026-09-08 -->
 
 <!-- hosts: xpress.jobs -->
-<!-- script: none -->
+<!-- script: xpressjobs.py -->
+<!-- host-forms: xpress.jobs -->
+<!-- host-forms-basis: read — `xpressjobs.py:BASE`, a single literal; no tenant and no second host · 2026-09-08 -->
 <!-- countries: LK -->
 <!-- hosts-source: `xpressjobs.lk` named on Sri Lanka's country page 2026-09-02; it redirects, and the guard reports the rules as read from `xpress.jobs` · 2026-09-08 -->
-<!-- content: measured · 4 356 live advertisements, declared by the board's own `recordCount` and independently confirmed by the pagination — 217 full pages of 20 plus 16 — read through `/api/jobs/searchJobs`, which `robots.txt` permits · 2026-09-08 -->
-<!-- witness: none — the site states «over 12,000 organizations», which is a claim about employers and not a count of advertisements -->
+<!-- content: measured · **2 761 distinct advertisements** read over 219 pages of `/api/jobs/searchJobs` on 2026-09-08. The board's own `recordCount` says **4 364**, and that figure counts ROW SLOTS: the pager served exactly 4 364 of them and **1 603 were repeats**. The two agree on slots and neither counts the board · 2026-09-08 -->
+<!-- witness: `recordCount`, the board's own field, carried on every row — but it attests SLOTS and not advertisements, and this card says so rather than quoting it as a total · 2026-09-08 -->
 
 **Sri Lanka's country page listed this host as *«à instruire»* on 2026-09-02.
 It is instructed: open, reachable, and not readable over HTTP.**
@@ -161,3 +163,55 @@ an archive: `expireDayCountDown` is 14 on the three advertisements sampled.*
   employers in the API, so how much of the employer corpus is hiring is unknown;
 - **no adapter**, and the API's parameters (`sectors`, `locations`,
   `careerLevels`) were not exercised beyond the unfiltered query.
+
+
+## 2026-09-08 — shipped, and the number the board states is not the number of jobs
+
+**`xpressjobs.py search` reads the API 5a found.** *The browser discovered the
+path; it does not read the board.* **Every fetch goes through the ordinary
+guarded fetcher**, and `robots.txt` permits `/api/jobs/searchJobs`.
+
+```
+219 pages read          2 761 distinct advertisements
+recordCount             4 364
+slots served            4 364        218 x 20 + 4
+duplicate rows          1 603        skipped by jobId
+```
+
+> **`recordCount` counts the row slots the pager will serve, not distinct
+> advertisements.** *It agrees with `218 × 20 + 4` because both count slots.*
+> **Neither of them counts the board.**
+
+**The earlier reading of this pair as "two independent counts that agree" was
+wrong, and it was mine.** *They are not independent: the pager's arithmetic and
+the declared total measure the same thing.* **37 % of the rows served are
+repeats**, and only reading every page and keying on `jobId` reveals it — *the
+first 500 rows carried 15 duplicates, 3 %, which would have passed for noise.*
+
+### Two defects the exercise found in this adapter, and both are recorded
+
+**It paced too fast.** *At 1.5 s a full sweep took HTTP 400 at the 26th
+request, 51 seconds in — about 30 a minute. Page 26 fetched alone straight
+afterwards returned its 20 rows, so the refusal was a RATE and not a page.*
+**The spacing is now 3 s, and it is a measured margin rather than a chosen
+one.**
+
+**And its duplicate counter was inert.** *It printed `kept − len(seen_ids)`,
+and both grow in the same branch, so it was zero by construction* — **it
+reported "0 duplicates" across a sweep that skipped 1 603.** Duplicates are now
+counted where they are skipped.
+
+### What the adapter emits, and what it does not
+
+**No `url`.** *The API carries no address field, every HTML route answers 200
+with the same 1 766-byte shell, and a composed address would look right and
+resolve to nothing.* **`jobId` is emitted instead** — the site's own identifier,
+and the ledger key.
+
+**No per-advertisement endpoint**, because none was verified. *`overview` is a
+summary of about 120 characters, not the description.*
+
+**A truncated sweep says so.** *On an HTTP failure mid-sweep the run reports
+`{n} advertisements, not the board, which declares {recordCount}` and exits
+PARTIAL — without it, a rate limit at page 26 leaves 485 rows on stdout that
+look like a result.*
