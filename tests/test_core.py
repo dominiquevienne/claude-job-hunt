@@ -9576,6 +9576,59 @@ class ACardIsNeverOlderThanAMeasurementItCarries(unittest.TestCase):
         self.assertGreaterEqual(len(self._pairs()), 40)
 
 
+class AQuotedArrayIsATypeConfusionNotAnEscapingLayer(unittest.TestCase):
+    r"""**`albedis.com` publishes `"employmentType" : "["FULL_TIME",
+    "INTERN"]"`** — a JSON array serialised into a string and emitted
+    unescaped, so the parser meets `"["` and stops.
+
+    *Neither existing recovery reaches it*: `strict=False` forgives literal
+    control characters, and `_repair`'s backslash rule forgives one escaping
+    layer too many. **This is not an escaping layer too many, it is a type
+    confusion**, and it made a fully structured site report «&nbsp;no
+    markup&nbsp;».
+
+    **The pattern is narrow on purpose — a quoted array OF STRINGS.** *A looser
+    `"\[.*?\]"` would turn `"description": "see [1] below"` into a broken
+    block*, which is a repair that creates the defect it is fixing.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_ldj", os.path.join(SCRIPTS, "_ldjson.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_it_repairs_the_quoted_array(self):
+        rx = self._mod()._QUOTED_ARRAY
+        for src, want in (
+                ('"employmentType" : "["FULL_TIME", "INTERN"]",',
+                 '"employmentType" : ["FULL_TIME", "INTERN"],'),
+                ('"x": "["FULL_TIME"]",', '"x": ["FULL_TIME"],')):
+            with self.subTest(src=src):
+                self.assertEqual(rx.sub(r"\1", src), want)
+
+    def test_it_leaves_everything_else_alone(self):
+        """**The direction that keeps the repair from becoming the defect.**"""
+        rx = self._mod()._QUOTED_ARRAY
+        for src in ('"description": "see [1] below",',
+                    '"x": "[a, b]",',
+                    '"x": ["A", "B"],',
+                    '"x": "un [tableau] en prose",'):
+            with self.subTest(src=src):
+                self.assertEqual(rx.sub(r"\1", src), src)
+
+    def test_the_block_parses_after_repair(self):
+        """Exercised end to end on the shape the board publishes."""
+        mod = self._mod()
+        block = ('{"@context":"https://schema.org","@type":"JobPosting",'
+                 '"title":"X","employmentType" : "["FULL_TIME", "INTERN"]"}')
+        with self.assertRaises(ValueError):
+            json.loads(block)
+        got = json.loads(mod._repair(block), strict=False)
+        self.assertEqual(got["employmentType"], ["FULL_TIME", "INTERN"])
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none

@@ -149,6 +149,23 @@ def objects(html):
 _BAD_ESCAPE = re.compile(r'\\(?!["\\/bfnrtu])')
 
 
+# **An ARRAY wrapped in quotes**, which is a different malformation again:
+# `albedis.com` publishes `"employmentType" : "["FULL_TIME", "INTERN"]"`. The
+# value is a JSON array that somebody serialised into a string and then emitted
+# unescaped, so the parser meets `"["` and stops. *`strict=False` does not
+# forgive it and neither does the backslash repair: it is not an escaping
+# layer too many, it is a type confusion.*
+#
+# **The pattern is deliberately narrow — a quoted array OF STRINGS and nothing
+# else.** *A looser `"\[.*?\]"` would corrupt `"description": "see [1] below"`,
+# turning a valid block into a broken one*, which is the shape of repair this
+# module exists to avoid. Exercised in both directions: it fixes the two forms
+# above and leaves prose containing brackets, unquoted elements and a real
+# array untouched.
+_QUOTED_ARRAY = re.compile(
+    r'"(\[\s*"(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")*\s*\])"')
+
+
 def _repair(text):
     """Make a lone backslash literal so the block parses. Issue #127.
 
@@ -170,7 +187,7 @@ def _repair(text):
     evening, and **a fix that recovered the twelve advertisements by turning
     that warning off would be a regression, not a repair.**
     """
-    return _BAD_ESCAPE.sub(r"\\\\", text)
+    return _QUOTED_ARRAY.sub(r"\1", _BAD_ESCAPE.sub(r"\\\\", text))
 
 
 def repairs(html):
