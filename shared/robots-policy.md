@@ -843,7 +843,42 @@ with employer, city and date · which country.*
 | `sptojobslink.com` | yes | ~100 on page 1, date · city · category, **no employer** | Pacific, 8+ |
 | `hiringcafe.com` | yes | **30 922 jobs · 5 109 companies** | worldwide |
 | `www.hays.fr` | yes | **not established** — see below | FR |
-| `northcyprus.cv` · `www.tala-com.com` · `www.jobstore.com` | **not visited** | this session's own browser permissions refuse those domains | — |
+| `northcyprus.cv` · `www.tala-com.com` · `www.jobstore.com` | **open** | measured from a second session 2026-09-08 — see below | RDC · N. Cyprus · geolocated |
+
+> **The three "not visited" hosts were a limit of ONE SESSION, not of the
+> hosts.** *They were refused by one session's browser permissions and reached
+> normally from another the same morning, guard taken on all three roots —
+> `allowed=True`, `*` group, `certain`.* **"These hosts are closed to us"
+> circulated in our cards for three days and was false for all three.**
+>
+> **`www.tala-com.com` is not a board but a hub** — company directory,
+> promotions, tenders, events, classifieds — *whose classifieds carry outright
+> scams.* **Its employment section is real and clean**: `/offres-demploi/`,
+> 15 per page, 3 pages declared, employer + city + contract type on each card,
+> ACTED · Mercy Corps · INTERSOS · Médecins du Monde. **Between 31 and 45 live**
+> — *page 3 was not read, and 15 × 3 is not a measurement.*
+>
+> **`northcyprus.cv` is a real jobs site**, six cities. *Access established,
+> inventory not measured.*
+>
+> **`www.jobstore.com` REDIRECTS BY IP** — it answered `/ch` to a session in
+> Switzerland, and its rules declare 28 country sitemaps. **So what this board
+> "contains" depends on where the measuring session appears to be**, the
+> redirect is silent, and the content is internally coherent either way. *A card
+> written from here would describe the Swiss edition while believing it
+> described the board.*
+
+**That last one is a variable we had not carried: not the country, not the
+board — US.** *Every count in this file was taken from one place, and none of
+them records where.*
+
+**Re-examined against what was already held: `sptojobslink.com` shows no sign of
+it.** *Its URL never changed — root stayed at `/`, listing at `/jobs/` — and its
+location filter offers Fiji, Cook Islands, Samoa, French Polynesia, Solomon
+Islands, Kiribati, Papua New Guinea and American Samoa **in one list**, which a
+single-country edition would not.* **What this does not exclude is IP-shaped
+content under an unchanged URL** — *jobstore announced itself by moving; a host
+that shaped silently would not, and nothing already held would show it.*
 
 **Two of the seven are not what this file said they were.**
 
