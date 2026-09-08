@@ -323,3 +323,66 @@ count-bearing lines and the relevant one is not among the first three.*
 > **Where the two disagree, the run wins.** *`RUN` and `READ` are marked per row
 > so that a later reader can tell which rows rest on execution and which on
 > reading.*
+
+---
+
+# BATCH 2 — 20 more, and the instrument had FOUR blind spots
+
+**2026-09-08, same order, same form. All READ unless marked.**
+
+| present (18) | the anchor |
+| :-- | :-- |
+| `adecco` · `crit` | *zero URLs out of `{len(blocks)}` `<url>` blocks — **that combination cannot occur in a valid sitemap*** |
+| `albedis` | `{len(urls)} <loc>; {matched} matched … {unmatched} did not` |
+| `angoemprego` · `angolaemprego` | `{raw} <loc>` beside the parsed count |
+| `applifly` | `{kept} ad(s) of {len(ids)} linked from the listing` |
+| `arbeitsagentur` | `{total} match … the API will only ever return {CEILING}` — *and names the unreachable remainder* |
+| `bebee` | `{len(locs)} <loc> in the index: {len(jobs)} job file(s)` |
+| `bnecl` | `{kept} match(es) after reading {read} of {len(ids)} — **say both numbers**` |
+| `bumeran` | `{kept} of {total} ad URL(s)` |
+| `burundijobs` | `parsed to zero entries from {len(body)} characters` |
+| `empleate` | `{total} live ads match` — **written with `.format()`, not an f-string** |
+| `anefa` | `{rows} of {announced}` — **printed to stderr with no `note()` helper** |
+| `apec` · `digitalrecruiters` · `emploiterritorial` | a site total beside the collected count, same mechanism |
+| `ats` | `{kept} of {len(jobs)} postings kept`, plus *the board is not empty — every posting …* |
+| `fachkraft` | *the board is not empty — all `{len(rows)}` ads were filtered out* |
+
+| absent (2) | |
+| :-- | :-- |
+| `batiactu` | `{kept} ads from {axis}/{value}` — every figure its own |
+| `employtt` | declares via `zero_note`; *what the listing serves, which is not what the board serves* — an admission, not a second figure |
+
+**Batch 2: present 18 · absent 2 · annulled 0 · raises 0.**
+
+## The four blind spots, named so the next scan does not repeat them
+
+```
+1  count_says and response total-keys only        the original audit
+2  a RAW count printed beside a PARSED one        commonest form of all
+3  `.format()` instead of an f-string             empleate
+4  print(..., file=sys.stderr) with no `note()`   SEVEN adapters in this batch
+```
+
+**Each was found by being caught out, never by rereading the detector.** *Seven
+adapters in this batch have no `note()` at all and write to stderr directly —
+a scan for `note(...)` arguments reports every one of them as silent.*
+
+## And a fifth form that is not a number at all
+
+**`ats` and `fachkraft` print a SENTENCE where the others print a figure:**
+
+> *the board is not empty — all `{len(rows)}` ads were filtered out*
+
+**That discriminates without a second count**, because it names *why* the output
+is empty. *A scan looking for two interpolated values in one string does not see
+it, and it is exactly what #181 asks for.*
+
+## Running total after two batches
+
+```
+read so far   48 of 104        present 32 · absent 8 · annulled 6 · raises 1 · (already classified 1)
+still to read 56
+```
+
+*No rate is offered. The batches are ordered by cost, so what has been read is
+not a sample of what has not.*
