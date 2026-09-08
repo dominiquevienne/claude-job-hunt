@@ -1,12 +1,14 @@
-# Board measurement — Albedis (Switzerland): the JSON-LD is there, and it does not parse
+# Board adapter — Albedis (Switzerland): shipped, and the JSON-LD needed mending first
 
 <!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.albedis.com, albedis.com -->
-<!-- script: none -->
+<!-- script: albedis.py -->
+<!-- host-forms: www.albedis.com -->
+<!-- host-forms-basis: read — `albedis.py:BASE`, a single literal; the apex `albedis.com` redirects to `www.` and is never fetched · 2026-09-08 -->
 <!-- countries: CH -->
 <!-- content: measured · 95 advertisements, each published in four languages — 380 `<loc>` in `sitemap_jobs0.xml` of which 95 are `/emploi/` and 95 × 4 = 380 exactly; every advertisement carries a `JobPosting` that a plain `json.loads` cannot read · 2026-09-08 -->
-<!-- witness: 95 × 4 = 380, the site's own sitemap partitioned by language; the site declares no running total anywhere this measurement found -->
+<!-- witness: none — this site declares no running total anywhere this measurement found, and `95 × 4 = 380` compares the sitemap with itself rather than with the site · 2026-09-08 -->
 
 **#189 asked for a measurement and named two traps. Both are answered here, and
 the request's central premise is corrected.**
@@ -128,3 +130,61 @@ requirement and the agency-as-employer are observed on four, not demonstrated on
 
 **The `DDMMYY`-style suffix seen on other Swiss hosts does not appear here**;
 the slug ends in a language tag instead.
+
+
+## 2026-09-08 — shipped
+
+**`albedis.py sitemap` returns the 95 advertisements; `albedis.py ad --url`
+reads one.** *Both were run, not read.*
+
+```
+380 <loc>      380 matched the advertisement shape, 0 did not
+ 95 distinct ids, and every one carries exactly 4 language forms
+```
+
+**The reader is not in this adapter.** *The malformation is a type confusion —
+a JSON array serialised into a string and emitted unescaped — and `_ldjson`
+mends it since `ed57b58`.* **This adapter calls `postings()` and
+`absent_reason()`**, so a page that announces a `JobPosting` and yields none
+exits loudly instead of emitting a row: *a parse failure is INDETERMINATE, never
+ABSENT, which is the mistake #189 recorded as a fact about the site.*
+
+### What it emits, and the three things it refuses to assert
+
+**`depositor`, not `employer`.** *`hiringOrganization` reads `albedis` on every
+advertisement measured and the descriptions say "Notre client".* **The field is
+carried under a name that does not claim what it does not know** — on other
+hosts the same field IS the employer, so dropping it would discard a correct
+value elsewhere.
+
+**No composed addresses.** *Every URL comes from the sitemap as found.* **A
+composed address on a neighbouring host answered HTTP 200 and led nowhere**,
+which is indistinguishable from a live link and would have reached the ledger.
+
+**The ledger key is the numeric URL id.** *`INT-…` travels beside it as
+`reference` because it is what a recruiter quotes, and it has two lengths —
+`INT-121357` and `INT-4163915104116` — so a parser assuming six digits breaks.*
+
+### The gap, named rather than filled
+
+**This site declares no running total.** *So 95 is this adapter's enumeration of
+the site's sitemap and nothing external checks it.* **`95 × 4 = 380` compares
+the sitemap with ITSELF**: a partition of one's own output is an arithmetic
+identity and cannot fail while the reading fails. *It is printed as a
+consistency check and never as a witness.*
+
+*And had a total existed, it would still have needed showing that it counts
+advertisements: on `xpress.jobs` the board's own `recordCount` is a genuinely
+external figure that counts row slots, and 37 % of the rows it counts are
+repeats.*
+
+### Not established
+
+**Four advertisements of 95 were parsed** when this host was measured, and the
+container bound, the repair requirement and the agency-as-depositor rest on
+those four. *The `sitemap` command reads all 95 addresses; it does not open
+them.*
+
+**The pacing is a default, not a margin.** *2 s, ours, and no rate limit was
+measured on this host* — unlike `xpress.jobs`, where 1.5 s was shown to take an
+HTTP 400 at the 26th request.
