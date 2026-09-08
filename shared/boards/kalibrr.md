@@ -5,9 +5,11 @@
 <!-- hosts: www.kalibrr.com -->
 <!-- script: kalibrr.py -->
 <!-- countries: ID PH -->
-South-East Asia's private board, and **one adapter for two countries**: 1 045
-Indonesian and 778 Philippine ads on 2026-09-02. Public JSON, **no key, no
-cookie, no account, no browser**.
+South-East Asia's private board, and **one adapter for two countries**:
+**1 116 Indonesian and 777 Philippine ads, measured 2026-09-08 09:39:32 UTC**.
+Public JSON, **no key, no cookie, no account, no browser** — *but see the access
+note below: our declared client is now refused by a live antibot control, and
+these figures were read through the user's browser.*
 
 `www.kalibrr.com/robots.txt` is **59 bytes of `text/plain`** — checked as a
 MIME type, not only as a status — and closes exactly two paths, `/root` and
@@ -23,8 +25,8 @@ only sign is one boolean.**
 
 | Call | `count` | `from_alternative` |
 | :-- | --: | :-- |
-| `?country=Indonesia` | 1 045 | `false` |
-| `?country=Philippines` | 778 | `false` |
+| `?country=Indonesia` | 1 116 | `false` |
+| `?country=Philippines` | 777 | `false` |
 | `?country=Singapore` | **818** | **`true`** |
 | `?text=zzzzqqqq` | **818** | **`true`** |
 | no country at all | **818** | `false` |
@@ -45,13 +47,40 @@ So `kalibrr.py` **requires `--country`**, and **refuses any response carrying
 scoring a single row of it. `from_correction` and `correction_text_search`
 get a warning by the same logic: the results answer a term the board chose.
 
+## Counts corrected 2026-09-08 — and nothing here was ever false
+
+| | 2026-09-02 | **2026-09-08 09:39:32 UTC** | move |
+| :-- | --: | --: | --: |
+| Indonesia `/kjs` | 1 045 | **1 116** | +71 |
+| Indonesia `/api` | 1 011 | **1 080** | +69 |
+| Philippines `/kjs` | 778 | **777** | −1 |
+| Philippines `/api` | 674 | **670** | −4 |
+
+**The Indonesian inventory grew by about seventy over six days; the Philippine
+one did not move.** *Both endpoints moved by the same amount for Indonesia and by
+none for the Philippines — **two independently built readers agreeing on a
+change means the change is in the board, not in the reading**.*
+
+**And the `/kjs` − `/api` offset is stable per country** — 34 → 36 for Indonesia,
+104 → 107 for the Philippines. *The disagreement between the endpoints is
+structural, and it does not drift.*
+
+> **`verified:` attests that the ROUTE was exercised. It does not attest that
+> every number in the card was re-measured.**
+
+*A card carries one `verified:` date over figures of several ages. This one said
+`2026-09-08` above counts dated `2026-09-02` **in its own prose** — nothing was
+false, and the single date still invited reading all of it as current.* **The
+worked pagination example below is from 2026-09-02 and is kept as written: it
+illustrates a mechanism, not a stock.**
+
 ## Two endpoints, and they do not agree
 
 | | `/kjs/job_board/search` | `/api/job_board/search` |
 | :-- | --: | --: |
 | no country | 818 (the fallback) | **1 830** |
-| Indonesia | **1 045** | 1 011 |
-| Philippines | **778** | 674 |
+| Indonesia | **1 116** | 1 080 |
+| Philippines | **777** | 670 |
 | `country=Singapore` | 818, `from_alternative` | **0 — an honest zero** |
 | `text=zzzzqqqq` | 818, `from_alternative` | **0** |
 | fields per ad | **38** | 37 |
@@ -257,7 +286,7 @@ fields.** Hand the user the ad URL and their documents.
 
 ```bash
 S=skills/job-scan/scripts/kalibrr.py
-python3 $S count  --country Indonesia                        # 1 045
+python3 $S count  --country Indonesia                        # 1 116 au 08.09
 python3 $S count  --country Philippines --keyword "software engineer"
 python3 $S count  --country Indonesia --keyword zzzzqqqq     # refuses, exit 3
 python3 $S search --country Philippines --limit 2

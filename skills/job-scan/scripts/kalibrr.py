@@ -3,7 +3,8 @@
 answers with somebody else's results.
 
 Kalibrr is South-East Asia's private board, and one adapter serves **two
-countries**: 1 045 Indonesian and 778 Philippine ads on 2026-09-02. Public
+countries**: 1 116 Indonesian and 777 Philippine ads on 2026-09-08
+(1 045 and 778 on 2026-09-02 — the Indonesian stock grew, see the card). Public
 JSON, **no key, no cookie, no browser**. `robots.txt` is 59 bytes of
 `text/plain` and closes two paths, neither of them a job.
 
@@ -63,7 +64,8 @@ from _zero import zero_note
 
 KJS = "https://www.kalibrr.com/kjs/job_board/search"
 # The older endpoint. Honest about emptiness — `?country=Singapore` is a plain
-# `count: 0` — but less complete (1 011 ID and 674 PH against 1 045 and 778)
+# `count: 0` — but less complete (1 080 ID and 670 PH against 1 116 and 777
+# on 2026-09-08; 1 011 / 674 against 1 045 / 778 on 2026-09-02)
 # and missing `is_hybrid`, `is_open_to_fresh_grads` and `job_sds_skills`. It
 # is the place to go for `salary_currency_orig`.
 API = "https://www.kalibrr.com/api/job_board/search"
@@ -215,7 +217,8 @@ def sweep(a, want_rows=True):
         jobs = d.get("jobs") or []
         if not jobs:
             # Past the end the board returns no rows AND drops `count` back to
-            # the fallback total — 1 045 becomes 818 at offset 1 100. Neither
+            # the fallback total — 1 045 became 818 at offset 1 100 on
+            # 2026-09-02; the mechanism is the point, not the stock. Neither
             # is an error; both mean stop.
             if count != reported:
                 note(f"past the end: no rows, and `count` fell from "
