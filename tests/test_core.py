@@ -12891,10 +12891,18 @@ class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
     """
 
     CASES = (
-        ("ihararejobs", lambda: ([], {"loc": 6295, "category": 0,
-                                      "duplicate": 0})),
-        ("ejobsfiji",   lambda: ([], 3152)),
-        ("myjobsfiji",  lambda: ([], 3152, ["2026-09-07"])),
+        ("ihararejobs",   lambda: ([], {"loc": 6295, "category": 0,
+                                        "duplicate": 0})),
+        ("ejobsfiji",     lambda: ([], 3152)),
+        ("myjobsfiji",    lambda: ([], 3152, ["2026-09-07"])),
+        # **The `max()` family**, added with the guards rather than after them:
+        # each computes `newest = max(... for r in <extraction>)` in the report
+        # path, so an empty extraction raised ValueError before any figure was
+        # printed. `jobwebrwanda` raised before the count line entirely.
+        ("careerical_sl", lambda: ([], {"sierra-jobs": 2344})),
+        ("emploiscongo",  lambda: ([], {"advertisement": 446,
+                                        "not-an-ad": 12}, False)),
+        ("jobwebrwanda",  lambda: ([], 558)),
     )
 
     def _run(self, name, fake_entries):
@@ -12910,7 +12918,8 @@ class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
             with redirect_stderr(err):
                 with self.assertRaises(SystemExit) as caught:
                     mod.cmd_list(argparse.Namespace(
-                        since=None, fetch=False, limit=None))
+                        since=None, fetch=False, limit=None,
+                        live=False, search=None))
         finally:
             mod.entries = original
         return caught.exception.code, err.getvalue()
@@ -12925,18 +12934,28 @@ class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
                 # **The other side of the anchor.** Without the second figure
                 # the message says "nothing found" and not "the file is there
                 # and this reader got nothing out of it".
-                self.assertRegex(msg, r"(6295|3152)",
+                self.assertRegex(msg, r"(6295|3152|2344|446|458|558)",
                                  f"{name}: the anchor's other figure is absent")
 
-    def test_it_does_not_raise_zerodivision(self):
-        """The failure mode as it actually was, named."""
+    def test_the_zero_path_raises_nothing_uncaught(self):
+        """The failure mode as it actually was — and it is not one exception.
+
+        Three of these divided by the count and raised `ZeroDivisionError`;
+        three computed `max()` over the empty extraction and raised
+        `ValueError`. **Naming only the first would have left the second
+        family passing under a guard that says it covers them**, which is the
+        misdescribed species: a name narrower than what the test checks.
+        """
         for name, fake in self.CASES:
             with self.subTest(adapter=name):
                 try:
                     self._run(name, fake)
-                except ZeroDivisionError:  # pragma: no cover
-                    self.fail(f"{name}: the ratio still divides by the count "
-                              f"that is zero here")
+                except SystemExit:  # pragma: no cover — _run catches it
+                    pass
+                except Exception as exc:  # noqa: BLE001
+                    self.fail(f"{name}: the zero path raised "
+                              f"{type(exc).__name__} instead of reporting — "
+                              f"{exc}")
 
 
 class EmploiticSeparatesItsTwoZeros(unittest.TestCase):
