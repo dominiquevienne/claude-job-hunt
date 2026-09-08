@@ -78,8 +78,19 @@ identical:* **0 URLs in the sitemap that the tool drops, 0 the tool returns that
 the sitemap lacks.** *Compared as sets and not as totals — two counts that agree
 can still describe different members.*
 
-**And the tool states its own partition**, which is the count that does not come
-from re-reading its output: `890 + 3 347 = 4 237`.
+**The tool states a partition — `890 + 3 347 = 4 237` — and an earlier version
+of this card called it "the count that does not come from re-reading its
+output". That was wrong.** *`emploitic.py:156` prints
+`note(f"{len(urls)} advertisement URL(s): {direct} under …")`: all three numbers
+are `len()` of the same extraction.* **A partition of one's own output is an
+arithmetic identity, not a second source** — it cannot fail while the extraction
+fails.
+
+**What IS a second source here is the check made in this card and not by the
+tool**: `sitemap-jobs.xml` fetched directly, 4 237 `<loc>`, set-identical to the
+adapter's output. *That is external, and it lives in this file rather than in
+the adapter* — **so `emploitic.py` is nude at the list level: if its reader
+broke, 4 237 and 0 would be two outputs of one instrument.** (#181)
 
 ### The board lost 269 advertisements in five days
 
