@@ -60,16 +60,40 @@ measured, and is parsed with `email.utils` rather than sliced: *an RFC-822 date
 compared as a string sorts «Fri 04 Sep» after «Wed 02 Sep», which is how a
 first probe of this feed reported its range backwards.*
 
-THIS BOARD PUBLISHES AGE AND GENDER REQUIREMENTS
+THIS BOARD PUBLISHES AGE AND GENDER REQUIREMENTS, AND THIS MODULE DOES NOT
 
 An advertisement page carries `Возраст: 30-45 лет`, and the site's own search
 form offers `pol` — gender — beside education and employment type.
 
-**They are emitted, named plainly, and not normalised.** *A person deciding
-whether to apply needs to know that an advertisement asks for an age bracket;
-hiding a requirement the board prints would leave them to discover it after
-writing to the employer.* **This module reports the advertisement, it does not
-endorse it** — and it does not offer a filter on either field.
+**Neither is emitted, and no filter is offered on either** — issue #183,
+2026-09-08. *Uzbekistan's Labour Code, new edition, law No. ZRU-798 of
+2022-10-28 in force since 2023-04-01, admits no employment restriction founded
+on age or sex.* **So the criterion does not travel through this module.**
+
+**The advertisement is still served.** *Dropping the advertisements that carry
+such a requirement would deny a candidate a real vacancy — the opposite of the
+point.* **It is the criterion that does not propagate, not the vacancy.**
+
+**The Code reserves factors «&nbsp;related to the exercise of the
+occupation&nbsp;», so a requirement CAN be lawful in narrow cases** — and this
+module cannot decide, advertisement by advertisement, whether a given one falls
+inside that reserve. *Faced with that, not propagating is the safe conduct.*
+
+**`Возраст` is still known to the parser**, moved to `OTHER_LABELS`: a label
+this module does not emit must still be known, so that the value before it is
+cut at the right place.
+
+**The claim first written here was that dropping the label would append the age
+to `category`. That was not measured, and it is not true of the pages read.**
+*Removing `Возраст` from every label set and re-reading four advertisements
+changed **zero fields** — the pages put `Возраст` where no emitted value is cut
+by it.* **The label is kept as a precaution against a page order we have not
+seen, and that is a weaker reason than the one first given here** — written
+down because a docstring that overstates its own mechanism is how the next
+reader is misled.
+
+**This is per jurisdiction.** *The Uzbek Code says nothing about anywhere else,
+and this change is not a template for other adapters.*
 
 Verified against the live site on 2026-09-08.
 """
@@ -107,12 +131,13 @@ LABELS = {"employer": "Компания", "period": "Период размеще
           "region": "Регион", "salary": "Предлагаемая зарплата"}
 # Labels that appear only on the advertisement page.
 PAGE_LABELS = {"employer": "Работодатель", "period": "Период размещения",
-               "category": "категория должности", "age": "Возраст"}
+               "category": "категория должности"}
 # **Labels this module does not emit but must know, to cut values at.** A
 # first version knew only the four above, so `age` came back as
 # `30-45 лет Пол: … Местожительство: … Образование: …` — every following
 # field, in one string that looks full rather than wrong.
-OTHER_LABELS = ("Информация о вакансии", "Обязанности", "Пол",
+# `Возраст` moved here from PAGE_LABELS by #183: known, never emitted.
+OTHER_LABELS = ("Информация о вакансии", "Обязанности", "Пол", "Возраст",
                 "Местожительство", "Образование", "Опыт работы",
                 "Требования к кандидату", "Занятость", "Сфера деятельности",
                 "Знание языков", "Контактное лицо", "Телефон")
@@ -319,10 +344,10 @@ def cmd_ad(a):
                       if period else None),
            "expires": (f"{period.group(6)}-{period.group(5)}-{period.group(4)}"
                        if period else None),
-           # **Printed by the board, emitted as printed.** A person deciding
-           # whether to apply needs to know an advertisement asks for an age
-           # bracket; this module reports it and offers no filter on it.
-           "age_requirement": labelled(text, PAGE_LABELS["age"]),
+           # **No age and no gender field — #183.** The board prints
+           # `Возраст:` and offers a `pol` filter; neither leaves this module.
+           # *The advertisement is still emitted: it is the criterion that does
+           # not propagate, not the vacancy.*
            "countries": ["UZ"]}
     # **The employer label is the discriminator, not the title.** This host
     # answers an unknown id with 200 and a page that has no `Работодатель:` at

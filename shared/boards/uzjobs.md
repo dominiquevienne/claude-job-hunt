@@ -72,16 +72,50 @@ the first on **21 of 21**, and disagreements are counted on every run.
 compared as a string sorts «Fri, 04 Sep» after «Wed, 02 Sep» — which is how a
 first probe of this feed reported its range backwards.*
 
-## This board publishes age and gender requirements
+## This board publishes age and gender requirements, and this adapter does not
 
 An advertisement carries `Возраст: 30-45 лет`, and the site's own search form
 offers `pol` — gender — beside education and employment type.
 
-**They are emitted, named plainly, not normalised, and not filterable.** *A
-person deciding whether to apply needs to know that an advertisement asks for
-an age bracket; hiding a requirement the board prints would leave them to find
-it after writing to the employer.* **This module reports the advertisement; it
-does not endorse it.**
+**Neither is emitted, and no filter is offered on either** — #183, decided
+2026-09-08. *Uzbekistan's Labour Code, new edition, law No. ZRU-798 of
+2022-10-28 and in force since 2023-04-01, admits no employment restriction
+founded on age or sex.*
+
+> **The advertisement is still served.** *Dropping the ones that carry such a
+> requirement would deny a candidate a real opening — the opposite of the
+> point.* **It is the criterion that does not propagate, not the vacancy.**
+
+**Measured before and after, same six identifiers**: `age_requirement` was
+present on 3 of the 4 advertisements that answered (`30-45 лет`, `30-40 лет.`
+twice); afterwards no emitted field matches `Возраст`, `Пол:`, `лет`, `мужчин`
+or `женщин`, and **the same 4 advertisements are still emitted**. *The `list`
+command never carried either field: 22 of 22 feed items clean, before and
+after.*
+
+**The Code reserves factors related to the exercise of the occupation**, so a
+requirement *can* be lawful in narrow cases — and this adapter cannot decide,
+advertisement by advertisement, whether a given one falls inside that reserve.
+*Not propagating is the safe conduct under that uncertainty, and it is what the
+repository's owner asked for.*
+
+**This is per jurisdiction.** *The Uzbek Code says nothing about anywhere else;
+this is not a template for other adapters.*
+
+### A claim this card first made and could not support
+
+**The first version said `Возраст` had to stay in the label set or the age
+would be appended to `category`.** *Removing it from every label set and
+re-reading four advertisements changed **zero fields**.* **The label is kept as
+a precaution against a page order we have not seen — which is a weaker reason
+than the one first given**, and it is written down because a card that
+overstates its own mechanism is how the next reader is misled.
+
+`tests/test_core.py::TheUzbekAdapterDoesNotCarryAgeOrSex` holds five
+assertions, and each reddens under its own mutation: re-adding the emitted
+field, re-adding the `PAGE_LABELS` key, dropping the label from the parser,
+adding a `--age` option, and inserting a line that would skip such
+advertisements.
 
 ## Three parsing defects, each found by exercising
 

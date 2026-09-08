@@ -9134,6 +9134,74 @@ class TheAdvertisementAddressIsBuiltInOnePlace(unittest.TestCase):
         self.assertEqual(mod.ad_url("XYZ"), mod.BASE + "/job/XYZ")
 
 
+class TheUzbekAdapterDoesNotCarryAgeOrSex(unittest.TestCase):
+    """**Issue #183, 2026-09-08.** Uzbekistan's Labour Code, new edition (law
+    No. ZRU-798 of 2022-10-28, in force 2023-04-01), admits no employment
+    restriction founded on age or sex. *So `uzjobs.py` neither emits those
+    criteria nor offers a filter on them.*
+
+    **What this guard does NOT assert is that such advertisements are
+    dropped.** *They are still emitted — it is the criterion that does not
+    propagate, not the vacancy.* Dropping them would deny a candidate a real
+    opening, which is the opposite of the point, so the last test below fails
+    if the emitter ever starts filtering them out.
+
+    **Per jurisdiction.** This says nothing about any other adapter.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_uzjobs", os.path.join(SCRIPTS, "uzjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_no_emitted_key_names_age_or_sex(self):
+        mod = self._mod()
+        emitted = set(mod.LABELS) | set(mod.PAGE_LABELS)
+        for k in emitted:
+            with self.subTest(key=k):
+                self.assertNotIn(k, ("age", "sex", "gender", "pol"))
+
+    def test_the_source_emits_no_such_field(self):
+        with open(os.path.join(SCRIPTS, "uzjobs.py"), encoding="utf-8") as f:
+            src = f.read()
+        for bad in ('"age_requirement"', '"age"', '"gender"', '"sex"'):
+            with self.subTest(field=bad):
+                self.assertNotIn(bad + ":", src)
+
+    def test_no_command_line_option_filters_on_them(self):
+        with open(os.path.join(SCRIPTS, "uzjobs.py"), encoding="utf-8") as f:
+            src = f.read()
+        for bad in ("--age", "--gender", "--sex", "--pol"):
+            with self.subTest(option=bad):
+                self.assertNotIn(bad, src)
+
+    def test_the_label_is_still_known_to_the_parser(self):
+        """**Not emitted is not unknown.** A label the module does not publish
+        must still be in the set values are cut at; dropping it from the set is
+        a different change from dropping the field, and only one of the two was
+        asked for."""
+        mod = self._mod()
+        self.assertIn("Возраст", mod.ALL_LABELS)
+        self.assertIn("Пол", mod.ALL_LABELS)
+
+    def test_nothing_drops_advertisements_that_carry_them(self):
+        """**The third point of #183, and the one that gets missed.** No
+        control flow may skip an advertisement because of these labels."""
+        with open(os.path.join(SCRIPTS, "uzjobs.py"), encoding="utf-8") as f:
+            src = f.read()
+        for line in src.splitlines():
+            bare = line.strip()
+            if bare.startswith("#"):
+                continue
+            if ("Возраст" in bare or "Пол" in bare) and (
+                    bare.startswith("if ") or " continue" in bare
+                    or bare.startswith("return") and "None" in bare):
+                self.fail("this line looks like it skips an advertisement on "
+                          "an age or sex label: " + bare)
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none
