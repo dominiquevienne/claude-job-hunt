@@ -801,6 +801,18 @@ hosts, one country, on 2026-09-07.**
 > payload carrier before concluding, which is now written on
 > `portaljob-madagascar.md` as its corrected control.
 >
+> **And the two do not have the same future, which is the reason to separate
+> them.** *`xpress.jobs` is unreachable because there is nothing on the wire:
+> no request this repository can make returns an advertisement, and none will
+> until the site renders something server-side.* **`portaljob-madagascar` is
+> unreachable because nobody has written the route down** — it already serves
+> its content, and **it opens the day the site declares a listing URL, or the
+> day one is found without guessing.**
+>
+> **So one is worth re-checking and the other is not.** *A taxonomy that stops
+> at «both unreadable» tells a future session to spend the same effort on
+> both.*
+>
 > **The eight-and-one count above is untouched in its arithmetic and wrong in
 > one of its members.** *It says of itself that it expires and should be
 > re-derived from the command rather than quoted; this is one reason why.*
