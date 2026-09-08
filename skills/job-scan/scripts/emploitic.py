@@ -7,7 +7,9 @@ the one `robots.txt` names itself.
 
   GET /robots.txt          → `Sitemap: https://emploitic.com/sitemap.xml`
   GET /sitemap.xml         → three families; `sitemap-jobs.xml` is the ads
-  GET /sitemap-jobs.xml    → 4 506 <loc>, every one an advertisement
+  GET /sitemap-jobs.xml    → 4 237 <loc>, every one an advertisement
+                             (2026-09-08; 4 506 on 2026-09-03 — the board
+                             lost 269 in five days, measured the same way)
   GET <ad url>             → one `JobPosting`, plus `__NEXT_DATA__`
 
 **THE SITEMAP IS THE ROUTE HERE, AND THE NEIGHBOURING BOARD'S IS A TRAP.**

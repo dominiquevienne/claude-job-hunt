@@ -1,16 +1,19 @@
 # Board adapter — Emploitic (Algeria)
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-08 -->
 <!-- hosts: emploitic.com, www.emploitic.com -->
 <!-- siblings: emploitic.com 2026-09-04 agree -->
 <!-- script: emploitic.py -->
 <!-- countries: DZ -->
+<!-- content: measured · 4 237 advertisements — every `<loc>` of `sitemap-jobs.xml`, and the adapter's output is SET-IDENTICAL to the raw file (0 in the sitemap and not returned, 0 returned and not in the sitemap); the tool's own partition sums to it, 890 under `/offres-d-emploi/` + 3 347 under `/entreprises/<company>/offres-d-emploi/` = 4 237 · 2026-09-08 -->
+<!-- witness: 4 237, and the adapter was RUN rather than read — both halves of the route, the listing and one advertisement, which returned company, title, region, employment_type and valid_through · 2026-09-08 -->
 
 Algeria's largest private job board. **No key, no cookie, no browser.**
 
 ```
 GET /robots.txt        → Sitemap: https://emploitic.com/sitemap.xml
-GET /sitemap-jobs.xml  → 4 506 <loc>, every one an advertisement
+GET /sitemap-jobs.xml  → 4 237 <loc>, every one an advertisement (2026-09-08;
+                             4 506 on 2026-09-03 — the board lost 269 in five days)
 GET <ad url>           → one JobPosting, plus __NEXT_DATA__
 ```
 
@@ -56,3 +59,38 @@ the accents back and still folds the mathematical alphabets to ASCII.
 One request for the sitemap, then **one request per advertisement** — the
 sitemap carries URLs and the fields live on the page. `sitemap` returns the
 URLs alone for a cheap count.
+
+
+## 2026-09-08 — exercised for the first time, and it works
+
+**This card carried a `script:` and had never been run.** *Exercising it means
+launching it, not re-reading it, and the result is that the adapter is sound:*
+
+```
+emploitic.py sitemap        4 237 advertisement URLs, all distinct
+emploitic.py ad --url ...   company · title · region · employment_type
+                            valid_through · posted · location_text
+```
+
+**The count was checked against the file rather than trusted.** *`sitemap-jobs.xml`
+fetched directly holds **4 237** `<loc>`, all distinct, and the two sets are
+identical:* **0 URLs in the sitemap that the tool drops, 0 the tool returns that
+the sitemap lacks.** *Compared as sets and not as totals — two counts that agree
+can still describe different members.*
+
+**And the tool states its own partition**, which is the count that does not come
+from re-reading its output: `890 + 3 347 = 4 237`.
+
+### The board lost 269 advertisements in five days
+
+**4 506 on 2026-09-03, 4 237 on 2026-09-08.** *Both are counts of `<loc>` in the
+same file by the same method, so the grandeur is the same one and the drop is
+the board's, not ours.* **Corrected in this card and in
+`emploitic.py`'s docstring in the same pass** — *a figure fixed in the card
+alone leaves the module's own copy contradicting it, and a docstring is visible
+only from inside its module.*
+
+**The date on this card moved because it was exercised.** *It stayed at
+2026-09-03 for five days while the adapter had never been launched, which was
+the honest record at the time: an unexercised card that keeps its date is the
+one place where "nobody looked" stays legible.*
