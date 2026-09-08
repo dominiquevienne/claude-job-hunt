@@ -261,3 +261,65 @@ recognised: `max(n) if n else None`, `min(cuts)` inside `if cuts:`.
 *The same applies to case 1: an adapter prints many numbers, and deciding
 whether any of them comes from outside its own extraction is a reading, not a
 match.*
+
+---
+
+# BATCH 1 OF THE RE-PASS — 20 adapters, read one by one
+
+**2026-09-08. Order: `false-zero-cost.md`, sole-route adapters first. The eight
+already classified are excluded.** *Evidence level is marked on every row,
+because it differs: `RUN` means the adapter was executed and its own output
+read; `READ` means its reporting calls were read in the source.*
+
+| adapter | case | the anchor, or its absence | ev. |
+| :-- | :-- | :-- | :-- |
+| `adzuna` | **present** | `{kept} ads returned of {total} matching` — `total` is the API's `count` | READ |
+| `jobrapide` | **present** | `the paginator announces {announced} pages` — *and it refuses to derive a total from it* | READ |
+| `ergodotisi` | **present** | `{total} <loc>` beside the parsed counts, two granularities in one sentence | READ |
+| `hellojob` | **present** | `{raw} <loc> · {len(rows)} distinct` | READ |
+| `jobam` | **present** | `{raw} <loc> · {len(rows)} distinct`, and it calls the window a window | RUN |
+| `jobsbotswana` | **present** | `{raw} <loc> in the sitemap, {len(rows)} advertisements` | RUN |
+| `keejob` | **present** | `{raw} <url> in the sitemap, {len(rows)} distinct` | READ |
+| `kalibrr` | **present** | `{len(rows)} ads returned of {reported} reported` | READ |
+| `vieclam24h` | **present** | `{kept} ad(s) of {total} matching` | READ |
+| `platsbanken` | **present** | `{total} match and the window is {CEILING}` | READ |
+| `todasvagas` | **present** | `--limit takes the FIRST {a.limit} of {raw}` | READ |
+| `mycareer` | **present** | `{raw} rows read, {len(rows)} distinct` | RUN |
+| `xpressjobs` | **present** | `the board declares {record_count}` | READ |
+| `jobsgovpk` | **present** | **prints the site's own header against its cards, and they disagree** | RUN |
+| `computrabajo` | absent | `{kept} ads returned from {country}`; declares via `zero_note` | RUN |
+| `encuentra24` | absent | `{kept} ad(s) over {read} page(s)` — every figure its own | READ |
+| `glmis` | absent | `{len(rows)} advertisement(s)`; *declares the cap, resolves nothing* | RUN |
+| `jobbkk` | absent | `{kept} ads returned over {page} page(s)`; declares via `zero_note` | RUN |
+| `mihnati` | absent | `{kept} advertisement(s) — the home page's strip` | RUN |
+| `uzjobs` | absent | `the feed's window, not the board` — declares, no second figure | READ |
+
+**Batch 1: present 14 · absent 6 · annulled 0 · raises 0.**
+
+## What this does to "20 of 100"
+
+**Fourteen of these twenty have an anchor, and the first audit counted almost
+none of them.** *It searched for `count_says` and for total-keys read from a
+response; it could not see a raw `<loc>` count printed beside a parsed one, which
+is the commonest form here.* **The original figure is not slightly low. It is the
+wrong measurement**, and the re-pass exists because I said so before anyone
+asked.
+
+*No corrected total is offered until all 104 are read. 14/20 is this batch, not a
+rate — the batch was ordered by cost, and sole-route adapters are not a random
+sample of the rest.*
+
+## Two limits of the method, both found by being caught out
+
+**Static extraction of report text is unreliable, and `jobsgovpk` proves it.**
+*Its anchor line — the site's header set against its own cards — is assembled
+into a variable before being printed, so no scan of `note(...)` arguments finds
+it.* **I only know it exists because I ran the adapter this morning.**
+
+**And truncated evidence classifies wrongly.** *A first pass read three report
+calls per adapter and would have filed `jobsgovpk` as anchorless; it has nine
+count-bearing lines and the relevant one is not among the first three.*
+
+> **Where the two disagree, the run wins.** *`RUN` and `READ` are marked per row
+> so that a later reader can tell which rows rest on execution and which on
+> reading.*
