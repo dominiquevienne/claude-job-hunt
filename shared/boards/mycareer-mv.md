@@ -1,18 +1,24 @@
-# Assessed, adapter not built — MyCareer (Maldives, government)
+# MyCareer — the Maldives government's employment service
 
 <!-- verified: 2026-09-08 -->
 
 <!-- hosts: mycareer.gov.mv, jobcenter.mv -->
-<!-- script: none -->
+<!-- script: mycareer.py -->
 <!-- countries: MV -->
-<!-- content: measured · about 12 570 advertisements listed at `/en/jobs`, 9 a page over 1 397 pages, reaching back to 2019-11-17; the site states 109 ACTIVE and the two numbers are different quantities · 2026-09-08 -->
-<!-- witness: served by the site — its home page states «&nbsp;109 Active Jobs&nbsp;», «&nbsp;4 655 Employers&nbsp;», «&nbsp;63 298 Registered Users&nbsp;». **Both figures come from the same host**, so this corroborates the site with itself · 2026-09-08 -->
+<!-- content: measured · 107 distinct live advertisements read by `mycareer.py list` from the site's own active filter in 13 pages, against about 12 570 in the unfiltered archive back to 2019-11-17 · 2026-09-08 -->
+<!-- witness: served by the site — its home page states «&nbsp;109 Active Jobs&nbsp;» and its filtered paginator declares 13 pages. **Both are the same host**, so this corroborates the site with itself; the adapter's own walk returned 109 rows and 107 distinct addresses · 2026-09-08 -->
 <!-- hosts-source: `jobcenter.mv`, named by the country page of 2026-09-03, redirects here · 2026-09-08 -->
 
-**The Maldives' government employment service, and the country page of
-2026-09-03 concluded it did not exist.**
+**The country page of 2026-09-03 concluded this service did not exist.**
 
-## Two conclusions of that page are now false, and neither was wrong when written
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/mycareer.py" list
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/mycareer.py" list --fetch --limit 20
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/mycareer.py" ad \
+    --url https://mycareer.gov.mv/en/jobs/carpenter
+```
+
+## Two conclusions of that page are false, and neither was wrong when written
 
 > *«&nbsp;Aucun site d'État maldivien lisible ne nomme de service d'emploi.&nbsp;»*
 > *«&nbsp;`jobcenter.mv` … on ne saura pas ce qu'elle est.&nbsp;»*
@@ -24,98 +30,116 @@
 ```
 
 **The host did not change. The rule did.** *On 2026-09-07 the repository's owner
-decided that a refusal naming `ClaudeBot` does not bind `Claude-User`: they are
-two tokens, and the group naming the first does not apply to the second.*
+decided that a refusal naming `ClaudeBot` does not bind `Claude-User`.* **The
+door that was «&nbsp;the only way to know, and it is forbidden&nbsp;» opened, and
+behind it was the service the page had looked for.** *Second host in two days
+freed by that decision, after `jobsiniraq.github.io` — and both were found by
+accident, because a country was being revisited for another reason.*
 
-**So the door that was «&nbsp;the only way to know, and it is forbidden&nbsp;»
-opened**, and behind it is the state service the page had looked for. *The
-second host was discoverable the moment the first was fetched — the guard names
-it in its own reason: «&nbsp;these rules were read from `mycareer.gov.mv`, not
-from `jobcenter.mv`&nbsp;».*
-
-**This is the second host in two days freed by that decision**, after
-`jobsiniraq.github.io` on 2026-09-08. *Neither was re-measured because anything
-was suspected: both came up because a country was revisited.*
-
-## Two numbers, and the site publishes both
+## Two quantities, and the site publishes both
 
 ```
-the listing   9 ads a page x 1 397 pages ~= 12 570   back to 2019-11-17
-the home page                            109 ACTIVE
+/en/jobs                       1 397 pages   ~12 570   the archive, back to 2019-11-17
+/en/jobs?filter[active]=1         13 pages       107   distinct live advertisements
+home page counter                              109     «Active Jobs»
 ```
 
-**The listing is the archive; 109 is the current stock.** *And the pages carry
-the difference explicitly:*
+> **Counting the unfiltered listing would overstate the live Maldivian market by
+> a factor of a hundred**, and nothing on the page says so, because both numbers
+> are true of what they measure.
+
+## The heuristic that looked right, and the two pages that broke it
+
+**Each dead advertisement carries a `badge-expired` on its card, and the listing
+is roughly newest-first**, so «&nbsp;read in order, stop at the first
+badge&nbsp;» seems to follow:
 
 ```
-/en/jobs/accountant-80   Published 7 September 2026    no marker
-/en/jobs/carpenter       Published 17 November 2019    EXPIRED
+page 1      VVVVVVVVV        page 12     XXXXVXXXX
+page 2      VVVVVVVVV        page 13     VVXXXVVXX
+page 700    XXXXXXXXX        page 1397   XXXXXXXX
 ```
 
-> **A count of listed advertisements here would overstate the live market by a
-> factor of a hundred**, and the paginator is honest — page 1397 serves eight
-> real advertisements, none shared with page 1.
+**Live advertisements sit behind dead ones** — the order is by posting date and
+expiry is a per-advertisement deadline, so the two do not agree. *Stopping at
+the first badge ends on page 12 and loses the five live advertisements after
+it.* **Pages 1 and 2 confirm the heuristic and they are adjacent, which is
+exactly why they are not a sample** — the pages that refute it are 12 and 13.
 
-*This is the stock-and-flow inversion this repository already records, with the
-unusual feature that **the publisher states both quantities itself**.*
+## Why the site's own filter is trusted
 
-## Why no adapter tonight — and a correction, made the same night
+**Exercised in both directions, 2026-09-08:**
 
-**The first version of this card said the design choice «&nbsp;was not measured
-here&nbsp;», that the open question was «&nbsp;one request away&nbsp;», and that it
-was not asked because the budget was better spent elsewhere. All three were
-wrong**, and the correction cost no request at all:
+```
+filter[active]=1     9 cards   0 expired   7 shared with unfiltered page 1
+filter[expired]=1    9 cards   9 expired   0 shared with either
+```
 
-| | first version, 2026-09-08 04:30 | corrected, 2026-09-08 05:05 |
+**Zero overlap, and the inverse filter returns the complement it names.** *A
+filter tested only on the side one wants is not tested.*
+
+## The total agreed with the site and hid two duplicates
+
+**The 13-page walk returns 109 rows and 107 distinct addresses**, and 109 is
+exactly what the home page prints.
+
+```
+page 1, positions 8 and 9   =   page 2, positions 1 and 2
+hr-officer-28 · admin-1     — same pair on two separate runs
+```
+
+**A step of seven inside a window of nine, at that one boundary**: no other
+page pair in the thirteen repeats an address, and the *unfiltered* pages 1 and 2
+share none at all. **So the agreement between our 109 and the site's 109 is not
+a check — both may be counting the same rows twice.** *`mycareer.py` prints
+`rows_read` and `found` side by side and names each duplicate with the pages it
+came from, so a paginator drifting under a new posting stays distinguishable
+from a board that lists one advertisement twice.*
+
+## What the adapter reads, and what it costs
+
+**Title, employer, town, salary and employment type all sit on the listing
+card**, each counted one-per-card across pages 1, 2, 12, 13, 700 and 1397.
+**So the whole live market costs 13 requests, not 109.**
+
+- `employment_type` is **optional and known to be** — 3 of 8 cards on page 1397
+  publish none, so its absence is the board's choice, not a defect;
+- `--fetch` opens each advertisement for `posted` and `deadline`, which the card
+  does not carry — *`carpenter` returns `2019-11-17 → 2019-12-17`, `expired`*;
+- `--since` **refuses without `--fetch`** and exits 8: the dates are not on the
+  card, and a filter that silently kept everything would be worse than none;
+- `--archive` walks the 1 397 pages instead of the 13, and says so in its output.
+
+**No `JobPosting` and no `ld+json` exist anywhere on this site**, so every field
+is an HTML anchor and every missing required one is named on stderr.
+
+## A correction, made the same night
+
+**The first version of this card said the design question «&nbsp;was not
+measured here&nbsp;», that it was «&nbsp;one request away&nbsp;», and that the
+budget was why. All three were wrong**, and the answer cost no request at all:
+
+| | first version, 04:30 | measured, 05:05 |
 | :-- | :-- | :-- |
-| the status filter | *«&nbsp;whether `/en/jobs` accepts a status parameter&nbsp;»*, unknown | **the site publishes one** — `chk-filter-expired`, a checkbox in the listing's own filter panel |
-| where expiry is read | *«&nbsp;per advertisement&nbsp;»*, so 12 570 fetches | **from the listing** — `<span class="badge badge-expired">` sits on the card of each expired advertisement |
-| why it wasn't measured | *«&nbsp;the budget that remained&nbsp;»* | **the files were already on disk**, and the budget was 14&nbsp;% / 52&nbsp;% |
+| status filter | unknown | **the site publishes one** — `filter[active]` |
+| expiry read from | *«&nbsp;per advertisement&nbsp;»*, 12 570 fetches | **the listing card** |
+| why unmeasured | *«&nbsp;the budget&nbsp;»* | **the files were already on disk**, at 14&nbsp;% / 52&nbsp;% |
 
-**The reason matters more than the fact: nothing new was fetched.** *The three
-listings that answered the question had been fetched an hour earlier to count
-pages, and were sitting in the scratchpad while the card declared the question
-open.* **A held file answers no question you do not put to it** —
-`la-donnee-etait-la-la-question-manquait`, and this is the second instance.
-
-## What the listing actually gives
-
-```
-page 1      9 advertisements   0 expiry badges
-page 2      9 advertisements   0 expiry badges
-page 1397   8 advertisements   8 expiry badges     <- all of them
-```
-
-**Negative control, on the two advertisement pages** — the badge pattern must
-find nothing on a live advertisement and something on a dead one:
-
-```
-/en/jobs/accountant-80   published 2026-09-07   badge x0
-/en/jobs/carpenter       published 2019-11-17   badge x1
-```
-
-**So the listing is newest-first and carries the status itself.** *An adapter
-reads pages in order and stops at the first badge — about 12 pages for the 109
-active advertisements, not 1 397.* **That is a small adapter, and this card was
-wrong to imply otherwise.**
-
-**It is still not built.** *Anchors, not `ld+json` — there is no `JobPosting`
-anywhere on this site — and the four anchors have not been counted unique on
-three pages, which is what this repository requires of an HTML adapter before
-one is written.* **That is the remaining work, and it is measurement, not
-design.**
+**The three listings that answered it had been fetched an hour earlier to count
+pages, and were on disk while the card called the question open.** *Second
+instance of `la-donnee-etait-la-la-question-manquait`.*
 
 ## Access
 
-`mycareer.gov.mv` answers `read` and permits `/`, `/en/jobs`, `/en/jobs?page=N`
-and the advertisement paths — `allowed=True`, `certain=True`, group `*`,
-measured 2026-09-08. **`gov.mv` itself remains unreachable** — `allowed=None`,
-connection refused, and an indeterminate is not sounded.
+`mycareer.gov.mv` answers `read` and permits `/`, `/en/jobs`, the paginated and
+filtered forms, and the advertisement paths — `allowed=True`, `certain=True`,
+group `*`, measured 2026-09-08. **`gov.mv` itself is `unreachable`** —
+`allowed=None`, and an indeterminate is not sounded.
 
 ## What this card does not establish
 
-- **the 109 were not enumerated**, and no advertisement was counted as active
-  other than by the absence of an `Expired` marker on one page;
 - **nothing about the Dhivehi side** — `/dv` exists, permits, and was not read;
+- **the 109 were not reconciled with the 107**: whether the site's counter
+  double-counts the same pair, or counts something else, was not measured;
 - **nothing about `presidency.gov.mv`**, which answers `unrecognised` with
-  `certain=False`, and whose 2026-09-03 reading found no employment link.
+  `certain=False`.
