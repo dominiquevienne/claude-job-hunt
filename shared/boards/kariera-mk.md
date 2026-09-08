@@ -5,8 +5,8 @@
 <!-- hosts: kariera.mk -->
 <!-- script: none -->
 <!-- countries: MK -->
-<!-- content: measured · **at least 282** live advertisements — 282 cards on the front-page feed once exhausted (one click of `Вчитај уште огласи…`, 27 → 282 distinct `/job/` URLs, the control then disappears), each carrying a marker (260 `активен до` + 22 `плата од` = 282); the site declares FURTHER ads behind employer groupings whose semantics are unsettled, so 282 is a floor and not a total · 2026-09-08 -->
-<!-- witness: 282 advertisement cards, a floor; the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
+<!-- content: measured · **at least 391** live advertisements — 291 counted on the company pages of the 53 employers the feed names (all verified to name their employer, all HTTP 200) plus 100 feed cards carrying no employer grouping; the feed itself shows 282 cards and is a selection, so this remains a floor · 2026-09-08 -->
+<!-- witness: at least 391 live advertisements, counted through the company pages rather than the feed; the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
 
 **The apex is the only form measured.** `www.kariera.mk` serves the apex's
 rules and the guard reports it as such; this card claims nothing about that
@@ -126,32 +126,54 @@ their number as a word**, so a digit pattern never sees them at all — *this
 repository has paid for that one before, on six dead counters written
 `cent quatre-vingt-quatre`.*
 
-**The semantics are NOT settled, and the check ruled out both readings.**
-`+24 огласи` could mean *24 more* or *24 in total*, giving 508 or 326. Neither
-survives: **the employer declaring `+24` holds 5 cards in the feed, and its own
-company page carries 41 live advertisements** — all 41 naming that employer,
-all dated `активен до: 16.09.2026`, none of them a foreign block. *41 is
-neither 24 nor 29.* **So the grouping number is not the employer's live count,
-and it cannot be summed into a total by any reading.**
+**The semantics ARE settled, and the earlier reading on this card was wrong.**
+`+N огласи` means **N *other* advertisements**, so the employer's total is
+**N+1**. *Measured across the 53 employers the feed names, each counted on its
+own company page:* **40 of 53 satisfy `total = N+1` exactly**, one is equal to
+`N`, and twelve differ — ten of them by two or three ads **above** `N+1`, which
+is what a live board does between two reads, and two by falling to zero.
 
-### And the feed is a SELECTION, not the inventory
+### CORRECTION — "41 live advertisements" was my own over-count
 
-**One employer: 41 live advertisements, 5 of them in the exhausted feed.**
+**The previous version of this card said one employer held 41. It holds 25.**
 
-*That is the finding that matters more than the arithmetic.* **The front page
-is not a short version of the inventory — it is a choice of what to show**, and
-exhausting it exhausts the choice rather than the board. **282 is therefore a
-floor and a weak one**, and no multiplication of it is defensible either.
+```
+same bytes, 368 624 of them, one company page
+   25   literal occurrences of `активен до`   <- correct
+   41   my DOM walk over the same document    <- wrong
+```
 
-**The route to a real count is the company pages, not the feed.** `sitemap.xml`
-holds **6 229 `/company/` URLs**; each company page carries that employer's own
-live advertisements with the same markers. *That is a measurement of thousands
-of requests, and it is not made here* — but it is the shape a future count has
-to take on this host, and the feed is not.
+**The DOM walk took `closest('div,li,article')` as the card**, and that
+ancestor can hold several cards, so a card with no status line inherited a
+sibling's. *Two instruments on one document, and the disagreement was mine, not
+the site's.* **The literal count is the one that survives**, and `25` against a
+declared `+24` is what settled the semantics above.
 
-> **What is established: at least 282, and more than 282.** *What is not
-> established is how many more, and no number here should be quoted as the
-> inventory.*
+**The conclusion the wrong number was used for still stands.** *That employer
+shows **5** cards in the exhausted feed and holds **25**;* **the feed is a
+selection either way**, and 25 versus 5 says it as well as 41 did.
+
+### The floor, measured through a different door
+
+**53 of the 54 employers named by the feed were counted on their own company
+pages** — the 54th carries a Latin `È` that the transliteration did not match,
+and it contributes nothing. **All 53 answered HTTP 200, and each page was
+verified to name the employer it was fetched for.**
+
+```
+291   live advertisements across those 53 employers
+100   feed cards carrying NO grouping — employers with a single advertisement
+---
+391   a floor that does not come from counting the feed's cards
+```
+
+**Distribution across the 53: median 3, minimum 0, maximum 25, three zeros.**
+*Two employers declare a grouping and show none today, which a board that
+expires advertisements will do.*
+
+**This replaces `≥ 282` with `≥ 391`, and it is still a floor** — *the feed
+names only employers it chose to show, so every employer it never showed
+contributes zero to this sum and an unknown number to the board.*
 
 ### The archive is 17 604, and it answers a different question
 
