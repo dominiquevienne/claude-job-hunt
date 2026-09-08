@@ -652,7 +652,13 @@ tala-com.com 403 25 bytes  9ccabba20b9f4ec7d18bd6644579e5bf   <- 2026-09-07, roo
 ```
 
 **Five unrelated hosts, five countries, five operators, the same refusal to
-the byte** — `Your request was blocked.` The third and fourth were added the same day, both
+the byte** — `Your request was blocked.`
+
+> **2026-09-08: `api.jobs.af` joins the family, and it is not a board.** *It is
+> the JSON API behind `jobs.af`* — 403, 25 bytes, the same md5, read twice with
+> the same digest. **A refusal body shared between a job board's front door and
+> a bare API endpoint cannot be the operator's message about crawling**, which
+> is the strongest form this argument has taken so far. The third and fourth were added the same day, both
 with the two-fetch control already applied. **The fourth also corrected a
 claim that had been repeated rather than measured**: a country page recorded
 it as serving this body under HTTP *200*, which would have made it the one
