@@ -59,7 +59,8 @@ sys.path.insert(0, os.path.join(
 from _provenance import (record, rules_refusal, save,  # noqa: E402
                          transport_failure, vendor_headers)
 import _tls                           # noqa: E402
-from _robots import allowed, full_path, rules_fingerprint, verdict  # noqa: E402
+from _robots import (allowed, full_path, rules_fingerprint,  # noqa: E402
+                     verdict, wire_url)
 from _ua import UA                    # noqa: E402
 
 # **Three codes for three facts, and they are not interchangeable.** This
@@ -140,50 +141,10 @@ def shown_token():
     return m.group(1) if m else UA
 
 
-def wire_url(url):
-    """The address as it goes on the wire: percent-encoded where it must be.
-
-    **`urllib` encodes the request line as ASCII and raises on anything else**,
-    so a path carrying `ž`, `é` or `ñ` kills this tool before a single byte
-    leaves — no HTTP status, no provenance record, a traceback. Measured
-    2026-09-08 on `zaposli.me` (Montenegro): **368 of 423 advertisement URLs,
-    87 % of the board**, unreachable by the tool `CLAUDE.md` names as the only
-    way to fetch.
-
-    **This defect was already documented — on an adapter, not here.**
-    `skills/job-scan/scripts/adecco.py:100` carries the same function with the
-    same reason (*"`côtes-darmor`, `drôme` … urllib raises an ascii"*), written
-    five days earlier. **The fix went to the call site and the shared tool
-    never received it**, which is the shape `CLAUDE.md` prescribes writing a
-    guard against *in the same turn*: the second occurrence is not found by
-    re-reading, and this one was found by accident, by changing alphabet.
-
-    **It only acts when it must, and that is the whole safety argument.** An
-    ASCII path and query come back byte-identical, so nothing already working
-    can change. And because encoding produces ASCII, applying this twice is a
-    no-op — *measured on eight shapes rather than assumed.*
-
-    **`%` is left alone** (`safe` keeps it), so a URL already carrying `%20`
-    is not turned into `%2520`. *A first draft used `quote()` with its default
-    `safe`, which escapes `%`: it turned `%C5%BE` into `%25C5%25BE`. The
-    session that wrote it had told two peers that "quote does not touch `%`" —
-    it does, and the bench said so before the claim reached the code.*
-
-    **What this deliberately does NOT change**: the guard above is still taken
-    on the path as given, not on the encoded form. RFC 9309 matches rules
-    against the encoded path, so the two can differ on a host that disallows a
-    non-ASCII prefix. *No such host is held here today, and settling it is a
-    second change that does not belong in a crash fix.*
-    """
-    parts = urllib.parse.urlsplit(url)
-    if parts.path.isascii() and parts.query.isascii():
-        return url
-    path = (parts.path if parts.path.isascii()
-            else urllib.parse.quote(parts.path, safe="/%"))
-    query = (parts.query if parts.query.isascii()
-             else urllib.parse.quote(parts.query, safe="=&%"))
-    return urllib.parse.urlunsplit(
-        (parts.scheme, parts.netloc, path, query, parts.fragment))
+# **`wire_url` vit desormais dans `_robots`**, avec `full_path`, parce qu'elle a
+# ete ecrite trois fois : ici, dans `adecco.py` cinq jours plus tot, et dans
+# l'adaptateur du board qui l'a fait decouvrir. **99 adaptateurs construisent
+# leur propre `Request`** et ne recevaient rien d'un correctif pose ici.
 
 
 def main():

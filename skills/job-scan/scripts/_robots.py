@@ -314,6 +314,46 @@ _TIMEOUTS = (15, 25, 40)
 _BACKOFF = (1.5, 4.0)
 
 
+def wire_url(url):
+    """The address as it goes on the wire: percent-encoded where it must be.
+
+    **`urllib` encodes the request line as ASCII and raises on anything else**,
+    so a path carrying `ž`, `é` or `ñ` kills the caller before a byte leaves —
+    no HTTP status, no record, a traceback.
+
+    **This lives here because it has now been written THREE times.**
+    `adecco.py:100` carried it from 2026-09-03 (*"`côtes-darmor`, `drôme`"*);
+    `bin/fetch-body.py` got it on 2026-09-08 after 368 of 423 Montenegrin
+    advertisements — 87 % of a board — proved unreachable; and the adapter
+    written for that same board hit it again an hour later, because **99
+    adapters build their own `urllib.request.Request`**. *A fix at the call
+    site does not reach the next call site, and the next one is not found by
+    re-reading.*
+
+    **It only acts when it must.** An ASCII path and query come back
+    byte-identical, so nothing already working can change — and because
+    encoding produces ASCII, applying it twice is a no-op.
+
+    **`%` is kept in `safe`**: a first draft used `quote()`'s default, which
+    escapes `%` and turned `%C5%BE` into `%25C5%25BE`. *The bench said so
+    before the claim reached the code.*
+
+    And a purely ASCII address is returned **unchanged rather than rebuilt**,
+    because a `urlsplit`/`urlunsplit` round trip drops a trailing empty `?` or
+    `#`. *Found by mutation: without that early return every other case stayed
+    green, since the inner conditions already spare an ascii path.*
+    """
+    parts = urllib.parse.urlsplit(url)
+    if parts.path.isascii() and parts.query.isascii():
+        return url
+    path = (parts.path if parts.path.isascii()
+            else urllib.parse.quote(parts.path, safe="/%"))
+    query = (parts.query if parts.query.isascii()
+             else urllib.parse.quote(parts.query, safe="=&%"))
+    return urllib.parse.urlunsplit(
+        (parts.scheme, parts.netloc, path, query, parts.fragment))
+
+
 def full_path(parts):
     """The path **and its query**, as the rules see it.
 

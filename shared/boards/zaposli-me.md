@@ -1,16 +1,18 @@
-# Assessed, adapter not built — Zaposli.ME (Montenegro)
+# Board adapter — Zaposli.ME (Montenegro)
 
 <!-- verified: 2026-09-08 -->
 
 <!-- hosts: zaposli.me -->
-<!-- script: none -->
+<!-- host-forms: zaposli.me -->
+<!-- host-forms-basis: read — `zaposli.py:BASE` is a literal; `www.zaposli.me` answers under the bare name · 2026-09-08 -->
+<!-- script: zaposli.py -->
 <!-- countries: ME -->
 <!-- content: measured · 423 advertisements under `/posao/` in `sitemap/oglasi.xml`, raw 423 / distinct 423, 0 duplicates; the sibling `pretrage.xml` holds 311 facet URLs and is set aside; 0 `JobPosting` on 4 of 4 advertisements read · 2026-09-08 -->
 <!-- witness: served by the site — its own listing states «&nbsp;Svi poslovi (423)&nbsp;» against 423 in the sitemap, agreeing to the unit. **Both numbers come from the same host**, so this corroborates the site with itself, not the count with a second source · 2026-09-08 -->
 <!-- hosts-source: named rank 9 of Montenegro by the country page of 2026-09-04, which recorded 433 then · 2026-09-08 -->
 
-**Montenegro's larger of two current stocks. Open, countable, and it publishes
-no structured job data — so this card measures it and stops there.**
+**Montenegro's larger of two current stocks, and the first board here read
+without `ld+json` since `ofertapune`.**
 
 ## The path sorts, and here the explicit word is on the WRONG side
 
@@ -80,11 +82,38 @@ they are `Organization` and `WebSite`.*
 Gora&nbsp;» and the deadline all sit in plain text — **and parse Montenegrin
 month names**: `januar … avgust, septembar … decembar`.
 
-**It is not built tonight, and that is a budget decision rather than a
-verdict.** *`ofertapune` is the precedent for reading a board from class names
-and its narrow motif cost 481 unreadable of 481; doing this one properly needs a
-negative control printed line by line, and that is a session's work rather than
-an hour's.*
+### Four anchors, counted before they were trusted
+
+```
+title      <h1 class="… fw-semi-bold …">      the SECOND h1 on the page
+town       the span after `mdi-location-enter`
+deadline   the span after `mdi-calendar`
+employer   <h4 class="… mb-1 …">
+```
+
+**Each was counted on three advertisements first: exactly one match each, on
+all three.**
+
+> **The first `<h1>` is the page banner — «&nbsp;Oglasi za posao&nbsp;» —
+> identical on every advertisement.** *An extractor anchored on "the h1"
+> returns the banner 423 times and looks like a working adapter.*
+
+**The twelve Montenegrin months are exercised, and five non-dates must return
+`None`** — *`ihararejobs` showed that four abbreviations carry a full stop and
+one is four letters long, and a `%b` parse read none of its last six months.*
+
+**And the negative control is PRINTED, not swallowed.** *`ofertapune` cost 481
+unreadable of 481 to a motif too narrow and it was seen only because the guard
+printed what it could not read.* **With no structured data there is no safe
+silence: every advertisement missing a field is named on stderr with the field,
+and the line prints whether or not anything failed.**
+
+### `--since` is answered from the listing, and this is the only board of seven
+
+**The sitemap date is per-advertisement here, and never LATER than the date the
+site shows.** *So the filter keeps an advertisement the site would date later
+and never drops one it would date earlier — that asymmetry is the whole reason
+it is safe without `--fetch`.*
 
 ## Access
 

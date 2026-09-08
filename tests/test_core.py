@@ -8345,6 +8345,42 @@ class TheFetcherEncodesWhatUrllibCannotSend(unittest.TestCase):
                       "fetcher has one now, but this adapter builds its URLs "
                       "before handing them over")
 
+    def test_the_encoder_lives_in_the_shared_module(self):
+        """**Written three times before it was put where callers can reach
+        it.** `adecco.py` 2026-09-03, `bin/fetch-body.py` 2026-09-08, and the
+        adapter for the very board that exposed it an hour later — because
+        **99 adapters build their own `urllib.request.Request`** and a fix at
+        one call site reaches none of the others.
+
+        *This asserts the home, not the copies: if `wire_url` moves back into a
+        single script, the next adapter inherits nothing again.*
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "scripts",
+                               "_robots.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("def wire_url(", src,
+                      "`wire_url` has left `_robots.py`; adapters import "
+                      "`full_path` from there and would stop reaching it")
+
+    def test_an_adapter_that_builds_its_own_request_uses_it(self):
+        """**The wiring on the adapter side.** `zaposli.py` is the board that
+        exposed the defect and the first adapter written after the fix; it hit
+        the same traceback because it builds its own `Request`.
+
+        *One adapter is asserted, not ninety-nine. The other ninety-eight are a
+        campaign this guard deliberately does not pretend to have run — and
+        saying so is the point, because a guard that claimed them all would
+        read green over ninety-eight unfixed call sites.*
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-scan", "scripts",
+                               "zaposli.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("Request(wire_url(url)", src,
+                      "zaposli.py builds its Request from the raw URL again; "
+                      "368 of its 423 addresses carry non-ASCII")
+
     def test_the_fetcher_sends_the_encoded_form_and_not_the_raw_one(self):
         """**The wiring, not only the arithmetic.** A perfect `wire_url` that
         nothing calls is the defect this repository names as *câblé jusqu'au
