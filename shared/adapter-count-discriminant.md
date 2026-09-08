@@ -182,3 +182,82 @@ question, and it has been asked of ONE of them.* **The column should be read as
 "has an anchor", never as "the anchor answers the question".**
 
 *Asking it of the other nineteen is one exercise each, and it is not done here.*
+
+---
+
+# THE FOUR CASES — 2026-09-08, and only three of them have members
+
+**The re-pass asked for every adapter in one of four boxes.** *Three are
+measured and named; the fourth is a residue and this file does not pretend
+otherwise.*
+
+## The population, and why four counts all differ without contradicting
+
+```
+111  cards carrying `<!-- script: *.py -->`      one per card
+104  DISTINCT scripts so declared                 <- the denominator used here
+110  .py on disk, `_`-prefixed modules excluded
+  0  declared by a card and absent from disk
+```
+
+**111 − 104 = 7, and it is two scripts declared by several cards**: `ats.py` by
+seven (ashby, greenhouse, join, lever, smartrecruiters, teamtailor, workable)
+and `jobup.py` by two (jobs-ch, jobup). *6 + 1 = 7.* **110 − 104 = 6**, the
+pipeline tools no card declares — `achievements`, `board_offer`, `dormant`,
+`employers`, `ledger`, `tenant_offer`.
+
+## Case 3 — the anchor is PRESENT and ANNULLED on the zero path
+
+**Six, all found and all repaired.** *This is the case the first audit could not
+see at all: an anchor destroyed on its own path reads, in a scan, exactly like
+an anchor.*
+
+```
+ihararejobs  ejobsfiji  myjobsfiji     ZeroDivisionError — ratio over the count
+careerical-sl  emploiscongo  jobwebrwanda   ValueError — max() over the empty
+                                            extraction, jobwebrwanda before any
+                                            figure was printed at all
+```
+
+## Case 4 — the guard RAISES instead of guarding
+
+**One, and it was mine.** *The first `emploitic` guard referenced `EXIT_PARTIAL`
+in a module that did not define it, so it raised `NameError` on exactly the path
+it was written for.* **Checked by AST across all 104: no other module references
+an `EXIT_` constant it does not define.** *By AST and not by grep — a missing
+name reads exactly like a name that exists.*
+
+## Case 2 — the anchor is present
+
+**Twenty from the first audit, plus five established since by reading**:
+`cubisima` (its envelope emits the site's own `searchAnuncios` size beside the
+returned count, and dies if the array is missing), and the six of case 3 once
+repaired.
+
+## Case 1 — the anchor is absent
+
+**NOT ESTABLISHED, and this is the honest state of the re-pass.** *It is the
+residue of 104 minus the cases above, and a residue is not a measurement.*
+
+### Why no number is offered for it
+
+**A static scan on these forms returns a LIST OF CANDIDATES, never a count.**
+
+```
+26  first scan, "operations that fail on empty"
+45  after a "refinement"        <- WORSE
+ 3  after reading all eight surviving candidates
+```
+
+**A refinement that makes the result grow is not a refinement**: it says the
+added pattern does not belong to the class. *Adding `[0]` flooded it —
+`r[0]`, `parts[0]`, `kv[0]` are tuples, `split()` results and regex groups,
+and the safe uses outnumber the dangerous ones by an order of magnitude.* And
+four survivors were guarded by a conditional expression no AST walk of mine
+recognised: `max(n) if n else None`, `min(cuts)` inside `if cuts:`.
+
+> **Published without reading, this scan says 26 or 45. The true figure was 3.**
+
+*The same applies to case 1: an adapter prints many numbers, and deciding
+whether any of them comes from outside its own extraction is a reading, not a
+match.*
