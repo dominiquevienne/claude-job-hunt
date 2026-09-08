@@ -5,8 +5,8 @@
 <!-- hosts: kariera.mk -->
 <!-- script: none -->
 <!-- countries: MK -->
-<!-- content: measured · 282 live advertisements on the front-page feed once exhausted (one click of `Вчитај уште огласи…`, 27 → 282 distinct `/job/` URLs, the control then disappears); every one of the 282 carries a card marker, 260 `активен до` + 22 `плата од` = 282; read in a browser because the HTTP route answers 403 · 2026-09-08 -->
-<!-- witness: 282 live advertisements, and the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
+<!-- content: measured · **at least 282** live advertisements — 282 cards on the front-page feed once exhausted (one click of `Вчитај уште огласи…`, 27 → 282 distinct `/job/` URLs, the control then disappears), each carrying a marker (260 `активен до` + 22 `плата од` = 282); the site declares FURTHER ads behind employer groupings whose semantics are unsettled, so 282 is a floor and not a total · 2026-09-08 -->
+<!-- witness: 282 advertisement cards, a floor; the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
 
 **The apex is the only form measured.** `www.kariera.mk` serves the apex's
 rules and the guard reports it as such; this card claims nothing about that
@@ -105,6 +105,37 @@ claims 228, which is more.** *A city page that stops at exactly 200 is a
 rendering cap, and a cap cannot be read as a count* — the same shape as the
 1 000-at-the-first-file trap this repository has already paid for.
 
+### 282 is a FLOOR — the site declares ads the feed does not show
+
+**Cards carry an employer grouping**, `+21 огласи` or `+ еден оглас`, so one
+card can stand for several advertisements. *That makes 282 a count of cards
+and a lower bound on advertisements, not the inventory.*
+
+```
+282 cards, of which 182 carry a grouping
+ 54 distinct employers carry one
+968 = naive sum of the 138 digit groupings   <- WRONG, employers repeat
+ 44 groupings spelled "+ еден оглас"          <- a number written in WORDS
+226 = the same, deduplicated by employer
+```
+
+**The naive sum is wrong in the way that looks right.** `+21 огласи` appears on
+three separate cards because one employer holds three of the feed's slots;
+adding them counts that employer three times. **And 44 of the groupings write
+their number as a word**, so a digit pattern never sees them at all — *this
+repository has paid for that one before, on six dead counters written
+`cent quatre-vingt-quatre`.*
+
+**The semantics are NOT settled, and I am not guessing them.** `+24 огласи`
+could mean *24 more* or *24 in total*, which give 508 and 326 for the same
+site. The check did not resolve it: **the employer declaring 24 holds 5 cards
+in the feed, and its own company page yields 41 marked ads** — a third number,
+and that page carries unrelated blocks the way the Bitola page does.
+
+> **What is established: at least 282, and more than 282.** *What is not
+> established is how many more, and no number here should be quoted as the
+> inventory.*
+
 ### The archive is 17 604, and it answers a different question
 
 `sitemap.xml` — **refused to our HTTP client, HTTP 200 and 8 447 801 bytes to
@@ -133,7 +164,20 @@ count of nothing.**
 browser, which is what `job-scan` already drives; this card records the recipe
 and the numbers, not a Python adapter.
 
-**North Macedonia is no longer at zero *reachable* inventory** — 282
-advertisements are readable today by the route this repository already owns.
+**North Macedonia is no longer at zero *reachable* inventory** — at least
+282 advertisements are readable today by the route this repository already
+owns.
+
+**And this card is nude at the list level, by its own admission.** *Every
+number above except the groupings comes from one reader of mine: if my
+extraction stopped working, 282 and 0 would be two outputs of the same
+instrument and nothing here would tell them apart.* **The site states no total
+of its own that I could find** — no result counter, no declared pagination —
+*and the employer groupings, which are the one figure the site does state, do
+not have settled semantics.* **That is a named gap, not an oversight**, and it
+is what #181 asks a card to say out loud.
+
+*The ad pages carry no `JobPosting` markup at all — `ld+json` count 0 — so
+there is no structured second reading available on this host either.*
 *A second Macedonian board is named in the coverage queue and is still not
 measured here.*
