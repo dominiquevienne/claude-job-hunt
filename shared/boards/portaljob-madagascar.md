@@ -183,7 +183,30 @@ absent signal «&nbsp;neither grants nor restricts&nbsp;». *`ai-train=no` does 
 describe what this plugin does.* **So nothing here forbids the reading — on
 this host.**
 
-**But `_robots.py` recognises `Content-Signal` only as evidence that a body IS
-a rules file; it never acts on it**, and its own docstring says `ai-input=no`
-«&nbsp;is a tenant asking not to be read into an AI system — which is what this
-plugin does&nbsp;». *That gap is general and not this card's to close.*
+### A correction, made before this card was an hour old
+
+**This card first said `_robots.py` recognises `Content-Signal` and never acts
+on it. That is false**, and it was published here and reported to the pilot
+before being checked.
+
+```
+verdict()   collects every Content-Signal line
+            flags content_signal_conflict when they disagree
+            searches for ai-input=no  ->  sweep = False, with a reason
+            "a refusal in any of them is a refusal, because no convention
+             says which wins"
+ignored_for()  excludes content-signal deliberately — because verdict() reads it
+```
+
+**The module handles the directive, and handles it conservatively.** *So there
+is no gap here to name, and no tension between the docstring and the code: the
+docstring says `ai-input=no` is an operator asking not to be read into an AI
+system, and the module refuses on exactly that.*
+
+**How the false claim was made:** *a `grep` for `content-signal` returned the
+`_DIRECTIVE` regex and the module docstring, and I read that list as the whole
+treatment.* **A grep finds where a name appears, not what a program does with
+it** — `verdict()` is 344 lines and the handling is inside it.
+
+*What remains true of this host: `ai-input` is absent from its signal, so
+nothing in it forbids the reading.*
