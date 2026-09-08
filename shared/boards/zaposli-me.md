@@ -7,6 +7,7 @@
 <!-- host-forms-basis: read — `zaposli.py:BASE` is a literal; `www.zaposli.me` answers under the bare name · 2026-09-08 -->
 <!-- script: zaposli.py -->
 <!-- countries: ME -->
+<!-- overlap: prekoveze-me.md · 37 advertisements share an employer AND a title slug; zaposli holds 423 and prekoveze 243 · 2026-09-08 -->
 <!-- content: measured · 423 advertisements under `/posao/` in `sitemap/oglasi.xml`, raw 423 / distinct 423, 0 duplicates; the sibling `pretrage.xml` holds 311 facet URLs and is set aside; 0 `JobPosting` on 4 of 4 advertisements read · 2026-09-08 -->
 <!-- witness: served by the site — its own listing states «&nbsp;Svi poslovi (423)&nbsp;» against 423 in the sitemap, agreeing to the unit. **Both numbers come from the same host**, so this corroborates the site with itself, not the count with a second source · 2026-09-08 -->
 <!-- hosts-source: named rank 9 of Montenegro by the country page of 2026-09-04, which recorded 433 then · 2026-09-08 -->
