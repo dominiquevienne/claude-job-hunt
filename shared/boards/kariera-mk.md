@@ -126,11 +126,28 @@ their number as a word**, so a digit pattern never sees them at all — *this
 repository has paid for that one before, on six dead counters written
 `cent quatre-vingt-quatre`.*
 
-**The semantics are NOT settled, and I am not guessing them.** `+24 огласи`
-could mean *24 more* or *24 in total*, which give 508 and 326 for the same
-site. The check did not resolve it: **the employer declaring 24 holds 5 cards
-in the feed, and its own company page yields 41 marked ads** — a third number,
-and that page carries unrelated blocks the way the Bitola page does.
+**The semantics are NOT settled, and the check ruled out both readings.**
+`+24 огласи` could mean *24 more* or *24 in total*, giving 508 or 326. Neither
+survives: **the employer declaring `+24` holds 5 cards in the feed, and its own
+company page carries 41 live advertisements** — all 41 naming that employer,
+all dated `активен до: 16.09.2026`, none of them a foreign block. *41 is
+neither 24 nor 29.* **So the grouping number is not the employer's live count,
+and it cannot be summed into a total by any reading.**
+
+### And the feed is a SELECTION, not the inventory
+
+**One employer: 41 live advertisements, 5 of them in the exhausted feed.**
+
+*That is the finding that matters more than the arithmetic.* **The front page
+is not a short version of the inventory — it is a choice of what to show**, and
+exhausting it exhausts the choice rather than the board. **282 is therefore a
+floor and a weak one**, and no multiplication of it is defensible either.
+
+**The route to a real count is the company pages, not the feed.** `sitemap.xml`
+holds **6 229 `/company/` URLs**; each company page carries that employer's own
+live advertisements with the same markers. *That is a measurement of thousands
+of requests, and it is not made here* — but it is the shape a future count has
+to take on this host, and the feed is not.
 
 > **What is established: at least 282, and more than 282.** *What is not
 > established is how many more, and no number here should be quoted as the
