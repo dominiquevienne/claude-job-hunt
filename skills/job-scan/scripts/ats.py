@@ -115,9 +115,23 @@ def fetch(url):
     # read *every SmartRecruiters request goes through here* and was true; the
     # narrow framing is what left the other four providers unasked. Issue #121
     # put the override here; #175 put the guard here.
+    # **#185, decision A of the repository's owner, 2026-09-08: the override
+    # is honoured — and only here.** Until now `smartrecruiters_gate()` printed
+    # «&nbsp;override ACTIVE&nbsp;» and `gate()` killed the request on the next
+    # line, so the flag changed nothing observable: same zero, same exit 7, with
+    # and without. *#121 put the override at this choke point and #175 put the
+    # guard at the same one; each did what its issue asked, and their
+    # composition was false.*
+    #
+    # **The waiver is bounded by construction, not by care**: `waived` can only
+    # become true inside `url.startswith(SR_API)`, so no other host can reach
+    # it however this function is edited. The #175 guard is untouched for every
+    # other URL, which is the whole point of it sitting here.
+    waived = False
     if url.startswith(SR_API):
-        smartrecruiters_gate()
-    gate(url)
+        waived = smartrecruiters_gate()
+    if not waived:
+        gate(url)
     # **The guard first, the rate second.** `api.lever.co` asks for
     # `Crawl-delay: 1` and this script slept never. Waiting before knowing
     # whether we may ask at all would spend the delay on a request that is
@@ -341,7 +355,7 @@ def smartrecruiters_gate(a=None):
     global _SR_ANNOUNCED
     v = robots_verdict(SR_HOST)
     if v["sweep"]:
-        return                      # nothing to override; say nothing
+        return False                # nothing to override; say nothing
     allowed = _SR_OVERRIDE or getattr(a, "override_robots", False)
     if not allowed:
         die(f"{SR_HOST}: {v['reason']}\n"
@@ -358,7 +372,7 @@ def smartrecruiters_gate(a=None):
     # reminded of is an override nobody consented to twice. Once per run, not
     # once per request — a line repeated 103 times is noise, not consent.
     if _SR_ANNOUNCED:
-        return
+        return True
     _SR_ANNOUNCED = True
     print(f"[smartrecruiters] robots.txt override ACTIVE — {SR_HOST} "
           f"disallows everything to all agents but LinkedInBot. **You "
@@ -366,6 +380,7 @@ def smartrecruiters_gate(a=None):
           f"request at a time, and this run stops on the first block rather "
           f"than retrying. See shared/robots-policy.md and "
           f"shared/boards/smartrecruiters.md.", file=sys.stderr)
+    return True
 
 
 def smartrecruiters_list(tenant, _want_content=True, a=None):

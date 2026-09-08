@@ -229,9 +229,32 @@ The operator supports a key without requiring it on this path. Taking one would
 make the read attributable, at the cost of a credential to obtain and store.
 **Not taken, for simplicity** — recorded so the choice stays visible.
 
-**Re-exercised 2026-09-08**: `list --provider smartrecruiters --tenant ubisoft`
-**exits 7**. `api.smartrecruiters.com` publishes `User-agent: * / Disallow: /` —
-everything closed, evenly — so the board is skipped rather than silently obeyed.
-*Reading it needs an explicit override in `config.yml`, and what that costs is
-the user's own address.* **It does not generalise**: Greenhouse, Workable and
-Lever publish files of the same kind that permit.
+**Re-exercised 2026-09-08**: without the override, `list --provider
+smartrecruiters` **exits 7**. `api.smartrecruiters.com` publishes
+`User-agent: * / Disallow: /` — everything closed, evenly — so the board is
+skipped rather than silently obeyed. **It does not generalise**: Greenhouse,
+Workable and Lever publish files of the same kind that permit.
+
+### The override was a dead switch until 2026-09-08, and now it is not — #185
+
+**It printed «&nbsp;override ACTIVE&nbsp;» and the guard on the next line killed
+the request.** *Same zero, same exit 7, with the flag and without.* **#121 put
+the override at `fetch()`'s choke point and #175 put the generic guard at the
+same one**; each did what its issue asked, and their composition was false.
+
+**Decision A of the repository's owner: honour the override.** Measured after:
+
+```
+list --provider smartrecruiters --tenant Evooq                     exit 7,  0 postings
+list --provider smartrecruiters --tenant Evooq --override-robots   exit 0,  8 postings
+```
+
+> **The waiver is bounded by construction, not by care**: it can only be set
+> inside `url.startswith(SR_API)`, so no other host reaches it however
+> `fetch()` is later edited. **The #175 guard is untouched everywhere else**,
+> and a test asserts that for Ashby, Greenhouse and Lever by name.
+
+*A test that checks `smartrecruiters_gate()` is called stays green on the old
+defect — it was called. What was missing is a test of the composition, and the
+general form is: **wherever a choke point carries more than one guard, exercise
+their composition rather than each in isolation.***

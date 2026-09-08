@@ -9290,6 +9290,102 @@ class EveryEmittedPrefixNamesABoardThisRepositoryKnows(unittest.TestCase):
         self.assertGreaterEqual(len(self.emitted()), 3)
 
 
+class TheOverrideChangesSomethingObservable(unittest.TestCase):
+    """**#185, decision A, 2026-09-08.** `--override-robots` printed
+    «&nbsp;override ACTIVE&nbsp;» and the next line killed the request: same
+    zero, same exit 7, with the flag and without. *#121 put the override at
+    `fetch()`'s choke point; #175 put the generic guard at the same one. Each
+    did what its issue asked, and their composition was false.*
+
+    **A test asserting that `smartrecruiters_gate()` is called stays green on
+    that defect — it is called.** What was missing is a test of the
+    COMPOSITION: the flag must change an observable, and the #175 guard must
+    still run for every other host.
+
+    > **Wherever a choke point carries more than one guard, it is their
+    > composition that has to be exercised, not each in isolation.**
+    """
+
+    def _ats(self):
+        spec = importlib.util.spec_from_file_location(
+            "_ats185", os.path.join(SCRIPTS, "ats.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _spy(self, mod, sr_returns):
+        """`fetch` with the network and the pace removed, recording who ran.
+
+        **`urllib.request` is a shared module object**: assigning
+        `mod.urllib.request.urlopen` patches it for the whole process, and the
+        first version of this class did exactly that — another test class three
+        thousand lines away began erroring on a real host. *A stub that escapes
+        its test is a defect the test suite reports somewhere else.* The
+        original is restored on cleanup, and `json.load` with it.
+        """
+        seen = []
+        mod.gate = lambda url: seen.append(url)
+        mod.smartrecruiters_gate = lambda *a, **k: sr_returns
+
+        class _NoPace:
+            def wait(self):
+                return None
+        mod.pace_for = lambda host: _NoPace()
+
+        real_open = mod.urllib.request.urlopen
+        real_load = mod.json.load
+        self.addCleanup(setattr, mod.urllib.request, "urlopen", real_open)
+        self.addCleanup(setattr, mod.json, "load", real_load)
+        mod.urllib.request.urlopen = lambda *a, **k: io.StringIO("{}")
+        mod.json.load = lambda f: {}
+        return seen
+
+    def test_the_waiver_skips_the_generic_guard_only_when_it_carries(self):
+        mod = self._ats()
+        seen = self._spy(mod, True)
+        mod.fetch(mod.SR_API + "/acme/postings")
+        self.assertEqual(seen, [], "the override carried this request, so the "
+                                   "generic guard must not also refuse it")
+
+    def test_without_the_waiver_the_generic_guard_still_runs(self):
+        """**The direction that keeps decision A honest.** No flag, no waiver."""
+        mod = self._ats()
+        seen = self._spy(mod, False)
+        mod.fetch(mod.SR_API + "/acme/postings")
+        self.assertEqual(len(seen), 1)
+
+    def test_issue_175_is_untouched_for_every_other_host(self):
+        """**The assertion that must never be relaxed.** Even with the override
+        globally on, a non-SmartRecruiters URL goes through the #175 guard —
+        and it does so by construction: `waived` can only be set inside
+        `url.startswith(SR_API)`."""
+        mod = self._ats()
+        mod._SR_OVERRIDE = True
+        seen = self._spy(mod, True)
+        for url in ("https://api.ashbyhq.com/posting-api/job-board/x",
+                    "https://boards-api.greenhouse.io/v1/boards/x/jobs",
+                    "https://api.lever.co/v0/postings/x"):
+            with self.subTest(url=url):
+                seen.clear()
+                mod.fetch(url)
+                self.assertEqual(seen, [url], "the #175 guard must run for "
+                                              "every host that is not the "
+                                              "SmartRecruiters API")
+
+    def test_the_waiver_cannot_be_reached_from_another_host(self):
+        """**Bounded by construction, not by care.** The only assignment that
+        can make `waived` true sits inside the SmartRecruiters branch."""
+        with open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        body = src.split("def fetch(url):", 1)[1].split("\ndef ", 1)[0]
+        assigns = re.findall(r"^\s*waived = (.+)$", body, re.M)
+        self.assertEqual(len(assigns), 2, assigns)
+        self.assertEqual(assigns[0].strip(), "False")
+        self.assertIn("smartrecruiters_gate", assigns[1])
+        guard = re.search(r"if url\.startswith\(SR_API\):\n(\s+)waived = ", body)
+        self.assertIsNotNone(guard, "the waiver left the SmartRecruiters branch")
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none
