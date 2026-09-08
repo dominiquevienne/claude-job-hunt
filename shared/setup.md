@@ -1092,11 +1092,25 @@ boards:
 — `never-fail-silently.md`. That is what `ats.py` does: exit 7, naming the
 rule, saying the key is missing and what it would cost.
 
-**And the run says it out loud, once, every time:**
+**And the run says it out loud, once, every time the guard is actually
+bypassed:**
 
-> `[smartrecruiters] robots.txt override ACTIVE — api.smartrecruiters.com
-> disallows everything to all agents but LinkedInBot. You enabled this, and
-> the address that gets blocked is yours.`
+> `[bypass] robots.txt guard BYPASSED for api.smartrecruiters.com/v1/companies/…
+> — api.smartrecruiters.com disallows everything to all agents but LinkedInBot,
+> and this run is reading it anyway. You enabled this, and the address that
+> gets blocked is yours, not this project's. To stop: remove
+> `boards.smartrecruiters.override_robots` from config.yml, or drop
+> `--override-robots`.`
+
+**The line is printed by the code that performs the bypass, not by the code
+that decides it — #187, 2026-09-08.** *Until then the banner was printed one
+line before a second guard refused the request anyway: it said `ACTIVE` about
+an override that changed nothing (#185).* **An announcement emitted away from
+its act is a statement about an intention, not about a fact.**
+
+**Nothing is printed when nothing is bypassed** — not on a host that permits,
+and not when the key is absent. *A banner that prints on every run stops being
+read.*
 
 ## 6 — Thresholds and document preferences
 

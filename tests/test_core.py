@@ -9386,6 +9386,97 @@ class TheOverrideChangesSomethingObservable(unittest.TestCase):
         self.assertIsNotNone(guard, "the waiver left the SmartRecruiters branch")
 
 
+class ABypassAnnouncesItselfWhereItHappens(unittest.TestCase):
+    r"""**#187, 2026-09-08.** The banner was printed by the code that DECIDED
+    the override was on, one line before the generic guard refused the request
+    anyway. *The announcement and the act had separated, and no test
+    reddened* — which is how #185 lived.
+
+    > **An announcement emitted away from its act is a statement about an
+    > intention, not about a fact.**
+
+    *This repository's rule that a check goes in the same command as the act,
+    applied to the announcement rather than to the check.*
+
+    **And the second half matters as much: nothing is announced when nothing is
+    bypassed.** A banner that prints on every run stops being read, and a
+    banner nobody reads is no better than one that lied.
+    """
+
+    def _ats(self):
+        spec = importlib.util.spec_from_file_location(
+            "_ats187", os.path.join(SCRIPTS, "ats.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _run(self, mod, sr_returns, url):
+        """`fetch` with network and pace removed; returns what was announced."""
+        said = []
+        mod.gate = lambda u: None
+        mod.smartrecruiters_gate = lambda *a, **k: sr_returns
+
+        class _NoPace:
+            def wait(self):
+                return None
+        mod.pace_for = lambda host: _NoPace()
+        real_open, real_load = mod.urllib.request.urlopen, mod.json.load
+        real_print = mod.print if hasattr(mod, "print") else None
+        self.addCleanup(setattr, mod.urllib.request, "urlopen", real_open)
+        self.addCleanup(setattr, mod.json, "load", real_load)
+        mod.urllib.request.urlopen = lambda *a, **k: io.StringIO("{}")
+        mod.json.load = lambda f: {}
+        buf = io.StringIO()
+        real_stderr, sys.stderr = sys.stderr, buf
+        try:
+            mod.fetch(url)
+        finally:
+            sys.stderr = real_stderr
+        said.append(buf.getvalue())
+        del real_print
+        return said[0]
+
+    def test_a_bypass_says_so(self):
+        mod = self._ats()
+        out = self._run(mod, True, mod.SR_API + "/acme/postings")
+        self.assertIn("BYPASSED", out)
+        for owed in ("api.smartrecruiters.com", "address that gets blocked",
+                     "override_robots"):
+            with self.subTest(owed=owed):
+                self.assertIn(owed, out, "the announcement must name the host, "
+                                         "the cost and how to undo it")
+
+    def test_nothing_is_announced_when_nothing_is_bypassed(self):
+        """**The half that keeps the banner worth reading.**"""
+        mod = self._ats()
+        self.assertEqual(self._run(mod, False, mod.SR_API + "/acme/postings"),
+                         "")
+        mod2 = self._ats()
+        self.assertEqual(self._run(mod2, False, "https://api.lever.co/v0/x"),
+                         "")
+
+    def test_it_is_said_once_a_run_and_not_once_a_request(self):
+        mod = self._ats()
+        first = self._run(mod, True, mod.SR_API + "/acme/postings")
+        second = self._run(mod, True, mod.SR_API + "/acme/postings?page=2")
+        self.assertIn("BYPASSED", first)
+        self.assertEqual(second, "", "a line repeated once a request is noise, "
+                                     "not consent")
+
+    def test_the_deciding_function_does_not_announce(self):
+        """**The structural half of #187.** `smartrecruiters_gate()` decides;
+        it must not print, or the two can separate again."""
+        with open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        body = src.split("def smartrecruiters_gate(", 1)[1].split("\ndef ", 1)[0]
+        stray = [ln.strip() for ln in body.splitlines()
+                 if re.match(r"\s*print\(", ln)]
+        self.assertEqual(stray, [], "the function that decides must not "
+                                    "announce: " + "; ".join(stray))
+        fetch = src.split("def fetch(url):", 1)[1].split("\ndef ", 1)[0]
+        self.assertIn("announce_bypass(url)", fetch)
+
+
 class ACardDatesItself(unittest.TestCase):
     """`platsbanken.md` carried no `verified:` line, so **the date of its
     figure lived only in prose** — five occurrences of 2026-09-01, none

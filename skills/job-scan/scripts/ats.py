@@ -110,6 +110,37 @@ def gate(url):
         die(f"{url}: {a['reason']}", 7)
 
 
+def announce_bypass(url):
+    """Say, on the run's own output, that a guard is being bypassed — #187.
+
+    **Called from `fetch()` at the point where the bypass happens, and only
+    when it happens.** *The banner used to be printed by the code that DECIDED
+    the override was on, one line before the generic guard refused the request
+    anyway (#185): the announcement and the act had separated, and no test
+    reddened.* **This repository's rule that a check goes in the same command
+    as the act, applied to the announcement instead of the check.**
+
+    Once per run, not once per request: a line repeated 103 times is noise
+    rather than consent. The wording names the guard, the host and path, what
+    it costs the user, and how to turn it off — all four, because an override
+    the user cannot undo from the message is one they did not really choose.
+    """
+    global _SR_ANNOUNCED
+    if _SR_ANNOUNCED:
+        return
+    _SR_ANNOUNCED = True
+    parts = urllib.parse.urlsplit(url)
+    print(f"[bypass] robots.txt guard BYPASSED for {parts.netloc}{parts.path} "
+          f"— {SR_HOST} disallows everything to all agents but LinkedInBot, "
+          f"and this run is reading it anyway. **You enabled this**, and the "
+          f"address that gets blocked is yours, not this project's. To stop: "
+          f"remove `boards.smartrecruiters.override_robots` from config.yml, "
+          f"or drop `--override-robots`. One request at a time, and this run "
+          f"stops on the first block rather than retrying. See "
+          f"shared/robots-policy.md and shared/boards/smartrecruiters.md.",
+          file=sys.stderr)
+
+
 def fetch(url):
     # **The choke point, and it is not only SmartRecruiters'.** This comment
     # read *every SmartRecruiters request goes through here* and was true; the
@@ -130,7 +161,9 @@ def fetch(url):
     waived = False
     if url.startswith(SR_API):
         waived = smartrecruiters_gate()
-    if not waived:
+    if waived:
+        announce_bypass(url)
+    else:
         gate(url)
     # **The guard first, the rate second.** `api.lever.co` asks for
     # `Crawl-delay: 1` and this script slept never. Waiting before knowing
@@ -368,18 +401,12 @@ def smartrecruiters_gate(a=None):
             f"  **It does not generalise.** Greenhouse, Workable and Lever "
             f"publish files of the same kind that permit, and are read "
             f"without any of this.", code=7)
-    # **Every run, in the output the user reads.** An override nobody is
-    # reminded of is an override nobody consented to twice. Once per run, not
-    # once per request — a line repeated 103 times is noise, not consent.
-    if _SR_ANNOUNCED:
-        return True
-    _SR_ANNOUNCED = True
-    print(f"[smartrecruiters] robots.txt override ACTIVE — {SR_HOST} "
-          f"disallows everything to all agents but LinkedInBot. **You "
-          f"enabled this**, and the address that gets blocked is yours. One "
-          f"request at a time, and this run stops on the first block rather "
-          f"than retrying. See shared/robots-policy.md and "
-          f"shared/boards/smartrecruiters.md.", file=sys.stderr)
+    # **This function DECIDES; it does not announce — #187.** The banner used
+    # to be printed here, one line before `gate()` refused the request, so it
+    # described an intention while the outcome was settled elsewhere. *An
+    # announcement separated from its act is a statement about an intention,
+    # not about a fact.* It now lives in `fetch()`, where the bypass actually
+    # happens and only when it happens.
     return True
 
 
