@@ -1,6 +1,6 @@
 # Board adapter — Flatchr
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: careers.flatchr.io -->
 <!-- host-forms: {tenant}.flatchr.io, careers.flatchr.io -->

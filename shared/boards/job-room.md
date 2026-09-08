@@ -1,6 +1,6 @@
 # Board adapter — job-room.ch
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.job-room.ch, www.job-room.ch -->
 <!-- script: jobroom.py -->

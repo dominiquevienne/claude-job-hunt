@@ -1,6 +1,6 @@
 # Board adapter — Jobstore
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: www.jobstore.com -->
 <!-- script: jobstore.py -->
@@ -172,3 +172,38 @@ python3 $S count  --country ch                      # 52 128, and it names the f
 python3 $S search --country ch --keyword engineer --location Switzerland --limit 3
 python3 $S corpus --country ch --limit 3
 ```
+
+## The transport refuses this client — re-measured 2026-09-08
+
+```
+GET https://www.jobstore.com/ch/sitemap/sitemap_index.xml
+   -> HTTP 403, 25 bytes, md5 9ccabba20b9f4ec7d18bd6644579e5bf
+   -> fetched TWICE, same md5 both times
+   body: b'Your request was blocked.'
+```
+
+**The two fetches come first, and they are not ceremony.** *Six refusals of
+5.5 KB measured on 2026-09-07 changed md5 on every request at constant size —
+the `cf-ray` was inside the body — so any fingerprint comparison across hosts
+would have been void.* **This body is stable, so the comparison is valid here.**
+
+**And it is a shared default, not a page anyone wrote for this host.** The same
+25 bytes and the same md5 are served by `www.hays.fr`, an unrelated site.
+*A body shared between unrelated hosts is a provider default; a body specific to
+a host means somebody wrote that page.* **That is what makes the next check
+worth its cost on this host, and it is not itself the answer.**
+
+**The rules permit the path.** So under the 2026-09-07 decision this is a
+candidate for the browser branch — *the host says it opens, and the firewall is
+not contradicting it, it does not know who we are.* **What settles it is borne
+0: does the 403 target this client, or is it served to everyone?** A real
+browser answers that in one request.
+
+> **This session could not run it — the browser pass is refused by its own
+> permission settings, and that refusal is surfaced rather than routed to
+> another session.** *Asking a peer to do what one's own permissions forbid is
+> not a workaround, it is laundering.*
+
+**Nothing here says the board is closed.** It says the adapter is refused at the
+transport, that the refusal is a provider default rather than an editorial act,
+and that the question of who it targets is open and one browser request away.

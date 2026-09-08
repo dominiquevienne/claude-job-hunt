@@ -334,6 +334,12 @@ pe.computrabajo.com        unreachable   allowed=None   certain=False
 after three attempts.** *A 2xx that is not 200 is not the document, and an empty
 body states nothing.*
 
+**Four hosts, and that is four ignorances rather than one verdict four times
+over.** *`allowed=None` carries no information to repeat: the four agree that
+nothing is known, and agreement about nothing is not corroboration.* **Each is
+recorded separately above so that a later reading cannot mistake the count for
+weight.**
+
 **This is an indeterminate — not a refusal and not a permission — and an
 indeterminate is not sounded.** `computrabajo.py` exits **8** on the invocation
 this card documents, which is the correct behaviour: *it refuses rather than

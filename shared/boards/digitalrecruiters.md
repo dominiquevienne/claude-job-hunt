@@ -22,7 +22,7 @@ reads**. `api.digitalrecruiters.com` answers for itself and is unaffected.
 *(Two `User-agent: *` records in one file is the case `_robots.py` merges per
 RFC 9309, rather than letting the first win.)*
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.digitalrecruiters.com -->
 <!-- host-forms: api.digitalrecruiters.com, {careers-site host} -->

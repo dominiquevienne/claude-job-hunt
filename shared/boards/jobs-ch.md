@@ -2,7 +2,7 @@
 
 <!-- hosts: www.jobs.ch -->
 <!-- script: jobup.py -->
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 <!-- countries: CH -->
 <!-- overlap: jobstore.md · 18.6 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
 <!-- same-postings: jobup.md · the same posting UUID appears on both — one platform, two brands -->
