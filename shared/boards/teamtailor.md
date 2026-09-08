@@ -1,6 +1,6 @@
 # Board adapter — Teamtailor
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: teamtailor.com -->
 <!-- host-forms: {tenant}.teamtailor.com -->
@@ -174,3 +174,6 @@ straight from the employer.
 **A wrong tenant is unambiguous here**, unlike SmartRecruiters: an unknown
 subdomain returns 404 with an empty body rather than an empty board that looks
 like an employer with nothing open.
+
+**Re-exercised 2026-09-08**: `list --provider teamtailor --tenant investengine`
+returns **17 advertisements**.

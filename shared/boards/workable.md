@@ -1,6 +1,6 @@
 # Board adapter — Workable
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: apply.workable.com -->
 <!-- script: ats.py -->
@@ -158,3 +158,6 @@ employer's own `apply.workable.com/<tenant>` URL**.
 
 **A tenant that 404s is not proof the employer has no Workable board.**
 
+
+**Re-exercised 2026-09-08**: `list --provider workable --tenant storyteq`
+returns **5 advertisements**.

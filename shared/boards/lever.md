@@ -1,6 +1,6 @@
 # Board adapter — Lever
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.lever.co -->
 <!-- host-forms: api.lever.co, api.eu.lever.co -->
@@ -146,3 +146,19 @@ user that URL with their documents.
 
 One request per employer per sweep. A watchlist of ten employers is ten
 requests, or twenty if half of them turn out to be on the EU host.
+
+## The `resolve` example above is refused, and correctly — 2026-09-08
+
+**`ats.py resolve` searches through HiringCafe, and
+`hiringcafe.com/robots.txt` refuses that URL shape to `User-agent: *`** —
+`Disallow: /*?searchState=*`, measured 2026-09-03, issue #123. **The adapter
+exits 7 and makes no request.**
+
+*So the invocation printed above no longer runs, and the reason is doctrinal
+rather than a defect.* **`list` and `ad` are unaffected** — re-exercised
+2026-09-08, figures below. To resolve an employer by hand meanwhile, open its
+careers page and read the host, tenant and site out of the URL; the adapter
+prints that advice itself.
+
+**`list --provider lever --tenant caseware`: 58 of 58 postings kept,
+2026-09-08.**

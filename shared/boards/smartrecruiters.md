@@ -1,6 +1,6 @@
 # Board adapter — SmartRecruiters
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.smartrecruiters.com -->
 <!-- script: ats.py -->
@@ -228,3 +228,10 @@ goes.**
 The operator supports a key without requiring it on this path. Taking one would
 make the read attributable, at the cost of a credential to obtain and store.
 **Not taken, for simplicity** — recorded so the choice stays visible.
+
+**Re-exercised 2026-09-08**: `list --provider smartrecruiters --tenant ubisoft`
+**exits 7**. `api.smartrecruiters.com` publishes `User-agent: * / Disallow: /` —
+everything closed, evenly — so the board is skipped rather than silently obeyed.
+*Reading it needs an explicit override in `config.yml`, and what that costs is
+the user's own address.* **It does not generalise**: Greenhouse, Workable and
+Lever publish files of the same kind that permit.

@@ -1,6 +1,6 @@
 # Board adapter — Ashby
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: jobs.ashbyhq.com -->
 <!-- host-forms: api.ashbyhq.com -->
@@ -161,3 +161,20 @@ user that URL with their documents.
 
 One request per employer per sweep, and one per ad read (there being no
 per-posting endpoint). A ten-employer watchlist is ten requests.
+
+## The `resolve` example above is refused, and correctly — 2026-09-08
+
+**`ats.py resolve` searches through HiringCafe, and
+`hiringcafe.com/robots.txt` refuses that URL shape to `User-agent: *`** —
+`Disallow: /*?searchState=*`, measured 2026-09-03, issue #123. **The adapter
+exits 7 and makes no request.**
+
+*So the invocation printed above no longer runs, and the reason is doctrinal
+rather than a defect.* **`list` and `ad` are unaffected** — re-exercised
+2026-09-08, figures below. To resolve an employer by hand meanwhile, open its
+careers page and read the host, tenant and site out of the URL; the adapter
+prints that advice itself.
+
+**`list --provider ashby --tenant cohere` exits 7**: `api.ashbyhq.com` answers
+**HTTP 401 on its rules file**, which is `host-closed` — the host replied, and
+the reply was no. *Nothing there permits anything, so the adapter refuses.*

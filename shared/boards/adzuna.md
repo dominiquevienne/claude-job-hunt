@@ -1,6 +1,6 @@
 # Board adapter — Adzuna
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.adzuna.com -->
 <!-- script: adzuna.py -->
@@ -335,3 +335,7 @@ was a silence.
 So: nothing wired, and the hold written here. The same question covers
 `france-travail.md`, `arbeitsagentur.md` and `labonnealternance.md` — **four
 boards, one arbitration**, not the two it was first framed on.
+
+**Re-exercised 2026-09-08**: `count --country ch --what Entwickler` returns
+**13 855 matches** against 12 666 on 2026-09-02 — the board grew, and one call
+of the 250/day allowance was spent saying so.

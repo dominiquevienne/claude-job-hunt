@@ -1,6 +1,6 @@
 # Board adapter — France Travail
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: api.francetravail.io, candidat.francetravail.fr, entreprise.francetravail.fr -->
 <!-- script: francetravail.py -->
@@ -364,3 +364,8 @@ met on SmartRecruiters in `ats.py`, where the exception existed nowhere.
 **Four boards, one arbitration**: this, `adzuna.md`, `arbeitsagentur.md` and
 `labonnealternance.md`. It was first framed on two hosts; measuring the other
 four network readers without a guard showed the class is wider.
+
+**Re-exercised 2026-09-08**: `token` succeeds and `search --mots-cles "data
+engineer"` reports **308 offers matched, 100 cards returned** (HTTP 206).
+*The two counts come from different sides — the API's total and our own — so a
+broken parser here would show 308 against 0 rather than a quiet zero.*

@@ -1,6 +1,6 @@
 # Board adapter — Greenhouse
 
-<!-- verified: 2026-09-02 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: boards-api.greenhouse.io -->
 <!-- script: ats.py -->
@@ -121,3 +121,19 @@ as for any external ATS.
 
 One request per employer per sweep, one per ad read. A ten-employer watchlist
 is ten requests — this is the cheapest board in the plugin.
+
+## The `resolve` example above is refused, and correctly — 2026-09-08
+
+**`ats.py resolve` searches through HiringCafe, and
+`hiringcafe.com/robots.txt` refuses that URL shape to `User-agent: *`** —
+`Disallow: /*?searchState=*`, measured 2026-09-03, issue #123. **The adapter
+exits 7 and makes no request.**
+
+*So the invocation printed above no longer runs, and the reason is doctrinal
+rather than a defect.* **`list` and `ad` are unaffected** — re-exercised
+2026-09-08, figures below. To resolve an employer by hand meanwhile, open its
+careers page and read the host, tenant and site out of the URL; the adapter
+prints that advice itself.
+
+**`list --provider greenhouse --tenant elastic`: 367 of 367 postings kept,
+2026-09-08.**
