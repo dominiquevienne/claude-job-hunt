@@ -3,8 +3,8 @@
 <!-- verified: 2026-09-08 -->
 
 <!-- hosts: bebee.com -->
-<!-- script: none -->
-<!-- countries: CH ES GB FR DE PT IT -->
+<!-- script: bebee.py -->
+<!-- countries: CH -->
 <!-- content: measured · the sitemap index `robots.txt` declares holds 3 407 children, of which 2 102 are job files over 99 countries; the nine numbered Swiss files carry 432 533 addresses under `/ch/jobs/`, 8 x 50 000 + 32 533, spanning 2026-03-27 to 2026-09-07 · 2026-09-08 -->
 <!-- witness: none — nothing was fetched beyond the homepage and `robots.txt`, and the homepage carries no inventory to corroborate -->
 
@@ -125,3 +125,72 @@ which is exactly why it needed one.*
 - **the other 98 countries** were not opened; `us` alone declares 1 185 files;
 - **no adapter.** *The route is now known and permitted, which is the whole
   change here.*
+
+## Built 2026-09-08 — `bebee.py`
+
+```bash
+S=skills/job-scan/scripts/bebee.py
+python3 $S countries                              # 2 494 job files over 99 countries
+python3 $S list --country ch --limit 5            # one file, no total claimed
+python3 $S list --country ch --limit 3 --fetch    # with dates, locality, poster
+python3 $S ad --url https://bebee.com/ch/jobs/<slug>
+```
+
+**Plain HTTP — no key, no cookie, no browser.** *The route is the sitemap index
+`robots.txt` declares, and the paginated search stays closed: `/*?*page=`,
+`/*?*q=`, `/*?*sort=` and `/*?*location=` are disallowed and this adapter never
+reaches for them.*
+
+### The anchor is the file's own length, printed beside our count
+
+```
+50000 <loc> in this file: 50000 advertisement(s)
+```
+
+**The left number is counted before anything is parsed.** *No empty board and
+no broken reader can produce that sentence with a number on both sides* — the
+form issue #181 asks for, and the same one `ihararejobs` prints.
+
+**And no total is ever claimed from a bounded run.** *Reading one file of nine
+prints «&nbsp;1 of 9 numbered files read on purpose — no total for `ch` is
+claimed by this run&nbsp;»*, because a partial walk does not answer «&nbsp;how
+many are there&nbsp;».
+
+### The `--limit` ceiling is the caller's, not a shortfall
+
+*The first version printed «&nbsp;5 distinct&nbsp;» against 50 000 `<loc>` when
+`--limit 5` was on — a ceiling the caller asked for, reading as a catastrophic
+gap.* **The summary is now computed before the truncation, and the limit says
+so on its own line.** `rocken.py` carried the same defect for one commit.
+
+### The poster is sometimes the origin BOARD
+
+```
+Equal.Jobs                     <- a Swiss job board, republished here
+MAAG Group                     <- a real employer
+GWG Gemeinnützige Wohnbau…     <- a real employer
+```
+
+**Three advertisements, and the field means two different things.** *So it is
+emitted as `poster` and never as `employer`* — the same conclusion `rocken.md`
+and `jobeo-ch.md` reach from opposite specimens.
+
+### The index moves, and the delta files are counted rather than merged
+
+```
+2026-09-08 morning   3 407 <loc> in the index · 2 102 job files · ch: 9 + 4 delta
+2026-09-08 afternoon 3 799 <loc>              · 2 494 job files · ch: 9 + 10 delta
+```
+
+**The `delta-` files are incremental updates and this adapter does NOT read
+them**, but it counts them and prints the count. *Merging them silently would
+make a run's denominator unreproducible.*
+
+### Still not established, and not guessed
+
+- **the duplicate rate against the origin boards.** *`Equal.Jobs` appearing as a
+  poster is the reason the question exists.* **A duplicate is established by
+  employer, title and city together — never by a date two publishers set
+  separately** — and this adapter neither measures nor assumes it;
+- **`countries: CH`** because Switzerland is the only country exercised. *The
+  index declares 99, `us` alone holds 1 191 files, and none was read.*
