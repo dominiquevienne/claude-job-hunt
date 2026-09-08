@@ -1437,6 +1437,39 @@ differently for each; that is not a copy-paste.
 **Read it as what it is: the site describing itself in its own file.** What is
 verifiable is that its structure matches what it announces.
 
+#### And the nine do not include the token we send
+
+**`Claude-User` is not among them.** The file names `ClaudeBot`,
+`Claude-SearchBot` and `anthropic-ai`; the identity a fetch from this project
+carries by default is the one it does not name. **So our request falls to `*`,
+whose group carries about forty `Disallow` patterns** — every URL with
+`?query=`, `?sort=`, `?filters=`, `?utm_source=`, and the account paths.
+
+Measured 2026-09-08:
+
+```
+path                    claude-user   claudebot   the guard resolves to
+/                          True          True       *
+/jobs/colombo              True          True       *
+/jobs?query=engineer       False         True       claudebot
+/en/ads?sort=date          False         True       claudebot
+```
+
+**The explicit permission is real and it is narrower than it reads**: bare on
+the named agents, and bounded by the `*` exclusions for the one we send.
+*`_token_agents` already prefers `claude-user` and falls back where it is
+refused, so the identity presented here changes with the path* — which is the
+decision of 2026-09-05 working, and observable rather than assumed.
+
+**This is the mirror of the case this file records at «a refusal addressed to a
+name we do not send».** *A permission addressed to a name we do not send is
+worth exactly as little, and it is easier to miss because the summary is
+flattering.* **Read which agent, not just which direction.**
+
+*The same file also closes four — `CCBot`, `Baiduspider`, `Sogou`, `BLEXBot` —
+under one group, and asks in a comment that its `robots.txt` and its
+`llms.txt` be «kept in sync». It is a curated list, not an open door.*
+
 **And it settles a question the file left open.** `akhtaboot.com` names nine
 agents to close them all; `ikman.lk` names nine to open them all — **same day,
 same corpus.** Two deliberate and opposite postures, **and neither is its
