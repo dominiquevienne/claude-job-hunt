@@ -1,6 +1,6 @@
-# Assessed, no adapter — Iraq: nineteen hosts named, and no countable inventory
+# Iraq: nineteen hosts named — nothing countable BY A SCRIPT, and 1 735 countable by a browser
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-08 -->
 
 <!-- hosts: careeriraq.com, works-jobsiq.com, vacanciesiniraq.com, www.t9iq.com, jobs.krd, taeen.iq, ngosjobs-bids.com, www.employiq.net, masteriraq.com, iqjscout.com, eshjob.com, www.iraqhire.com, www.kurdistanjob.com, pharmajobs.skpi.krd, www.evtc-krg.org, lvtd.gov.iq, kar.molsa.gov.krd, www.hawa.jobs, atgroup.iq -->
 <!-- script: none -->
@@ -109,7 +109,36 @@ link — `/job/technician-56` — is in the markup.*
 RECRUITMENT AGENCY"*, *"a private company that specializes in education and
 hiring staff"*. **A company's own jobs module, not a national board.**
 
-## Why no adapter is proposed
+## 2026-09-08 — the title of this card was too broad, and a browser refutes it
+
+**The sentence below is true and its scope is `by a script`. The title said
+`no countable inventory`, which is a claim about IRAQ, and that claim is
+false.** *Measured the next day, in a browser, on hosts named in this very
+card:*
+
+```
+eshjob.com     1 735 advertisements, the site's own "Showing 1 to 20 of 1735"
+iqjscout.com   REDIRECTS to yadanoo.com, a MENA board — Iraq 163 of 1 780
+iraqhire.com   NOT A BOARD — "a free demo result from the Wayback Machine
+               Downloader", listing answers No Record
+```
+
+**Two of the three refusals recorded here were hiding live inventory, and the
+third was hiding a dead site.** *The 403s in the table below are real and
+unchanged; what was wrong was reading a refusal to our client as a statement
+about the country.*
+
+**See `eshjob.md` for the field census** — and its warning, which is why no
+adapter ships from it yet: all 18 cards carry a poster link and **all 18 point
+at one account**, so an employer read from it would be identical, plausible and
+wrong on every advertisement in Iraq.
+
+**Under the owner's decision of 2026-09-08 — *there is never a reason not to
+use a board* — Iraq is not a renunciation.** *`indeterminate` is a measurement
+owed, and what stands against an adapter here is the ROUTE and the missing
+employer field, never the country.*
+
+## Why no adapter is proposed BY THE HTTP ROUTE
 
 **Nothing here has a countable inventory reachable by a script.** The one
 server-rendered board holds a single advertisement; the two largest hosts are a
