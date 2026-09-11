@@ -40,6 +40,7 @@ from _robots import allowed as robots_allowed, full_path
 BASE = "https://{}.talent-soft.com"
 LIST = "/offre-de-emploi/liste-offres.aspx?page={}&LCID={}"
 from _ua import UA
+from _zero import empty_first_page
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.talent-soft\.com", re.I)
 
@@ -297,10 +298,21 @@ def cmd_jobs(a):
     tenant = tenant_of(a)
     base = BASE.format(tenant)
     first = fetch(base + LIST.format(1, a.lcid))
-    total = int((COUNT_RE.search(first) or [0, 0])[1]) if COUNT_RE.search(first)\
-        else None
+    m = COUNT_RE.search(first)
+    total = int(m.group(1)) if m else None
+    if total is None and not rows(first):
+        # **`? ads announced` and then a zero, exit 0** — #181, batch 5. The
+        # counter regex missing AND no card on page 1 is the reading-fault
+        # shape: the page's own count is the second figure, and when it
+        # cannot be read there is nothing to hold the zero against.
+        die(empty_first_page("talentsoft", first, what="card",
+                             where=base + LIST.format(1, a.lcid)) +
+            " And the page's `(N offres)` counter was not found either.", 6)
     print(f"[talentsoft] {tenant}: {total if total is not None else '?'} ads "
-          "announced", file=sys.stderr)
+          "announced" + ("" if total is not None else
+                          " — the `(N offres)` counter was NOT found on the "
+                          "page; the sweep below has no count to hold "
+                          "itself against"), file=sys.stderr)
     seen, out, page, html = set(), [], 1, first
     while True:
         got = [c for c in (card(b, tenant) for b in rows(html)) if c]

@@ -14415,7 +14415,9 @@ class AnEmptyFirstPageIsIndeterminateNotAnExitZero(unittest.TestCase):
 
     POPULATION = ("batiactu", "computrabajo", "employtt", "encuentra24",
                   "glmis", "hellowork", "jobbkk", "jobivoire", "jobsge",
-                  "jobup", "meteojob", "mihnati", "philjobnet")
+                  "jobup", "meteojob", "mihnati", "philjobnet",
+                  # #181 batch 5's three, added by the same criterion
+                  "taleez", "talentsoft", "zaposli")
 
     def test_every_one_of_the_thirteen_dies_through_empty_first_page(self):
         missing = []
@@ -14683,6 +14685,115 @@ class ABoardThatPadsAZeroWithSuggestionsIsReadOnItsOwnList(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertIn("reading fault", err)
         self.assertIn("42", err)
+
+
+class TheLastThreeOfTheRePassDieThroughEmptyFirstPage(unittest.TestCase):
+    """**#181, batch 5's two «absent» and one blind side — the last three of
+    105, on the closure criterion the pilot set: a second figure from another
+    branch wherever one exists, a motivated (b) where none does.**
+
+    - `taleez`: a payload WITHOUT the `jobs` key read as «0 ads, a real zero»
+      → dies 6 through `empty_first_page` with the payload's size; a payload
+      WITH an empty `jobs` list is (b): the tenant's own feed, present and
+      empty, the tenant named — the site's zero, said with its second signal;
+    - `zaposli`: a child sitemap parsing to zero `<url>` entries printed a
+      JSON of zeros, exit 0 → dies 6 with the size;
+    - `talentsoft`: the `(N offres)` counter missing AND no card on page 1
+      printed `? ads announced` then a zero, exit 0 → dies 6 with the size;
+      the counter missing with cards present says so and continues.
+    """
+
+    def _mod(self, name):
+        spec = importlib.util.spec_from_file_location(
+            "_last3_" + name, os.path.join(SCRIPTS, name + ".py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _run(self, fn, *args):
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                fn(*args)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_taleez_a_payload_without_the_jobs_key_is_indeterminate(self):
+        mod = self._mod("taleez")
+        mod.robots_verdict = lambda host: {"sweep": True, "host": host,
+                                           "reason": ""}
+        mod.fetch = lambda url, as_json=False: {"name": "Acme",
+                                                "properties": [], "x": "y" * 3000}
+        a = argparse.Namespace(tenant="acme", url=None, with_detail=False,
+                               delay=0)
+        code, out, err = self._run(mod.cmd_jobs, a)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(out, "")
+        self.assertIn("characters", err)
+        self.assertIn("INDETERMINATE", err)
+        self.assertNotIn("a real zero", err)
+
+    def test_taleez_an_empty_jobs_list_is_the_sites_own_zero_named(self):
+        """(b), motivated: the second signal is the tenant's name in the
+        payload, and the sentence says the list is present and empty."""
+        mod = self._mod("taleez")
+        mod.robots_verdict = lambda host: {"sweep": True, "host": host,
+                                           "reason": ""}
+        mod.fetch = lambda url, as_json=False: {"name": "Acme", "jobs": [],
+                                                "properties": []}
+        a = argparse.Namespace(tenant="acme", url=None, with_detail=False,
+                               delay=0)
+        code, out, err = self._run(mod.cmd_jobs, a)
+        self.assertIsNone(code, err)
+        self.assertIn("'Acme'", err)
+        self.assertIn("present and", err)
+        self.assertIn("empty: that is the site's own zero", err)
+        self.assertIn("0 cards returned", err)
+
+    def test_zaposli_a_child_sitemap_with_no_entries_is_indeterminate(self):
+        mod = self._mod("zaposli")
+        index = ('<sitemapindex><sitemap><loc>https://www.zaposli.me/sitemap/'
+                 'oglasi.xml</loc></sitemap></sitemapindex>')
+        child = "<urlset>" + "x" * 8000 + "</urlset>"
+        mod.get = lambda url: (200, index if url.endswith("/sitemap.xml")
+                               else child)
+        code, out, err = self._run(mod.entries)
+        self.assertEqual(code, 6, err)
+        self.assertIn("8 ", err)                       # the size, formatted
+        self.assertIn("<url> entry", err)
+        self.assertIn("INDETERMINATE", err)
+
+    def test_talentsoft_no_counter_and_no_card_is_indeterminate(self):
+        mod = self._mod("talentsoft")
+        mod.fetch = lambda url: "<html>" + "x" * 6000 + "</html>"
+        a = argparse.Namespace(tenant="acme", url=None, lcid="fr-FR",
+                               max_pages=2, delay=0, with_detail=False)
+        code, out, err = self._run(mod.cmd_jobs, a)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(out, "")
+        self.assertIn("6 013 characters", err)
+        self.assertIn("counter was not found", err)
+        self.assertNotIn("? ads announced", err)
+
+    def test_talentsoft_no_counter_with_cards_says_so_and_continues(self):
+        """The direction that stays open: cards without a counter is a
+        sweep with no anchor, said aloud, not a die."""
+        mod = self._mod("talentsoft")
+        real_rows = mod.rows
+        mod.rows = lambda page: (["<block>"] if "first" in page else [])
+        mod.card = lambda b, t: {"url": "https://x/1", "title": "t"}
+        mod.fetch = lambda url: ("first" if "page=1" in url or
+                                 url.endswith("(1)") else "second")
+        a = argparse.Namespace(tenant="acme", url=None, lcid="fr-FR",
+                               max_pages=2, delay=0, with_detail=False)
+        code, out, err = self._run(mod.cmd_jobs, a)
+        mod.rows = real_rows
+        self.assertIsNone(code, err)
+        self.assertIn("? ads announced", err)
+        self.assertIn("NOT found", err)
 
 
 if __name__ == "__main__":
