@@ -551,10 +551,10 @@ request each on the cheapest invocation, all six answered.
 
 **Batch 5: present 15 · absent 2 · annulled 0 · raises 0** — two of the
 fifteen are present because this batch made them so (`randstad`,
-`swissdevjobs`, commit `b290944`), the way batches 3 and 4 counted `jobstore`
+`swissdevjobs`, commit `41011d1`), the way batches 3 and 4 counted `jobstore`
 and `michaelpage`.
 
-## Two corrections, small, one commit — `b290944`
+## Two corrections, small, one commit — `41011d1`
 
 `randstad list`: page 1 with no cards dies 6 with the bytes; page 2 empty
 after a full page 1 still ends the listing. `swissdevjobs list`: `[]` from
