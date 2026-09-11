@@ -14363,5 +14363,38 @@ class AFirstPageWithNothingOnItIsNotTheEndOfAListing(unittest.TestCase):
         self.assertIn("look alike", err.getvalue())
 
 
+class ABoardThatSaysZeroWith404CannotSayZeroWith200(unittest.TestCase):
+    """**#181, batch 4.** `michaelpage.py` knows that a zero-result search on
+    this board answers HTTP 404 — it says so, and treats a 404 on page 0 as
+    «a real zero, not a failure» after a control fetch. But a 200 on page 0
+    with no job reference in it fell through to «0 ads over 1 page(s)», exit
+    0: the one shape that, by the board's own behaviour, can only be a
+    reading fault. Mutated: the `page == 0` die removed → this case reddens
+    (exit None, «0 ads» printed)."""
+
+    def test_a_200_with_no_reference_on_page_0_is_a_reading_fault(self):
+        import contextlib
+        spec = importlib.util.spec_from_file_location(
+            "_michaelpage181", os.path.join(SCRIPTS, "michaelpage.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.fetch = lambda url: (200, "<html>" + "x" * 4000 + "</html>")
+        a = argparse.Namespace(domain="www.michaelpage.ch", search=None,
+                               location=None, pages=2, with_description=False,
+                               titles_from_listing=True)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        self.assertEqual(code, 6)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("4013 characters", err.getvalue())
+        self.assertIn("a real zero answers 404", err.getvalue())
+        self.assertNotIn("0 ads over", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

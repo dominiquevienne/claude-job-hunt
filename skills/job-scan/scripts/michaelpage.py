@@ -194,6 +194,17 @@ def cmd_list(a):
             die(f"{a.domain} answered HTTP {status} on /jobs", code=4)
         refs = list(dict.fromkeys(m.lower() for m in REF.findall(body)))
         if not refs:
+            if page == 0:
+                # #181, batch 4. This board answers a zero-result search with
+                # HTTP 404 (above) — so a 200 on page 0 with no reference in
+                # it is not a zero, it is a reading fault: the markup moved
+                # and the pattern reads nothing. Until now this printed
+                # «0 ads over 1 page(s)» and exited 0.
+                die(f"{a.domain}/jobs answered HTTP 200 with {len(body)} "
+                    f"characters and no job reference in them. **On this "
+                    f"board a real zero answers 404**, so this is a reading "
+                    f"fault, not an empty search — check the markup before "
+                    f"believing it.", code=6)
             break
         fresh = [r for r in refs if r not in seen]
         # Pages overlap: a location=Lausanne run returned 12 refs on page 1 of
