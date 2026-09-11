@@ -4701,6 +4701,133 @@ class TravelIsADegreeNotAFact(unittest.TestCase):
         self.assertTrue(value.startswith('"'), "the example is not a phrase")
 
 
+
+class TravelQuantityInWordsIsStillAQuantity(unittest.TestCase):
+    """**A number written in letters is invisible to a pattern that looks for
+    digits.** Issue #207: `_travel.py` required `\\d+` and the adjacency
+    `weeks per year`, so *"Ability to travel twice a year, for company events
+    for up to two weeks each"* — four weeks, in two blocks — was read as
+    *"without saying how much"*, and *"You will travel two weeks per year"*
+    was not seen as a question at all. Same shape as the six Atlas counters
+    spelled *"cent quatre-vingt-quatre"* that no `grep '\\b18[0-9]\\b'` saw.
+
+    **And the quoted sentence was not the one carrying the amount**: a bullet
+    list flattened onto one line is one "sentence", and `sent[:200]` quoted
+    *"Debug and fix issues encountered by your users"* for an ask that sat
+    three hundred characters further on.
+    """
+
+    # (text, degree, amount) — the amount is what the reader needs at the gate
+    STATES_AN_AMOUNT = [
+        # the two sentences of the issue
+        ("Ability to travel twice a year, for company events for up to two "
+         "weeks each.", "weeks-per-year",
+         "up to 4 weeks/year (2 × 2 weeks per year)"),
+        ("You will travel two weeks per year.", "weeks-per-year",
+         "2 weeks/year"),
+        # the module's own docstring example, unchanged by the fix
+        ("Ability to travel 3-4 weeks per year to meet teammates in person",
+         "weeks-per-year", "3–4 weeks/year"),
+        ("Expected to travel 3 times a year.", "times-per-year",
+         "3 times/year"),
+        ("Travel: up to 20% of the time.", "percent-of-time",
+         "up to 20% of time"),
+        ("Ability to travel 5 days per month.", "weeks-per-year",
+         "12 weeks/year"),
+        # French and German, since the module already covers all three
+        ("Déplacements de deux semaines par an à prévoir.", "weeks-per-year",
+         "2 weeks/year"),
+        ("environ 10 jours de déplacement par mois", "weeks-per-year",
+         "environ 24 weeks/year"),
+        ("Dienstreisen erforderlich, 2 Wochen pro Jahr.", "weeks-per-year",
+         "2 weeks/year"),
+        ("Reisetätigkeit ca. 2x pro Jahr.", "times-per-year",
+         "ca. 2 times/year"),
+    ]
+
+    # an amount next to a travel word is a requirement; an amount next to
+    # anything else, or a travel word that is a benefit, is not
+    ASKS_NOTHING = [
+        "Two weeks of onboarding in Zurich.",
+        "A twice-weekly standup with the team.",
+        "Travel expenses reimbursed up to 100%.",
+        "Reisekosten werden zu 100% erstattet.",
+        "International travel: confirmed available by the candidate on "
+        "2026-09-04, and written to `config.yml`",
+        "You will write software and review code with the team.",
+    ]
+
+    def test_an_amount_written_in_letters_is_read_as_an_amount(self):
+        import _travel
+        for text, degree, amount in self.STATES_AN_AMOUNT:
+            with self.subTest(text=text[:40]):
+                req = _travel.requirement(text)
+                self.assertTrue(req["asks"], "not even seen as a question")
+                self.assertEqual(req["degree"], degree)
+                self.assertEqual(req["amount"], amount)
+
+    def test_frequency_and_duration_are_multiplied_not_matched_as_one(self):
+        """*twice a year* and *two weeks each* are twenty characters apart
+        in the issue's sentence; the product is what the candidate takes to
+        the gate."""
+        import _travel
+        q = _travel.quantity("ability to travel twice a year, for company "
+                             "events for up to two weeks each.")
+        self.assertEqual(q[0], "weeks-per-year")
+        self.assertTrue(q[1].startswith("up to 4 weeks/year"), q[1])
+        self.assertIn("2 × 2 weeks", q[1])
+
+    def test_an_amount_that_is_not_about_travel_asks_nothing(self):
+        import _travel
+        for text in self.ASKS_NOTHING:
+            with self.subTest(text=text[:40]):
+                self.assertFalse(_travel.requirement(text)["asks"],
+                                 "an amount alone was read as a travel ask")
+
+    def test_the_quote_carries_the_amount_not_the_head_of_the_line(self):
+        """The run in #207 quoted *"Debug and fix issues…"*: the ad's bullet
+        list had been flattened onto one line, and the first 200 characters
+        of that line were the quote. Two shapes, one property: **whatever is
+        quoted contains the amount.**"""
+        import _travel
+        items = ["Debug and fix issues encountered by your users",
+                 "Participate in our engineering process through code and "
+                 "architectural reviews", "Mentor engineers",
+                 "Lead a team of six", "Own the roadmap for the platform",
+                 "Ability to travel twice a year, for company events for up "
+                 "to two weeks each", "Bachelor degree in CS"]
+        flattened = "What you will do: - " + " - ".join(items)
+        one_sentence = ("Requirements include debugging production issues "
+                        "with customers, participating in the engineering "
+                        "process through code and architectural reviews, "
+                        "mentoring engineers across three continents, owning "
+                        "the roadmap for the platform, and the ability to "
+                        "travel twice a year for company events for up to "
+                        "two weeks each, plus a degree in CS")
+        for text in (flattened, one_sentence):
+            with self.subTest(text=text[:30]):
+                req = _travel.requirement(text)
+                self.assertTrue(req["asks"])
+                self.assertEqual(len(req["quotes"]), 1, req["quotes"])
+                q = req["quotes"][0]
+                self.assertIn("twice a year", q)
+                self.assertIn("two weeks each", q)
+                self.assertNotIn("Debug and fix", q)
+                self.assertLessEqual(len(q), 202)   # 200 + two ellipses
+        self.assertEqual(_travel.requirement(one_sentence)["amount"],
+                         "up to 4 weeks/year (2 × 2 weeks per year)")
+
+    def test_the_verdict_shows_the_amount_in_digits(self):
+        """What the reader sees at the gate is *4 weeks/year*, not the
+        label — whatever the advertisement wrote."""
+        import _travel
+        req = _travel.requirement(self.STATES_AN_AMOUNT[0][0])
+        for declared in (None, "a few weeks a year"):
+            with self.subTest(declared=declared):
+                v = _travel.verdict(req, declared)
+                self.assertIn("4 weeks/year", v["text"])
+                self.assertFalse(v["blocker"])
+
 class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
     """`DocumentedInvocationsAreReal` reads `shared/boards/` and nothing else.
 
