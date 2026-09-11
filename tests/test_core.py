@@ -925,14 +925,19 @@ class RobotsThirdState(unittest.TestCase):
         self._serve({"state": "read", "body": "User-agent: *\nAllow: /\n"})
         self.assertIs(_robots.verdict("flaky.example")["sweep"], True)
 
-    def test_a_named_refusal_still_wins_when_the_file_arrives(self):
-        """`nea.gov.kh`'s actual file, trimmed. The verdict it should always
-        have given, and does whenever the fetch succeeds."""
+    def test_a_named_refusal_is_read_when_the_file_arrives_and_binds_only_its_name(self):
+        """`nea.gov.kh`'s actual file, trimmed. Until 2026-09-11 this asserted
+        `sweep: False` — the reading the owner reversed on 2026-09-07: the
+        record naming `ClaudeBot` is read (`group: claudebot`), and it binds
+        `ClaudeBot`; `Claude-User` falls in `*`, which permits, and carries
+        the sweep. What this class is about — an UNREACHABLE file is not a
+        permission — is the case above, unchanged."""
         self._serve({"state": "read", "body":
                      "User-agent: *\nAllow: /\n\n"
                      "User-agent: ClaudeBot\nDisallow: /\n"})
         v = _robots.verdict("nea.gov.kh")
-        self.assertIs(v["sweep"], False)
+        self.assertIs(v["sweep"], True)
+        self.assertEqual(v["sweep_token"], "claude-user")
         self.assertEqual(v["group"], "claudebot")
 
 
@@ -1037,7 +1042,11 @@ class RobotsThreeFormulations(unittest.TestCase):
         self._body("User-agent: *\nAllow: /\n\n"
                    "User-agent: ClaudeBot\nDisallow: /\n")
         v = _robots.verdict("nea.gov.kh")
-        self.assertIs(v["sweep"], False)
+        # swept as `claude-user` since 2026-09-11 (decision of 2026-09-07);
+        # the sentence about the closing record is kept, so the reason still
+        # says who was named and refused
+        self.assertIs(v["sweep"], True)
+        self.assertEqual(v["sweep_token"], "claude-user")
         self.assertIn("names this project", v["reason"])
 
     def test_not_named_says_the_policy_is_general(self):
@@ -1051,7 +1060,11 @@ class RobotsThreeFormulations(unittest.TestCase):
         self._body("User-agent: ClaudeBot\nDisallow: /\n\n"
                    "User-agent: Claude-SearchBot\nAllow: /\n")
         v = _robots.verdict("www.linkedin.com")
-        self.assertIs(v["sweep"], False)
+        # `claude-user` is named by neither record and no `*` exists, so it
+        # carries the sweep (2026-09-11); the conflict between the two
+        # records that DO name us is still reported, not smoothed over
+        self.assertIs(v["sweep"], True)
+        self.assertEqual(v["sweep_token"], "claude-user")
         self.assertTrue(v["group_conflict"])
         self.assertIn("does not answer them alike", v["reason"])
 
@@ -7565,8 +7578,12 @@ class ARefusedNameIsNotAlwaysANameWeSend(unittest.TestCase):
                 continue
             with self.subTest(token=tok):
                 v = self._verdict(tok)
-                self.assertIs(v["sweep"], False,
-                              f"{tok}: the restrictive reading must still bind")
+                # **Since 2026-09-11 (the sweep half of the owner's decision
+                # of 2026-09-07)**: a name we never send closes nothing to a
+                # token we do send — the sweep goes on under `claudebot`.
+                self.assertIs(v["sweep"], True,
+                              f"{tok}: a name we never send must not close the sweep")
+                self.assertIn(v.get("sweep_token"), _robots.FETCH_TOKENS)
                 self.assertIn(
                     "never sends", v["reason"],
                     f"`{tok}` is not a token a request can carry, and the "
@@ -7586,14 +7603,23 @@ class ARefusedNameIsNotAlwaysANameWeSend(unittest.TestCase):
                     f"passes the other half of this class while telling a "
                     f"reader nothing.")
 
-    def test_the_restrictive_verdict_is_unchanged(self):
-        """The sentence changed; the decision did not, and must not have."""
+    def test_the_restrictive_verdict_gave_way_on_2026_09_07_and_the_sweep_follows_since_2026_09_11(self):
+        """**REPLACES `test_the_restrictive_verdict_is_unchanged`, which pinned
+        the reading the owner reversed on 2026-09-07** — «a group naming one
+        token does not bind the other» — and whose survival kept nineteen
+        adapters exiting 7 on hosts `allowed()` had permitted for four days.
+        A record refusing ONE name closes the sweep to no fetch token that
+        falls elsewhere; the verdict says which token carries it, and still
+        reports the closing record's own rules."""
         import _robots
         for tok in _robots.OUR_AGENTS:
             with self.subTest(token=tok):
                 v = self._verdict(tok)
-                self.assertIs(v["sweep"], False,
-                              f"{tok}: a sweep refusal stopped being one")
+                self.assertIs(v["sweep"], True,
+                              f"{tok}: a refusal naming one name closed the sweep")
+                self.assertIn(v.get("sweep_token"), _robots.FETCH_TOKENS)
+                self.assertNotEqual(v.get("sweep_token"), tok,
+                                    f"{tok}: swept under the very name refused")
                 self.assertEqual(v["allow"], [],
                                  f"{tok}: the refusing group grew an Allow")
 
@@ -15307,6 +15333,8 @@ class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
             False, False, "browser"),
         "ClaudeBot named by star, Claude-User refused by star": (
             "User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nDisallow: /\n", False, False, "closed"),
+        "ClaudeBot named and closed, star open (2026-09-07)": (
+            "User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nAllow: /\n", True, True, "http"),
         "no group at all (#180)": ("Disallow: /admin/\nDisallow: /tmp/\n", True, True, "http"),
         "401 on the rules file (#201)": (401, True, True, "http"),
         "403 on the rules file": (403, False, False, "closed"),
@@ -15382,22 +15410,87 @@ class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
         self.assertIsNone(i["rule"])
         self.assertIn("rules file itself was refused", i["reason"])
 
-    def test_verdict_still_unions_the_six_names_on_a_named_refusal_KNOWN_DIVERGENCE(self):
-        """**Pinned as a divergence, not endorsed.** `ClaudeBot` named and
-        refused, `*` open: `allowed()` and `identity()` say the fetch token
-        `claude-user` may go (the owner's decision of 2026-09-07), and
-        `verdict()['sweep']` still says False — it unions the six names of
-        `OUR_AGENTS` by design dated 2026-09-05, and nineteen adapters gate
-        their `cmd_list` on it. Whether `sweep` follows the decision is a
-        doctrine question raised beside #226, not settled here; this test
-        exists so the day it is settled, this line is flipped on purpose."""
+    def test_verdict_follows_the_named_refusal_decision_since_2026_09_11(self):
+        """**Flipped on purpose, the same day it was pinned.** This was
+        `…_KNOWN_DIVERGENCE`: `ClaudeBot` named and refused, `*` open —
+        `allowed()` and `identity()` followed the owner's decision of
+        2026-09-07 and `verdict()['sweep']` did not, so nineteen adapters
+        gating on it exited 7 on hosts the decision had opened. The pilot
+        read the decision's own consequences back («thirteen boards open by
+        ordinary HTTP») and the sweep now follows: swept as `claude-user`,
+        the closing record still named in the reason."""
         v, a, i = self._paths("User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nAllow: /\n")
         self.assertIs(a["allowed"], True)
         self.assertEqual(i["state"], "http")
         self.assertEqual(i["token"], "claude-user")
-        self.assertIs(v["sweep"], False, "if this reddens, verdict() now follows the "
-                                         "2026-09-07 decision — retitle this test, it is no "
-                                         "longer a divergence")
+        self.assertIs(v["sweep"], True)
+        self.assertEqual(v["sweep_token"], "claude-user")
+        self.assertIn("claudebot", v["reason"])
+        # and a refusal by `*` still closes the sweep — the decision is about
+        # a NAMED record, not about refusals in general
+        v2, _, _ = self._paths("User-agent: *\nDisallow: /\n")
+        self.assertIs(v2["sweep"], False)
+
+
+class AnAdapterGatingOnSweepNoLongerExits7OnANamedRefusal(unittest.TestCase):
+    """**The consequence the decision of 2026-09-07 named — «thirteen boards
+    open by ordinary HTTP» — reached `allowed()` and not `verdict()['sweep']`,
+    and nineteen adapters gate their listing on `sweep` before ever asking
+    `allowed()`.** So this drives one of them, `successfactors.cmd_list`,
+    through the REAL `verdict()` on the Cloudflare managed file served for a
+    fixture host, with the network stopped right after the gate: before
+    2026-09-11 it exited 7 there; now it passes the gate and reaches the
+    search. Mutated: the sweep-follows block in `verdict()` disabled →
+    exit 7 again and this case reddens."""
+
+    MANAGED = ("User-agent: *\nContent-Signal: search=yes,ai-train=no\nAllow: /\n\n"
+               "User-agent: ClaudeBot\nDisallow: /\n")
+
+    def test_successfactors_passes_the_gate_on_a_managed_file(self):
+        import contextlib
+        import _robots
+        spec = importlib.util.spec_from_file_location(
+            "_sf_sweep", os.path.join(SCRIPTS, "successfactors.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        class Resp:
+            headers = {"Content-Type": "text/plain"}
+            def read(self_):
+                return self.MANAGED.encode()
+            def getcode(self_):
+                return 200
+            def geturl(self_):
+                return "https://t.example/robots.txt"
+            def __enter__(self_):
+                return self_
+            def __exit__(self_, *a):
+                return False
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = lambda *a, **k: Resp()
+        reached = []
+        mod.route_for = lambda host: (reached.append("route"), ("api", "stubbed"))[1]
+        mod.search = lambda *a, **k: (reached.append("search"), {"totalJobs": 0, "jobSearchResult": []})[1]
+        mod.refuse_on_error = lambda *a, **k: None
+        code = None
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                mod.cmd_list(argparse.Namespace(host="t.example", locale="fr_FR", keywords=None,
+                                                pages=1, with_description=False))
+            except SystemExit as e:
+                code = e.code
+            finally:
+                _robots.urllib.request.urlopen = real
+                _robots._BACKOFF = back
+                _robots._CACHE.clear()
+                _robots._ALIAS.clear()
+        self.assertNotEqual(code, 7, "the gate on `sweep` still exits 7 on a file "
+                                     "that names ClaudeBot and leaves `*` open")
+        self.assertIn("search", reached, "the run never reached the listing")
 
 
 class NetEmpregosReadsTheTwoFeedsThatHoldAndNamesTheFourThatDoNot(unittest.TestCase):

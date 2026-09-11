@@ -1190,6 +1190,17 @@ So the rule here is the one `shared/reading-terms.md` already carries and
 ambiguous clause fairly, never a reason to argue past a publisher who named
 us.** Where the block appears, we obey it.
 
+> **Superseded on 2026-09-07 by the owner, against the pilot's advice, and
+> the paragraph above is kept so the reversal can be read.** *`ClaudeBot`
+> and `Claude-User` are two distinct tokens; the group naming the first does
+> not apply to the second, which is the standard semantics of the file.*
+> Where the block names `ClaudeBot` and leaves `*` open, a request goes as
+> `Claude-User` by ordinary HTTP. `allowed()` and `identity()` followed on
+> 2026-09-07; `verdict()['sweep']` — the gate nineteen adapters ask first —
+> followed on 2026-09-11 (#230): it now says `swept as claude-user` and
+> still names the record that closed `ClaudeBot`. A refusal by `*` is
+> untouched: nothing names us, everybody is refused, the sweep stays closed.
+
 ### What this section settles, and what it deliberately does not
 
 - **The block is recognised on sight** rather than read as a bespoke policy.

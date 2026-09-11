@@ -1135,6 +1135,32 @@ def verdict(host, agents=None):
             f"`User-agent: {token}` with no `Disallow`. That is consent "
             f"written down, not silence.{others}"
             + _named_note(matched, out.get("group_conflict")))
+    # **The sweep half of the owner's decision of 2026-09-07, applied here
+    # on 2026-09-11.** Under the default agents this verdict unions the six
+    # names a site may use ABOUT this project, and a group closing any one
+    # of them closed the sweep — `User-agent: ClaudeBot / Disallow: /` with
+    # `*` open made `sweep: False`, and nineteen adapters that gate their
+    # listing on `sweep` exited 7 without ever asking `allowed()`, which
+    # had followed the decision since 2026-09-07. *A reversal of doctrine
+    # reopens nothing by itself.* So: when the closure comes from a NAMED
+    # group, ask each token a request from here can carry, alone; the first
+    # one whose own record — or `*` — permits `/` carries the sweep, and the
+    # reason says under which name. A refusal by `*` is untouched: nothing
+    # names us, everybody is refused, and the sweep stays closed.
+    if agents == OUR_AGENTS and out["sweep"] is False and token != "*":
+        for tok in FETCH_TOKENS:
+            alone = verdict(final, agents=(tok,))
+            if alone["sweep"] is True:
+                out["sweep"] = True
+                out["sweep_token"] = tok
+                out["reason"] = (
+                    f"`User-agent: {token}` closes the site to that name — and "
+                    f"`{tok}`, a token a request from here carries, falls under "
+                    f"`User-agent: {alone.get('group') or '*'}`, which permits `/`. "
+                    f"**The group naming one token does not bind the other** "
+                    f"(owner's decision of 2026-09-07): swept as `{tok}`. "
+                    f"What the closing record said: " + out["reason"])
+                break
     return _keep(out)
 
 
