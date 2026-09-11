@@ -177,18 +177,68 @@ rebuild.
 
 ## Extracting search results
 
-**Check the no-results banner first — see trap 1.**
+**Check the no-results banner first — see trap 1. Then filter before you
+extract — see trap 5: every page carries a decoy card, and this snippet used
+to harvest it.**
 
 ```js
-JSON.stringify([...document.querySelectorAll('.job_seen_beacon')].map(c=>{
-  const a=c.querySelector('[data-jk]');
-  const p=c.innerText.split('\n').map(s=>s.trim()).filter(Boolean)
-          .filter(s=>!/^(Candidature simplifiée|nouveau|Publiée|Employeur actif|PostulerEnregistrer|Enregistrer)/i.test(s));
-  return {i:a?a.getAttribute('data-jk'):null, s:p.join(' · ').slice(0,180)};
-}))
+(()=>{
+  const all=[...document.querySelectorAll('.job_seen_beacon')];
+  // trap 5 — the decoy: 0×0 on screen (the discriminant), and, as checks,
+  // a single-line innerText and a hand-made data-jk
+  const real=all.filter(c=>{const r=c.getBoundingClientRect();
+                            return r.width>0 && r.height>0;});
+  const nl=c=>(c.innerText.match(/\n/g)||[]).length;
+  const rows=real.map(c=>{
+    const a=c.querySelector('[data-jk]');
+    const p=c.innerText.split('\n').map(s=>s.trim()).filter(Boolean)
+            .filter(s=>!/^(Candidature simplifiée|nouveau|Publiée|Employeur actif|PostulerEnregistrer|Enregistrer)/i.test(s));
+    return {i:a?a.getAttribute('data-jk'):null, s:p.join(' · ').slice(0,180), nl:nl(c)};
+  });
+  return JSON.stringify({
+    emitted: rows.length,
+    dropped_by_geometry: all.length-real.length,
+    // the two secondary signatures, counted on what was DROPPED — a check
+    // that the geometry dropped the decoy and not a real card
+    dropped_single_line: all.filter(c=>!real.includes(c) && nl(c)<=1).length,
+    kept_single_line: rows.filter(r=>r.nl<=1).length,   // must be 0
+    rows
+  });
+})()
 ```
 
-Sample output, verbatim from a real run:
+**Read the two counts before the rows.** `dropped_by_geometry: 0` on a page
+that carries a decoy is a filter that has stopped working, and nothing else
+would say so — every measured page since 2026-08-27 carried at least one
+(five over eight searches, one per page over four pages, one apiece over
+two). `kept_single_line > 0` is a real card the line-break check would have
+questioned: look at it before trusting it. **Both counts are printed so that
+a filter that silently passes everything cannot look like a clean page.**
+
+**What this filter rests on, with its denominator.** The geometry signal —
+`getBoundingClientRect()` returning **0 × 0** — was measured on 2026-09-09
+by session `18`: **4 pages of `ch.indeed.com`, 4 decoys, one per page, all
+four at 0 × 0**, all four passing every visibility test (`display: block`,
+`visibility: visible`, `opacity: 1`, no `aria-hidden`), all four with a
+rotated-alphabet `data-jk` and a single-line `innerText` cloning the card
+above. One domain, four pages, one day. *Issue #199.*
+
+**Written on that measurement, and NOT exercised on a live page since:**
+on 2026-09-11 the snippet above was assembled from the 09.09 measurement and
+the 08.27/09.05 line-break filter, and could not be run — the Chrome
+extension was not connected. So this file does not claim to have SEEN the
+geometry filter separate; it claims the 09.09 measurement, which it quotes.
+**The first operator to run it records `emitted` and `dropped_by_geometry`
+here, with the URL and the hour, and #199 closes on that line — not on this
+paragraph.** What WAS exercised on 2026-09-11, in `node` on three stub
+cards (a real 4-line card at 600 × 120, a decoy clone at 0 × 0, a real
+one-line card): `emitted: 2, dropped_by_geometry: 1, kept_single_line: 1`,
+the decoy's id absent from the rows — and with the geometry test mutated
+to `true`, `emitted: 3, dropped: 0`. *That tests the snippet's logic, not
+Indeed's page.*
+
+Sample output of the pre-filter version, verbatim from a real run (the
+rows' shape is unchanged; the counts are new):
 
 ```
 {"i":"c8a3978553801746","s":"Développeur Informatique · QUARIQ · Travail hybride à 1228 Plan-les-Ouates, GE · 100% +1"}
@@ -262,16 +312,36 @@ Two signals, in order of reliability:
   (`a1b2c3d4e5f67890`). Useful for recognising one by eye, too brittle to filter
   on.
 
-Filter on the line-break count, which drops in cleanly to the extraction
-snippet above:
+Filter on the line-break count — verified over eight searches on 2026-08-27:
+it removed all five fabricated cards and kept every genuine one:
 
 ```js
 [...document.querySelectorAll('.job_seen_beacon')]
   .filter(c => (c.innerText.match(/\n/g) || []).length > 1)
 ```
 
-Verified over eight searches: it removed all five fabricated cards and kept
-every genuine one.
+**And since 2026-09-09 the discriminant is the GEOMETRY, with the line
+breaks and the id shape demoted to checks** (#199). Measured by session
+`18` on four pages of `ch.indeed.com`, one decoy per page: the decoy
+**carries the same class as the real cards and passes every visibility
+test** — `display: block`, `visibility: visible`, `opacity: 1`, no
+`aria-hidden` — and the one thing that separates it is
+`getBoundingClientRect()` at **0 × 0**. Its `data-jk` was, all four times, a
+rotation of the hexadecimal alphabet (`456789abcdef0123`,
+`abcdef0123456789`, `cdef0123456789ab`) or the interleaved form
+(`0f1e2d3c4b5a6978`), and its `innerText` cloned the card above without a
+line break — the two signatures of 08.27 and 09.05, again. **A signature of
+the id is a property of the day; the geometry is what makes the card
+invisible to a person and visible to a script, which is what a decoy is
+for.** So the extraction snippet under *Extracting search results* now
+filters on `width > 0 && height > 0` first, and prints the line-break count
+of what it kept and what it dropped as the check that the two signals still
+agree. **It has not been exercised on a live page since it was written** —
+see that section for what is measured and what is not.
+
+> **A decoy is not noise: it is a test, and harvesting it is the failing
+> answer.** Emitting its id into the ledger is what marks the client as an
+> automaton — that is, most likely, what the card exists for.
 
 **Re-measured 2026-09-05, and the ranking of the two signals is now load-bearing
 rather than a preference.** Two searches on `ch.indeed.com`, sixteen cards each:
