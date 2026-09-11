@@ -142,6 +142,15 @@ def fetch_board():
         die("swissdevjobs returned something that is not the job list — the "
             "endpoint shape changed. Do not fall back to /api/jobs: it is "
             "deprecated and answers a plain-text notice with HTTP 200.")
+    if not d:
+        # **`0 of 0 postings kept` was the whole report** — #181, batch 5.
+        # This endpoint is the entire board (193 on 2026-09-11); an empty
+        # list from it is the endpoint gone quiet, not a Swiss market with
+        # no developer jobs. The shape check above passes on `[]`.
+        die("swissdevjobs answered with an EMPTY job list — a valid JSON "
+            "list of zero entries. That is not an empty board: this endpoint "
+            "serves the whole board and held 193 postings on 2026-09-11. "
+            "Report it with the board-request skill.", 6)
     return d
 
 

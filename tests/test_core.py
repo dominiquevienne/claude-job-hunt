@@ -14513,5 +14513,92 @@ class ASchemaFieldThatMayBeAListIsReadEitherWay(unittest.TestCase):
         self.assertIsNone(mod._text_or_list(None))
 
 
+class AnEmptyFirstPageOrAnEmptyWholeBoardListIsAReadingFault(unittest.TestCase):
+    """**#181, batch 5.** Two adapters printed a bare zero with exit 0 on the
+    one shape that, on their boards, can only be a reading fault:
+
+    - `randstad.py list` broke out of the page loop on an empty page 1 and
+      printed «0 emitted, 0 ads over 0 page(s)» — the board serves hundreds
+      of ads, page 1 is never empty;
+    - `swissdevjobs.py list` read the whole-board endpoint, passed the
+      «is it a list» check on `[]`, and printed «0 of 0 postings kept» — an
+      empty list from the endpoint that IS the board (193 on 2026-09-11).
+
+    Both now die 6 and say what they saw. Mutated: the `n == 1` die removed →
+    the randstad case reddens on exit None and «0 emitted»; the `if not d`
+    die removed → the swissdevjobs case reddens on «0 of 0».
+    """
+
+    def _load(self, name):
+        spec = importlib.util.spec_from_file_location(
+            f"_{name}181b5", os.path.join(SCRIPTS, f"{name}.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_randstad_page_1_with_no_cards_dies_with_the_bytes(self):
+        import contextlib
+        mod = self._load("randstad")
+        mod.get = lambda url: (200, "<html>" + "x" * 5000 + "</html>")
+        a = argparse.Namespace(max_pages=3, search=None, place=None,
+                               with_detail=False)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        self.assertEqual(code, 6)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("5013 characters", err.getvalue())
+        self.assertIn("not an empty board", err.getvalue())
+        self.assertNotIn("0 emitted", err.getvalue())
+
+    def test_randstad_a_later_empty_page_is_still_the_end(self):
+        """The direction that must stay open: page 2 empty after a full
+        page 1 is the end of the listing, not a fault."""
+        import contextlib
+        mod = self._load("randstad")
+        page1 = ("<html>" + "".join(
+            f'<a href="/jobs/{i:08x}-0000-4000-8000-000000000000/">' for i in
+            range(3)) + "</html>")
+        real_cards = mod.cards
+        mod.get = lambda url: (200, page1 if url.endswith("page=1") or
+                               "page" not in url else "<html></html>")
+        mod.cards = lambda body: ([{"id": str(i), "title": "t"} for i in
+                                   range(3)] if "jobs" in body else [])
+        a = argparse.Namespace(max_pages=3, search=None, place=None,
+                               with_detail=False)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        mod.cards = real_cards
+        self.assertIsNone(code, err.getvalue())
+        self.assertIn("3 emitted, 3 ads over 1 page(s)", err.getvalue())
+
+    def test_swissdevjobs_an_empty_list_from_the_whole_board_dies(self):
+        import contextlib
+        mod = self._load("swissdevjobs")
+        mod.get_json = lambda url: []
+        err = io.StringIO()
+        code = None
+        with contextlib.redirect_stderr(err):
+            try:
+                mod.fetch_board()
+            except SystemExit as e:
+                code = e.code
+        self.assertEqual(code, 6)
+        self.assertIn("EMPTY job list", err.getvalue())
+        self.assertIn("not an empty board", err.getvalue())
+        # and a non-empty list still passes through untouched
+        mod.get_json = lambda url: [{"jobUrl": "x"}]
+        self.assertEqual(mod.fetch_board(), [{"jobUrl": "x"}])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
