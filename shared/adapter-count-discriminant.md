@@ -513,3 +513,79 @@ still to read 17               randstad … zaposli — batch 5 takes them all
 ```
 
 *No rate is offered until the last batch.*
+
+---
+
+# BATCH 5 — the last 17, and the total over 105
+
+**2026-09-11, 12:41–12:42 UTC for the runs.** *Population by subtraction on
+`origin/main = cd7f4b8`: 105 scripts declared by a `<!-- script: -->` line;
+classified = named in the first cell of a table row of this file, or in the
+Case 2/3/4 sections, a hyphen counting as an underscore — 88, so 17 remain:
+`randstad` … `zaposli`, the alphabetical tail. The 17 were named to the pilot
+before reading and matched his continuation after `prekoveze` plus three
+(`ssge`, `stepstone`, `workday`) his coarser «cited» criterion had excluded.*
+
+**Every report call of each adapter was read. Six executed** — `RUN`, one
+request each on the cheapest invocation, all six answered.
+
+| adapter | case | the anchor, or its absence | ev. |
+| :-- | :-- | :-- | :-- |
+| `randstad` | **absent until this batch — fixed here** | `{kept} emitted, {len(seen)} ads over {pages_read} page(s)` — both its own, and page 1 with no cards **broke out of the loop and printed `0 emitted, 0 ads over 0 page(s)` with exit 0**. Now dies 6 with `{len(body)} characters — a read failure, not an empty board`; a later empty page still ends the listing | RUN · 30 on page 1 |
+| `randstadfr` | **present** | `parsed to zero <loc> out of {len(idx)} characters` (dies), `parsed to zero <url> blocks out of {len(page)}` (dies), `gave zero URLs out of {len(blocks)} <url> blocks` (dies); `{len(rows)} of {before}` after filters | READ |
+| `recruitee` | **present** | dies when the `offers` key is missing — *the only container in this payload, so its absence is a read failure* — and names an empty list *a real zero: what an employer with nothing open looks like* | READ |
+| `rocken` | **present** | `board_declares` from the title's `N offene Stellen` beside `rows_read` / `found` / `kept`, and its absence is said out loud; *this line prints either way* | RUN · declares 6 066, 10 read on 1 page |
+| `solique` | **present** | `{kept} emitted, {len(rows)} read of {total} stated` on the html route, with the truncation named; no route answering **dies** | READ |
+| `sozialinfo` | **present** | `{kept} emitted, {len(rows)} read, board states {stated} — N short`; zero cards **dies** 5: *the listing ships every ad in its markup, so zero cards is a page-shape change* | RUN · 720 read, board states 740 |
+| `ssge` | **present** | zero sub-sitemaps → `die(count_says(body))`; the families' counts printed by file | READ |
+| `stepstone` | **present** | `{kept} ads returned; the board reported {total} ({main} literal)` — the analytics payload's own total — and no payload **dies**; `zero_note` on zero | RUN · `count`: 379 reported, 379 literal |
+| `successfactors` | **present** | html route: `{kept} emitted, page states {total}; {rows_read} tiles read on N page(s)`; 0 tiles with a stated total ≠ 0 **dies 8 INDETERMINATE**; api route: `{kept} of {total} postings` | READ |
+| `swissdevjobs` | **absent until this batch — fixed here** | `{len(kept)} of {len(board)} postings kept` — both its own, and the whole-board endpoint answering `[]` **passed the «is it a list» check and printed `0 of 0`**. Now dies 6: *an empty list from the endpoint that IS the board (193 on 2026-09-11)* | RUN · 8 of 193 |
+| `taleez` | absent | `{len(jobs)} ads`, then *the tenant is real and has nothing open — that is a zero, not a failure. A wrong slug is a 404 instead* — **declares, no second figure**; the same shape as `freework` and `labonnealternance` | READ |
+| `talentsoft` | **present** | `{total} ads announced` from the page's counter, `collected {len(out)} of {total} announced — incomplete, not the size of the board`. *Blind side: when the counter regex misses, `? ads announced` and a zero print with exit 0* | READ |
+| `turijobs` | **present** | `gave zero ad URLs out of {len(blocks)} <url> blocks` (dies), `parsed to zero <url> blocks out of {len(page)}` (dies); `no __NEXT_DATA__ block ({len(page)} chars)` (dies) | READ |
+| `umantis` | **present** | zero vacancies **dies 5 both ways**, discriminated by a second read of the same body: `CONNECTOR` present → *renders its listing client-side — NOT an empty board*; absent → *no vacancy links and no sign of a widget — report the board*. *A control read, not a second count — the seventh form* | READ |
+| `workday` | **present** | `{total} postings match` — the API's own — beside `{kept} returned`; zero → *narrow with --search or check the facet before concluding* | READ |
+| `wttj` | **present** | `die(_zero(url, len(page), len(blocks)))` on the index and on each file; `{kept} discovered out of {seen}` | READ |
+| `zaposli` | absent | `sitemap_entries: {raw}` beside `kept` / `read`, and `{other} not under AD_PREFIX` printed when non-zero — but **a child sitemap that parses to zero entries prints a JSON of zeros with exit 0**, no bytes; only a MISSING child dies | RUN · 443 entries, 3 selected |
+
+**Batch 5: present 15 · absent 2 · annulled 0 · raises 0** — two of the
+fifteen are present because this batch made them so (`randstad`,
+`swissdevjobs`, commit `b290944`), the way batches 3 and 4 counted `jobstore`
+and `michaelpage`.
+
+## Two corrections, small, one commit — `b290944`
+
+`randstad list`: page 1 with no cards dies 6 with the bytes; page 2 empty
+after a full page 1 still ends the listing. `swissdevjobs list`: `[]` from
+the whole-board endpoint dies 6. Guard
+`AnEmptyFirstPageOrAnEmptyWholeBoardListIsAReadingFault`, three mutations
+(the `n == 1` die removed; the die widened to every page; the `if not d`
+removed), three red.
+
+## Total over 105 — computed from the five tables, not from memory
+
+```
+batch 1   present 14 · absent 6
+batch 2   present 18 · absent 2
+batch 3   present 16 · absent 4
+batch 4   present 16 · absent 4
+batch 5   present 15 · absent 2
+pre-classified   annulled 6 · raises 1 · case 2 (cubisima) 1
+
+read      105 of 105     present 79 · absent 18 · annulled 6 · raises 1 · cubisima 1
+                         79 + 18 + 6 + 1 + 1 = 105
+```
+
+*Denominator: the 105 scripts declared by `<!-- script: -->` in
+`shared/boards/` on `origin/main = cd7f4b8`, 2026-09-11 — `grep -l
+'<!-- script:' shared/boards/*.md`, then the `.py` names in those lines, 105
+distinct. The batch lines are read off this file's own `**Batch N:**` lines
+and the Case sections, never off a running memory of them.*
+
+**What "absent" means over the whole population, said once:** *every one of
+the 18 declares* — a `zero_note`, an admission sentence, or a die that
+refuses exit 0 — none prints a bare zero any more; what they lack is a
+second figure from another branch. **Whether that is enough is #181's
+question, and it is now answerable on a finished list rather than on a
+sample.**

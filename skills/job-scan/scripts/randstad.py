@@ -183,6 +183,16 @@ def cmd_list(a):
         rows = cards(body)
         ids = {c["id"] for c in rows}
         if not rows:
+            if n == 1:
+                # **Page 1 with no cards is not the end of a listing** — #181,
+                # batch 5. This board serves hundreds of ads and page 1 is
+                # never empty; zero cards here is a page-shape change, and
+                # `0 emitted, 0 ads over 0 page(s)` with exit 0 read as an
+                # empty board. Die with the bytes beside the zero.
+                die(f"page 1 parsed to zero cards from {len(body)} characters "
+                    f"— a read failure, not an empty board. The listing ships "
+                    f"its cards in the HTML; report it with the board-request "
+                    f"skill rather than concluding Randstad has nothing.", 6)
             break
         if first is None:
             first = ids
