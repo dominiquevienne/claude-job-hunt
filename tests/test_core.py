@@ -15044,5 +15044,116 @@ class JobindexReadsPageOneAndSaysTheRulesAreTheCap(unittest.TestCase):
         self.assertNotIn("share", t["text"])
 
 
+class ACumulativeCounterIsNotTheAnchorAndTheDeadlineIs(unittest.TestCase):
+    """**`greatugandajobs.py`, 2026-09-11.** The site says «103 391 Jobs
+    Posted» — everything ever posted, 102 924 nine days earlier — and no page
+    says how many are open. The anchor is the deadline every card carries,
+    read against the day: live versus expired, printed beside the count. And
+    the listing is a live stream: pinned Gold cards on every page, a step
+    that counts the whole page, new ids arriving between requests — so rows
+    read stand beside distinct and nothing claims completeness.
+
+    Mutated, `python3 -B`, detached copy: the deadline parser returning None
+    → the live/expired case reddens; the cumulative counter printed as
+    «board states» → the counter case reddens; Gold cards dropped from the
+    dedupe (repeated not counted) → the stream case reddens; the empty-page
+    die removed → the empty case reddens.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_gu", os.path.join(SCRIPTS, "greatugandajobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(ident, title, deadline, gold=False):
+        st = '<span class="js-status js-type">Full-time</span><span class="js-status bg-new">New</span>'
+        if gold:
+            st += '<span class="js-status bg-gold">Gold</span>'
+        return ('<div class="js-toprow"><div class="js-image"><a href="/jobs/company-detail/company-Acme-79/nav-31">'
+                '<img src="x" title="Acme Ltd"></a></div><div class="js-data"><div class="js-first-row">'
+                f'<span class="js-title">{st}</span></div><div class="js-first-row"><span class="js-title">'
+                f'<a class="jobtitle" href="/jobs/job-detail/job-{title.replace(" ", "-")}-{ident}">{title}</a></span></div>'
+                '<div class="js-second-row"><div class="js-fields"><span class="js-bold">Job Category: </span>IT jobs in Uganda</div>'
+                '<div class="js-fields"><span class="js-bold">Posted: </span>Today</div>'
+                f'<div class="js-fields"><span class="js-bold">Deadline of this Job:&nbsp</span><span class="get-text">{deadline}</span></div>'
+                '<div class="js-fields"><span class="js-bold">Duty Station:&nbsp</span><span class="get-text">Kampala | Uganda</span></div>'
+                '</div></div></div>')
+
+    def _page(self, cards, total="102836"):
+        return ('<html><body><div class="page_heading">Jobs in Uganda <div class="totaljobsheading">Total jobs: '
+                f'<span>{total}</span></div></div><div id="js-jobs-wrapper">' + "".join(cards) + '</div></body></html>')
+
+    def _run(self, mod, pages, argv=None):
+        import contextlib
+        served = iter(pages)
+        mod.get = lambda url: (200, next(served, self._page([])))
+        a = argparse.Namespace(pages=len(pages), live=False, limit=None, delay=0)
+        for k, v in (argv or {}).items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return code, rows, err.getvalue()
+
+    def test_the_deadline_is_read_and_splits_live_from_expired(self):
+        mod = self._mod()
+        self.assertEqual(mod.deadline_iso("Thursday, October 8 2026"), "2026-10-08")
+        self.assertIsNone(mod.deadline_iso("À définir"))
+        page = self._page([self._card("1", "Nurse", "Thursday, October 8 2099"),
+                           self._card("2", "Driver", "Monday, January 5 2015")])
+        code, rows, err = self._run(mod, [page])
+        self.assertIsNone(code, err)
+        self.assertEqual([r["deadline"] for r in rows], ["2099-10-08", "2015-01-05"])
+        self.assertIn("live 1 · expired 1 · undated 0", err)
+        code, rows, err = self._run(mod, [page], {"live": True})
+        self.assertEqual([r["id"] for r in rows], ["1"])
+
+    def test_the_cumulative_counter_is_named_and_never_stands_as_the_anchor(self):
+        mod = self._mod()
+        _, _, err = self._run(mod, [self._page([self._card("1", "Nurse", "Thursday, October 8 2099")])])
+        self.assertIn("«Total jobs: 102 836»", err)
+        self.assertIn("cumulative counter", err)
+        self.assertNotIn("board states", err)
+        self.assertNotIn("short", err)
+
+    def test_a_pinned_gold_card_is_emitted_once_and_counted_as_repeated(self):
+        mod = self._mod()
+        gold = self._card("9", "Gold Manager", "Thursday, October 8 2099", gold=True)
+        p1 = self._page([gold, self._card("1", "Nurse", "Thursday, October 8 2099")])
+        p2 = self._page([gold, self._card("2", "Driver", "Thursday, October 8 2099")])
+        code, rows, err = self._run(mod, [p1, p2])
+        self.assertIsNone(code, err)
+        self.assertEqual([r["id"] for r in rows], ["9", "1", "2"])
+        self.assertTrue(rows[0]["gold"])
+        self.assertIn("3 emitted of 3 distinct; 4 rows read on 2 page(s) (2+2), 1 repeated", err)
+
+    def test_an_empty_first_page_is_indeterminate(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, [self._page([])])
+        self.assertEqual(code, 6)
+        self.assertEqual(rows, [])
+        self.assertIn("INDETERMINATE", err)
+
+    def test_the_second_page_asks_for_the_whole_page_step(self):
+        mod = self._mod()
+        urls = []
+        real = self._page([self._card("1", "Nurse", "Thursday, October 8 2099")])
+        page2 = self._page([self._card("2", "Driver", "Thursday, October 8 2099")])
+        served = iter([real, page2])
+        mod.get = lambda url: (urls.append(url), (200, next(served)))[1]
+        import contextlib
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_list(argparse.Namespace(pages=2, live=False, limit=None, delay=0))
+        self.assertEqual(urls[1], mod.LIST + "?start=28")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
