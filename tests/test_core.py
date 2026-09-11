@@ -14796,5 +14796,133 @@ class TheLastThreeOfTheRePassDieThroughEmptyFirstPage(unittest.TestCase):
         self.assertIn("NOT found", err)
 
 
+class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCase):
+    """#195 — `bin/country-boards.py`. What a country page must carry, from
+    the repository alone: the board table, the five numbers, the two ratios
+    each naming its denominator, the fixed notice that the denominator is our
+    list and not the market. Fixtures, not `shared/boards/`: a card with a
+    script, a `none` with a date (faisable établi), a `none` with no date (à
+    revérifier — #195 ①: an undated «not feasible» is not a denominator), a
+    `none` with a DATED 403 (INDÉTERMINÉ, named), a worldwide `*` card (listed
+    apart), and a README carrying three `countries:` lines of example that
+    must not enter its own count.
+    """
+
+    TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "bin", "country-boards.py")
+
+    def _boards(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        def card(name, body):
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        card("README", "# Cards\n\n<!-- countries: XX -->\n<!-- countries: XX YY -->\n"
+                       "<!-- countries: * -->\n<!-- script: example.py -->\n")
+        card("alpha", "# A\n\n<!-- verified: 2026-09-01 -->\n<!-- hosts: a.example -->\n"
+                      "<!-- script: alpha.py -->\n<!-- countries: XX -->\n"
+                      "<!-- content: measured · 12 ads · 2026-09-01 -->\n")
+        card("beta", "# B\n\n<!-- verified: 2026-09-02 -->\n<!-- hosts: b.example -->\n"
+                     "<!-- script: none -->\n<!-- countries: XX YY -->\n"
+                     "<!-- content: measured · 40 ads stated by the site · 2026-09-02 -->\n"
+                     "Rules open, the index served 40 `<loc>`.\n")
+        card("gamma", "# G\n\n<!-- hosts: g.example -->\n<!-- script: none -->\n"
+                      "<!-- countries: XX -->\n"
+                      "The host refuses our client. No date was recorded.\n")
+        card("delta", "# D\n\n<!-- verified: 2026-09-08 -->\n<!-- hosts: d.example -->\n"
+                      "<!-- script: none -->\n<!-- countries: XX -->\n"
+                      "<!-- content: measured · 300 ads · 2026-09-08 -->\n"
+                      "GET / -> HTTP 403, 25 bytes, fetch-body.py, 2026-09-08\n")
+        card("world", "# W\n\n<!-- hosts: w.example -->\n<!-- script: world.py -->\n"
+                      "<!-- countries: * -->\n")
+        return d
+
+    def _run(self, *args):
+        import subprocess
+        r = subprocess.run([sys.executable, "-B", self.TOOL, *args],
+                           capture_output=True, text=True)
+        return r.returncode, r.stdout, r.stderr
+
+    def test_the_table_has_one_row_per_card_declaring_the_country_readme_excluded(self):
+        d = self._boards()
+        code, out, err = self._run("XX", "--boards", d)
+        self.assertEqual(code, 0, err)
+        rows = [l for l in out.splitlines() if l.startswith("| `")]
+        self.assertEqual([r.split("`")[1] for r in rows],
+                         ["alpha", "beta", "delta", "gamma"])
+        self.assertNotIn("`README`", out)
+        self.assertNotIn("example.py", out)
+        self.assertIn("5 fiches, README exclu", out)       # the population, said
+        self.assertIn("| Board | Ce qu'il couvre | Accès | Statut | Mesuré |", out)
+
+    def test_the_five_numbers_and_the_two_ratios_name_their_denominators(self):
+        d = self._boards()
+        _c, out, _e = self._run("XX", "--boards", d)
+        self.assertIn("fait              1", out)
+        self.assertIn("faisable ÉTABLI   1", out)
+        self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — delta", out)
+        self.assertIn("à REVÉRIFIER      1     sans date, ou refus sans date — gamma", out)
+        self.assertIn("total             4", out)
+        self.assertIn("fait / faisable   1 / 2    (faisable = fait + faisable établi", out)
+        self.assertIn("fait / total      1 / 4    (total = toutes les fiches déclarant XX", out)
+        self.assertIn("Ce n'est pas le marché du pays.", out)
+
+    def test_an_undated_none_is_a_recheck_not_a_denominator(self):
+        """#195 ①, the direction that must stay closed: `gamma` must not
+        raise `faisable` — with it, the ratio would read 1 / 3."""
+        d = self._boards()
+        _c, out, _e = self._run("XX", "--boards", d)
+        self.assertNotIn("1 / 3", out)
+        self.assertIn("gamma` |", out)
+        self.assertIn("| à REVÉRIFIER | — |", out)
+
+    def test_worldwide_cards_are_listed_apart_and_outside_the_ratios(self):
+        d = self._boards()
+        _c, out, _e = self._run("YY", "--boards", d)
+        self.assertIn("total             1", out)             # beta only
+        self.assertIn("Boards mondiaux (`countries: *`) — 1", out)
+        self.assertIn("`world`", out)
+
+    def test_the_html_fragment_carries_the_same_content_and_is_well_formed(self):
+        import html.parser
+        d = self._boards()
+        _c, out, _e = self._run("XX", "--boards", d, "--html")
+
+        class P(html.parser.HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.stack = []
+
+            def handle_starttag(self, t, a):
+                self.stack.append(t)
+
+            def handle_endtag(self, t):
+                assert self.stack and self.stack[-1] == t, (self.stack[-3:], t)
+                self.stack.pop()
+        p = P()
+        p.feed(out)
+        self.assertEqual(p.stack, [])
+        self.assertEqual(out.count("<tr>"), 5)               # header + 4
+        self.assertIn("fait / total      1 / 4", out)
+        self.assertIn("marché du pays", out)
+
+    def test_all_counts_per_member_and_never_prints_zero_for_an_unmapped_one(self):
+        import tempfile
+        d = self._boards()
+        m = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
+                                        encoding="utf-8")
+        # the members file speaks alpha-3; XX/YY are not ISO, so a real code
+        # with no card (CHE) and an unknown one (ZZZ) are the two edges
+        m.write("CHE\tSuisse\tsuisse\thttps://x\nZZZ\tNulle-part\tnp\thttps://y\n")
+        m.close()
+        self.addCleanup(os.unlink, m.name)
+        code, out, err = self._run("--all", "--members", m.name, "--boards", d)
+        self.assertEqual(code, 0, err)
+        self.assertIn("CHE\tCH\tSuisse\t0\t0\t0\t0\t0", out)
+        self.assertIn("ZZZ\tUNMAPPED\tNulle-part\t?\t?\t?\t?\t?", out)
+        self.assertIn("1 UNMAPPED (not zero: unknown)", err)
+        self.assertIn("2 ISO2 declared by cards and absent from the members file: XX, YY", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
