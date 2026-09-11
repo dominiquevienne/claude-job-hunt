@@ -58,7 +58,7 @@ from _decode import decode_body
 from _ldjson import absent_reason, label, one, postings
 from _robots import allowed as robots_allowed, full_path
 from _ua import UA
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://www.jobivoire.ci"
 # **The listing is `/jobs`, plural.** `/job` answered 404 «&nbsp;Page
@@ -215,6 +215,11 @@ def cmd_search(a):
             note(f"page {page}: HTTP {code} — stopping.")
             break
         found = slugs_on(html)
+        if not found and page == a.page:
+            # #181: the first page asked for, empty, is not «the end of the
+            # listing» — it is INDETERMINATE, with the size beside the zero.
+            die(empty_first_page("jobivoire", html, "advertisement link",
+                                 where=f"page {page}"), 6)
         if not found:
             note(f"page {page} carried no advertisement link — that is the "
                  f"end of the listing. Page 325 does the same, which is how "
