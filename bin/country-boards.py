@@ -177,6 +177,10 @@ def access_of(card):
     x = excluded_of(card)
     if x and not (h.get("script", "").strip() not in ("", "none")):
         return x[0], "the card's own quotation of the rule, or of the DNS answer"
+    if h.get("content", "").strip().lower().startswith("indeterminate"):
+        # the card's declared word outranks any status its prose mentions
+        return "indéterminé — " + re.sub(r"^indeterminate\s*·\s*", "",
+                                         h["content"]).split(" · ")[0][:120], "`content: indeterminate`"
     r = refusal_of(card)
     script = h.get("script", "").strip()
     if r:
