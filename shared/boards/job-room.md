@@ -300,6 +300,60 @@ take, and inventing one is the guess this file exists to prevent.
 carry exactly one `jobDescriptions` entry**, so its `max()` had nothing to
 choose between. The truncation is in the feed.)* Issue #97.
 
+**The description loses tokens too — and the loss is in the RAW payload,
+before any code of this plugin. Measured 2026-09-11 (#205).** One ad, two
+tokens, with jobup as the witness on the same text:
+
+```
+job-room  7ea8e085-8bac-444f-8f22-20e2c98ba651   sourceSystem API, externalReference = the jobup uuid
+jobup     f9db4223-9bd2-4a83-9e2a-e1f629c274da   (what job-room itself declares in duplicate_of)
+
+job-room, RAW jobContent.jobDescriptions, 12:17:01 UTC:
+  "frameworks Backend (ex. Python, , Java) et Frontend (ex. React, Angular, modernes,"
+jobup, --with-text, 12:17:11 UTC:
+  "frameworks Backend (ex. Python, Node.js, Java) et Frontend (ex. React, Angular, Vue.js) modernes,"
+```
+
+**`Node.js` and `Vue.js` are gone from the job-room copy; `React` and
+`Angular`, in the same lists and without a dot, survive on both sides.**
+`to_text()` returns the raw slice unchanged, and the generic tag strip has no
+chevron to act on — *the hole is in what the API serves, not in what this
+adapter does with it.* The re-read of 2026-09-11 reproduced the 09.11
+measurement of the issue byte for byte, on a `PUBLISHED_PUBLIC` record
+updated at 02:34 UTC that day.
+
+**The denominator, said for what it is: ONE advertisement, TWO tokens.** A
+weak check on 14 job-room descriptions that name `React` or `Angular` found no
+`.js` token in any of them — consistent with a filter on `.js`, and not a
+measurement of one. *The shape of the filter is not established; the loss
+is.* **Do not write "job-room drops dotted tokens": write "one ad lost two
+dotted tokens, and its jobup twin kept them".**
+
+**What it costs, measured on that file.** `candidate.md` lists Node.js among
+the hard language blockers. Read on job-room alone, the stack was
+*Python, ?, Java* and the row went to `todo` with an open question; read on
+jobup, it is `discarded` on a hard blocker. **The lost token was exactly the
+token that decides** — and nothing signals it: a list with a hole reads as a
+list, and no count, length or shape check sees it.
+
+**So the rule, and it is a rule of METHOD before it is code — `job-scan` §5
+carries it:** *a syndicated copy is a second-rank reading for the tokens that
+decide.* **When a job-room record declares a `duplicate_of` and the verdict
+turns on the text — the stack, a required language, a certification, an
+eligibility criterion — the stack verdict is taken on the SOURCE board, not on
+the copy.** The field is already read at step 3 for deduplication; here it is
+the route to the text that was not amputated.
+
+**And what #97 left open, this settles half of.** #97 closed with *"where
+the truncation happens: not established — API job-room, or already in what
+jobup syndicates"* and named `pick_description` first suspect. **The plugin
+is out: the hole is in the raw payload.** What stays open is which side of
+job-room's ingestion loses it — the employer's feed (`sourceSystem: API`) or
+job-room's storage — and the jobup copy of the same feed being intact says
+the feed as jobup received it was whole. *A cheap mechanical tell, if one is
+wanted: a description containing `, ,` or `( ,` — the orphan comma, the same
+family as #97's orphan dash; this ad carries one.*
+
 **8. Read the detail endpoint before scoring.** One ad returned a 325-character
 description from `_search` and 5 185 characters from the detail endpoint; five
 others matched exactly. The discrepancy is not systematic and its cause was not
