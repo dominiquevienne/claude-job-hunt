@@ -15400,5 +15400,131 @@ class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
                                          "longer a divergence")
 
 
+class NetEmpregosReadsTheTwoFeedsThatHoldAndNamesTheFourThatDoNot(unittest.TestCase):
+    """`netempregos.py` — Portugal's first adapter, 2026-09-11. The host
+    declares seven sitemaps; two hold (the RSS, 1 000 items with the employer
+    on each; the sitemap, 5 000 advertisement URLs) and four answer the HOME
+    PAGE with a 200 and ~71 KB — a status check and a size check both pass
+    them, and only the count of advertisements extracted sees it. So a feed
+    that yields zero items dies through `empty_first_page`, and says when the
+    body is the home page. The ad page's `JobPosting` carries the reader's
+    clock as `datePosted`; the adapter emits it under a name that says so.
+    """
+
+    HOME = ('\r \r <!DOCTYPE html>\r <html lang="pt-pt">\r <head><title>Emprego  '
+            'Trovit_all.asp  - Setembro 2026</title></head><body>' + "x" * 70000
+            + "</body></html>")
+
+    @staticmethod
+    def _item(ident, zona, cat, company="ACME LDA"):
+        return (f"<item><title><![CDATA[Title {ident}]]></title>"
+                f"<dc:creator><![CDATA[{company}]]></dc:creator>"
+                f"<link>https://www.net-empregos.com/{ident}/some-slug/</link>"
+                f"<description><![CDATA[&lt;b&gt;Empresa: &lt;/b&gt;{company}&lt;br&gt;"
+                f"&lt;b&gt;Categoria: &lt;/b&gt;{cat}&lt;br&gt;&lt;b&gt;Zona: &lt;/b&gt; {zona}"
+                f"&lt;br&gt;&lt;b&gt;Data: &lt;/b&gt;11-9-2026&lt;br&gt;&lt;br&gt;"
+                f"&lt;b&gt;Descrição: &lt;/b&gt;Texto da oferta...]]></description>"
+                f"<pubDate>Fri, 11 Sep 2026 15:19:31 GMT</pubDate>"
+                f"<guid>https://www.net-empregos.com/{ident}/some-slug/</guid></item>")
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_netempregos_t", os.path.join(SCRIPTS, "netempregos.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _run(self, fn, a):
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                fn(a)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_feed_yields_cards_with_the_employer_and_the_feeds_dates(self):
+        mod = self._mod()
+        rss = ("<rss><channel>" + self._item(1, "Lisboa", "Informática ( Programação )")
+               + self._item(2, "Porto", "Comercial / Vendas") + "</channel></rss>")
+        mod.get = lambda url: (200, rss)
+        a = argparse.Namespace(zona=None, categoria=None, limit=0)
+        code, out, err = self._run(mod.cmd_feed, a)
+        self.assertIsNone(code, err)
+        rows = [json.loads(l) for l in out.splitlines()]
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["ledger_id"], "net-empregos:1")
+        self.assertEqual(rows[0]["company"], "ACME LDA")
+        self.assertEqual(rows[0]["location"], "Lisboa")
+        self.assertEqual(rows[0]["category"], "Informática ( Programação )")
+        self.assertEqual(rows[0]["date"], "11-9-2026")
+        self.assertIn("2 emitted, 2 items read", err)
+        self.assertIn("2 of 2 name their employer", err)
+        self.assertIn("its own cap, not the board's", err)
+
+    def test_a_filter_reduces_and_an_empty_filter_prints_what_the_feed_spells(self):
+        mod = self._mod()
+        rss = ("<rss>" + self._item(1, "Lisboa", "A") + self._item(2, "Porto", "B")
+               + self._item(3, "Porto", "A") + "</rss>")
+        mod.get = lambda url: (200, rss)
+        code, out, err = self._run(mod.cmd_feed, argparse.Namespace(
+            zona="Porto", categoria=None, limit=0))
+        self.assertEqual(len(out.splitlines()), 2)
+        self.assertIn("2 emitted, 3 items read, 1 dropped", err)
+        code, out, err = self._run(mod.cmd_feed, argparse.Namespace(
+            zona="Faro", categoria=None, limit=0))
+        self.assertEqual(out, "")
+        self.assertIsNone(code)
+        self.assertIn("the feed is not empty", err)
+        self.assertIn("Porto 2", err)
+        self.assertIn("Lisboa 1", err)
+
+    def test_the_four_feeds_that_answer_the_home_page_are_a_reading_fault_named(self):
+        """The negative fixture: a 200 of 70 KB that is the home page. A status
+        check passes it, a size check passes it; the count of items is zero
+        and the adapter dies 6, and says the body is the HOME PAGE."""
+        mod = self._mod()
+        mod.get = lambda url: (200, self.HOME)
+        for fn, ns in ((mod.cmd_feed, argparse.Namespace(zona=None, categoria=None, limit=0)),
+                       (mod.cmd_list, argparse.Namespace(limit=0))):
+            with self.subTest(cmd=fn.__name__):
+                code, out, err = self._run(fn, ns)
+                self.assertEqual(code, 6, err)
+                self.assertEqual(out, "")
+                self.assertIn("HOME PAGE", err)
+                self.assertIn("INDETERMINATE", err)
+                self.assertIn("characters", err)
+
+    def test_the_sitemap_lists_distinct_ids_and_counts_the_duplicates(self):
+        mod = self._mod()
+        body = ("\r  https://www.net-empregos.com/10/a/\r https://www.net-empregos.com/11/b/\r"
+                " https://www.net-empregos.com/10/a/\r")
+        mod.get = lambda url: (200, body)
+        code, out, err = self._run(mod.cmd_list, argparse.Namespace(limit=0))
+        self.assertIsNone(code, err)
+        self.assertEqual(len(out.splitlines()), 2)
+        self.assertIn("2 emitted, 2 distinct ids in 3 advertisement URLs from 3 lines, 1 duplicate", err)
+
+    def test_the_ad_emits_the_jobposting_dates_under_names_that_say_they_are_the_clock(self):
+        mod = self._mod()
+        page = ('<html><script type = "application/ld+json" >{"@context":"http://schema.org",'
+                '"@type":"JobPosting","title":"T","datePosted":"2026-9-11 15:24 UTC",'
+                '"validThrough":"2026-10-11 15:24 UTC","hiringOrganization":{"@type":"Organization",'
+                '"name":"ACME"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress",'
+                '"addressLocality":"Setubal"}},"description":"<p>Texto</p>"}</script></html>')
+        mod.get = lambda url: (200, page)
+        code, out, err = self._run(mod.cmd_ad, argparse.Namespace(id="15978698"))
+        self.assertIsNone(code, err)
+        d = json.loads(out)
+        self.assertEqual(d["rendered_at_as_datePosted"], "2026-9-11 15:24 UTC")
+        self.assertNotIn("datePosted", d)
+        self.assertNotIn("date", {k for k in d if k not in ("rendered_at_as_datePosted",)})
+        self.assertEqual(d["company"], "ACME")
+        self.assertEqual(d["description"], "Texto")
+        self.assertEqual(d["url"], "https://www.net-empregos.com/15978698/oferta/")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
