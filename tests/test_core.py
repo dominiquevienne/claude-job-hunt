@@ -14898,11 +14898,14 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         d = self._boards()
         _c, out, _e = self._run("XX", "--boards", d)
         self.assertIn("fait              1", out)
-        self.assertIn("faisable ÉTABLI   1", out)
+        self.assertIn("mesuré sans refus 1", out)      # ex-«faisable établi», #232
         self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — delta", out)
         self.assertIn("à REVÉRIFIER      1     sans date, ou refus sans date — gamma", out)
         self.assertIn("total             4", out)
-        self.assertIn("fait / faisable   1 / 2    (faisable = fait + faisable établi", out)
+        # #232: the INDÉTERMINÉ (delta) and the à REVÉRIFIER (gamma) stay IN
+        # the denominator — 1 / 4, not 1 / 2 — and are named as counting
+        self.assertIn("fait / faisable   1 / 4    (faisable = total − écartés datés et motivés ; "
+                      "dont 1 indéterminé(s) et 1 à revérifier, qui COMPTENT)", out)
         self.assertIn("fait / total      1 / 4    (total = toutes les fiches déclarant XX", out)
         self.assertIn("Ce n'est pas le marché du pays.", out)
 
@@ -14958,7 +14961,9 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("refus écrit dans les règles", out)
         self.assertIn("NXDOMAIN sur deux résolveurs", out)
         self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — shell", out)
-        self.assertIn("fait / faisable   0 / 0", out)
+        # #232: the two dated, motivated exclusions leave the denominator;
+        # the INDÉTERMINÉ (shell) stays — 0 / 1, not 0 / 0
+        self.assertIn("fait / faisable   0 / 1", out)
         self.assertIn("fait / total      0 / 3", out)
         self.assertIn("écartés VALIDÉS   0", out)
 

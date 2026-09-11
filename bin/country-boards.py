@@ -29,8 +29,14 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
                         still the owner's to validate
     total               every card declaring the country
 
-    fait / faisable   = fait / (fait + faisable établi)   — routes licites exercées
-    fait / total      = fait / total                        — indéterminés et à revérifier compris
+    fait / faisable   = fait / (total − écartés datés et motivés)
+                        — INDÉTERMINÉS and à REVÉRIFIER stay IN the denominator and are
+                        named apart. #232, 2026-09-11: this script excluded them
+                        («faisable établi» = routes exercées) while the 46 pages of #195
+                        kept them, and Mozambique published 1/1 where the pages say 1/2.
+                        #195 ①: «plus on classe de boards infaisables, meilleur il
+                        paraît» — a host we could not read is not a host we cannot read.
+    fait / total      = fait / total                        — écartés compris
 
 **The denominator is our list, not the market** (#195 ②) — one fixed sentence,
 printed on every page. And boards declared `countries: *` (worldwide meta-boards)
@@ -287,7 +293,10 @@ def table(cards, iso2):
         if cls == "ecarte":
             named_exc.append(c["name"])
     total = len(own)
-    faisable = n["fait"] + n["faisable"]
+    # #232: total minus the exclusions that are dated AND motivated — the
+    # indeterminate and the undated stay in, named apart. `fait + faisable`
+    # was the flattery #195 ① forbids: it shrank with every host not read.
+    faisable = total - n["ecarte"]
     return {"lines": lines, "n": n, "total": total, "faisable": faisable,
             "world": world, "undeclared": undeclared,
             "named_ind": named_ind, "named_rev": named_rev,
@@ -306,7 +315,7 @@ def render_md(iso2, t, all_cards):
         "",
         "```",
         f"fait              {n['fait']}     route livrée (`script:` nomme un .py)",
-        f"faisable ÉTABLI   {n['faisable']}     mesuré, daté, aucun refus consigné",
+        f"mesuré sans refus {n['faisable']}     daté, aucun refus consigné (ex-«faisable établi» — ce n'est PAS le dénominateur, #232)",
         f"INDÉTERMINÉS      {n['indetermine']}     refus consigné avec sa date"
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else ""),
         f"à REVÉRIFIER      {n['reverifier']}     sans date, ou refus sans date"
@@ -316,7 +325,7 @@ def render_md(iso2, t, all_cards):
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"total             {t['total']}",
         "",
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = fait + faisable établi : routes licites exercées)",
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total − écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2}, indéterminés, à revérifier et écartés compris)",
         "```",
         "",
@@ -350,7 +359,7 @@ def render_html(iso2, t, all_cards):
     out.append("</tbody></table>")
     out.append("<h3>Les cinq nombres, et les deux ratios</h3><pre>")
     out.append(e(
-        f"fait              {n['fait']}\nfaisable ÉTABLI   {n['faisable']}\n"
+        f"fait              {n['fait']}\nmesuré sans refus {n['faisable']}\n"
         f"INDÉTERMINÉS      {n['indetermine']}"
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else "") + "\n"
         f"à REVÉRIFIER      {n['reverifier']}"
@@ -358,7 +367,7 @@ def render_html(iso2, t, all_cards):
         f"écartés VALIDÉS   0\nécartés NON validés {n['ecarte']}"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else "") + "\n"
         f"total             {t['total']}\n\n"
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = fait + faisable établi)\n"
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total − écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)\n"
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2})"))
     out.append("</pre>")
     out.append(f"<p><em>{e(NOTICE)}</em></p>")
