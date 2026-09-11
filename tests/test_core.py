@@ -14396,5 +14396,102 @@ class ABoardThatSaysZeroWith404CannotSayZeroWith200(unittest.TestCase):
         self.assertNotIn("0 ads over", err.getvalue())
 
 
+class AnEmptyFirstPageIsIndeterminateNotAnExitZero(unittest.TestCase):
+    """**#181, the sixteen «absent» of batches 1–4.** Twelve of them printed
+    `zero_note()` — or an admission sentence — on an empty FIRST page and
+    exited 0 with nothing on stdout. *The admission was on stderr, the verdict
+    was on the exit code, and the exit code said fine.* A caller that reads
+    stdout and the code sees an empty board.
+
+    They now `die(empty_first_page(...), 6)`: the size of the body beside the
+    zero, INDETERMINATE, nothing on stdout. Two guards, because the form is
+    the same across thirteen files: a population check that every one of them
+    dies through `empty_first_page` (mutated: the call removed from any one →
+    reddens, naming it), and a behavioural check on five shapes — the case
+    that opened #181 among them — driving each `cmd_*` with a stubbed fetch
+    that serves a full-sized page with no card (mutated: `page == 1` turned
+    into `False` in `jobbkk` → the jobbkk case reddens, exit None).
+    """
+
+    POPULATION = ("batiactu", "computrabajo", "employtt", "encuentra24",
+                  "glmis", "hellowork", "jobbkk", "jobivoire", "jobsge",
+                  "jobup", "meteojob", "mihnati", "philjobnet")
+
+    def test_every_one_of_the_thirteen_dies_through_empty_first_page(self):
+        missing = []
+        for name in self.POPULATION:
+            with open(os.path.join(SCRIPTS, name + ".py"), encoding="utf-8") as fh:
+                src = fh.read()
+            if "die(empty_first_page(" not in src:
+                missing.append(name)
+        self.assertEqual(missing, [], "an adapter of the sixteen lost its "
+                                      "empty-first-page die and is back to "
+                                      "exit 0 on a page it could not read")
+
+    def test_the_sentence_carries_the_size_and_names_the_ambiguity(self):
+        import _zero
+        s = _zero.empty_first_page("x", "a" * 12345, "card", candidates=3)
+        self.assertIn("12 345 characters", s)
+        self.assertIn("3 candidate block(s)", s)
+        self.assertIn("look alike", s)
+        self.assertIn("INDETERMINATE", s)
+
+    def _mod(self, name):
+        spec = importlib.util.spec_from_file_location(
+            "_abs181_" + name, os.path.join(SCRIPTS, name + ".py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _drive(self, mod, fn, ns):
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                fn(ns)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    SHELL = "<html><body>" + "<div>chrome</div>" * 3000 + "</body></html>"
+
+    def test_five_shapes_exit_6_with_the_size_on_an_empty_first_page(self):
+        cases = {
+            # the case that opened #181
+            "jobbkk": ("get", lambda *a, **k: self.SHELL, "cmd_search",
+                       dict(keyword="x", province=None, category=None,
+                            limit=None, pages=2, delay=0)),
+            "meteojob": ("fetch", lambda *a, **k: self.SHELL, "cmd_search",
+                         dict(what="x", where="y")),
+            "hellowork": ("fetch", lambda *a, **k: self.SHELL, "cmd_search",
+                          dict(domaine="informatique", metier=None, ville=None,
+                               cp=None, with_detail=False, delay=0)),
+            "employtt": ("get", lambda *a, **k: (200, self.SHELL), "cmd_search",
+                         dict(limit=None)),
+            "jobup": ("get", lambda *a, **k: (200, self.SHELL, ""), "cmd_search",
+                      dict(site="jobup", term="x", location=None, pages=2,
+                           limit=None)),
+        }
+        for name, (fetch_attr, fetch, fn, ns) in cases.items():
+            with self.subTest(adapter=name):
+                mod = self._mod(name)
+                setattr(mod, fetch_attr, fetch)
+                for guard in ("gate", "gate_path", "check_robots"):
+                    if hasattr(mod, guard):
+                        setattr(mod, guard, lambda *a, **k: None)
+                if hasattr(mod, "robots_verdict"):
+                    mod.robots_verdict = lambda *a, **k: {
+                        "sweep": True, "reason": "", "host": "h", "certain": True}
+                if hasattr(mod, "postings"):
+                    mod.postings = lambda body: []
+                code, out, err = self._drive(mod, getattr(mod, fn),
+                                             argparse.Namespace(**ns))
+                self.assertEqual(code, 6, f"{name}: exit {code!r}, stderr {err[-300:]!r}")
+                self.assertEqual(out, "", f"{name}: something on stdout")
+                self.assertIn("characters", err, name)
+                self.assertIn("INDETERMINATE", err, name)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

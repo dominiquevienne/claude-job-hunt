@@ -89,3 +89,44 @@ def zero_note(board, what=None, where=None, extra=None, market=None,
     if extra:
         lines.append(extra)
     return " ".join(lines)
+
+
+EXIT_INDETERMINATE = 6
+
+
+def empty_first_page(board, body, what="card", candidates=None, where=None,
+                     what_asked=None):
+    """The sentence for a FIRST page that yielded nothing — and it goes in a
+    `die(…, 6)`, never in a `note()` followed by `return`. #181.
+
+    **The finding behind it.** Sixteen adapters, read one by one in the re-pass
+    of #181, printed `zero_note()` on an empty first page and exited 0 with
+    nothing on stdout. *`zero_note` is right about what a zero cannot
+    distinguish — and an exit 0 with an empty stdout is exactly what a caller
+    reads as «this board is empty».* The admission was on stderr; the verdict
+    was on the exit code, and the exit code said fine.
+
+    **The second figure is the size of the body.** A page of tens of kilobytes
+    with nothing extracted is one of two things — a reading fault (the markup
+    moved, the pattern reads nothing) or a search that matched nothing on a
+    board that still serves its chrome — and from here they look alike. So the
+    size is printed beside the zero, `candidates` (the blocks a coarse split
+    found before parsing) when the adapter has one, and the exit is 6:
+    INDETERMINATE, not a count. *The page-1 case only: past the first page an
+    empty page is the end of a listing, and the adapters say so themselves.*
+
+    `jobbkk` is the case that opened #181 — 1 239 956 bytes, 25 advertisement
+    links, «page 1 carried no result card», exit 0.
+    """
+    n = len(body or "")
+    where = f" at {where}" if where else ""
+    asked = f" for {what_asked}" if what_asked else ""
+    s = (f"[{board}] page 1 yielded no {what}{asked}{where} — from {n:,} "
+         f"characters".replace(",", chr(32)))
+    if candidates is not None:
+        s += f", {candidates} candidate block(s) before parsing"
+    s += (". **A page this size with nothing extracted is not an empty "
+          "board**: a reading fault and a search that matched nothing look "
+          "alike from here. INDETERMINATE — read the page before believing "
+          "the zero, and do not record one.")
+    return s
