@@ -4044,6 +4044,54 @@ class ASyndicatedCopyIsASecondRankReadingForTheTokensThatDecide(
                 self.assertIn("Do not write", before,
                               f"{claim!r} stated as a fact about the board")
 
+class ASingleEmployerAdapterIsASegmentNotAWaste(unittest.TestCase):
+    """Issue #204. `board-request` §1 said *"these are not boards, and an
+    adapter would be wasted on them"* of a single company's careers page —
+    the one place in the plugin that said so, against a register line
+    twenty-three adapters long named *Employers' own career sites (one per
+    employer)* and `ats.py`'s own first lines (*"I want to work at X", not
+    for discovery*). The owner's decision of 2026-09-09: an adapter for one
+    employer lets the user sweep one segment of the offers. `ge-ch.md` is
+    the first specimen written under it.
+    """
+
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+
+    def test_no_skill_calls_a_single_employer_adapter_a_waste(self):
+        import glob
+        for path in sorted(glob.glob(os.path.join(self.ROOT, "skills", "*",
+                                                  "SKILL.md"))):
+            text = open(path, encoding="utf-8").read()
+            with self.subTest(skill=os.path.basename(os.path.dirname(path))):
+                self.assertNotRegex(text, r"adapter would be wasted",
+                                    "the sentence #204 withdrew is back")
+                self.assertNotRegex(
+                    text, r"single company's careers page \|[^|]*\| Nothing",
+                    "a single employer's page is routed to nothing")
+
+    def test_board_request_names_the_segment_rule_and_its_first_specimen(self):
+        text = open(os.path.join(self.ROOT, "skills", "board-request",
+                                 "SKILL.md"), encoding="utf-8").read()
+        i = text.index("## 1 —")
+        j = text.index("## 2 —")
+        section = text[i:j]
+        self.assertIn("segment", section)
+        self.assertIn("ge-ch.md", section)
+        self.assertIn("VOLUME and the STABILITY", section)
+        # the line that was right stays
+        self.assertIn("aggregator that only redirects", section.lower())
+
+    def test_the_register_line_and_ats_py_say_the_same_thing(self):
+        """The witnesses the rule rests on: the register line exists and
+        carries the specimen; `ats.py` still says what §1 now quotes."""
+        skill = open(os.path.join(self.ROOT, "skills", "job-scan", "SKILL.md"),
+                     encoding="utf-8").read()
+        line = next(l for l in skill.splitlines()
+                    if "Employers' own career sites" in l)
+        self.assertIn("ge.ch", line)
+        ats = open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8").read()
+        self.assertIn('"I want to work at X", not for discovery', ats)
+
 class AGateThatOffersOnlyMotivatedRefusalsInventsTheReason(unittest.TestCase):
     """Issue #208. The go/no-go gate offered four options — two yeses and
     two refusals, each naming a cause the analysis had found. The

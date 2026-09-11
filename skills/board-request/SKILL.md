@@ -71,23 +71,43 @@ settled when the adapter was written. Do not re-litigate it.
 **So does a finding.** Section 1 asks whether a *site* deserves an adapter; a
 finding is often not about a site at all.
 
-## 1 — Is this actually a board?
+## 1 — Is this actually a board — and is one employer a board?
 
 A **job board** aggregates ads from many employers and has a search. That is
-what an adapter is for.
+one thing an adapter is for. **The other is a segment the user chose**:
+`ats.py`'s own first lines say it — *the adapter family for "I want to work at
+X", not for discovery* — and `job-scan` publishes a whole register line,
+*Employers' own career sites (one per employer)*, twenty-three adapters long.
+**An adapter for a single employer is not wasted; it lets the user sweep one
+segment of the offers and nothing else.** Decision of the repository's owner,
+2026-09-09, verbatim: *«&nbsp;un adaptateur pour un seul employeur peut avoir
+un intérêt. Le but d'un adaptateur n'est pas uniquement de couvrir plus, mais
+aussi de potentiellement laisser l'opportunité à un utilisateur de n'utiliser
+qu'un segment des offres&nbsp;»* — issue #204. Until then this section was the
+one place in the plugin that said the opposite.
 
-These are **not** boards, and an adapter would be wasted on them:
+**What separates a one-employer site that earns a file from one that does not
+is not the number of employers — it is the VOLUME and the STABILITY of the
+segment:**
 
-| Not a board | Tell it apart by | What to do instead |
+| | |
+| :-- | :-- |
+| three posts, a bespoke form, ids that change | does not earn a file |
+| **75 to 82 simultaneous vacancies, server-rendered, stable ids, an RSS feed** | **earns one** — `ge-ch.md`, the État de Genève, the first specimen written under this rule (#203, `4c48428`), and a template for every other canton's portal |
+
+| Site | Tell it apart by | What to do |
 | :-- | :-- | :-- |
-| A single company's careers page | One employer throughout; the domain is the employer's | Nothing — `cover-letter <URL>` handles it |
-| An applicant tracking system (Greenhouse, Workday, Lever, SmartRecruiters, Taleo, Personio, Recruitee…) | The URL contains the ATS name, or the page is one employer's branded portal | Nothing. ATSs need accounts and ask bespoke questions; the skill already declines to drive them |
-| A recruitment agency's own site | One agency posting client roles | Nothing |
-| An aggregator that only redirects | Every ad bounces to another site | Say so — an adapter would scrape a middleman |
+| A single company's careers page on a known ATS (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Workable, Teamtailor, Personio, Recruitee…) | The URL contains the ATS name, or the page is one employer's branded portal | **The ATS adapter already exists** — `ats.py` and its siblings read one tenant at a time. Tell the user the board name and the tenant, and offer to enable it; no request needed |
+| A single employer's own portal, on no ATS | One employer throughout; the domain is the employer's; the list is server-rendered with stable ids | **A board request, with the volume measured** — how many vacancies, whether the ids are stable, whether a feed exists. Below a handful of posts, say so and let `cover-letter <URL>` handle the one ad |
+| A recruitment agency's own site | One agency posting client roles | The same test: an agency with a stable, sizeable list is a segment like any other; three client roles behind a form are not |
+| An aggregator that only redirects | Every ad bounces to another site | Say so — an adapter would scrape a middleman, and it opens no segment. **This line is unchanged: it is the one that was right.** |
 
 Decide from the URL and, if it is ambiguous, one `WebFetch` of the home page.
-When it is not a board, **say so plainly and move on** — do not file a request
-nobody can act on, and do not make the user feel their URL was a mistake.
+When the site does not earn a file, **say so plainly and move on** — do not
+file a request nobody can act on, and do not make the user feel their URL was
+a mistake. **And never write "not a board" about an employer's list because
+it has one employer**: that objection was raised against `ge.ch` on 2026-09-09
+by citing this section, and it was withdrawn the same day.
 
 ## 2 — Capture what a maintainer would need
 
