@@ -36,6 +36,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import empty_first_page
 from _robots import allowed as robots_allowed, full_path
 
 SEARCH = "https://www.meteojob.com/jobs"
@@ -253,11 +254,9 @@ def cmd_search(a):
     page = fetch(f"{SEARCH}?{qs}")
     blocks = split_cards(page)
     if not blocks:
-        print("[meteojob] no result cards on the page. That is either a search "
-              "with no matches or a markup change — the two look identical "
-              "here, so check the query in a browser before concluding the "
-              "market is empty.", file=sys.stderr)
-        return
+        # #181: the admission was on stderr and the exit code said 0.
+        die(empty_first_page("meteojob", page, "result card",
+                             what_asked=f"what={a.what!r} where={a.where!r}"), 6)
     rows = 0
     for b in blocks:
         c = card_from_listing(b)
