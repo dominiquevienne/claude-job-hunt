@@ -194,7 +194,9 @@ def employers_of(cfg_path):
     the only thing this is for.
     """
     out, board = {}, None
-    for raw in open(cfg_path, encoding="utf-8").read().splitlines():
+    with open(cfg_path, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    for raw in lines:
         m = BOARD_RE.match(raw)
         if m:
             board = m.group(1)

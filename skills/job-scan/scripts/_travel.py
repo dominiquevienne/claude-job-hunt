@@ -386,8 +386,11 @@ def _main():
     p.add_argument("--json", action="store_true", dest="as_json")
     a = p.parse_args()
 
-    text = (sys.stdin.read() if a.file == "-"
-            else open(a.file, encoding="utf-8", errors="replace").read())
+    if a.file == "-":
+        text = sys.stdin.read()
+    else:
+        with open(a.file, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
     req = requirement(text)
     v = verdict(req, a.declared)
     if a.as_json:

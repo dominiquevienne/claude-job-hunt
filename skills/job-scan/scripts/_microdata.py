@@ -200,7 +200,8 @@ def _main():
     p.add_argument("--file", required=True)
     p.add_argument("--type", default=None)
     a = p.parse_args()
-    doc = open(a.file, encoding="utf-8", errors="replace").read()
+    with open(a.file, encoding="utf-8", errors="replace") as fh:
+        doc = fh.read()
     blocks = items(doc, a.type)
     if not blocks:
         print("[microdata] no itemscope block"

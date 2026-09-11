@@ -147,7 +147,8 @@ def main():
               + "\n  ".join(d), file=sys.stderr)
         return 2
 
-    muts = json.load(open(a.mutations, encoding="utf-8"))
+    with open(a.mutations, encoding="utf-8") as fh:
+        muts = json.load(fh)
     work = tempfile.mkdtemp(prefix="mutation-bench-")
     tree = os.path.join(work, "t")
     code, err = run(["git", "worktree", "add", "--detach", tree, "HEAD"],
@@ -168,7 +169,8 @@ def main():
         counts = {}
         for tag, path, before, after in muts:
             f = os.path.join(tree, path)
-            src = open(f, encoding="utf-8").read()
+            with open(f, encoding="utf-8") as fh:
+                src = fh.read()
             kind = classify(before, after)
             if before not in src:
                 row = {"tag": tag, "file": path, "kind": kind,

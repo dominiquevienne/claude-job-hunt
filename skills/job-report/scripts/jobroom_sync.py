@@ -554,6 +554,14 @@ def print_check(res: dict) -> None:
 
 # --------------------------------------------------------------------------
 
+def _read_text(path):
+    """`-` is stdin; anything else is a file, closed on the way out (#210)."""
+    if path == "-":
+        return sys.stdin.read()
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -591,8 +599,7 @@ def main() -> int:
 
     if args.cmd == "check":
         plan = build_plan(load_rows(args.file), state)
-        text = sys.stdin.read() if args.jobroom_text == "-" else \
-            open(args.jobroom_text, encoding="utf-8").read()
+        text = _read_text(args.jobroom_text)
         res = run_check(plan, text)
         print(json.dumps(res, indent=2, ensure_ascii=False)) if args.format == "json" else print_check(res)
         # Exit 2 when the listing could not be read: a caller that ignores the
@@ -600,8 +607,7 @@ def main() -> int:
         return 0 if res["usable"] else 2
 
     if args.cmd == "periods":
-        text = sys.stdin.read() if args.jobroom_text == "-" else \
-            open(args.jobroom_text, encoding="utf-8").read()
+        text = _read_text(args.jobroom_text)
         periods = parse_periods(text)
         if args.format == "json":
             print(json.dumps(periods, indent=2, ensure_ascii=False))

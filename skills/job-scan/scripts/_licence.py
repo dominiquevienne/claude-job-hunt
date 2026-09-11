@@ -280,8 +280,11 @@ def _main():
                    choices=["yes", "no"],
                    help="config location.own_vehicle. Omit for 'never asked'")
     a = p.parse_args()
-    text = open(a.file, encoding="utf-8", errors="replace").read() \
-        if a.file else a.text
+    if a.file:
+        with open(a.file, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    else:
+        text = a.text
     lic = None if a.licence is None else [
         x.strip() for x in a.licence.split(",") if x.strip()]
     veh = None if a.vehicle is None else (a.vehicle == "yes")

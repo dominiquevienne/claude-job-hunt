@@ -187,7 +187,8 @@ def undated(body):
 def cmd_lookup(a):
     path = a.file or DEFAULT_FILE
     try:
-        text = open(path, encoding="utf-8").read()
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
     except FileNotFoundError:
         print(json.dumps({"file": path, "exists": False, "matched": None,
                           "note": "no employers.md — nothing is known about "
@@ -258,7 +259,8 @@ def cmd_lookup(a):
 def cmd_list(a):
     path = a.file or DEFAULT_FILE
     try:
-        text = open(path, encoding="utf-8").read()
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
     except FileNotFoundError:
         print(f"[employers] no {path} — the file is optional and this is not "
               f"an error. `/job-setup` offers to create it.", file=sys.stderr)

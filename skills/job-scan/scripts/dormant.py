@@ -86,7 +86,11 @@ def unquote(v):
 def read_boards(path):
     if not os.path.exists(path):
         die(f"no config at {path}")
-    lines = open(path, encoding="utf-8").read().splitlines()
+    # `with`, because an unclosed handle emits a ResourceWarning that names
+    # the file on stderr — and a guard of #206 asserting «the refusal names
+    # the file» was satisfied by that warning, not by the code. #210.
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
 
     start = None
     for i, line in enumerate(lines):

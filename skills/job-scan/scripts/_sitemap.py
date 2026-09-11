@@ -157,8 +157,11 @@ def _main():
     p.add_argument("--contains")
     p.add_argument("--print", action="store_true", dest="print_urls")
     a = p.parse_args()
-    raw = (open(a.file, "rb").read() if a.file
-           else sys.stdin.buffer.read())
+    if a.file:
+        with open(a.file, "rb") as fh:
+            raw = fh.read()
+    else:
+        raw = sys.stdin.buffer.read()
     print(json.dumps(count(raw), ensure_ascii=False))
     print(f"[sitemap] {count_says(raw)}", file=sys.stderr)
     if a.print_urls:

@@ -200,7 +200,8 @@ def main():
     p.add_argument("--kind", choices=["resume", "letter"], default="resume")
     a = p.parse_args()
 
-    md = open(a.source, encoding="utf-8").read()
+    with open(a.source, encoding="utf-8") as fh:
+        md = fh.read()
     pdf, pages, dropped = build(md, a.kind)
 
     # **Past a threshold, the honest act is to write nothing.** A CV in Greek,

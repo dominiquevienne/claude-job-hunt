@@ -83,7 +83,8 @@ def requirements(path):
     say "this adapter does not declare its settings" rather than "it needs
     nothing". The two are not the same sentence.
     """
-    text = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
     if "| Key | Required" not in text:
         return [], None, False
     keys = [{"key": m.group(1), "note": m.group(2).strip(" |")}

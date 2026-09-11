@@ -215,7 +215,8 @@ def emit_sites(tree):
 
 
 def audit(path):
-    src = io.open(path, encoding="utf-8").read()
+    with io.open(path, encoding="utf-8") as fh:
+        src = fh.read()
     tree = ast.parse(src)
     sites, unresolved = 0, []
     for node in emit_sites(tree):

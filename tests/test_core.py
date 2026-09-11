@@ -14009,5 +14009,64 @@ class APatternWrittenForTheFirstShapeReadsLessThanThePageDeclares(unittest.TestC
                          "Prérequis : L'OCSIN")
 
 
+class AnUnclosedHandleWritesTheFileNameOnStderr(unittest.TestCase):
+    """**#210, 2026-09-11.** `dormant.read_boards` opened `config.yml` without
+    `with`. The handle was never closed, and under the warnings a test run
+    enables Python printed `ResourceWarning: unclosed file <… name='…/config.yml'>`
+    on stderr — **with the path in it.** A guard of #206 asserted that a
+    refusal «names the file it consulted» by looking for the path on stderr,
+    and the warning satisfied it while the code under test said nothing.
+
+    > An execution warning that copies a datum onto stderr satisfies any
+    > assertion on stderr that looks for that datum.
+
+    Fourteen sites in `skills/*/scripts/` and `bin/`, not one — the census
+    is the second guard here, so the next one reddens instead of leaking.
+    Mutated (`python3 -B`, detached copy): the `with` at `dormant.py`'s read
+    replaced by the bare `open(...).read()` → both cases redden.
+    """
+
+    def test_read_boards_emits_no_resource_warning(self):
+        import warnings
+        import dormant
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        cfg = os.path.join(d, "config.yml")
+        with open(cfg, "w", encoding="utf-8") as fh:
+            fh.write("boards:\n  x:\n    enabled: true\n")
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            boards = dormant.read_boards(cfg)
+            import gc
+            gc.collect()          # an unclosed handle warns when it is collected
+        self.assertEqual(boards["x"]["enabled"], "true")
+        leaks = [w for w in seen if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(leaks, [], "read_boards left its file open: "
+                         + "; ".join(str(w.message) for w in leaks))
+
+    def test_no_script_reads_a_file_it_never_closes(self):
+        """**The census, not the specimen.** The same regex that found
+        fourteen on 2026-09-11, over every script — an inline
+        `open(...).read()` or `json.load(open(...))` with no `with`."""
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        pat = re.compile(r"\bopen\([^)]*\)\.(?:read|readlines)\(|json\.load\(open\(")
+        hits = []
+        for sub in ("skills", "bin"):
+            for dp, _dn, fn in os.walk(os.path.join(root, sub)):
+                for name in fn:
+                    if not name.endswith(".py"):
+                        continue
+                    path = os.path.join(dp, name)
+                    with open(path, encoding="utf-8") as fh:
+                        for i, line in enumerate(fh, 1):
+                            if pat.search(line) and "with " not in line \
+                                    and not line.lstrip().startswith("#"):
+                                hits.append(f"{os.path.relpath(path, root)}:{i}")
+        self.assertEqual(hits, [], "a script reads a file it never closes — "
+                                   "its ResourceWarning will carry the path "
+                                   "onto stderr")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

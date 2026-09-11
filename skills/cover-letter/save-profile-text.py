@@ -77,8 +77,11 @@ def main():
     p.add_argument("--dest", help="a profile/ directory; default the workspace")
     a = p.parse_args()
 
-    text = (sys.stdin.read() if a.stdin
-            else open(a.from_file, encoding="utf-8", errors="replace").read())
+    if a.stdin:
+        text = sys.stdin.read()
+    else:
+        with open(a.from_file, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
     # Collapse the runs of blank lines a page dump carries, keep the lines.
     text = re.sub(r"\n{3,}", "\n\n", text.replace("\r\n", "\n")).strip()
 
