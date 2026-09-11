@@ -556,7 +556,9 @@ python3 "${CLAUDE_PLUGIN_ROOT:-.}/skills/job-scan/scripts/_travel.py" \
 difference from the licence above. Measured on 49 advertisements, 2026-09-04:
 every real requirement stated an amount — *"3–4 weeks per year"*, *"on a
 limited basis"*, *"déplacements inter-sites sont probables"*. **A yes meets
-none of them.**
+none of them.** The amount is read in digits or in letters — *"twice a year …
+two weeks each"* reaches the gate as `up to 4 weeks/year`, #207 — and the
+quoted sentence is the one that states it.
 
 - **The ad asks and the workspace is silent** — put the question here, at the
   gate, before the letter is drafted. Do not guess an answer from a résumé.
