@@ -53,7 +53,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
@@ -242,6 +242,8 @@ def cmd_search(a):
     while True:
         rows = cards(html)
         ids = [r["id"] for r in rows]
+        if not ids and page == 1:
+            die(empty_first_page("philjobnet", html, "job card"), 6)   # #181
         if not ids:
             note(f"page {page} carried no job card — stopping.")
             break
