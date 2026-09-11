@@ -407,7 +407,11 @@ Then report, **before drafting**:
 2. **Two or three sentences** on why — the genuine matches, then the blockers,
    naming the specific unmet must-haves.
 3. A clear **recommendation** (apply / apply with caveats / don't apply),
-   measured against the user's own `thresholds.apply_from`.
+   measured against the user's own `thresholds.apply_from`. **The floor makes
+   an ad *proposable*, never *recommended*.** *"58 %, above your threshold of
+   50"* pushes toward yes; say the band and the floor side by side — *"58 % —
+   Good-fit band; your floor is 50, so this is on the table, not a
+   recommendation"* — and let the number speak. Issue #208.
 4. **What step 1b established about the ad still being open** — verified live,
    verified closed, or not verified and why. A strong ratio is the case where
    this gets skipped, and it is exactly the case where it costs the most.
@@ -445,6 +449,39 @@ stop, and — where it makes sense — an angle that would change the framing (p
 a lead role rather than the hands-on one advertised). **Only continue to step 4
 once the user says so.** Never soften a bad ratio — or a poor range — to make
 the application feel worth writing.
+
+**Every refusal you offer is a cause YOUR analysis named — so the gate always
+carries one refusal with no cause at all:**
+
+```
+No — not worth the effort   (no reason to give)
+```
+
+**It sits beside the motivated refusals, never instead of them, and `Other`
+is not a substitute for it.** A gate that offers only *"No — the stack is too
+far"* and *"No — four weeks of travel is too much"* to a candidate whose
+reason is the score, or nothing nameable, forces them to tick the least false
+cause — and the ledger then carries that cause as theirs. **A forced choice
+returns an answer; it does not return a reason.** The global judgment — *not
+good enough for the work it would take* — is the ordinary reason, not the rare
+one, and it is the one no analysis can list. Issue #208.
+
+**And the ledger records what they ticked or wrote — never a cause you
+deduced, and never the negation of a cause they did not rule out.** *"The
+reason is the travel"* is what a ticked box supports; *"the reason is the
+travel, not the stack nor the score"* is a claim about their reasoning built
+from one tick. The three forms, and their provenance in two words:
+
+| what happened at the gate | what the `Note` says |
+| :-- | :-- |
+| they ticked an option you offered | `no-go — chose: "<the option, as offered>"` |
+| they wrote their own words (`Other`, or the next turn) | `no-go — wrote: "<their words>"` |
+| they took the refusal with no cause | `no-go — no reason given` |
+
+A reason they volunteer later replaces `no reason given` verbatim, as `wrote:`.
+**Nothing at this gate is written to `config.yml`**: a refusal on one ad does
+not move a threshold, and a fact of the ad (four weeks of travel) is not a
+declared limit of the candidate.
 
 ### The right to work, if `work_authorization` is configured
 
@@ -584,9 +621,11 @@ either of them is the interruption step 1 forbids, and the user answering a
 go/no-go has not asked to be asked twice.
 
 **On a no-go:** update that ad's row to `no-go <YYYY-MM-DD>` with the reason
-in `Note` (one short clause — the unmet must-have, the language, the commute,
-the pay). That row is then excluded from future scans, so the reason has to be
-readable later. **Write the step-3b range into `Pay`** as well — especially when
+in `Note` — **in the `chose:` / `wrote:` / `no reason given` form above, one
+short clause, and only what the candidate ticked or wrote.** That row is then
+excluded from future scans, so the reason has to be readable later — and
+readable as *theirs*: `interview-prep` and the next scan will tell the
+candidate their own story from this line. **Write the step-3b range into `Pay`** as well — especially when
 money is why the user said no, since that is the row they will want to find
 again if the company reposts at a better figure. Append a row if the ad was not
 in the file. Then stop.

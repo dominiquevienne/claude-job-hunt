@@ -4004,6 +4004,78 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
                          f"not a signal")
 
 
+class AGateThatOffersOnlyMotivatedRefusalsInventsTheReason(unittest.TestCase):
+    """Issue #208. The go/no-go gate offered four options — two yeses and
+    two refusals, each naming a cause the analysis had found. The
+    candidate's reason was the score, which none of them carried; they
+    ticked the least false refusal, and the ledger recorded that cause as
+    theirs — then went further: *"the reason is the travel, NOT the stack
+    nor the score"*, a negation of two causes they had never ruled out.
+
+    **A forced choice returns an answer; it does not return a reason.** The
+    rule is prose, so this guard is on the prose: every skill that writes a
+    `no-go` row offers a refusal with no cause, and names the three
+    provenance forms the note may take — and the contract carries the same.
+    """
+
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+    UNMOTIVATED = "No — not worth the effort"
+    FORMS = ('chose: "', 'wrote: "', "no reason given")
+
+    def _skills_that_write_a_no_go(self):
+        import glob
+        out = {}
+        for path in sorted(glob.glob(os.path.join(self.ROOT, "skills", "*",
+                                                  "SKILL.md"))):
+            text = open(path, encoding="utf-8").read()
+            if "no-go <YYYY-MM-DD>" in text:
+                # forward slashes on every OS: the key is compared to a
+                # literal, and Windows relpath would spell it with `\\`
+                out[os.path.relpath(path, self.ROOT).replace(os.sep, "/")] = text
+        return out
+
+    def test_the_population_is_the_skills_that_write_the_status(self):
+        """The control sits on the set of writers, found by the write
+        instruction itself — not on the gates somebody remembered. And the
+        set is not empty: an empty population would pass everything."""
+        writers = self._skills_that_write_a_no_go()
+        self.assertIn("skills/cover-letter/SKILL.md", writers)
+
+    def test_every_writer_of_a_no_go_offers_a_refusal_with_no_cause(self):
+        for rel, text in self._skills_that_write_a_no_go().items():
+            with self.subTest(skill=rel):
+                self.assertIn(self.UNMOTIVATED, text,
+                              "this gate offers only the causes its own "
+                              "analysis found — the candidate will tick the "
+                              "least false one")
+                # and it is not `Other` in disguise
+                self.assertRegex(text, r"`Other`\s+is not a substitute")
+
+    def test_every_writer_names_what_the_note_may_carry(self):
+        """`chose:` / `wrote:` / `no reason given` — the provenance in two
+        words — and the ban on a negation the candidate never made."""
+        for rel, text in self._skills_that_write_a_no_go().items():
+            with self.subTest(skill=rel):
+                for form in self.FORMS:
+                    self.assertIn(form, text, f"{form!r} is not named")
+                self.assertRegex(text, r"never the negation of a cause")
+
+    def test_the_contract_carries_the_same_three_forms(self):
+        text = open(os.path.join(self.ROOT, "shared", "pipeline-format.md"),
+                    encoding="utf-8").read()
+        for form in self.FORMS:
+            self.assertIn(form, text)
+        self.assertRegex(text, r"never a cause the plugin deduced")
+
+    def test_the_hand_off_does_not_become_a_second_gate(self):
+        """`job-scan` §7 proposes rows and hands off; the issue names it as
+        the same form. It writes no cause of its own for a row the user
+        passes over."""
+        text = open(os.path.join(self.ROOT, "skills", "job-scan", "SKILL.md"),
+                    encoding="utf-8").read()
+        self.assertRegex(text, r"in the candidate's words, never in yours")
+        self.assertIn("no reason given", text)
+
 class TheDeclaredDuplicateIsALedgerId(unittest.TestCase):
     """Three adapters publish the other board's own id, and the skill read
     none of them.

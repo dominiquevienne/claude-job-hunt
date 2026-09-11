@@ -883,6 +883,12 @@ Propose the top `todo` rows in match order. When the user picks one, invoke the
 in depth, gates on go/no-go, and writes the resulting status back into the
 ledger.
 
+**A row they pass over here stays `todo`; a row they refuse here is a `no-go`
+in the candidate's words, never in yours.** The hand-off is not a gate with
+motivated refusals, and it must not become one: if they say *"not that one"*,
+nothing is deduced from the ad's weak points — the `Note` carries what they
+wrote, or `no reason given`, in the form `cover-letter` §3b defines. Issue #208.
+
 **Read `employers.md` before the row's `Note`, not after.** A decision about a
 company does not live on an ad's row, and looking for it there finds it only by
 luck:
