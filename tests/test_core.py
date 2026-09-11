@@ -15728,5 +15728,110 @@ class ExpressoEmpregoReadsTheLiveListingNotTheFossilSitemap(unittest.TestCase):
         self.assertNotIn("wucAnuncioDet", d["text"])
 
 
+class ASitemapThatKeepsClosedAdvertisementsIsASupersetAndSaysSo(unittest.TestCase):
+    r"""**`mynavi.py`, 2026-09-11.** Seven job files, 346 385 URLs, up to 53
+    facet variants of one id; the home page states 掲載求人数 61 989 and the
+    sitemap holds 77 504 distinct ids. So: the id is the key and variants are
+    counted, `<lastmod>` is kept per id (the newest), `--since` narrows on it,
+    the site's total is printed beside the count and named as REFUTING
+    «sitemap = board» when it is smaller — never as «board states N — short».
+    And a gzip stream decoded as text yields zero `<loc>` from 270 766
+    characters: `get()` undoes the encoding by header or magic bytes.
+
+    Mutated (`-B`, detached copy): variants no longer counted (dedupe by
+    URL) → the variants case reddens; the newest `<lastmod>` not kept → the
+    lastmod case reddens; the «SUPERSET» sentence replaced by «short» → the
+    total case reddens; the magic-bytes gunzip removed → the gzip case
+    reddens; `--since` filter dropped → the since case reddens.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_mynavi", os.path.join(SCRIPTS, "mynavi.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ('<sitemapindex><sitemap><loc>https://tenshoku.mynavi.jp/sitemap/sitemap_jobs_01.xml.gz</loc></sitemap>'
+             '<sitemap><loc>https://tenshoku.mynavi.jp/sitemap/sitemap_company_01.xml.gz</loc></sitemap></sitemapindex>')
+
+    @staticmethod
+    def _file(entries):
+        return "<urlset>" + "".join(
+            f"<url><loc>https://tenshoku.mynavi.jp/jobinfo-{i}-{a}-{b}-1/</loc><lastmod>{d}T00:00:00+09:00</lastmod></url>"
+            for i, a, b, d in entries) + "</urlset>"
+
+    HOME = '<html><body><span>掲載求人数</span> <em>61,989</em> <span>件</span></body></html>'
+
+    def _run(self, mod, bodies, **argv):
+        import contextlib
+        served = iter(bodies)
+        mod.get = lambda url: (200, next(served))
+        a = argparse.Namespace(files=None, since=None, limit=None, no_site_total=False)
+        for k, v in argv.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_sitemap(a)
+            except SystemExit as e:
+                code = e.code
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return code, rows, err.getvalue()
+
+    ENTRIES = [("407994", 1, 46, "2026-09-08"), ("407994", 5, 2, "2026-09-01"),
+               ("407994", 5, 3, "2026-06-01"), ("388227", 1, 1, "2025-01-15")]
+
+    def test_the_id_is_the_key_and_variants_are_counted(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, [self.INDEX, self._file(self.ENTRIES), self.HOME])
+        self.assertIsNone(code, err)
+        self.assertEqual([r["id"] for r in rows], ["407994", "388227"])
+        self.assertEqual(rows[0]["variants"], 3)
+        self.assertIn("4 <loc> in 1 of 1 job file(s) (4); 4 matched the advertisement shape and 0 did not; **2 distinct", err)
+
+    def test_the_newest_lastmod_is_kept_per_id(self):
+        mod = self._mod()
+        _, rows, _ = self._run(mod, [self.INDEX, self._file(self.ENTRIES), self.HOME])
+        self.assertEqual(rows[0]["lastmod"], "2026-09-08")
+
+    def test_since_narrows_on_lastmod(self):
+        mod = self._mod()
+        _, rows, err = self._run(mod, [self.INDEX, self._file(self.ENTRIES), self.HOME], since="2026-01-01")
+        self.assertEqual([r["id"] for r in rows], ["407994"])
+        self.assertIn("--since 2026-01-01: 1 of 2", err)
+
+    def test_the_site_total_is_named_as_refuting_not_as_a_shortfall(self):
+        mod = self._mod()
+        big = [(str(100000 + i), 1, 1, "2024-03-01") for i in range(70000)]
+        _, _, err = self._run(mod, [self.INDEX, self._file(big), self.HOME])
+        self.assertIn("site states 掲載求人数 61 989 件", err)
+        self.assertIn("SUPERSET of the board", err)
+        self.assertNotIn("short", err)
+
+    def test_a_gzip_body_is_undone_by_its_magic_bytes(self):
+        import gzip
+        mod = self._mod()
+        payload = gzip.compress(self._file(self.ENTRIES).encode("utf-8"))
+
+        class R:
+            headers = {"Content-Type": "application/x-gzip"}
+            def read(self_):
+                return payload
+            def getcode(self_):
+                return 200
+            def __enter__(self_):
+                return self_
+            def __exit__(self_, *a):
+                return False
+        mod.gate = lambda url: None
+        mod._PACE.wait = lambda: None
+        mod.urllib.request.urlopen = lambda *a, **k: R()
+        code, body = mod.get("https://tenshoku.mynavi.jp/sitemap/sitemap_jobs_01.xml.gz")
+        self.assertEqual(code, 200)
+        self.assertEqual(body.count("<loc>"), 4)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
