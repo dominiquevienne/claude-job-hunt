@@ -63,7 +63,7 @@ import urllib.request
 
 from _robots import allowed as robots_allowed, full_path
 
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://www.jobbkk.com"
 LIST = "/jobs/lists/{page}/หางาน,{keyword},{province},{category}.html"
@@ -256,6 +256,13 @@ def cmd_search(a):
             note(f"page {page} answered 404 — stopping.")
             break
         ids = [f"{c}/{j}" for c, j in DETAIL.findall(html)]
+        if not ids and page == 1:
+            # #181: the case that opened it — 1 239 956 bytes, 25 links in a
+            # renamed form, «carried no result card», exit 0. Page 1 empty is
+            # INDETERMINATE, with the size beside the zero; past page 1 it is
+            # the end of the results, below.
+            die(empty_first_page("jobbkk", html, "result card",
+                                 what_asked=f"keywords {a.keyword!r}" if a.keyword else None), 6)
         if not ids:
             note(f"page {page} carried no result card — stopping. (The Thai "
                  f"'no position found' string is in every page's HTML as a "
