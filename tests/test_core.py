@@ -14924,5 +14924,125 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("2 ISO2 declared by cards and absent from the members file: XX, YY", err)
 
 
+class JobindexReadsPageOneAndSaysTheRulesAreTheCap(unittest.TestCase):
+    """`jobindex.py` — Denmark's first adapter, 2026-09-11. The board's
+    `www` rules refuse `/jobsoegning*page=`, so a query is one page of 20
+    with one parameter, and the count the adapter prints carries the site's
+    `hitcount` beside what it emitted, and the sentence that the cap is the
+    rules'. The data is a JSON the page embeds (`Stash`); no JSON is a
+    reading fault (exit 6, size beside the zero), `hitcount: 0` with no
+    result is a real zero said aloud, and results and hitcount disagreeing
+    is a fault. The apex `jobindex.dk` publishes `Disallow: /` — every URL
+    is built on `www`, and the guard is asked inside `get()`.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_jobindex_t", os.path.join(SCRIPTS, "jobindex.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _page(results, hitcount, pages=None):
+        import json as _j
+        sr = {"hitcount": hitcount, "page_size": 20,
+              "total_pages": pages if pages is not None else (hitcount + 19) // 20,
+              "results": results}
+        stash = {"common": {}, "jobsearch/result_app": {"storeData": {"searchResponse": sr}}}
+        return ("<html><script>//<![CDATA[ var Stash = " + _j.dumps(stash)
+                + ";//]]></script>" + "x" * 3000 + "</html>")
+
+    def _run(self, mod, fn, a):
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                fn(a)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_every_url_is_built_on_www_and_the_ad_url_comes_from_the_id(self):
+        mod = self._mod()
+        self.assertEqual(mod.HOST, "www.jobindex.dk")
+        self.assertEqual(mod.search_url("udvikler"),
+                         "https://www.jobindex.dk/jobsoegning?q=udvikler")
+        self.assertEqual(mod.search_url("udvikler", "it"),
+                         "https://www.jobindex.dk/jobsoegning/it?q=udvikler")
+        self.assertEqual(mod.ad_url("h1697049"),
+                         "https://www.jobindex.dk/vis-job/h1697049")
+        src = open(os.path.join(SCRIPTS, "jobindex.py"), encoding="utf-8").read()
+        self.assertNotIn("page=", src.split("def search_url")[1].split("def ad_url")[0],
+                         "the search URL must never carry page= — it is refused in writing")
+
+    def test_a_page_of_results_emits_cards_and_prints_the_sites_count_beside_them(self):
+        mod = self._mod()
+        rows = [{"tid": f"h{100 + i}", "headline": f"T{i}", "companytext": "Acme",
+                 "area": "Aarhus", "firstdate": "2026-09-09", "lastdate": "2026-09-30",
+                 "apply_deadline": None, "is_archived": False, "home_workplace": False}
+                for i in range(20)]
+        mod.get = lambda url: (200, self._page(rows, 8949))
+        a = argparse.Namespace(q="udvikler", area=None, with_text=False, limit=0)
+        code, out, err = self._run(mod, mod.cmd_search, a)
+        self.assertIsNone(code, err)
+        lines = [json.loads(l) for l in out.splitlines()]
+        self.assertEqual(len(lines), 20)
+        self.assertEqual(lines[0]["ledger_id"], "jobindex:h100")
+        self.assertEqual(lines[0]["url"], "https://www.jobindex.dk/vis-job/h100")
+        self.assertEqual(lines[0]["countries"], ["DK"])
+        self.assertIn("20 emitted of 20 returned on page 1; the site states hitcount 8949", err)
+        self.assertIn("Page 1 is the cap, by the site's own rules", err)
+        self.assertIn("Disallow: /jobsoegning*page=", err)
+
+    def test_no_stash_json_is_a_reading_fault_not_an_empty_board(self):
+        mod = self._mod()
+        mod.get = lambda url: (200, "<html>" + "x" * 50000 + "</html>")
+        a = argparse.Namespace(q="udvikler", area=None, with_text=False, limit=0)
+        code, out, err = self._run(mod, mod.cmd_search, a)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(out, "")
+        self.assertIn("50 013 characters", err)
+        self.assertIn("INDETERMINATE", err)
+
+    def test_hitcount_zero_with_no_result_is_a_real_zero_said_aloud(self):
+        mod = self._mod()
+        mod.get = lambda url: (200, self._page([], 0, pages=0))
+        a = argparse.Namespace(q="zzqxjkwvv", area=None, with_text=False, limit=0)
+        code, out, err = self._run(mod, mod.cmd_search, a)
+        self.assertIsNone(code, err)
+        self.assertEqual(out, "")
+        self.assertIn("a real zero", err)
+        self.assertIn("hitcount 0", err)
+
+    def test_no_result_with_a_positive_hitcount_is_a_fault(self):
+        mod = self._mod()
+        mod.get = lambda url: (200, self._page([], 8949))
+        a = argparse.Namespace(q="udvikler", area=None, with_text=False, limit=0)
+        code, out, err = self._run(mod, mod.cmd_search, a)
+        self.assertEqual(code, 6, err)
+        self.assertIn("the two disagree", err)
+        self.assertIn("hitcount 8949", err)
+
+    def test_the_ad_text_is_read_from_the_jobannonce_page_through_the_canonical_one(self):
+        mod = self._mod()
+        teaser = ('<html><a href="https://www.jobindex.dk/jobannonce/h1697049/ai-udvikler">'
+                  'Se jobbet</a></html>')
+        full = ('<html><h1>AI-udvikler</h1><!-- jobtext --><p>Vil du udvikle?</p>'
+                '<p>Ja.</p><li class="jobad-element-share">x</li></html>')
+        calls = []
+
+        def fake_get(url):
+            calls.append(url)
+            return (200, full if "/jobannonce/" in url else teaser)
+        mod.get = fake_get
+        t = mod.ad_text("h1697049")
+        self.assertEqual(calls[0], "https://www.jobindex.dk/vis-job/h1697049")
+        self.assertEqual(t["source"], "https://www.jobindex.dk/jobannonce/h1697049/ai-udvikler")
+        self.assertEqual(t["text"], "Vil du udvikle?\nJa.")
+        self.assertNotIn("share", t["text"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
