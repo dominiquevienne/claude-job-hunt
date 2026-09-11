@@ -60,7 +60,7 @@ from _locations import drop_report
 from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
 
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 SITES = {
     "jobup": {"host": "www.jobup.ch", "path": "/fr/emplois/",
@@ -246,6 +246,14 @@ def cmd_search(a):
         if status != 200:
             die(f"{url}: HTTP {status}")
         found = postings(body)
+        if not found and page == 1:
+            # #181: page 1 with no JobPosting used to print the three-causes
+            # sentence below and exit 0 with an empty stdout — the admission
+            # on stderr, the verdict on the exit code, and the exit code said
+            # fine. Page 1 is INDETERMINATE, exit 6, size beside the zero.
+            die(empty_first_page(a.site, body, "JobPosting",
+                                 what_asked=", ".join(f"{k}={v!r}" for k, v in
+                                                      (("term", a.term), ("location", a.location)) if v) or None), 6)
         if not found:
             # **Three causes, and the message used to name two.** The one
             # it left out is the one that produced a false report of a dead
