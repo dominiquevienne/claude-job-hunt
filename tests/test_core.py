@@ -741,16 +741,88 @@ class WhichStatusMeansWhat(unittest.TestCase):
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
 
-    def test_every_refusing_status_refuses(self):
-        """401, 429 and 451 are not decoration: a host that rate-limits or
-        answers *unavailable for legal reasons* **answered**, and it did not
-        answer yes."""
-        for code in (401, 403, 429, 451):
+    # **This REPLACES `test_every_refusing_status_refuses`, it does not
+    # delete it — #201, owner's decision of 2026-09-09, applied 2026-09-11.**
+    # That guard asserted `401 -> refused`. The decision, verbatim: «&nbsp;quand
+    # le robots.txt nous renvoie une 401, il faut considérer qu'il s'agit d'une
+    # absence de règles et donc, une porte ouverte au scan&nbsp;». A guard that
+    # asserts the old reading would be restored by a future session as a fix;
+    # this one asserts the new one, code by code, so that reading it says
+    # *decision*, not *gap*. The same conduct as the `ClaudeBot`/`Claude-User`
+    # reversal of 2026-09-07.
+    EXPECTED = {
+        # code: (state, sweep, certain) — each code its own row, because the
+        # decision is about ONE code and the family is not the unit
+        401: ("unauthenticated", True, False),   # an absence, not established
+        403: ("refused", False, True),           # a wall that answered
+        429: ("refused", False, True),           # «slow down» — do not restart
+        451: ("refused", False, True),           # a legal demand
+        404: ("absent", True, True),             # knowledge: no file
+        410: ("absent", True, True),
+    }
+
+    def test_a_4xx_on_the_rules_file_is_classified_by_code_not_by_family(self):
+        """**The class of the defect this pins**: a 4xx sorted by its family
+        rather than by its code. Before #201 four codes shared one state
+        because they shared a first digit; after it, 401 opens and the other
+        three still refuse — and *only* a per-code table can say so. Mutated:
+        `(401,)` folded back into the refusing tuple → the 401 row reddens;
+        429 moved next to 401 → the 429 row reddens; `certain` set True on
+        the new branch → the 401 row reddens on the third field."""
+        for code, (state, sweep, certain) in self.EXPECTED.items():
             with self.subTest(code=code):
                 v = self._verdict(code)
-                self.assertEqual(v["state"], "refused",
-                                 f"HTTP {code} is no longer a refusal")
-                self.assertIsNot(v["sweep"], True)
+                self.assertEqual(v["state"], state,
+                                 f"HTTP {code} landed in {v['state']!r}")
+                self.assertIs(v["sweep"], sweep, f"HTTP {code}: sweep")
+                self.assertIs(v["certain"], certain,
+                              f"HTTP {code}: `certain` — a 401 is ignorance "
+                              f"and must not be certified like a 404")
+
+    def test_allowed_and_identity_agree_with_the_verdict_on_every_code(self):
+        """**Three decision paths that have diverged three times**
+        (`deux-chemins-de-decision-qui-ne-partagent-pas-leur-logique`): a
+        401 that opens in `verdict()` and closes in `allowed()` or
+        `identity()` would be the fourth. So all three are asked."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        try:
+            for code, (state, sweep, certain) in self.EXPECTED.items():
+                with self.subTest(code=code):
+                    _robots._CACHE.clear()
+                    _robots._ALIAS.clear()
+
+                    def fail(*a, **k):
+                        raise _robots.urllib.error.HTTPError(
+                            "https://h.example/robots.txt", code, "x", {},
+                            io.BytesIO(b""))
+                    _robots.urllib.request.urlopen = fail
+                    a = _robots.allowed("h.example", "/x")
+                    i = _robots.identity("h.example", "/x")
+                    self.assertIs(a["allowed"], sweep, f"allowed() on {code}")
+                    self.assertIs(a["certain"], certain, f"certain on {code}")
+                    self.assertEqual(i["state"], "http" if sweep else "browser",
+                                     f"identity() on {code}")
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_the_prose_and_the_regex_agree_with_the_code(self):
+        """**Three places, two of them prose — and a file disagreeing with
+        itself is detected by nothing.** The states table, the body-status
+        regex and the branch must all have let 401 go, or a future session
+        will «&nbsp;fix&nbsp;» the code toward the comment."""
+        with open(os.path.join(SCRIPTS, "_robots.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("refused      403/429/451", src,
+                      "the states table still lists 401 under refused")
+        self.assertNotIn("401|403", src, "_REFUSAL_STATUS still names 401")
+        self.assertIn("e.code in (403, 429, 451)", src)
+        self.assertIn("e.code in (401,)", src)
 
     def test_every_absent_status_is_an_absence(self):
         """**410 is a stronger 404**, not a weaker one — the host says the
@@ -761,16 +833,21 @@ class WhichStatusMeansWhat(unittest.TestCase):
                 self.assertEqual(v["state"], "absent",
                                  f"HTTP {code} is no longer an absence")
 
-    def test_the_two_sets_do_not_overlap(self):
-        """A status in both would make the verdict depend on branch order."""
+    def test_the_status_sets_do_not_overlap(self):
+        """A status in two would make the verdict depend on branch order.
+        **Every pair, not the first two** — #201 made a third set."""
         import re
-        src = open(os.path.join(SCRIPTS, "_robots.py"), encoding="utf-8").read()
+        with open(os.path.join(SCRIPTS, "_robots.py"), encoding="utf-8") as fh:
+            src = fh.read()
         got = re.findall(r"e\.code in \(([0-9, ]+)\)", src)
-        self.assertGreaterEqual(len(got), 2, "the status tables moved")
+        self.assertGreaterEqual(len(got), 3, "the status tables moved")
         sets = [set(int(x) for x in g.replace(" ", "").split(",") if x)
-                for g in got[:2]]
-        self.assertEqual(sets[0] & sets[1], set(),
-                         "a status is in both the absent and refusing sets")
+                for g in got]
+        for i in range(len(sets)):
+            for j in range(i + 1, len(sets)):
+                self.assertEqual(sets[i] & sets[j], set(),
+                                 f"a status is in two sets: {sets[i]} and "
+                                 f"{sets[j]}")
 
 
 class RobotsThirdState(unittest.TestCase):
@@ -11945,6 +12022,11 @@ class EveryATSProviderAsksBeforeItFetches(unittest.TestCase):
         allowed("api.ashbyhq.com", "/posting-api/job-board/<tenant>")
         -> allowed False · kind host-closed · certain True
            HTTP 401 — the host replied, and the reply was no.
+
+    *(That was the reading of 2026-09-07. Since #201 — 2026-09-11 — a 401 on
+    the rules file is an absence of rules and that host is open again; the
+    point of THIS class is unchanged: the guard must be ASKED, whatever it
+    answers, and the cases below stub the answer.)*
 
     `ats.py --provider ashby` read it anyway, on every run, since the provider
     was added. **No exemption covered it**, checked in both directions:

@@ -81,9 +81,12 @@ def gate(url):
     """Ask before fetching, **per host and per path, on the URL itself.**
 
     #175. This module fetched five provider APIs and consulted the guard for
-    two of them. `api.ashbyhq.com` answers **HTTP 401 to `/robots.txt`** — the
-    host replied and the reply was no — and `ats.py --provider ashby` read it
-    anyway, on every run, since the provider was added.
+    two of them. `api.ashbyhq.com` answers **HTTP 401 to `/robots.txt`** — read
+    as a refusal on 2026-09-07, and as an absence of rules since #201
+    (2026-09-11: an API gateway wanting a token on every path has written no
+    rule) — and `ats.py --provider ashby` read it anyway, on every run, since
+    the provider was added. **The point stands whichever way the verdict goes:
+    the guard was not asked.**
 
     **No exemption covered it, and that was checked in both directions.**
     `shared/robots-policy.md` names the four keyed-API adapters that skip the

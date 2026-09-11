@@ -60,11 +60,16 @@ The states a fetch can end in, and they are not interchangeable:
     read         the rules are here
     absent       404 — no file published. **Not a refusal**, and this is the
                  one case where silence really is permission
-    refused      401/403/429/451 — **the host answered, and it said no.**
+    refused      403/429/451 — **the host answered, and it said no.**
                  `barbadosjobregister.gov.bb` returns 403 and thirty bytes of
                  "Request is Blocked by Firewall". A server that says
                  *blocked* has replied. Neither a permission nor an absence.
                  **This departs from RFC 9309 on purpose — see below**
+    unauthenticated
+                 401 — **a credential is demanded for everything, the rules
+                 file included.** No file was read and none is presumed:
+                 an absence of rules, `certain: False`. Owner's decision of
+                 2026-09-09, #201 — see below. **401 and only 401.**
     unreachable  timeout, DNS, TLS, a persistent 5xx, **or a 2xx that is
                  not 200** — unknown, and the only honest answer is that we
                  do not know
@@ -126,6 +131,22 @@ OF THE FIX.** §2.3.1.3 is explicit: on a status in the 400-499 range a crawler
 question about file availability and a firewall answering *blocked* is
 answering a different one — and the cost of being wrong is not symmetric. The
 5xx rule is followed as written: unreachable means refuse.
+
+**AND 401 IS BROUGHT BACK TO THE LETTER — owner's decision of 2026-09-09,
+#201, applied 2026-09-11.** *«&nbsp;quand le robots.txt nous renvoie une 401,
+il faut considérer qu'il s'agit d'une absence de règles et donc, une porte
+ouverte au scan&nbsp;».* `api.ashbyhq.com` is the case: an API gateway that
+demands a token on every path and makes no exception for `/robots.txt`.
+**There is no rules file behind that 401 — there is an authentication in
+front of everything**, and a 401 there says nothing about whether the
+operator refuses this project. So 401 lands in `unauthenticated`: an open
+door with `certain: False`, because nothing was read. **The departure
+narrows by one code and keeps the other three**: 403 is a wall that
+answered, 429 is «&nbsp;slow down&nbsp;» — opening it would restart a scan
+on a host that just said so — and 451 is a legal demand, not a question of
+file availability. *A 404 is knowledge; a 401 is ignorance, and ignorance
+does not forbid.* A future session reading `refused` without 401 is reading
+a decision, not a bug.
 
 **But that departure has a price, and it was measured the day it shipped.**
 Two Chilean government portals, the same CloudFront-over-S3 static hosting,
@@ -194,8 +215,11 @@ _REFUSAL_WORDS = re.compile(
 
 # The status a refusal announces about itself. Required alongside the words on
 # the short forms, because "forbidden" alone appears in prose that forbids
-# nothing.
-_REFUSAL_STATUS = re.compile(r"\b(401|403|451)\b")
+# nothing. **401 left this set with #201 (2026-09-11)**: a 401 on the rules
+# file is an absence of rules, so a 200 body that merely quotes one cannot
+# corroborate a refusal either — the same code cannot open the door as a
+# status and close it as a word.
+_REFUSAL_STATUS = re.compile(r"\b(403|451)\b")
 
 
 def _looks_like_refusal(body):
@@ -573,7 +597,22 @@ def _read_once(url, host, timeout, seen):
                            f"is knowledge**: the host looked and there is no "
                            f"file, which is not the same as a host that did "
                            f"not answer with one."}
-        if e.code in (401, 403, 429, 451):
+        if e.code in (401,):
+            # **A credential demanded for everything is not a rule about
+            # us.** Owner's decision of 2026-09-09, #201: a 401 on
+            # `/robots.txt` is an absence of rules — RFC 9309 §2.3.1.3 as
+            # written, on this one code. `api.ashbyhq.com` is the case: an
+            # API gateway that wants a token on every path. Nothing was read,
+            # so the verdict opens on `certain: False`, not on the 404's
+            # `certain: True`. **One-member tuple on purpose**, so the guard
+            # that checks the status sets for overlap sees this one too.
+            return {"state": "unauthenticated", "status": e.code,
+                    "why": f"HTTP {e.code} — the host demands a credential "
+                           f"for its rules file, as it does for everything. "
+                           f"**No rules file was read and none is presumed**: "
+                           f"there is no policy behind this status, there is "
+                           f"an authentication in front of every path."}
+        if e.code in (403, 429, 451):
             # **The host answered, and it answered no.** Measured on
             # `barbadosjobregister.gov.bb`: 403 and thirty bytes, "Request is
             # Blocked by Firewall". This used to be filed under `unreadable`,
@@ -903,6 +942,22 @@ def verdict(host, agents=None):
             f"*not* \u201cwe proceed when we do not know\u201d — a fetch that "
             f"failed and a 403 both still stop this module cold.")
         return _note(out)
+    if got["state"] == "unauthenticated":
+        # **#201, 2026-09-09.** An open door, like `unrecognised`, and for a
+        # kindred reason: the host expressed no rule. `certain` is False
+        # because nothing was read — this is a policy applied to an
+        # absence, not an absence established, and the 404's `certain: True`
+        # does not travel here. **The scope is 401 and only 401**: 403, 429
+        # and 451 are still `refused` above, and a test pins each code to
+        # its state by name.
+        out["sweep"] = True
+        out["certain"] = False
+        out["reason"] = (
+            f"{got.get('why')} **An absence of rules is an open door** — "
+            f"owner's decision of 2026-09-09 (#201), and RFC 9309 §2.3.1.3 "
+            f"as written on this one code. `certain` stays false: a 404 is "
+            f"knowledge, a 401 is ignorance, and ignorance does not forbid.")
+        return _keep(out)
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not
         # a refusal and emphatically not a permission: `nea.gov.kh` closes
@@ -1677,6 +1732,11 @@ def allowed(host, path, agents=None):
                "false because this is a policy applied to an absence, not an "
                "absence established."
                if v["state"] == "unrecognised" else
+               "**A 401 on the rules file is an absence of rules** (#201, "
+               "2026-09-09): the host demands a credential for every path and "
+               "has written no rule. An open door, `certain` false — nothing "
+               "was read, and ignorance does not forbid."
+               if v["state"] == "unauthenticated" else
                "**That is not an absence and not a permission** — a file that "
                "cannot be read says nothing either way. Proceed at a human "
                "pace and say so, or read it by hand."))

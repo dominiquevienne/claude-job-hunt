@@ -1,17 +1,44 @@
 # Board adapter — Ashby
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 
 <!-- hosts: jobs.ashbyhq.com -->
 <!-- host-forms: api.ashbyhq.com -->
 <!-- host-forms-basis: read — `ats.py:268` builds it as a literal. The `hosts:` line above names `jobs.ashbyhq.com`, which no code path fetches · 2026-09-07 -->
 <!-- script: ats.py -->
 <!-- countries: * -->
-<!-- content: out-of-domain · the API host refuses: HTTP 401 to /robots.txt, so the guard returns `allowed: False` and `ats.py --provider ashby` now exits 7 without fetching · 2026-09-07 -->
+<!-- content: measured · per-tenant feed, not a board: `list --provider ashby --tenant docker` returns 65 postings, 65 of 65 kept, one request; the host still answers HTTP 401 to /robots.txt, which since #201 is an absence of rules (`allowed: True`, `certain: False`) · 2026-09-11 11:28 UTC -->
+<!-- witness: none found — the posting-api feed states no total; «65 of 65 kept» compares the feed with itself, and one tenant is not the host · 2026-09-11 -->
 
-## STOPPED — the host this adapter reads refuses us
+## REOPENED 2026-09-11 — a 401 on the rules file is an absence of rules (#201)
 
-**Measured 2026-09-07:**
+**Owner's decision of 2026-09-09, verbatim:** *«&nbsp;quand le robots.txt nous
+renvoie une 401, il faut considérer qu'il s'agit d'une absence de règles et
+donc, une porte ouverte au scan&nbsp;».* **`api.ashbyhq.com` is the case that
+produced it**: an API gateway that demands a token on every path and makes no
+exception for `/robots.txt`. *There is no rules file behind that 401 — there is
+an authentication in front of everything.* The verdict below was **correct on
+the rule of its day and is reopened by a change of rule, not of host** — the
+host answers exactly as it did on 2026-09-07.
+
+```
+# 2026-09-11 11:28 UTC — the same call, before and after #201
+main 2ce1048   ats.py list --provider ashby --tenant docker   exit 7, « Not swept »
+after          ats.py list --provider ashby --tenant docker   exit 0, 65 postings, 65 of 65 kept
+
+allowed("api.ashbyhq.com", "/posting-api/job-board/docker")
+    allowed True · kind None · certain False
+    no rules were read — the host answered HTTP 401 and the state is `unauthenticated`.
+```
+
+**`certain` is False and stays so**: nothing was read. A 404 is knowledge; a
+401 is ignorance, and ignorance does not forbid. **The scope is 401 and only
+401** — 403, 429 and 451 still refuse, and `WhichStatusMeansWhat` pins each
+code to its state by name.
+
+## STOPPED 2026-09-07 — the host this adapter reads refused us *(superseded above)*
+
+**Measured 2026-09-07, under the rule of that day — 401 was `refused`:**
 
 ```
 allowed("api.ashbyhq.com", "/posting-api/job-board/<tenant>")
@@ -175,6 +202,7 @@ rather than a defect.* **`list` and `ad` are unaffected** — re-exercised
 careers page and read the host, tenant and site out of the URL; the adapter
 prints that advice itself.
 
-**`list --provider ashby --tenant cohere` exits 7**: `api.ashbyhq.com` answers
-**HTTP 401 on its rules file**, which is `host-closed` — the host replied, and
-the reply was no. *Nothing there permits anything, so the adapter refuses.*
+**`list --provider ashby --tenant cohere` exited 7 on 2026-09-08**: `api.ashbyhq.com`
+answers **HTTP 401 on its rules file**, which was `host-closed` that day.
+**Since #201 (2026-09-11) that 401 is an absence of rules and `list` runs** —
+see the REOPENED section at the top; `docker` returned 65 postings.

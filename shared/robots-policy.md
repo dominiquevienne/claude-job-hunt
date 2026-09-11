@@ -754,7 +754,9 @@ they were counting different shapes, and a third shape neither had isolated.*
 ```
 (1) the RULES permit, the CONTENT answers 403, bare 25-byte body
     -> the only shape a browser decision would open
-(2) the ROBOTS.TXT ITSELF answers 403 or 401  ->  host-closed
+(2) the ROBOTS.TXT ITSELF answers 403          ->  host-closed
+    (a 401 there is an ABSENCE of rules since #201, 2026-09-09 — see the
+     state table below; `api.ashbyhq.com` left this shape that day)
     -> reading that file by hand says what the rules say, and nothing about
        whether the host serves an inventory
 (3) a CHALLENGE page, md5 different on every request
@@ -784,7 +786,8 @@ or at everyone — but a rules file read by hand does not add a readable board.*
       www.tala-com.com · kariera.mk · sptojobslink.com
       northcyprus.cv · jobs.af
 (2) host-closed                                                        3
-      batiactu · rozee (since 2026-09-07) · api.ashbyhq.com (401)
+      batiactu · rozee (since 2026-09-07)
+      *api.ashbyhq.com (401) was counted here until 2026-09-11 — #201 reopened it*
 (3) challenge page, per-request md5                            6, or 7
       www.bayt.com belongs here (2026-09-08) — but the six of the 5.5 KB
       family are NOWHERE NAMED in this file, so whether it is one of them
@@ -1214,7 +1217,8 @@ proceed when unsure"* — and neither is what this says.
 | :-- | :-- | :-- |
 | **`unrecognised`** — 200, readable body, no directive line | **answered, and wrote no rule** | **open door** |
 | `unreachable` — timeout, DNS, TLS, 5xx, a 2xx that is not 200 | we could not look | **stop** — #118 |
-| `refused` — 401/403/429/451 on `/robots.txt` | answered, and answered no | **stop** |
+| `refused` — 403/429/451 on `/robots.txt` | answered, and answered no | **stop** |
+| **`unauthenticated`** — 401 on `/robots.txt` | **demands a credential for everything, wrote no rule** | **open door**, `certain: False` — owner's decision of 2026-09-09, #201. *401 and only 401*: 429 stays a refusal because opening it would restart a scan on a host that said «&nbsp;slow down&nbsp;», 451 because it is a legal demand, 403 because it is out of the decision |
 
 **The boundary is the whole rule.** *"A body that says nothing does not say
 no"* is not *"we proceed when we do not know"*. A fetch that failed and a 403
