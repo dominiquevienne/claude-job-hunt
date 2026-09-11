@@ -386,3 +386,69 @@ still to read 56
 
 *No rate is offered. The batches are ordered by cost, so what has been read is
 not a sample of what has not.*
+
+---
+
+# BATCH 3 — 20 more, and the population is a subtraction, not a memory
+
+**2026-09-11, 12:19–12:21 UTC for the runs.** *Population: 105 scripts declared
+by a `<!-- script: -->` line in `shared/boards/` (`gech.py` joined the same
+morning). **Classified = named in a table row of batches 1–2, in the code
+blocks of cases 3 and 4, or in case 2 (`cubisima`) — a hyphen counts as an
+underscore (`careerical-sl`).** 48 classified, 57 remaining; the 20 below are
+the first 20 of the remainder in alphabetical order, the order batch 2 used
+once the cost-ranked 21 were exhausted. The 20 were named to the pilot before
+reading.*
+
+**Every report call of each adapter was read, not the first three. Seven were
+executed** — `RUN` — with one request each, on the invocation their card
+documents or the cheapest the script offers; two of the seven were refused at
+the transport (`hays`, `jobstore`: HTTP 403 to the declared client, exit 9),
+and those rows rest on reading.
+
+| adapter | case | the anchor, or its absence | ev. |
+| :-- | :-- | :-- | :-- |
+| `fhf` | **present** | `the board announces {announced} ads for this search`, beside `{len(kept)} of {len(rows)}` | READ |
+| `flatchr` | **present** | `{len(items)} ads` — the payload's own array — beside `{rows} cards returned`; and *a wrong slug is a 404 instead*, so the zero is the tenant's | READ |
+| `francetravail` | **present** | `{total} offers match` from `Content-Range`, and a 204 is named as *an empty result, not an error* | READ |
+| `freework` | absent | `{len(kept)} of {len(rows)} postings kept` — both its own. *The API answers a JSON list; a non-list dies, a 404 dies, so a zero here is the API's own zero rather than a parse that failed* | READ |
+| `gech` | **present** | `{len(rows)} advertisement(s); {articles} <article>, {unlinked} without a link; page states no total` — and the RSS `<guid>` set compared id by id | RUN · 82 = 82 |
+| `gozambiajobs` | **present** | `parsed to zero entries from {len(body)} characters — read the bytes before believing the zero` (dies), and `{len(rows)} advertisements in the sitemap` | RUN · 304 |
+| `hays` | **present** | `zero <url> blocks out of {len(page)} characters — a read failure, not an empty board`, and `{len(blocks)} <url> blocks and no readable <loc>` — two granularities | READ · run refused 403 |
+| `hellowork` | absent | `no result cards at {url}. That is either a facet with nothing open, a slug that does not exist, or a markup change — the three look alike` — **an admission, no second figure**; exit 0 with nothing on stdout | READ |
+| `hiringcafe` | **present** | `{total} ads, {ssrCompanyCount} companies` — the site's `ssrTotalCount` — beside `{rows} unique cards returned over {got} page(s) of {asked}` | READ |
+| `hrge` | **present** | `{len(ads)} advertisement URL(s) out of {len(urls)} <loc>`, `count_says`, `zero_note`, and `{len(seen)} distinct from {links} link(s)` | READ |
+| `icims` | **present** | `HTTP {code}, {len(body)} bytes, and no JobPosting — if this is about 90 KB, `?in_iframe=1` did not take effect` on the ad path; the list path prints `{len(rows)} ad(s)` only, after a `not XML` die | READ |
+| `infoempleo` | **present** | `read 0 ad URLs out of {blocks} <url> blocks in a {len(body)} character sitemap. That combination is impossible in a valid sitemap` (dies) | READ |
+| `jobartis` | **present** | `parsed to zero advertisements from {len(body)} characters (gzip=…)` (dies), and `{counts['not-an-ad']} entr(y|ies) are not advertisements` beside `{len(rows)}` | READ |
+| `jobivoire` | absent | `{kept} advertisement(s) over {n} page(s)`; on zero, `zero_note("jobivoire")` — **declares, no second figure**; page 1 with no link prints *that is the end of the listing* | RUN · 12 on page 1 |
+| `jobology` | **present** | `pagination advertises {cap} page(s)` — the site's own — and page 1 empty **dies**: *that is what a wrong slug looks like here — 200, no error, an empty board* | READ |
+| `jobroom` | **present** | `{total} ads match` — the API's `count` — beside `{rows} cards returned`; `"0"` is named *check the canton code before concluding* | RUN · 1 313 match, 5 returned |
+| `jobsearchzm` | **present** | `{raw} in the sitemap, {len(rows)} after filters` — two granularities | RUN · 190 raw, 3 after filters |
+| `jobsge` | absent | `zero_note("jobs.ge", …)` as a **die** on zero ids — *declares, no second figure, and refuses to exit 0* | RUN · 310 |
+| `jobsireland` | **present** | `parsed {len(real)} cards but the same document carries {len(links)} ad links` (dies), `parsed no cards from {len(page)} characters that contain {len(links)} ad links` (dies), `{total} ads match` from the page's `totalCount`, and `no totalCount — a read failure, not an empty board` (dies) | RUN · 4 958 match, 3 returned |
+| `jobstore` | **present** on `count` and the sitemap route — `{len(files)} sub-sitemaps declared; {len(ads)} carry ads`, `{kept} ad URLs from {len(ads)} job-*.xml file(s)`; **absent on `search` until this batch** — `page 1: no ad URL in the ItemList — stopping` read like the end of a listing. **Fixed here**: page 1 empty now dies 6 with `{len(body)} characters of {ctype!r}` beside the zero, guarded by `AFirstPageWithNothingOnItIsNotTheEndOfAListing` | READ · run refused 403 |
+
+**Batch 3: present 16 · absent 4 · annulled 0 · raises 0.** *The four absent all
+DECLARE — `zero_note`, an admission sentence, or a die — none prints a bare
+zero; what they lack is a second figure.*
+
+## A sixth form, and it is a die, not a print
+
+**Six of the sixteen present carry their anchor in a `die()`** — `gozambiajobs`,
+`infoempleo`, `jobartis`, `jobology`, `jobsireland`, `hays`: *the zero path does
+not print a count at all, it refuses to exit 0 and names the bytes or the
+blocks it saw.* A scan for two figures in one printed line does not see them,
+because the line is never printed on the healthy path. **This is the strongest
+form here**: a caller cannot mistake it for an empty board, because there is no
+exit 0 to mistake.
+
+## Running total after three batches
+
+```
+read so far   68 of 105        present 48 · absent 12 · annulled 6 · raises 1 · (cubisima) 1
+still to read 37               jobup … zaposli
+```
+
+*No rate is offered. The batches are ordered — cost first, then alphabet — so
+what has been read is not a sample of what has not.*
