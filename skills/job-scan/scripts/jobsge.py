@@ -50,7 +50,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://www.jobs.ge"
 from _pace import Pace
@@ -182,10 +182,10 @@ def cmd_search(a):
         die(f"{url}: HTTP {code}")
     ids = sorted(set(AD_RE.findall(html)), key=int, reverse=True)
     if not ids:
-        die(zero_note("jobs.ge", extra=(
-            "The home page answered 200 and carried no `view=jobs&id=` link. "
-            "This board has no pagination, so that is the whole board — "
-            "check the markup before reading it as an empty market.")))
+        # #181: it already refused to exit 0; now the size stands beside the
+        # zero and the code is 6, the same as every other first page.
+        die(empty_first_page("jobs.ge", html, "`view=jobs&id=` link",
+                             where=f"the {a.lang!r} home page"), 6)
     for ident in (ids[:a.limit] if a.limit else ids):
         print(json.dumps({
             "id": ident,
