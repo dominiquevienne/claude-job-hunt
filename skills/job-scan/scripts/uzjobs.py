@@ -291,7 +291,7 @@ def cmd_list(a):
         })
     disagree = [r for r in rows if r["posted"] and r["pub_date"]
                 and r["posted"] != r["pub_date"]]
-    note(f"{len(rows)} advertisement(s) from one request to the feed. "
+    note(f"{len(rows)} advertisement(s) from {len(items)} feed item(s) in one request. "
          f"**This is the feed's window, not the board** — the vacancy list "
          f"paginates through a form and was not exercised.")
     note(f"{len(disagree)} item(s) where `pubDate` and the posting period "
