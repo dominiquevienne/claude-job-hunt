@@ -569,6 +569,13 @@ basis"*, *"déplacements inter-sites sont probables"*. **A yes meets none of
 them**: somebody who will travel three weeks a year and somebody who will
 travel monthly both answer yes.
 
+**And the amount is read whether the ad writes it in digits or in letters.**
+*"Twice a year, for company events for up to two weeks each"* was reported as
+*"without saying how much"* until #207: the pattern looked for `\d+`. The
+verdict now carries the quantity normalised — `up to 4 weeks/year (2 × 2
+weeks per year)` — and quotes the sentence that states it, not the head of a
+flattened bullet list.
+
 **So it never blocks, and not even in the licence's weakened sense.** There
 `blocker` means *say it before a dossier is spent*; here the verdict is a
 question at the gate and the advertisement is never set aside.

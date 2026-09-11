@@ -4754,10 +4754,14 @@ class TravelQuantityInWordsIsStillAQuantity(unittest.TestCase):
 
     # an amount next to a travel word is a requirement; an amount next to
     # anything else, or a travel word that is a benefit, is not. **The
-    # first four carry both a travel word and an amount**: they are the
-    # witnesses that the benefit filter runs before the amount is read.
+    # first three carry both a travel word and an amount within reach of
+    # the ask patterns**: they are the witnesses that the benefit filter
+    # runs before the amount is read — mutated, dropping the filter turns
+    # exactly those three red. `Reisekosten` is rejected by the German ask
+    # pattern itself (`reisen?\b` does not match it) and is kept as the
+    # negative for that pattern, not for the filter.
     ASKS_NOTHING = [
-        "Travel expenses reimbursed up to 100%.",
+        "Travel expenses up to 100% reimbursed.",
         "Conference travel budget: 5 days per year.",
         "Frais de déplacement remboursés jusqu'à 100%.",
         "Reisekosten werden zu 100% erstattet.",
