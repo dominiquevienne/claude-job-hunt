@@ -13270,5 +13270,206 @@ class AConsentRecordedInTheConfigReachesTheCodeThatNeedsIt(unittest.TestCase):
                          "ats.py reads the config in exactly one function")
 
 
+class ARefusedRouteIsNotAnEmptyBoard(unittest.TestCase):
+    """**#202, 2026-09-11.** `successfactors.py` had one route — the JSON
+    service under `/services/` — and three tenants of three refuse that path
+    in their rules (`jobs.fr.ch`, `jobs.bcv.ch`, `jobs.sicpa.com`, each
+    `Disallow: /services/`). Every one of them returned exit 7 and zero rows:
+    **a refusal of the route, reported in the shape of an employer with
+    nothing open.** `jobs.fr.ch` serves 133 vacancies on `/search/` + `/job/`,
+    both permitted, to a plain fetch.
+
+    The class of the defect: *an adapter that has one route reports the
+    refusal of that route as a count.* So this pins three things — the route
+    is chosen by the rules file path by path; the HTML route returns three
+    states, not two (cards / INDETERMINATE / a stated zero); and the count it
+    emits is printed beside the count the page states.
+
+    **The old docstring said `/search/` «is rendered entirely client-side and
+    lists nothing to a plain fetch» — measured on one tenant, written as the
+    platform.** `jobs.bcv.ch` still serves a shell (66 kB, 0 tiles); `jobs.fr.ch`
+    serves 25 tiles a page. A property of the tenant, dated.
+
+    Mutated, `python3 -B`, on a detached copy: the html branch removed from
+    `route_for` → `html` case reddens; the INDETERMINATE `die` replaced by a
+    plain return → the shell case reddens (exit 0, no error); `FIELD_RE`
+    without its `id="` anchor → the label case reddens («Ville» read as the
+    city); `TILE_RE` re-anchored on `/job/` → the brand-prefix case reddens;
+    `stated_total` returning None → the anchor case reddens.
+    """
+
+    def _sf(self):
+        spec = importlib.util.spec_from_file_location(
+            "_sf202", os.path.join(SCRIPTS, "successfactors.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _rules(closed):
+        """A `robots_allowed` that refuses the paths in `closed`, `None` for
+        every path when `closed` is the string `"unreadable"`."""
+        def allowed(host, path, agents=None):
+            if closed == "unreadable":
+                return {"allowed": None, "rule": None, "kind": "unknown",
+                        "reason": "rules could not be read"}
+            hit = next((c for c in closed if path.startswith(c)), None)
+            return {"allowed": hit is None, "rule": hit, "kind": None,
+                    "reason": f"refused by {hit}" if hit else "permitted"}
+        return allowed
+
+    # ------------------------------------------------ the route is chosen --
+
+    def test_the_rules_file_chooses_the_route_path_by_path(self):
+        """**The 3×3 of #202**, plus the two ends: every route open → api;
+        `/services/` closed, the rest open → html; everything closed → none,
+        a refusal; rules unreadable → none, an unknown."""
+        mod = self._sf()
+        for closed, route, word in (
+                ((), "api", "permitted"),
+                (("/services/",), "html", "permitted"),
+                (("/services/", "/search/", "/job/"), None, "every route is closed"),
+                (("/services/", "/search/"), None, "every route is closed"),
+                ("unreadable", None, "could not be read")):
+            with self.subTest(closed=closed):
+                mod.robots_allowed = self._rules(closed)
+                got, why = mod.route_for("t.example")
+                self.assertEqual(got, route, why)
+                self.assertIn(word, why)
+
+    def test_the_html_route_is_taken_only_when_both_its_paths_are_open(self):
+        """`/search/` open and `/job/` closed is not half a route."""
+        mod = self._sf()
+        mod.robots_allowed = self._rules(("/services/", "/job/"))
+        got, _ = mod.route_for("t.example")
+        self.assertIsNone(got)
+
+    # --------------------------------------------------- the three states --
+
+    TILE = ('<li class="job-tile job-id-{jid} job-row-index-1 x" '
+            'data-url="{path}" data-row-index="1">'
+            '<a class="jobTitle-link f" href="{path}"> {title} </a>'
+            '<span id="job-{jid}-desktop-section-city-label" '
+            'aria-describedby="job-{jid}-desktop-section-city-value" '
+            'class="section-label sr-only"> Ville </span>'
+            '<div id="job-{jid}-desktop-section-city-value">Fribourg, CH </div>'
+            '<span id="job-{jid}-mobile-section-city-label" '
+            'aria-describedby="job-{jid}-mobile-section-city-value"> Ville </span>'
+            '<div id="job-{jid}-mobile-section-city-value">Fribourg, CH </div>'
+            '</li>')
+    LABEL = ('<label id="searchresultslabel" class="sr-only">Résultats de la '
+             'recherche pour "". Affichage de 1 sur {n} parmi {total} offres '
+             'd’emploi </label>')
+
+    def _page(self, tiles, total=None):
+        body = "<html><body>"
+        if total is not None:
+            body += self.LABEL.format(n=len(tiles), total=total)
+        body += '<ul id="job-tile-list">'
+        for jid, path, title in tiles:
+            body += self.TILE.format(jid=jid, path=path, title=title)
+        return body + "</ul></body></html>"
+
+    def _list(self, mod, bodies, pages=3):
+        """Run `list_html` against canned `/search/` bodies; `(code, stdout,
+        stderr)` — `code` is None when it returned normally."""
+        import contextlib
+        served = iter(bodies)
+        mod.get = lambda url: (200, next(served, self._page([])))
+        out, err = io.StringIO(), io.StringIO()
+        a = argparse.Namespace(host="t.example", keywords=None, pages=pages,
+                               with_description=False)
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.list_html(a, "stubbed")
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_tiles_become_cards_and_the_count_is_printed_beside_the_pages_own(self):
+        mod = self._sf()
+        page = self._page([("1", "/job/A-Sari/1/", "Juge"),
+                           ("2", "/job/B-Saan/2/", "Richterin")], total=133)
+        code, out, err = self._list(mod, [page])
+        self.assertIsNone(code, err)
+        rows = [json.loads(l) for l in out.splitlines() if l.startswith("{")]
+        self.assertEqual([r["id"] for r in rows], ["1", "2"])
+        self.assertEqual(rows[0]["url"], "https://t.example/job/A-Sari/1/")
+        self.assertEqual(rows[0]["route"], "html")
+        self.assertIn("2 emitted, page states 133", err,
+                      "the anchor of #181: the page's own total beside ours")
+        self.assertIn("131 short", err)
+
+    def test_a_shell_with_no_tile_is_indeterminate_not_zero(self):
+        """**The state that was missing.** `jobs.bcv.ch` and `jobs.sicpa.com`
+        serve a shell with no tile; `/services/` is refused to them. That is
+        not an empty board and the adapter must not print one."""
+        mod = self._sf()
+        code, out, err = self._list(mod, [self._page([])])
+        self.assertEqual(code, 8, "an unknown is exit 8, not a count")
+        self.assertEqual(out, "", "nothing on stdout — no zero to misread")
+        for word in ("INDETERMINATE", "NOT an empty board", "/services/"):
+            self.assertIn(word, err)
+
+    def test_a_page_that_states_zero_is_a_real_zero(self):
+        """The third state: the tenant's own label says «0 offres»."""
+        mod = self._sf()
+        code, out, err = self._list(mod, [self._page([], total=0)])
+        self.assertIsNone(code, err)
+        self.assertIn("real zero", err)
+        self.assertNotIn("INDETERMINATE", err)
+
+    # --------------------------------------------------- the extraction --
+
+    def test_the_value_is_read_and_not_its_label(self):
+        """`aria-describedby="…-section-city-value"` sits on the LABEL span;
+        a pattern without the `id="` anchor read «Ville» as the city — the
+        first run did exactly that."""
+        mod = self._sf()
+        (jid, path, title, fields), = mod.tiles(
+            self._page([("7", "/job/X-Sari/7/", "Chef·fe de projet")]))
+        self.assertEqual(fields["city"], "Fribourg, CH")
+        self.assertNotEqual(fields["city"], "Ville")
+        self.assertEqual(title, "Chef·fe de projet")
+
+    def test_a_brand_prefixed_vacancy_path_is_a_tile_too(self):
+        """`/Police_Cantonale/job/…` — 2 tiles of 25 on `jobs.fr.ch` page 3;
+        anchored on `/job/`, the pattern read 23 of the 25 the page declared."""
+        mod = self._sf()
+        got = mod.tiles(self._page([
+            ("1", "/job/A/1/", "a"),
+            ("2", "/Police_Cantonale/job/Granges-Paccot%2C-CH-Aspirant%C2%B7e/2/", "b")]))
+        self.assertEqual([j for j, *_ in got], ["1", "2"])
+        # percent-encoding is the URL's and stays; only HTML entities unescape
+        self.assertEqual(got[1][1],
+                         "/Police_Cantonale/job/Granges-Paccot%2C-CH-Aspirant%C2%B7e/2/")
+
+    def test_the_stated_total_is_the_last_number_of_the_label(self):
+        mod = self._sf()
+        self.assertEqual(mod.stated_total(self._page([], total=133)), 133)
+        self.assertIsNone(mod.stated_total(self._page([])))
+
+    def test_the_java_date_becomes_a_day(self):
+        mod = self._sf()
+        self.assertEqual(mod.iso_day("Thu Sep 10 02:00:00 UTC 2026"), "2026-09-10")
+        self.assertEqual(mod.iso_day("2026-09-10"), "2026-09-10")
+        self.assertIsNone(mod.iso_day(None))
+
+    def test_the_claim_is_no_longer_written_as_the_platforms(self):
+        """**A correction does not reach the docstrings on its own** — the
+        sentence lived in the script, the card and `ats-open-check.md`."""
+        for rel in ("skills/job-scan/scripts/successfactors.py",
+                    "shared/boards/successfactors.md",
+                    "shared/ats-open-check.md"):
+            with self.subTest(file=rel):
+                root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                with open(os.path.join(root, rel), encoding="utf-8") as fh:
+                    src = fh.read()
+                self.assertNotIn("rendered entirely client-side and lists nothing",
+                                 src)
+                self.assertNotIn("for anyone, always", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

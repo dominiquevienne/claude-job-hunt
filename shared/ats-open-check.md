@@ -203,11 +203,20 @@ requisition (`31130`) answered `200` / 55 742 B with its title; the same slug
 with an invented id (`99999`) answered `200` / 46 424 B with the slot empty. The
 ≈ 9 kB delta is a second, weaker tell; **the title is the reliable one.**
 
-#### The search page is client-rendered, and that invalidates step 1b's rule 2
+#### The search page is client-rendered ON THIS TENANT, and that invalidates step 1b's rule 2
 
-`/search/` returns a navigation shell and **nothing else** — zero `/job/` hrefs,
-zero job titles, zero occurrences of the search term, for anyone, always.
-Measured unauthenticated with a desktop user-agent:
+**Per tenant, dated — not the platform (#202, 2026-09-11).** This section was
+measured on `jobs.bcv.ch` and written, until today, as holding for every
+tenant without exception.
+`jobs.fr.ch` serves 25 job tiles a page on the same path and states its total
+(«133 offres», 378 kB, 2026-09-11); `jobs.sicpa.com` serves a shell like BCV.
+So the rule below holds where the shell is observed, and the observation is
+what has to be made — `successfactors.py list` now makes it, and says
+INDETERMINATE rather than zero when it finds a shell.
+
+On `jobs.bcv.ch`, `/search/` returns a navigation shell and **nothing else** —
+zero `/job/` hrefs, zero job titles, zero occurrences of the search term.
+Measured unauthenticated with a desktop user-agent, 2026-08-27:
 
 | Request | Result |
 | :-- | :-- |

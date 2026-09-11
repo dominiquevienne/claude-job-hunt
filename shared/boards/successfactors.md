@@ -2,7 +2,7 @@
 
 <!-- hosts: per-tenant -->
 <!-- script: successfactors.py -->
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 <!-- countries: * -->
 
 An ATS, not a board: one employer per host, no search across employers.
@@ -15,12 +15,78 @@ Read by `skills/job-scan/scripts/successfactors.py`.
 **Verified 2026-08-28** against `jobs.bcv.ch` (36 postings, read in full), with
 the refusal paths cross-checked on `www.carrieres-rolex.com`.
 
-## v1.9.0 said this host needed a browser. It does not.
+## Two routes, and the rules file chooses — #202, 2026-09-11
 
-`shared/ats-open-check.md` recorded that `/search/` is rendered entirely
-client-side and lists nothing to a plain fetch. **That is still true, and it is
-beside the point:** the widget is backed by a public JSON endpoint that answers
-unauthenticated, with no key, no cookie and **no browser**.
+**`/services/`, the JSON service and until today this adapter's only route, is
+refused by 3 tenants of 3** — `Disallow: /services/` to `User-agent: *` on
+`jobs.fr.ch`, `jobs.bcv.ch` and `jobs.sicpa.com`, measured with
+`_robots.allowed()` path by path on 2026-09-11 11:35 UTC:
+
+| host | `/services/recruiting/v1/jobs` | `/search/` | `/job/…` |
+| :-- | :-- | :-- | :-- |
+| `jobs.fr.ch` | **False** (`/services/`) | True | True |
+| `jobs.bcv.ch` | **False** (`/services/`) | True | True |
+| `jobs.sicpa.com` | **False** (`/services/`) | True | True |
+
+*Three tenants of the three configured in one workspace — not a property of
+the platform proved, and not an isolated case either.* Every one of them
+answered `list` with exit 7 and zero rows, **a zero indistinguishable from an
+employer with nothing open**, and the État de Fribourg publishes 133 vacancies.
+
+**So the adapter now has a second route, and the rules file picks between
+them, path by path** — `route_for()`, and the chosen route is printed on every
+run:
+
+```
+api    /services/ permitted                 → POST the JSON service, as before
+html   /services/ refused, /search/ + /job/ permitted
+                                            → GET /search/?q=&startrow=N   the job tiles
+                                              GET /job/<slug>/<id>/        one JobPosting (microdata)
+none   every route refused                  → exit 7 · rules unreadable → exit 8
+```
+
+**And the HTML route returns THREE states, not two** — this is the point that
+decides the value of the fix:
+
+| what `/search/` served | what `list` says | exit |
+| :-- | :-- | :-- |
+| `n` tiles | `n` cards, and «`n` emitted, page states `N`» | 0 |
+| **no tile, no stated total** | **INDETERMINATE — this tenant does not serve its list to a plain client, and `/services/` is refused to it: a browser route to document** | **8** |
+| no tile, the page states «0 offres» | a real zero | 0 |
+
+**Measured 2026-09-11 11:39–11:40 UTC, the same invocation on the three:**
+
+```
+list --host jobs.fr.ch    --pages 6   exit 0   133 emitted, page states 133; 133 tiles on 6 pages (25+25+25+25+25+8), 0 repeated
+list --host jobs.bcv.ch   --pages 3   exit 8   /search/ returned no job tile — INDETERMINATE
+list --host jobs.sicpa.com --pages 3  exit 8   /search/ returned no job tile — INDETERMINATE
+```
+
+*Before, at 11:35 UTC on `main` 5ffd40b: all three exit 7, zero rows.*
+`--with-description` on `jobs.fr.ch` reads each vacancy's `JobPosting`
+**microdata** (no JSON-LD on this platform): 25 of 25 with a description and
+a `datePosted`, one request per vacancy.
+
+**Two traps the first run fell into, both now in the pattern's comment:** a
+tenant's brand sub-site prefixes the vacancy path — `/Police_Cantonale/job/…`,
+2 tiles of 25 on page 3, so a pattern anchored on `/job/` read 23 of the 25
+the page itself declared (`data-record-returned="25"`); and the label span
+beside each field carries `aria-describedby="…-section-city-value"`, so a
+pattern without the `id="` anchor read «Ville» as the city.
+
+### «Rendered entirely client-side» was measured on one tenant and written as the platform
+
+v1.9.0 recorded, and this card repeated, that `/search/` *is rendered entirely
+client-side and lists nothing to a plain fetch*. **That is a property of the
+TENANT, dated** — `jobs.bcv.ch` serves a 66 kB shell with 0 `/job/` links
+(2026-09-09, and again 2026-09-11); `jobs.sicpa.com` the same (2026-09-11);
+`jobs.fr.ch` serves 25 tiles a page and states «133 offres» (378 kB,
+2026-09-11). *The sentence was true where it was measured and served as the
+reason for having only the route that is refused.* `shared/ats-open-check.md`
+carried the same sentence and is corrected with this card.
+
+The JSON service, where its path is permitted, remains the better route: it
+answers unauthenticated, with no key, no cookie and **no browser**.
 
 ```
 POST https://<host>/services/recruiting/v1/jobs
