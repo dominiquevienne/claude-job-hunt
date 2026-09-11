@@ -63,7 +63,7 @@ import urllib.request
 from _decode import decode_body
 from _ldjson import label, one, postings
 from _robots import allowed as robots_allowed
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://www.mihnati.com"
 from _ua import UA
@@ -129,6 +129,13 @@ def address_of(posting):
     return addr, country
 
 
+def _text_or_list(value):
+    """schema.org lets `employmentType` be a string or a list of strings."""
+    if isinstance(value, list):
+        value = ", ".join(str(x) for x in value if x)
+    return (str(value) if value else "").strip() or None
+
+
 def card(posting, url, ident, duplicated):
     addr, country = address_of(posting)
     salary = one(posting.get("baseSalary"))
@@ -158,8 +165,11 @@ def card(posting, url, ident, duplicated):
                           or addr.get("streetAddress") or None),
         "region": (addr.get("addressRegion") or "").strip() or None,
         "country": country,
-        "employment_type": (posting.get("employmentType") or "").strip()
-                           or None,
+        # A string on every advertisement measured before 2026-09-11; a LIST
+        # (`["FULL_TIME"]`) on the first one read that day, and `.strip()` on a
+        # list took the whole run down with a traceback. Found by running the
+        # adapter after the #181 change, not by reading it.
+        "employment_type": _text_or_list(posting.get("employmentType")),
         "posted": posting.get("datePosted"),
         "valid_through": posting.get("validThrough"),
         "salary_unit": (value.get("unitText") or "").strip() or None,
@@ -200,8 +210,8 @@ def cmd_latest(a):
         if (slug, ident) not in slugs:
             slugs.append((slug, ident))
     if not slugs:
-        note(zero_note("mihnati"))
-        return
+        # #181: the home page is the only page; empty is INDETERMINATE.
+        die(empty_first_page("mihnati", body, "advertisement slug", where="/EN/"), 6)
     kept, mismatched, duplicated, salaried = 0, 0, 0, 0
     for slug, _ident in slugs[:a.limit] if a.limit else slugs:
         row = read_ad(f"{BASE}/EN/{slug}", a.with_text)
