@@ -13848,5 +13848,166 @@ class ARefusedRouteIsNotAnEmptyBoard(unittest.TestCase):
                 self.assertNotIn("for anyone, always", src)
 
 
+class APatternWrittenForTheFirstShapeReadsLessThanThePageDeclares(unittest.TestCase):
+    """**#203, `gech.py`, 2026-09-11.** Twice in one adapter, the same defect:
+    a pattern written against the first shape seen. The entity block of the
+    État de Genève's list has THREE shapes on one page — a link to
+    `www.ge.ch/organisation/…` (66), a link to another host (`justice.ge.ch`,
+    8), a bare `<p>` with no link (8) — and the first pattern read 66 of 82.
+    The salary class reads «classe 12» on 79 and «À définir» on three
+    traineeships, and a pattern on `classe \\d+` reported those three as
+    having none. *Neither error is loud: 66 entities and 79 classes are
+    plausible numbers.*
+
+    So the guard exercises every shape the page was seen to carry, and the
+    two things that would show a short reading: the `linked + unlinked`
+    count and the RSS anchor.
+
+    Mutated, `python3 -B`, on a detached copy: the bare-`<p>` alternative
+    removed from `ENTITY_RE` → the three-shapes case reddens; `CLASS_RE` back
+    on `classe \\d+` → the traineeship case reddens; `unlinked` no longer
+    counted → the count case reddens; the RSS mismatch line collapsed into
+    the agreement line → the anchor case reddens; the five-key URL reduced →
+    the filter case reddens; `resolve` taking the first of several → the
+    ambiguity case reddens.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_gech203", os.path.join(SCRIPTS, "gech.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    ORG = ('<a class="text-label-medium text-primary hover:underline" '
+           'href="https://www.ge.ch/organisation/departement-du-territoire-dt">'
+           '<p>Département du territoire</p></a><p>Office cantonal de l\'eau</p>')
+    OTHER_HOST = ('<a class="text-label-medium text-primary hover:underline" '
+                  'href="https://justice.ge.ch/fr"><p>Pouvoir judiciaire</p></a>'
+                  '<p>Cour de justice civile</p>')
+    BARE = '<p class="text-label-medium">Secrétariat général du Grand Conseil</p><p></p>'
+
+    def _card(self, ident, title, entity, cls="classe 12"):
+        return (f'<article class="block bg-surface"><div><div class="text-title-medium">'
+                f'<a class="hover:underline" href="/offres-emploi-etat-geneve/liste-offres/{ident}" '
+                f'rel="bookmark"> {title} </a></div><div>{entity}</div>'
+                f'<div><span class="chips-outlined"> 100% </span>'
+                f'<a class="chips" href="/document/echelle"><span data-text> {cls} </span></a>'
+                f'</div></div></article>')
+
+    def _page(self, cards, form=True):
+        body = "<html><body>"
+        if form:
+            body += ('<form id="gech-offres-emploi-filters" method="get">'
+                     '<select name="departement"><option value="0">Tous</option>'
+                     '<option value="2ea0-dt">Département du territoire</option>'
+                     '<option value="aed5-df">Département des finances</option>'
+                     '</select></form>')
+        return body + "".join(cards) + "</body></html>"
+
+    def test_every_shape_of_the_entity_block_yields_an_entity(self):
+        mod = self._mod()
+        rows, unlinked = mod.cards(self._page([
+            self._card("1", "Juge", self.ORG),
+            self._card("2", "Greffier", self.OTHER_HOST),
+            self._card("3", "Huissier", self.BARE)]))
+        self.assertEqual(unlinked, 0)
+        self.assertEqual([r["entity"] for r in rows],
+                         ["Département du territoire", "Pouvoir judiciaire",
+                          "Secrétariat général du Grand Conseil"])
+        self.assertEqual([r["entity_url"] for r in rows],
+                         ["https://www.ge.ch/organisation/departement-du-territoire-dt",
+                          "https://justice.ge.ch/fr", None])
+        self.assertEqual([r["office"] for r in rows],
+                         ["Office cantonal de l'eau", "Cour de justice civile", None])
+
+    def test_a_salary_class_is_carried_as_the_page_writes_it(self):
+        mod = self._mod()
+        rows, _ = mod.cards(self._page([
+            self._card("1", "Juriste", self.ORG, cls="classe 21"),
+            self._card("2", "Stagiaire", self.ORG, cls="À définir")]))
+        self.assertEqual([r["salary_class"] for r in rows],
+                         ["classe 21", "À définir"])
+
+    def test_an_article_without_a_link_is_counted_not_dropped(self):
+        """`linked + unlinked = <article>` is only a check if `unlinked`
+        grows in its own branch."""
+        mod = self._mod()
+        rows, unlinked = mod.cards(self._page([
+            self._card("1", "Juge", self.ORG),
+            '<article class="block bg-surface"><p>Aucune offre</p></article>']))
+        self.assertEqual((len(rows), unlinked), (1, 1))
+
+    def _list(self, mod, page, feed, argv):
+        import contextlib
+        served = iter([page, feed])
+        mod.get = lambda url: (200, next(served))
+        urls = []
+        real = mod.get
+        mod.get = lambda url: (urls.append(url), real(url))[1]
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(type=None, taux_max=None, classe_min=None,
+                                departement=None, no_rss_check=False, limit=None)
+        for k, v in argv.items():
+            setattr(ns, k, v)
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(ns)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue(), urls
+
+    def test_the_rss_anchor_reports_a_short_reading_and_not_only_agreement(self):
+        mod = self._mod()
+        page = self._page([self._card("1", "Juge", self.ORG)])
+        feed = "<rss><item><guid>1</guid></item><item><guid>2</guid></item></rss>"
+        code, out, err, _ = self._list(mod, page, feed, {})
+        self.assertIsNone(code)
+        self.assertIn("1 emitted of 1", err)
+        self.assertIn("page states no total", err)
+        self.assertIn("RSS lists 2, the page 1: 1 only in the feed", err,
+                      "the anchor must say WHICH side is short")
+        feed_same = "<rss><item><guid>1</guid></item></rss>"
+        _, _, err2, _ = self._list(mod, page, feed_same, {})
+        self.assertIn("the same 1 ids", err2)
+
+    def test_a_filter_puts_all_five_keys_on_the_url_and_skips_the_anchor(self):
+        mod = self._mod()
+        page = self._page([self._card("1", "Juge", self.ORG)])
+        code, out, err, urls = self._list(mod, page, "", {"type": "cdi", "classe_min": 20})
+        self.assertIsNone(code)
+        import urllib.parse
+        q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(urls[0]).query))
+        self.assertEqual(q, {"departement": "0", "domaine_activite": "0",
+                             "classe_fonction_min": "17", "type_contrat": "CDI",
+                             "taux_activite_max": "0"},
+                         "the form's five keys, with `0` for «Tous» and class - 3")
+        self.assertEqual(len(urls), 1, "no RSS request under a filter")
+        self.assertIn("RSS not compared", err)
+
+    def test_a_department_is_resolved_from_the_page_and_ambiguity_refuses(self):
+        mod = self._mod()
+        page = self._page([self._card("1", "Juge", self.ORG)])
+        code, _, err, urls = self._list(mod, page, page, {"departement": "territoire"})
+        self.assertIsNone(code, err)
+        self.assertIn("departement=2ea0-dt", urls[1])
+        code, _, err, _ = self._list(mod, page, page, {"departement": "Département"})
+        self.assertEqual(code, 2)
+        self.assertIn("2 departments match", err)
+
+    def test_a_page_that_lost_its_shape_is_exit_6_not_an_empty_list(self):
+        mod = self._mod()
+        code, out, err, _ = self._list(mod, "<html><body>maintenance</body></html>", "", {})
+        self.assertEqual(code, 6)
+        self.assertEqual(out, "")
+        self.assertIn("changed shape", err)
+
+    def test_text_unescapes_twice_and_drops_the_zero_width_space(self):
+        mod = self._mod()
+        self.assertEqual(mod.text("​Prérequis &amp;#58; L&#039;OCSIN"),
+                         "Prérequis : L'OCSIN")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
