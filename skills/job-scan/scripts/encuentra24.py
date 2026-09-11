@@ -65,7 +65,7 @@ from _decode import decode_body
 from _ldjson import label, one, postings
 from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://www.encuentra24.com"
 from _ua import UA
@@ -248,6 +248,9 @@ def cmd_search(a):
                  f"and they are good.")
             break
         rows = ids_on(html, prefix, cat)
+        if not rows and page == 1:
+            die(empty_first_page("encuentra24", html, "ad link",
+                                 where=f"/{prefix}/{cat}"), 6)   # #181
         if not rows:
             note(f"page {page} carried no ad link — stopping.")
             break
