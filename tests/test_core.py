@@ -15619,5 +15619,114 @@ class NetEmpregosReadsTheTwoFeedsThatHoldAndNamesTheFourThatDoNot(unittest.TestC
         self.assertEqual(d["url"], "https://www.net-empregos.com/15978698/oferta/")
 
 
+class ExpressoEmpregoReadsTheLiveListingNotTheFossilSitemap(unittest.TestCase):
+    """`expressoemprego.py` — 2026-09-11. The host declares a sitemap whose
+    1 513 advertisement URLs all carry a `lastmod` of 2019; the live route
+    is the listing, 15 a page, with the site's own total in the page («1 917
+    empregos para a sua pesquisa»), and a search routed by path segments read
+    off the site's `main.js`. `?page=` is 1-based with `page=1` the first
+    page again; the site's zero is a sentence, «Não foram encontradas
+    Ofertas de Emprego para a sua pesquisa»; `/emprego` bare answers a 200
+    «Oops» page with no row and no total.
+    """
+
+    @staticmethod
+    def _row(ident, title, company, loc=None):
+        return ('<div class="posRelative bgGray1 resultadosBox fOpenSansRegular ">'
+                f'<h3 class="x"><a href="/emprego/slug-{ident}/{ident}" title="{title}">{title}</a></h3>'
+                f'<h4 class="y">{company}</h4>'
+                '<span class="px13 colorBlack">11.09.2026 <span class="colorBlue2 fontBold">|</span> '
+                + (loc or "") + '</span> <span class="colorBlue2 fontBold">|</span> '
+                f'<span class="colorGray8">Referência:</span> {ident}</span></div>')
+
+    @staticmethod
+    def _page(rows_html, total):
+        head = (f'<div class="pull-left"><span class="px14"><b>{total}</b></span> '
+                '<span class="px15">empregos para a sua pesquisa</span></div>') if total is not None else ""
+        return "<html>" + head + rows_html + "x" * 40000 + "</html>"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_expresso_t", os.path.join(SCRIPTS, "expressoemprego.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _run(self, fn, a):
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                fn(a)
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_search_url_is_the_sites_routing_and_the_page_parameter_is_one_based(self):
+        mod = self._mod()
+        self.assertEqual(mod.search_url(), "https://expressoemprego.pt/ofertas-emprego")
+        self.assertEqual(mod.search_url(page=1), "https://expressoemprego.pt/ofertas-emprego?page=2")
+        self.assertEqual(mod.search_url(q="juristas"), "https://expressoemprego.pt/emprego/pesquisa/juristas/")
+        self.assertEqual(mod.search_url(localizacao="lisboa"),
+                         "https://expressoemprego.pt/emprego/pesquisa/query/lisboa/")
+        self.assertEqual(mod.search_url(q="juristas", localizacao="lisboa"),
+                         "https://expressoemprego.pt/emprego/pesquisa/juristas/lisboa/")
+        self.assertEqual(mod.ad_url("2466610"), "https://expressoemprego.pt/emprego/oferta/2466610")
+        src = open(os.path.join(SCRIPTS, "expressoemprego.py"), encoding="utf-8").read()
+        self.assertNotIn("sitemap.xml\"", src.split("def get")[1], "the fossil sitemap must not be read")
+
+    def test_rows_carry_the_listings_fields_and_the_sites_total_is_printed_beside_them(self):
+        mod = self._mod()
+        page = self._page(self._row(1, "Juristas", "ERSAR") + self._row(2, "Dev", "Acme", "Lisboa, Portugal"), "1 917")
+        mod.get = lambda url: (200, page if "page=" not in url else self._page("", "1 917"))
+        a = argparse.Namespace(q=None, localizacao=None, pages=2, limit=0)
+        code, out, err = self._run(mod.cmd_search, a)
+        self.assertIsNone(code, err)
+        rows = [json.loads(l) for l in out.splitlines()]
+        self.assertEqual([r["id"] for r in rows], ["1", "2"])
+        self.assertEqual(rows[0]["ledger_id"], "expressoemprego:1")
+        self.assertEqual(rows[0]["company"], "ERSAR")
+        self.assertEqual(rows[0]["date"], "11.09.2026")
+        self.assertIsNone(rows[0]["location"])
+        self.assertEqual(rows[1]["location"], "Lisboa, Portugal")
+        self.assertIn("2 emitted, 2 distinct over 1 page(s) of 15; the site states 1917", err)
+        self.assertIn("page 1 carried no row — the end of the listing", err)
+
+    def test_the_sites_zero_sentence_is_a_real_zero_and_the_oops_page_is_not(self):
+        mod = self._mod()
+        zero = "<html>Não foram encontradas Ofertas de Emprego para a sua pesquisa" + "x" * 80000 + "</html>"
+        mod.get = lambda url: (200, zero)
+        code, out, err = self._run(mod.cmd_search, argparse.Namespace(q="zzz", localizacao=None, pages=1, limit=0))
+        self.assertIsNone(code, err)
+        self.assertEqual(out, "")
+        self.assertIn("a real zero, in the site's words", err)
+        oops = "<html><title>Expresso Emprego</title>Oops, a página que procura não se encontra disponível" + "x" * 43000 + "</html>"
+        mod.get = lambda url: (200, oops)
+        code, out, err = self._run(mod.cmd_search, argparse.Namespace(q=None, localizacao=None, pages=1, limit=0))
+        self.assertEqual(code, 6, err)
+        self.assertIn("INDETERMINATE", err)
+        self.assertIn("«Oops»", err)
+
+    def test_rows_and_total_disagreeing_is_a_fault(self):
+        mod = self._mod()
+        mod.get = lambda url: (200, self._page("", "1 917"))
+        code, out, err = self._run(mod.cmd_search, argparse.Namespace(q=None, localizacao=None, pages=1, limit=0))
+        self.assertEqual(code, 6, err)
+        self.assertIn("the two disagree", err)
+
+    def test_the_ad_text_starts_inside_the_container_and_stops_before_the_similar_jobs(self):
+        mod = self._mod()
+        page = ('<html><title>Juristas | ERSAR</title><div class="wucAnuncioDet"><p>Descrição da Empresa</p>'
+                '<p>Texto.</p></div><div>EMPREGOS SEMELHANTES</div><p>Outro</p></html>')
+        mod.get = lambda url: (200, page)
+        code, out, err = self._run(mod.cmd_ad, argparse.Namespace(id="2466610"))
+        self.assertIsNone(code, err)
+        d = json.loads(out)
+        self.assertEqual(d["title"], "Juristas")
+        self.assertEqual(d["text"], "Descrição da Empresa\nTexto.")
+        self.assertNotIn("wucAnuncioDet", d["text"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
