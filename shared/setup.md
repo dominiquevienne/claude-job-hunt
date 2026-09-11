@@ -902,12 +902,13 @@ Say this, in one message, in this order:
 4. **What it costs them, not us.** The realistic failure is AMS blocking the
    address the requests come from — **theirs** — which costs them their own
    ordinary use of the site. Say it plainly and early.
-5. **That there are two, and which.** AMS and SmartRecruiters (5f), and no
-   others. Softy, Tecnoempleo, InfoJobs and Leboncoin are refused on files of
-   the same kind, and stay refused. A user who hears "we override robots.txt"
-   without hearing "twice, here and here, for this reason" has been told
-   something false about the plugin. **Do not say "the only one" — it stopped
-   being true on 2026-09-03.**
+5. **That there are three, and which.** AMS, SmartRecruiters (5f) and
+   HiringCafe (5g), and no others. Softy, Tecnoempleo, InfoJobs and Leboncoin
+   are refused on files of the same kind, and stay refused. A user who hears
+   "we override robots.txt" without hearing "three times, here, here and
+   here, for this reason" has been told something false about the plugin.
+   **Do not say "the only one" — it stopped being true on 2026-09-03 — nor
+   "two", which stopped being true on 2026-09-11.**
 
 ### The question, and the three answers it can have
 
@@ -1056,7 +1057,7 @@ given; give the facts below once and ask.
 3. **What it costs them, not us.** The realistic failure is SmartRecruiters
    blocking the address the requests come from — **theirs**. Say it plainly
    and early, exactly as in 5d.
-4. **That there are two overrides in the plugin, and this is the second.**
+4. **That there are three overrides in the plugin, and this is the second.**
    Greenhouse, Workable and Lever publish files of the same kind that permit
    and are read with none of this; Softy, Tecnoempleo, InfoJobs and Leboncoin
    are refused and stay refused. **The override does not generalise, and
@@ -1121,6 +1122,72 @@ its act is a statement about an intention, not about a fact.**
 **Nothing is printed when nothing is bypassed** — not on a host that permits,
 and not when the key is absent. *A banner that prints on every run stops being
 read.*
+
+## 5g — HiringCafe: the third override, and it does not follow from the rule
+
+**Run this whenever `hiringcafe` is in `boards:`** — it is a worldwide
+meta-board, so that is most workspaces.
+
+**This one is different in kind from 5d and 5f, and the user is told so.**
+AMS and SmartRecruiters were overridden because their files open to one
+privately held platform and close to everyone else — the four questions of
+`shared/robots-policy.md` land on *override* there. `hiringcafe.com/robots.txt`
+is even-handed: `User-agent: * / Disallow: /*?searchState=*` refuses the
+search URL to everybody and names nobody. **The four questions land on *obey*.
+The repository's owner decided otherwise on 2026-09-11 (#198), in those
+words — «&nbsp;Je confirme la dérogation hiringcafe&nbsp;» — after being shown
+that the refusal is written, that the plugin then named one exception only,
+and what it costs.** The decision is the owner's; it is not an application of
+the rule, and this page does not dress it as one.
+
+### What to say, in this order
+
+1. **What it is.** A meta-board that republishes the career pages of some
+   forty ATSes under one search; `search` reads that search, `ad` reads one
+   posting.
+2. **What its `robots.txt` says.** Quote it:
+
+   ```
+   User-agent: *
+   Disallow: /*?searchState=*
+   Disallow: /*?page=*
+   ```
+
+   **Written for everybody, refusing exactly the URL `search` builds.** The
+   `ad` route (`/job/<slug>`) is permitted and needs none of this.
+3. **What it costs them, not us.** The realistic failure is HiringCafe
+   blocking the address the requests come from — **theirs**. The host has
+   answered 403 to scripts on every path, permitted ones included, on
+   2026-09-05: the override lifts the rule, not the edge, and a run may still
+   come back refused.
+4. **That there are three overrides in the plugin, and this is the third —
+   and the only one taken against the rule's own answer.** Any fourth goes
+   to the repository's owner, not to a setup step.
+
+### The question, and the three answers it can have
+
+`AskUserQuestion`, single select, **no default and nothing pre-ticked**:
+
+- **Enable it** — they accept the override for their own workspace.
+- **Leave it off** — a hard no. `search` is skipped with the reason on every
+  run that reaches it; `ad` keeps working; it is never raised again.
+- **Decide later** — recorded as undecided, and `search` stays skipped.
+
+### Recording it
+
+```yaml
+boards:
+  hiringcafe:
+    enabled: true
+    override_robots: true    # absent or false → search skipped, with the reason
+```
+
+**`enabled: true` without `override_robots` reports the skip and says why**:
+`hiringcafe.py search` exits 7, names the rule, names the file it consulted
+and the sentence to add — `no boards.hiringcafe.override_robots: true in
+<path>` — never only the path. **And the run says it out loud, once, where
+the bypass happens**, in the same shape as 5f's banner: what is crossed,
+then what it costs, then how to stop.
 
 ## 6 — Thresholds and document preferences
 

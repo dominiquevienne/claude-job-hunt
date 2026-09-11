@@ -585,9 +585,26 @@ boards:
   smartrecruiters:
     enabled: true
     override_robots: true   # same key, same rule, decided 2026-09-03 (#121)
+  hiringcafe:
+    enabled: true
+    override_robots: true   # same key — NOT the same rule: owner's decision 2026-09-11 (#198)
 ```
 
-**There are two, and there were nearly none.** SmartRecruiters was added on
+**There are three, and the third does not follow from the four questions.**
+`hiringcafe.com/robots.txt` refuses `/*?searchState=*` to `User-agent: *` —
+even-handed, aimed at nobody, no sanctioned door; by this file's own rule
+that is *obey*, and it was obeyed from 2026-09-03 (#123) with collection
+suspended beside it. **On 2026-09-11 the repository's owner decided
+otherwise, verbatim: «&nbsp;Je confirme la dérogation hiringcafe, assigne
+#198&nbsp;»** — after being shown that the refusal is written, that the pilot's local
+doctrine named SmartRecruiters as the one exception, and that the cost is the
+candidate's address. **Unconditional, and it lifts both refusals at once**:
+the rule and the suspension, because a key that lifted one would look like it
+acts and act on half. The record says this is a decision and not a reading;
+the procedure below — the key, the onboarding, the banner, one request at a
+time — applies to it unchanged. *A fourth override goes to the owner.*
+
+**There were two before that, and there were nearly none.** SmartRecruiters was added on
 2026-09-03 by the repository's owner, on the same ground and by this same
 procedure. `api.smartrecruiters.com` publishes 72 bytes — `User-agent:
 LinkedInBot / Allow: /v1/companies/`, then `User-agent: * / Disallow: /` —
@@ -611,7 +628,7 @@ must report the skip and say why, per `never-fail-silently.md`.
 raises AMS during onboarding whenever the user's geography reaches Austria: it
 quotes the four rules, states the ground the decision rests on, says that the
 address that gets blocked is *theirs*, and says **which overrides exist** —
-two, since 2026-09-03, and no others. **A sentence that said "the only one"
+three, since 2026-09-11 (`setup.md` 5d, 5f, 5g), and no others. **A sentence that said "the only one"
 was left standing while a second was added would be worse than no sentence**:
 a user who is told the plugin overrides once, and finds it overrides twice,
 has been told something false about it. It offers three answers — enable, leave off, decide later — with

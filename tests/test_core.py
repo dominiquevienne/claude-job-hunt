@@ -3543,38 +3543,29 @@ class TheRefusedSearchIsRefusedInFact(unittest.TestCase):
     right to be. It says nothing about whether the one place that may build
     it actually refuses to fetch it.
 
-    **Collection is suspended by decision, not by accident** — no request to
-    that host in any form, even on the paths its own file allows. So this
-    exercises the refusal with an opener that fails the case if it is ever
-    reached.
+    **The refusal is the default, and it is exercised as the default.**
+    Since #198 (2026-09-11) the user's own `boards.hiringcafe.override_robots:
+    true` lifts it — so this case runs the command against a workspace with
+    NO config, and would go to the network on the developer's own key
+    otherwise: the first version of this edit did exactly that, and the
+    suite hung on a live request.
     """
 
     def test_the_search_mode_refuses_and_makes_no_request(self):
-        import hiringcafe
-
-        def forbidden(*a, **k):
-            raise AssertionError(
-                "hiringcafe.py opened a socket — collection is suspended and "
-                "no request to that host is permitted in any form")
-
-        real = hiringcafe.urllib.request.urlopen
-        hiringcafe.urllib.request.urlopen = forbidden
-        code, said = None, ""
-        try:
-            import subprocess
-            import sys as _sys
-            out = subprocess.run(
-                [_sys.executable, os.path.join(SCRIPTS, "hiringcafe.py"),
-                 "search", "--query", "x", "--country", "CH"],
-                capture_output=True, text=True, timeout=60)
-            code, said = out.returncode, out.stderr
-        except AssertionError:
-            raise
-        finally:
-            hiringcafe.urllib.request.urlopen = real
+        import subprocess
+        import sys as _sys
+        import tempfile
+        env = dict(os.environ, JOB_HUNT_HOME=tempfile.mkdtemp())   # no key
+        out = subprocess.run(
+            [_sys.executable, os.path.join(SCRIPTS, "hiringcafe.py"),
+             "search", "--query", "x", "--country", "CH"],
+            capture_output=True, text=True, timeout=60, env=env)
+        code, said = out.returncode, out.stderr
         self.assertEqual(code, 7,
                          f"the refused search did not exit 7 (got {code!r} "
                          f"{said[:60]})")
+        self.assertIn("No request was made", said)
+        self.assertIn("no config.yml at", said)        # what was consulted
 
     def test_the_refusal_quotes_the_rule_and_the_date(self):
         """**A refusal that does not say what refused it invites a retry.**"""
@@ -9842,6 +9833,172 @@ class TheOverrideChangesSomethingObservable(unittest.TestCase):
         self.assertIsNotNone(guard, "the waiver left the SmartRecruiters branch")
 
 
+class HiringCafeOverrideIsReadFromConfigAndBoundedToItsHost(unittest.TestCase):
+    """Issue #198. `boards.hiringcafe.override_robots` sat in a user's
+    `config.yml` with a comment declaring it inert — no flag, no reader —
+    and the refusal it was meant to lift was DOUBLE: the written rule
+    (`Disallow: /*?searchState=*`) and «&nbsp;suspended pending a
+    decision&nbsp;» beside it. The decision came on 2026-09-11, from the
+    repository's owner, unconditional: «&nbsp;Je confirme la dérogation
+    hiringcafe&nbsp;». One key lifts both, or the flag would look like it
+    acts and act on half.
+
+    Three directions, and each is what a flag can get wrong: the key set is
+    SEEN; the key absent REFUSES and names the sentence to add, not only a
+    path; the key on another board, or the waiver carried to another host,
+    changes NOTHING here.
+    """
+
+    def _workspace(self, config_text):
+        import tempfile
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "config.yml"), "w", encoding="utf-8") as fh:
+            fh.write(config_text)
+        old = os.environ.get("JOB_HUNT_HOME")
+        os.environ["JOB_HUNT_HOME"] = d
+
+        def restore():
+            if old is None:
+                os.environ.pop("JOB_HUNT_HOME", None)
+            else:
+                os.environ["JOB_HUNT_HOME"] = old
+        self.addCleanup(restore)
+        return d
+
+    def _search(self, hc):
+        """Drive `fetch_page_props` with a stubbed `get` that records the
+        waiver it was handed and returns a page with the expected shape."""
+        seen = {}
+
+        def fake_get(url, attempts=3, first_wait=20.0, waived=False):
+            seen["url"], seen["waived"] = url, waived
+            return ('<script id="__NEXT_DATA__" type="application/json">'
+                    '{"props":{"pageProps":{"ssrTotalCount":1}}}</script>')
+        real = hc.get
+        hc.get = fake_get
+        try:
+            pp = hc.fetch_page_props({"searchState": "{}"})
+        finally:
+            hc.get = real
+        return pp, seen
+
+    def test_the_key_set_is_seen_and_the_search_goes_out_waived(self):
+        sys.path.insert(0, SCRIPTS)
+        import hiringcafe as hc
+        d = self._workspace("boards:\n  hiringcafe:\n    enabled: true\n"
+                            "    override_robots: true\n")
+        on, where = hc.override_enabled()
+        self.assertTrue(on, where)
+        self.assertIn("boards.hiringcafe.override_robots: true", where)
+        self.assertIn(os.path.join(d, "config.yml"), where)
+        pp, seen = self._search(hc)
+        self.assertEqual(pp["ssrTotalCount"], 1)
+        self.assertTrue(seen["waived"], "the key was seen and the request "
+                                        "still asked the guard")
+        self.assertIn("hiringcafe.com/?searchState=", seen["url"])
+
+    def test_the_key_absent_refuses_and_names_the_sentence_not_only_the_path(
+            self):
+        """`2ce1048` (#206): a message that said only the PATH read as
+        «&nbsp;file not found&nbsp;». The refusal quotes the sentence to
+        add — `no boards.hiringcafe.override_robots: true in <path>`."""
+        import io
+        sys.path.insert(0, SCRIPTS)
+        import hiringcafe as hc
+        d = self._workspace("boards:\n  hiringcafe:\n    enabled: true\n")
+        err = io.StringIO()
+        real_err = sys.stderr
+        sys.stderr = err
+        try:
+            with self.assertRaises(SystemExit) as cm:
+                self._search(hc)
+        finally:
+            sys.stderr = real_err
+        self.assertEqual(cm.exception.code, 7)
+        text = err.getvalue()
+        self.assertIn("no boards.hiringcafe.override_robots: true in "
+                      + os.path.join(d, "config.yml"), text)
+        self.assertIn("/*?searchState=*", text)
+        self.assertIn("No request was made", text)
+        # the second refusal is gone with the decision: nothing "pending"
+        self.assertNotIn("pending a decision", text)
+        self.assertIn("2026-09-11", text)
+
+    def test_the_key_on_another_board_changes_nothing_here(self):
+        """SmartRecruiters' key is the same word under another board; it
+        must not leak. Bounded by the board name in the read."""
+        import io
+        sys.path.insert(0, SCRIPTS)
+        import hiringcafe as hc
+        self._workspace("boards:\n  smartrecruiters:\n    enabled: true\n"
+                        "    override_robots: true\n  hiringcafe:\n"
+                        "    enabled: true\n")
+        on, _where = hc.override_enabled()
+        self.assertFalse(on)
+        sys.stderr, real_err = io.StringIO(), sys.stderr
+        try:
+            with self.assertRaises(SystemExit) as cm:
+                self._search(hc)
+        finally:
+            sys.stderr = real_err
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_waiver_is_bounded_to_the_search_url_on_the_host(self):
+        """`get(url, waived=True)` on any other host or path dies before
+        anything leaves — checked at the act, not at the caller."""
+        import io
+        sys.path.insert(0, SCRIPTS)
+        import hiringcafe as hc
+        for url in ("https://api.smartrecruiters.com/v1/companies/x/postings",
+                    "https://hiringcafe.com/job/some-slug",
+                    "https://evil.example/?searchState=%7B%7D"):
+            with self.subTest(url=url):
+                sys.stderr, real_err = io.StringIO(), sys.stderr
+                try:
+                    with self.assertRaises(SystemExit) as cm:
+                        hc.get(url, waived=True)
+                finally:
+                    sys.stderr = real_err
+                self.assertEqual(cm.exception.code, 7)
+
+    def test_the_bypass_is_announced_once_where_it_happens(self):
+        import io
+        sys.path.insert(0, SCRIPTS)
+        import hiringcafe as hc
+        hc._ANNOUNCED = False
+        sys.stderr, real_err = io.StringIO(), sys.stderr
+        try:
+            hc.announce_bypass("https://hiringcafe.com/?searchState=%7B%7D")
+            hc.announce_bypass("https://hiringcafe.com/?searchState=%7B%7D")
+            text = sys.stderr.getvalue()
+        finally:
+            sys.stderr = real_err
+            hc._ANNOUNCED = False
+        self.assertEqual(text.count("[bypass]"), 1)
+        self.assertIn("Disallow: /*?searchState=*", text)
+        self.assertIn("yours, not this project's", text)
+        self.assertIn("override_robots", text)
+
+    def test_the_callers_that_do_not_read_the_key_say_so(self):
+        """`ats.py resolve` and `workday.py resolve` print the same refusal
+        and never read the key: the honest line is that this command does
+        not, `hiringcafe.py search` does — not an instruction that would
+        change nothing there."""
+        sys.path.insert(0, SCRIPTS)
+        import _hiringcafe
+        text = _hiringcafe.refusal("ats", "resolving an employer")
+        self.assertIn("This command does not read the key", text)
+        self.assertIn("hiringcafe.py search", text)
+
+    def test_the_two_adapters_read_the_key_through_one_function(self):
+        """A second copy of the parser is the second adapter's own way of
+        reading the same key. `ats.py` keeps its original; the new reader
+        must go through `_override.enabled`."""
+        src = open(os.path.join(SCRIPTS, "hiringcafe.py"),
+                   encoding="utf-8").read()
+        self.assertIn("_override.enabled(\"hiringcafe\")", src)
+        self.assertNotIn("read_boards(", src)
+
 class ABypassAnnouncesItselfWhereItHappens(unittest.TestCase):
     r"""**#187, 2026-09-08.** The banner was printed by the code that DECIDED
     the override was on, one line before the generic guard refused the request
@@ -13624,27 +13781,36 @@ class AConsentRecordedInTheConfigReachesTheCodeThatNeedsIt(unittest.TestCase):
 
     def test_only_this_one_adapter_reads_the_config(self):
         """**The boundary that keeps the doctrine true.** `SKILL.md` says no
-        adapter reads `config.yml`; #206 makes one exception for one key, and
-        this case keeps it at one: no other adapter in the directory imports
-        `read_boards` or opens a `config.yml`. *A second exception would be
-        the profile creeping into the adapters by the same door.*"""
+        adapter reads `config.yml`; #206 made one exception for one key, and
+        #198 needed the same key for a second board. **The door stays one**:
+        `_override.py` is the only file in the directory that opens the
+        config, and the two adapters call it — neither imports `read_boards`
+        or builds the path itself. *A second copy would be the profile
+        creeping into the adapters by the same door.*"""
         readers = []
         for name in sorted(os.listdir(SCRIPTS)):
             if not name.endswith(".py") or name in (
-                    "ats.py", "dormant.py", "board_offer.py", "tenant_offer.py"):
+                    "_override.py", "dormant.py", "board_offer.py",
+                    "tenant_offer.py"):
                 continue
             with open(os.path.join(SCRIPTS, name), encoding="utf-8") as fh:
                 src = fh.read()
             # a path built to it — `os.path.join(…, "config.yml")` — not a
             # help string that merely names it (`_workauth.py` does)
-            if "read_boards" in src or re.search(r'"config\.yml"\)', src):
+            # the CALL, not the word: a docstring that names the parser is
+            # not a read
+            if "read_boards(" in src or re.search(r'"config\.yml"\)', src):
                 readers.append(name)
-        self.assertEqual(readers, [], "an adapter other than ats.py reads the "
-                                      "config — #206 allows exactly one")
-        with open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8") as fh:
+        self.assertEqual(readers, [], "a file other than _override.py reads "
+                                      "the config — #206 and #198 allow one door")
+        with open(os.path.join(SCRIPTS, "_override.py"), encoding="utf-8") as fh:
             src = fh.read()
         self.assertEqual(src.count("read_boards("), 1,
-                         "ats.py reads the config in exactly one function")
+                         "_override.py reads the config in exactly one function")
+        for name in ("ats.py", "hiringcafe.py"):
+            with open(os.path.join(SCRIPTS, name), encoding="utf-8") as fh:
+                self.assertIn("_override.enabled(", fh.read(),
+                              f"{name} does not go through the one door")
 
 
 class ARefusedRouteIsNotAnEmptyBoard(unittest.TestCase):
