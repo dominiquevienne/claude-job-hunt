@@ -388,36 +388,25 @@ def override_enabled():
     > gets lost.** The consent lives in the config; the code that needs the
     > consent reads it there.
 
-    **This is the one place an adapter reads `config.yml`, and it reads one
-    key.** `skills/job-scan/SKILL.md` says the adapters do not read the
+    **This was the one place an adapter read `config.yml`; since #198 the
+    one place is `_override.py`, and this adapter and `hiringcafe.py` both
+    call it, each for its own board and one key.** `skills/job-scan/SKILL.md` says the adapters do not read the
     config and the skill passes the profile down — that holds for the
     profile. *This is not profile: it is the adapter's own key* («&nbsp;the
     adapter owns its config keys&nbsp;», same file), and a consent the user
-    gave once. The workspace is resolved the way `_secrets.py` resolves it
-    for `credentials.env` — `bin/workspace-path.py`, never a guessed folder
-    — and the block is parsed by `dormant.read_boards`, the parser this
-    directory already has. **Nothing else in the file is read.**
+    gave once. How the workspace is resolved and the block parsed is
+    `_override.py`'s docstring now. **Nothing else in the file is read.**
 
     `where` names what was consulted, so the exit-7 message can say «&nbsp;no
     key at <path>&nbsp;» rather than «&nbsp;no key&nbsp;»: an absent key and
     a config that was never found are two different things to fix.
     """
-    from _secrets import _workspace
-    ws = _workspace()
-    if not ws:
-        return False, "no workspace resolved (JOB_HUNT_HOME unset, nothing remembered)"
-    path = os.path.join(ws, "config.yml")
-    if not os.path.exists(path):
-        return False, f"no config.yml at {path}"
-    from dormant import read_boards
-    try:
-        boards = read_boards(path)
-    except SystemExit:               # `read_boards` dies on a shape it cannot read
-        return False, f"{path} could not be read as a job-hunt config (see above)"
-    block = boards.get("smartrecruiters") or {}
-    if str(block.get("override_robots", "")).strip().lower() == "true":
-        return True, f"boards.smartrecruiters.override_robots: true in {path}"
-    return False, f"no boards.smartrecruiters.override_robots: true in {path}"
+    # **#198: the reading moved to `_override.py`, and this is a call.** A
+    # second adapter (HiringCafe) needed the same key under its own board,
+    # and a second copy of this body would have been the second adapter's own
+    # way of parsing it. One door, two callers, each naming its own board.
+    import _override
+    return _override.enabled("smartrecruiters")
 
 
 def smartrecruiters_gate(a=None):

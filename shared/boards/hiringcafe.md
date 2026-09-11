@@ -6,6 +6,7 @@
 <!-- script: hiringcafe.py -->
 <!-- witness: none found — the per-facet totals (11 541 for Boise, 4 646 for data scientist) are the page's own claim, and no second source states them; the sitemaps that would corroborate answer 403 · 2026-09-07 -->
 <!-- robots-note: the rules refuse `/*?page=*` and `/*&page=*` by hand, so the browser route is one page of 20 per facet; neither `ClaudeBot` nor `Claude-User` is named in the file — only meta-externalagent and Applebot-Extended · 2026-09-07 -->
+<!-- override: boards.hiringcafe.override_robots — the repository's owner's decision of 2026-09-11 (#198), against the four questions; lifts the written rule AND the suspension; cost: the user's own address · 2026-09-11 -->
 <!-- countries: * -->
 <!-- overlap: jobstore.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
 
@@ -465,7 +466,40 @@ dozen — keep it that way, sequentially, and it stays indistinguishable from a
 person reading.
 
 `robots.txt` disallows `/*?searchState=*` and `/*?page=*`. **Those URLs are not
-ours to fetch, and the collection built on them is suspended.**
+ours to fetch by the rule, and the collection built on them was suspended from
+2026-09-03 — until the decision below.**
+
+## The override — 2026-09-11, the repository's owner, verbatim (#198)
+
+> «&nbsp;Je confirme la dérogation hiringcafe, assigne #198&nbsp;»
+
+Given after being shown three things: that the pilot's local doctrine then
+named `api.smartrecruiters.com` as the one exception; that the refusal to lift is a
+`Disallow` **written** in the rules, not a refusal at the transport; and that
+the realistic cost is HiringCafe blocking the address the requests come from —
+**the candidate's, not this project's**. **Unconditional.**
+
+**It lifts BOTH refusals, together.** Until then `_hiringcafe.py` carried the
+rule (`SEARCH_RULE`) and, beside it, «&nbsp;collection suspended pending a
+decision&nbsp;»; the key sat in a user's `config.yml` with a comment declaring
+it inert, and no code read it. A flag that lifted the rule and left the
+suspension would look like it acts and act on half — so the decision is cited
+in the module, and one key clears both.
+
+**How.** `boards.hiringcafe.override_robots: true` in the user's own
+`config.yml`, read by `hiringcafe.py search` through `_override.py` — the same
+function `ats.py` uses for SmartRecruiters, each for its own board — bounded
+to the search URL on `hiringcafe.com` at the point of the request, announced
+once per run where the bypass happens. Absent key: exit 7, the rule, the file
+consulted and the sentence to add. `ad` needs none of this and asks the guard
+as before. **Onboarding: `shared/setup.md` 5g.**
+
+**What it is not.** It does not follow from `shared/robots-policy.md`'s four
+questions — the rule is even-handed and names nobody, which is *obey* — and
+neither this card nor the policy dresses it as one. It does not lift the
+edge: the host answered 403 to a script on every path on 2026-09-05, and a run
+with the key may still come back refused. **And it is the third override in
+the plugin, after AMS and SmartRecruiters; a fourth goes to the owner.**
 
 **Three commands were building that URL, not one.** #123 named
 `hiringcafe.py:119`, found by reading this file. `ats.py` and `workday.py`
@@ -529,10 +563,11 @@ lifting the suspension first, which is a decision rather than a code path.**
 
 ## What is measurable here today, and what is not
 
-**`robots: suspended` is still the right word, and it now means something
-narrower.** Collection is suspended pending an arbitration, not because the
-rules are unread: they are read, they permit four paths, and the edge refuses
-all four. *That key's vocabulary is closed on purpose — a value nothing reads
+**`robots: suspended` was the right word until 2026-09-11; the arbitration
+has happened** — see *The override* above — and what remains suspended is
+nothing: the rule is crossed on the user's consent, and the edge refuses what
+it refuses. The rules are read, they permit four paths, and the edge refused
+all four on 2026-09-05. *That key's vocabulary is closed on purpose — a value nothing reads
 is an absence with extra steps — so the measurement lives here.*
 
 **Re-read 2026-09-07**: `robots.txt` is byte-identical to the 2026-09-05

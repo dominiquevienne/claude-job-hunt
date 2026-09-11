@@ -32,6 +32,7 @@ import urllib.parse
 import urllib.request
 
 import _hiringcafe
+import _override
 from _hiringcafe import refusal
 from _robots import allowed as robots_allowed, full_path
 from _locations import drop_report, matches_city
@@ -105,7 +106,41 @@ def gate(url):
         die(f"{url}: {a['reason']}", 7)
 
 
-def get(url, attempts=3, first_wait=20.0):
+_ANNOUNCED = False
+
+
+def override_enabled():
+    """`(on, where)` — `boards.hiringcafe.override_robots` from the user's
+    own `config.yml`, read here, for this host only. Issue #198, on the
+    template of #206 (`ats.py override_enabled`), through `_override.py` so
+    the two adapters cannot parse the same key two ways."""
+    return _override.enabled("hiringcafe")
+
+
+def announce_bypass(url):
+    """Say, on the run's own output, that a written refusal is being crossed
+    — once per run, at the point where it happens and only when it happens
+    (#187: an announcement separated from its act describes an intention).
+    What is crossed first, what it costs second (#192)."""
+    global _ANNOUNCED
+    if _ANNOUNCED:
+        return
+    _ANNOUNCED = True
+    parts = urllib.parse.urlsplit(url)
+    print(f"[bypass] ROBOTS REFUSAL CROSSED for {parts.netloc}{parts.path}?"
+          f"searchState=… — `{_hiringcafe.HOST}/robots.txt` publishes "
+          f"`Disallow: {_hiringcafe.SEARCH_RULE}` to `User-agent: *`. **That "
+          f"is a rule written for everybody, and it refuses this exact "
+          f"shape.** This run is reading it anyway, because you enabled the "
+          f"override — decided by the repository's owner on "
+          f"{_hiringcafe.DECIDED_ON} (#198). What it costs you: the address "
+          f"that gets blocked is yours, not this project's. To stop: remove "
+          f"`boards.hiringcafe.override_robots` from config.yml. One page at "
+          f"a time, spaced. See shared/robots-policy.md and "
+          f"shared/boards/hiringcafe.md.", file=sys.stderr)
+
+
+def get(url, attempts=3, first_wait=20.0, waived=False):
     """Fetch with a timed backoff.
 
     hiring.cafe answers 403 intermittently and the refusal rate rises with the
@@ -113,8 +148,20 @@ def get(url, attempts=3, first_wait=20.0):
     out of 8, while one page at a time with 25 s between requests returned 6
     pages of 6. **So the remedy is waiting, not retrying quickly** — the waits
     are 20 s, 40 s, 80 s rather than the usual second or two.
+
+    `waived=True` skips the guard **for the search URL on `hiringcafe.com`
+    and nothing else** — the bound is checked here, at the act, so no other
+    host and no other path can reach it by carrying the flag (#198).
     """
-    gate(url)
+    if waived:
+        parts = urllib.parse.urlsplit(url)
+        if parts.netloc != _hiringcafe.HOST or "searchState=" not in (
+                parts.query or ""):
+            die(f"{url}: the robots waiver is bounded to the search URL on "
+                f"{_hiringcafe.HOST}; this is not it. No request was made.", 7)
+        announce_bypass(url)
+    else:
+        gate(url)
     wait = first_wait
     for attempt in range(1, attempts + 1):
         try:
@@ -159,11 +206,20 @@ def fetch_page_props(params):
     # same construction stood in `ats.py` and `workday.py` with their own
     # clients, and `pinpoint.py` and `recruitee.py` inherit it by running this
     # command. One constructor now — see `_hiringcafe.py`.
+    # **#198, 2026-09-11: the owner decided the refusal may be crossed, on
+    # the user's own consent** — `boards.hiringcafe.override_robots: true`,
+    # read from config.yml here. Both refusals — the written rule and the
+    # «&nbsp;suspended pending a decision&nbsp;» beside it — are lifted by
+    # that one decision; without the key, the refusal names the file
+    # consulted and the sentence to add.
+    waived = False
     if "searchState" in params:
-        die(refusal("hiringcafe", "the `search` mode"), 7)
+        waived, where = override_enabled()
+        if not waived:
+            die(refusal("hiringcafe", "the `search` mode", where=where), 7)
     url = _hiringcafe.search_url(params)
     try:
-        raw = get(url)
+        raw = get(url, waived=waived)
     except Throttled:
         raise
     except urllib.error.HTTPError as e:
