@@ -707,9 +707,9 @@ offer without trying the other language first.
 
 ### Pass the user's own languages down; the adapters cannot read the config
 
-**No adapter here reads `config.yml`, and none should.** The skill holds the
-profile, so the skill passes it — `languages.working`, on the boards that take
-a `--speaks` flag:
+**No adapter here reads `config.yml` for the profile, and none should.** The
+skill holds the profile, so the skill passes it — `languages.working`, on the
+boards that take a `--speaks` flag:
 
 ```bash
 python3 skills/job-scan/scripts/adzuna.py search --country ch \
@@ -731,6 +731,18 @@ out.
 The terms are in `shared/search-language.md`, which records **measurements and
 dates, never translations**: a guessed translation that also returns zero
 manufactures a second zero, and two zeros read as a certainty.
+
+**One exception, and it is not profile — #206.** `ats.py` reads
+`boards.smartrecruiters.override_robots` from the workspace's `config.yml`
+itself, for `api.smartrecruiters.com` only. *That key is a consent the user
+gave once, after the cost was read out; it is the adapter's own key («&nbsp;the
+adapter owns its config keys&nbsp;», §2), and a step of this skill was supposed
+to carry it as `--override-robots` — no step did, and four configured employers
+returned `0` each, a zero that reads as «&nbsp;not hiring&nbsp;».* **A consent
+that has to be re-transmitted by prose is a consent that gets lost, so the code
+that needs it reads it where it lives.** Nothing else in the file is read, a
+test keeps it at one adapter, and the exit-7 message names the file it
+consulted. The sweep passes nothing for it.
 
 ### And the limit, so nobody mistakes this for solved
 

@@ -103,8 +103,9 @@ def die(msg, code=2):
 def speaks_of(a):
     """`--speaks fr,en` as codes, complaining about what it cannot read.
 
-    **The script does not read `config.yml`** — no adapter here does. The
-    skill passes `languages.working` down, because the sweep needs to know
+    **The script does not read `config.yml`** — no adapter here reads the
+    profile (`ats.py` reads one consent key of its own, #206, and nothing
+    else). The skill passes `languages.working` down, because the sweep needs to know
     which of a market's languages the person can actually work in before it
     suggests searching in one of them.
     """

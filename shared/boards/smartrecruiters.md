@@ -1,6 +1,6 @@
 # Board adapter — SmartRecruiters
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 
 <!-- hosts: api.smartrecruiters.com -->
 <!-- script: ats.py -->
@@ -282,3 +282,27 @@ and the owner's consent covers the owner.*
 defect — it was called. What was missing is a test of the composition, and the
 general form is: **wherever a choke point carries more than one guard, exercise
 their composition rather than each in isolation.***
+
+### The key was set and nothing read it — #206, 2026-09-11
+
+**`override_robots: true` had been in the user's `config.yml` since 2026-09-08,
+and the four tenants they had configured returned `0` each.** *The flag worked
+(`--override-robots`, #185); it was documented as «&nbsp;carrying&nbsp;» the
+key from the config; and no step of `job-scan` passed it.* Measured 2026-09-11
+11:08 UTC, the invocation this card documents, without the flag: `0 0 0 0`,
+exit 7 each. With the flag by hand: `12 30 1 7` — **50 postings from employers
+the user had chosen, lost to a zero that this card itself names as the trap of
+this host.**
+
+> **A consent that has to be re-transmitted by prose is a consent that gets
+> lost.** *And its loss reads as «&nbsp;this employer is not hiring&nbsp;».*
+
+**Now `ats.py` reads the key itself** — `override_enabled()`, the workspace
+resolved by `bin/workspace-path.py` as `_secrets.py` resolves it, the block
+parsed by `dormant.read_boards`, **one key, this host only**. Same invocation,
+no flag, 11:10 UTC: `12 30 1 7`, one `[bypass]` banner each. With no config
+found, exit 7 and the message says which file it looked for — *an absent key and
+an unfound config are two different things to fix.* The flag stays for a run
+whose config is elsewhere. `skills/job-scan/SKILL.md`'s «&nbsp;no adapter reads
+the config&nbsp;» now says *for the profile*, and a test keeps the exception at one
+adapter.

@@ -3682,7 +3682,9 @@ class PresenceIsNotBehaviour(unittest.TestCase):
         ats.robots_verdict = refused
         ats.die = die
         if real_cfg is not None:
-            ats.override_enabled = lambda *a, **k: False
+            # `(on, where)` since #206 — the shape this stub anticipated on
+            # 2026-09-04 was a bare bool, and the gate now unpacks two
+            ats.override_enabled = lambda *a, **k: (False, "stubbed: no key")
         try:
             try:
                 ats.smartrecruiters_gate()
@@ -13007,6 +13009,178 @@ class EmploiticSeparatesItsTwoZeros(unittest.TestCase):
             self._mod()._refuse_zero(b"<urlset/>", every, every)
         except SystemExit:  # pragma: no cover
             self.fail("the guard fired on a healthy read")
+
+
+class AConsentRecordedInTheConfigReachesTheCodeThatNeedsIt(unittest.TestCase):
+    """**#206, 2026-09-11.** `boards.smartrecruiters.override_robots: true` had
+    been set by the user on 2026-09-08, the cost read out and accepted — and
+    the four tenants they had chosen returned `0` each. *The flag existed
+    (`--override-robots`), it worked, and no step of `job-scan` passed it:*
+    the consent was recorded in one file and consumed nowhere.
+
+    > **A waiver that must be re-transmitted by prose is a waiver that gets
+    > lost, and its loss reads as «&nbsp;this employer is not hiring&nbsp;».**
+
+    The class of the defect is *a consent recorded in the config that the code
+    needing it never reads* — not this key, not this host. So the cases go
+    THROUGH `smartrecruiters_gate()`, the code that needs the consent, with the
+    CLI flag off: a test of `override_enabled()` alone would stay green on the
+    exact defect (the function correct, the gate never calling it).
+
+    **Mutated before it was declared, both ways:** `allowed, where =
+    override_enabled()` removed from the gate → `test_the_gate_reads_the_key`
+    reddens; the `== "true"` comparison replaced by `is not None` → the
+    `enabled_true_is_not_the_override` case reddens; the `ams:` block accepted
+    → the boundary case reddens. And the healthy file leaves every case green.
+    """
+
+    def _ats(self):
+        spec = importlib.util.spec_from_file_location(
+            "_ats206", os.path.join(SCRIPTS, "ats.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # the host refuses, always — what is under test is whether the consent
+        # recorded in the config is what lets the run proceed
+        mod.robots_verdict = lambda host: {
+            "sweep": False, "certain": True,
+            "reason": "User-agent: * / Disallow: /"}
+        mod._SR_OVERRIDE = False
+        return mod
+
+    def _workspace(self, config_text):
+        """A workspace of our own, reached the way the adapter reaches the
+        user's: `JOB_HUNT_HOME`. `None` means no config.yml at all."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        if config_text is not None:
+            with open(os.path.join(d, "config.yml"), "w", encoding="utf-8") as fh:
+                fh.write(config_text)
+        old = os.environ.get("JOB_HUNT_HOME")
+        os.environ["JOB_HUNT_HOME"] = d
+
+        def restore():
+            if old is None:
+                os.environ.pop("JOB_HUNT_HOME", None)
+            else:
+                os.environ["JOB_HUNT_HOME"] = old
+        self.addCleanup(restore)
+        return d
+
+    def _gate(self, mod):
+        """`(died, stderr)` — the gate's decision, with the CLI flag OFF."""
+        import contextlib
+        err = io.StringIO()
+        died = False
+        with contextlib.redirect_stderr(err):
+            try:
+                mod.smartrecruiters_gate()
+            except SystemExit as e:
+                died = True
+                self.assertEqual(e.code, 7, "a refusal by robots is exit 7")
+        return died, err.getvalue()
+
+    SR_ON = ("boards:\n  smartrecruiters:\n    enabled: true\n"
+             "    override_robots: true\n"
+             "    employers: [\"nexthink\", \"Evooq\"]\n")
+
+    def test_the_gate_reads_the_key_no_flag_needed(self):
+        """**The case that was zero.** Key set, flag absent, host refusing:
+        the run must proceed — and `override_enabled` must name the file it
+        read, so the bypass banner has a provenance."""
+        d = self._workspace(self.SR_ON)
+        mod = self._ats()
+        died, _ = self._gate(mod)
+        self.assertFalse(died, "the key is set in config.yml and the gate "
+                               "refused anyway — the consent was not read")
+        on, where = mod.override_enabled()
+        self.assertTrue(on)
+        self.assertIn(os.path.join(d, "config.yml"), where)
+
+    def test_absent_key_still_refuses_and_names_what_was_consulted(self):
+        """**The safe state stays the safe state** — and the refusal says
+        WHERE it looked, because «&nbsp;no key&nbsp;» and «&nbsp;no config
+        found&nbsp;» are two different things to fix."""
+        d = self._workspace("boards:\n  smartrecruiters:\n    enabled: true\n")
+        died, msg = self._gate(self._ats())
+        self.assertTrue(died)
+        self.assertIn(os.path.join(d, "config.yml"), msg,
+                      "the refusal must name the file it consulted")
+        self.assertIn("override_robots", msg)
+
+    def test_no_config_at_all_refuses_and_says_so(self):
+        d = self._workspace(None)
+        died, msg = self._gate(self._ats())
+        self.assertTrue(died)
+        self.assertIn("no config.yml at", msg)
+        self.assertIn(d, msg)
+
+    def test_enabled_true_is_not_the_override(self):
+        """**Never infer the override from `enabled`** — `shared/setup.md`:
+        that inference is the whole thing the design exists to prevent. And
+        `override_robots: false` written out is a no, not a key present."""
+        for text in ("boards:\n  smartrecruiters:\n    enabled: true\n",
+                     "boards:\n  smartrecruiters:\n    enabled: true\n"
+                     "    override_robots: false\n",
+                     "boards:\n  smartrecruiters:\n    enabled: true\n"
+                     "    override_robots: \"\"\n"):
+            with self.subTest(text=text):
+                self._workspace(text)
+                died, _ = self._gate(self._ats())
+                self.assertTrue(died, "something other than `true` under "
+                                      "the key let the run proceed")
+
+    def test_the_key_under_another_board_does_not_carry(self):
+        """**One exception, one host** (#185, sortie A — one exception, and one only).
+        `override_robots: true` under `ams:` — the other board the policy
+        names — must not open `api.smartrecruiters.com`."""
+        self._workspace("boards:\n  ams:\n    enabled: true\n"
+                        "    override_robots: true\n"
+                        "  smartrecruiters:\n    enabled: true\n")
+        died, _ = self._gate(self._ats())
+        self.assertTrue(died, "a key under another board opened this host")
+
+    def test_an_unreadable_config_is_a_refusal_not_a_crash(self):
+        """`dormant.read_boards` dies on a file it cannot read. Here that
+        must become «&nbsp;consulted, could not read, refused&nbsp;» — exit
+        7 with the path — not a bare exit 2 from another script's `die`."""
+        d = self._workspace("search:\n  queries: [x]\n")     # no `boards:` block
+        died, msg = self._gate(self._ats())
+        self.assertTrue(died)
+        self.assertIn("could not be read", msg)
+        self.assertIn(d, msg)
+
+    def test_the_flag_still_carries_without_any_config(self):
+        """The CLI flag remains the same consent for a run whose config is
+        elsewhere — a test, a one-off. Neither route removes the other."""
+        self._workspace(None)
+        mod = self._ats()
+        mod._SR_OVERRIDE = True
+        died, _ = self._gate(mod)
+        self.assertFalse(died)
+
+    def test_only_this_one_adapter_reads_the_config(self):
+        """**The boundary that keeps the doctrine true.** `SKILL.md` says no
+        adapter reads `config.yml`; #206 makes one exception for one key, and
+        this case keeps it at one: no other adapter in the directory imports
+        `read_boards` or opens a `config.yml`. *A second exception would be
+        the profile creeping into the adapters by the same door.*"""
+        readers = []
+        for name in sorted(os.listdir(SCRIPTS)):
+            if not name.endswith(".py") or name in (
+                    "ats.py", "dormant.py", "board_offer.py", "tenant_offer.py"):
+                continue
+            with open(os.path.join(SCRIPTS, name), encoding="utf-8") as fh:
+                src = fh.read()
+            # a path built to it — `os.path.join(…, "config.yml")` — not a
+            # help string that merely names it (`_workauth.py` does)
+            if "read_boards" in src or re.search(r'"config\.yml"\)', src):
+                readers.append(name)
+        self.assertEqual(readers, [], "an adapter other than ats.py reads the "
+                                      "config — #206 allows exactly one")
+        with open(os.path.join(SCRIPTS, "ats.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertEqual(src.count("read_boards("), 1,
+                         "ats.py reads the config in exactly one function")
 
 
 if __name__ == "__main__":

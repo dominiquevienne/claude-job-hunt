@@ -34,6 +34,7 @@ indexes. It is a lookup aid for setup, not a sweep.
 import argparse
 import html
 import json
+import os
 import re
 
 from _hiringcafe import refusal
@@ -369,6 +370,53 @@ _SR_OVERRIDE = False
 _SR_ANNOUNCED = False
 
 
+def override_enabled():
+    """`(on, where)` — `boards.smartrecruiters.override_robots` read from the
+    user's own `config.yml`, by this adapter, for this host only. Issue #206.
+
+    **The flag existed and nothing pulled it.** `--override-robots` was
+    documented as *carrying* the key from `config.yml`, and no step of
+    `job-scan` carried it: the key was set, the cost had been read out and
+    accepted, and the four tenants the user had chosen returned `0` each —
+    a zero that reads as «&nbsp;this employer is not hiring&nbsp;», which is
+    the trap `shared/boards/smartrecruiters.md` names for this host.
+
+    > **A waiver that has to be re-transmitted by prose is a waiver that
+    > gets lost.** The consent lives in the config; the code that needs the
+    > consent reads it there.
+
+    **This is the one place an adapter reads `config.yml`, and it reads one
+    key.** `skills/job-scan/SKILL.md` says the adapters do not read the
+    config and the skill passes the profile down — that holds for the
+    profile. *This is not profile: it is the adapter's own key* («&nbsp;the
+    adapter owns its config keys&nbsp;», same file), and a consent the user
+    gave once. The workspace is resolved the way `_secrets.py` resolves it
+    for `credentials.env` — `bin/workspace-path.py`, never a guessed folder
+    — and the block is parsed by `dormant.read_boards`, the parser this
+    directory already has. **Nothing else in the file is read.**
+
+    `where` names what was consulted, so the exit-7 message can say «&nbsp;no
+    key at <path>&nbsp;» rather than «&nbsp;no key&nbsp;»: an absent key and
+    a config that was never found are two different things to fix.
+    """
+    from _secrets import _workspace
+    ws = _workspace()
+    if not ws:
+        return False, "no workspace resolved (JOB_HUNT_HOME unset, nothing remembered)"
+    path = os.path.join(ws, "config.yml")
+    if not os.path.exists(path):
+        return False, f"no config.yml at {path}"
+    from dormant import read_boards
+    try:
+        boards = read_boards(path)
+    except SystemExit:               # `read_boards` dies on a shape it cannot read
+        return False, f"{path} could not be read as a job-hunt config (see above)"
+    block = boards.get("smartrecruiters") or {}
+    if str(block.get("override_robots", "")).strip().lower() == "true":
+        return True, f"boards.smartrecruiters.override_robots: true in {path}"
+    return False, f"no boards.smartrecruiters.override_robots: true in {path}"
+
+
 def smartrecruiters_gate(a=None):
     """Ask, and then either stop or say the override is on. Issue #121.
 
@@ -398,8 +446,12 @@ def smartrecruiters_gate(a=None):
     if v["sweep"]:
         return False                # nothing to override; say nothing
     allowed = _SR_OVERRIDE or getattr(a, "override_robots", False)
+    where = "--override-robots passed"
+    if not allowed:
+        allowed, where = override_enabled()        # #206: the config, read here
     if not allowed:
         die(f"{SR_HOST}: {v['reason']}\n"
+            f"  Consulted: {where}.\n"
             f"  **{SR_HOST} publishes `User-agent: * / Disallow: /` — the "
             f"group addressed to everybody, refusing everything. This board is "
             f"skipped, not silently obeyed.** Reading it anyway "
@@ -1001,12 +1053,14 @@ def main():
         sp.add_argument(
             "--override-robots", action="store_true",
             dest="override_robots",
-            help="SmartRecruiters only. **Never pass this by hand.** It "
-                 "carries `boards.smartrecruiters.override_robots` from "
-                 "config.yml, which `shared/setup.md` sets only after the "
-                 "user has been told what it costs — and it costs their own "
-                 "address, not ours. Absent means the board is skipped and "
-                 "says so.")
+            help="SmartRecruiters only, and normally NOT NEEDED: since #206 "
+                 "the adapter reads `boards.smartrecruiters.override_robots` "
+                 "from the workspace's config.yml itself — the key "
+                 "`shared/setup.md` sets only after the user has been told "
+                 "what it costs, their own address, not ours. This flag is "
+                 "the same consent for a run whose config is elsewhere "
+                 "(a test, a one-off). Neither present means the board is "
+                 "skipped and says so, naming what was consulted.")
 
     li = sub.add_parser("list", help="list an employer's postings")
     common(li)
