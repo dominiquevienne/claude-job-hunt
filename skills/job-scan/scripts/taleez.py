@@ -46,6 +46,7 @@ from _sitemap import locs as sitemap_locs
 CAREEZ = "https://{}.taleez.com/api/careez"
 AD_URL = "https://taleez.com/apply/{}"
 from _ua import UA
+from _zero import empty_first_page
 TENANT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
 HOST_RE = re.compile(r"https?://([a-z0-9-]+)\.taleez\.com", re.I)
 
@@ -236,15 +237,27 @@ def cmd_jobs(a):
             f"answer and not the platform's. Issue #73.",
                 8 if _v["sweep"] is None else 7)
     tenant = tenant_of(a)
-    site = fetch(CAREEZ.format(tenant), as_json=True)
+    url = CAREEZ.format(tenant)
+    site = fetch(url, as_json=True)
+    if not isinstance(site, dict) or "jobs" not in site:
+        # **The only container in this payload** — #181, batch 5 (b→a). A
+        # payload without the `jobs` key used to read as `0 ads` and «a real
+        # zero»: the list was absent, not empty. Die with the size beside it.
+        die(empty_first_page("taleez", json.dumps(site, ensure_ascii=False),
+                             what="`jobs` key", where=url), 6)
     jobs = site.get("jobs") or []
     defs = {p.get("id"): p for p in (site.get("properties") or [])}
     print(f"[taleez] {site.get('name')} ({tenant}): {len(jobs)} ads",
           file=sys.stderr)
     if not jobs:
-        print("[taleez] the tenant is real and has nothing open — that is a "
-              "zero, not a failure. A wrong slug is a 404 instead.",
-              file=sys.stderr)
+        # **(b), motivated.** The `jobs` list is the tenant's own feed and it
+        # is present; the payload names the tenant (`name`) — so this zero
+        # is the site's count, with the tenant's existence as its second
+        # signal. A wrong slug is a 404 instead, never an empty list.
+        print(f"[taleez] the tenant is real — the payload names it "
+              f"{site.get('name')!r} — and its `jobs` list is present and "
+              f"empty: that is the site's own zero, not a failure. A wrong "
+              f"slug is a 404 instead.", file=sys.stderr)
     for j in jobs:
         c = card(j, site, defs)
         if a.with_detail and c["slug"]:

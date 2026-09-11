@@ -80,6 +80,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _zero import empty_first_page
 
 BASE = "https://zaposli.me"
 INDEX = BASE + "/sitemap.xml"
@@ -213,8 +214,15 @@ def entries():
     code, body = get(child)
     if code != 200:
         die(f"{child}: HTTP {code}")
+    blocks = ENTRY.findall(body)
+    if not blocks:
+        # **A child sitemap that parses to zero entries is not an empty
+        # board** — #181, batch 5. It used to print a JSON of zeros with exit
+        # 0; only a MISSING child died. Size beside the zero, exit 6.
+        die(empty_first_page("zaposli", body, what="<url> entry", where=child),
+            6)
     rows, seen, other = [], set(), 0
-    for block in ENTRY.findall(body):
+    for block in blocks:
         m = LOC.search(block)
         if not m:
             continue

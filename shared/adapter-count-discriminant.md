@@ -589,3 +589,64 @@ refuses exit 0 — none prints a bare zero any more; what they lack is a
 second figure from another branch. **Whether that is enough is #181's
 question, and it is now answerable on a finished list rather than on a
 sample.**
+
+---
+
+# THE FINAL LINE — 105 of 105, on the closure criterion
+
+**Criterion, set by the pilot on 2026-09-11:** *a second figure from another
+branch wherever one exists, and a motivated (b) where none does* — not merely
+«no bare zero».
+
+**What moved after the five batches, and by whom.** The 16 «absent» of
+batches 1–4 were taken by `9f`: fourteen now die through
+`_zero.empty_first_page()` (`6f87e0a` and the thirteen `fix(<board>, #181)`
+commits that follow it; `uzjobs` prints its feed items beside its
+advertisements on the healthy path, `95b0f6c`), and two are (b): `freework`
+and `labonnealternance`, whose zero is the API's own list — a non-list dies, a
+404 dies — as their batch rows already say. The 2 «absent» of batch 5 and
+its one blind side were taken here (`aba8961`): `zaposli` dies through
+`empty_first_page` on a child sitemap with no entries; `talentsoft` dies
+through it when the counter is missing AND page 1 carries no card; `taleez`
+dies through it when the `jobs` key is absent, and is (b) when the key is
+present and the list empty — the tenant's own feed, the tenant named in the
+payload.
+
+```
+final     105 of 105     present 94 · (b) motivated 3 · absent 0 · annulled 6 · raises 1 · cubisima 1
+                         94 + 3 + 0 + 6 + 1 + 1 = 105
+```
+
+*Denominator: the 105 scripts declared by `<!-- script: -->` in
+`shared/boards/` on `origin/main = d332a1d`, 2026-09-11 13:0x UTC —
+`grep -l '<!-- script:' shared/boards/*.md`, the `.py` names in those lines,
+105 distinct. `present 94` = the 79 of the running total + the 14 `9f` fixed
++ `zaposli`; `(b) 3` = `freework`, `labonnealternance`, `taleez`; `annulled`
+and `raises` keep the labels of their cases (3 and 4), fixed on 2026-09-08;
+`cubisima` is case 2.*
+
+## The seven forms of anchor found on the way
+
+```
+1  the response's own total key, or count_says()         the original audit's form
+2  a RAW count printed beside a PARSED one               the commonest — <url> blocks beside ads, sitemap raw beside kept
+3  the page's own stated count, read from its sentence   «board states 740», «(22 offres)», «6066 offene Stellen»
+4  a line that prints EITHER WAY                         rocken, zaposli, persigo — the negative control is the print itself
+5  a SENTENCE where the others print a figure            «the board is not empty — all N were filtered out»
+6  a DIE, not a print                                    the zero path refuses exit 0 and names the bytes or the blocks
+7  a control REQUEST, or a control READ                  michaelpage refetches bare /jobs; umantis rereads the body for the widget
+```
+
+*A static scan sees form 1 and half of 2; forms 3–7 were each found by being
+caught out. That is why the population was read one adapter at a time.*
+
+## Where the control lives now
+
+- **`_zero.empty_first_page()`** — the sentence for a first page that yielded
+  nothing, with the size beside the zero, and it goes in a `die(…, 6)`;
+- **`AnEmptyFirstPageIsIndeterminateNotAnExitZero.POPULATION`** in
+  `tests/test_core.py` — 16 adapters that must die through it; removing the
+  call from any one reddens the guard **naming it**;
+- **the per-adapter behavioural guards** — a stubbed fetch serving a
+  full-sized page with no card, and the direction that must stay open (a later
+  empty page is the end of a listing; cards without a counter continue).
