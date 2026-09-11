@@ -79,7 +79,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import allowed as robots_allowed, full_path
 from _robots import verdict as robots_verdict
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 BASE = "https://employtt.gov.tt"
 LIST = BASE + "/jobs/list"
@@ -303,8 +303,10 @@ def cmd_search(a):
         if a.limit and kept >= a.limit:
             break
     if kept == 0:
-        note(zero_note("employtt"))
-        return
+        # #181: `blocks` is the coarse split — the candidates before parsing —
+        # so the two numbers come from different branches, and exit is 6.
+        die(empty_first_page("employtt", body, "advertisement",
+                             candidates=len(blocks), where=LIST), 6)
     stale = sum(1 for r in rows if r.get("expires") and
                 r["expires"] < _today())
     note(f"{kept} advertisement(s) from one request — **what the listing "
