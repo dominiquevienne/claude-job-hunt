@@ -452,3 +452,64 @@ still to read 37               jobup … zaposli
 
 *No rate is offered. The batches are ordered — cost first, then alphabet — so
 what has been read is not a sample of what has not.*
+
+---
+
+# BATCH 4 — 20 more, and the audit's own tables do not count as classified
+
+**2026-09-11, 12:31–12:32 UTC for the runs.** *Same population criterion as
+batch 3 — 105 declared; classified = a table row of batches 1–3 (the two-name
+rows of batch 2 included), the code blocks of cases 3–4, or case 2; hyphen =
+underscore — **with one clarification: a name in the tables of the ORIGINAL
+audit (`jobup`, `lmisjm`, `mycareersfuture`, `ofertapune`, `oposiciones`) is
+cited, not classified.** The re-pass supersedes that audit; it does not
+inherit from it. The 20 were named to the pilot before reading, and verified
+by subtraction on his side: members, not cardinal.*
+
+**Every report call read. Seven executed** — `RUN` — one or two requests each.
+
+| adapter | case | the anchor, or its absence | ev. |
+| :-- | :-- | :-- | :-- |
+| `jobup` | absent | `{len(rows)} ad(s) over {pages} page(s)`; on an empty page, *three things look like this and they are not the same* — **an admission**, then `zero_note`; no second figure | RUN · 20 on page 1 |
+| `jobzambia` | **present** | `{raw} in the sitemap, {len(rows)} after filters` — two granularities | READ |
+| `kosovajob` | **present** | `parsed to zero advertisements from {len(page)} characters` (dies); `{len(bad)} block(s) carried a link and could not be parsed` beside `{len(rows)}` | READ |
+| `kumarijob` | **present** | `{skipped} entries do not have the /<employer>/<id>-<slug> shape and are not counted` beside `{raw} advertisements` | READ |
+| `labonnealternance` | absent | `{len(jobs)} posted ads, {len(recruiters)} companies` — the API's own arrays, the caps named. *A zero here is the API's zero; a refused key dies* | READ |
+| `lmisjm` | **present** | `the endpoint states {stated} and returned {len(rows)} — they should agree`; `count` printed on the capped path; `die(zero_note)` on an empty `data` | RUN · 3 of `count` 24 |
+| `merojob` | **present** | `{tenders} entries rejected BY PATH`, `{other} not the depth-1 shape` beside `{raw} advertisements` | READ |
+| `merorojgari` | **present** | `{other} entries not under {AD_PREFIX} and not counted`; `{u}: HTTP {code} — this file contributes nothing` per file | READ |
+| `meteojob` | absent | *no result cards on the page … a search with no matches or a markup change — the two look identical here* — **an admission**, exit 0, stdout empty | RUN · 20, the cap |
+| `michaelpage` | **present on 404, absent on 200 until this batch** | a zero-result search answers **404** and the adapter fetches bare `/jobs` as a **control** — *a second request, not a second count*; but a 200 with no reference fell through to `0 ads over 1 page(s)`, exit 0. **Fixed here**: page 0, 200, no reference → dies 6 with `{len(body)} characters`, because on this board a real zero answers 404 | RUN · 30 |
+| `mycareersfuture` | **present** | `{kept} ads returned of {total} matching` — the API's total; `filter kept {total} of {plain}`; `page returned 0 rows — how this API says…`; `zero_note` | READ |
+| `ofertapune` | **present** | `parsed to zero advertisements from {len(page)} characters` (dies); `{len(bad)} block(s)` beside `{len(rows)}` | READ |
+| `onape` | **present** | `{raw_count} <loc> in the sitemap, {len(urls)} distinct`; `parsed to zero <loc> from {len(body)} characters` (dies) | READ |
+| `oposiciones` | **present** | `{} announcements match — fq={}` — Solr's `numFound`, **written with `.format()`** (blind spot 3); *a real zero: the live filter was applied and echoed back* | READ |
+| `oraclecloud` | **present** | `the endpoint reports {total} jobs and returned none of them` (dies); `{n} returned of {total}` | READ |
+| `persigo` | **present** | `{kept} emitted, {len(rows)} read, board states {stated} (complete \| — N short)`; *the board is not empty — all N ads were filtered out*; dies on no `listitem` | RUN · `0 emitted, 888 read, board states 888 (complete)` on a filter that matches nothing |
+| `personio` | **present** | `no <position> elements in {len(body)} characters of feed` (dies); `{with_text} of {len(blocks)} carry a description` | READ |
+| `philjobnet` | absent | `page {page} carried no job card — stopping`, then `zero_note`; **declares, no second figure** | RUN · 10 on page 1 |
+| `pinpoint` | **present** | dies when the `data` key is missing — *the only container, so its absence is a read failure* — and names *a real zero* on an empty list | READ |
+| `prekoveze` | **present** | `raw {raw} / distinct {len(rows)}` — *counted on different sides of the set, and the line prints either way* | READ |
+
+**Batch 4: present 16 · absent 4 · annulled 0 · raises 0.** *Again the four
+absent all declare — an admission sentence or `zero_note` — and none prints a
+bare zero. Two of them (`jobup`, `meteojob`) sit on boards where pagination is
+behind a disallowed query string, so «20» is the cap and the note says so.*
+
+## A seventh form — a control REQUEST rather than a second count
+
+**`michaelpage` discriminates a zero by fetching bare `/jobs` when the search
+answers 404**: if the bare page answers 200, the domain is fine and the zero
+is real. *That is the same discriminant #181 asks for, by a second request
+instead of a second figure* — and it has a blind side: it covers only the
+status the board uses for a zero, and the other status fell through. **The fix
+here closes the 200 side with the bytes.**
+
+## Running total after four batches
+
+```
+read so far   88 of 105        present 64 · absent 16 · annulled 6 · raises 1 · cubisima 1
+still to read 17               randstad … zaposli — batch 5 takes them all
+```
+
+*No rate is offered until the last batch.*
