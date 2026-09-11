@@ -15155,5 +15155,92 @@ class ACumulativeCounterIsNotTheAnchorAndTheDeadlineIs(unittest.TestCase):
         self.assertEqual(urls[1], mod.LIST + "?start=28")
 
 
+class AnInventoryOfAddressesSaysItIsNotAnInventoryOfAdvertisements(unittest.TestCase):
+    """**`wuzzuf.py`, 2026-09-11.** The host serves its sitemap and answers
+    a challenge on every page: 5 491 addresses, none readable. So the adapter
+    counts where it decides — raw, matched, unmatched, distinct — maps the
+    country off the slug's tail, shows `--country` reducing, names a single
+    `<lastmod>` value as a rebuild stamp, and `ad` names the challenge
+    rather than returning an empty page. Mutated (`-B`, detached copy): the
+    country tail map emptied → the split case reddens; `unmatched` folded
+    into `matched` → the shape case reddens; the stamp sentence removed →
+    the stamp case reddens; `ad`'s challenge branch removed → the ad case
+    reddens (exit 6, not 9)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_wuzzuf", os.path.join(SCRIPTS, "wuzzuf.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ('<sitemapindex><sitemap><loc>https://wuzzuf.net/sitemap-job-1.xml</loc></sitemap>'
+             '<sitemap><loc>https://wuzzuf.net/sitemap-saudi-job-1.xml</loc></sitemap></sitemapindex>')
+
+    @staticmethod
+    def _file(urls, stamp="2026-09-11T02:04:48+03:00"):
+        return "<urlset>" + "".join(f"<url><loc>{u}</loc><lastmod>{stamp}</lastmod></url>" for u in urls) + "</urlset>"
+
+    URLS = ["https://wuzzuf.net/jobs/p/reb7hiksiwdr-ai-video-engineer-ius-cairo-egypt",
+            "https://wuzzuf.net/jobs/p/1dmprnl4o95e-bd-executive-olis-dubai-united-arab-emirates",
+            "https://wuzzuf.net/internship/ysxvu8mwwhfn-marketing-intern-smart-cairo-egypt",
+            "https://wuzzuf.net/saudi/jobs/p/kn3scntb3ugj-sharepoint-admin-wsc-riyadh-saudi-arabia",
+            "https://wuzzuf.net/jobs/browse/cairo"]
+
+    def _run(self, mod, bodies, **argv):
+        import contextlib
+        served = iter(bodies)
+        mod.get = lambda url: next(served)
+        a = argparse.Namespace(country=None, saudi=False, limit=None)
+        for k, v in argv.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_sitemap(a)
+            except SystemExit as e:
+                code = e.code
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return code, rows, err.getvalue()
+
+    def test_the_slug_tail_becomes_a_country_and_the_filter_reduces(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, [(200, self.INDEX), (200, self._file(self.URLS))])
+        self.assertIsNone(code, err)
+        self.assertEqual([r["country"] for r in rows], ["EG", "AE", "EG", "SA"])
+        self.assertTrue(all(r["readable_by_script"] is False for r in rows))
+        code, rows, err = self._run(mod, [(200, self.INDEX), (200, self._file(self.URLS))], country="eg")
+        self.assertEqual([r["id"] for r in rows], ["reb7hiksiwdr", "ysxvu8mwwhfn"])
+        self.assertIn("2 distinct id(s) after --country eg", err)
+
+    def test_raw_matched_unmatched_are_counted_where_they_are_decided(self):
+        mod = self._mod()
+        _, _, err = self._run(mod, [(200, self.INDEX), (200, self._file(self.URLS))])
+        self.assertIn("5 <loc> in 1 file(s); 4 matched the advertisement shape and 1 did not; 4 distinct", err)
+        self.assertIn("jobs/p 2", err)
+
+    def test_one_lastmod_value_on_every_entry_is_named_a_rebuild_stamp(self):
+        mod = self._mod()
+        _, _, err = self._run(mod, [(200, self.INDEX), (200, self._file(self.URLS))])
+        self.assertIn("regeneration stamp", err)
+        self.assertIn("addresses, not advertisements", err)
+
+    def test_ad_names_the_challenge_and_exits_9(self):
+        import contextlib
+        mod = self._mod()
+        mod.get = lambda url: (403, "<html><title>Just a moment...</title>" + "x" * 5600 + "</html>")
+        err = io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_ad(argparse.Namespace(url=self.URLS[0]))
+            except SystemExit as e:
+                code = e.code
+        self.assertEqual(code, 9)
+        self.assertIn("anti-robot challenge", err.getvalue())
+        self.assertIn("does not attempt to pass it", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
