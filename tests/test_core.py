@@ -4029,7 +4029,9 @@ class AGateThatOffersOnlyMotivatedRefusalsInventsTheReason(unittest.TestCase):
                                                   "SKILL.md"))):
             text = open(path, encoding="utf-8").read()
             if "no-go <YYYY-MM-DD>" in text:
-                out[os.path.relpath(path, self.ROOT)] = text
+                # forward slashes on every OS: the key is compared to a
+                # literal, and Windows relpath would spell it with `\\`
+                out[os.path.relpath(path, self.ROOT).replace(os.sep, "/")] = text
         return out
 
     def test_the_population_is_the_skills_that_write_the_status(self):
