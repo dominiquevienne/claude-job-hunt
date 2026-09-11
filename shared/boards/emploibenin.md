@@ -4,7 +4,7 @@
 
 <!-- hosts: www.emploibenin.com, emploibenin.com -->
 <!-- script: none -->
-<!-- countries: BE -->
+<!-- countries: BJ -->
 <!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root answers HTTP 403 to that client on 2 fetches: 25 bytes, md5 `9ccabba20b9f` both times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-11 22:10 UTC -->
 <!-- witness: none — nothing was served -->
 
