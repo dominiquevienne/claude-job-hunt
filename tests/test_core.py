@@ -13031,7 +13031,8 @@ class AConsentRecordedInTheConfigReachesTheCodeThatNeedsIt(unittest.TestCase):
     override_enabled()` removed from the gate → `test_the_gate_reads_the_key`
     reddens; the `== "true"` comparison replaced by `is not None` → the
     `enabled_true_is_not_the_override` case reddens; the `ams:` block accepted
-    → the boundary case reddens. And the healthy file leaves every case green.
+    → the boundary case reddens; the «&nbsp;Consulted&nbsp;» line removed →
+    three cases redden. And the healthy file leaves every case green.
     """
 
     def _ats(self):
@@ -13103,9 +13104,13 @@ class AConsentRecordedInTheConfigReachesTheCodeThatNeedsIt(unittest.TestCase):
         d = self._workspace("boards:\n  smartrecruiters:\n    enabled: true\n")
         died, msg = self._gate(self._ats())
         self.assertTrue(died)
-        self.assertIn(os.path.join(d, "config.yml"), msg,
+        # **The whole sentence, not the path.** Mutated with the «&nbsp;Consulted&nbsp;»
+        # line removed, this case stayed green on the path alone: `dormant.py:89`
+        # leaves the file unclosed and the ResourceWarning names it on stderr —
+        # a guard satisfied by another module's warning.
+        self.assertIn("Consulted: no boards.smartrecruiters.override_robots: "
+                      "true in " + os.path.join(d, "config.yml"), msg,
                       "the refusal must name the file it consulted")
-        self.assertIn("override_robots", msg)
 
     def test_no_config_at_all_refuses_and_says_so(self):
         d = self._workspace(None)
