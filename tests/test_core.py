@@ -14493,5 +14493,25 @@ class AnEmptyFirstPageIsIndeterminateNotAnExitZero(unittest.TestCase):
                 self.assertIn("INDETERMINATE", err, name)
 
 
+class ASchemaFieldThatMayBeAListIsReadEitherWay(unittest.TestCase):
+    """**Found by running `mihnati.py latest` on 2026-09-11, after the #181
+    change — not by reading it.** `employmentType` had been a string on every
+    advertisement measured; the first one read that day carried a list
+    (`["FULL_TIME"]`), and `.strip()` on a list took the whole run down with a
+    traceback. schema.org allows both shapes. Mutated: `_text_or_list` made to
+    `.strip()` its argument directly → this case errors on the list."""
+
+    def test_string_and_list_both_yield_text(self):
+        spec = importlib.util.spec_from_file_location(
+            "_mihnati_list", os.path.join(SCRIPTS, "mihnati.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual(mod._text_or_list(" FULL_TIME "), "FULL_TIME")
+        self.assertEqual(mod._text_or_list(["FULL_TIME", "CONTRACTOR"]),
+                         "FULL_TIME, CONTRACTOR")
+        self.assertIsNone(mod._text_or_list([]))
+        self.assertIsNone(mod._text_or_list(None))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
