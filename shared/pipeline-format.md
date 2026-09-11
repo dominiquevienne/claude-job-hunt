@@ -40,7 +40,12 @@ Statuses: `todo` · `applied YYYY-MM-DD` · `rejected YYYY-MM-DD` ·
 
 - `applied` — sent, no answer yet.
 - `rejected` — sent, and **the employer said no**.
-- `no-go` — the candidate decided **not to apply** after the gate.
+- `no-go` — the candidate decided **not to apply** after the gate. **Its
+  `Note` carries what they ticked or wrote, with the provenance in two
+  words** — `chose: "<the option, as offered>"` · `wrote: "<their words>"` ·
+  `no reason given` — **never a cause the plugin deduced, and never the
+  negation of a cause they did not rule out.** A ticked box supports *"the
+  reason is X"*; it does not support *"X, not Y nor Z"*. Issue #208.
 - `discarded` — noise or out of scope, never proposed again.
 
 **An application that went out stays countable: `applied` + `rejected`.**

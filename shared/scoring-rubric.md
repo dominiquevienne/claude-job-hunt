@@ -54,7 +54,9 @@ Sum to a **fit ratio in percent**.
 | **< 25 %** | Very low — recommend not applying |
 
 The user's own `thresholds.apply_from` in `config.yml` overrides where the
-"apply" line sits. The bands still describe what the number *means*.
+"apply" line sits. The bands still describe what the number *means* — and
+**crossing the floor makes an ad proposable, not recommended**: the gate says
+the band and the floor side by side and pushes neither way (#208).
 
 ## What overrides the number
 
