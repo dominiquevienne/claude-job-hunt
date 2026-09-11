@@ -41,6 +41,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import empty_first_page
 from _robots import allowed as robots_allowed, full_path
 
 BASE = "https://emploi.batiactu.com"
@@ -235,7 +236,8 @@ def sweep(axis, value, pages, delay, depts, details):
         page = get(listing_path(axis, value, page_no))
         found = ad_links(page)
         if page_no == 1 and not found:
-            die(f"no ads at all on /offre-emploi-BTP/{axis}/{value}.")
+            die(empty_first_page("batiactu", page, "ad link",
+                                 where=f"/offre-emploi-BTP/{axis}/{value}"), 6)   # #181
         fresh = [(i, s) for i, s in found if i not in seen]
         if not fresh:
             # Pagination here is honest: past the last page the server returns
