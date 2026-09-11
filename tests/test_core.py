@@ -14835,6 +14835,16 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
                       "GET / -> HTTP 403, 25 bytes, fetch-body.py, 2026-09-08\n")
         card("world", "# W\n\n<!-- hosts: w.example -->\n<!-- script: world.py -->\n"
                       "<!-- countries: * -->\n")
+        # the two closures no route crosses — counted apart, named, out of
+        # «faisable», in «total» — and a card that DECLARES itself indeterminate
+        card("wall", "# Wall\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: wall.example -->\n"
+                     "<!-- script: none -->\n<!-- countries: ZZ -->\n\n```\nUser-agent: *\n"
+                     "Disallow: /\n```\n")
+        card("dead", "# Dead\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: dead.example -->\n"
+                     "<!-- script: none -->\n<!-- countries: ZZ -->\n\n1.1.1.1 NXDOMAIN, 8.8.8.8 NXDOMAIN\n")
+        card("shell", "# Shell\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: s.example -->\n"
+                      "<!-- script: none -->\n<!-- countries: ZZ -->\n"
+                      "<!-- content: indeterminate · a shell, zero advertisements · 2026-09-11 -->\n")
         return d
 
     def _run(self, *args):
@@ -14852,7 +14862,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
                          ["alpha", "beta", "delta", "gamma"])
         self.assertNotIn("`README`", out)
         self.assertNotIn("example.py", out)
-        self.assertIn("5 fiches, README exclu", out)       # the population, said
+        self.assertIn("8 fiches, README exclu", out)       # the population, said
         self.assertIn("| Board | Ce qu'il couvre | Accès | Statut | Mesuré |", out)
 
     def test_the_five_numbers_and_the_two_ratios_name_their_denominators(self):
@@ -14906,6 +14916,23 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("fait / total      1 / 4", out)
         self.assertIn("marché du pays", out)
 
+    def test_a_written_refusal_and_a_dead_name_are_excluded_apart_not_feasible(self):
+        """A `Disallow: /` to `*` (bound 1) and an NXDOMAIN on two resolvers
+        are closures no route crosses — neither INDÉTERMINÉ nor faisable —
+        counted apart as «écartés NON validés», named, out of the feasible
+        denominator and in the total; and `content: indeterminate` is the
+        card's own word, read as such."""
+        d = self._boards()
+        _c, out, _e = self._run("ZZ", "--boards", d)
+        self.assertIn("écartés NON validés 2", out)
+        self.assertIn("— dead, wall", out)
+        self.assertIn("refus écrit dans les règles", out)
+        self.assertIn("NXDOMAIN sur deux résolveurs", out)
+        self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — shell", out)
+        self.assertIn("fait / faisable   0 / 0", out)
+        self.assertIn("fait / total      0 / 3", out)
+        self.assertIn("écartés VALIDÉS   0", out)
+
     def test_all_counts_per_member_and_never_prints_zero_for_an_unmapped_one(self):
         import tempfile
         d = self._boards()
@@ -14918,10 +14945,10 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.addCleanup(os.unlink, m.name)
         code, out, err = self._run("--all", "--members", m.name, "--boards", d)
         self.assertEqual(code, 0, err)
-        self.assertIn("CHE\tCH\tSuisse\t0\t0\t0\t0\t0", out)
-        self.assertIn("ZZZ\tUNMAPPED\tNulle-part\t?\t?\t?\t?\t?", out)
+        self.assertIn("CHE\tCH\tSuisse\t0\t0\t0\t0\t0\t0", out)
+        self.assertIn("ZZZ\tUNMAPPED\tNulle-part\t?\t?\t?\t?\t?\t?", out)
         self.assertIn("1 UNMAPPED (not zero: unknown)", err)
-        self.assertIn("2 ISO2 declared by cards and absent from the members file: XX, YY", err)
+        self.assertIn("3 ISO2 declared by cards and absent from the members file: XX, YY, ZZ", err)
 
 
 class JobindexReadsPageOneAndSaysTheRulesAreTheCap(unittest.TestCase):
