@@ -15780,14 +15780,16 @@ class ASitemapThatKeepsClosedAdvertisementsIsASupersetAndSaysSo(unittest.TestCas
         rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
         return code, rows, err.getvalue()
 
-    ENTRIES = [("407994", 1, 46, "2026-09-08"), ("407994", 5, 2, "2026-09-01"),
-               ("407994", 5, 3, "2026-06-01"), ("388227", 1, 1, "2025-01-15")]
+    # the newest <lastmod> of 407994 comes LAST, so «keep the first seen»
+    # is a different answer from «keep the newest»
+    ENTRIES = [("407994", 5, 3, "2026-06-01"), ("407994", 5, 2, "2026-09-01"),
+               ("388227", 1, 1, "2025-01-15"), ("407994", 1, 46, "2026-09-08")]
 
     def test_the_id_is_the_key_and_variants_are_counted(self):
         mod = self._mod()
         code, rows, err = self._run(mod, [self.INDEX, self._file(self.ENTRIES), self.HOME])
         self.assertIsNone(code, err)
-        self.assertEqual([r["id"] for r in rows], ["407994", "388227"])
+        self.assertEqual([r["id"] for r in rows], ["407994", "388227"])   # newest first
         self.assertEqual(rows[0]["variants"], 3)
         self.assertIn("4 <loc> in 1 of 1 job file(s) (4); 4 matched the advertisement shape and 0 did not; **2 distinct", err)
 
@@ -15827,6 +15829,11 @@ class ASitemapThatKeepsClosedAdvertisementsIsASupersetAndSaysSo(unittest.TestCas
                 return False
         mod.gate = lambda url: None
         mod._PACE.wait = lambda: None
+        # `mod.urllib` IS the shared module: patched for the whole process,
+        # so restored on cleanup — the first version of this case left it
+        # patched and two unrelated cases erred (the #185 harness's lesson).
+        real = mod.urllib.request.urlopen
+        self.addCleanup(setattr, mod.urllib.request, "urlopen", real)
         mod.urllib.request.urlopen = lambda *a, **k: R()
         code, body = mod.get("https://tenshoku.mynavi.jp/sitemap/sitemap_jobs_01.xml.gz")
         self.assertEqual(code, 200)
