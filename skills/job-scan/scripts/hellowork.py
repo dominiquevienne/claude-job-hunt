@@ -40,6 +40,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _zero import empty_first_page
 from _robots import allowed as robots_allowed, full_path
 
 BASE = "https://www.hellowork.com/fr-fr"
@@ -300,12 +301,12 @@ def cmd_search(a):
     page = fetch(url)
     blocks = split_cards(page)
     if not blocks:
-        print(f"[hellowork] no result cards at {url}. That is either a facet "
-              "with nothing open, a slug that does not exist (which answers "
-              "404 with a full page), or a markup change — the three look "
-              "alike, so check it in a browser before concluding the market "
-              "is empty.", file=sys.stderr)
-        return
+        # #181: the three-look-alike sentence was right and the exit code
+        # said 0 with nothing on stdout. INDETERMINATE, exit 6, size beside
+        # the zero — a slug that does not exist answers 404 with a full page.
+        die(empty_first_page("hellowork", page, "result card", where=url)
+            + " A slug that does not exist answers 404 with a full page; a "
+              "facet with nothing open and a markup change look the same.", 6)
     rows = 0
     for b in blocks:
         c = card_from_listing(b)
