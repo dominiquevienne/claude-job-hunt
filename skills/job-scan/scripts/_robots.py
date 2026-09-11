@@ -1911,10 +1911,23 @@ def identity(host, path="/"):
     refusal received under the chosen token is a refusal, not an invitation to
     try the other one.
 
-    Returns a dict: `token`, `state` (`"http"` or `"browser"`), `per_token`
-    with each token's own verdict, and `reason`. **`token` is `None` in the
-    browser branch and the caller must look at `state`** — a falsy token is
-    not "unknown".
+    Returns a dict: `token`, `state` (`"http"`, `"browser"`, `"closed"` or
+    `"unknown"`), `per_token` with each token's own verdict, and `reason`.
+    **`token` is `None` outside `http` and the caller must look at `state`**
+    — a falsy token is not "unknown".
+
+    **`browser` is the NAMED refusal of both tokens with `*` open — nothing
+    else. #226, 2026-09-11.** `jobmada.com` publishes `User-agent: * /
+    Disallow: /`, 26 bytes; both tokens are refused *by the group addressed
+    to everybody*, and this function said `browser`. That is borne 1 of the
+    2026-09-07 decision — *a refusal written in the rules blocks every
+    route, the browser included* — and `verdict()` had it right («everything
+    closed, evenly») while this path did not: the fourth disagreement
+    between the module's decision paths, after the one #201 closed on HTTP
+    codes. Now a refusal by `*` — or by any group that does not name the
+    token it refuses — is `closed`, with the rule that decided; `browser`
+    is reserved for the shape it was written for: a host that names both
+    of us to refuse us and leaves everybody else in.
 
     **`certain` travels from the underlying verdicts.** When the rules could
     not be read, no token is permitted and the state is not `browser` either:
@@ -1925,7 +1938,8 @@ def identity(host, path="/"):
     for tok in FETCH_TOKENS:
         a = allowed(host, path, agents=(tok,))
         per[tok] = {"allowed": a["allowed"], "rule": a["rule"],
-                    "group": a.get("group"), "certain": a.get("certain")}
+                    "group": a.get("group"), "certain": a.get("certain"),
+                    "reason": a.get("reason")}
         if a["allowed"] is None:
             unknown += 1
         elif a["allowed"]:
@@ -1950,10 +1964,47 @@ def identity(host, path="/"):
                          "browser branch either — retry, or read the file by "
                          "hand.")
         return out
-    out["state"] = "browser"
+    # **Who refused, not only whether.** A token refused by a group that
+    # names it was refused by name; a token refused by `*` — or by no group
+    # at all — was refused with everybody else, and that is a written refusal
+    # no route may pass. #226.
+    named = [tok for tok in FETCH_TOKENS
+             if per[tok]["allowed"] is False and per[tok].get("group")
+             and per[tok]["group"].lower() == tok.lower()]
+    if len(named) == len(FETCH_TOKENS):
+        out["state"] = "browser"
+        out["reason"] = (
+            "both `ClaudeBot` and `Claude-User` are refused this path BY NAME, "
+            "and the group addressed to everybody is not what refuses them. "
+            "The ordinary route is closed to us specifically. **The browser "
+            "branch applies** — drive it with the plugin rather than "
+            "presenting a third identity.")
+        return out
+    by_star = [tok for tok in FETCH_TOKENS if tok not in named
+               and per[tok]["allowed"] is False]
+    rule = next((per[tok]["rule"] for tok in by_star if per[tok].get("rule")), None)
+    out["state"] = "closed"
+    out["rule"] = rule
+    if not any(per[tok].get("group") for tok in FETCH_TOKENS):
+        # No group was read at all: the rules file itself was refused at the
+        # transport (403, 429, 451). Not a written refusal, not a permission,
+        # and not the browser branch either — `shared/robots-policy.md`
+        # files that shape as host-closed. `allowed()` synthesises `rule: /`
+        # for that shape; nothing was WRITTEN, so no rule is named here.
+        out["rule"] = None
+        out["reason"] = (
+            "the rules file itself was refused, so no group was read — "
+            + (per[FETCH_TOKENS[0]].get("reason") or "").split("\n")[0]
+            + " **Not the browser branch**: that needs rules that permit, and "
+              "none were read.")
+        return out
     out["reason"] = (
-        "both `ClaudeBot` and `Claude-User` are refused this path, so the "
-        "ordinary route is closed. **The browser branch applies** — drive it "
-        "with the plugin rather than presenting a third identity.")
+        f"refused this path by the group addressed to everybody"
+        + (f" (`Disallow: {rule}`)" if rule else "")
+        + (f", and `{'`, `'.join(named)}` by name as well" if named else "")
+        + ". **A refusal written in the rules blocks every route, the "
+          "browser included** — this is not the browser branch, which is "
+          "reserved for a host that names both tokens to refuse them and "
+          "leaves everybody else in (#226, borne 1 of 2026-09-07).")
     return out
 

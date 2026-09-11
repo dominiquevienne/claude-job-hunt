@@ -803,7 +803,10 @@ class WhichStatusMeansWhat(unittest.TestCase):
                     i = _robots.identity("h.example", "/x")
                     self.assertIs(a["allowed"], sweep, f"allowed() on {code}")
                     self.assertIs(a["certain"], certain, f"certain on {code}")
-                    self.assertEqual(i["state"], "http" if sweep else "browser",
+                    # `closed` since #226: a rules file refused at the
+                    # transport read no group, and that is not the browser
+                    # branch — it needs rules that permit.
+                    self.assertEqual(i["state"], "http" if sweep else "closed",
                                      f"identity() on {code}")
         finally:
             _robots.urllib.request.urlopen = real
@@ -15240,6 +15243,134 @@ class AnInventoryOfAddressesSaysItIsNotAnInventoryOfAdvertisements(unittest.Test
         self.assertEqual(code, 9)
         self.assertIn("anti-robot challenge", err.getvalue())
         self.assertIn("does not attempt to pass it", err.getvalue())
+
+
+class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
+    """**#226, 2026-09-11.** `jobmada.com` publishes `User-agent: * /
+    Disallow: /` — 26 bytes — and `identity()` said `browser`: both tokens
+    refused, so «the browser branch applies». *They were refused by the group
+    addressed to everybody.* Borne 1 of the 2026-09-07 decision: a refusal
+    written in the rules blocks every route, the browser included. `browser`
+    was written for the other shape — both tokens named and refused, `*`
+    open — and `verdict()` had this one right («everything closed, evenly»).
+    The fourth disagreement between the module's paths, after #201's on HTTP
+    codes.
+
+    So `identity()` now returns `closed` for a refusal by `*` (or by a rules
+    file refused at the transport), with the rule that decided, and
+    `browser` only for the named refusal of both tokens with `*` open. And
+    the concordance table of #201 extends from HTTP codes to the SHAPES of a
+    refusal — one row per shape, all three paths asked, the one known
+    divergence named as such rather than hidden.
+
+    Mutated (`python3 -B`, detached copy): the `named` test loosened so a
+    `*` refusal counts as named → the `*`-closed row reddens; `closed`
+    renamed back to `browser` → the same row and the transport row redden;
+    the `rule` dropped → the `*`-closed row reddens on its rule.
+    """
+
+    SHAPES = {
+        # name: (robots body or HTTP status, verdict.sweep, allowed, identity.state)
+        "star closed — jobmada": ("User-agent: *\nDisallow: /\n", False, False, "closed"),
+        "both tokens named and closed, star open": (
+            "User-agent: ClaudeBot\nDisallow: /\nUser-agent: Claude-User\nDisallow: /\n"
+            "User-agent: *\nAllow: /\n", False, False, "browser"),
+        "both tokens named and closed, no star group": (
+            "User-agent: ClaudeBot\nDisallow: /\nUser-agent: Claude-User\nDisallow: /\n",
+            False, False, "browser"),
+        "ClaudeBot named by star, Claude-User refused by star": (
+            "User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nDisallow: /\n", False, False, "closed"),
+        "no group at all (#180)": ("Disallow: /admin/\nDisallow: /tmp/\n", True, True, "http"),
+        "401 on the rules file (#201)": (401, True, True, "http"),
+        "403 on the rules file": (403, False, False, "closed"),
+        "429 on the rules file": (429, False, False, "closed"),
+    }
+
+    class _Resp:
+        def __init__(self, body):
+            self._b = body.encode("utf-8")
+            self.headers = {"Content-Type": "text/plain"}
+        def read(self):
+            return self._b
+        def getcode(self):
+            return 200
+        def geturl(self):
+            return "https://h.example/robots.txt"
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    def _paths(self, shape):
+        import _robots
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        if isinstance(shape, int):
+            def serve(*a, **k):
+                raise _robots.urllib.error.HTTPError(
+                    "https://h.example/robots.txt", shape, "x", {}, io.BytesIO(b""))
+        else:
+            def serve(*a, **k):
+                return self._Resp(shape)
+        _robots.urllib.request.urlopen = serve
+        try:
+            v = _robots.verdict("h.example")
+            a = _robots.allowed("h.example", "/x")
+            i = _robots.identity("h.example", "/x")
+            return v, a, i
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_every_shape_gives_the_same_answer_on_all_three_paths(self):
+        for name, (shape, sweep, allowed, state) in self.SHAPES.items():
+            with self.subTest(shape=name):
+                v, a, i = self._paths(shape)
+                self.assertIs(v["sweep"], sweep, f"verdict() on {name}")
+                self.assertIs(a["allowed"], allowed, f"allowed() on {name}")
+                self.assertEqual(i["state"], state, f"identity() on {name}: {i['reason'][:120]}")
+
+    def test_a_star_refusal_names_the_rule_that_decided_and_is_not_the_browser_branch(self):
+        _, _, i = self._paths("User-agent: *\nDisallow: /\n")
+        self.assertEqual(i["state"], "closed")
+        self.assertEqual(i["rule"], "/")
+        self.assertIsNone(i["token"])
+        self.assertIn("addressed to everybody", i["reason"])
+        self.assertIn("not the browser branch", i["reason"])
+
+    def test_a_named_refusal_of_both_with_star_open_is_the_browser_branch(self):
+        _, _, i = self._paths("User-agent: ClaudeBot\nDisallow: /\nUser-agent: Claude-User\n"
+                              "Disallow: /\nUser-agent: *\nAllow: /\n")
+        self.assertEqual(i["state"], "browser")
+        self.assertIn("BY NAME", i["reason"])
+
+    def test_a_rules_file_refused_at_the_transport_is_closed_with_the_transport_reason(self):
+        _, _, i = self._paths(403)
+        self.assertEqual(i["state"], "closed")
+        self.assertIsNone(i["rule"])
+        self.assertIn("rules file itself was refused", i["reason"])
+
+    def test_verdict_still_unions_the_six_names_on_a_named_refusal_KNOWN_DIVERGENCE(self):
+        """**Pinned as a divergence, not endorsed.** `ClaudeBot` named and
+        refused, `*` open: `allowed()` and `identity()` say the fetch token
+        `claude-user` may go (the owner's decision of 2026-09-07), and
+        `verdict()['sweep']` still says False — it unions the six names of
+        `OUR_AGENTS` by design dated 2026-09-05, and nineteen adapters gate
+        their `cmd_list` on it. Whether `sweep` follows the decision is a
+        doctrine question raised beside #226, not settled here; this test
+        exists so the day it is settled, this line is flipped on purpose."""
+        v, a, i = self._paths("User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nAllow: /\n")
+        self.assertIs(a["allowed"], True)
+        self.assertEqual(i["state"], "http")
+        self.assertEqual(i["token"], "claude-user")
+        self.assertIs(v["sweep"], False, "if this reddens, verdict() now follows the "
+                                         "2026-09-07 decision — retitle this test, it is no "
+                                         "longer a divergence")
 
 
 if __name__ == "__main__":
