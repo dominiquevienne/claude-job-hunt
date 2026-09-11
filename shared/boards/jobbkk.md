@@ -1,12 +1,12 @@
 # Board adapter — JOBBKK (Thailand)
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 
 <!-- hosts: www.jobbkk.com -->
 <!-- script: jobbkk.py -->
 <!-- countries: TH -->
-<!-- content: measured · 1 045 rows for `--keyword engineer`. **The search REQUIRES a keyword**, so no board total is reachable by this route and 1 045 sizes a query, not the board · 2026-09-08 -->
-<!-- witness: none possible by this route — the search REQUIRES a keyword and the adapter prints no report at all (1 045 rows emitted, stderr empty), so nothing corroborates the figure and a zero here would be a bare silence · 2026-09-08 -->
+<!-- content: measured · the page's own `jobListReducer` store declares `total` per query — 3 399 for `--keyword engineer`, **34 546 for the empty keyword** (the search does NOT require one; the adapter serves 25 a page and stops at the repeat, 200 over 9 pages for `engineer`) · 2026-09-11 12:57 UTC -->
+<!-- witness: second source on the same quantity — the board's `total` in its store, printed beside every count («25 emitted … board states 3399 — 3374 short»); 0 for a keyword that matches nothing, and the page then carries 25 `jobpost_list_suggest` cards that are not results · 2026-09-11 -->
 Thailand's largest board by volume, and **the first Thai adapter here**. Plain
 HTML, **no key, no cookie, no account, no browser**.
 
@@ -16,6 +16,53 @@ captchas, a demo tree and **`/jobs/apply/`**; it says nothing about the
 listings and **names no AI agent**, for or against.
 
 **Everything below was verified against the live site on 2026-09-02.**
+
+## 2026-09-11 — the board pads a zero with suggestions, and the adapter emitted them (#219)
+
+**`search --keyword zzzqqqxxx` returned 29 advertisements. So did `engineer`, so
+did the empty keyword.** Found while running the adapter for #181; the
+memory's form is *a filter that fails toward everything looks exactly like a
+success* — and here the filter had worked. The page's own store, in the
+flight payload, reads:
+
+```
+"jobpost_list":[…25…],"jobpost_list_suggest":[],"total":3399,…     engineer
+"jobpost_list":[],"jobpost_list_suggest":[…25…],"total":0,…        zzzqqqxxx
+"jobpost_list":[…25…],"jobpost_list_suggest":[],"total":34546,…    (empty keyword)
+```
+
+**The board answers a keyword that matches nothing with `total: 0` and 25
+recommendations in a second list** (`hilight_section.source: random_recommend`
+sits beside it). `records()` matched every `"jobpost_id"` on the page and read
+both lists as one. *The two pages carry 25 ids each and 0 in common — the filter
+reduces; the padding is what was emitted.*
+
+**What changed.** `store()` splits the payload at its own three markers and
+returns `(results, suggestions, total)`; only `jobpost_list` is emitted; the
+board's `total` is printed beside the count on every run — `25 emitted over 1
+page(s) read, board states 3399 — 3374 short`. A stated 0 with an empty list is
+**a real zero, anchored on the board's count**: nothing emitted, the suggestion
+cards named, exit 0. A stated N > 0 with an empty list is **a reading fault**,
+exit 6 with the size. `ABoardThatPadsAZeroWithSuggestionsIsReadOnItsOwnList`
+pins the split, the anchor, the real zero and the fault.
+
+**Two things this corrects above.** The header said the search *requires a
+keyword* and that *no board total is reachable* — the empty keyword answers,
+with `total: 34 546`, and every query carries its total. And *the adapter prints
+no report at all* — it prints the anchor now. **The 1 045 of 2026-09-08 is not
+re-measured here**: today's `engineer` serves 200 over 9 pages against a stated
+3 399, and which of the two the board's pagination allows on a given day is a
+measurement, not a property.
+
+**On the population question** — *can «an absurd keyword returns less than an
+empty one» be a guard over every keyword adapter?* Not as a fixture test: it
+needs the board's behaviour, and this board shows why — the absurd keyword
+returns the SAME number of cards as a real one (25, the page size) and differs
+only in the store's `total` and in which list holds them. *The reduction is
+visible in a figure the board declares, not in the count of cards.* What
+generalises is the discipline, not the guard: **every keyword adapter prints a
+second figure from outside its own extraction**, and #181's re-pass is the
+census of that.
 
 ## The listing is the payload
 

@@ -155,14 +155,48 @@ def get(path):
         die(f"{url}: {exc}")
 
 
-def records(page_html):
+def _unescape(page_html):
+    return page_html.replace('\\"', '"').replace("\\\\", "\\")
+
+
+def store(page_html):
+    """`(results, suggestions, total)` — the three parts of the page's own
+    `jobListReducer` store, which sit in this order in the flight payload:
+
+        "jobpost_list":[…],"jobpost_list_suggest":[…],"total":N,"search_result":…
+
+    **#219: the two lists are not the same thing, and the adapter read them
+    as one.** On a keyword that matches nothing the board answers
+    `jobpost_list: []`, `total: 0` — and fills `jobpost_list_suggest` with 25
+    recommendations, which `records()` emitted as results: 29 advertisements
+    for `zzzqqqxxx`, `engineer` and the empty keyword alike (2026-09-11).
+    *The filter had worked; the adapter emitted the padding.* `total` is the
+    board's own count for the query — 0 for the absurd word, 3 399 for
+    `engineer` — and it is the anchor this adapter prints beside its count.
+
+    Each part is `None` when its marker is not on the page — a shape change,
+    to be said rather than read as empty.
+    """
+    text = _unescape(page_html)
+    i = text.find('"jobpost_list":')
+    j = text.find('"jobpost_list_suggest":')
+    m = re.search(r'"total":(\d+),"search_result"', text)
+    if i < 0 or j < 0 or j < i:
+        return None, None, None
+    end = m.start() if m else len(text)
+    return (records(text[i:j], raw=True), records(text[j:end], raw=True),
+            int(m.group(1)) if m else None)
+
+
+def records(page_html, raw=False):
     """Pull the card objects out of the Next.js flight payload.
 
     The payload is JSON escaped inside a JavaScript string, so it is unescaped
     once and then matched on `"jobpost_id":`. Brace-balanced rather than
-    regex-bounded, because the duties text contains braces.
+    regex-bounded, because the duties text contains braces. `raw=True` means
+    the text is already unescaped — `store()` passes its slices.
     """
-    text = page_html.replace('\\"', '"').replace("\\\\", "\\")
+    text = page_html if raw else _unescape(page_html)
     out = []
     for m in re.finditer(r'"jobpost_id"\s*:\s*\d+', text):
         start = text.rfind("{", 0, m.start())
@@ -248,13 +282,14 @@ def list_path(a, page):
 
 
 def cmd_search(a):
-    seen, kept, previous = set(), 0, None
+    seen, kept, previous, total, read = set(), 0, None, None, 0
     page = 1
     while True:
         html = get(list_path(a, page))
         if html is None:
             note(f"page {page} answered 404 — stopping.")
             break
+        read += 1
         ids = [f"{c}/{j}" for c, j in DETAIL.findall(html)]
         if not ids and page == 1:
             # #181: the case that opened it — 1 239 956 bytes, 25 links in a
@@ -274,11 +309,33 @@ def cmd_search(a):
                  f"page 5 000 would return these same {len(ids)} ads.")
             break
         previous = ids
-        rows = records(html)
-        if not rows:
-            die(f"page {page}: {len(ids)} ad links but no card records parsed. "
-                f"The Next.js payload has moved — re-verify jobbkk.md before "
+        rows, suggested, stated = store(html)
+        if rows is None:
+            die(f"page {page}: {len(ids)} ad links but the `jobpost_list` / "
+                f"`jobpost_list_suggest` markers are not in the payload. The "
+                f"Next.js store has moved — re-verify jobbkk.md before "
                 f"trusting anything from this board.")
+        if page == 1:
+            total = stated
+            if not rows:
+                # #219: the board's own list is empty and the page still
+                # carries cards — its suggestions. They are not results and
+                # they are not emitted. `total` says whether the zero is the
+                # board's (0) or a reading fault (N > 0 with nothing listed).
+                if stated == 0:
+                    note(f"board states 0 result(s) for keywords {a.keyword!r}"
+                         f"{' in ' + a.province if a.province else ''} — the "
+                         f"{len(suggested)} card(s) on the page are the "
+                         f"board's own suggestions (`jobpost_list_suggest`), "
+                         f"not results, and none is emitted. **A real zero, "
+                         f"anchored on the board's count.**")
+                    return
+                die(f"page 1: `jobpost_list` is empty while the board states "
+                    f"{stated!r} result(s) and the page carries "
+                    f"{len(suggested)} suggestion card(s) in "
+                    f"{len(html)} characters. **That is a reading fault, not "
+                    f"a zero** — the results are somewhere this parser does "
+                    f"not look.", 6)
         for r in rows:
             c = card(r)
             if c["id"] in seen:
@@ -287,7 +344,8 @@ def cmd_search(a):
             print(json.dumps(c, ensure_ascii=False))
             kept += 1
             if a.limit and kept >= a.limit:
-                note(f"{kept} ads returned over {page} page(s).")
+                note(f"{kept} emitted over {read} page(s), stopped at --limit; "
+                     f"board states {total}.")
                 return
         page += 1
         if a.pages and page > a.pages:
@@ -295,7 +353,16 @@ def cmd_search(a):
         time.sleep(a.delay)
     if kept == 0:
         note(zero_note("jobbkk", what=a.keyword, where=a.province))
-    note(f"{kept} ads returned over {page} page(s) read.")
+    # **The anchor of #181, from the board's own store.** `total` is the
+    # board's count for the query; `kept` is what its pages served. The two
+    # differ legitimately — the board stops paginating long before its total
+    # (130 of 3 399 for `engineer`, 2026-09-08) — and the gap is printed,
+    # never hidden.
+    anchor = (f"board states {total}" if total is not None
+              else "board states no total (marker not found)")
+    short = (f" — {total - kept} short" if total is not None and kept < total
+             else "")
+    note(f"{kept} emitted over {read} page(s) read, {anchor}{short}.")
 
 
 def cmd_ad(a):

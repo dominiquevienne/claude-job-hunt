@@ -14600,5 +14600,90 @@ class AnEmptyFirstPageOrAnEmptyWholeBoardListIsAReadingFault(unittest.TestCase):
         self.assertEqual(mod.fetch_board(), [{"jobUrl": "x"}])
 
 
+class ABoardThatPadsAZeroWithSuggestionsIsReadOnItsOwnList(unittest.TestCase):
+    r"""**#219, 2026-09-11.** `jobbkk.py` returned 29 advertisements for
+    `zzzqqqxxx`, `engineer` and the empty keyword alike. The filter had
+    worked: the page's own store says `"jobpost_list":[]`, `"total":0` for the
+    absurd word — and fills `"jobpost_list_suggest"` with 25 recommendations,
+    which the adapter emitted as results. *A plain that affirms, the mirror
+    of #181's zero that affirms.* `total` is 3 399 for `engineer`: the board
+    declares its count, and the adapter never read it.
+
+    Now only `jobpost_list` is emitted, `total` is printed beside the count
+    («25 emitted … board states 3399 — 3374 short»), a stated 0 with an empty
+    list is a real zero (nothing emitted, exit 0, the suggestions named), and
+    a stated N > 0 with an empty list is a reading fault, exit 6.
+
+    Mutated, `python3 -B`, detached copy: the results slice widened to the
+    end of the store (suggestions leak) → the results case reddens; the
+    `stated == 0` branch made unconditional → the reading-fault case reddens;
+    the anchor dropped from the note → the results case reddens.
+    """
+
+    def _page(self, results, suggestions, total):
+        def rec(i):
+            return ('{\\"jobpost_id\\":%d,\\"company_id\\":9,\\"position\\":\\"P%d\\",'
+                    '\\"salary_start\\":\\"\\",\\"salary_end\\":\\"\\"}' % (i, i))
+        links = "".join(f'<a href="/jobs/detail/9/{i}">x</a>'
+                        for i in results + suggestions)
+        payload = ('self.__next_f.push([1,"\\"jobpost_list\\":['
+                   + ",".join(rec(i) for i in results)
+                   + '],\\"jobpost_list_suggest\\":['
+                   + ",".join(rec(i) for i in suggestions)
+                   + '],\\"total\\":%s,\\"search_result\\":[]"])' % total)
+        return "<html>" + links + "<script>" + payload + "</script></html>"
+
+    def _run(self, page):
+        import contextlib
+        spec = importlib.util.spec_from_file_location(
+            "_jobbkk219", os.path.join(SCRIPTS, "jobbkk.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.get = lambda path: page
+        a = argparse.Namespace(keyword="x", province=None, category=None,
+                               limit=None, pages=1, delay=0)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_search(a)
+            except SystemExit as e:
+                code = e.code
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return code, rows, err.getvalue()
+
+    def test_the_store_splits_results_from_suggestions_and_reads_the_total(self):
+        spec = importlib.util.spec_from_file_location(
+            "_jobbkk219s", os.path.join(SCRIPTS, "jobbkk.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        res, sug, total = mod.store(self._page([1, 2], [7, 8, 9], 3399))
+        self.assertEqual([r["jobpost_id"] for r in res], [1, 2])
+        self.assertEqual([r["jobpost_id"] for r in sug], [7, 8, 9])
+        self.assertEqual(total, 3399)
+        self.assertEqual(mod.store("<html>no store</html>"), (None, None, None))
+
+    def test_only_results_are_emitted_and_the_boards_total_stands_beside_them(self):
+        code, rows, err = self._run(self._page([1, 2], [7, 8, 9], 3399))
+        self.assertIsNone(code, err)
+        self.assertEqual([r["id"] for r in rows], ["9/1", "9/2"],
+                         "a suggestion card reached stdout")
+        self.assertIn("2 emitted over 1 page(s) read, board states 3399 — 3397 short", err)
+
+    def test_a_stated_zero_with_suggestions_is_a_real_zero_and_emits_nothing(self):
+        code, rows, err = self._run(self._page([], [7, 8, 9], 0))
+        self.assertIsNone(code, err)
+        self.assertEqual(rows, [])
+        self.assertIn("board states 0 result(s)", err)
+        self.assertIn("3 card(s) on the page are the board's own suggestions", err)
+
+    def test_a_stated_count_with_an_empty_list_is_a_reading_fault(self):
+        code, rows, err = self._run(self._page([], [7, 8, 9], 42))
+        self.assertEqual(code, 6)
+        self.assertEqual(rows, [])
+        self.assertIn("reading fault", err)
+        self.assertIn("42", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
