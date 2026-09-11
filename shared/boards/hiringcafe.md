@@ -8,7 +8,7 @@
 <!-- robots-note: the rules refuse `/*?page=*` and `/*&page=*` by hand, so the browser route is one page of 20 per facet; neither `ClaudeBot` nor `Claude-User` is named in the file — only meta-externalagent and Applebot-Extended · 2026-09-07 -->
 <!-- override: boards.hiringcafe.override_robots — the repository's owner's decision of 2026-09-11 (#198), against the four questions; lifts the written rule AND the suspension; cost: the user's own address · 2026-09-11 -->
 <!-- countries: * -->
-<!-- overlap: jobstore.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
+<!-- overlap: jobstore.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is refused to this project's HTTP client while a browser is served (2026-09-08), so it is not re-readable by script · 2026-09-03 -->
 
 ## Route 2 of #102 is measured, and it is closed
 

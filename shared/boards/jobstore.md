@@ -1,15 +1,15 @@
 # Board adapter — Jobstore
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 
 <!-- hosts: www.jobstore.com -->
 <!-- script: jobstore.py -->
 <!-- countries: * -->
 <!-- content: measured · 52 128 advertisements on the Swiss site, from the six `job-*.xml` children; the aggregator runs 26 country sites and only Switzerland was counted · 2026-09-02 -->
-<!-- witness: none possible — no site-served total exists for the Swiss site, and the one number the index offers is the sum of all twelve children, **250 000+, five times the truth**: a decoy rather than a witness. **And the 52 128 can no longer be re-read**: `www.jobstore.com` answers HTTP 403 to a scripted request, 25 bytes, md5 `9ccabba20b9f`, fetched TWICE on 2026-09-07 with a stable fingerprint — the rules permit and the transport refuses · 2026-09-02, refusal 2026-09-07 -->
-<!-- overlap: hiringcafe.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
-<!-- overlap: jobup.md · 15.5 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
-<!-- overlap: jobs-ch.md · 18.6 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is no longer re-readable · 2026-09-03 -->
+<!-- witness: none possible — no site-served total exists for the Swiss site, and the one number the index offers is the sum of all twelve children, **250 000+, five times the truth**: a decoy rather than a witness. **And the 52 128 is refused to this project's HTTP client, not unreadable**: `www.jobstore.com` answers HTTP 403 to a scripted request, 25 bytes, md5 `9ccabba20b9f`, fetched TWICE on 2026-09-07 with a stable fingerprint — the rules permit, the transport refuses the client, **and a real browser is served** (measured 2026-09-08 from two sessions, not re-measured here); the host redirects to `/ch` by the visitor's IP, so the 52 128 is the Swiss edition a Swiss visitor lands on · 2026-09-02, refusal 2026-09-07, browser 2026-09-08, scope corrected 2026-09-11 -->
+<!-- overlap: hiringcafe.md · 25 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is refused to this project's HTTP client while a browser is served (2026-09-08), so it is not re-readable by script · 2026-09-03 -->
+<!-- overlap: jobup.md · 15.5 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is refused to this project's HTTP client while a browser is served (2026-09-08), so it is not re-readable by script · 2026-09-03 -->
+<!-- overlap: jobs-ch.md · 18.6 % measured from JOBSTORE's side; the source states no unit for this ratio and no raw count, and is refused to this project's HTTP client while a browser is served (2026-09-08), so it is not re-readable by script · 2026-09-03 -->
 An aggregator running **26 country sites** off one host, `www.jobstore.com/<cc>/`.
 Switzerland carries **52 128 ads**.
 
@@ -203,6 +203,23 @@ browser answers that in one request.
 > permission settings, and that refusal is surfaced rather than routed to
 > another session.** *Asking a peer to do what one's own permissions forbid is
 > not a workaround, it is laundering.*
+
+### Answered 2026-09-08 — the 403 targets the client; a browser is served
+
+**Two other sessions ran the browser pass on 2026-09-08: the host serves its
+inventory to a real browser.** So borne 0 is settled — the refusal targets this
+project's client, not everyone — and the route for this host is the browser
+one. **And the host redirects to `/ch` by the visitor's IP**, which is why the
+52 128 above describes the Swiss edition: not because Switzerland was chosen,
+but because it is where a Swiss visitor lands.
+
+**What this corrects, and what it does not.** *«The 52 128 can no longer be
+re-read»* was written on 2026-09-07 and was false the next day: it read a
+refusal at the transport as a refusal of the content. **The scope is «refused
+to our HTTP client», never «cannot be read»** — the header and the three
+`overlap:` lines say so now. *Nothing is re-measured on 2026-09-11: the 403 to
+the client is unchanged (exercised for #181 at 12:20 UTC, exit 9), and the
+browser measurement is cited with its date, not repeated.*
 
 **Nothing here says the board is closed.** It says the adapter is refused at the
 transport, that the refusal is a provider default rather than an editorial act,
