@@ -53,7 +53,7 @@ import urllib.request
 from _decode import decode_body
 from _robots import allowed as robots_allowed, full_path
 
-from _zero import zero_note
+from _zero import empty_first_page, zero_note
 
 COUNTRIES = ("co", "cl", "pe", "mx", "ar", "ec", "ve", "cr", "pa", "gt",
              "bo", "do", "uy", "sv", "hn", "ni", "py", "pr")
@@ -198,6 +198,11 @@ def cmd_search(a):
             note(f"page {page}: 404 — stopping.")
             break
         blocks = list(CARD.finditer(body))
+        if not blocks and page == 1:
+            # #181: page 1 empty is not «this board's end of results» — that
+            # sentence is true from page 2 on. INDETERMINATE, size beside zero.
+            die(empty_first_page("computrabajo", body, "card", where=host,
+                                 what_asked=f"keywords {a.keyword!r}" if a.keyword else None), 6)
         if not blocks:
             # An honest end: page 200 of a search with 40 pages answers 200
             # with a shorter page and no cards. No repeat, no error.
