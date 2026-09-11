@@ -1,6 +1,6 @@
 # Board measurement — Eshjob.com (Iraq): a feed of posts, not a table of fields
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-11 -->
 
 <!-- hosts: eshjob.com -->
 <!-- script: none -->
@@ -72,6 +72,45 @@ markdown emphasis. **No field carries them.**
 **They were not extracted, and deliberately.** *Deriving them from prose is
 exactly where a plausible-and-false value is manufactured, and the instruction
 for this pass was to report presence rather than to attempt a reading.*
+
+## No HTTP route to the declared client — measured 2026-09-11, and it decides what may be built
+
+**The rules permit; the transport refuses; nothing was read.** Taken in the
+order the doctrine asks — the guard first, in its own turn, then the fetch
+with its provenance:
+
+```
+12:32:33 UTC  _robots.allowed('eshjob.com', '/jobs')                 allowed True · rule None · certain True
+              _robots.allowed('eshjob.com', '/jobs?location=erbil')  allowed True · rule None · certain True
+              _robots.allowed('eshjob.com', '/')                     allowed True · rule None · certain True
+12:32:46 UTC  bin/fetch-body.py https://eshjob.com/jobs              HTTP 403 · 25 bytes · not saved
+12:32:57 UTC  bin/fetch-body.py https://eshjob.com/jobs  (--allow-refusal, twice)
+                                                                     403 · 25 o · md5 9ccabba20b9f4ec7d18bd6644579e5bf · md5 stable ×2
+12:32:58 UTC  bin/fetch-body.py https://eshjob.com/                  403 · 25 o · same md5
+              body: "Your request was blocked."
+```
+
+**That md5 is the vendor default of `shared/robots-policy.md`'s family (1)** —
+eleven hosts, the same 25 bytes to the byte, `eshjob.com` among them since
+2026-09-08 — *and the same file records that a real browser was served 1 735
+results here that day.* **So the 403 is aimed at the client, not at everyone**,
+and the route this host leaves open is the browser, which is the route the
+extension was not connected to provide on 2026-09-11.
+
+**The data route the adapter would need was therefore not found — not because
+it does not exist, but because the page that would name it is refused before
+its script is served.** *The nine fetches of 2026-09-08 that answered 200
+without the count were the last time this client was served a page at all;
+today it is served the refusal.* **No adapter is delivered on this state, and
+this section is the deliverable:** a dated *no HTTP route*, with the guard's
+verdict, the status, the byte count, the two fingerprints and the identity.
+
+**What would reopen it, in order of cost:** the browser route (the extension,
+then a session reading the XHR the page makes for `Showing 1 to 20 of 1735`
+— that call's URL is the adapter's route, if the rules permit it, and it is
+guarded on its exact path before it is fetched); or the host answering a
+declared client again, which nothing here can cause and which the next reader
+measures rather than assumes.
 
 ## What this does not establish
 
