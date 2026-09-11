@@ -3995,6 +3995,55 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
                          f"not a signal")
 
 
+class ASyndicatedCopyIsASecondRankReadingForTheTokensThatDecide(
+        unittest.TestCase):
+    """Issue #205. A job-room record lost `Node.js` and `Vue.js` from its
+    description — in the RAW API payload, before any code of this plugin —
+    while the jobup twin it names in `duplicate_of` kept both. `Node.js`
+    was the hard blocker: read on the copy, the row went to `todo` with a
+    question; read on the source, `discarded`. One ad, two tokens.
+
+    The rule is prose — *when `duplicate_of` names a source and the verdict
+    turns on the text, take it on the source* — so the guard is on the
+    prose: the step that decides names the rule, and the card that measured
+    it carries the measurement with its denominator, said as one ad and two
+    tokens and never as a property of the board.
+    """
+
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+
+    def _read(self, rel):
+        return open(os.path.join(self.ROOT, rel), encoding="utf-8").read()
+
+    def test_the_scoring_step_takes_the_verdict_on_the_source(self):
+        text = self._read("skills/job-scan/SKILL.md")
+        i = text.index("## 5 — Score each ad")
+        j = text.index("## 6 — Write the ledger")
+        step = text[i:j]
+        self.assertIn("take that verdict on the SOURCE", step)
+        self.assertIn("second-rank reading", step)
+        self.assertIn("duplicate_of", step)
+
+    def test_the_card_carries_the_measurement_with_its_denominator(self):
+        card = self._read("shared/boards/job-room.md")
+        self.assertIn("ONE advertisement, TWO tokens", card)
+        self.assertIn("Node.js", card)
+        self.assertIn("Vue.js", card)
+        self.assertIn("RAW", card)                      # not the plugin
+        self.assertIn("second-rank reading", card)
+
+    def test_the_card_does_not_promote_one_ad_to_a_rule_about_the_board(self):
+        """*"job-room drops dotted tokens"* is what one ad and two tokens do
+        not license. The sentence the card forbids must not appear as a
+        statement — only inside the quotation that forbids it."""
+        card = self._read("shared/boards/job-room.md")
+        for claim in ("job-room drops dotted tokens", "job-room strips",
+                      "job-room removes every"):
+            for m in re.finditer(re.escape(claim), card):
+                before = card[max(0, m.start() - 40):m.start()]
+                self.assertIn("Do not write", before,
+                              f"{claim!r} stated as a fact about the board")
+
 class AGateThatOffersOnlyMotivatedRefusalsInventsTheReason(unittest.TestCase):
     """Issue #208. The go/no-go gate offered four options — two yeses and
     two refusals, each naming a cause the analysis had found. The

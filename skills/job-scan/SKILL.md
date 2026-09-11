@@ -618,6 +618,19 @@ So, at this step:
   or spoken language the record lacks, whatever `candidate.md` lists) → status
   `discarded`, reason in `Note`, and say so in the report. Do not score it into
   the shortlist.
+
+  **And take that verdict on the SOURCE when the row is a syndicated copy.** A
+  copy is a second-rank reading for the tokens that decide: on 2026-09-11 a
+  job-room record lost `Node.js` and `Vue.js` from its description — in the
+  raw API payload, not in this plugin — while its jobup twin, the board
+  job-room itself names in `duplicate_of`, kept both; `Node.js` was the hard
+  blocker, and read on the copy alone the row went to `todo` with a question
+  instead of `discarded`. *One ad, two tokens — and nothing in a list with a
+  hole says a token is missing.* **So when `duplicate_of` names a source board
+  and the verdict turns on the text — stack, language, certification,
+  eligibility — open the description at the source before deciding.** The
+  field is already in hand from step 3. `shared/boards/job-room.md`, trap 7,
+  issue #205.
 - **Partial gap** → keep it `todo` and score it honestly. That is what the score
   is for.
 - **An open question rather than a verdict** — a contract form to clarify, a
