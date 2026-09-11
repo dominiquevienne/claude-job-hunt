@@ -174,6 +174,15 @@ vanish from memory.
 `shared/pipeline-format.md` has both, and **neither changes the status** — a
 row that reached an interview must never stop counting as an application sent.
 
+**And the free text after the markers goes through `ledger.py escape` before
+it is written** — an e-mail subject copied in, *"Antaes | Meeting
+confirmation"*, is how #200 put a tenth cell on a row. It fell after `Status`;
+the next one need not.
+
+```bash
+python3 "$S/ledger.py" escape "<the sentence, as imported>"
+```
+
 **And the plugin does not lift a decision it did not take.** If a debrief
 reveals that a row marked `no-go` or `discarded` is in fact open, **say so and
 leave the re-opening to the candidate.** Those statuses record their decision,

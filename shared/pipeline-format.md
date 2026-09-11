@@ -215,6 +215,24 @@ column, the log and everything you say to the user follow the user's
   **`\|` inside a cell is an escaped pipe rather than a column break** — ten
   of those 474 rows carry one, and splitting on `|` shifts their columns and
   corrupts their status silently.
+- **Escape at the write, never at the read.** Every text that comes from
+  outside — an ad title, an employer's name, an e-mail subject copied into
+  `Note` — can carry a `|`, and **a bare `|` in a cell is a column break the
+  moment it is written**. *"Antaes | Meeting confirmation"* pasted into a note
+  gave a ten-cell row; it fell after `Status`, so the status survived by
+  chance. Before `Status` it shifts the status — an ad proposed again, or
+  buried, silently. Issue #200.
+
+  ```bash
+  ledger.py escape "<imported text>"                       # one cell
+  ledger.py row '{"ID": "…", "Role": "…", "Note": "…"}'    # a whole row
+  ```
+
+  `escape` turns `|` into `\|` (and leaves a `\|` alone) and a line break
+  into a space; `row` builds the whole row in the ledger's own column order,
+  every cell escaped. **`verify` now refuses a table with a shifted row**
+  (exit 6), the way it refuses a lost one — a row whose status cannot be
+  trusted is a lost row that still counts.
 - **The transition to `rejected` costs the send date, and nothing recovers
   it.** `applied 2026-08-20` becoming `rejected 2026-09-02` leaves one date on
   the row, and it is the employer's answer. **So the same set of statuses is

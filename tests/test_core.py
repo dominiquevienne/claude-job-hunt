@@ -4045,6 +4045,143 @@ class TheDeclaredDuplicateIsALedgerId(unittest.TestCase):
                          "not name them: " + ", ".join(missing))
 
 
+class ALedgerCellIsEscapedAtTheWriteNotRepairedAtTheRead(unittest.TestCase):
+    """Issue #200. An e-mail subject — *"Antaes | Meeting confirmation"* —
+    copied into a `Note` gave a ten-cell row. **It fell after `Status`, so
+    the status survived by chance**; a `|` before `Status` shifts it, and
+    #77 says what that costs: an ad proposed again, or buried, silently.
+    Nothing that composed a cell was escaping imported text; the row was
+    repaired by hand, and the next one would have been too.
+
+    The class of the defect is *a column break written into a cell*, so
+    the guard is on the pair `escape()` / `cells()` — the writer and the
+    reader must agree — and on `verify`, which now refuses a shifted row
+    the way it refuses a lost one.
+    """
+
+    COLS = ["ID", "Role", "Company", "Location / mode", "Posted", "Match",
+            "Pay", "Status", "Note"]
+
+    def _ledger(self, rows):
+        import tempfile
+        head = ("# Job pipeline — Test\n\n## Ads\n\n| " + " | ".join(self.COLS)
+                + " |\n|" + " :-- |" * len(self.COLS) + "\n")
+        f = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False,
+                                        encoding="utf-8")
+        f.write(head + "\n".join(rows) + "\n\n## Log\n")
+        f.close()
+        self.addCleanup(os.unlink, f.name)
+        return f.name
+
+    def test_a_pipe_before_and_after_status_leaves_nine_cells_and_the_status(
+            self):
+        """**The `before` case is the one #77 calls silent.** A `|` in
+        `Company` — before `Status` — is what shifts the status; the one in
+        `Note` is what was found, and it was harmless by position only."""
+        import ledger
+        for where, values in (
+                ("after Status", {"Note": "Antaes | Meeting confirmation"}),
+                ("before Status", {"Company": "Antaes | Adecco"}),
+                ("both", {"Role": "Head | Ops", "Company": "A | B",
+                          "Note": "x | y | z"}),
+                ("line break", {"Note": "line one\nline two"})):
+            with self.subTest(where=where):
+                values = {"ID": "linkedin:1", "Status": "applied 2026-09-11",
+                          **values}
+                line = ledger.row(values, self.COLS)
+                c = ledger.cells(line)
+                self.assertEqual(len(c), 9, f"{where}: {line}")
+                self.assertEqual(c[7], "applied 2026-09-11",
+                                 f"{where}: the status moved — {c}")
+                self.assertNotIn("\n", line)
+
+    def test_escaping_twice_is_escaping_once(self):
+        """A note edited a second time must not grow a second backslash."""
+        import ledger
+        once = ledger.escape("Antaes | Meeting confirmation")
+        self.assertEqual(once, "Antaes \\| Meeting confirmation")
+        self.assertEqual(ledger.escape(once), once)
+
+    def test_the_reader_and_the_writer_agree_on_the_escaped_pipe(self):
+        """`cells()` keeps `\\|` inside its cell; `escape()` writes exactly
+        that. The witness that a naive split would have split: the same
+        line on a bare `|` gives more than nine."""
+        import ledger
+        line = ledger.row({"ID": "x:1", "Status": "todo",
+                           "Note": "Antaes | Meeting confirmation"}, self.COLS)
+        self.assertEqual(len(line.strip("|").split("|")), 10,
+                         "the specimen no longer carries a pipe, so it "
+                         "proves nothing about the escape")
+        self.assertEqual(len(ledger.cells(line)), 9)
+        self.assertEqual(ledger.cells(line)[8],
+                         "Antaes \\| Meeting confirmation")
+
+    def test_verify_refuses_a_shifted_row_the_way_it_refuses_a_lost_one(self):
+        """`index` warned and 615 rows made the warning noise; the status of
+        the shifted row was wrong all the same. **Exit 6, distinct from the
+        lost-row 5**, and the message names the row."""
+        import subprocess
+        good = "| linkedin:1 | Dev | Acme | B | 2026-07 | 80 % | — | todo | fine |"
+        bad = ("| linkedin:2 | Dev | Acme | B | 2026-07 | 80 % | — | todo | "
+               "Antaes | Meeting confirmation |")
+        fixed = ("| linkedin:2 | Dev | Acme | B | 2026-07 | 80 % | — | todo | "
+                 "Antaes \\| Meeting confirmation |")
+        tool = os.path.join(SCRIPTS, "ledger.py")
+        for rows, code in (([good, bad], 6), ([good, fixed], 0)):
+            with self.subTest(rows=code):
+                path = self._ledger(rows)
+                r = subprocess.run([sys.executable, tool, "verify", "--file",
+                                    path, "--before", "2"],
+                                   capture_output=True, text=True)
+                self.assertEqual(r.returncode, code, r.stderr)
+                if code == 6:
+                    self.assertIn("linkedin:2", r.stderr)
+                    self.assertIn("escape", r.stderr)
+        # and a lost row is still 5, not 6: the two failures stay distinct
+        r = subprocess.run([sys.executable, tool, "verify", "--file",
+                            self._ledger([good]), "--before", "2"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 5, r.stderr)
+
+    def test_the_row_command_serves_the_ledger_s_own_column_order(self):
+        """A ledger that gained `Pay` in 2026-08 has nine columns; an older
+        one has eight. The row is shaped by the file it will be written
+        to, and a column the file does not have is refused, not appended."""
+        import json
+        import subprocess
+        tool = os.path.join(SCRIPTS, "ledger.py")
+        path = self._ledger(["| a:1 | Dev | Acme | B | 2026-07 | 80 % | — | "
+                             "todo | fine |"])
+        r = subprocess.run([sys.executable, tool, "row", "--file", path,
+                            json.dumps({"ID": "a:2", "Role": "Head | Ops",
+                                        "Status": "todo"})],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(),
+                         "| a:2 | Head \\| Ops | — | — | — | — | — | todo | — |")
+        r = subprocess.run([sys.executable, tool, "row", "--file", path,
+                            json.dumps({"Bogus": "x"})],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("Bogus", r.stderr)
+
+    def test_every_writing_skill_names_the_escape(self):
+        """The writers are the skills' prose, not a script — so the control
+        sits on the set of those that COMPOSE a cell from imported text, not
+        on the ones already seen: `job-scan` (new rows), `cover-letter`
+        (the note, the appended row), `interview-prep` (the free text after
+        the markers), and the contract itself."""
+        for rel in ("skills/job-scan/SKILL.md", "skills/cover-letter/SKILL.md",
+                    "skills/interview-prep/SKILL.md",
+                    "shared/pipeline-format.md"):
+            with self.subTest(file=rel):
+                root = os.path.dirname(os.path.dirname(SCRIPTS))
+                root = os.path.dirname(root)
+                text = open(os.path.join(root, rel), encoding="utf-8").read()
+                self.assertIn("ledger.py", text)
+                self.assertRegex(text, r"ledger\.py.? (?:escape|row)",
+                                 "this writer does not name the escape")
+
 class ATestNamespaceMatchesTheRealParser(unittest.TestCase):
     """A case that builds `argparse.Namespace` by hand bypasses argparse.
 

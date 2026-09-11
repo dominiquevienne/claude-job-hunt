@@ -40,9 +40,24 @@ the issue names for any migration.
     ledger.py index                 id, status and match — the exclusion set
     ledger.py rows --status todo    the full rows a run will edit in place
     ledger.py count                 rows and section sizes
-    ledger.py verify --before N     refuse a write that lost a row
+    ledger.py verify --before N     refuse a write that lost a row, or a row
+                                    whose cells no longer line up
+    ledger.py escape <text>         imported text, made safe for a cell
+    ledger.py row '<json>'          a whole row, every cell escaped, in the
+                                    ledger's own column order
 
-Exit codes: 2 unreadable, 5 a row count that went down.
+WHY THE LAST TWO — issue #200. **A `|` in imported text is a column break
+the moment it is written into a cell**, and nothing that composes a row —
+an ad title, an employer, an e-mail subject copied into `Note` — was
+escaping it. *"Antaes | Meeting confirmation"* pasted into a note gave a
+row of ten cells; it fell after `Status`, so the status survived **by
+chance**. Before `Status` it shifts the status, and #77 says what that
+costs: an ad proposed again, or one buried, silently. **Escape at the
+write, not at the read**: repairing broken rows after the fact only moves
+the next incident, and the next may fall on the other side of `Status`.
+
+Exit codes: 2 unreadable, 5 a row count that went down, 6 a row whose
+cells do not line up with the header.
 """
 
 import argparse
@@ -65,6 +80,29 @@ def die(msg, code=2):
 
 def note(msg):
     print(f"[ledger] {msg}", file=sys.stderr)
+
+
+def escape(text):
+    """Imported text, made safe to sit in one cell. **The single function
+    every writer goes through**, and the reason it lives here: `cells()`
+    below is the reader, and the two must agree on what an escaped pipe is.
+
+    - `|` becomes `\\|` — unless it already is one, so escaping twice is
+      escaping once;
+    - a line break becomes a space — a newline inside a cell ends the row
+      just as surely as a bare pipe splits it.
+    """
+    text = re.sub(r"[\r\n]+", " ", text or "")
+    return re.sub(r"(?<!\\)\|", r"\\|", text).strip()
+
+
+def row(values, cols):
+    """One markdown row from `{column: text}`, in the ledger's own column
+    order, **every cell escaped** — the composition point a writer calls
+    instead of joining strings with `|` by hand. A column the caller did
+    not name is `—`."""
+    return "| " + " | ".join(escape(str(values.get(c, "—") or "—"))
+                             for c in cols) + " |"
 
 
 def cells(line):
@@ -102,19 +140,28 @@ def ads_table(text, path):
     return cols, rows
 
 
-def parsed(cols, rows, path):
-    out, ragged = [], 0
-    for r in rows:
+def ragged_rows(cols, rows):
+    """`[(position, id_cell, cell_count)]` for every row whose cells do not
+    line up with the header — the rows whose status cannot be trusted."""
+    out = []
+    for i, r in enumerate(rows, 1):
         c = cells(r)
         if len(c) != len(cols):
-            ragged += 1
-        out.append(dict(zip(cols, c)))
+            out.append((i, c[0] if c else "", len(c)))
+    return out
+
+
+def parsed(cols, rows, path):
+    out = [dict(zip(cols, cells(r))) for r in rows]
+    ragged = ragged_rows(cols, rows)
     if ragged:
         # Loud, because a shifted row means a wrong status, and a wrong status
         # means an ad proposed again or one silently buried.
-        note(f"{ragged} of {len(rows)} row(s) do not have {len(cols)} cells. "
-             f"Their columns are shifted and their status cannot be trusted — "
-             f"fix the table before relying on this index. ({path})")
+        note(f"{len(ragged)} of {len(rows)} row(s) do not have {len(cols)} "
+             f"cells. Their columns are shifted and their status cannot be "
+             f"trusted — fix the table before relying on this index. ({path})")
+        for i, ident, n in ragged[:10]:
+            note(f"  row {i} ({ident}): {n} cells")
     return out
 
 
@@ -257,14 +304,57 @@ def cmd_verify(a):
     never lose a row*. This is that, after the write.
     """
     text = read(a.file)
-    _cols, rows = ads_table(text, a.file)
+    cols, rows = ads_table(text, a.file)
     if len(rows) < a.before:
         die(f"{a.file} now has {len(rows)} ad row(s) and had {a.before} before "
             f"the write. **{a.before - len(rows)} row(s) were lost.** Restore "
             f"the file from the copy taken before the run and do not write "
             f"again until the merge is fixed.", 5)
+    ragged = ragged_rows(cols, rows)
+    if ragged:
+        # **A row with shifted columns is a lost row that still counts.** The
+        # count above cannot see it, and `index` only warned — an ad with a
+        # wrong status is proposed again or buried. Issue #200: the pipe came
+        # from an e-mail subject pasted into `Note`, unescaped.
+        where = "; ".join(f"row {i} ({ident}): {n} cells"
+                          for i, ident, n in ragged[:10])
+        die(f"{a.file}: {len(ragged)} row(s) do not have {len(cols)} cells "
+            f"and their status cannot be trusted — {where}. **A `|` or a "
+            f"line break in a cell must be escaped at the write**: pass every "
+            f"imported text through `ledger.py escape`, or compose the row "
+            f"with `ledger.py row`. Fix the row(s) before relying on the "
+            f"file.", 6)
     note(f"{len(rows)} row(s), was {a.before} — nothing lost "
-         f"({len(rows) - a.before} added).")
+         f"({len(rows) - a.before} added); every row has {len(cols)} cells.")
+
+
+def cmd_escape(a):
+    """`ledger.py escape "Antaes | Meeting confirmation"` → the same text with
+    the pipe escaped. `-` reads stdin, for text too long or too quoted for an
+    argument."""
+    text = sys.stdin.read() if a.text == "-" else a.text
+    print(escape(text))
+
+
+def cmd_row(a):
+    """`ledger.py row '{"ID": "linkedin:1", "Role": "…", …}'` → one row in the
+    ledger's own column order, every cell escaped. The header is read from
+    the file so a ledger that gained a column (`Pay`, 2026-08) is served in
+    its own shape; `-` reads the JSON from stdin."""
+    raw = sys.stdin.read() if a.json_text == "-" else a.json_text
+    try:
+        values = json.loads(raw)
+    except json.JSONDecodeError as e:
+        die(f"row: not a JSON object — {e}")
+    if not isinstance(values, dict):
+        die("row: expected a JSON object of {column: text}")
+    text = read(a.file)
+    cols, _rows = ads_table(text, a.file)
+    unknown = sorted(set(values) - set(cols))
+    if unknown:
+        die(f"row: column(s) {unknown} are not in the ledger's header "
+            f"{cols}")
+    print(row(values, cols))
 
 
 def main():
@@ -278,9 +368,20 @@ def main():
                         ("due", cmd_due, "follow-up dates that have arrived"),
                         ("stamp", cmd_stamp,
                          "fingerprint before reading, check before writing"),
-                        ("verify", cmd_verify, "refuse a write that lost a row")):
+                        ("verify", cmd_verify,
+                         "refuse a write that lost a row or shifted one"),
+                        ("escape", cmd_escape,
+                         "imported text, made safe for one cell"),
+                        ("row", cmd_row,
+                         "a whole row from JSON, every cell escaped")):
         c = sub.add_parser(name, help=h)
-        c.add_argument("--file", default=DEFAULT)
+        if name != "escape":
+            c.add_argument("--file", default=DEFAULT)
+        if name == "escape":
+            c.add_argument("text", help="the text, or - for stdin")
+        if name == "row":
+            c.add_argument("json_text", metavar="json",
+                           help="{column: text}, or - for stdin")
         if name == "index":
             c.add_argument("--excluded-only", action="store_true",
                            dest="excluded_only",

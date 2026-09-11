@@ -1026,6 +1026,13 @@ Update the ad's row to `applied <YYYY-MM-DD>` and note the dossier folder in
 `Match` (it replaces any provisional `~`). Add a `Log` line. If a module is
 enabled, honour its ledger marker.
 
+**Anything imported goes through `ledger.py escape` before it lands in a
+cell** — an e-mail subject, the ad's title, the employer's name — and a row
+appended from scratch is built with `ledger.py row '{…}'`, never by hand. A
+bare `|` in a note is a column break; the one found in #200 fell after
+`Status` by chance. Then `ledger.py verify --before <count>` — it exits 6 on a
+row whose cells no longer line up.
+
 **Write the step-3b range into the `Pay` column**, with its tier letter:
 `CHF 115–135k (C)`. That is what makes a month of applications comparable later
 — and what tells the user, at a glance, which figures came from an employer and

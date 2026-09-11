@@ -630,6 +630,18 @@ rows, which is the write-side twin of `cat`-ing the file — the same cost paid
 again, and the occasion for a lost row. Each new row goes where its match puts
 it, and the file stays sorted because it was never unsorted.
 
+**Compose each new row with the tool, never by joining strings with `|`:**
+
+```bash
+python3 "$S/ledger.py" row '{"ID": "<board:id>", "Role": "<title>", "Company": "<employer>",
+  "Location / mode": "…", "Posted": "…", "Match": "…", "Status": "todo", "Note": "…"}'
+```
+
+It escapes every cell — a title or an employer carrying a `|` would otherwise
+be a column break, and a break before `Status` shifts the status (#200) — and
+serves the row in the ledger's own column order. When you edit an existing
+row's `Note` instead, pass the imported text through `ledger.py escape` first.
+
 **Then check both invariants instead of asserting them:**
 
 ```bash
@@ -642,9 +654,11 @@ catch different things: one says somebody else got there first, the other says
 your own merge lost something. **If the stamp moved, do not write** — re-read,
 re-apply, and tell the user it happened.
 
-It exits 5 if the ledger came back shorter. `shared/pipeline-format.md` opens
-with *read it first, write it last, and never lose a row*; this is the last
-clause as a check.
+It exits 5 if the ledger came back shorter, **and 6 if a row's cells no
+longer line up with the header** — a shifted row is a lost row that still
+counts, and its status is the one that cannot be trusted. `shared/pipeline-format.md`
+opens with *read it first, write it last, and never lose a row*; this is the
+last clause as a check.
 
 **The `Pay` column: record only what the board published.** Some boards attach a
 figure to the ad — jobup does — and when the adapter extracts one, put it in
