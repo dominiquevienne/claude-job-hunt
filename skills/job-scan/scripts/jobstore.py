@@ -198,6 +198,15 @@ def cmd_search(a):
         urls = list(sitemap_locs(body)) or re.findall(
             r'"url"\s*:\s*"([^"]+/job/l\d+/[^"]+)"', body)
         if not urls:
+            if page == 1:
+                # #181, batch 3: «stopping» on page 1 read like the end of a
+                # listing. A first page with no ad URL is either an empty
+                # search or a reading fault, and the two look alike — so the
+                # size goes beside the zero, and the run exits 6 rather than 0
+                # with nothing on stdout.
+                die(f"page 1: no ad URL in the ItemList, {len(body)} characters "
+                    f"of {ctype!r}. **An empty search and a reading fault look "
+                    f"alike here** — read the page before believing the zero.", 6)
             note(f"page {page}: no ad URL in the ItemList — stopping.")
             break
         for u in urls:

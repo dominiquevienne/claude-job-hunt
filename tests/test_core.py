@@ -14234,5 +14234,37 @@ class AnUnclosedHandleWritesTheFileNameOnStderr(unittest.TestCase):
                                    "onto stderr")
 
 
+class AFirstPageWithNothingOnItIsNotTheEndOfAListing(unittest.TestCase):
+    """**#181, batch 3.** `jobstore.py search` printed «page 1: no ad URL in
+    the ItemList — stopping» and exited 0 with nothing on stdout — the
+    sentence an exhausted pagination prints, on the one page where it cannot
+    mean that. An empty search and a reading fault look alike there, so the
+    size of the body goes beside the zero and the run exits 6. Mutated:
+    the `page == 1` branch removed → this case reddens (exit None, no
+    «characters»)."""
+
+    def test_page_one_without_a_url_exits_6_with_the_size_beside_the_zero(self):
+        import contextlib
+        spec = importlib.util.spec_from_file_location(
+            "_jobstore181", os.path.join(SCRIPTS, "jobstore.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.get = lambda path: ("text/html", "<html>" + "x" * 5000 + "</html>")
+        a = argparse.Namespace(country="ch", keyword="analyste", location=None,
+                               pages=2, limit=None, delay=0)
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_search(a)
+            except SystemExit as e:
+                code = e.code
+        self.assertEqual(code, 6, "a first page with nothing on it is exit 6")
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("5013 characters", err.getvalue(),
+                      "the size must stand beside the zero")
+        self.assertIn("look alike", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
