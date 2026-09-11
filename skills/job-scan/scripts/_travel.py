@@ -91,6 +91,7 @@ _NOT_A_REQUIREMENT = (
     r"travel\s*/\s*property", r"hospitality\s*/\s*travel",
     r"travel (?:industry|sector|domain|platform|tech)",
     r"travel expenses?", r"travel allowance", r"travel reimburse",
+    r"travel budget", r"travel (?:is|are|will be) (?:paid|covered)",
     r"frais de d[ée]placement", r"indemnit[ée] de d[ée]placement",
     r"prime mobilit[ée]",
     r"reisekosten", r"reisebranche", r"reiseindustrie",

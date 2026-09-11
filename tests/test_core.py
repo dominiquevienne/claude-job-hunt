@@ -4745,13 +4745,24 @@ class TravelQuantityInWordsIsStillAQuantity(unittest.TestCase):
          "ca. 2 times/year"),
     ]
 
+    # a plain statement is an ask even without an amount — the answer is
+    # then "without saying how much", which is true of these
+    ASKS_WITHOUT_AMOUNT = [
+        "You will travel to client sites in Germany.",
+        "Some travel to our Lyon office.",
+    ]
+
     # an amount next to a travel word is a requirement; an amount next to
-    # anything else, or a travel word that is a benefit, is not
+    # anything else, or a travel word that is a benefit, is not. **The
+    # first four carry both a travel word and an amount**: they are the
+    # witnesses that the benefit filter runs before the amount is read.
     ASKS_NOTHING = [
+        "Travel expenses reimbursed up to 100%.",
+        "Conference travel budget: 5 days per year.",
+        "Frais de déplacement remboursés jusqu'à 100%.",
+        "Reisekosten werden zu 100% erstattet.",
         "Two weeks of onboarding in Zurich.",
         "A twice-weekly standup with the team.",
-        "Travel expenses reimbursed up to 100%.",
-        "Reisekosten werden zu 100% erstattet.",
         "International travel: confirmed available by the candidate on "
         "2026-09-04, and written to `config.yml`",
         "You will write software and review code with the team.",
@@ -4765,6 +4776,32 @@ class TravelQuantityInWordsIsStillAQuantity(unittest.TestCase):
                 self.assertTrue(req["asks"], "not even seen as a question")
                 self.assertEqual(req["degree"], degree)
                 self.assertEqual(req["amount"], amount)
+
+    def test_a_plain_statement_of_travel_is_an_ask_without_an_amount(self):
+        """Every phrasing the first version knew was a verb of willingness
+        — *ability to*, *willing to*, *expected to*. *"You will travel"* is
+        a requirement stated as a fact, and it was invisible."""
+        import _travel
+        for text in self.ASKS_WITHOUT_AMOUNT:
+            with self.subTest(text=text[:40]):
+                req = _travel.requirement(text)
+                self.assertTrue(req["asks"], "a plain statement was not seen")
+                self.assertIsNone(req["amount"])
+
+    def test_a_benefit_bullet_does_not_hide_the_requirement_beside_it(self):
+        """A flattened list with *travel expenses reimbursed* and *ability
+        to travel twice a year* on the same line: if the line is one
+        sentence, the benefit filter drops the whole of it, requirement
+        included. Splitting at the bullet markers is what keeps the ask."""
+        import _travel
+        req = _travel.requirement(
+            "What we offer: - Travel expenses reimbursed in full - Ability to "
+            "travel twice a year, for company events for up to two weeks each "
+            "- Remote-first")
+        self.assertTrue(req["asks"], "the benefit beside it hid the ask")
+        self.assertEqual(req["amount"],
+                         "up to 4 weeks/year (2 × 2 weeks per year)")
+        self.assertNotIn("expenses", req["quotes"][0])
 
     def test_frequency_and_duration_are_multiplied_not_matched_as_one(self):
         """*twice a year* and *two weeks each* are twenty characters apart
