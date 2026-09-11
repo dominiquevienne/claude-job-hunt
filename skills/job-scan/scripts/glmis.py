@@ -83,6 +83,7 @@ import urllib.request
 
 from _decode import decode_body
 from _pace import Pace
+from _zero import empty_first_page
 from _robots import allowed as robots_allowed, full_path
 from _ua import UA
 
@@ -226,7 +227,13 @@ def fetch_listing(params):
     if landed and landed.rstrip("/") != url.rstrip("/") and "?" not in landed:
         die(f"{url} redirected to {landed} — that is not the listing.",
             EXIT_BROKEN)
-    return cards_on(page)
+    rows, bad = cards_on(page)
+    if not rows and not bad:
+        # #181: no card and no unparsed candidate on a 200 listing — the size
+        # beside the zero, exit 6. (`bad` non-empty has its own message.)
+        die(empty_first_page("glmis", page, "advertisement", candidates=0,
+                             where=url), 6)
+    return rows, bad
 
 
 def check(dimension, value):
