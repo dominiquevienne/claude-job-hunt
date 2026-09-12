@@ -16080,6 +16080,106 @@ class OneSitemapSevenTimesTheBoardAndTheListingStatesTheCount(unittest.TestCase)
         self.assertEqual((d["country"], d["language"], d["city"], d["region"]), ("Greece", "en", "Athens", None))
 
 
+class ARestCollectionAndAJobSitemapAreTwoEnumerationsOfOneStore(unittest.TestCase):
+    """**`albaniajobs.py`, 2026-09-12 (#233 lot 4 → adapter).** A WordPress
+    board: the REST collection `job-listings` is the route (post id, link,
+    title, dates, meta, term ids), the AIOSEO `job_listing-sitemap.xml` the
+    second document — «n emitted, sitemap lists N — equal», or «k short».
+    The URL carries no id (a leading `13` on most entries); the key is the
+    post id, and `ad` reads it back from the `JobPosting`'s `identifier.value`
+    (`…?post_type=job_listing&p=<id>`). Term ids become names through the
+    three taxonomy endpoints, ids when `--no-terms`. WordPress' `date_gmt`
+    carries no zone marker and is emitted with a `Z`. Mutated (`-B`, detached
+    copy): the dedup removed → 3 ≠ 2 reddens the equal case; «short» →
+    «equal» in the gap branch → the gap case reddens; the `/job/` filter on
+    the sitemap dropped → the equal case reddens (a company URL counted);
+    `named()` made to return ids → the names case reddens; `POST_ID_RE`
+    broken → the ad case reddens (`id` null); the `Z` suffix dropped → the
+    date case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_albaniajobs", os.path.join(SCRIPTS, "albaniajobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _item(self, i, slug, region=181, typ=13):
+        return {"id": i, "link": f"https://albaniajobs.al/job/13-{slug}/", "date": "2026-08-11T14:48:06",
+                "date_gmt": "2026-08-11T12:48:06", "modified_gmt": "2026-08-17T12:23:25", "status": "publish",
+                "title": {"rendered": slug.replace("-", " ").title()}, "excerpt": {"rendered": "<p>Kërkojmë&hellip;</p>"},
+                "meta": {"_company_name": "", "_job_salary": "", "_remote_position": "", "_filled": ""},
+                "job_listing_region": [region], "job-types": [typ], "job-categories": []}
+
+    def _served(self, items, sitemap_urls, terms=True):
+        pages = [json.dumps(items[:100]), json.dumps(items[100:]) if len(items) > 100 else None]
+        T = {"job_listing_region": json.dumps([{"id": 181, "name": "Tiran&euml;", "count": 91}]),
+             "job-types": json.dumps([{"id": 13, "name": "Kohë e Plotë", "count": 118}]),
+             "job-categories": json.dumps([])}
+        sm = "<urlset>" + "".join(f"<url><loc><![CDATA[{u}]]></loc><lastmod>2026-08-17</lastmod></url>" for u in sitemap_urls) + "</urlset>"
+
+        def get(url):
+            if "job-listings" in url:
+                n = int(url.rsplit("page=", 1)[1])
+                return (200, pages[n - 1]) if n <= len(pages) and pages[n - 1] is not None else (400, "")
+            for tax, body in T.items():
+                if f"/{tax}?" in url:
+                    return 200, body
+            if "sitemap" in url:
+                return 200, sm
+            raise AssertionError(url)
+        return get
+
+    def _list(self, mod, get, **opts):
+        import contextlib
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(limit=None, no_terms=opts.get("no_terms", False), no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    ITEMS = None
+
+    def setUp(self):
+        self.items = [self._item(3248, "truck-driver-poland"), self._item(3227, "marketing-specialist"), self._item(3248, "truck-driver-poland")]
+        self.urls = ["https://albaniajobs.al/job/13-truck-driver-poland/", "https://albaniajobs.al/job/13-marketing-specialist/",
+                     "https://albaniajobs.al/company/acme/"]
+
+    def test_the_sitemap_count_equal_to_the_distinct_count_is_said_equal_and_terms_are_names(self):
+        rows, err = self._list(self._mod(), self._served(self.items, self.urls))
+        self.assertEqual([r["id"] for r in rows], ["3248", "3227"])
+        self.assertEqual((rows[0]["regions"], rows[0]["types"], rows[0]["posted"]), (["Tiranë"], ["Kohë e Plotë"], "2026-08-11T12:48:06Z"))
+        self.assertIn("**2 distinct post id(s)**", err)
+        self.assertIn("2 emitted, sitemap lists 2 — equal.", err)
+
+    def test_a_sitemap_longer_than_the_collection_is_named_short_with_the_gap(self):
+        rows, err = self._list(self._mod(), self._served(self.items, self.urls + ["https://albaniajobs.al/job/13-x/", "https://albaniajobs.al/job/13-y/"]))
+        self.assertIn("2 emitted, sitemap lists 4 — 2 short", err)
+        self.assertNotIn("equal", err)
+
+    def test_no_terms_emits_the_ids(self):
+        rows, err = self._list(self._mod(), self._served(self.items, self.urls), no_terms=True)
+        self.assertEqual((rows[0]["regions"], rows[0]["types"]), ([181], [13]))
+        self.assertIn("Term ids emitted, not names.", err)
+
+    def test_the_post_id_is_read_back_from_the_identifier_on_the_page(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "http://schema.org/", "@type": "JobPosting", "title": "Account Manager",
+                         "datePosted": "2025-12-22T08:19:08+01:00", "description": "&lt;p&gt;Remote&lt;/p&gt;",
+                         "hiringOrganization": {"@type": "Organization", "name": "Group Getaways"},
+                         "identifier": {"@type": "PropertyValue", "name": "Group Getaways",
+                                        "value": "https://albaniajobs.al/?post_type=job_listing&amp;#038;p=2993"},
+                         "jobLocation": {"@type": "Place", "address": "Shqipëri"}, "jobLocationType": "TELECOMMUTE", "directApply": True})
+        mod.get = lambda u: (200, f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>')
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://albaniajobs.al/job/544-account-manager/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["ledger_id"], d["employer"], d["place"], d["remote"]), ("2993", "albaniajobs:2993", "Group Getaways", "Shqipëri", True))
+        self.assertEqual(d["description"], "Remote")
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
