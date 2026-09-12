@@ -6,14 +6,14 @@
 <!-- script: cvbankas.py -->
 <!-- countries: LT -->
 <!-- content: measured · rules read twice and certain — the only Anthropic names refused are `anthropic-ai` and `Claude-Web`, names no request from here carries; `*` refused ten account and social paths and nothing of the board; `identity()` answers `claude-user`, `verdict()` sweeps — and the transport answers 200: the root is the listing, «Rodoma 9 113 skelbimų», page 1 carries 142 VIP cards, pages 2–181 carry 50 each and the last 21 — 142 + 179 × 50 + 21 = 9 113, exactly the stated figure; the advertisement page carries a JobPosting in microdata · 2026-09-12 12:32 UTC -->
-<!-- witness: the listing's own «Rodoma N skelbimų», read on every page and printed beside the distinct count — «n emitted, site states 9 113 — equal / k short» — and the page arithmetic 142 + 179 × 50 + 21 measured on pages 1, 2, 3 and 181 -->
+<!-- witness: the listing's own «Rodoma N skelbimų», read on every page and printed beside the distinct count — the full walk of 181 pages, 2026-09-12 12:40:29–12:59:59 UTC: «9 111 emitted, site states 9 113 — 2 short» — and the page arithmetic 142 + 179 × 50 + 21 = 9 113 measured on pages 1, 2, 3 and 181 -->
 
 **Shipped 2026-09-12 — measured in lot 6 of #233, shipped the same hour.**
 Every fetch under the declared identity, the guard on the exact path first,
 1 s between pages (no `Crawl-delay`).
 
 ```
-python3 skills/job-scan/scripts/cvbankas.py list [--pages N] [--limit N] [--no-site-total]   # 181 requests at 1 s for the whole board; --pages bounds the walk
+python3 skills/job-scan/scripts/cvbankas.py list [--pages N] [--limit N] [--no-site-total]   # 181 requests, ~20 min measured, for the whole board; --pages bounds the walk
 python3 skills/job-scan/scripts/cvbankas.py ad --url https://www.cvbankas.lt/<slug>/<n>-<id>
 ```
 
@@ -70,6 +70,23 @@ site states N — equal / k short» after a full walk; `--pages` bounds the
 walk, says «the walk stopped at page p», and does not compare.** *A bounded
 count is a lower bound, never a check.*
 
+**The full walk, 2026-09-12 12:40:29–12:59:59 UTC — 181 pages, 19 min 30 s
+at 1 s between requests plus the fetch of ~0.5 MB a page:**
+
+```
+[cvbankas] 181 page(s) read of 181; **9 111 distinct advertisement id(s)**.
+[cvbankas] 9 111 emitted, site states 9 113 — 2 short.
+```
+
+*Two short over twenty minutes on a live board: the stated figure is read
+on page 1 at 12:40 and the last page at 12:59, and an advertisement that
+expires or moves between pages during the walk is counted by the site and
+not by the walk — the result, not a defect; the arithmetic on four pages
+read within a minute of each other gave 9 113 exactly.* Census of the
+9 111: VIP 142 (page 1 and nowhere else); a salary on 9 019 — gross 5 459,
+net 3 560, monthly 8 551, hourly 445; a city on all 9 111 — Vilnius 3 759,
+Kaunas 2 160, Klaipėda 706, Šiauliai 377.
+
 ## What an advertisement carries — microdata, and obfuscated digits
 
 `itemtype JobPosting` with `title` (the `<h1>`), `datePosted` (a
@@ -94,7 +111,7 @@ board's own address, and the adapter emits none.
 
 - **An adapter, shipped** — `list` for the paged enumeration with the
   stated count as the check, `ad` for one advertisement from its microdata.
-  No key, no browser; 181 requests at 1 s for the whole board.
+  No key, no browser; 181 requests for the whole board — 19 min 30 s measured, the pages are half a megabyte each.
 - **Not a verdict on the sitemap** — one path, one challenge, dated; the
   board is served, and the adapter goes around the path rather than through
   it.
