@@ -15,9 +15,10 @@ open path returns the same 50). **So the inventory is read from
 advertisements (plus 13 `/at/<company>` employer pages, 1 505 `/jobs/in|for/…`
 facet pages and 567 blog posts — all told apart by shape, not by count). The
 listing's stated count is the second source: «55 emitted, site states 55 —
-equal», or «k short». `<lastmod>` on every entry, but it is the monthly
-regeneration date (2026-09-01 on all 68 `/at/` entries), not the
-advertisement's — nothing to filter on, so no `--since`.
+equal», or «k short». `<lastmod>` on every entry, but 2026-09-01 on all 68 `/at/` entries
+while one advertisement was created 2026-09-07 — not the advertisement's
+date, and what it measures is not established; nothing to filter on, so no
+`--since`.
 
 EVERY ADVERTISEMENT CARRIES A JobPosting in JSON-LD — title, description
 (HTML), datePosted, validThrough, employmentType, hiringOrganization,
@@ -176,7 +177,7 @@ def cmd_sitemap(a):
         print(json.dumps(r, ensure_ascii=False))
     note(f"{th(raw)} <loc> in sitemap.xml: **{th(len(ads))} distinct advertisement(s)** (/at/<company>/<slug>), "
          f"{th(companies)} employer page(s) (/at/<company>), {th(other)} other (facets, blog, chrome). "
-         "The <lastmod> is the file's regeneration date, not the advertisement's — nothing to filter on.")
+         "The <lastmod> is the same on every /at/ entry and is not the advertisement's date — nothing to filter on.")
     if a.no_site_total:
         return
     code, page, _ = get(LISTING)
