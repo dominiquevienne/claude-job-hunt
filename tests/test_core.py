@@ -16180,6 +16180,102 @@ class ARestCollectionAndAJobSitemapAreTwoEnumerationsOfOneStore(unittest.TestCas
         self.assertEqual(d["description"], "Remote")
 
 
+class TheActiveSitemapsAreTheRouteAndTheHandWrittenPathsAreNeverRead(unittest.TestCase):
+    """**`founditgulf.py`, 2026-09-12 (#233 lot 4 → adapter).** The rules
+    carry a hand-written group naming ClaudeBot with `Disallow: /jobs/`,
+    `/search/`; Claude-User is not in it — and the adapter still never reads
+    those two paths (`gate()` exits 7 on them before the rules are asked).
+    The index's `active-jobs-sitemap<n>.xml.gz` files are the enumeration
+    (58 930 distinct ids on 2026-09-12; the `expired-jobs` files are refused
+    to `*` and never matched), `todays-jobs-sitemap.xml` the second document
+    — «consistent» when every id of today's is among the active, «NOT among»
+    with the count when not — and the root's «Over 800,000+ jobs» is printed
+    as a slogan, never compared. Dates arrive as `DD-MM-YYYY` and are emitted
+    as published beside their ISO; the country is the advertisement's own
+    `addressCountry`. Mutated (`-B`, detached copy): `NEVER` emptied → the
+    gate case reddens; `ACTIVE_RE` widened to `-sitemap` → an expired file is
+    asked for and the equal case errors; the dedup removed → 3 ≠ 2; `missing`
+    forced empty → the disagreement case reddens; `iso()` made identity → the
+    date case reddens; `SLOGAN_RE` broken → the slogan case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_founditgulf", os.path.join(SCRIPTS, "founditgulf.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ("<sitemapindex>" + "".join(f"<sitemap><loc>https://www.founditgulf.com/xmlsitemap/{n}</loc></sitemap>" for n in
+             ("active-jobs-sitemap0.xml.gz", "jobs-by-skills-sitemap0.xml.gz", "active-jobs-sitemap1.xml.gz", "expired-jobs-sitemap0.xml.gz"))
+             + "</sitemapindex>")
+
+    @staticmethod
+    def _urlset(ids):
+        return "<urlset>" + "".join(f"<url><loc>https://www.founditgulf.com/job/nurse-x-{i}</loc><lastmod>2026-09-11T13:06:53+02:00</lastmod></url>" for i in ids) + "</urlset>"
+
+    def _served(self, today_ids, slogan="Over 800,000+ jobs to explore"):
+        def get(url, binary=False):
+            if url.endswith("sitemap-index.xml"):
+                return 200, self.INDEX
+            if "active-jobs-sitemap0" in url:
+                return 200, self._urlset([18080752, 18080754])
+            if "active-jobs-sitemap1" in url:
+                return 200, self._urlset([18080752]) + "<urlset><url><loc>https://www.founditgulf.com/search/x</loc></url></urlset>"
+            if "todays-jobs" in url:
+                return 200, self._urlset(today_ids)
+            if url == "https://www.founditgulf.com/":
+                return 200, f"<html><body><h2>{slogan}</h2></body></html>"
+            raise AssertionError("asked for " + url)
+        return get
+
+    def _sitemap(self, mod, get):
+        import contextlib
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_two_active_files_are_deduplicated_and_todays_is_consistent(self):
+        rows, err = self._sitemap(self._mod(), self._served([18080754]))
+        self.assertEqual([r["id"] for r in rows], ["18080752", "18080754"])
+        self.assertIn("2 active-jobs file(s) of 4 index children; 4 <loc>, 3 of the advertisement shape, 1 not; **2 distinct advertisement id(s)**", err)
+        self.assertIn("today's sitemap lists 1, 1 of them among the 2 active — consistent.", err)
+        self.assertIn("«Over 800,000+ jobs to explore» — a network slogan", err)
+
+    def test_an_id_in_todays_and_not_among_the_active_is_said_so_with_the_count(self):
+        rows, err = self._sitemap(self._mod(), self._served([18080754, 99999999]))
+        self.assertIn("today's sitemap lists 2 and **1 of them are NOT among the 2 active**", err)
+        self.assertNotIn("consistent", err)
+
+    def test_the_hand_written_paths_are_refused_by_the_adapter_before_the_rules(self):
+        import contextlib
+        mod = self._mod()
+        for u in ("https://www.founditgulf.com/jobs/", "https://www.founditgulf.com/search/it-jobs"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.gate(u)
+            self.assertEqual(cm.exception.code, 7, u)
+
+    def test_the_dates_are_emitted_as_published_and_as_iso_and_the_country_is_the_advertisements(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "https://schema.org", "@type": "JobPosting", "title": "Technical Sales Engineer",
+                         "identifier": {"@type": "PropertyValue", "name": "ATEC", "value": 66495664},
+                         "datePosted": "10-09-2026", "validThrough": "25-10-2026", "employmentType": "Full time",
+                         "hiringOrganization": {"@type": "Organization", "name": "ATEC", "sameAs": "ATEC"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Egypt", "addressRegion": "Egypt", "addressCountry": "EG"}},
+                         "experienceRequirements": {"@type": "OccupationalExperienceRequirements", "monthsOfExperience": 24},
+                         "occupationalCategory": "Sales Engineering", "industry": ["Other"], "skills": ["water pumps"], "directApply": False,
+                         "description": "Job Description<br/>Sales."})
+        mod.get = lambda u, binary=False: (200, f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>')
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.founditgulf.com/job/technical-sales-engineer-atec-egypt-66495664"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["country"], d["id"], d["posted"], d["posted_as_published"], d["valid_through"]), ("EG", "66495664", "2026-09-10", "10-09-2026", "2026-10-25"))
+        self.assertEqual((d["months_of_experience"], d["industries"], d["skills"], d["employer"]), (24, ["Other"], ["water pumps"], "ATEC"))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
