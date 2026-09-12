@@ -1,6 +1,6 @@
 # Assessed, adapter not built — Tala-Com (DR Congo)
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-12 -->
 
 <!-- hosts: www.tala-com.com -->
 <!-- script: none -->
@@ -78,6 +78,35 @@ extraction.
 
 **That is a weaker anchor than a declared total, and it is the one available.**
 *Naming the gap is what this card can do; inventing a total is not.*
+
+## 2026-09-12 — the name is out of the zone: NXDOMAIN everywhere, `clientHold` at the registrar
+
+**Measured 2026-09-12 11:48 UTC, before any browser was opened for #222.**
+The guard on `/offres-demploi/` returned INDETERMINATE — *«nodename nor
+servname provided»* — and the second-resolver rule says a DNS negative is a
+resolver's answer until two public resolvers agree:
+
+```
+dig @1.1.1.1  www.tala-com.com A   -> NXDOMAIN      tala-com.com A -> NXDOMAIN   NS -> (none)
+dig @8.8.8.8  www.tala-com.com A   -> NXDOMAIN      tala-com.com A -> NXDOMAIN   NS -> (none)
+dig @9.9.9.9  www.tala-com.com A   -> NXDOMAIN
+whois tala-com.com   Registrar OVH sas · created 2023-09-20 · **expiry 2026-09-20** · Updated 2026-09-11T22:38:40Z
+                     Domain Status: **clientHold** · clientDeleteProhibited · clientTransferProhibited · NS diva/grant.ns.cloudflare.com
+```
+
+**`clientHold` is the registrar withholding the delegation — the name servers
+are still recorded, and the name is not published.** Three resolvers, two
+names, one answer. *Updated at the registry the evening before, nine days
+before the domain's expiry date.* **This is neither the 403 of the days
+before nor a verdict on the board: it is a name that does not resolve today,
+for a reason the registry states.**
+
+So the browser route — first in the #222 order because this is the only
+board of its country — **cannot be measured today by any client**, and
+nothing was requested. *An INDETERMINATE is not probed.* What reopens it:
+the name resolving again (`dig @1.1.1.1 www.tala-com.com A` returning an
+address), which is the first line to run on any later pass — the expiry date
+of 2026-09-20 is when the answer is most likely to change either way.
 
 ## What this card does not establish
 
