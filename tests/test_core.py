@@ -15845,5 +15845,50 @@ class ASitemapThatKeepsClosedAdvertisementsIsASupersetAndSaysSo(unittest.TestCas
         self.assertEqual(body.count("<loc>"), 4)
 
 
+class ASumOfCategoriesIsAnUpperBoundNotTheBoardsSize(unittest.TestCase):
+    """**`typejp.py`, 2026-09-12.** The home page states a count per category
+    — «IT・Webエンジニア （1005件）» — and their sum, 2 715, stands beside the
+    sitemap's 2 335 distinct ids. An advertisement may sit in several
+    categories, so the sum is an upper bound and the note says so; the
+    single `<lastmod>` stamp is named a regeneration stamp. Mutated (`-B`,
+    detached copy): the space before the parenthesis no longer allowed →
+    the category case reddens; «upper bound» replaced by «board states» →
+    the wording case reddens; the stamp note removed → its case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_typejp", os.path.join(SCRIPTS, "typejp.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOME = ("<html><body><a>IT・Webエンジニア （1005件）</a><a>営業系 （482件）</a>"
+            "<a>事務・管理部門系（234件）</a></body></html>")
+    INDEX = "<sitemapindex><sitemap><loc>https://type.jp/sitemaps-job-detail.xml</loc></sitemap></sitemapindex>"
+    JOBS = ("<urlset>" + "".join(f"<url><loc>https://type.jp/job-1/{i}_detail/</loc><lastmod>2026-09-12</lastmod></url>"
+                                 for i in (765997, 765998, 765997)) + "<url><loc>https://type.jp/company/9/</loc></url></urlset>")
+
+    def test_categories_are_read_with_or_without_a_space_before_the_parenthesis(self):
+        mod = self._mod()
+        self.assertEqual(mod.category_counts(self.HOME),
+                         {"IT・Webエンジニア": 1005, "営業系": 482, "事務・管理部門系": 234})
+
+    def test_the_sum_is_named_an_upper_bound_beside_the_distinct_count(self):
+        import contextlib
+        mod = self._mod()
+        served = iter([(200, self.INDEX), (200, self.JOBS), (200, self.HOME)])
+        mod.get = lambda url: next(served)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual([r["id"] for r in rows], ["765997", "765998"])
+        e = err.getvalue()
+        self.assertIn("4 <loc> in sitemaps-job-detail.xml; 3 matched the advertisement shape and 1 did not; **2 distinct", e)
+        self.assertIn("site states 1 721 across 3 categories", e)
+        self.assertIn("upper bound on the board, not its size", e)
+        self.assertNotIn("board states", e)
+        self.assertIn("regeneration stamp", e)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
