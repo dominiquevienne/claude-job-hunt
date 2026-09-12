@@ -16276,6 +16276,107 @@ class TheActiveSitemapsAreTheRouteAndTheHandWrittenPathsAreNeverRead(unittest.Te
         self.assertEqual((d["months_of_experience"], d["industries"], d["skills"], d["employer"]), (24, ["Other"], ["water pumps"], "ATEC"))
 
 
+class AHiddenFlagSplitsOneStoreIntoOwnAndMediated(unittest.TestCase):
+    """**`cvonline.py`, 2026-09-12 (#233 lot 5 → adapter).** `cv.ee`'s search
+    service counts 1 426 by default and 3 853 with `showHidden=true` — the
+    flag the page's own bundle adds; the 2 427 hidden ones are Töötukassa's
+    mediated advertisements, none in the job sitemap, which lists exactly the
+    own 1 426. The adapter emits the visible set with `mediated_by` set on
+    those rows (`--own` for the default set), resolves town / country ids
+    through the `locations` table the search page inlines, prints «own N,
+    sitemap lists M — equal / k short» and «total T = own N + hidden H», and
+    on a vacancy page reads the state's `details` (text, file, url, styled)
+    and never its `contacts`. `cv.lv` and `cvonline.lt` — same stack — answer
+    a 403 today and are named on it. Mutated (`-B`, detached copy):
+    `showHidden` dropped from the query → the visible case reddens (1 426);
+    `MEDIATED` misspelt → the mediated case reddens; the dedup removed → 3 ≠
+    2; «short» → «equal» → the gap case reddens; the countries lookup
+    bypassed → the FI case reddens; `contacts` emitted → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_cvonline", os.path.join(SCRIPTS, "cvonline.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LOC = {"countries": {"1": {"id": 1, "iso": "EE", "name": "Estonia"}, "157": {"id": 157, "iso": "FI", "name": "Finland"}},
+           "counties": {"67": {"id": 67, "countryId": 1, "name": "Harjumaa"}}, "towns": [{"id": 312, "countyId": 67, "countryId": 1, "name": "Tallinn"}]}
+
+    def _v(self, i, title, emp="Acme OÜ", country=1):
+        return {"id": i, "positionTitle": title, "employerName": emp, "publishDate": "2026-09-11T14:55:30.652+00:00",
+                "expirationDate": "2026-09-20T23:59:59.999+00:00", "salaryFrom": 1500, "salaryTo": None, "hourlySalary": False,
+                "townId": 312, "countyId": 67, "countryId": country, "remoteWork": False, "workTimes": ["FULL_TIME"],
+                "categories": ["SALES"], "quickApply": False, "positionContent": "Müük."}
+
+    def _served(self, own, hidden, sitemap_ids):
+        page = ('<html><body><script id="__NEXT_DATA__" type="application/json">'
+                + json.dumps({"props": {"pageProps": {"initialReduxState": {"locations": self.LOC}}}}) + "</script></body></html>")
+        sm = "<urlset>" + "".join(f"<url><loc>https://www.cv.ee/et/vacancy/{i}/x/y</loc></url>" for i in sitemap_ids) + "</urlset>"
+
+        def get(url):
+            if url.endswith("/et/search"):
+                return 200, page
+            if "jobs-sitemap" in url:
+                return 200, sm
+            if "vacancy-search-service/search?" in url:
+                import urllib.parse
+                q = dict(urllib.parse.parse_qsl(url.split("?", 1)[1]))
+                rows = hidden if q.get("showHidden") == "true" else own
+                off, lim = int(q["offset"]), int(q["limit"])
+                # the stub states the DISTINCT count, as the service does; the duplicate row is the page repeating itself
+                return 200, json.dumps({"total": len({r["id"] for r in rows}), "vacancies": rows[off:off + lim]})
+            raise AssertionError(url)
+        return get
+
+    def _search(self, mod, get, own=False):
+        import contextlib
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(argparse.Namespace(host="www.cv.ee", own=own, limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def setUp(self):
+        self.own = [self._v(1, "Data Engineer"), self._v(2, "Insinööri", country=157), self._v(1, "Data Engineer")]
+        self.hidden = self.own + [self._v(3, "Müügijuht", emp="Töötukassa vahendatud pakkumised")]
+
+    def test_the_visible_search_carries_the_hidden_flag_and_marks_the_mediated_rows(self):
+        rows, err = self._search(self._mod(), self._served(self.own, self.hidden, [1, 2]))
+        self.assertEqual([(r["id"], r["mediated_by"], r["country"], r["city"]) for r in rows],
+                         [("1", None, "EE", "Tallinn"), ("2", None, "FI", "Tallinn"), ("3", "Töötukassa", "EE", "Tallinn")])
+        self.assertIn("**3 distinct id(s)** of the 3 the service states for the visible (showHidden) search; 1 mediated by Töötukassa.", err)
+        self.assertIn("own 2, sitemap lists 2 — equal.", err)
+        self.assertIn("total 3 = own 2 + hidden 1", err)
+
+    def test_the_own_search_is_the_default_set_and_a_longer_sitemap_is_named_short(self):
+        rows, err = self._search(self._mod(), self._served(self.own, self.hidden, [1, 2, 9, 10]), own=True)
+        self.assertEqual([r["id"] for r in rows], ["1", "2"])
+        self.assertIn("own 2, sitemap lists 4 — 2 short.", err)
+        self.assertNotIn("— equal.", err.split("total")[0])
+
+    def test_the_ad_reads_the_details_and_never_the_contacts(self):
+        import contextlib
+        mod = self._mod()
+        v = {"id": "1656067", "position": "Müügijuht", "employerName": "Töötukassa vahendatud pakkumised", "firstPublishDate": "2026-09-12",
+             "dateModified": "2026-09-12T03:03:31Z", "status": "PUBLISHED", "languageIso": "et",
+             "settings": {"dateStart": "2026-09-12", "dateTo": "2026-09-30", "categories": ["MARKETING_ADVERTISING"], "applyingUrl": None},
+             "details": {"fileDetails": None, "standardDetails": [{"id": 1, "title": "Tööandja nimi", "content": "EstoraGroup OÜ"}], "urlDetails": None, "styleDetails": None},
+             "highlights": {"location": {"townId": 312, "countyId": 67, "countryId": 1}, "salaryFrom": 1200, "salaryTo": None, "ratePer": "MONTHLY", "remoteWorkType": "ON_SITE"},
+             "employer": {"about": "Ajutise tööjõu rent", "webpageUrl": None},
+             "contacts": {"firstName": "X", "lastName": "Y", "email": "someone@example.ee", "phone": "+372 5000 0000"}}
+        page = ('<html><body><script id="__NEXT_DATA__" type="application/json">'
+                + json.dumps({"props": {"pageProps": {"vacancy": {"1656067": v}, "locations": self.LOC}}}) + "</script></body></html>")
+        mod.get = lambda u: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.cv.ee/et/vacancy/1656067/x/y"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["mediated_by"], d["city"], d["details_kind"], d["salary_min"], d["description"]),
+                         ("1656067", "Töötukassa", "Tallinn", "text", 1200, "Tööandja nimi: EstoraGroup OÜ"))
+        self.assertNotIn("example.ee", out.getvalue())
+        self.assertNotIn("5000 0000", out.getvalue())
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
