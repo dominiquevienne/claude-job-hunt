@@ -7,6 +7,7 @@
 <!-- countries: GA -->
 <!-- content: measured · **67 distinct advertisement addresses** over `/recherche-jobs-gabon?page=0…` (25 + 25 + 17; the next page empty), read from a connected browser tab, **and the page states «67 Offres d'emploi trouvées» — equal**; the pager is zero-based, as on `ghanajob.md` and `namijob.md` · 2026-09-12 -->
 <!-- witness: the page's own «67 Offres d'emploi trouvées», read on every page of the walk and printed beside the distinct count («67 emitted, site states 67 — equal») · 2026-09-12 -->
+<!-- route: browser · 67 · 2026-09-12 -->
 
 **Gabon's AfricaWork board — the family's managed template, the family's
 25-byte refusal to the declared client, and its own dated reading.**

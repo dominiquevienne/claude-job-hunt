@@ -7,6 +7,7 @@
 <!-- countries: NA -->
 <!-- content: measured · **144 distinct advertisement addresses** over `/job-vacancies-search-namibia?page=0…5` (5 × 25 + 19; `?page=6` empty), read from a connected browser tab, **and the page states «144 Job ads found» — equal**; a walk from `?page=1` finds 119 — the pager is zero-based · 2026-09-12 -->
 <!-- witness: the page's own «144 Job ads found», read on every page and printed beside the distinct count («144 emitted, site states 144 — equal»); the same two traps as `ghanajob.md`, measured the same minute · 2026-09-12 -->
+<!-- route: browser · 144 · 2026-09-12 -->
 
 **Namibia's AfricaWork board — the family's template, the family's
 refusal, and its own dated reading.** Measured 2026-09-12 12:26–12:29 UTC:

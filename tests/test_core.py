@@ -16484,6 +16484,116 @@ class APagedFrontPageSumsToTheStatedCountAndTheSitemapIsNeverAsked(unittest.Test
         self.assertIn("interleaved with U+200C", err.getvalue())
 
 
+class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
+    """**#264, 2026-09-12.** A browser route measured to a count is a coverage
+    (decision of 2026-09-08) — and until today the pilot could only read it
+    in prose («from a connected browser tab»), a pattern to test both ways.
+    Now a card DECLARES it: `<!-- route: browser · <count> · YYYY-MM-DD -->`,
+    or `route: none · <why>` when the route leads to nothing. This guard
+    reddens in both directions, over `shared/boards/` itself: (a) a card
+    whose `content:` says the reading came from a browser and carries no
+    `route:` line; (b) a `route: browser` line without a count above zero,
+    or with a kind other than browser / http / none. And
+    `bin/country-boards.py` counts a `route: browser` card as «fait» with
+    «navigateur» in the access column, a `route: none` card as before.
+    Population asserted: at least 12 cards declare `route: browser` on
+    2026-09-12. Mutated (`-B`, detached copy): the guard's prose pattern
+    emptied → the undeclared fixture passes (the negative reddens); the count
+    check dropped → a zero-count fixture passes (reddens); in the tool,
+    `route_of` returning None → the browser fixture is no longer «fait»
+    (reddens); the «navigateur» access branch removed → the access column
+    of the browser fixture reddens. *A fifth, tried and recorded: the
+    «none» branch of `route_of` removed leaves everything green — the branch
+    is explicit, not load-bearing: a `none` line carries no digits and
+    already fails the browser test.*"""
+
+    BROWSER_PROSE = re.compile(r"browser tab|in a browser|from a (?:connected )?browser|a real browser, same path", re.I)
+    ROUTE = re.compile(r"^\s*(browser|http|none)\s*(?:·\s*(.*?))?\s*$")
+
+    @staticmethod
+    def _headers(text):
+        return {m.group(1): m.group(2) for m in re.finditer(r"^<!--\s*([a-z-]+):\s*(.*?)\s*-->\s*$", text, re.M)}
+
+    def _complaints(self, name, text):
+        """The guard, as a function of one card — so that fixtures exercise it
+        in both directions and the walk over the repository uses the same code."""
+        h = self._headers(text)
+        bad = []
+        content = h.get("content", "")
+        if self.BROWSER_PROSE.search(content) and "route" not in h:
+            bad.append(f"{name}: `content:` says the reading came from a browser and no `route:` line declares it")
+        if "route" in h:
+            m = self.ROUTE.match(h["route"])
+            if not m:
+                bad.append(f"{name}: `route:` is not browser / http / none — {h['route'][:60]!r}")
+            elif m.group(1) == "browser":
+                digits = re.sub(r"\D", "", (m.group(2) or "").split("·")[0])
+                if not digits or int(digits) <= 0:
+                    bad.append(f"{name}: `route: browser` without a count above zero — a route to nothing is not a coverage")
+                if not re.search(r"20\d\d-\d\d-\d\d", m.group(2) or ""):
+                    bad.append(f"{name}: `route: browser` without a date")
+        return bad
+
+    def test_the_repository_declares_every_browser_reading_and_no_route_to_nothing(self):
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        bad, declared = [], 0
+        for card in sorted(d.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            text = card.read_text(encoding="utf-8")
+            bad += self._complaints(card.name, text)
+            if re.search(r"^<!--\s*route:\s*browser\b", text, re.M):
+                declared += 1
+        self.assertGreaterEqual(declared, 12, f"{declared} cards declare `route: browser`; 12 did on 2026-09-12 — either lines were lost or the walk narrowed")
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_guard_reddens_in_both_directions_on_fixtures(self):
+        undeclared = "# X\n\n<!-- script: none -->\n<!-- countries: XX -->\n<!-- content: measured · 12 rows read from a connected browser tab · 2026-09-12 -->\n"
+        self.assertEqual(len(self._complaints("undeclared", undeclared)), 1)
+        zero = undeclared + "<!-- route: browser · 0 · 2026-09-12 -->\n"
+        self.assertTrue(any("above zero" in b for b in self._complaints("zero", zero)))
+        nodate = undeclared + "<!-- route: browser · 12 -->\n"
+        self.assertTrue(any("without a date" in b for b in self._complaints("nodate", nodate)))
+        odd = undeclared + "<!-- route: carrier-pigeon · 12 · 2026-09-12 -->\n"
+        self.assertTrue(any("not browser / http / none" in b for b in self._complaints("odd", odd)))
+        good = undeclared + "<!-- route: browser · 12 · 2026-09-12 -->\n"
+        self.assertEqual(self._complaints("good", good), [])
+        none = undeclared + "<!-- route: none · the name is clientHold — a route to nothing · 2026-09-12 -->\n"
+        self.assertEqual(self._complaints("none", none), [])
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_tool_counts_a_declared_browser_route_as_done_and_a_route_to_nothing_as_before(self):
+        import tempfile
+        mod = self._tool()
+        d = tempfile.mkdtemp()
+        def card(name, body):
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        head = "<!-- script: none -->\n<!-- countries: XX -->\n<!-- content: measured · 262 rows read from a connected browser tab, the page states 262 · 2026-09-12 -->\n<!-- witness: the page · 2026-09-12 -->\n"
+        card("walked", "# W\n\n" + head + "<!-- route: browser · 262 · 2026-09-12 -->\n")
+        card("nothing", "# N\n\n" + head + "<!-- route: none · clientHold — a route to nothing · 2026-09-12 -->\n")
+        card("silent", "# S\n\n<!-- script: none -->\n<!-- countries: XX -->\n<!-- content: measured · 5 rows · 2026-09-12 -->\n")
+        cards = mod.read_cards(d)
+        by = {c["name"]: c for c in cards}
+        self.assertEqual(mod.route_of(by["walked"]), ("browser", 262, "2026-09-12"))
+        self.assertIsNone(mod.route_of(by["nothing"]))
+        self.assertEqual(mod.classify(by["walked"])[0], "fait")
+        self.assertEqual(mod.classify(by["nothing"])[0], "faisable")
+        self.assertEqual(mod.classify(by["silent"])[0], "faisable")
+        acc, basis = mod.access_of(by["walked"])
+        self.assertTrue(acc.startswith("navigateur"), acc)
+        self.assertEqual(basis, "`route: browser`")
+        t = mod.table(cards, "XX")
+        self.assertEqual((t["n"]["fait"], t["n"]["faisable"], t["total"]), (1, 2, 3))
+        self.assertIn("route navigateur — 262 annonce(s) au 2026-09-12", "\n".join(t["lines"]))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so

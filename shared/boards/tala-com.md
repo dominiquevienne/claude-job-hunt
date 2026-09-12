@@ -7,6 +7,7 @@
 <!-- countries: CD -->
 <!-- content: measured · 31 live advertisements under `/offres-demploi/`, read in a browser across the three pages the site paginates — 15 + 15 + 1, no address repeated between pages · 2026-09-08 -->
 <!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 -->
+<!-- route: none · the 31 were read in a browser on 2026-09-08, and the name is clientHold / NXDOMAIN since 2026-09-11 — a route to nothing declares no browser route · 2026-09-12 -->
 
 **A national board in a country of a hundred million people, and it refused our
 client at the transport for three days.**
@@ -117,3 +118,12 @@ of 2026-09-20 is when the answer is most likely to change either way.
   swept;
 - **no adapter is built.** *Reading this board needs the browser, and whether
   that is a shape this repository wants is a decision, not a measurement.*
+
+## No `route:` line — #264, 2026-09-12
+
+**This card declares `route: none`, not `route: browser`, and that is the finding.** The 31
+advertisements above were read in a browser on 2026-09-08; since 2026-09-11
+the name is `clientHold` at the registrar and NXDOMAIN on every resolver
+(section above). *A route to a host that does not resolve is a route to
+nothing, and a route to nothing is not a coverage.* The line returns the
+day the name comes back and a count is read again.

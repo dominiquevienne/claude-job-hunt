@@ -7,6 +7,7 @@
 <!-- countries: MK -->
 <!-- content: measured · **291 cards** in the exhausted front-page feed from a connected browser tab (268 «активен до» + 23 «плата од», a clean partition, 197 with an employer grouping) — 282 on 2026-09-08 by the same instrument; the site states no total, and the 391 floor (53 employer pages) is the 8th's · 2026-09-12 -->
 <!-- witness: at least 391 live advertisements, counted through the company pages rather than the feed; the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
+<!-- route: browser · 291 · 2026-09-12 -->
 
 **The apex is the only form measured.** `www.kariera.mk` serves the apex's
 rules and the guard reports it as such; this card claims nothing about that

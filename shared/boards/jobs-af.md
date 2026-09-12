@@ -7,6 +7,7 @@
 <!-- countries: AF -->
 <!-- content: measured · 292 distinct advertisement ids read through the page's own API from a browser tab (3 pages of 100: 100 + 100 + 92), **and `meta.totalItems` states 292, the UI repeats `Active Jobs (292)` — equal**; the browser route, walked end to end · 2026-09-12 -->
 <!-- witness: the site's own `meta.totalItems` and the UI counter, read in the same minute as the walk and printed beside the distinct count («292 emitted, site states 292 — equal»); 242 on 2026-09-08 by the same two anchors — the board moves within the day · 2026-09-12 -->
+<!-- route: browser · 292 · 2026-09-12 -->
 
 **No `host-forms:` is declared, because no script ships to reach a form** —
 the same reason `kariera-mk.md` gives. *Both hosts are named in `hosts:`

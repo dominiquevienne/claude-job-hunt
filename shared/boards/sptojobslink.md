@@ -7,6 +7,7 @@
 <!-- countries: FJ -->
 <!-- content: measured · **2 548 job posts in the sitemap its rules declare** (`wp-sitemap-posts-jobs-vacancies-1.xml` 2 000 + `-2.xml` 548, `<lastmod>` on all, 2025-08-01 → 2026-09-11; 116 in September 2026, 207 in August), read from a connected browser tab; the `/jobs/` page shows exactly 100 cards (31-08 → 10-09-2026), no pager — a cap, not a count; the site states no total · 2026-09-12 -->
 <!-- witness: none the site states — the `/jobs/` page carries no figure and no pager; the only external anchor is the sitemap's own `<lastmod>` distribution (116 posts dated September against the page's 100 cards from 31 August on), which bounds the live window without stating it · 2026-09-12 -->
+<!-- route: browser · 2548 · 2026-09-12 -->
 
 **The South Pacific Tourism Organisation's job board — «jobs from around the
 Pacific»: Fiji first (Nadi, Sigatoka, Suva), Cook Islands, and the rest of

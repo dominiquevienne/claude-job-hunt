@@ -7,6 +7,7 @@
 <!-- countries: KH -->
 <!-- content: measured · **100 vacancies** on `/vacancy/popularVacancy.do` from a connected browser tab (100 distinct 32-hex `condSeq` ids, no pager — a round number, a cap as much as a count; their headcount sums to 8 053), while the site's own vacancy search answered «ទាំងអស់ : 0» and an in-page «page not found» to a blank query; the site states «90,639» as *workers to be recruited*, a headcount aggregate and not a vacancy count · 2026-09-12 -->
 <!-- witness: the site's «ចំនួនកម្លាំងពលកម្មត្រូវជ្រើសរើស : 90,639» — a headcount figure on every page, not comparable to the 100 rows (which sum to 8 053 heads); the search that would state a vacancy total is broken on the day, so no page states one · 2026-09-12 -->
+<!-- route: browser · 100 · 2026-09-12 -->
 
 **This card is a measurement and not an adapter.** *No card declared `KH`
 before it. The host is Cambodia's National Employment Agency — the public
