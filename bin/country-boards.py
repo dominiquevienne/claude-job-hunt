@@ -29,7 +29,7 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
                         still the owner's to validate
     total               every card declaring the country
 
-    fait / faisable   = fait / (total − écartés datés et motivés)
+    fait / faisable   = fait / (total - écartés datés et motivés)
                         — INDÉTERMINÉS and à REVÉRIFIER stay IN the denominator and are
                         named apart. #232, 2026-09-11: this script excluded them
                         («faisable établi» = routes exercées) while the 46 pages of #195
@@ -325,7 +325,7 @@ def render_md(iso2, t, all_cards):
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"total             {t['total']}",
         "",
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total − écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2}, indéterminés, à revérifier et écartés compris)",
         "```",
         "",
@@ -367,7 +367,7 @@ def render_html(iso2, t, all_cards):
         f"écartés VALIDÉS   0\nécartés NON validés {n['ecarte']}"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else "") + "\n"
         f"total             {t['total']}\n\n"
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total − écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)\n"
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)\n"
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2})"))
     out.append("</pre>")
     out.append(f"<p><em>{e(NOTICE)}</em></p>")

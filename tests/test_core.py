@@ -14904,7 +14904,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("total             4", out)
         # #232: the INDÉTERMINÉ (delta) and the à REVÉRIFIER (gamma) stay IN
         # the denominator — 1 / 4, not 1 / 2 — and are named as counting
-        self.assertIn("fait / faisable   1 / 4    (faisable = total − écartés datés et motivés ; "
+        self.assertIn("fait / faisable   1 / 4    (faisable = total - écartés datés et motivés ; "
                       "dont 1 indéterminé(s) et 1 à revérifier, qui COMPTENT)", out)
         self.assertIn("fait / total      1 / 4    (total = toutes les fiches déclarant XX", out)
         self.assertIn("Ce n'est pas le marché du pays.", out)
@@ -15888,6 +15888,29 @@ class ASumOfCategoriesIsAnUpperBoundNotTheBoardsSize(unittest.TestCase):
         self.assertIn("upper bound on the board, not its size", e)
         self.assertNotIn("board states", e)
         self.assertIn("regeneration stamp", e)
+
+
+class ACountryPageSurvivesAWindowsConsole(unittest.TestCase):
+    """**2026-09-12, after five red runs on `windows-latest`.** #232 put a
+    U+2212 «−» into a line `country-boards.py` prints; Windows' default
+    stdout is cp1252, which has no such character, and the tool died with
+    `UnicodeEncodeError` on the first table — six tests red, on Windows only,
+    green on three other platforms. The class is «a character outside cp1252
+    on stdout», not that one sign: this runs the tool under a strict cp1252
+    stdout on EVERY platform and asserts it exits 0 with its table. Mutated
+    (`-B`, detached copy): the hyphen put back to U+2212 → exit 1, red."""
+
+    def test_every_character_the_tool_prints_survives_cp1252(self):
+        import subprocess
+        base = ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators()
+        d = base._boards()
+        env = dict(os.environ, PYTHONIOENCODING="cp1252:strict")
+        r = subprocess.run([sys.executable, "-B", base.TOOL, "XX", "--boards", d],
+                           capture_output=True, env=env)
+        self.assertEqual(r.returncode, 0, r.stderr.decode("utf-8", "replace")[-600:])
+        out = r.stdout.decode("cp1252")
+        self.assertIn("fait / faisable", out)
+        self.assertIn("total - ", out)
 
 
 if __name__ == "__main__":
