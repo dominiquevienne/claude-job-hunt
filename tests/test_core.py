@@ -16178,5 +16178,134 @@ class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase
         self.assertEqual(cm.exception.code, 6)
 
 
+class ASharedProxyIsSelectedByAHeaderAndTheCountIsPrintedBesideTheBoards(unittest.TestCase):
+    """**`vrabotuvanje.py`, 2026-09-12.** `/api/proxy/jobs/search` serves
+    several Alma Career boards and the `x-app` header selects which: without
+    it the same URL answered `total: 2006` in Croatian, with
+    `x-app: vrabotuvanje.com.mk` it answered 698 in Macedonian. The adapter
+    walks the declared pages, prints «n emitted, board states N (x-app: …)
+    — equal / k short», and a `--limit` prints the count WRITTEN, not the
+    count collected. `organization: "incognito"` is a hidden employer —
+    `None, employer_hidden: true` — never the placeholder word. Mutated
+    (`-B`, detached copy): the `x-app` header dropped → the header case
+    reddens; «short» for «equal» → the gap case reddens; `n = len(rows)`
+    restored → the limit case reddens; `INCOGNITO` misspelt → the hidden
+    case reddens; the empty-page-1 `die` removed → the zero case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_vrabotuvanje", os.path.join(SCRIPTS, "vrabotuvanje.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(i, org=None):
+        return {"id": f"{i:08x}-ad15-11f1-9e17-0280a8fb46bd", "title": f"Оглас {i}", "slug": f"oglas-{i}",
+                "isActive": True, "publishedAt": "2026-09-11T12:00:00.000Z", "endsAt": "2026-09-25T21:59:59.000Z",
+                "location": "Скопје", "format": {"name": "BASIC"}, "salary": {"from": 0, "to": 0, "currency": "mkd"},
+                "organization": org if org is not None else {"id": f"org-{i}", "name": f"Фирма {i}"}, "description": "…"}
+
+    def _env(self, jobs, total, pages):
+        return {"total": total, "totalPages": pages, "items": [{"id": "g", "jobs": jobs}]}
+
+    def _search(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        mod.get_json = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(query=None, location=None, sort=None, limit=None, pages=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_x_app_header_is_sent_on_every_request_and_named_beside_the_count(self):
+        mod = self._mod()
+        captured = []
+        real_urlopen = mod.urllib.request.urlopen
+
+        class _R:
+            headers = {}
+
+            def __init__(self, body):
+                self._b = body
+
+            def read(self):
+                return self._b
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        env = json.dumps(self._env([self._job(1), self._job(2)], 2, 1)).encode()
+        mod.urllib.request.urlopen = lambda req, timeout=60: (captured.append(dict(req.header_items())), _R(env))[1]
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(argparse.Namespace(query=None, location=None, sort=None, limit=None, pages=None))
+        mod.urllib.request.urlopen = real_urlopen
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0].get("X-app"), "vrabotuvanje.com.mk")
+        self.assertIn("2 emitted, board states 2 (x-app: vrabotuvanje.com.mk) over 1 page(s) of 1 declared — equal.", err.getvalue())
+
+    def test_a_board_total_above_the_walk_is_named_short_with_the_gap(self):
+        rows, err = self._search(self._mod(), [(200, self._env([self._job(1), self._job(2), self._job(1)], 5, 1))])
+        self.assertEqual([r["title"] for r in rows], ["Оглас 1", "Оглас 2"])
+        self.assertIn("2 emitted, board states 5 (x-app: vrabotuvanje.com.mk) over 1 page(s) of 1 declared — 3 short.", err)
+        self.assertNotIn("equal", err)
+
+    def test_a_limit_prints_the_count_written_and_says_it_was_asked_for(self):
+        rows, err = self._search(self._mod(), [(200, self._env([self._job(i) for i in range(1, 6)], 5, 1))], limit=2)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted of the 5 the board states (x-app: vrabotuvanje.com.mk) — 1 page(s) of 1 declared walked by request", err)
+        self.assertNotIn("5 emitted", err)
+
+    def test_an_incognito_organization_is_a_hidden_employer_not_a_name(self):
+        rows, _ = self._search(self._mod(), [(200, self._env([self._job(1, org="incognito"), self._job(2)], 2, 1))])
+        self.assertEqual((rows[0]["employer"], rows[0]["employer_hidden"], rows[0]["organization_id"]), (None, True, None))
+        self.assertEqual((rows[1]["employer"], rows[1]["employer_hidden"]), ("Фирма 2", False))
+        self.assertEqual(rows[0]["url"], "https://vrabotuvanje.com.mk/rabota/00000001-ad15-11f1-9e17-0280a8fb46bd/oglas-1")
+
+    def test_an_empty_first_page_under_a_positive_total_is_a_reading_fault_exit_6(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._search(mod, [(200, self._env([], 698, 7))])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._search(mod, [(200, self._env([], 0, 0))])
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_the_ad_reads_the_body_from_html_when_description_is_the_title_repeated(self):
+        import contextlib
+        mod = self._mod()
+        rec = {"id": "7a0397f8-add9-11f1-97ec-022a7f4ce407", "slug": "vodovoddzija", "title": "Водоводџија",
+               "description": "Водоводџија", "html": "<article><p>Опис</p><table><tr><td></td></tr><tr><td>Услови</td></tr></table></article>",
+               "employer": {"name": "АД Енергомонт"}, "organization": {"id": "o1", "name": "АД Енергомонт"},
+               "location": {"summary": "Скопје", "items": [{"address": "Skopje, North Macedonia"}]},
+               "position": {"name": "Водоводџија"}, "rootPosition": {"name": "Инсталации"},
+               "employmentTypes": ["На неопределено време"], "workTypes": ["on-site"], "salary": None,
+               "publishedAt": "2026-09-11T12:11:46.000Z", "endsAt": "2026-09-25T21:59:59.000Z", "isActive": True}
+        mod.get_json = lambda url: (200, rec)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(id=None, url="https://www.vrabotuvanje.com.mk/rabota/7a0397f8-add9-11f1-97ec-022a7f4ce407/vodovoddzija?source=jobs_page"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["description"], d["description_from"]), ("Опис\nУслови", "html"))
+        self.assertEqual((d["employer"], d["position_group"], d["salary_currency"], d["addresses"]),
+                         ("АД Енергомонт", "Инсталации", None, ["Skopje, North Macedonia"]))
+        # the canonical address carries no `?source=` — the variant the rules refuse
+        self.assertEqual(d["url"], "https://vrabotuvanje.com.mk/rabota/7a0397f8-add9-11f1-97ec-022a7f4ce407/vodovoddzija")
+        self.assertIn("body read from `html`", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
