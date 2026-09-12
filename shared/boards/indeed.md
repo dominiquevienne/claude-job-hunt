@@ -223,14 +223,23 @@ four at 0 × 0**, all four passing every visibility test (`display: block`,
 rotated-alphabet `data-jk` and a single-line `innerText` cloning the card
 above. One domain, four pages, one day. *Issue #199.*
 
-**Written on that measurement, and NOT exercised on a live page since:**
-on 2026-09-11 the snippet above was assembled from the 09.09 measurement and
-the 08.27/09.05 line-break filter, and could not be run — the Chrome
-extension was not connected. So this file does not claim to have SEEN the
-geometry filter separate; it claims the 09.09 measurement, which it quotes.
-**The first operator to run it records `emitted` and `dropped_by_geometry`
-here, with the URL and the hour, and #199 closes on that line — not on this
-paragraph.** What WAS exercised on 2026-09-11, in `node` on three stub
+**Exercised on a live page on 2026-09-12** — `ch.indeed.com/jobs?q=développeur&l=Lausanne`,
+09:43 UTC, the user's own Brave through the Chrome extension, the snippet
+above run verbatim: **`total: 16, emitted: 15, dropped_by_geometry: 1,
+dropped_single_line: 1, kept_single_line: 0`.** The dropped card was
+`data-jk` `789abcdef0123456` (a rotated alphabet), **0 × 0**, `display:
+block`, `visibility: visible`, `opacity: 1`, no `aria-hidden`, `innerText`
+on one line cloning the real card just above it (`8cdbd91554614f65`,
+"Formateur / développeur C++", 468 × 145); the fifteen real cards measured
+468 × 113 to 468 × 201, and the decoy's id is absent from the rows. **So the
+geometry filter SEPARATES on a live page, and the two secondary signatures
+agree with it** — one page, one domain, one day more (five pages of
+`ch.indeed.com` now, 09.09 and 12.09). No anti-bot control appeared; the
+listing rendered directly. *This is the line #199 said it would close on.*
+
+*Before that:* on 2026-09-11 the snippet was assembled from the 09.09
+measurement and the 08.27/09.05 line-break filter and could not be run —
+the Chrome extension was not connected. What WAS exercised on 2026-09-11, in `node` on three stub
 cards (a real 4-line card at 600 × 120, a decoy clone at 0 × 0, a real
 one-line card): `emitted: 2, dropped_by_geometry: 1, kept_single_line: 1`,
 the decoy's id absent from the rows — and with the geometry test mutated
