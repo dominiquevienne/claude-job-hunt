@@ -15984,5 +15984,103 @@ class ASecondBranchOnAnotherPageIsComparedToTheUnit(unittest.TestCase):
         self.assertIn("YEN», not the ISO JPY; neither is corrected", err.getvalue())
 
 
+class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
+    """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
+    listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
+    the adapter reads the culture sitemaps and the `<head>` of a page and
+    nothing else. 353 of 392 slugs end in the first eight hex digits of the
+    job GUID: that is the id, readable without opening the page; the 39
+    without are emitted with the slug as id and counted apart, never
+    dropped. The site states no count on any open path; the second view is
+    the other two culture files («en · da · kl — equal; k keys shared»).
+    Mutated (`-B`, detached copy): `KEY_RE` broken → the keyed row reddens;
+    the unkeyed `continue` → the slug row reddens; «equal» for «part» →
+    the parted case reddens; `GUID_RE` broken → the ad case exits 6."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_suli", os.path.join(SCRIPTS, "suli.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ("<sitemapindex>" + "".join(f"<sitemap><loc>https://suli.gl/sitemap.xml?culture={c}</loc></sitemap>"
+                                        for c in ("en", "da", "kl")) + "</sitemapindex>")
+
+    @staticmethod
+    def _file(culture, slugs, segment=None):
+        seg = segment or {"en": "jobs", "da": "jobs", "kl": "suliffissat-jobs"}[culture]
+        return ("<urlset>" + f"<url><loc>https://suli.gl/{culture}/{seg}/</loc><lastmod>2026-09-12T10:00:00Z</lastmod></url>"
+                + "".join(f"<url><loc>https://suli.gl/{culture}/{seg}/{s}/</loc><lastmod>{d}</lastmod></url>" for s, d in slugs)
+                + f"<url><loc>https://suli.gl/{culture}/companies/x/</loc></url></urlset>")
+
+    def _sitemap(self, mod, served, cross=True):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(culture="en", limit=None, no_cross_cultures=not cross))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    EN = [("regnskabschef-90b35708", "2026-09-12T08:00:00Z"), ("administrative-assistant", "2026-07-08T08:41:46Z"),
+          ("siunnersorti-b498d8fc", "2026-09-11T09:00:00Z"), ("regnskabschef-90b35708", "2026-09-12T08:00:00Z")]
+
+    def test_the_slug_key_is_the_id_and_the_unkeyed_are_counted_apart_not_dropped(self):
+        da = [("regnskabschef-90b35708", "x"), ("administrativ-assistent", "x"), ("radgiver-b498d8fc", "x")]
+        kl = [("regnskabschef-90b35708", "x"), ("allaffimmi-ikiorti", "x"), ("siunnersorti-b498d8fc", "x")]
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self._file("en", self.EN)),
+                                                (200, self._file("da", da)), (200, self._file("kl", kl))])
+        self.assertEqual([(r["id"], r["key"]) for r in rows],
+                         [("90b35708", "guid8"), ("administrative-assistant", "slug"), ("b498d8fc", "guid8")])
+        self.assertEqual(rows[0]["lastmod"], "2026-09-12T08:00:00Z")
+        self.assertIn("**3 distinct id(s)**: 2 carry the site's key in the slug", err)
+        self.assertIn("and 1 do not — those 1 are last modified on 2026-07-08", err)
+        self.assertIn("en 3 · da 3 · kl 3 — equal; 2 keys shared by all three cultures", err)
+        self.assertIn("states no count on any path these rules open", err)
+
+    def test_culture_files_that_part_are_said_to_part_with_the_shared_keys(self):
+        da = [("regnskabschef-90b35708", "x")]
+        kl = [("regnskabschef-90b35708", "x"), ("siunnersorti-b498d8fc", "x")]
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self._file("en", self.EN)),
+                                                (200, self._file("da", da)), (200, self._file("kl", kl))])
+        self.assertEqual(len(rows), 3)
+        self.assertIn("en 3 · da 1 · kl 2 — the culture files part; 1 keys shared", err)
+        self.assertNotIn("equal", err)
+
+    def test_a_culture_file_with_no_job_section_exits_indeterminate_not_zero(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            self._sitemap(mod, [(200, self.INDEX), (200, self._file("en", [], segment="companies"))], cross=False)
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_the_ad_reads_the_head_and_names_the_refused_route_it_did_not_take(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><head><title>Regnskabschef</title>'
+                '<meta name="description" content="fagligt st&#xE6;rk Regnskabschef" />'
+                '<meta property="og:description" content="Vil du v&#xE6;re med&#x2026;">'
+                '<meta name="culture" content="en" /></head><body>'
+                '<div data-guid="e468b033-af21-4ec2-b645-ee5110bc8409" data-node="x"></div>'
+                '<div data-id="react-job-page" data-guid="90b35708-9d35-424c-bfae-2f502b42d5b5" data-style="x"></div>'
+                '</body></html>')
+        mod.get = lambda url: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://suli.gl/en/jobs/regnskabschef-90b35708/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["key"], d["guid"][:8], d["title"], d["headline"]),
+                         ("90b35708", "guid8", "90b35708", "Regnskabschef", "fagligt stærk Regnskabschef"))
+        self.assertEqual((d["description_snippet"], d["description_truncated"]), ("Vil du være med…", True))
+        self.assertIn("/api/job-editor/job/<guid>, which robots.txt refuses to everyone — not read, by any route", err.getvalue())
+        # the page's own node GUID, which precedes the island on every page, is not the job's
+        self.assertNotEqual(d["guid"][:8], "e468b033")
+        # a page without the island is indeterminate, not an advertisement with empty fields
+        mod.get = lambda url: (200, "<html><head><title>Find job</title></head><body>" + "x" * 40000 + "</body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://suli.gl/en/jobs/administrative-assistant/"))
+        self.assertEqual(cm.exception.code, 6)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
