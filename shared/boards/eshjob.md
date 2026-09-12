@@ -1,11 +1,11 @@
 # Board measurement — Eshjob.com (Iraq): a feed of posts, not a table of fields
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-12 -->
 
 <!-- hosts: eshjob.com -->
 <!-- script: none -->
 <!-- countries: IQ -->
-<!-- content: measured · 1 735 advertisements declared by the site's own `Showing 1 to 20 of 1735 results`, and the city filter declares a second number from the same backend — `location=erbil` returns 805 · 2026-09-08 -->
+<!-- content: measured · **1 677 posts** declared by the site's own «Showing 1 to 20 of 1677 results», read from a connected browser tab, and the pager closes on it exactly — 83 pages of 20 plus a last page of 17 = 1 677 (pages 1, 2 and 84 read, 20 + 20 + 17 cards, 0 overlap between 1 and 2); 1 735 on 2026-09-08 by the same sentence · 2026-09-12 -->
 <!-- witness: a field census over the 20 cards of page 1, not an adapter — the question was which fields EXIST and which are only a sentence -->
 
 **This card is a measurement and not an adapter**, and it says so because the
@@ -112,9 +112,53 @@ guarded on its exact path before it is fetched); or the host answering a
 declared client again, which nothing here can cause and which the next reader
 measures rather than assumes.
 
+## 2026-09-12 — the browser route, MEASURED (#222): there is no XHR, the data route is the page
+
+**12:05–12:06 UTC, Claude in Chrome connected, one tab.** Guard first, on
+the exact paths — `/`, `/jobs`, `/jobs?location=erbil`: `allowed True,
+certain True`. The tab is served: no challenge, no interstitial — **borne 0
+held**, the 25-byte 403 goes to the declared HTTP client and to nobody else.
+
+```
+navigate https://eshjob.com/jobs            200 — «Showing 1 to 20 of 1677 results», pager 1 2 3 … 83 84
+the page's own network calls                only /check-cache, twice — **no XHR carries the feed: the listing is server-rendered HTML**
+20 <div class="card"> per page              each with a numeric post id in its element ids — description-28556, short-desc-28556, read-more-28556, like-btn-28556
+                                            poster (a /profile/<n> link — the card of 2026-09-08 says it is NOT the employer), «43 seconds ago», a category, the text in #description-<id>
+fetch /jobs?page=2                          200 — 20 cards, 0 shared with page 1
+fetch /jobs?page=84                         200 — 17 cards
+                                            **83 × 20 + 17 = 1 677 — the pager closes on the site's number exactly.**  12:05:47 UTC
+```
+
+**The route the 11th could not find exists and is the plainest one: the
+paginated HTML itself.** *The 8th's sentence «Showing 1 to 20 of 1735» is
+printed by the server, not fetched by a script — so there is no call to
+guard beyond `/jobs?page=N`, which the rules open.* The stable id is the
+number in the card's element ids (`28556`); **there is still no URL per
+post** — the site addresses a post nowhere but in the feed — so an
+advertisement URL cannot be rebuilt and the row carries the page it was
+read on. 1 677 on the 12th against 1 735 on the 8th: the feed shrinks as
+posts age out.
+
+**The procedure a session follows — this is the adapter, at the same title
+as a script (decision of 2026-09-08):**
+
+1. guard `eshjob.com` on `/jobs` and `/jobs?page=N` before anything;
+2. `navigate https://eshjob.com/jobs` in the session's own tab; read the
+   «Showing 1 to 20 of N results» sentence — **N is the site's count**;
+3. for each page — from the tab, `fetch('/jobs?page=N')` and parse the
+   `.card` blocks (or navigate) — collect the id from `#description-<id>`,
+   the poster, the age label, the category, the text; 2 s apart, 84 pages
+   on the day;
+4. print **«n cards over p pages, site states N»** — equal, or k short;
+   and say that a card is a *post*, not necessarily a vacancy (the census
+   of the 8th: 2 of 20 were not);
+5. no per-post URL exists: the ledger id is `eshjob:<post id>` and the
+   URL is `/jobs?page=<p>`;
+6. close the tab.
+
 ## What this does not establish
 
-**Nothing about the other 1 715.** *The census is page 1, and a later page
+**Nothing about the other 1 657 (1 715 on the 8th).** *The census is page 1, and a later page
 could be shaped differently — the count of cards without an advertisement was 2
 of 20 here and is not a rate.*
 
