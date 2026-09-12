@@ -117,3 +117,11 @@ read.
   that is not the same as proving none exists;
 - **the slug id as a stable key**: three advertisements, not a board;
 - **nothing about the 477 employer portals** beyond the one opened.
+
+## No `route:` line — #264, 2026-09-12
+
+**This card declares no `route: browser`: the route measured here is HTTP,
+not a browser.** The 20 reachable advertisements were read by the plugin's
+own client on paths the rules permit; the pilot's Atlas counted `jobeo-ch`
+among six hand-listed browser routes, and it never was one. *Whether it is a
+coverage at all is the 20-of-1 130 question the card already states.*

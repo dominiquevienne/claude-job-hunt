@@ -7,6 +7,7 @@
 <!-- countries: GH -->
 <!-- content: measured · **262 distinct advertisement addresses** over the 11 pages of `/job-vacancies-search-ghana?page=0…10` (10 × 25 + 12; `?page=11` empty), read from a connected browser tab, **and the page states «262 Job ads found» — equal**; a first walk that started at `?page=1` found 237 and reported «25 short» — the pager is zero-based and `?page=1` is the SECOND page · 2026-09-12 -->
 <!-- witness: the page's own «262 Job ads found», read on every page of the walk and printed beside the distinct count («262 emitted, site states 262 — equal»); the 25 the first walk missed were page 0 · 2026-09-12 -->
+<!-- route: browser · 262 · 2026-09-12 -->
 
 **Ghana's AfricaWork board — the same managed rules template, the same
 25-byte refusal to the declared client, the same Cloudflare front as its

@@ -151,3 +151,12 @@ does not carry what the count first suggested. **The closure is a second and
 sufficient reason, and the first has not gone away** — *if the door reopens, the
 52 and the June `lastmod` are still what awaits, and both need re-measuring
 before anyone writes a line.*
+
+## No `route:` line — #264, 2026-09-12
+
+**This card declares no `route: browser`, and that is the finding.** The
+pilot's Atlas counted `rozee` among six hand-listed browser routes; the card
+itself says «none is possible from 2026-09-07» — the host answers 403 to its
+own `robots.txt`, so the rules are unreadable and nothing above can be
+re-read by any route. *A route that the rules cannot open is not a coverage,
+and the hand-list was wrong to keep it.*

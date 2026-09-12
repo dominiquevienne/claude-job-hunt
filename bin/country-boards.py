@@ -8,7 +8,7 @@
 **It reads `shared/boards/`, never the network** (#195, conduct 3: the campaign
 puts in shape what is known; a fresh measurement is another issue). Every
 figure it prints comes from a header line a card DECLARES — `countries:`,
-`script:`, `content:`, `verified:`, `robots:`, `override:` — or from a refusal
+`script:`, `content:`, `verified:`, `robots:`, `override:`, `route:` — or from a refusal
 the card records with its date. **What a card only says in prose is invisible to
 this view, and the script says how many cards are invisible to it** (no
 `countries:` line): the declaration of hosts as `hosts:` lines is #195 ⑤, the
@@ -16,7 +16,11 @@ owner's decision, not this script's.
 
 THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
 
-    fait                a script exists (`script:` names a .py)
+    fait                a script exists (`script:` names a .py) — OR the card declares
+                        `route: browser · <count> · YYYY-MM-DD` with a count > 0 (#264,
+                        2026-09-12: a browser route measured to a count is a coverage,
+                        decision of 2026-09-08 — «the same data by another layer»; a
+                        route to nothing declares no such line)
     faisable ÉTABLI     no script, a dated measurement, no refusal recorded
     INDÉTERMINÉS        no script, a refusal recorded WITH its date — named one by one
     à REVÉRIFIER        no script and no date, or a refusal with no date (#195 ①: an
@@ -173,11 +177,39 @@ def excluded_of(card):
     return None
 
 
+ROUTE = re.compile(r"^\s*(browser|http|none)\s*(?:·\s*([\d\s\u202f,]+?)\s*(?:·\s*(20\d\d-\d\d-\d\d))?)?\s*$")
+
+
+def route_of(card):
+    """The route a card DECLARES — `route: browser · <count> · YYYY-MM-DD`
+    (#264) — or None. Returns (kind, count, date); `count` is an int when the
+    line carries one. A `browser` line with no count above zero is not a
+    coverage and comes back as None here, so that the ratio never counts a
+    route to nothing; the guard in tests/ reddens such a line."""
+    v = card["h"].get("route")
+    if v is None:
+        return None
+    m = ROUTE.match(v)
+    if not m:
+        return None
+    kind, count, date = m.group(1), m.group(2), m.group(3)
+    if kind == "none":
+        return None                      # declared: a route to nothing, with its reason in the line
+    n = int(re.sub(r"\D", "", count)) if count and re.sub(r"\D", "", count) else None
+    if kind == "browser" and not (n and n > 0):
+        return None
+    return kind, n, date
+
+
 def access_of(card):
     """What the card DECLARES about the route. Returns (label, basis)."""
     h = card["h"]
     if h.get("robots", "").strip() == "keyed-api":
         return "API à clé", "`robots: keyed-api`"
+    rt = route_of(card)
+    if rt and rt[0] == "browser":
+        return (f"navigateur — route déclarée, {rt[1]} annonce(s)" + (f" au {rt[2]}" if rt[2] else ""),
+                "`route: browser`")
     if "override" in h:
         return "HTTP, dérogation robots", "`override:` — " + (date_of(h["override"]) or "sans date")
     x = excluded_of(card)
@@ -210,6 +242,9 @@ def classify(card):
     measured = date_of(h.get("content", "")) or date_of(h.get("verified", ""))
     if script and script != "none":
         return "fait", measured
+    rt = route_of(card)
+    if rt and rt[0] == "browser":
+        return "fait", rt[2] or measured
     if excluded_of(card):
         return "ecarte", measured
     if h.get("content", "").strip().lower().startswith("indeterminate"):
@@ -253,7 +288,10 @@ def status_of(card, cls, measured):
     h = card["h"]
     script = h.get("script", "").strip()
     if cls == "fait":
-        return f"adaptateur `{script}`"
+        if script and script != "none":
+            return f"adaptateur `{script}`"
+        rt = route_of(card)
+        return f"route navigateur — {rt[1]} annonce(s)" + (f" au {rt[2]}" if rt and rt[2] else "")
     label = {"faisable": "mesuré sans adaptateur — faisable établi",
              "indetermine": "mesuré sans adaptateur — INDÉTERMINÉ",
              "ecarte": "écarté — NON validé par le propriétaire",
@@ -314,7 +352,7 @@ def render_md(iso2, t, all_cards):
         "### Les cinq nombres, et les deux ratios",
         "",
         "```",
-        f"fait              {n['fait']}     route livrée (`script:` nomme un .py)",
+        f"fait              {n['fait']}     route livrée (`script:` nomme un .py, ou `route: browser` avec un compte)",
         f"mesuré sans refus {n['faisable']}     daté, aucun refus consigné (ex-«faisable établi» — ce n'est PAS le dénominateur, #232)",
         f"INDÉTERMINÉS      {n['indetermine']}     refus consigné avec sa date"
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else ""),

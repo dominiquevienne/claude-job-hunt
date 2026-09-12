@@ -7,6 +7,7 @@
 <!-- countries: CI -->
 <!-- content: measured · **392 distinct advertisement addresses** over `/recherche-jobs-cote-ivoire?page=0…` (15 × 25 + 17; the next page empty), read from a connected browser tab, **and the page states «392 Offres d'emploi trouvées» — equal**; the pager is zero-based, as on `ghanajob.md` and `namijob.md` · 2026-09-12 -->
 <!-- witness: the page's own «392 Offres d'emploi trouvées», read on every page of the walk and printed beside the distinct count («392 emitted, site states 392 — equal») · 2026-09-12 -->
+<!-- route: browser · 392 · 2026-09-12 -->
 
 **Côte d'Ivoire's AfricaWork board — the family's managed template, the family's
 25-byte refusal to the declared client, and its own dated reading.**

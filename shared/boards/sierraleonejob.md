@@ -7,6 +7,7 @@
 <!-- countries: SL -->
 <!-- content: measured · **52 distinct advertisement addresses** over `/job-vacancies-search-sierra-leone?page=0…` (25 + 25 + 2; the next page empty), read from a connected browser tab, **and the page states «52 Job ads found» — equal**; the pager is zero-based, as on `ghanajob.md` and `namijob.md` · 2026-09-12 -->
 <!-- witness: the page's own «52 Job ads found», read on every page of the walk and printed beside the distinct count («52 emitted, site states 52 — equal») · 2026-09-12 -->
+<!-- route: browser · 52 · 2026-09-12 -->
 
 **Sierra Leone's AfricaWork board — the family's managed template, the family's
 25-byte refusal to the declared client, and its own dated reading.**

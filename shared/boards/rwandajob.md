@@ -7,6 +7,7 @@
 <!-- countries: RW -->
 <!-- content: measured · **84 distinct advertisement addresses** over `/job-vacancies-search-rwanda?page=0…` (25 + 25 + 25 + 9; the next page empty), read from a connected browser tab, **and the page states «84 Job ads found» — equal**; the pager is zero-based, as on `ghanajob.md` and `namijob.md` · 2026-09-12 -->
 <!-- witness: the page's own «84 Job ads found», read on every page of the walk and printed beside the distinct count («84 emitted, site states 84 — equal») · 2026-09-12 -->
+<!-- route: browser · 84 · 2026-09-12 -->
 
 **Rwanda's AfricaWork board — the family's managed template, the family's
 25-byte refusal to the declared client, and its own dated reading.**

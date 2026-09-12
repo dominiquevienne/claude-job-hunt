@@ -7,6 +7,7 @@
 <!-- countries: SO -->
 <!-- content: measured · **23 live advertisements** — `job_aggregate` with the page's own filter (`status = APPROVED`, `closing_date > now`) states 23, and the `job` query with the same filter returns 23 distinct ids (12 full-time, 5 tenders, 4 consultancies, 1 internship, 1 training; Hargeisa 3, «Somalia» 10, Mogadishu, Galkayo, Dhusamareeb, Djibouti 1); the same aggregate WITHOUT the date filter states 4 574 — the archive; from a connected browser tab at 12:11 UTC · 2026-09-12 -->
 <!-- witness: the site's own `job_aggregate` — the count its explore page asks Hasura for — read twice with two filters and printed beside the walk: «23 emitted, site states 23 (live) — equal; 4 574 approved ever»; the explore page itself shows 10 and a one-page pager, and neither of those is the count · 2026-09-12 -->
+<!-- route: browser · 23 · 2026-09-12 -->
 
 **The only commercial board based in Somaliland — HarHub Building, Hargeisa
 — and it serves Somalia and Djibouti as much as Somaliland: 3 of its 23 live

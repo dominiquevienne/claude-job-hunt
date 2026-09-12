@@ -7,6 +7,7 @@
 <!-- countries: IQ -->
 <!-- content: measured · **1 677 posts** declared by the site's own «Showing 1 to 20 of 1677 results», read from a connected browser tab, and the pager closes on it exactly — 83 pages of 20 plus a last page of 17 = 1 677 (pages 1, 2 and 84 read, 20 + 20 + 17 cards, 0 overlap between 1 and 2); 1 735 on 2026-09-08 by the same sentence · 2026-09-12 -->
 <!-- witness: a field census over the 20 cards of page 1, not an adapter — the question was which fields EXIST and which are only a sentence -->
+<!-- route: browser · 1677 · 2026-09-12 -->
 
 **This card is a measurement and not an adapter**, and it says so because the
 distinction decides what may be built here. *`shared/robots-policy.md` recorded
