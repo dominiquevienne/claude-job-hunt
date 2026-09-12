@@ -15984,6 +15984,102 @@ class ASecondBranchOnAnotherPageIsComparedToTheUnit(unittest.TestCase):
         self.assertIn("YEN», not the ISO JPY; neither is corrected", err.getvalue())
 
 
+class OneSitemapSevenTimesTheBoardAndTheListingStatesTheCount(unittest.TestCase):
+    """**`cypruswork.py`, 2026-09-12 (#233 lot 3 → adapter).** One `urlset`
+    of 10 708 `<loc>` holds 1 475 `/job/<id>/<slug>/` beside 8 874 `/company/`
+    pages — counting the file would report the board 7× larger — and `/jobs/`
+    states «1475 jobs» in its `<h1>`, printed beside the distinct count:
+    «equal», or «k short», never a bare count. Every `<lastmod>` carries one
+    value, the day of the read: measured in the run, not assumed, and named a
+    rebuild stamp only when it IS one value. The country comes from the
+    advertisement (`addressCountry: Cyprus` → `CY`, any other name as
+    published) and the language from the script of the text (Greek → `el`).
+    Mutated (`-B`, detached copy): the site-count regex broken → «no second
+    source» reddens the equal case; «short» → «equal» in the gap branch → the
+    gap case reddens; the dedup removed → 3 ≠ 2 reddens the equal case; the
+    lastmod set replaced by a constant one-element set → the two-stamp case
+    reddens; `COUNTRY` lookup bypassed → the `CY` case reddens; `GREEK_RE`
+    made to match nothing → the `el` case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_cypruswork", os.path.join(SCRIPTS, "cypruswork.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _urlset(self, stamps=("2026-09-12", "2026-09-12", "2026-09-12")):
+        ads = ((110094, "business-development-manager"), (108508, "γραμματέας-λευκωσία"), (110094, "business-development-manager"))
+        return ("<urlset>" + "".join(
+            f"<url><loc>https://www.cypruswork.com/job/{i}/{slug}/</loc><lastmod>{lm}</lastmod></url>"
+            for (i, slug), lm in zip(ads, stamps))
+            + "<url><loc>https://www.cypruswork.com/company/9/acme/</loc><lastmod>2026-09-12</lastmod></url>"
+            + "<url><loc>https://www.cypruswork.com/jobs/limassol/</loc><lastmod>2026-09-12</lastmod></url></urlset>")
+
+    def _listing(self, n):
+        return f'<html><body><h1 class="search-results__title"> {n} jobs </h1></body></html>'
+
+    def _sitemap(self, mod, urlset, listing):
+        import contextlib
+        served = iter([(200, urlset), (200, listing)])
+        mod.get = lambda url: next(served)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_site_count_equal_to_the_distinct_count_is_said_equal(self):
+        rows, err = self._sitemap(self._mod(), self._urlset(), self._listing(2))
+        self.assertEqual([r["id"] for r in rows], ["110094", "108508"])
+        self.assertIn("5 <loc> in the sitemap; 3 matched the advertisement shape and 2 did not", err)
+        self.assertIn("**2 distinct advertisement id(s)**. One <lastmod> value on every advertisement entry (2026-09-12) — a rebuild stamp", err)
+        self.assertIn("2 emitted, site states 2 on https://www.cypruswork.com/jobs/ — equal.", err)
+        self.assertNotIn("no second source", err)
+
+    def test_a_site_count_above_the_distinct_count_is_named_short_with_the_gap(self):
+        rows, err = self._sitemap(self._mod(), self._urlset(), self._listing("1,475"))
+        self.assertIn("2 emitted, site states 1 475 on https://www.cypruswork.com/jobs/ — 1 473 short", err)
+        self.assertNotIn("equal", err)
+
+    def test_two_lastmod_values_are_not_called_a_rebuild_stamp(self):
+        rows, err = self._sitemap(self._mod(), self._urlset(("2026-09-12", "2026-08-01", "2026-09-12")), self._listing(2))
+        self.assertIn("2 distinct <lastmod> values on the advertisement entries", err)
+        self.assertNotIn("rebuild stamp", err)
+
+    def _ad(self, mod, ld, url="https://www.cypruswork.com/job/108508/γραμματέας-λευκωσία/"):
+        import contextlib
+        page = f'<html><head><script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script></head><body></body></html>'
+        mod.get = lambda u: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        return json.loads(out.getvalue())
+
+    def _ld(self, **over):
+        d = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Γραμματέας - Λευκωσία",
+             "datePosted": "2026-07-14T11:42:16+03:00", "validThrough": "2026-09-12T11:42:16+03:00",
+             "employmentType": ["FULL_TIME"], "occupationalCategory": ["Legal", "Secretarial"],
+             "hiringOrganization": {"@type": "Organization", "name": "Katsaros LLC", "sameAs": "https://k.example"},
+             "jobLocation": {"@type": "Place", "address": {"addressLocality": "Nicosia", "addressRegion": "Nicosia", "addressCountry": "Cyprus"}},
+             "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR",
+                            "value": {"@type": "QuantitativeValue", "minValue": "", "maxValue": "", "unitText": "YEAR"}},
+             "description": "<p>Η Δικηγορική Εταιρεία ζητά γραμματέα.</p>"}
+        d.update(over)
+        return d
+
+    def test_cyprus_by_name_becomes_the_iso_code_and_greek_script_is_el(self):
+        d = self._ad(self._mod(), self._ld())
+        self.assertEqual((d["country"], d["language"], d["city"], d["employment_type"]), ("CY", "el", "Nicosia", "FULL_TIME"))
+        self.assertEqual((d["salary_currency"], d["salary_min"], d["salary_unit"]), ("EUR", None, "YEAR"))
+        self.assertEqual(d["categories"], ["Legal", "Secretarial"])
+        self.assertEqual(d["employer_site"], "https://k.example")
+
+    def test_another_country_name_is_emitted_as_published_and_latin_text_is_en(self):
+        d = self._ad(self._mod(), self._ld(title="Accountant", description="<p>Books and ledgers.</p>",
+                                           jobLocation={"@type": "Place", "address": {"addressLocality": "Athens", "addressCountry": "Greece"}}))
+        self.assertEqual((d["country"], d["language"], d["city"], d["region"]), ("Greece", "en", "Athens", None))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
