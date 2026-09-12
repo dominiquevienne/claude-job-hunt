@@ -15913,5 +15913,76 @@ class ACountryPageSurvivesAWindowsConsole(unittest.TestCase):
         self.assertIn("total - ", out)
 
 
+class ASecondBranchOnAnotherPageIsComparedToTheUnit(unittest.TestCase):
+    """**`greenjapan.py`, 2026-09-12.** The job sitemap has no `<lastmod>`
+    and the root states no count; `/search` states «求人を28284件掲載» in its
+    meta description, and the adapter prints that figure beside its distinct
+    count — «equal», or «k short», never a bare count. Two page values are
+    emitted AS PUBLISHED and flagged (`validThrough` = read date + 1 year,
+    `currency: YEN`), not corrected. Mutated (`-B`, detached copy): the
+    site-count regex broken → «no second source» reddens the equal case;
+    «short» replaced by «equal» in the gap branch → the gap case reddens;
+    the dedup removed → the equal case reddens (3 ≠ 2); `YEN` rewritten to
+    `JPY` in `cmd_ad` → the as-published case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_greenjapan", os.path.join(SCRIPTS, "greenjapan.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = "<sitemapindex><sitemap><loc>https://www.green-japan.com/sitemap/jobs.xml</loc></sitemap></sitemapindex>"
+    JOBS = ("<urlset>" + "".join(f"<url><loc>https://www.green-japan.com/company/{c}/job/{i}</loc></url>"
+                                 for c, i in ((2, 301424), (24, 256642), (2, 301424)))
+            + "<url><loc>https://www.green-japan.com/company/9</loc></url></urlset>")
+
+    def _search(self, n):
+        return f'<html><head><meta content="求人を{n}件掲載。職種・エリア・年収など" name="Description"/></head></html>'
+
+    def _sitemap(self, mod, search_html):
+        import contextlib
+        served = iter([(200, self.INDEX), (200, self.JOBS), (200, search_html)])
+        mod.get = lambda url: next(served)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_site_count_equal_to_the_distinct_count_is_said_equal(self):
+        rows, err = self._sitemap(self._mod(), self._search(2))
+        self.assertEqual([r["id"] for r in rows], ["301424", "256642"])
+        self.assertIn("**2 distinct advertisement id(s)** across 2 companies. No <lastmod>", err)
+        self.assertIn("2 emitted, site states 2 on https://www.green-japan.com/search — equal.", err)
+        self.assertNotIn("no second source", err)
+
+    def test_a_site_count_above_the_distinct_count_is_named_short_with_the_gap(self):
+        rows, err = self._sitemap(self._mod(), self._search("28,284"))
+        self.assertIn("2 emitted, site states 28 284 on https://www.green-japan.com/search — 28 282 short", err)
+        self.assertNotIn("equal", err)
+
+    def test_the_two_values_are_emitted_as_published_and_flagged(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "https://schema.org/", "@type": "JobPosting", "title": "経理",
+                         "datePosted": "2025-11-07", "validThrough": "2027-09-12",
+                         "hiringOrganization": {"@type": "Organization", "name": "X株式会社"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "141-0032\r\n東京都"}},
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "YEN",
+                                        "value": {"@type": "QuantitativeValue", "minValue": 7000000, "maxValue": 9000000, "unitText": "YEAR"}},
+                         "description": "《職務内容》"}, ensure_ascii=False)
+        page = f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>'
+        mod.get = lambda url: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.green-japan.com/company/2/job/301424"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["valid_through"], d["salary_currency"], d["salary_min"], d["salary_unit"]),
+                         ("2027-09-12", "YEN", 7000000, "YEAR"))
+        self.assertEqual(d["address"], "141-0032\r\n東京都")
+        self.assertIn("as published", err.getvalue())
+        self.assertIn("YEN», not the ISO JPY; neither is corrected", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
