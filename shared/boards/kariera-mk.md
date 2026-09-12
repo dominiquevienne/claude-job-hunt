@@ -1,11 +1,11 @@
 # Board adapter — Kariera.mk (North Macedonia): refused to our client, open to a browser
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-12 -->
 
 <!-- hosts: kariera.mk -->
 <!-- script: none -->
 <!-- countries: MK -->
-<!-- content: measured · **at least 391** live advertisements — 291 counted on the company pages of the 53 employers the feed names (all verified to name their employer, all HTTP 200) plus 100 feed cards carrying no employer grouping; the feed itself shows 282 cards and is a selection, so this remains a floor · 2026-09-08 -->
+<!-- content: measured · **291 cards** in the exhausted front-page feed from a connected browser tab (268 «активен до» + 23 «плата од», a clean partition, 197 with an employer grouping) — 282 on 2026-09-08 by the same instrument; the site states no total, and the 391 floor (53 employer pages) is the 8th's · 2026-09-12 -->
 <!-- witness: at least 391 live advertisements, counted through the company pages rather than the feed; the archive is a different question — `sitemap.xml` holds 17 604 `/job/` URLs -->
 
 **The apex is the only form measured.** `www.kariera.mk` serves the apex's
@@ -196,6 +196,51 @@ noun, produced twice in one morning by a `(\d[\d,]*)\s*(jobs|offres)`
 pattern, on this board's neighbour and on `hays.fr`. *An integer, on the right
 page, beside the right word.* **A number adjacent to the right noun is the
 count of nothing.**
+
+## 2026-09-12 — the browser route, re-measured from a connected tab (#222)
+
+**11:54–11:56 UTC, Claude in Chrome connected, one tab.** The guard first,
+on the exact paths — `/`, `/job/<id>/<slug>`, `/sitemap.xml`: all `allowed
+True, certain True` (the groupless file above binds nobody). No challenge,
+no interstitial: the page renders to the declared session as it did to a
+real browser on the 8th.
+
+```
+navigate https://kariera.mk/                 27 distinct /job/ links · 20 «активен до» + 7 «плата од» = 27
+click «Вчитај уште огласи...» (a.btn-primary, href="#", from the page's own script)
+                                             -> POST /APICalls.aspx/JobsLazy, control gone
+                                             **291 distinct /job/ ids** · cards: 268 «активен до» + 23 «плата од» + 0 both + 0 neither = 291   11:55:27 UTC
+                                             (272 «активен до» on the whole page: 4 sit outside the cards, in the page's chrome)
+                                             197 employer groupings «+N огласи / + еден оглас» on the cards
+GET /job/IyWjJgaCAkqH0Ewhnz25SA/b2b-sales-representative   200, 74 121 B, title «ЕНЕРМАК ДООЕЛ Тетово: B2B Sales Representative»
+                                             **no JSON-LD, no JobPosting** — the advertisement is markup only
+```
+
+**291 cards on the 12th against 282 on the 8th, by the same instrument
+(distinct `/job/` ids after one exhausting click), and the partition by card
+marker is clean on both days.** *The site still states no total: the feed's
+end is the only anchor, and the 391 floor of the 8th (53 employer pages) was
+not re-walked today.* The procedure a session follows — this is the adapter,
+at the same title as a script (decision of 2026-09-08):
+
+1. guard `kariera.mk` on `/` and on `/job/…` before anything;
+2. `navigate https://kariera.mk/` in the session's own tab; wait for the
+   feed (27 cards);
+3. find the anchor whose text is «Вчитај уште огласи…» and call its
+   `click()` from the page (a coordinate click on this page landed on the
+   `/edu` link beside it — the button moves as the feed grows); wait ~5 s;
+   the control disappears when the feed is exhausted;
+4. collect the distinct `/job/<22-char id>/<slug>` addresses; on each card,
+   read employer, city, and exactly one of «активен до <date>» / «плата од
+   <amount>»; print **«n cards, k with a grouping — the site states no
+   total»**, never a bare count;
+5. an advertisement page is markup only: read it from the tab if the body is
+   wanted; the ad URL is the card's own address, rebuilt from id and slug;
+6. close the tab.
+
+**Borne 0 held again**: the 25-byte 403 goes to the declared HTTP client and
+to nobody else — the page, its lazy feed and its advertisement pages all
+answered 200 to the session's tab, with nothing to defeat.
 
 ## What this card still does not claim
 
