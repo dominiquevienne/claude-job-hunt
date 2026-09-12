@@ -16377,6 +16377,113 @@ class AHiddenFlagSplitsOneStoreIntoOwnAndMediated(unittest.TestCase):
         self.assertNotIn("5000 0000", out.getvalue())
 
 
+class APagedFrontPageSumsToTheStatedCountAndTheSitemapIsNeverAsked(unittest.TestCase):
+    """**`cvbankas.py`, 2026-09-12 (#233 lot 6 → adapter).** The front page is
+    the listing (142 VIP on page 1, then 50 a page to page 181, 21 on the
+    last — 9 113, exactly the «Rodoma 9 113 skelbimų» every page states). The
+    adapter walks the pages, dedups on `job_ad_<id>`, reads the stated figure
+    and prints «n emitted, site states N — equal / k short»; a bounded walk
+    (`--pages`) says so and is not compared. `/sitemap.xml` answers a
+    challenge and is never asked for (`gate()` exits 7 on it). The page's
+    JobPosting is microdata; its salary digits are interleaved with U+200C
+    and stripped; net/gross comes from the block's class, not the language
+    (a page is Lithuanian or English per advertisement). Mutated (`-B`,
+    detached copy): `NEVER` emptied → the gate case reddens; the dedup
+    removed → 4 ≠ 3; «short» → «equal» → the gap case reddens; `STATED_RE`
+    broken → «no second source» reddens the equal case; the U+200C strip
+    removed → the ad salary reddens; the `salary_bl_net` test inverted →
+    the net case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_cvbankas", os.path.join(SCRIPTS, "cvbankas.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, title, emp, sal="1300-1500", net=True, vip=False):
+        cls = "salary_bl_net" if net else "salary_bl_gross"
+        return (f'<article class="list_article{" jobadlist_article_vip" if vip else ""}" id="job_ad_{i}">'
+                + ('<div class="jobadlist_article_vip_icon">VIP</div>' if vip else "")
+                + f'<a class="list_a" href="https://www.cvbankas.lt/x-{i}/1-{i}"><h3 class="list_h3" lang="lt">{title}</h3>'
+                f'<span class="heading_secondary"> <span class="dib">{emp}</span> </span>'
+                f'<div class="list_cell"><span class="salary_c"><span class="salary_bl {cls}"><span class="salary_amount">{sal}</span> <span class="salary_period">€/mėn.</span></span></span> </div>'
+                f'<span class="list_city">Kaune</span><span class="txt_list_2">prieš 1 d.</span></a></article>')
+
+    def _page(self, cards, stated=3, last=2):
+        return (f"<html><body><p>Rodoma {stated} skelbimų</p>" + "".join(cards)
+                + "".join(f'<a href="https://www.cvbankas.lt/?page={p}">{p}</a>' for p in range(2, last + 1)) + "</body></html>")
+
+    def _served(self, pages):
+        def get(url):
+            if url == "https://www.cvbankas.lt/":
+                return 200, pages[0]
+            m = re.search(r"\?page=(\d+)$", url)
+            if m and int(m.group(1)) <= len(pages):
+                return 200, pages[int(m.group(1)) - 1]
+            raise AssertionError(url)
+        return get
+
+    def _list(self, mod, get, **kw):
+        import contextlib
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(pages=kw.get("pages"), limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_pages_are_walked_deduplicated_and_compared_to_the_stated_count(self):
+        p1 = self._page([self._card(1, "A", "UAB X", vip=True), self._card(2, "B", "UAB Y", sal="nuo 1850", net=False)], stated=3, last=2)
+        p2 = self._page([self._card(1, "A", "UAB X", vip=True), self._card(3, "C", "UAB Z")], stated=3, last=2)
+        rows, err = self._list(self._mod(), self._served([p1, p2]))
+        self.assertEqual([(r["id"], r["vip"], r["salary_min"], r["salary_max"], r["salary_net"]) for r in rows],
+                         [("1", True, 1300, 1500, True), ("2", False, 1850, None, False), ("3", False, 1300, 1500, True)])
+        self.assertIn("2 page(s) read of 2; **3 distinct advertisement id(s)**.", err)
+        self.assertIn("3 emitted, site states 3 — equal.", err)
+
+    def test_a_stated_count_above_the_emitted_is_named_short_and_a_bounded_walk_is_not_compared(self):
+        p1 = self._page([self._card(1, "A", "UAB X")], stated=9113, last=3)
+        p2 = self._page([self._card(2, "B", "UAB Y")], stated=9113, last=3)
+        p3 = self._page([], stated=9113, last=3)
+        rows, err = self._list(self._mod(), self._served([p1, p2, p3]))
+        self.assertIn("2 emitted, site states 9 113 — 9 111 short.", err)
+        rows, err = self._list(self._mod(), self._served([p1, p2, p3]), pages=1)
+        self.assertIn("the walk stopped at page 1, so the count is a lower bound", err)
+        self.assertIn("site states 9 113; 1 emitted from a bounded walk — not compared.", err)
+
+    def test_the_sitemap_is_refused_by_the_adapter_before_the_rules(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.gate("https://www.cvbankas.lt/sitemap.xml")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_strips_the_zero_width_joiners_and_reads_net_from_the_class(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><body><div itemscope itemtype="http://schema.org/JobPosting"><h1 class="heading1" itemprop="title">DARBŲ VADOVO ASISTENTAS</h1>'
+                '<div class="salary_component"><span><span><div class="data_tag_component_body salary_bl_net"><div class="label_component"><div class="label_component_body">'
+                '<span class="data_tag_component_salary_amount">2&#8204;2&#8204;0&#8204;0&#8204;-3&#8204;0&#8204;0&#8204;0&#8204;</span> €/mon. net </div></div></div></span></span></div>'
+                '<div class="job_ad_work_types"><span><span><div class="data_tag_component_body"><div class="label_component"><div class="label_component_body"> Visa darbo diena </div></div></div></span></span></div>'
+                '<div itemprop="hiringOrganization" itemscope itemtype="http://schema.org/Organization"><meta itemprop="name" content="AGDB solutions APS" /></div>'
+                '<div itemprop="jobLocation" itemscope id="jobad_location"><span itemprop="address" itemscope><a href="/x"><span itemprop="addressLocality">Užsienis</span></a>: <a href="/y">Danija</a> </span> - AGDB</div>'
+                '<meta itemprop="datePosted" content="2026-09-11" /><time itemprop="validThrough" datetime="2026-10-11 23:59:59">Liko 29 dienos</time>'
+                '<section><div itemprop="description">Ieškome asistento.</div></section>'
+                '<section><h2>Reikalavimai darbuotojui</h2><div class="jobad_txt">Patirtis.<br />Kalba.</div></section>'
+                '<a href="mailto:someone@example.lt">x</a></div></body></html>')
+        mod.get = lambda u: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.cvbankas.lt/darbu-vadovo-asistentas-uzsienyje/1-14112398"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["location"], d["posted"], d["valid_through"], d["work_type"]),
+                         ("14112398", "DARBŲ VADOVO ASISTENTAS", "AGDB solutions APS", "Užsienis : Danija", "2026-09-11", "2026-10-11", "Visa darbo diena"))
+        self.assertEqual((d["salary_min"], d["salary_max"], d["salary_period"], d["salary_net"]), (2200, 3000, "MONTH", True))
+        self.assertEqual(d["sections"], {"Reikalavimai darbuotojui": "Patirtis.\nKalba."})
+        self.assertNotIn("example.lt", out.getvalue())
+        self.assertIn("interleaved with U+200C", err.getvalue())
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
