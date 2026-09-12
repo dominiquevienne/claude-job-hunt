@@ -1,4 +1,4 @@
-# Board adapter — Staff.am (Armenia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Staff.am (Armenia): reopened by the 2026-09-07 doctrine, the transport refuses the client with a static 403, and a browser is served
 
 <!-- verified: 2026-09-12 -->
 
@@ -45,6 +45,28 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-12 14:34 UTC — the browser is served; the data host is `api.staff.am`; the count was not reached (#222)
+
+**One Claude-in-Chrome tab, three and a half hours after the 403s above.**
+The guard first: `staff.am` `/jobs` open (`*`, certain); **`api.staff.am`
+read, `Allow: /` over `Disallow: /`, `allowed True, certain True`** on
+`/en/v4/jobs` and `/en/v4/jobs/hot`.
+
+```
+navigate https://staff.am/jobs           200 «Find Jobs, Career Opportunities in Armenia|Jobs & Vacancies» — no challenge, no interstitial
+the page's own calls                     api.staff.am/en/v4/inputs?type=categories,cities,tags · /en/v4/jobs/hot · /en/v4/feed/story · /en/v4/banners
+                                         -> the listing is client-rendered from api.staff.am; the page body carries 10 /en/jobs/<category>/<slug> links and no count
+/assets/staff-am-sitemap.xml             200, 1 024 B — an index of 7 children (staff-am-sitemap1 … 7.xml, each with <lastmod>); none read
+```
+
+**Borne 0 held**: the 25-byte 403 goes to the declared HTTP client and to
+nobody else. **What was not reached: the list route and its count** — the
+extension disconnected before `api.staff.am/en/v4/jobs?page=1` could be read
+from the tab, and the card stops where the measurement stopped. *Neither a
+`route:` line nor a count is declared: the route is a tab plus one API host
+whose listing endpoint is named by the page's own calls, and the next read
+starts there.* Nothing was applied to.
 
 ## What this card is, and is not
 
