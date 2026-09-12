@@ -16177,6 +16177,110 @@ class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase
             mod.cmd_ad(argparse.Namespace(url="https://suli.gl/en/jobs/administrative-assistant/"))
         self.assertEqual(cm.exception.code, 6)
 
+class ARefusedSearchRouteIsNeverTakenAndARedirectIsTheAnswer(unittest.TestCase):
+    """**`landingjobs.py`, 2026-09-12.** `/jobs/search`, `/api/` and
+    `/job_closed.html` are refused; the inventory is the sitemap's
+    `/at/<company>/<slug>` entries told apart by shape from employer pages,
+    facets and blog posts, and the open listing's «55 results» is the second
+    source. A 3xx is returned unfollowed: to the refused closed page it is
+    «gone» (exit 3), elsewhere indeterminate (exit 6) — the refused page is
+    never requested. `salary` is emitted raw, unparsed. Mutated (`-B`,
+    detached copy): `AD_RE` widened to employer pages → the shape case
+    reddens; «short» for «equal» → the gap case reddens; the closed-path
+    branch dropped → the redirect case reddens; the props regex broken →
+    the props case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_landingjobs", os.path.join(SCRIPTS, "landingjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SITEMAP = ("<urlset>" + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-01</lastmod></url>" for u in (
+        "https://landing.jobs/", "https://landing.jobs/jobs", "https://landing.jobs/jobs/in/lisbon",
+        "https://landing.jobs/jobs/for/back-end-developer", "https://landing.jobs/blog/some-post/",
+        "https://landing.jobs/at/annea", "https://landing.jobs/at/annea/full-stack-generalist-software-engineer-f-m-x",
+        "https://landing.jobs/at/accenture-pt/oracle-dba-in-lisbon", "https://landing.jobs/at/accenture-pt",
+        "https://landing.jobs/at/annea/full-stack-generalist-software-engineer-f-m-x")) + "</urlset>")
+
+    @staticmethod
+    def _listing(n):
+        return f'<html><body><div class="lj-jobAds-count js-jobAds-count">{n} results</div></body></html>'
+
+    def _sitemap(self, mod, served, no_site_total=False):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=no_site_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_advertisements_are_told_apart_by_shape_and_the_listing_count_is_the_second_source(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.SITEMAP, None), (200, self._listing(2), None)])
+        self.assertEqual([r["id"] for r in rows],
+                         ["annea/full-stack-generalist-software-engineer-f-m-x", "accenture-pt/oracle-dba-in-lisbon"])
+        self.assertIn("**2 distinct advertisement(s)** (/at/<company>/<slug>), 2 employer page(s) (/at/<company>), 5 other", err)
+        self.assertIn("2 emitted, site states 2 on https://landing.jobs/jobs — equal.", err)
+
+    def test_a_listing_count_above_the_sitemap_is_named_short_and_the_refused_route_named(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.SITEMAP, None), (200, self._listing(55), None)])
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted, site states 55 on https://landing.jobs/jobs — 53 short; the listing serves 50 static cards and the rest through /jobs/search, which the rules refuse", err)
+        self.assertNotIn("equal", err)
+
+    def test_a_sitemap_with_locs_and_no_advertisement_shape_is_indeterminate(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._sitemap(mod, [(200, "<urlset><url><loc>https://landing.jobs/jobs/in/lisbon</loc></url></urlset>", None)], no_site_total=True)
+        self.assertEqual(cm.exception.code, 6)
+
+    def _ad(self, mod, served, url="https://landing.jobs/at/annea/full-stack-generalist-software-engineer-f-m-x"):
+        import contextlib
+        mod.get = lambda u: served
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        return json.loads(out.getvalue()), err.getvalue()
+
+    def test_a_redirect_to_the_refused_closed_page_is_gone_unfollowed_and_any_other_is_indeterminate(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._ad(mod, (302, "", "https://landing.jobs/job_closed.html"))
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._ad(mod, (301, "", "https://landing.jobs/at/annea/renamed"))
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_the_ad_reads_the_jobposting_and_the_pages_own_record_and_leaves_salary_raw(self):
+        import html as htmlmod
+        mod = self._mod()
+        ld = json.dumps({"@context": "https://schema.org", "@type": "JobPosting", "title": "Full-Stack Engineer",
+                         "description": "<p>Description</p>\nWe build things", "datePosted": "2026-09-08", "validThrough": "2026-12-07",
+                         "employmentType": "FULL_TIME", "directApply": True,
+                         "hiringOrganization": {"@type": "Organization", "name": "ANNEA", "sameAs": "https://www.annea.ai"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Lisbon", "addressRegion": "Lisbon", "addressCountry": "PT"}},
+                         "experienceRequirements": {"@type": "OccupationalExperienceRequirements", "monthsOfExperience": 72}})
+        props = htmlmod.escape(json.dumps({"jobAd": {"id": "19763", "type": "job_ad", "attributes": {
+            "state_name": "published", "closed_at": None, "remote_working_label": "Hybrid", "job_type": "Permanent",
+            "office_locations": [{"label": "Lisbon, Portugal"}], "must_have_skills": [{"id": 1, "name": "Python"}],
+            "preferred_languages_labels": ["English"], "salary": {"whatever": "shape"}, "visa_support": False,
+            "experience_label": "Senior", "category": "Full-stack Developer"}}}), quote=True)
+        page = (f'<html><body><div data-react-props="{props}" data-react-cache-id="jobPage/JobPage-0"></div>'
+                f"<script type='application/ld+json'>{ld}</script></body></html>")
+        d, err = self._ad(mod, (200, page, None))
+        self.assertEqual((d["id"], d["job_ad_id"], d["employer"], d["city"], d["remote"], d["contract"], d["state"]),
+                         ("annea/full-stack-generalist-software-engineer-f-m-x", "19763", "ANNEA", "Lisbon", "Hybrid", "Permanent", "published"))
+        self.assertEqual((d["skills"], d["experience_months"], d["salary_raw"]), (["Python"], 72, {"whatever": "shape"}))
+        self.assertEqual(d["description"], "Description\nWe build things")
+        self.assertNotIn("no `jobPage/JobPage-0` props block", err)
+        # without the props block, the site's own fields are empty and the adapter says why
+        page2 = f"<html><body><script type='application/ld+json'>{ld}</script></body></html>"
+        d2, err2 = self._ad(mod, (200, page2, None))
+        self.assertEqual((d2["job_ad_id"], d2["remote"], d2["skills"]), (None, None, []))
+        self.assertIn("no `jobPage/JobPage-0` props block on this page", err2)
 
 class ASharedProxyIsSelectedByAHeaderAndTheCountIsPrintedBesideTheBoards(unittest.TestCase):
     """**`vrabotuvanje.py`, 2026-09-12.** `/api/proxy/jobs/search` serves
