@@ -16410,6 +16410,115 @@ class ASharedProxyIsSelectedByAHeaderAndTheCountIsPrintedBesideTheBoards(unittes
         self.assertEqual(d["url"], "https://vrabotuvanje.com.mk/rabota/7a0397f8-add9-11f1-97ec-022a7f4ce407/vodovoddzija")
         self.assertIn("body read from `html`", err.getvalue())
 
+class ASitemapAndAFooterThatBothCountTheArchiveAndAListingThatDatesTheLive(unittest.TestCase):
+    """**`empregoxl.py`, 2026-09-12.** `sitemap.xml` (84 875 ids) and the
+    footer («84875 Ofertas de Emprego») agree — and both count everything
+    ever published, 2022 included, so the adapter says «both count the
+    archive» and the live inventory is `recent`, which walks the dated
+    listing (20 cards, «12 Sep», no year) and stops at the first card older
+    than the window — the year inferred for the stop rule only, never
+    emitted. The advertisement is microdata: the description spans an `<a>`
+    (a Cloudflare-obfuscated e-mail, decoded) and must not stop at it; an
+    unlinked employer is `<strong itemprop=hiringOrganization>`. Mutated
+    (`-B`, detached copy): «archive» dropped from the equal line → the
+    sitemap case reddens; the stop rule inverted → the window case reddens;
+    `\\1` back-reference broken to `</` → the description case reddens; the
+    unlinked-employer fallback dropped → the employer case reddens; the
+    over-90 label misspelt → the old-advertisement case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_empregoxl", os.path.join(SCRIPTS, "empregoxl.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SITEMAP = ("<urlset>" + "".join(f"<url><loc>{u}</loc></url>" for u in (
+        "https://www.empregoxl.com/empregoxl/", "https://www.empregoxl.com/emprego-em/lisboa/",
+        "https://www.empregoxl.com/emprego/520128/assistente-de-vendas-mf-yupi-coimbra",
+        "https://www.empregoxl.com/emprego/580783/emprego-imobiliario-em-lisboa/",
+        "https://www.empregoxl.com/emprego/520128/assistente-de-vendas-mf-yupi-coimbra")) + "</urlset>")
+
+    @staticmethod
+    def _home(n):
+        return f'<html><body><div id="stats"><strong>{n} Ofertas de Emprego</strong></div></body></html>'
+
+    def _run(self, mod, fn, served, **kw):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fn(argparse.Namespace(**kw))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_sitemap_and_the_footer_are_compared_and_both_named_as_the_archive(self):
+        mod = self._mod()
+        rows, err = self._run(mod, mod.cmd_sitemap, [(200, self.SITEMAP), (200, self._home(2))], limit=None, no_site_total=False)
+        self.assertEqual([r["id"] for r in rows], ["520128", "580783"])
+        self.assertIn("**2 distinct advertisement id(s)** (520 128 → 580 783), 2 other addresses", err)
+        self.assertIn("**This is the archive, not the live inventory**", err)
+        self.assertIn("2 emitted, site states 2 «Ofertas de Emprego» in its footer — equal; both count the archive.", err)
+        rows, err = self._run(mod, mod.cmd_sitemap, [(200, self.SITEMAP), (200, self._home("84875"))], limit=None, no_site_total=False)
+        self.assertIn("2 emitted, site states 84 875 «Ofertas de Emprego» in its footer — 84 873 short; both count the archive.", err)
+
+    @staticmethod
+    def _card(i, label, company="IOR - Parque das Nações, Lisboa"):
+        return (f'<li> <a href="https://www.empregoxl.com/emprego/{i}/x-em-lisboa/" title="t"> <span class="jobtype"> '
+                f'<img src="/i/icon-fulltime.png" alt="Full-time" /> </span> <span class="date">{label}</span> '
+                f'<span class="jobtitle">Título {i}</span><br /> <span class="company_name"> {company} </span> </a> </li>')
+
+    def test_recent_stops_at_the_first_card_older_than_the_window_and_emits_no_derived_date(self):
+        import datetime as dt
+        mod = self._mod()
+        today = dt.date.today()
+        fresh = today.strftime("%d %b")
+        old = (today - dt.timedelta(days=40)).strftime("%d %b")
+        p1 = "<ul>" + self._card(3, fresh) + self._card(2, fresh) + "</ul>"
+        p2 = "<ul>" + self._card(1, old) + self._card(0, old) + "</ul>"
+        rows, err = self._run(mod, mod.cmd_recent, [(200, p1), (200, p2)], days=30, max_pages=None, limit=None)
+        self.assertEqual([r["id"] for r in rows], ["3", "2"])
+        self.assertEqual((rows[0]["posted_label"], rows[0]["posted"], rows[0]["employer"], rows[0]["city"], rows[0]["job_type"]),
+                         (fresh, None, "IOR - Parque das Nações", "Lisboa", "Full-time"))
+        self.assertIn(f"stopped because a card dated {old} is older than 30 day(s)", err)
+        self.assertIn("**The board states no count for this window**", err)
+        # a year boundary: a card from a month ahead of today's is last year's, hence old
+        ahead = (today + dt.timedelta(days=40)).strftime("%d %b")
+        if (today + dt.timedelta(days=40)).month != today.month:
+            d = mod.card_date(ahead, today)
+            self.assertLess(d, today)
+
+    def test_recent_with_an_empty_first_page_is_indeterminate(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, mod.cmd_recent, [(200, "<html><body>" + "x" * 30000 + "</body></html>")], days=30, max_pages=None, limit=None)
+        self.assertEqual(cm.exception.code, 6)
+
+    def _page(self, header, old=False):
+        return ('<html><body><div id="job-details" itemscope itemtype="http://schema.org/JobPosting">'
+                + ('<div id="old-ad"><p>Este anúncio de emprego tem mais de 90 dias ...</p></div>' if old else "")
+                + '<div id="applied-to-job"> 3 <p>candidaturas</p></div>'
+                '<h2 itemprop="title"> Consultor (m/f) <img src="/i/icon-fulltime.png" alt="Full-time" /></h2><p>'
+                + header +
+                '<span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place"><strong itemprop="addressLocality" >Lisboa</strong></span>'
+                "(Publicado em <strong itemprop='datePosted'>12-09-2026</strong>)</p>"
+                '<div id="job-description"><div id="description" itemprop="description"> Candidaturas:<br />'
+                '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="17657274656263767a72796378577e7865396763">[email&#160;protected]</a>'
+                "<br />ENVIE JÁ! </div><div class=\"adsensebottom\"></div></body></html>")
+
+    def test_the_ad_reads_the_microdata_across_the_email_link_and_both_employer_shapes(self):
+        mod = self._mod()
+        linked = '<a itemprop="hiringOrganization" itemscope itemtype="http://schema.org/Organization" href="http://www.melhoremprego.pt"><span itemprop="name">IOR - Parque das Nações</span></a>'
+        rows, err = self._run(mod, mod.cmd_ad, [(200, self._page(linked))], url="https://www.empregoxl.com/emprego/580783/emprego-imobiliario/", id=None)
+        d = rows[0]
+        self.assertEqual((d["id"], d["title"], d["employer"], d["employer_site"], d["city"], d["posted"], d["job_type"], d["applications"], d["over_90_days"]),
+                         ("580783", "Consultor (m/f)", "IOR - Parque das Nações", "http://www.melhoremprego.pt", "Lisboa", "2026-09-12", "Full-time", 3, False))
+        self.assertEqual(d["description"], "Candidaturas:\nrecrutamento@ior.pt\nENVIE JÁ!")
+        unlinked = '<strong itemprop="hiringOrganization">Yupi!</strong>'
+        rows, err = self._run(mod, mod.cmd_ad, [(200, self._page(unlinked, old=True))], url=None, id="520128")
+        d = rows[0]
+        self.assertEqual((d["employer"], d["employer_site"], d["over_90_days"]), ("Yupi!", None, True))
+        self.assertIn("«mais de 90 dias»", err)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
