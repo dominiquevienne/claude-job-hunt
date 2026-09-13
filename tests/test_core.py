@@ -17053,6 +17053,121 @@ class AServerRenderedCardIsReadByItsTagNotByAByteWindow(unittest.TestCase):
         self.assertEqual((d["description"], d["requirements"]), ("Seeking a store person.\nFast-paced.", "• Tertiary Qualification"))
 
 
+class APagedListingWithTwoWitnessesThatNeverCorrectEachOther(unittest.TestCase):
+    """**`undelucram.py`, 2026-09-13 (#233 lot 7 → adapter).** The listing
+    states «1.468 rezultate» (a Romanian thousands dot) and its pager closes
+    at page 146 or 147; the adapter walks the pages at 1 s, dedups on the
+    URL's tail, and prints the two witnesses apart — «the pager closes at
+    page P — P × 10 = M» and «n emitted, site states N — equal / k short» —
+    never correcting one by the other. A card's place and work type are read
+    by the `aria-label` of the icon beside them (Location, Job Type), not by
+    their order; «12.09.2026» becomes `2026-09-12`. The advertisement's
+    JSON-LD `identifier.value` is the EMPLOYER's id (278 for Henkel Romania)
+    and is kept apart from the advertisement's own id (the URL's tail); the
+    country comes from `addressCountry`. A bounded walk (`--pages`) is a
+    lower bound and is not compared. Mutated (`-B`, detached copy): the
+    aria-label lookup swapped (`Location` → `Job Type`) → the place case
+    reddens; the dedup removed → 6 ≠ 5; `last * 10` → `last * 12` → the pager
+    line reddens; the thousands dot kept (`.replace(".", "")` dropped) → the
+    stated figure cannot be read, reddens; `employer_id` taken from the URL's
+    tail instead of `identifier.value` → the ad case reddens; `bounded`
+    forced to False → the bounded case reddens (it compares)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_undelucram", os.path.join(SCRIPTS, "undelucram.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(ident, title, place="Timișoara", kind="Full-time", date="12.09.2026", employer="Henkel Romania"):
+        return (f'<div class="jobs-item w-100 position-relative " data-job-item id="{ident}">'
+                f'<a href="https://www.undelucram.ro/ro/locuri-de-munca/x-{ident}/{ident}" target="_blank"><h4 class="fw-bold text-dark mt-0 mb-1">{title}</h4>'
+                f'<p class="text-gray mb-0">{date}</p></a><a href="https://www.undelucram.ro/ro/prezentare-x-278"><h5 class="text-dark fw-bold mb-1 text-limit text-limit-1"> {employer} </h5></a>'
+                f'<span class="fw-bolder fs-5">3,85</span><span>68 evaluări</span>'
+                # the work type comes FIRST here, so an order-based reading would swap the two fields
+                f'<div class="col-auto"><div class="other-info-label text-dark"><svg role="img" aria-label="Job Type"><path d="M1"/></svg><span class="ps-2">{kind}</span></div></div>'
+                f'<div class="col-auto"><div class="other-info-label"><svg role="img" aria-label="Location"><path d="M2"/></svg><span class="ps-2">{place}</span></div></div></div>')
+
+    @staticmethod
+    def _page(cards, last=3, stated="1.468"):
+        pager = "".join(f'<a class="page-link" href="https://www.undelucram.ro/ro/locuri-de-munca?page={p}">{p}</a>' for p in range(2, last + 1))
+        return f'<html><body><main><div class="filters"><span>{stated} rezultate</span></div>{"".join(cards)}<div class="pagination">{pager}</div></main></body></html>'
+
+    def _list(self, mod, pages, n=None, codes=None):
+        import contextlib
+        def get(url):
+            m = re.search(r"[?&]page=(\d+)", url)
+            k = int(m.group(1)) if m else 1
+            if codes and k in codes:
+                return codes[k], ""
+            if k <= len(pages):
+                return 200, pages[k - 1]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(pages=n, limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_pages_are_walked_the_fields_read_by_their_label_and_the_two_witnesses_stay_apart(self):
+        mod = self._mod()
+        p1 = self._page([self._card(100306, "SHE Regional Manager", place="Hybrid (Pantelimon)"), self._card(100305, "SHE Regional Manager")])
+        p2 = self._page([self._card(100306, "SHE Regional Manager", place="Hybrid (Pantelimon)"), self._card(100303, "CONSILIER VANZARI SUCEAVA", employer="tbi bank")])
+        p3 = self._page([self._card(81932, "Shuffler", kind="Part-time", date="01.02.2026"), self._card(81931, "Dealer")])
+        rows, err = self._list(mod, [p1, p2, p3])
+        self.assertEqual([r["id"] for r in rows], ["100306", "100305", "100303", "81932", "81931"])
+        self.assertEqual((rows[0]["place"], rows[0]["work_type"]), ("Hybrid (Pantelimon)", "Full-time"))
+        self.assertEqual((rows[3]["work_type"], rows[3]["posted"], rows[3]["posted_as_published"]), ("Part-time", "2026-02-01", "01.02.2026"))
+        self.assertEqual((rows[2]["employer"], rows[2]["employer_rating"], rows[2]["employer_reviews"]), ("tbi bank", 3.85, 68))
+        self.assertEqual(rows[0]["ledger_id"], "undelucram:100306")
+        self.assertIn("3 page(s) read of 3; **5 distinct advertisement id(s)**.", err)
+        self.assertIn("the pager closes at page 3 — 3 × 10 = 30; 5 emitted over the walk.", err)
+        self.assertIn("5 emitted, site states 1 468 — 1 463 short; the stated figure and the pager are two witnesses, and neither corrects the other.", err)
+        self.assertNotIn("lower bound", err)
+
+    def test_an_equal_count_says_equal_and_a_bounded_walk_is_a_lower_bound_that_is_not_compared(self):
+        mod = self._mod()
+        p1 = self._page([self._card(1, "A"), self._card(2, "B")], last=2, stated="4")
+        p2 = self._page([self._card(3, "C"), self._card(4, "D")], last=2, stated="4")
+        rows, err = self._list(mod, [p1, p2])
+        self.assertEqual(len(rows), 4)
+        self.assertIn("4 emitted, site states 4 — equal.", err)
+        rows, err = self._list(mod, [p1, p2], n=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("the walk stopped at page 1, so the count is a lower bound", err)
+        self.assertIn("site states 4; the pager closes at page 2 — 2 emitted from a bounded walk, not compared.", err)
+        self.assertNotIn("short", err)
+        self.assertNotIn("equal", err)
+
+    def test_a_failed_page_is_a_partial_walk_and_no_count_is_printed(self):
+        mod = self._mod()
+        p1 = self._page([self._card(1, "A")], last=2)
+        with self.assertRaises(SystemExit) as cm:
+            self._list(mod, [p1, p1], codes={2: 500})
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+
+    def test_the_advertisements_identifier_is_the_employers_and_the_key_is_the_urls_tail(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "title": "SHE Regional Manager", "description": "<p>About this Position</p>",
+              "identifier": {"@type": "PropertyValue", "name": "Henkel Romania", "value": "278"}, "datePosted": "2026-09-12", "validThrough": "2026-10-28",
+              "employmentType": "FULL_TIME", "hiringOrganization": {"@type": "Organization", "name": "Henkel Romania", "sameAs": "https://www.undelucram.ro/ro/x-278"},
+              "jobLocation": [{"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Pantelimon", "addressCountry": "RO"}}]}
+        body = f'<html><head><script type="application/ld+json">{json.dumps(ld)}</script></head><body>Publicat 12.09.2026</body></html>'
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.undelucram.ro/ro/locuri-de-munca/she-regional-manager/100306"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer_id"], d["ledger_id"]), ("100306", "278", "undelucram:100306"))
+        self.assertEqual((d["country"], d["city"], d["employment_type"], d["posted"], d["valid_through"]), ("RO", "Pantelimon", "FULL_TIME", "2026-09-12", "2026-10-28"))
+        self.assertEqual(d["description"], "About this Position")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.undelucram.ro/ro/prezentare-henkel-278"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
