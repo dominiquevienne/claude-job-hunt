@@ -5,8 +5,8 @@
 <!-- hosts: www.intermediair.nl, intermediair.nl -->
 <!-- script: none -->
 <!-- countries: NL -->
-<!-- content: measured · **2 495 distinct advertisement uuids in the declared sitemap (`/cdn/sitemaps/vacature.xml` → one file, index lastmod 2026-09-13T15:21:17Z, no `<lastmod>` per entry) — and of 20 drawn at random, 19 served with a JobPosting whose validThrough is 2026-09-26 … 2026-11-11, 1 answered 404**; `bin/fetch-body.py` and a 20-page sample by the declared client, 16:16–16:17 UTC; the site states no figure by HTTP — the same DPG template as `nationalevacaturebank.md`, the search refused in writing to `*` · 2026-09-13 -->
-<!-- witness: the sample — 19 of 20 served open, the index's lastmod an hour before the read; no stated figure to compare, and none copied from a tab (the extension did not reach this host on 2026-09-13) · 2026-09-13 -->
+<!-- content: measured · **2 495 distinct advertisement uuids in the declared sitemap (`/cdn/sitemaps/vacature.xml` → one file, index lastmod 2026-09-13T15:21:17Z, no `<lastmod>` per entry) — and of 20 drawn at random, 19 served with a JobPosting whose validThrough is 2026-09-26 … 2026-11-11, 1 answered 404**; `bin/fetch-body.py` and a 20-page sample by the declared client, 16:16–16:17 UTC; **the site states «2.361 banen» on its search page** (a connected browser tab, 16:19 UTC — rendered from the API behind the search the rules refuse; not readable by HTTP), 134 fewer than the file — the same DPG template as `nationalevacaturebank.md` · 2026-09-13 -->
+<!-- witness: the sample — 19 of 20 served open (a proportion that predicts ≈ 2 370 live of 2 495, and the tab's «2.361» sits inside it), the index's lastmod an hour before the read; the tab's figure is read once, never copied into an adapter · 2026-09-13 -->
 
 **No `host-forms:` is declared, because no script ships to reach a form**
 — the pages and every `<loc>` carry `www.`; the sitemap index sends its one
@@ -49,7 +49,9 @@ postalCode}, baseSalary {EUR, 6000–8000, MONTH}, industry, directApply.
 
 **The difference from the sister is the freshness**: 1 gone of 20 here
 against 16 of 40 there, and the index's `lastmod` is the day's, not eleven
-days old. Twenty draws give a proportion, not a count.
+days old. Twenty draws give a proportion, not a count — 19 / 20 of 2 495
+is ≈ 2 370, and the search page's «2.361 banen» (tab, 16:19 UTC) sits
+inside that: the file and the site agree once the gone are taken out.
 
 ## What the adapter would be
 
@@ -61,8 +63,8 @@ host needs a different reader. **Issue: see the `adapter` label** (opened
 
 ## What is not established
 
-- **A count the site states** — none by HTTP; a tab was not opened on
-  this host.
+- **A count the site states by HTTP** — none; «2.361 banen» is the tab's
+  reading at 16:19 UTC, from the API behind the refused search.
 - **How the 2 495 relate to the sister's 89 733** — different boards of
   one group; whether advertisements are shared was not read.
 - **The one 404** — a uuid in a file written an hour earlier.
