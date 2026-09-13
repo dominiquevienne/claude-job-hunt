@@ -17493,6 +17493,104 @@ class OneSitemapSortedByShapeAndTheListingsOwnCountOnTwoHosts(unittest.TestCase)
         self.assertEqual((d["employment_type"], d["start"], d["salary"], d["description"]), ("plný úväzok, skrátený úväzok, živnosť", "asap", "1 500 EUR/mesiac", "Náplň práce Hľadáme človeka."))
 
 
+class TwentyThreeSectorFilesOneIdAndARefusedLanguageNeverRead(unittest.TestCase):
+    """**`profession.py`, 2026-09-13 (#359).** Profession.hu lists its
+    advertisements in 23 sector sitemaps; an advertisement can sit in two
+    (ten did on 2026-09-13), so the adapter dedups on the id and keeps the
+    sectors; the same files list `/en/advertisement/…` twins that the rules
+    refuse (`Disallow: /en/`) — counted apart, never read, never emitted,
+    and `ad --url` on one is refused before any request. The witness is
+    the listing page's own title «… - 19329 db - …», printed beside the
+    count and never merged. The advertisement's `JobPosting` carries the
+    EMPLOYER's number in `hiringOrganization.@id` (kept apart), no
+    `jobLocation` — the place is the page's `addressLocality` microdata,
+    with the mode («Hibrid») before the separator — and a `validThrough`
+    that is the read time plus thirty days: kept as published, never
+    offered as an expiry. Mutated (`-B`, detached copy): the `/en/` branch
+    dropped → 0 set aside, reddens; the dedup removed → 4 ≠ 3; the stated
+    figure replaced by the row count → «equal», reddens; `employer_id`
+    taken from the advertisement's id → reddens; `valid_through` passed
+    through → reddens; `AD_RE` widened to `/en/advertisement/` → the
+    refusal case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_profession", os.path.join(SCRIPTS, "profession.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _urlset(urls):
+        return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-13T02:50:54+02:00</lastmod></url>" for u in urls) + "</urlset>")
+
+    INDEX = ('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+             '<sitemap><loc>https://www.profession.hu/sitemap-listings-admin-hu.xml</loc></sitemap>'
+             '<sitemap><loc>https://www.profession.hu/sitemap-listings-sales-hu.xml</loc></sitemap></sitemapindex>')
+
+    def _list(self, mod, pages, limit=None, no_total=False):
+        import contextlib
+        asked = []
+        def get(url):
+            asked.append(url)
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_sectors_are_merged_on_the_id_the_english_twins_set_aside_and_the_title_count_printed_apart(self):
+        mod = self._mod()
+        admin = self._urlset(["https://www.profession.hu/allas/sales-business-development-specialist-mint-consulting-kft-2999723",
+                              "https://www.profession.hu/en/advertisement/brand-communication-manager-intersnack-2999926",
+                              "https://www.profession.hu/allas/office-manager-loranger-2999930"])
+        sales = self._urlset(["https://www.profession.hu/allas/sales-business-development-specialist-mint-consulting-kft-2999723",
+                              "https://www.profession.hu/allas/shop-eladot-keresunk-2999940"])
+        listing = "<html><head><title>Állások, munkák és állásajánlatok - 19329 db - 2026 Szeptember | Profession.hu</title></head><body>19329 állás</body></html>"
+        rows, err, asked = self._list(mod, {mod.INDEX: self.INDEX, "https://www.profession.hu/sitemap-listings-admin-hu.xml": admin,
+                                            "https://www.profession.hu/sitemap-listings-sales-hu.xml": sales, mod.LISTING: listing})
+        self.assertEqual([r["id"] for r in rows], ["2999723", "2999930", "2999940"])
+        self.assertEqual(rows[0]["sectors"], ["admin", "sales"])
+        self.assertEqual((rows[0]["ledger_id"], rows[0]["country"], rows[1]["slug"]), ("profession:2999723", "HU", "office-manager-loranger"))
+        self.assertFalse(any("/en/" in u for u in asked))
+        self.assertIn("2 sector file(s), 5 <loc>; **3 distinct advertisement id(s)** (1 listed in two sectors), 1 `/en/` URL(s) set aside — `Disallow: /en/` is written, so they are neither read nor emitted.", err)
+        self.assertIn("3 emitted, site states 19 329 — 19 326 short; the sitemaps and the listing's own title are two witnesses, and neither corrects the other", err)
+        self.assertNotIn("equal", err)
+        with self.assertRaises(SystemExit) as cm:
+            self._list(mod, {mod.INDEX: self.INDEX, "https://www.profession.hu/sitemap-listings-admin-hu.xml": admin.replace("</url>", "</url><url></url>", 1)}, no_total=True)
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+
+    def test_the_advertisement_keeps_the_employers_number_apart_reads_the_place_from_the_page_and_never_offers_the_formula_as_an_expiry(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "@id": "https://www.profession.hu/#/schema/JobPosting/2999723",
+              "title": "Sales & Business Development Specialist", "description": "<p>Főbb feladatok</p><ul><li>Coordination</li></ul>", "datePosted": "2026-09-12",
+              "validThrough": "2026-10-13T19:23:12", "employmentType": "Alkalmazotti jogviszony", "jobLocationType": "TELECOMMUTE",
+              "hiringOrganization": {"@id": "https://www.profession.hu/#/schema/Organization/123493", "@type": "Organization", "name": "Mint Consulting Kft."},
+              "occupationalCategory": "Üzleti támogató központok - Értékesítés támogatás", "applicantLocationRequirements": [{"@type": "Country", "name": "Magyarország"}]}
+        body = (f'<html><head><script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script></head><body><h1>Sales &amp; Business Development Specialist</h1>'
+                '<h3 class="sr-only">Munkavégzés helye </h3><div class="my-auto font-size-16 address-data">\nHibrid\n<span class="location-separator">•</span>\n'
+                '<span itemprop="jobLocation" itemscope itemtype="https://schema.org/Place"><span itemprop="addressLocality">\nBudapest\n</span></span></div>'
+                '<a href="mailto:hr@example.hu">Jelentkezem</a></body></html>')
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profession.hu/allas/sales-business-development-specialist-mint-consulting-kft-2999723"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer_id"], d["employer"], d["ledger_id"]), ("2999723", "123493", "Mint Consulting Kft.", "profession:2999723"))
+        self.assertEqual((d["place"], d["work_mode"], d["remote"], d["employment_type"], d["posted"]), ("Budapest", "Hibrid", True, "Alkalmazotti jogviszony", "2026-09-12"))
+        self.assertIsNone(d["valid_through"])
+        self.assertEqual(d["valid_through_as_published"], "2026-10-13T19:23:12")
+        self.assertEqual(d["description"], "Főbb feladatok Coordination")
+        self.assertNotIn("hr@example.hu", out.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profession.hu/en/advertisement/brand-communication-manager-intersnack-2999926"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
