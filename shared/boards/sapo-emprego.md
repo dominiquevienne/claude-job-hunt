@@ -118,3 +118,12 @@ is one.
 `sapoemprego.py sitemap`: 22 838 distinct, site states 23 555 — 717 short,
 both printed. `ad` on one. Three tests; five mutations on a detached
 worktree (`python3 -B`), five red, each on the test written for it.
+
+## 2026-09-13 — #283, a note: the 429 on `/robots.txt` at 10:18 would open today, with a 10 s wait
+
+The 429 the guard met on the rules file (third request in ten seconds) was
+an INDETERMINATE-shaped refusal then; since #283 (owner's decision of
+2026-09-13) it is `no-rules-429`, open on `certain: False`, and the first transport
+request waits `Retry-After` when the host gives one, else 10 s — the
+pilot's opinion kept as a delay. **The 429 on a PAGE is unchanged**: this
+adapter stops on it after 5 s, as above, and that is the one that counts.

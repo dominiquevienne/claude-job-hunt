@@ -257,3 +257,12 @@ reached.
 public API whose host does not serve usable rules — and that class is in
 arbitration with the user. Wiring it would settle the question for a fourth
 board without asking.
+
+## 2026-09-13 — #283, a note: the 1-byte 403 on `rest.arbeitsagentur.de/robots.txt` is an absence of rules
+
+Since #283 (owner's decision of 2026-09-13) a 403 on the rules file is
+`no-rules-403`, open on `certain: False`. **Nothing changes for this
+adapter**: it is an API host under the #100 exemption — the entry is
+technical (a key, a quota), the route presents itself, and the robots
+question was never its gate. The note is here so that a future reader does
+not «fix» the module toward the old reading on this host's account.

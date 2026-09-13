@@ -6,8 +6,7 @@
 <!-- script: none -->
 <!-- countries: BB -->
 <!-- witness: none — nothing past the rules file was requested; the guard's two verdicts (`host-closed, certain` on `www.`, INDETERMINATE by TLS on the apex) are the only bodies this card holds · 2026-09-13 -->
-<!-- route: none · the rules file is refused (403 ×2, x-cache CONFIG_NOCACHE) and the apex's certificate does not verify — no open path for any client, browser included · 2026-09-13 -->
-
+<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a static 403 to this client, twice (family (1) of #222): a browser route is legitimate and not yet measured · 2026-09-13 -->
 **The register the Ministry of Labour's site points to as its «Online Job
 Centre» (`labour-gov-bb.md`), and the only board of its country in this
 repository.** *A measurement and not an adapter, and a short one, because
@@ -47,3 +46,22 @@ Nothing about what the register serves — size, fields, whether a browser
 is served — **because a browser was not opened**. *The country's page on
 the Atlas keeps its ministry as «not a board» and its register as «rules
 refused, dated».*
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+«route: none — 403 ×2 on the rules file + TLS on the apex (13.09)» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://www.barbadosjobregister.gov.bb/              403, 30 B, md5 c463f0baa3f3   (15:29:24Z)
+GET https://www.barbadosjobregister.gov.bb/              403, 30 B, md5 c463f0baa3f3   (15:29:26Z)
+```
+
+**The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*
