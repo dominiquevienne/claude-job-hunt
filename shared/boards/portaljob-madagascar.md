@@ -210,3 +210,12 @@ it** — `verdict()` is 344 lines and the handling is inside it.
 
 *What remains true of this host: `ai-input` is absent from its signal, so
 nothing in it forbids the reading.*
+
+## 2026-09-12 15:27 UTC — re-read for #233, lot 7: unchanged
+
+The root answers 200 twice (8 654 B then 8 616 B — the Inertia shell, its
+`data-page` payload and no advertisement, as above); a guessed `/offres`
+answers the site's own 404 (8 600 B). *The rules are the managed block
+naming `ClaudeBot` with `*` open (1 934 B), `identity()` answers
+`claude-user`. Nothing in this card changes: a served shell that renders
+its list by script is what it was on 2026-09-08.*
