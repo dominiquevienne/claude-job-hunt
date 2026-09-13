@@ -1,12 +1,13 @@
-# Board adapter — Emploi Sénégal (Senegal): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board measurement — Emploi Sénégal (`www.emploisenegal.com`, Senegal): 403 to the declared client, served to a tab — 173 of 173
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.emploisenegal.com, emploisenegal.com -->
 <!-- script: none -->
 <!-- countries: SN -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root answers HTTP 403 to that client on 2 fetches: 25 bytes, md5 `9ccabba20b9f` both times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-11 22:10 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **173 distinct advertisement addresses** over `/recherche-jobs-senegal?page=0…` (6 × 25 + 23; the next page empty), read from a connected browser tab, **against «173 Offres d'emploi trouvées» stated by the page — equal**; the pager is zero-based; the rules as on the 11th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «173 Offres d'emploi trouvées», read on every page and printed beside the distinct count («173 emitted, site states 173 — equal»); the declared client's 25-byte 403 on the same path, the family's vendor default · 2026-09-13 -->
+<!-- route: browser · 173 · 2026-09-13 -->
 
 **Measured 2026-09-11 at 22:10:52Z UTC for #233, lot 1 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -55,3 +56,12 @@ adapter, and that is the pilot's to assign.
   to the byte as `www.emploibenin.com`, `www.job-cameroun.com`, `www.emploi.cm`
   and `www.emploisenegal.com` — one fingerprint dates the family; the other
   members need one read each to be dated, not to be classified.
+
+## 2026-09-13 16:37 UTC — the browser route, MEASURED (#222): 173 of 173
+
+```
+tab: /                                      200 «Offres d´Emploi et Recrutement au Sénégal» — no challenge; the home page links /recherche-jobs-senegal
+tab: fetch /recherche-jobs-senegal?page=0…7     25 × 6 · 23 · 0  →  **173 distinct data-href addresses**, «173 Offres d'emploi trouvées» — **equal**; every address carries its id
+```
+
+**The procedure is `ghanajob.md`'s six steps** — guard on the exact listing path (`*` open, certain), one tab, `fetch('?page=0,1,2…')` 1.5 s apart until a page carries no card, the site's own «N Offres d'emploi trouvées» read on every page and printed beside the distinct count. The declared client gets the family's 25-byte 403 (md5 `9ccabba20b9f…`) on the same path — the vendor's default, for the client alone. **The cards are keyed by their `data-href` address, not by a trailing number**: on `emploi.cd` six of seventy addresses carry no id at all (`…/retail-operations-specialist-local-congolese`), and a reader keyed on the number printed «64 emitted, site states 70 — 6 short» with nothing else wrong — the same shape as `gulftalent.md`'s two address shapes, found the same day.
