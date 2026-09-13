@@ -1,12 +1,13 @@
-# Board measurement — Barbados Job Register (`barbadosjobregister.gov.bb`): the rules file answers 403 on `www.` and the apex fails its TLS certificate — no path open, nothing read, no browser
+# Board measurement — Barbados Job Register (`www.barbadosjobregister.gov.bb`, Barbados): «Request is Blocked by Firewall» to the declared client and to a real browser alike
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.barbadosjobregister.gov.bb, barbadosjobregister.gov.bb -->
 <!-- script: none -->
 <!-- countries: BB -->
-<!-- witness: none — nothing past the rules file was requested; the guard's two verdicts (`host-closed, certain` on `www.`, INDETERMINATE by TLS on the apex) are the only bodies this card holds · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a static 403 to this client, twice (family (1) of #222): a browser route is legitimate and not yet measured · 2026-09-13 -->
+<!-- content: measured · **403 «Request is Blocked by Firewall», 30 bytes, to a real browser as well** — the tab on `/` and `fetch('/')` from it, 16:26 UTC, the same body the declared client got (15:29 UTC, twice); a refusal rendered to everyone from here is not a client filter (borne 0) — whether it is a geography filter is not established; nothing of the register was read · 2026-09-13 -->
+<!-- witness: none — nothing served to any client from this machine; the 30-byte firewall page is the only body, from the declared client and from a browser tab · 2026-09-13 -->
+<!-- route: none · 403 to a real browser too — the firewall refuses everyone from here (borne 0); a reader inside Barbados is the only untested route · 2026-09-13 -->
 **The register the Ministry of Labour's site points to as its «Online Job
 Centre» (`labour-gov-bb.md`), and the only board of its country in this
 repository.** *A measurement and not an adapter, and a short one, because
@@ -65,3 +66,17 @@ GET https://www.barbadosjobregister.gov.bb/              403, 30 B, md5 c463f0ba
 **The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-13 16:26 UTC — the browser route, MEASURED (#222): the firewall page to the tab as well
+
+```
+tab: https://www.barbadosjobregister.gov.bb/     403, «Request is Blocked by Firewall», 30 B — the page itself
+tab: fetch('/')                                  403, 30 B, the same sentence
+```
+
+**The same thirty bytes to a browser and to the declared client.** A
+refusal rendered to everyone from this machine is not a client filter
+(borne 0). *What it may be is a geography filter — a government register
+served to its island — and that is not measured from Switzerland; a reader
+inside Barbados is the only route this card leaves untested.* Nothing of
+the register was read.
