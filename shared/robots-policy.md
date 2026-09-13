@@ -771,11 +771,11 @@ they were counting different shapes, and a third shape neither had isolated.*
 ```
 (1) the RULES permit, the CONTENT answers 403, bare 25-byte body
     -> the only shape a browser decision would open
-(2) the ROBOTS.TXT ITSELF answers 403          ->  host-closed
-    (a 401 there is an ABSENCE of rules since #201, 2026-09-09 — see the
-     state table below; `api.ashbyhq.com` left this shape that day)
-    -> reading that file by hand says what the rules say, and nothing about
-       whether the host serves an inventory
+(2) the ROBOTS.TXT ITSELF answers 403          ->  host-closed UNTIL 2026-09-13;
+    an ABSENCE of rules since #283 (owner) — as a 401 was since #201 — and
+    the shape dissolves into (1): the transport is measured next, root and
+    a listing, and it is THAT answer that sorts the host (static 403 → the
+    browser candidate of #222, a challenge → bound 2, a 200 → an adapter)
 (3) a CHALLENGE page, md5 different on every request
     -> the owner's second bound: never ask anyone to defeat an antirobot
        control. Excluded from any count of what could be opened.
@@ -1239,20 +1239,44 @@ The owner's reasoning, quoted rather than paraphrased:
 first gets cited alone as *"defaults bind"* and the second alone as *"we
 proceed when unsure"* — and neither is what this says.
 
-### The three states, and only one of them moved
+### The states — and since 2026-09-13 every unread file is the same absence
 
-| state | what the host did | conduct |
+**Owner's decision, #283, 2026-09-13, twice in one hour, verbatim:** *«&nbsp;un
+403 sur un robots.txt doit être considéré comme l'absence de règle... et donc
+une porte ouverte&nbsp;»*, then *«&nbsp;toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture&nbsp;»*. RFC 9309
+§2.3.1.3 as written, on every code. The rows that read **stop** until then are
+kept struck through, so that the change reads as a decision and not as a gap.
+
+| reading of `/robots.txt` | what the host did | conduct |
 | :-- | :-- | :-- |
-| **`unrecognised`** — 200, readable body, no directive line | **answered, and wrote no rule** | **open door** |
-| `unreachable` — timeout, DNS, TLS, 5xx, a 2xx that is not 200 | we could not look | **stop** — #118 |
-| `refused` — 403/429/451 on `/robots.txt` | answered, and answered no | **stop** |
-| **`unauthenticated`** — 401 on `/robots.txt` | **demands a credential for everything, wrote no rule** | **open door**, `certain: False` — owner's decision of 2026-09-09, #201. *401 and only 401*: 429 stays a refusal because opening it would restart a scan on a host that said «&nbsp;slow down&nbsp;», 451 because it is a legal demand, 403 because it is out of the decision |
+| **200, a rules file** | wrote its rules | the rules it carries, `certain: True` |
+| **404 / 410** (`absent`) | looked, and there is none | **open door**, `certain: True` — knowledge |
+| **`unrecognised`** — 200, readable body, no directive line | **answered, and wrote no rule** | **open door**, `certain: False` |
+| **`unauthenticated`** — 401 | **demands a credential for everything, wrote no rule** | **open door**, `certain: False` — #201, 2026-09-09, the first code brought back |
+| **`no-rules`** — 403, 429, 451, any other 4xx, a 5xx after three attempts, timeout, TLS, connection refused, a 2xx that is not 200 | **nothing was read** | **open door**, `certain: False`, the kind naming what failed (`no-rules-403`, `no-rules-timeout` …) — **#283, 2026-09-13**. ~~`refused` — 403/429/451: answered, and answered no — **stop**~~ ~~`unreachable` — timeout, DNS, TLS, 5xx: we could not look — **stop**, #118~~ |
 
-**The boundary is the whole rule.** *"A body that says nothing does not say
-no"* is not *"we proceed when we do not know"*. A fetch that failed and a 403
-both still stop this module cold, and they must, because **a host that names
-this project and closes everything to it looks exactly like a timeout from
-here** — `nea.gov.kh` did.
+**What does not change, and it is the whole boundary now:** a `Disallow`
+that was READ is a `Disallow`; a refusal at the transport on a PAGE is a
+refusal at the transport — the browser candidate of the 2026-09-07 decision,
+bornes 0-3 whole; a challenge is not defeated and nobody is asked to defeat
+one; a `Crawl-delay` that was read applies; a 429 on a PAGE stops the fetch
+(`sapoemprego.py`, 5 s then stop). **The 429 on the rules file says nothing
+about the 429 on the listing, and it is the latter that counts.** And «an
+INDETERMINATE is not probed» no longer holds for the rules file: a guard that
+could read nothing answers `allowed: True, certain: False`, and the transport
+decides next.
+
+**The pilot's opinion, given once and kept because it was given:** a 429 on
+`/robots.txt` is a host that just said «&nbsp;slow down&nbsp;», and opening it
+sends a request back within the second. The conduct that honours that without
+contradicting the decision: **on a 429 (or a timeout) of the rules file the
+first transport request waits `Retry-After` when the host gives one, else
+10 s** — `first_request_delay` on the verdict, honoured by `_pace.Pace` and
+`bin/fetch-body.py`; a delay, not a refusal. *#118's argument — a host that
+names this project and closes everything to it looks exactly like a timeout
+from here, `nea.gov.kh` did — was given, is kept in `_robots.py`'s header, and
+does not decide any more.*
 
 ### `certain` stays false, and that is not a detail
 
