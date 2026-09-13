@@ -5,6 +5,21 @@ and each adapter owns one site. Sixty-seven ship today, each verified against
 the live site — count the rows below rather than trusting this sentence, which
 has gone stale before.
 
+## The adapter you are missing is an issue you can vote for
+
+**Every board and every ATS family without an adapter has its own issue on the
+plugin repository, labelled `adapter`** — one per board since 2026-09-13 (#291)
+and one per ATS family since the same evening (#406). *An ATS is the software
+behind an employer's "Careers" page — Greenhouse, Workday, iCIMS, Avature,
+BambooHR…: one adapter covers every employer that runs on it, in every country.*
+
+**Open the list and press 👍 on the one you need**:
+<https://github.com/dominiquevienne/claude-job-hunt/issues?q=is%3Aopen+label%3Aadapter>.
+The issues are worked in decreasing order of votes (owner's rule of
+2026-09-13); an issue nobody has voted for waits behind the ones people have.
+If your board or ATS is not there, `board-request` files it — say
+"add support for <board>" or paste an ad URL from a site `job-scan` cannot sweep.
+
 ## The uncovered-board queue cannot be re-derived from this directory
 
 **Re-derived 2026-09-08 on request, and the result is that the question has the
