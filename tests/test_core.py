@@ -17950,6 +17950,121 @@ class TheStatesOwnStoreByDefaultTheRepublishedOnRequestAndTheContactSectionNever
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class AStateApiWalkedToTheCountItStatesWithContactsWithheld(unittest.TestCase):
+    """**`uruguayconcursa.py`, 2026-09-13 (#435).** Uruguay's ONSC lists its
+    llamados through the JSON API its page posts to; `list` walks
+    `find` 50 a page to the `cntTotal` the API states, prints «N emitted,
+    site states N — equal» and exits 6 on a gap; a bounded walk says so
+    and is not compared. The employer is the state body and is public; an
+    e-mail address or a phone number in the prose is a contact and is
+    withheld. `ad` reads `get/?Llaid=` and exits 3 on an empty list.
+    Mutated (`-B`, detached copy): `cntTotal` ignored → the walk case
+    reddens (the «(N)» fallback disagrees by construction); the dedup
+    dropped → the walk case reddens (page 2 repeats one id); EMAIL_RE
+    neutralised → the redaction case reddens; the `positions` sum stopped
+    → the record case reddens; the gap exit removed → the short case
+    reddens; the empty-list exit removed → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_uruguayconcursa", os.path.join(SCRIPTS, "uruguayconcursa.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _rec(i, **kw):
+        r = {"LlaId": str(i), "LlaNum": f"{i:04d}/2026", "LlaTit": f"Puesto {i}", "CarNom": f"Cargo {i}", "Inciso": "Universidad de la República",
+             "UnidadEjecutora": "Facultad de Ingeniería", "LlaLugDes": "Montevideo", "LlaFchApeIns": "2026-09-01", "LlaFchCieIns": "2026-09-30",
+             "LlaEstWeb": "Abierto", "TipVinDsc": "Contratado", "TipTarDsc": "Docencia", "LlaRet": "", "LlaCarHor": "20 horas",
+             "listaOrganismoCantPuestos": [{"LlaOrgCntPue": 2, "OrgDsc": "A"}, {"LlaOrgCntPue": 3, "OrgDsc": "B"}], "listaEtapaProceso": [" 1- Méritos "],
+             "LlaReqExc": "Título habilitante.", "LlaConTra": "", "LlaTieCon": "", "LlaRegInc": "", "LlaMedPos": "www.uruguayconcursa.gub.uy",
+             "LlaAfro": False, "LlaTrans": True, "LlaDisc": False, "LlaVicDelVio": False}
+        r.update(kw)
+        return r
+
+    def _page(self, recs, total, resultado_n, pages):
+        return json.dumps({"ListaLlamados": recs, "Resultado": f"Mostrando TODOS los Llamados Abiertos ({resultado_n})", "cntPaginas": str(pages), "cntTotal": str(total)})
+
+    def _run(self, mod, fn, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def request(url, payload=None):
+            asked.append((url, payload))
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(status=None, q=None, pages=None, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fn(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_count_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        p1 = self._page([self._rec(100 + i) for i in range(50)], total=52, resultado_n=99, pages=2)
+        p2 = self._page([self._rec(149), self._rec(150), self._rec(151)], total=52, resultado_n=99, pages=2)
+        rows, err, asked = self._run(mod, mod.cmd_list, [(200, p1), (200, p2)])
+        self.assertEqual(len(rows), 52)
+        self.assertIn("52 emitted over 2 page(s), site states 52 (status Abierto) — equal.", err)
+        self.assertEqual(asked[0][1], {"llamadosFiltros": {"PaginaActual": 1, "CntPorPagina": 50, "ListaLlaEstWeb": ["Abierto"]}})
+        self.assertEqual(asked[1][1]["llamadosFiltros"]["PaginaActual"], 2)
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._rec(1), self._rec(2), self._rec(3)], total=5, resultado_n=5, pages=1)
+        it = iter([(200, p1)])
+        mod.request = lambda url, payload=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            mod.cmd_list(argparse.Namespace(status=None, q=None, pages=None, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("3 emitted over 1 page(s), site states 5 (status Abierto) — 2 short.", err.getvalue())
+
+    def test_a_bounded_walk_is_said_to_be_bounded_and_not_compared(self):
+        mod = self._mod()
+        p1 = self._page([self._rec(100 + i) for i in range(50)], total=363, resultado_n=363, pages=8)
+        rows, err, asked = self._run(mod, mod.cmd_list, [(200, p1)], pages=1)
+        self.assertEqual(len(rows), 50)
+        self.assertIn("walk bounded by request", err)
+        self.assertNotIn("short", err)
+
+    def test_the_record_names_the_state_body_sums_the_posts_and_withholds_contacts(self):
+        mod = self._mod()
+        rec = self._rec(7, LlaReqExc="Enviar CV a concursos@fing.edu.uy o llamar al 099 123 456.", LlaRet="$60.610 nominales", LlaLugDes="Salto — consultas: salto@udelar.edu.uy")
+        r = mod.record(rec)
+        self.assertEqual((r["ledger_id"], r["employer"], r["positions"], r["quotas"], r["salary_text"], r["url"], r["stages"], r["application"]),
+                         ("uruguayconcursa:7", "Universidad de la República · Facultad de Ingeniería", 5, ["Trans"], "$60.610 nominales", "https://www.uruguayconcursa.gub.uy/llamado/7", ["1- Méritos"], "www.uruguayconcursa.gub.uy"))
+        blob = json.dumps(r)
+        self.assertNotIn("@", blob)
+        self.assertNotIn("099 123 456", blob)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        self.assertIn("[e-mail withheld]", r["location"])
+
+    def test_the_ad_reads_get_and_an_empty_list_is_gone(self):
+        import contextlib
+        mod = self._mod()
+        served = iter([(200, json.dumps({"ListaLlamados": [self._rec(42528)]})), (200, json.dumps({"ListaLlamados": []}))])
+        asked = []
+
+        def request(url, payload=None):
+            asked.append(url)
+            return next(served)
+        mod.request = request
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.uruguayconcursa.gub.uy/llamado/42528"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["reference"], d["valid_through"]), ("42528", "42528/2026", "2026-09-30"))
+        self.assertIn("/api-backend/llamados/get/?Llaid=42528", asked[0])
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.uruguayconcursa.gub.uy/llamado/1"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
