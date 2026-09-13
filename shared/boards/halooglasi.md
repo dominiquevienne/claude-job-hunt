@@ -1,12 +1,13 @@
-# Board adapter — Halo oglasi (Serbia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Halo oglasi (Serbia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.halooglasi.com, halooglasi.com -->
 <!-- script: none -->
 <!-- countries: RS -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 15:28 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **476 advertisements stated by the site** — the search form's own button «Prikaži 476 oglasa» on `/posao`, the listing `/posao/ponuda-poslova-pretraga` with `/posao/<category>/<slug>/<id>?kid=4` addresses (41 on its first page) and a map note «only the first 300 results are shown on the map»; read from a connected browser tab; no JobPosting on the listing (an Organization only); the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own «Prikaži 476 oglasa» — the count its search button carries with no filter set; the walk to confirm it was not made · 2026-09-13 -->
+<!-- route: browser · 476 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 15:28:10Z UTC for #233, lot 7 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,26 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:48 UTC — the browser route, MEASURED (#222): the count is on the button
+
+One Claude-in-Chrome tab, the guard on `/posao` and
+`/posao/ponuda-poslova-pretraga` first. **No challenge** — the 25-byte 403
+goes to the declared client alone.
+
+```
+navigate /posao                          200 «Posao | Halo oglasi Posao» — the search form; its button reads **«Prikaži 476 oglasa»** with nothing set
+fetch /posao/ponuda-poslova-pretraga     200 «Ponuda poslova» — 41 /posao/<category>/<slug>/<13-digit id>?kid=4 addresses; «na mapi je prikazano samo prvih 300 rezultata» (the map shows the first 300)
+JSON-LD                                  Organization only on both pages
+```
+
+**476 is the site's count and the button is where it says it.** The
+advertisement id is the 13-digit number in the address; the procedure a
+session follows: guard → tab → read the button → walk the listing's pages
+1.5 s apart (its pager was not exercised here), collecting the ids →
+**«n emitted, site states 476»** → an advertisement page (not read) →
+close. *Halo Oglasi is a classifieds site; `/posao` is its job section
+and the only path this card concerns.*
 
 ## What this card is, and is not
 

@@ -1,12 +1,13 @@
-# Board adapter — KarriereStart (Norway): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — KarriereStart (Norway): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: karrierestart.no, www.karrierestart.no -->
 <!-- script: none -->
 <!-- countries: NO -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 15:27 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **9 809 advertisements stated by the site** — «20794 ledige stillinger i 9809 annonser» on `/jobb` (20 794 positions in 9 809 advertisements: a headcount and an ad count, both stated, the second the one to count), 20 `/ledig-stilling/<id>` per page; page 1 read from a connected browser tab; no JobPosting on the advertisement page; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own sentence «20794 ledige stillinger i 9809 annonser» on the listing — two figures, and the card says which is which; the walk to confirm 9 809 was not made · 2026-09-13 -->
+<!-- route: browser · 9809 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 15:27:58Z UTC for #233, lot 7 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,26 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:47 UTC — the browser route, MEASURED (#222): two figures on one line, and the card says which is which
+
+One Claude-in-Chrome tab, the guard on `/jobb` and `/ledig-stilling/<id>`
+first. **No challenge** — the 25-byte 403 goes to the declared client alone.
+
+```
+navigate /jobb                     200 «Ledige stillinger» — **«20794 ledige stillinger i 9809 annonser»** · 20 /ledig-stilling/<id> cards · facets by fylke, kommune, bransje, yrke
+GET /ledig-stilling/3012380        200 «Product Lead - Gjensidige» — no JSON-LD, no JobPosting; «Søknadsfrist :» in the page text
+```
+
+**20 794 is a headcount — positions — and 9 809 is the count of
+advertisements**; the same shape as `nea-gov-kh.md`'s 90 639, stated on
+the same line here. The adapter counts advertisements against 9 809 and
+never against 20 794. The pager's addresses carry query strings the
+tooling masks; the procedure is: guard → tab → read the two figures →
+walk the listing's pages 1.5 s apart, collecting `/ledig-stilling/<id>` →
+**«n emitted, site states 9 809 advertisements (20 794 positions)»** →
+the advertisement page's own fields (no JobPosting) → close. *One page of
+20 was read.*
 
 ## What this card is, and is not
 

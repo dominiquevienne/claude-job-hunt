@@ -1,12 +1,13 @@
-# Board adapter — Kariera (Greece): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Kariera (Greece): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.kariera.gr, kariera.gr -->
 <!-- script: none -->
 <!-- countries: GR -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:56 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **5 959 advertisements stated by the site** — `<title>5959 διαθέσιμες θέσεις εργασίας</title>` on `/jobs`, an `ItemList` of 50 per page in JSON-LD, a pager to page 120 (120 × 50 ≥ 5 959), advertisement addresses `/jobs/<category>/<id>`; pages 1 and 2 read from a connected browser tab (50 + 50), the full walk not made; a JobPosting per advertisement; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own count in its `<title>` («5959 διαθέσιμες θέσεις εργασίας»), the same on page 2, and the page's `ItemList` of 50 — the walk to confirm it is 120 pages and was not made · 2026-09-13 -->
+<!-- route: browser · 5959 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:56:32Z UTC for #233, lot 5 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,25 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:47 UTC — the browser route, MEASURED (#222): a count in the title, an ItemList per page, a JobPosting per advertisement
+
+One Claude-in-Chrome tab, the guard on `/jobs` and `/jobs/<category>/<id>`
+first. **No challenge** — the 25-byte 403 goes to the declared client alone.
+
+```
+navigate /jobs                     200 «5959 διαθέσιμες θέσεις εργασίας | kariera.gr» — 50 cards, JSON-LD ItemList (numberOfItems 50), pager ?page=1 … 120
+fetch /jobs?page=2                 200 — the same title figure, 50 more; 144 of the page's 191 /jobs/… links are chrome (category pages), the ItemList is the list
+the page's own calls               /api/v2/jobseeker/feature-flags · /enums · /profile · /tracking — the listing itself is server-rendered
+GET /jobs/engineering-jobs/344986  200 — one JobPosting (Loulis Food Ingredients · Ηλεκτρολόγος Μηχανικός · datePosted 2026-09-13T10:16 · validThrough 2026-10-13 · description 2 693 chars · Σούρπη, Ελλάδα)
+```
+
+**The site states 5 959 and its list page states 50 per page; the walk of
+120 pages was not made** — the count is the site's, and the procedure a
+session follows is: guard → tab → read the `<title>` figure → `fetch
+/jobs?page=P` for P = 1 … ⌈N/50⌉ 1.5 s apart, reading the ItemList of
+each page (not the links) → **«n emitted, site states N»** → the
+JobPosting on a page → close. *The 5 959 is the site's; 100 were read.*
 
 ## What this card is, and is not
 

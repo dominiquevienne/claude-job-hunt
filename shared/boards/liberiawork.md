@@ -1,12 +1,13 @@
-# Board adapter — LiberiaWork (Liberia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — LiberiaWork (Liberia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.liberiawork.com, liberiawork.com -->
 <!-- script: none -->
 <!-- countries: LR -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 12:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **48 distinct advertisement addresses** over `/job-vacancies-search-liberia?page=0…` (25 + 23; the next page empty), read from a connected browser tab, **against «48 Job ads found» stated by the page — equal**; the pager is zero-based, as on every AfricaWork host read since `ghanajob.md`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «48 Job ads found», read on every page of the walk and printed beside the distinct count («48 emitted, site states 48 — equal») · 2026-09-13 -->
+<!-- route: browser · 48 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 12:22:49Z UTC for #233, lot 6 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,25 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:44 UTC — the browser route, MEASURED (#222): the 403 is for the declared client alone
+
+One Claude-in-Chrome tab, the guard on `/job-vacancies-search-liberia` first (`*` open, certain).
+**No challenge, no interstitial** — borne 0 held: the 25-byte 403 above goes
+to the declared HTTP client and to nobody else.
+
+```
+navigate https://www.liberiawork.com/job-vacancies-search-liberia      200 — «48 Job ads found» · 25 cards a page · pager zero-based (the link labelled «2» is ?page=1)
+fetch ?page=0, 1, 2 …  (25 + 23)        **48 distinct /job-vacancies-liberia/<slug>-<id>** · the next page → 0 cards   10:44 UTC
+                                       **48 emitted, site states 48 — equal.**
+GET /job-vacancies-liberia/sales-manager-executive-monorovia-71615                  200 — a JobPosting in JSON-LD (datePosted 2026-09-11T13:55:01+00:00), the JSON rejected by a strict parser (control characters) — read tolerantly, as `ghanajob.md` says
+```
+
+**The procedure is `ghanajob.md`'s six steps with this host's two paths**
+— `/job-vacancies-search-liberia` for the listing, `/job-vacancies-liberia/<slug>-<id>` for the
+advertisement (the id is the trailing number): guard → tab → `?page=0, 1,
+2 …` until empty, 1.5 s apart → **«n emitted, site states N»** → the
+JobPosting read tolerantly → close.
 
 ## What this card is, and is not
 
