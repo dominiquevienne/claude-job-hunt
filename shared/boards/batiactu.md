@@ -3,8 +3,9 @@
 <!-- hosts: emploi.batiactu.com -->
 <!-- script: batiactu.py -->
 <!-- countries: FR -->
-<!-- content: indeterminate · the host answers 403 on its own `robots.txt` — an absence of rules since #283 (2026-09-13), `no-rules-403`, so the guard opens on `certain: False` — and the transport answers a static 403 (18 887 B, byte-identical twice on 2026-09-13) at the root, so the adapter still emits nothing; refused at the client on the page, family (1) of #222, a browser not measured · 2026-09-13 -->
-<!-- witness: none served — the root answers a static 403 to this client on 2026-09-13 (18 887 B ×2); a browser route is legitimate and not yet measured -->
+<!-- content: measured · **a browser tab is served — `/` 200 «10 300 offres d'emploi» in the site's own header, the region listings served and paged (`/offre-emploi-BTP/localisation/alsace` 12 pages × 20 → 11 × 20 + 19 = 239, page 13 empty; `…/ile-de-france` 510 pages → 509 × 20 + 2 = 10 182, page 511 empty), 20 advertisement links a page**; the declared client gets a static 403 (18 887 B, byte-identical twice) on the same paths, so `batiactu.py` still emits nothing; tab 16:26–16:27 UTC · 2026-09-13 -->
+<!-- witness: the site's own «10 300 offres d'emploi» read on every page, and two region pagers closed under the reader (page 13 of Alsace and page 511 of Île-de-France carry 0) — 10 182 for Île-de-France alone against 10 300 for the site, so the region filter is loose or the site's figure is the region's; the two are printed, neither corrected · 2026-09-13 -->
+<!-- route: browser · 10300 · 2026-09-13 -->
 
 **9 984 offres** of French construction and public works — the largest sector
 this repository had no coverage for at all. `jobology.md` reaches transport,
@@ -317,3 +318,24 @@ GET https://emploi.batiactu.com/                         403, 18 887 B, md5 114b
 **The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-13 16:26 UTC — the browser route, MEASURED (#222): served to the tab, the pagers close
+
+```
+tab: /                                                     200 «Emploi BTP, Construction et Immobilier - Batiactu Emploi» — no challenge; header «10 300 offres d'emploi»
+tab: fetch /offre-emploi-BTP/localisation/alsace           200, 20 ads, pager to 12  ·  ?page=12  19 ads  ·  ?page=13  0   → 239
+tab: fetch /offre-emploi-BTP/localisation/ile-de-france    200, 20 ads, pager to 510 ·  ?page=510  2 ads ·  ?page=511  0   → 10 182
+tab: fetch …/alsace?page=2                                 200, 20 ads — `?page=N` is the pager, as `batiactu.py` reads it
+```
+
+**The 403 is for the declared client alone** — the tab is served without
+a challenge and the adapter's own routes (`/offre-emploi-BTP/<axis>/<value>?page=N`,
+20 a page) answer exactly as the script expects them to. So `batiactu.py`
+IS the procedure, driven from a tab instead of `urlopen` until the
+transport reopens: a session follows its axis/value/page walk with
+`fetch()` and reads the cards the same way. **Île-de-France pages to
+10 182 of the site's 10 300** — either the region filter admits national
+advertisements or the site's figure is nearly the region's; not decided
+here, both printed. *The 9 984 in this card's opening line is the
+script's count of 2026-09-0x, before the transport closed; the site says
+10 300 today.*

@@ -1,11 +1,13 @@
-# Board measurement — Kazibongo (`kazibongo.com`, Tanzania): the rules file itself answers 403, so no path is open and nothing was read
+# Board measurement — Kazibongo (`kazibongo.com`, Tanzania): 403 to the declared client and to a real browser alike — a refusal to everyone, nothing read
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: kazibongo.com, www.kazibongo.com -->
 <!-- script: none -->
 <!-- countries: TZ -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-12 -->
+<!-- content: measured · **403 «Forbidden», 9 bytes, to a real browser as well** — the tab on `/jobs` and `fetch()` of `/` and `/jobs` from it, 16:25 UTC, the same nine bytes the declared client got; `www.` does not connect from the tab either; a refusal rendered to everyone is the operator's (borne 0), so no route is open by any legitimate means and nothing of the board was read · 2026-09-13 -->
+<!-- witness: none — nothing served to any client; the 9-byte «Forbidden» is the only body, from the declared client (15:29 UTC, twice) and from a browser tab (16:25 UTC) · 2026-09-13 -->
+<!-- route: none · 403 to a real browser too — the operator's refusal, not a client filter (borne 0); the guard opens on `certain: False` since #283 and the transport closes to everyone · 2026-09-13 -->
 
 **Tanzania's named board, in the #222 candidate list as a single-host
 country.** *This card is a measurement and not an adapter, and it is a
@@ -71,3 +73,19 @@ GET https://kazibongo.com/jobs                           403, 9 B, md5 722969577
 **The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-13 16:25 UTC — the browser route, MEASURED (#222): 403 to the tab as well
+
+```
+tab: https://kazibongo.com/jobs        403, «Forbidden», 9 B — the page itself
+tab: fetch('https://kazibongo.com/')    403, 9 B, «Forbidden»
+tab: fetch('https://kazibongo.com/jobs') 403, 9 B
+tab: fetch('https://www.kazibongo.com/') TypeError: Failed to fetch (the apex with `www.` does not connect)
+```
+
+**The same nine bytes to a browser and to the declared client** — this is
+the shape `cadremploi` is closed for: a 403 rendered to everyone is the
+operator's refusal, not an infrastructure that cannot tell who we are
+(borne 0 of the 2026-09-07 doctrine). Nothing of the board was read by any
+route. **Not a verdict that the host is closed for good** — the owner's, on
+his express validation; recorded: two clients, one day, nine bytes.
