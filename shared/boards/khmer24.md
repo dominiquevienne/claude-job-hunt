@@ -1,12 +1,13 @@
-# Board adapter — Khmer24 (Cambodia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Khmer24 (Cambodia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.khmer24.com, khmer24.com -->
 <!-- script: none -->
 <!-- countries: KH -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 12:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **52 advertisement links on the first page of `/en/c-jobs`** (`/en/<slug>-adid-<n>`), read from a connected browser tab; the site states no count for the section — a classifieds site (Sell, Jobs) whose `/en/jobs` landing carries the category list and whose ads live under `/en/c-jobs`; no JobPosting on the listing; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: none the site states — no total on the section or its landing; 52 is one page's links, not a count · 2026-09-13 -->
+<!-- route: browser · 52 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 12:22:46Z UTC for #233, lot 6 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,19 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 11:00 UTC — the browser route, MEASURED (#222): a classifieds section with no stated total
+
+```
+navigate /en/jobs          200 «in cambodia - www.khmer24.com» — 859 characters: the category list (/en/c-jobs-accounting, …), login, post
+fetch /en/c-jobs           200 «Jobs in cambodia», 425 711 B — **52 distinct /en/<slug>-adid-<n>** links; filters (location, sort, salary); no count anywhere on the page
+```
+
+No challenge. **The section states no total**; the ad id is the `adid`
+number. The procedure: guard → tab → `/en/c-jobs` and its pager (not
+exercised) 1.5 s apart, collecting `-adid-<n>` → «n links, the site
+states no total» → close. *One page read; the advertisement page not
+opened.*
 
 ## What this card is, and is not
 

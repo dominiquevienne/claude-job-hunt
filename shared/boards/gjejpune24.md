@@ -1,12 +1,13 @@
-# Board adapter — GjejPunë24 (Albania): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — GjejPunë24 (Albania): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser, empty
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: gjejpune24.com, www.gjejpune24.com -->
 <!-- script: none -->
 <!-- countries: AL -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:18 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: indeterminate · the tab is served (no challenge) and the page never fills: `/pune` (the card's path) is a Next.js «404: This page could not be found», `/` redirects to `/sq` titled «Punë në Evropë – gjej-pune.com» and renders skeleton placeholders with **zero characters of text after nine seconds and no data call** — not a listing, not an empty listing, a shell; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: none — nothing on the page states anything; the title names another brand (gjej-pune.com, «jobs in Europe») · 2026-09-13 -->
+<!-- route: none · the page renders a skeleton and never fills — zero text, no data request, after nine seconds in a tab; the site's own title says «Punë në Evropë – gjej-pune.com», another brand · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:18:31Z UTC for #233, lot 4 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,21 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:55 UTC — the browser route: served, and a shell that never fills (#222)
+
+```
+navigate /pune          200 «404: This page could not be found.» — a Next.js not-found page (33 characters of text)
+navigate /              -> /sq, «Punë në Evropë – gjej-pune.com» — grey skeleton blocks where a hero, a nav and three cards would be
+after 3 s, then 9 s     body.innerText = «» (zero characters) · 0 links · no XHR beyond /site.webmanifest
+```
+
+**No challenge, and no content**: a route to nothing, and the reason is
+the page, not the door. *«Punë në Evropë» — jobs in Europe — and the
+brand in the title is `gjej-pune.com`, not this host: the site may be a
+front for another, or an unfinished build.* Nothing to count; the card
+declares `route: none` with that reason, and what reopens it is a page
+that fills.
 
 ## What this card is, and is not
 

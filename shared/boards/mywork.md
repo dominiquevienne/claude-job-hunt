@@ -1,12 +1,13 @@
-# Board adapter — MyWork (Vietnam): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — MyWork (Vietnam): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and it redirects into Việc Làm 24h
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: mywork.com.vn, www.mywork.com.vn -->
 <!-- script: none -->
 <!-- countries: VN -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-13 10:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **redirects to `vieclam24h.vn`** — `/tim-viec-lam` lands on `https://vieclam24h.vn/?redirect_from=mw&…&utm_campaign=merge`, «Tìm việc làm nhanh, tuyển dụng hiệu quả tại Việc Làm 24h», a board this repository already covers (`vieclam24h.md`); the campaign parameter says «merge»; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the redirect's own query string — `redirect_from=mw`, `utm_campaign=merge` — read from the tab's address bar · 2026-09-13 -->
+<!-- route: none · mywork.com.vn redirects to vieclam24h.vn with utm_campaign=merge — the board was merged into one already covered; nothing of its own to read · 2026-09-13 -->
 
 **Measured 2026-09-13 at 10:22:31Z UTC for #233, lot 8 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,18 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:59 UTC — the browser route: a redirect into a board already covered (#222)
+
+```
+navigate /tim-viec-lam     -> https://vieclam24h.vn/?redirect_from=mw&role=2&utm_source=mw&utm_medium=redirect&utm_campaign=merge
+                              «Tìm việc làm nhanh, tuyển dụng hiệu quả tại Việc Làm 24h» · «Hơn 18.000 việc làm mới mỗi ngày»
+```
+
+**MyWork was merged into Việc Làm 24h, and the redirect says so in its
+own parameters.** `vieclam24h.md` is the card and its adapter the route;
+this host has nothing of its own to count. `route: none` for that
+reason — not a refusal, not an absence: a move.
 
 ## What this card is, and is not
 

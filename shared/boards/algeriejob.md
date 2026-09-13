@@ -1,12 +1,13 @@
-# Board adapter — AlgérieJob (Algeria): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — AlgérieJob (Algeria): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.algeriejob.com, algeriejob.com -->
 <!-- script: none -->
 <!-- countries: DZ -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:00 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **112 distinct advertisement addresses** over `/recherche-jobs-algerie?page=0…` (25 × 4 + 12; the next page empty), read from a connected browser tab, **against «112 Offres d'emploi trouvées» stated by the page — equal**; the pager is zero-based, as on every AfricaWork host read since `ghanajob.md`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «112 Offres d'emploi trouvées», read on every page and printed beside the distinct count («112 emitted, site states 112 — equal») · 2026-09-13 -->
+<!-- route: browser · 112 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:00:38Z UTC for #233, lot 3 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,22 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:54 UTC — the browser route, MEASURED (#222): the 403 is for the declared client alone
+
+One Claude-in-Chrome tab, the guard on `/recherche-jobs-algerie` first (`*` open, certain).
+**No challenge** — borne 0 held.
+
+```
+navigate https://www.algeriejob.com/recherche-jobs-algerie      200 — «112 Offres d'emploi trouvées» · 25 cards a page · pager zero-based
+fetch ?page=0, 1, 2 …  (25 × 4 + 12)        **112 distinct /offre-emploi-algerie/<slug>-<id>** · the next page → 0     10:54 UTC
+                                       **112 emitted, site states 112 — equal.**
+```
+
+**The procedure is `ghanajob.md`'s six steps with this host's two paths**
+(`/recherche-jobs-algerie`, `/offre-emploi-algerie/<slug>-<id>`); the advertisement page carries a
+JobPosting behind malformed JSON on every AfricaWork host read so far and
+is read tolerantly.
 
 ## What this card is, and is not
 

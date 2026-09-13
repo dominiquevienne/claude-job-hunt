@@ -1,12 +1,13 @@
-# Board adapter — 3amal (Egypt): reopened by the 2026-09-07 doctrine, and the transport answers a challenge
+# Board adapter — 3amal (Egypt): reopened by the 2026-09-07 doctrine, and the transport answers a challenge — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.3amal.com, 3amal.com -->
 <!-- script: none -->
 <!-- countries: EG -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 5508 bytes titled «Attention Required! | Cloudflare», md5 `432742a1d766` then `766bcdd19c91` at constant size — a challenge, nothing of the site was read · 2026-09-12 11:00 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **49 distinct advertisement addresses** over `/job-vacancies-search-egypt?page=0…` (25 + 24; the next page empty), read from a connected browser tab, **against «49 Job ads found» stated by the page — equal**; the pager is zero-based, as on every AfricaWork host read since `ghanajob.md`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «49 Job ads found», read on every page and printed beside the distinct count («49 emitted, site states 49 — equal») · 2026-09-13 -->
+<!-- route: browser · 49 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:00:40Z UTC for #233, lot 3 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -47,6 +48,22 @@ movement is the edge's own stamp.* *The comparison across hosts is void (the
 «challenge».* **A challenge is where the browser branch stops** (borne 2): the
 plugin neither defeats one nor asks the user to. Whether a real browser passes
 it without a person is not measured, and this card claims nothing either way.
+
+## 2026-09-13 10:54 UTC — the browser route, MEASURED (#222): the 403 is for the declared client alone
+
+One Claude-in-Chrome tab, the guard on `/job-vacancies-search-egypt` first (`*` open, certain).
+**No challenge** — borne 0 held.
+
+```
+navigate https://www.3amal.com/job-vacancies-search-egypt      200 — «49 Job ads found» · 25 cards a page · pager zero-based
+fetch ?page=0, 1, 2 …  (25 + 24)        **49 distinct /job-vacancies-egypt/<slug>-<id>** · the next page → 0     10:54 UTC
+                                       **49 emitted, site states 49 — equal.**
+```
+
+**The procedure is `ghanajob.md`'s six steps with this host's two paths**
+(`/job-vacancies-search-egypt`, `/job-vacancies-egypt/<slug>-<id>`); the advertisement page carries a
+JobPosting behind malformed JSON on every AfricaWork host read so far and
+is read tolerantly.
 
 ## What this card is, and is not
 
