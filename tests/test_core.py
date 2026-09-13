@@ -18979,5 +18979,121 @@ class AnUnkeyedApiWithAWindowAndASitemapThatAgreesToFive(unittest.TestCase):
         self.assertNotIn("Del annonsen", d["sections"])
 
 
+class OneFileThreeHostsAndAListingWalkThatEndsWhereTheRulesSay(unittest.TestCase):
+    """**`jobberman.py`, 2026-09-13 (#390).** ROAM Africa's three boards on
+    one template: the declared listings index (27 category files, an
+    advertisement keyed by its six-character trailing id and deduped across
+    files), the listing's «N Jobs Found» beside every walk, and a pager the
+    rules allow to page 10 by name — the walk ends there BY THE RULES and
+    says so. The card is read by its structure (the title link, the
+    employer <p>, the span row, the function <p>); the ad page by its
+    breadcrumb anchors. Mutated (`-B`, detached copy): the dedup across
+    files dropped → the sitemap case reddens; `PAGES_ALLOWED` raised to 11
+    → the walk case reddens (a page the rules refuse is asked); the count
+    regex broken → the sitemap case reddens («no second source»); the
+    `--host` table reduced to one → the host case reddens; the breadcrumb
+    filter on `/jobs` dropped → the ad case reddens (the home glyph becomes
+    the function); the salary regex allowing a bare comma → the card case
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobberman", os.path.join(SCRIPTS, "jobberman.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(num, slug, ident, title, employer, loc, typ, sal, func, age, host="www.jobberman.com"):
+        return (f'<div aria-labelledby="job-{num}-title"><div><span>FEATURED</span></div><div><a\n href="https://{host}/listings/{slug}-{ident}"\n class="x"\n data-cy="listing-title-link"\n title="{title}"\n><p>{title}</p></a>'
+                f'<p> {employer} </p><div><span> {loc} </span><span>{typ}</span>' + (f'<span> NGN <span>{sal}</span> </span>' if sal else '') + f'</div><p> {func} </p></div>'
+                f'<div><span> New </span><div><p>{age}</p></div></div><p>We are seeking a results-driven and highly motivated person to join our team and do many things for the company across the group. Long excerpt here...</p></div>')
+
+    def _listing(self, found, cards):
+        return f'<html><main><div>Jobs in Nigeria {found} Jobs Found</div><div data-cy="listing-cards-components">' + "".join(cards) + '<div data-cy="pagination"><a href="?page=2">2</a><a href="?page=263">263</a></div></main></html>'
+
+    def _run(self, mod, fn, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def get(url):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(host="www.jobberman.com", limit=None, pages=None, since=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fn(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_card_is_read_by_its_structure_and_a_salary_needs_a_digit(self):
+        mod = self._mod()
+        page = self._listing("4,194", [self._card(1260774, "sales-executive", "8m99ej", "Sales Executive", "Neo Homes Limited", "Abuja", "Full Time", "70,000 - 150,000", "Sales", "2 days ago"),
+                                       self._card(1260695, "sales-representative", "qz55rw", "Sales Representative", "Greenpro Energy Ltd.", "Rest of Nigeria (Delta)", "Full Time", None, "Sales", "2 days ago")])
+        rows, err, asked = self._run(mod, mod.cmd_recent, [(200, page)], pages=1)
+        self.assertEqual([(r["id"], r["numeric_id"], r["title"], r["employer"], r["location"], r["job_type"], r["function"], r["salary_currency"], r["salary_min"], r["salary_max"], r["salary_unit_stated"], r["posted_label"]) for r in rows],
+                         [("8m99ej", "1260774", "Sales Executive", "Neo Homes Limited", "Abuja", "Full Time", "Sales", "NGN", 70000, 150000, False, "2 days ago"),
+                          ("qz55rw", "1260695", "Sales Representative", "Greenpro Energy Ltd.", "Rest of Nigeria (Delta)", "Full Time", "Sales", None, None, None, False, "2 days ago")])
+        self.assertEqual(mod.salary("NGN , 5"), (None, None, None), "a bare comma after the currency is not a figure")
+        self.assertIn("2 emitted of the 4 194 the listing states «Jobs Found» — 1 page(s) of 16", err)
+
+    def test_the_listing_walk_stops_at_the_tenth_page_by_the_rules_and_says_so(self):
+        mod = self._mod()
+        pages = [(200, self._listing("4,194", [self._card(1000 + p * 16 + i, f"job-{p}-{i}", f"{p:02d}{i:02d}ab", f"T{p}{i}", "Co", "Lagos", "Full Time", None, "Sales", "1 day ago") for i in range(16)])) for p in range(1, 12)]
+        rows, err, asked = self._run(mod, mod.cmd_recent, pages)
+        self.assertEqual(len(rows), 160)
+        self.assertEqual(len(asked), 10)
+        self.assertEqual(asked[-1], "https://www.jobberman.com/jobs?page=10")
+        self.assertNotIn("page=11", " ".join(asked))
+        self.assertIn("the rules allow page=2…10 by name and refuse the rest, so the listing walk ends here by the rules", err)
+
+    def test_the_sitemap_dedupes_across_category_files_and_prints_the_listings_count(self):
+        mod = self._mod()
+        index = "<sitemapindex>" + "".join(f"<sitemap><loc>https://www.jobberman.com/sitemap-listings-{c}-en.xml</loc><lastmod>2026-09-13T16:00:00+00:00</lastmod></sitemap>" for c in ("accounting", "admin")) + "</sitemapindex>"
+        f1 = "<urlset>" + "".join(f"<url><loc>https://www.jobberman.com/listings/{s}-{i}</loc><lastmod>{d}</lastmod></url>" for s, i, d in (("account", "5prdqx", "2026-07-31T11:29:37+00:00"), ("account-admin-officer", "x8gn9q", "2026-07-23T15:45:10+00:00"))) + "</urlset>"
+        f2 = "<urlset>" + "".join(f"<url><loc>https://www.jobberman.com/listings/{s}-{i}</loc><lastmod>{d}</lastmod></url>" for s, i, d in (("account-admin-officer", "x8gn9q", "2026-07-23T15:45:10+00:00"), ("office-clerk", "abc123", "2026-09-01T00:00:00+00:00"))) + "</urlset>"
+        listing = self._listing("4,194", [])
+        rows, err, asked = self._run(mod, mod.cmd_sitemap, [(200, index), (200, f1), (200, f2), (200, listing)])
+        self.assertEqual([r["id"] for r in rows], ["5prdqx", "x8gn9q", "abc123"])
+        self.assertEqual(rows[1]["category_file"], "sitemap-listings-accounting-en.xml")
+        self.assertIn("**3 distinct advertisement id(s)** over 2 category file(s) (4 entries, 1 filed under a second category); 3 emitted.", err)
+        self.assertIn("3 in the sitemap, the listing states 4 194 «Jobs Found» — 4 191 more in the listing", err)
+        self.assertNotIn("no second source", err)
+        self.assertEqual(asked[-1], "https://www.jobberman.com/jobs")
+
+    def test_the_host_selects_the_source_and_the_country(self):
+        import contextlib
+        mod = self._mod()
+        f = "<urlset><url><loc>https://www.brightermonday.co.ug/listings/accountant-5deqde</loc><lastmod>2026-09-09T08:37:59+00:00</lastmod></url></urlset>"
+        rows, err, asked = self._run(mod, mod.cmd_sitemap, [(200, "<sitemapindex><sitemap><loc>https://www.brightermonday.co.ug/sitemap-listings-a-en.xml</loc></sitemap></sitemapindex>"), (200, f), (200, "<html>1,025 Jobs Found</html>")], host="www.brightermonday.co.ug")
+        self.assertEqual((rows[0]["source"], rows[0]["country"], rows[0]["ledger_id"]), ("brightermonday-ug", "UG", "brightermonday-ug:5deqde"))
+        self.assertTrue(asked[0].startswith("https://www.brightermonday.co.ug/"))
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, mod.cmd_sitemap, [], host="www.example.com")
+
+    def test_the_ad_reads_the_breadcrumb_anchors_the_facts_and_the_description(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><main><nav data-cy="breadcrumbs"><a href="https://www.jobberman.com"><svg></svg><span class="sr-only">Homepage</span></a>'
+                '<a href="/jobs/accounting-auditing-finance">Accounting, Auditing &amp; Finance</a><a href="/jobs/accounting-auditing-finance?industry=construction">Construction</a>'
+                '<a href="/jobs/accounting-auditing-finance/lagos?industry=construction">Lagos</a><a href="/jobs/accounting-auditing-finance/lagos/full-time?industry=construction">Full Time</a></nav>'
+                '<h1 data-cy="title-job">Account Officer</h1><h2>Staffora Global</h2><p>1 month ago</p><div><span>NGN</span><span>400,000 - 600,000</span></div>'
+                '<h3>Job summary</h3><p>We are seeking an Admin Account Officer.</p><p>Min Qualification:</p><p>Degree</p><p>Experience Length:</p><p>3 years</p><p>Working Hours:</p><p>Full Time - 8 to 5</p>'
+                '<h3>Job descriptions &amp; requirements</h3><p>Responsibilities:</p><ul><li>Maintain accurate financial records.</li></ul><p>Log In and Apply</p><h3>Important safety tips</h3><p>Do not pay.</p></main></html>')
+        mod.get = lambda url: (200, page)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobberman.com/listings/account-admin-officer-x8gn9q"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["function"], d["industry"], d["location"], d["job_type"], d["salary_currency"], d["salary_min"], d["salary_max"], d["posted_label"]),
+                         ("x8gn9q", "Account Officer", "Staffora Global", "Accounting, Auditing & Finance", "Construction", "Lagos", "Full Time", "NGN", 400000, 600000, "1 month ago"))
+        self.assertEqual(d["facts"], {"Min Qualification": "Degree", "Experience Length": "3 years", "Working Hours": "Full Time - 8 to 5"})
+        self.assertEqual(d["summary"], "We are seeking an Admin Account Officer.")
+        self.assertEqual(d["description"], "Responsibilities:\nMaintain accurate financial records.")
+        self.assertNotIn("Do not pay", json.dumps(d))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
