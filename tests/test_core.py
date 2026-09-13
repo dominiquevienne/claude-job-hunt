@@ -17871,5 +17871,117 @@ class TwoAddressShapesOnOnePageAndAPagerThatClosesUnderTheReader(unittest.TestCa
             mod.cmd_ad(argparse.Namespace(url="https://www.gulftalent.com/uae/jobs/2"))
 
 
+class ASitemapThatListsWhatHasLeftTheBoardAndASearchRefusedInWriting(unittest.TestCase):
+    """**`nationalevacaturebank.py`, 2026-09-13.** The rules refuse every
+    queried or paginated listing to `*` (`/vacature/zoeken?*`,
+    `/vacatures/*?page=`); the route is the declared advertisement sitemap
+    — an index whose one `<sitemap>` carries TWO `<loc>` on the apex host,
+    89 733 distinct uuids. The site states no figure by HTTP; the second
+    source is a sample of pages, and 16 of 40 drawn at random were gone
+    (410/404) on the day — the sitemap lists what has left the board.
+    Mutated (`-B`, detached copy): the refused-path guard dropped → the
+    refusal case reddens (the stub is fetched); `locs` read per element →
+    the index case reddens (one file, not two); the uuid dedup dropped → the
+    count case reddens; 410 folded into 404 → the sample case reddens; the
+    `validThrough >= today` test inverted → the sample case reddens (once
+    the draw was made asymmetric — its first draft, one open and one
+    expired, was inert to that mutation); 410 dropped from `ad`'s gone
+    codes → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_nvb", os.path.join(SCRIPTS, "nationalevacaturebank.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    U1, U2, U3 = "0001316e-3f58-44a9-bc90-523c060e25e4", "0001da7c-78d5-46e7-be63-247dee64e500", "00037170-cf35-48cf-ab83-4b7c677ce1d0"
+    INDEX = ("<sitemapindex><sitemap><loc>https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-1.xml</loc>"
+             "<loc>https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-2.xml</loc><lastmod>2026-09-02T06:21:42Z</lastmod></sitemap></sitemapindex>")
+
+    @classmethod
+    def _file(cls, *pairs):
+        return "<urlset>" + "".join(f"<url><loc>https://www.nationalevacaturebank.nl/vacature/{u}/{slug}</loc><changefreq>hourly</changefreq></url>" for u, slug in pairs) + "</urlset>"
+
+    @staticmethod
+    def _ad(valid_through):
+        ld = json.dumps({"@context": "https://schema.org/", "@type": "JobPosting", "title": "Stage", "datePosted": "2026-07-16T22:00:00Z",
+                         "validThrough": valid_through, "description": "<p>x</p>", "employmentType": "INTERN",
+                         "hiringOrganization": {"@type": "Organization", "name": "Daiwa", "email": "c@d.eu"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Montfoort", "addressRegion": "Utrecht", "addressCountry": "NL", "postalCode": "3417ME"}},
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": {"@type": "QuantitativeValue", "minValue": 2559, "maxValue": 2559, "unitText": "MONTH"}},
+                         "workHours": "1 - 40 uur per week", "experienceRequirements": {"@type": "OccupationalExperienceRequirements", "monthsOfExperience": "48"}})
+        return f'<html><head><script type="application/ld+json" data-next-head="">{ld}</script></head><body>{"x" * 3000}</body></html>'
+
+    def _sitemap(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def get(url):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(limit=None, sample=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_index_yields_two_files_from_one_element_and_the_uuids_are_deduped(self):
+        f1 = self._file((self.U1, "stage"), (self.U2, "forklift"), (self.U1, "stage-again"))
+        f2 = self._file((self.U3, "afstudeerstage"), (self.U2, "forklift"))
+        rows, err, asked = self._sitemap(self._mod(), [(200, self.INDEX), (200, f1), (200, f2)])
+        self.assertEqual([r["id"] for r in rows], [self.U1, self.U2, self.U3])
+        self.assertEqual(asked[1:], ["https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-1.xml", "https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-2.xml"])
+        self.assertIn("**3 distinct advertisement uuid(s)** in 2 file(s) (vacature-1.xml 2, vacature-2.xml 1); 3 emitted; the index's own lastmod 2026-09-02T06:21:42Z.", err)
+        self.assertIn("The site states no figure by HTTP", err)
+
+    def test_the_sample_tells_410_from_404_and_open_from_expired(self):
+        # two open, one gone, one expired — asymmetric on purpose: one open and one expired swap places under an
+        # inverted date test and leave the counts equal (the first draft of this case was inert for that reason)
+        f1 = self._file((self.U1, "a"), (self.U2, "b"), (self.U3, "c"), ("00040000-0000-4000-8000-000000000004", "d"))
+        one = "<sitemapindex><sitemap><loc>https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-1.xml</loc></sitemap></sitemapindex>"
+        served = [(200, one), (200, f1), (200, self._ad("2099-01-01T00:00:00Z")), (410, ""), (200, self._ad("2000-01-01T00:00:00Z")), (200, self._ad("2099-06-01T00:00:00Z"))]
+        rows, err, asked = self._sitemap(self._mod(), served, sample=4)
+        self.assertEqual(len(rows), 4)
+        self.assertIn("Sample of 4 spread over the file(s): 2 served with a JobPosting whose validThrough is on or after", err)
+        self.assertIn("1 gone (410), 0 gone (404), 1 other", err)
+        self.assertIn("**the sitemap lists what has left the board**", err)
+
+    def test_a_refused_listing_is_never_requested_by_any_route(self):
+        import contextlib
+        mod = self._mod()
+        hit = []
+        orig = mod.urllib.request.urlopen
+        mod.urllib.request.urlopen = lambda *a, **k: hit.append(a) or (_ for _ in ()).throw(AssertionError("fetched"))
+        try:
+            for url in ("https://www.nationalevacaturebank.nl/vacature/zoeken?page=2", "https://www.nationalevacaturebank.nl/vacatures/functie/x?page=3"):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as err:
+                    mod.get(url)
+                self.assertEqual(cm.exception.code, 7)
+                self.assertIn("refuse in writing", err.getvalue())
+        finally:
+            mod.urllib.request.urlopen = orig
+        self.assertEqual(hit, [])
+
+    def test_the_ad_reads_the_jobposting_and_a_gone_page_exits_3(self):
+        import contextlib
+        mod = self._mod()
+        url = f"https://www.nationalevacaturebank.nl/vacature/{self.U1}/stage-medewerker-productietechniek"
+        mod.get = lambda u: (200, self._ad("2026-10-07T22:00:00Z"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer"], d["city"], d["salary_min"], d["salary_unit"], d["months_of_experience"], d["employment_type"], d["work_hours"], d["language"]),
+                         (self.U1, "Daiwa", "Montfoort", 2559, "MONTH", 48, ["INTERN"], "1 - 40 uur per week", "nl"))
+        mod.get = lambda u: (410, "")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        self.assertEqual(cm.exception.code, 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
