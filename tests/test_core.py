@@ -16785,6 +16785,95 @@ class SixAnthropicNamesRefusedAndNotThisOneAndASpanishThousandsDot(unittest.Test
         self.assertNotIn("983219239", out.getvalue())
 
 
+class AnArchiveSizedCountIsNeverComparedAndTheCardSaysWhenItCloses(unittest.TestCase):
+    """**`ugandanjobline.py`, 2026-09-13 (#233 lot 8 → adapter).** The
+    listing states «84,248 jobs» — the archive since the site began, 8 425
+    pages of 10 — and the adapter never compares its count to it: it walks
+    the newest pages (`--pages`), reads «Closes DD Mon» on every card into an
+    ISO date (the nearest future reading, the card names no year) and prints
+    how many rows still close on or after today — the live window of the
+    pages read. The post page's `JobPosting` names the country «Uganda» →
+    `UG`, an empty `baseSalary.value` → `null`. Mutated (`-B`, detached copy):
+    the live count computed with `>` instead of `>=` → the today case
+    reddens; «never compared» turned into a comparison → the archive case
+    reddens; the dedup removed → 3 ≠ 2; `closes_on` returning None → the
+    closes case reddens; the two-months rule dropped → a January close read
+    in September stays in the past (reddens); `COUNTRY` bypassed → the UG
+    case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_ugandanjobline", os.path.join(SCRIPTS, "ugandanjobline.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(slug, title, closes, ago="2 days"):
+        return (f'<article class="jc"><div class="top"><div><div class="title"><a href="https://theugandanjobline.com/2026/09/{slug}.html">{title}</a></div>'
+                f'<a class="co-link" href="https://theugandanjobline.com/company/x">Ngonzi Crater Escape</a><div class="meta"><span>Posted <b>{ago} ago</b></span>'
+                f'<span class="deadline">Closes {closes}</span></div></div></div><div class="foot"><div class="tags"><span class="pill">Customer Service Jobs</span></div></div></article>')
+
+    def _page(self, cards, last=3):
+        return ('<html><body><div class="rhead"><h1>Latest jobs in Uganda</h1><div class="count mono">84,248 jobs</div></div>'
+                + "".join(cards) + "".join(f'<a href="https://theugandanjobline.com/jobs-in-uganda/page/{p}">{p}</a>' for p in range(2, last + 1)) + "</body></html>")
+
+    def _list(self, mod, pages, n=20):
+        import contextlib, datetime
+        def get(url):
+            m = re.search(r"/page/(\d+)$", url)
+            k = int(m.group(1)) if m else 1
+            if k <= len(pages):
+                return 200, pages[k - 1]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(pages=n, limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_pages_are_walked_the_closing_dates_read_and_the_archive_never_compared(self):
+        import datetime
+        mod = self._mod()
+        today = datetime.date.today()
+        future = (today + datetime.timedelta(days=8)).strftime("%d %b").lstrip("0")
+        past = (today - datetime.timedelta(days=8)).strftime("%d %b").lstrip("0")
+        p1 = self._page([self._card("lodge-chef", "Lodge Chef", future), self._card("ent-surgeon", "ENT Surgeon", past)])
+        p2 = self._page([self._card("lodge-chef", "Lodge Chef", future), self._card("front-desk", "Front Desk", today.strftime("%d %b").lstrip("0"))])
+        rows, err = self._list(mod, [p1, p2, p2], n=2)
+        self.assertEqual([r["id"] for r in rows], ["2026/09/lodge-chef", "2026/09/ent-surgeon", "2026/09/front-desk"])
+        self.assertEqual(rows[0]["closes"], (today + datetime.timedelta(days=8)).isoformat())
+        self.assertEqual(rows[2]["closes"], today.isoformat())
+        self.assertIn("2 page(s) read of 3; **3 distinct post(s)**; 3 carry a closing date and **2 still close on or after", err)
+        self.assertIn("site states 84 248 jobs — the archive since the site began (3 pages of 10), not the live board; never compared to the 3 read here.", err)
+        self.assertNotIn("short", err)
+
+    def test_a_close_more_than_two_months_past_is_read_as_next_year(self):
+        import datetime
+        mod = self._mod()
+        today = datetime.date(2026, 9, 13)
+        self.assertEqual(mod.closes_on("Closes 5 Jan", today), "2027-01-05")
+        self.assertEqual(mod.closes_on("Closes 21 Sep", today), "2026-09-21")
+        self.assertEqual(mod.closes_on("Closes 20 Aug", today), "2026-08-20")
+        self.assertIsNone(mod.closes_on("no date here", today))
+
+    def test_the_post_names_uganda_and_an_empty_salary_stays_null(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "https://schema.org/", "@graph": [{"@type": "WebSite"}, {"@type": "JobPosting", "title": "Lodge Chef",
+                         "description": "<p>JOB DESCRIPTION</p>", "datePosted": "2026-09-11T08:22", "validThrough": "2026-09-22T00:00", "employmentType": "FULL_TIME",
+                         "hiringOrganization": {"@type": "Organization", "name": "Ngonzi Crater Escape", "sameAs": "https://ngonzicraterescape.com/"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Kampala", "addressRegion": "Central Region", "addressCountry": "Uganda"}},
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "UGX", "value": {"@type": "QuantitativeValue", "value": "", "unitText": "MONTH"}},
+                         "industry": "Hospitality", "workHours": "8am-5pm", "experienceRequirements": {"@type": "OccupationalExperienceRequirements", "monthsOfExperience": "1"}}]})
+        mod.get = lambda u: (200, f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>')
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://theugandanjobline.com/2026/09/lodge-chef-jobs-ngonzi-crater-escape.html"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["country"], d["city"], d["salary"], d["salary_currency"], d["months_of_experience"], d["valid_through"]),
+                         ("2026/09/lodge-chef-jobs-ngonzi-crater-escape", "UG", "Kampala", None, "UGX", 1, "2026-09-22T00:00"))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
