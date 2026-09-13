@@ -20373,7 +20373,7 @@ class AStateListReadAtTheMinuteTheHostAsksWhereTheCardIsThePostingAndTheDetailIs
 
     def test_the_walk_reads_the_cards_and_the_register_count_is_the_witness(self):
         mod = self._mod()
-        api = (200, "[]", {"X-WP-Total": "13", "X-WP-TotalPages": "13"})
+        api = (200, "[]", {"X-WP-Total": "13", "X-WP-TotalPages": "3"})   # the two headers differ on purpose — a reader of the wrong one would still see a number
         p1 = self._page([self._card(100 + i, f"Vacature {i}") for i in range(6)])
         p2 = self._page([self._card(200 + i, f"Post {i}", deadline="", pdf="") for i in range(6)])
         p3 = self._page([self._card(300, "Laatste", summary="Stuur uw cv naar hr@gov.sr voor 1 oktober.")], last=True)
@@ -20396,17 +20396,19 @@ class AStateListReadAtTheMinuteTheHostAsksWhereTheCardIsThePostingAndTheDetailIs
 
     def test_a_404_past_the_last_page_is_the_end_and_a_short_page_stops_the_walk(self):
         mod = self._mod()
-        api = (200, "[]", {"X-WP-Total": "7", "X-WP-TotalPages": "7"})
+        api = (200, "[]", {"X-WP-Total": "7", "X-WP-TotalPages": "2"})
         p1 = self._page([self._card(100 + i, f"V{i}") for i in range(6)])
         p2 = self._page([self._card(200, "Zeven")])
         rows, err, sent = self._run(mod, [api, (200, p1, {}), (200, p2, {})])
         self.assertEqual(len(rows), 7)
         self.assertEqual(len(sent), 3)   # the short page ended the walk — no page 3 asked
-        api8 = (200, "[]", {"X-WP-Total": "12", "X-WP-TotalPages": "12"})
+        # the register counts one more than the pages list (a posting the loop does not render): page 3 is the site's 404, and that is the end, not a fault
+        api13 = (200, "[]", {"X-WP-Total": "13", "X-WP-TotalPages": "3"})
         p2full = self._page([self._card(200 + i, f"P{i}") for i in range(6)])
-        rows, err, sent = self._run(mod, [api8, (200, p1, {}), (200, p2full, {}), (404, "", {})])
+        rows, err, sent = self._run(mod, [api13, (200, p1, {}), (200, p2full, {}), (404, "", {})])
         self.assertEqual(len(rows), 12)
-        self.assertIn("12 emitted over 2 page(s), register states 12 — equal.", err)
+        self.assertEqual(len(sent), 4)
+        self.assertIn("12 emitted over 2 page(s), register states 13 — 1 short.", err)
         # the count not readable: the walk goes on and says it has no witness
         rows, err, sent = self._run(mod, [(503, "", {}), (200, p1, {}), (200, p2, {})])
         self.assertEqual(len(rows), 7)
