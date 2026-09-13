@@ -17223,5 +17223,77 @@ class AKeyedApiExercisedOnAStubExitsCleanlyWithoutTheKeyAndNeverPrintsIt(unittes
         self.assertEqual((rows[0]["id"], rows[0]["description"], rows[0]["country"]), (125378, "corpo", "PT"))
 
 
+class ARefusedSearchIsNeverTakenAndTheOpenListingStatesTheCount(unittest.TestCase):
+    """**`sapoemprego.py`, 2026-09-13.** `/offers/search` is refused by the
+    rules and captcha-gated; the route is `offers.xml` (uuid ids — the slug
+    is not unique) and the count is `offers_total` in the `:pagination` prop
+    the open `/offers` page embeds (its `total: 9999` is a cap, not a count).
+    A 429 stops the adapter without a retry. Mutated (`-B`, detached copy):
+    `offers_total` read as `total` → the count case reddens (9 999); the
+    uuid dedup dropped → the count case reddens; `--since` inverted → the
+    since case reddens; the 429 branch dropped → the 429 case reddens (a
+    bare exit 6 instead of 7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_sapoemprego", os.path.join(SCRIPTS, "sapoemprego.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = "<sitemapindex><sitemap><loc>https://emprego.sapo.pt/static.xml</loc></sitemap><sitemap><loc>https://emprego.sapo.pt/offers.xml</loc></sitemap></sitemapindex>"
+    OFFERS = ("<urlset>" + "".join(
+        f"<url><loc>https://emprego.sapo.pt/offers/{slug}?id={uid}</loc><lastmod>{d}T10:00:00+00:00</lastmod></url>"
+        for slug, uid, d in (("comercial-lisboa", "504b6841-0b2a-4236-8c53-cfab11a05dd7", "2026-09-11"),
+                             ("comercial-lisboa", "aaaaaaaa-0b2a-4236-8c53-cfab11a05dd7", "2026-08-01"),
+                             ("mentora-musica", "b58b3ec5-2a8d-4cf1-abd0-5febc60cd30d", "2025-10-28"),
+                             ("mentora-musica", "b58b3ec5-2a8d-4cf1-abd0-5febc60cd30d", "2025-10-28")))
+        + "<url><loc>https://emprego.sapo.pt/offers/company/x</loc></url></urlset>")
+    LISTING = ("<html><body><search-results-component :offers='[]' :pagination='{\"total\":9999,\"page\":1,\"size\":9,\"offers_total\":23555}'></search-results-component></body></html>")
+
+    def _sitemap(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(since=None, limit=None, no_site_total=False)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_uuids_are_the_key_and_the_listings_offers_total_is_the_count_beside_the_file(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self.OFFERS), (200, self.LISTING)])
+        self.assertEqual([r["id"][:8] for r in rows], ["504b6841", "aaaaaaaa", "b58b3ec5"])
+        self.assertIn("**3 distinct offer id(s)** (uuid), 2 distinct canonical slugs (1 slugs carried by more than one id", err)
+        self.assertIn("3 emitted, site states 23 555 (`offers_total` on https://emprego.sapo.pt/offers) — 23 552 short", err)
+        self.assertNotIn("9 999", err)
+
+    def test_since_filters_on_lastmod(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self.OFFERS)], since="2026-09-01", no_site_total=True)
+        self.assertEqual([r["id"][:8] for r in rows], ["504b6841"])
+        self.assertIn("1 emitted dated on or after 2026-09-01", err)
+
+    def test_a_429_stops_the_adapter_as_a_refusal_without_a_retry(self):
+        import contextlib
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        attempts = []
+
+        def urlopen_429(req, timeout=60):
+            attempts.append(req.full_url)
+            raise mod.urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {}, io.BytesIO(b"<html>429</html>"))
+        real = mod.urllib.request.urlopen
+        mod.urllib.request.urlopen = urlopen_429
+        try:
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_sitemap(argparse.Namespace(since=None, limit=None, no_site_total=True))
+        finally:
+            mod.urllib.request.urlopen = real
+        self.assertEqual(cm.exception.code, 7)
+        self.assertEqual(len(attempts), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
