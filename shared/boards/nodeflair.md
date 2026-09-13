@@ -1,12 +1,13 @@
-# Board adapter — NodeFlair (Singapore): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — NodeFlair (Singapore): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.nodeflair.com, nodeflair.com -->
 <!-- script: none -->
 <!-- countries: SG -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-13 10:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **«10,000+ jobs» stated by the page and `total_listings_count: 10000` by its own API** (`/api/v2/jobs?page=1` from the tab — 12 listings a page with `job_path`, `position`, `title`, `salary_min/max`, `currency`, `remuneration_frequency`, `tech_stacks`): a cap, not a count — the site says «10,000+» and the API says exactly 10 000; an aggregator over Asian job sites and career pages, Singapore first; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own `total_listings_count` beside its own «10,000+» — the two agree that the figure is a ceiling; no page states the count above it · 2026-09-13 -->
+<!-- route: browser · 10000 · 2026-09-13 -->
 
 **Measured 2026-09-13 at 10:22:26Z UTC for #233, lot 8 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,23 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:57 UTC — the browser route, MEASURED (#222): an aggregator, and a total that is a ceiling
+
+```
+navigate /jobs                      200 «NodeFlair Jobs | #1 TECH job portal in Asia» — «Aggregated job listings from popular job sites and career pages» · **«10,000+ jobs»**
+fetch /api/v2/jobs?page=1           200, 9 671 B — {job_listings: 12 rows, total_listings_count: **10000**, has_job_alert}
+row                                 id 557519 · job_path /jobs/luxoft-…-557519 · position «Data Analyst» · title · salary_min 8000 · salary_max 12000 · currency SGD · remuneration_frequency Monthly · tech_stacks[]
+```
+
+No challenge. **The API answers from the tab, and `total_listings_count`
+is 10 000 exactly while the page says «10,000+»**: a ceiling the site
+states about itself, not the inventory. *An aggregator: its rows are
+other boards' advertisements, which `shared/boards/README.md` treats by
+reference, not by value.* The procedure: guard → tab → `page=1, 2 …` of
+`/api/v2/jobs` 1.5 s apart → «n emitted, site states 10 000 (a cap)» →
+close; 12 read. *The tab's renderer froze once on a JSON parse of the
+response — the second read parsed the text with a pattern instead.*
 
 ## What this card is, and is not
 

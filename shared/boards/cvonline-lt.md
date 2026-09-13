@@ -1,12 +1,13 @@
-# Board adapter — CV-Online.lt (Lithuania): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — CV-Online.lt (Lithuania): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.cvonline.lt, cvonline.lt -->
 <!-- script: none -->
 <!-- countries: LT -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 12:07 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **3 590 advertisements stated by the site** — «Rodyti 3590 rezultatus» on `/lt/search`, and the same stack's API from the tab: `/api/v1/vacancy-search-service/search?limit=1&offset=0` → `total 1650`, `…&showHidden=true` → `total 3590` — the UI's figure is the `showHidden` one, as on `cv.ee` and `cv.lv`, and here the two differ by 1 940; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own `total` in its search API, read with and without `showHidden` from the tab, the UI's «Rodyti 3590 rezultatus» matching the second · 2026-09-13 -->
+<!-- route: browser · 3590 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 12:07:02Z UTC for #233, lot 6 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,21 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:59 UTC — the browser route, MEASURED (#222): the CV-Online stack, and the largest `showHidden` gap of the three
+
+```
+navigate /lt/search                                              200 «Darbo paieška | CV-Online» — **«Rodyti 3590 rezultatus»**
+fetch /api/v1/vacancy-search-service/search?limit=1&offset=0     200 — total **1 650**
+fetch …&showHidden=true                                          200 — total **3 590** = the UI's figure
+```
+
+No challenge. **The same API and the same `showHidden` behaviour as
+`cv.ee` and `cv.lv`** — and here the hidden ones are more than half:
+1 650 shown by default, 3 590 with them. Which of the two a scan should
+count is the `cv.ee` card's question, answered there; the adapter is
+`cvonline.py --host www.cvonline.lt` the day the declared client is
+served, and from a tab the same calls the page makes.
 
 ## What this card is, and is not
 

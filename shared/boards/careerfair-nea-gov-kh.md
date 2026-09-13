@@ -1,12 +1,13 @@
-# Board adapter — NEA Career Fair (Cambodia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — NEA Career Fair (Cambodia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: careerfair.nea.gov.kh, www.careerfair.nea.gov.kh -->
 <!-- script: none -->
 <!-- countries: KH -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 12:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **534 advertisements by the pager's arithmetic** — `/jobs` serves 30 `/jobs/detail/<id>` a page, a pager «1 2 3 … 17 18», page 18 carries 24: 17 × 30 + 24 = 534 (pages 1, 2 and 18 read from a connected browser tab, 0 shared between 1 and 2); the site states no total; the National Employment Agency's career-fair board, beside `nea.gov.kh`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the pager's last page — 24 on page 18 against 30 on the others closes the arithmetic at 534; no figure is stated by the site · 2026-09-13 -->
+<!-- route: browser · 534 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 12:22:44Z UTC for #233, lot 6 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,21 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 11:00 UTC — the browser route, MEASURED (#222): the pager closes the count the site does not state
+
+```
+navigate /jobs             200 «ឱកាសការងារ» — 30 /jobs/detail/<id> cards (employer · title · sector · phone · province · «មើលលម្អិត») · pager ‹ 1 2 3 … 17 18 ›
+fetch /jobs?page=2         30 cards, 0 shared with page 1
+fetch /jobs?page=18        24 cards  →  **17 × 30 + 24 = 534**       11:00:52 UTC
+```
+
+No challenge; the 25-byte 403 is for the declared client alone. **534 is
+an arithmetic over the pager, not a figure the site states** — the card
+says so; the sister host `nea.gov.kh` states a headcount and this one
+states nothing. The procedure: guard → tab → `page=1 … 18` 1.5 s apart
+collecting `/jobs/detail/<id>` → «n emitted; the site states no total,
+the pager closes at 534» → an advertisement page (not opened) → close.
 
 ## What this card is, and is not
 
