@@ -1,12 +1,12 @@
-# Board measurement — Jobslin (Philippines and 20 other countries): the host of #233 is a country chooser — the Philippine board lives on `ph.jobslin.com`, served, 10 posts on its front page
+# Board measurement — Jobslin (`ph.jobslin.com`, Philippines and 20 other countries): the hub is a country chooser, the Philippine board is served by HTTP — «16,072 Job Vacancies», 12 a page, an ItemList on every page
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.jobslin.com, jobslin.com -->
 <!-- script: none -->
 <!-- countries: PH -->
-<!-- content: measured · rules read twice and certain (1 836 B, the bare managed block naming `ClaudeBot`, `*` open; `identity()` answers `claude-user`, `verdict()` sweeps) — and `www.jobslin.com` answers 200 → `https://jobslin.com/` (13 468 B, byte-identical twice): «Choose Your Country» — Asia (Philippines, Malaysia, Singapore), Africa, Oceania, Ibero-America — a hub with **0 advertisements**; `/jobs` on it is the site's own 404; `ph.jobslin.com` answers 200 (179 496 B, `Crawl-delay: 2` honoured) with 10 `/job/` links on its front page and no stated total · 2026-09-13 -->
-<!-- witness: the hub's own «Choose Your Country» page — 21 country sub-hosts, the Philippine one read once; no count stated anywhere read; no adapter yet -->
+<!-- content: measured · **`ph.jobslin.com/job-offers` states «1 - 12 of 16,072 Job Vacancies» and is served to the declared client** (200, 324 503 B; page 2 «13 - 24 of 16,072», 12 new `/job/<id>/<slug>` links, none shared with page 1; the pager is `?t=16072&page=N`, `rel="next"`); a JSON-LD ItemList per page; `Crawl-delay: 2` on the sub-host, honoured; the hub `www.jobslin.com` is a country chooser with 0 advertisements (21 sub-hosts); `bin/fetch-body.py` 16:58–16:59 UTC; the rules as on the 13th — the managed block naming `ClaudeBot`, `*` open with `Content-Signal: search=yes,ai-train=no,use=reference`, reopened by the doctrine of 2026-09-07, and 10 posts on the front page behind them · 2026-09-13 -->
+<!-- witness: the page's own «of 16,072 Job Vacancies», printed on every listing page; a walk was not made (1 340 pages of 12 at 2 s) — the count is the site's, read on two pages, and the adapter that ships prints it beside its own · 2026-09-13 -->
 
 **Measured 2026-09-13 for #233, lot 8 — a measurement of the transport, not a
 decision about the host.** Every fetch under the declared identity, the
@@ -45,3 +45,20 @@ GET https://ph.jobslin.com/        200, 179 496 B                     (10:25:02Z
 - **A measurement, not an adapter** — and the hub is **not a board**: 0 advertisements by object. **Candidate: `ph.jobslin.com`** (and its siblings `my.`, `sg.` …), a served front page with `/job/` links; its listing and count are the adapter's first question. *Only `ph.` was read, once.*
 - **Not a verdict that the host is closed** — nothing in the rules refuses `Claude-User`.
 - **No configuration.** A user with a URL from this host can hand it to `cover-letter`.
+
+## 2026-09-13 16:58 UTC — the Philippine board by HTTP: served, counted, paged (#222, for #299)
+
+```
+GET https://ph.jobslin.com/robots.txt          200 — the Cloudflare managed block: `*` Allow: / with Content-Signal search=yes, ai-train=no, use=reference; ClaudeBot and eight others Disallow: /; Crawl-delay 2 (honoured)
+GET https://ph.jobslin.com/job-offers           200, 324 503 B — «1 - 12 of 16,072 Job Vacancies» · 12 /job/<id>/<slug> links · JSON-LD Organization + WebPage + ItemList · pager ?t=16072&page=2…6, rel="next"
+GET https://ph.jobslin.com/job-offers?page=2    200, 318 479 B — «13 - 24 of 16,072 Job Vacancies» · 12 links, none shared with page 1
+GET https://ph.jobslin.com/sitemap.xml          200 — an HTML page, not a sitemap (34 970 B); no Sitemap: line in the rules
+```
+
+**This is an HTTP route** — the declared client is served, the page
+states its count, the pager is a query string. The adapter is #299's
+(the owner's rule of 2026-09-13: an adapter has its issue before its
+first line); what it would print is «n emitted, site states 16 072» over
+`?page=N` at 2 s, and the same shape on `my.`, `sg.` and the other
+sub-hosts if they are the same template — not read here. The `t=16072`
+in the pager is the count carried along, not a token.
