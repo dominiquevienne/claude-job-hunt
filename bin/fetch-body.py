@@ -69,7 +69,7 @@ from _ua import UA                    # noqa: E402
 # things; the exit codes keep them apart:
 #
 #     7  the RULES refuse this path            `api.adzuna.com`
-#     8  INDETERMINATE — rules unreadable      DNS dead, 403 on robots.txt
+#     8  INDETERMINATE — rules unreadable      a 2xx-not-200 on robots.txt (since #283 a 403 or a timeout there OPENS)
 #     2  the TRANSPORT refuses a path the rules PERMIT
 #
 # **The third was the one with no code of its own**, and it now takes `2`
@@ -245,11 +245,19 @@ def main():
                   f"and the rest have not told us.", file=sys.stderr)
         return 0
 
-    delay = (verdict(parts.netloc) or {}).get("crawl_delay")
+    v = verdict(parts.netloc) or {}
+    delay = v.get("crawl_delay")
     if delay:
         print(f"[fetch-body] the host asks for {delay}s between requests; "
               f"waiting", file=sys.stderr)
         time.sleep(float(delay))
+    if v.get("first_request_delay"):
+        # #283, 2026-09-13: the rules file answered 429 or timed out — an
+        # absence of rules, and a host that just said «slow down»; wait
+        # `Retry-After` or 10 s before this first transport request
+        print(f"[fetch-body] the rules file was not read ({v.get('rule_kind')}); "
+              f"waiting {v['first_request_delay']}s before the first request", file=sys.stderr)
+        time.sleep(float(v["first_request_delay"]))
 
     # **The same TLS chain the guard uses, or this tool cannot reach a host
     # the guard has already read.** `empleate.gob.es` omits the intermediate

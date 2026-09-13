@@ -92,8 +92,15 @@ class Pace:
     def __init__(self, host, own=0.0):
         self.host = host
         self.own = max(0.0, float(own or 0.0))
+        self.first_delay = 0.0
         try:
-            declared = (_robots.verdict(host) or {}).get("crawl_delay")
+            v = _robots.verdict(host) or {}
+            declared = v.get("crawl_delay")
+            # **#283, 2026-09-13**: a 429 or a timeout on the rules file
+            # earns the FIRST request of this process a wait — `Retry-After`
+            # when given, else 10 s — the pilot's opinion kept as a delay,
+            # never as a refusal.
+            self.first_delay = float(v.get("first_request_delay") or 0.0)
         except Exception:                                  # noqa: BLE001
             # **An unreadable rules file is not a permission to hurry.** The
             # guard reports that separately; here it means we fall back to
@@ -157,6 +164,10 @@ class Pace:
     def wait(self):
         """Sleep for whatever of this host's interval has not already passed —
         **counting requests made by other processes.**"""
+        if self.first_delay and self._last is None:
+            # the rules file answered 429 or timed out: wait once before the
+            # first transport request of this process (#283)
+            time.sleep(self.first_delay)
         if not self.delay:
             self._last = time.monotonic()
             return 0.0

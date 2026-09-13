@@ -60,19 +60,23 @@ The states a fetch can end in, and they are not interchangeable:
     read         the rules are here
     absent       404 — no file published. **Not a refusal**, and this is the
                  one case where silence really is permission
-    refused      403/429/451 — **the host answered, and it said no.**
-                 `barbadosjobregister.gov.bb` returns 403 and thirty bytes of
-                 "Request is Blocked by Firewall". A server that says
-                 *blocked* has replied. Neither a permission nor an absence.
-                 **This departs from RFC 9309 on purpose — see below**
+    no-rules     403/429/451, any other 4xx, a persistent 5xx, timeout, TLS,
+                 connection refused — **the rules file could not be read,
+                 and since 2026-09-13 (#283) that is an absence of rules**:
+                 open, `certain: False`, the kind naming what failed
+                 (`no-rules-403`, `no-rules-timeout` …). Until then 403, 429
+                 and 451 were `refused` — «the host answered, and it said
+                 no» (`barbadosjobregister.gov.bb`, 403, "Request is Blocked
+                 by Firewall", #118) — and the rest `unreachable`. Owner's
+                 decision, twice, verbatim below
     unauthenticated
                  401 — **a credential is demanded for everything, the rules
                  file included.** No file was read and none is presumed:
                  an absence of rules, `certain: False`. Owner's decision of
-                 2026-09-09, #201 — see below. **401 and only 401.**
-    unreachable  timeout, DNS, TLS, a persistent 5xx, **or a 2xx that is
-                 not 200** — unknown, and the only honest answer is that we
-                 do not know
+                 2026-09-09, #201 — the first code brought back
+    unreachable  the in-flight state between two of the three attempts —
+                 a timeout, a 5xx, **a 2xx that is not 200** — and never
+                 the verdict: the last attempt lands in `no-rules` (#283)
     unrecognised 200 with something that is not a rules file — **an open
                  door**, because the host answered and wrote no rule. Still
                  `certain: False`: a body nobody could recognise establishes
@@ -124,45 +128,60 @@ observation, not a property of the site.**
 silent verdict invites suspicion; **a falsely-motivated one reads like a
 verification**, which is worse.
 
-**THE 403 RULE IS A DELIBERATE DEPARTURE FROM RFC 9309, AND SAYING SO IS PART
-OF THE FIX.** §2.3.1.3 is explicit: on a status in the 400-499 range a crawler
-"MAY access any resources", *as if no robots.txt existed*. **By the letter, a
-403 means open.** This module refuses instead, because the letter answers a
-question about file availability and a firewall answering *blocked* is
-answering a different one — and the cost of being wrong is not symmetric. The
-5xx rule is followed as written: unreachable means refuse.
+**THE 403 RULE WAS A DELIBERATE DEPARTURE FROM RFC 9309 — AND IT IS THE
+STANDARD SINCE 2026-09-13, OWNER'S DECISION (#283).** §2.3.1.3 is explicit:
+on a status in the 400-499 range a crawler "MAY access any resources", *as
+if no robots.txt existed*. From 2026-09-04 to 2026-09-13 this module refused
+on 403, 429 and 451 instead, on the argument that a firewall answering
+*blocked* answers a different question than file availability, and that the
+cost of being wrong is not symmetric. **The owner decided otherwise, twice
+in one hour, verbatim:** *«&nbsp;un 403 sur un robots.txt doit être
+considéré comme l'absence de règle... et donc une porte ouverte&nbsp;»*, then
+*«&nbsp;toutes incapacité d'ouvrir robots.txt doit aboutir à l'absence de
+règles et donc à l'ouverture&nbsp;»*. So:
 
-**AND 401 IS BROUGHT BACK TO THE LETTER — owner's decision of 2026-09-09,
-#201, applied 2026-09-11.** *«&nbsp;quand le robots.txt nous renvoie une 401,
-il faut considérer qu'il s'agit d'une absence de règles et donc, une porte
-ouverte au scan&nbsp;».* `api.ashbyhq.com` is the case: an API gateway that
-demands a token on every path and makes no exception for `/robots.txt`.
-**There is no rules file behind that 401 — there is an authentication in
-front of everything**, and a 401 there says nothing about whether the
-operator refuses this project. So 401 lands in `unauthenticated`: an open
-door with `certain: False`, because nothing was read. **The departure
-narrows by one code and keeps the other three**: 403 is a wall that
-answered, 429 is «&nbsp;slow down&nbsp;» — opening it would restart a scan
-on a host that just said so — and 451 is a legal demand, not a question of
-file availability. *A 404 is knowledge; a 401 is ignorance, and ignorance
-does not forbid.* A future session reading `refused` without 401 is reading
-a decision, not a bug.
+    200, a rules file         the rules it carries, certain: True
+    404 / 410                 absence of rules, certain: True — the host looked, there is none
+    EVERYTHING ELSE           absence of rules → open, certain: False — nothing was read
+      401                     `unauthenticated` (#201, 2026-09-09 — the first code brought back)
+      403, 429, 451, 4xx      `no-rules`, kind `no-rules-<code>`
+      5xx, timeout, TLS,      `no-rules`, kind `no-rules-timeout` / `-tls` / `-connection` / `-http-<code>`,
+      connection refused      after the three attempts a transient failure gets
 
-**But that departure has a price, and it was measured the day it shipped.**
-Two Chilean government portals, the same CloudFront-over-S3 static hosting,
-**neither publishing a robots.txt**:
+**What does not change:** a `Disallow` that was READ is a `Disallow`; a
+refusal at the transport on a PAGE is a refusal at the transport (the
+browser candidate of the 2026-09-07 decision, bornes 0-3 whole); an
+anti-robot challenge is not defeated; a `Crawl-delay` that was read applies;
+a 429 on a PAGE stops the fetch. **The 429 on the rules file says nothing
+about the 429 on the listing, and it is the latter that counts.** And «an
+INDETERMINATE is not probed» no longer holds for the rules file: a guard that
+could read nothing answers `allowed: True, certain: False`, and the
+transport decides next.
+
+**The pilot's opinion, given once and kept because it was given:** a 429 on
+`/robots.txt` is a host that just said «slow down», and opening it sends a
+request back within the second. The conduct that honours that without
+contradicting the decision: **on a 429 (or a timeout) of the rules file the
+first transport request waits `Retry-After` when the host gives one, else
+10 s** — `first_request_delay` on the verdict, a delay and not a refusal.
+
+**401 WAS THE FIRST CODE BROUGHT BACK TO THE LETTER — owner's decision of
+2026-09-09, #201, applied 2026-09-11.** `api.ashbyhq.com` is the case: an
+API gateway that demands a token on every path and makes no exception for
+`/robots.txt`. It keeps its own state, `unauthenticated`, and the same open
+door with `certain: False`.
+
+**The price of the old departure was measured the day it shipped, and it is
+now the general case.** Two Chilean government portals, the same
+CloudFront-over-S3 static hosting, neither publishing a robots.txt:
 
     www.trabajaenelestado.cl/robots.txt   403, 111 bytes of S3 `AccessDenied`
     www.practicasparachile.cl/robots.txt  200, 16 kB of the site's own SPA
 
-**Same absence, opposite verdicts** — refused and permitted — decided by
-whether the distribution has a custom error page. On object storage a 403 is
-routinely what a *missing key* returns, because listing is not granted; there
-is no 404 to give. So `refused` names when a 403 carries a storage-layer error
-document, and the sentence says the file may simply not exist. **It still
-refuses**: this module does not get to conclude *absent* from a body that
-resembles an absence, and `shared/plausible-and-false.md` is about exactly that
-inference. It hands a person something to decide with.
+**Same absence, opposite verdicts** under the old rule — decided by whether
+the distribution had a custom error page. On object storage a 403 is
+routinely what a *missing key* returns. `_storage_note` still names the
+shape for a person; the verdict no longer depends on it.
 """
 
 import datetime
@@ -321,6 +340,18 @@ def _fetch(host):
         if (got["state"] != "unreachable"
                 or not got.get("transient", True)
                 or attempt == len(_TIMEOUTS)):
+            if got["state"] == "unreachable":
+                # **The last attempt did not read the file — and since
+                # 2026-09-13 (#283) that is an absence of rules.** «toutes
+                # incapacité d'ouvrir robots.txt doit aboutir à l'absence de
+                # règles et donc à l'ouverture» — owner's decision. The kind
+                # names what failed, the transport decides next, and a
+                # timeout earns the first request a 10 s wait.
+                got = dict(got, state="no-rules", kind=_failure_kind(got),
+                           why=f"the rules file could not be read after "
+                               f"{attempt} attempt(s) ({got.get('why')}) — "
+                               f"nothing was read, an absence of rules "
+                               f"(#283, 2026-09-13)")
             _CACHE[(host, _FETCH)] = got
             return got
         # Spaced, and jittered so a sweep of many hosts does not retry in
@@ -613,31 +644,35 @@ def _read_once(url, host, timeout, seen):
                            f"there is no policy behind this status, there is "
                            f"an authentication in front of every path."}
         if e.code in (403, 429, 451):
-            # **The host answered, and it answered no.** Measured on
-            # `barbadosjobregister.gov.bb`: 403 and thirty bytes, "Request is
-            # Blocked by Firewall". This used to be filed under `unreadable`,
-            # whose reason reads *absence of a file is not a refusal* — true
-            # of a 404 and false here. Issue #118.
-            return {"state": "refused",
-                    # **The code, because 403, 429 and 451 are three facts.**
-                    # A refusal record read `status: null` beside
-                    # `state: refused`, so nothing said whether the host was
-                    # blocking us, rate-limiting us, or citing a legal demand.
-                    "status": e.code,
-                    "why": f"HTTP {e.code} — the host refuses to serve its "
-                           f"rules file" + _storage_note(e)}
-        # **A 4xx is an answer; a 5xx may be an incident.** The retry is not
-        # unconditional — it fires only on `unreachable` — but every status
-        # outside the six named above landed there, so a host answering 400
-        # was asked the same question three times. It had already replied.
-        # Retrying a definitive answer multiplies by the number of
-        # indeterminate hosts and tells us nothing new.
-        #
-        # **The verdict does not change**: a 400 is still `unreachable`, still
-        # an unknown, and an unknown is still not probed. Only the number of
-        # times we ask changes.
+            # **The host answered, and it answered no — and since 2026-09-13
+            # that is an absence of rules (#283).** Until then this was
+            # `refused` and the sweep stopped here; `barbadosjobregister.gov.bb`
+            # (403, "Request is Blocked by Firewall") was the founding case
+            # (#118). The owner brought all three back to RFC 9309 §2.3.1.3:
+            # nothing was read, so nothing forbids — `certain: False`, and
+            # the transport decides next. The code travels (`kind`), because
+            # 403, 429 and 451 are three facts; a 429 also carries its
+            # `Retry-After`, which the first transport request will honour.
+            retry = e.headers.get("Retry-After") if e.headers else None
+            return {"state": "no-rules", "status": e.code,
+                    "kind": f"no-rules-{e.code}",
+                    "retry_after": _seconds(retry),
+                    "why": f"HTTP {e.code} on the rules file — nothing was "
+                           f"read, and since 2026-09-13 (#283) that is an "
+                           f"absence of rules, not a refusal" + _storage_note(e)}
+        # **Any other 4xx is an answer, and the same absence.** A 400 or a
+        # 405 on `/robots.txt` reads nothing either; it is not retried (the
+        # host replied) and it opens on `certain: False`.
+        if 400 <= e.code < 500 and e.code != 408:
+            return {"state": "no-rules", "status": e.code,
+                    "kind": f"no-rules-{e.code}",
+                    "why": f"HTTP {e.code} on the rules file — nothing was "
+                           f"read, an absence of rules (#283, 2026-09-13)"}
+        # **A 5xx (or a 408) may be an incident**: it is retried three times
+        # as `unreachable`, and `_fetch` turns the last attempt into the same
+        # absence — with a kind that says what failed.
         return {"state": "unreachable", "why": f"HTTP {e.code}",
-                "transient": e.code >= 500 or e.code == 408}
+                "status": e.code, "transient": True}
     except (urllib.error.URLError, OSError) as e:
         return {"state": "unreachable", "why": str(e)}
 
@@ -670,6 +705,29 @@ def _storage_note(err):
             f"finding**: the refusal stands, because an absence inferred "
             f"from a body that resembles one is not an absence. Read the "
             f"file by hand and record what you saw")
+
+
+def _seconds(retry_after):
+    """`Retry-After` as seconds, or None — the delta form only; an HTTP-date
+    is rare on a 429 and would need a clock this module does not keep."""
+    try:
+        return max(0, int(str(retry_after).strip())) if retry_after else None
+    except ValueError:
+        return None
+
+
+def _failure_kind(got):
+    """What kept the rules file unread, as a short kind for the verdict."""
+    why = (got.get("why") or "").lower()
+    if got.get("status"):
+        return f"no-rules-http-{got['status']}"
+    if "timed out" in why or "timeout" in why:
+        return "no-rules-timeout"
+    if "certificate" in why or "ssl" in why or "tls" in why:
+        return "no-rules-tls"
+    if "refused" in why or "reset" in why or "unreachable" in why or "name" in why:
+        return "no-rules-connection"
+    return "no-rules-unread"
 
 
 def siblings(host):
@@ -957,6 +1015,32 @@ def verdict(host, agents=None):
             f"owner's decision of 2026-09-09 (#201), and RFC 9309 §2.3.1.3 "
             f"as written on this one code. `certain` stays false: a 404 is "
             f"knowledge, a 401 is ignorance, and ignorance does not forbid.")
+        return _keep(out)
+    if got["state"] == "no-rules":
+        # **#283, 2026-09-13 — every failure to read the rules file is an
+        # absence of rules.** Owner's decision, verbatim in the module
+        # header; RFC 9309 §2.3.1.3 as written. `sweep` is True because
+        # nothing forbids; `certain` is False because nothing was read —
+        # a policy applied to an absence, not an absence established, the
+        # same shape as `unrecognised` and `unauthenticated`. The kind says
+        # which failure it was, and a 429 or a timeout earns the first
+        # transport request a wait: `Retry-After` when given, else 10 s —
+        # the pilot's opinion, kept as a delay and not as a refusal.
+        out["sweep"] = True
+        out["certain"] = False
+        out["rule_kind"] = got.get("kind") or "no-rules-unread"
+        if got.get("status") == 429 or out["rule_kind"] == "no-rules-timeout":
+            out["first_request_delay"] = got.get("retry_after") or 10
+        out["reason"] = (
+            f"{got.get('why')}. **An absence of rules is an open door** — "
+            f"owner's decision of 2026-09-13 (#283): every failure to open "
+            f"`robots.txt` — 403, 429, 451, 5xx, timeout, TLS — is the same "
+            f"absence as a 404, with `certain: False` because nothing was "
+            f"read. **The transport decides next**: a 403 on a page is still "
+            f"a refusal at the transport, a challenge is still not defeated, "
+            f"and a `Disallow` that was read is still a `Disallow`."
+            + (f" First transport request: wait {out['first_request_delay']} s."
+               if out.get("first_request_delay") else ""))
         return _keep(out)
     if got["state"] == "unreachable":
         # **The third state, and the reason this module was rewritten.** Not
@@ -1744,6 +1828,10 @@ def allowed(host, path, agents=None):
         # suspicion; a verdict that gives a false reason reads like a
         # verification.** Issue #125.
         out["certain"] = v["state"] == "absent"
+        if v["state"] == "no-rules":
+            out["kind"] = v.get("rule_kind")
+            if v.get("first_request_delay"):
+                out["first_request_delay"] = v["first_request_delay"]
         seen = (f"HTTP {v['status']}" if v.get("status") else "no HTTP status")
         if v.get("bytes") is not None:
             seen += f", {v['bytes']} bytes"
@@ -1763,6 +1851,10 @@ def allowed(host, path, agents=None):
                "has written no rule. An open door, `certain` false — nothing "
                "was read, and ignorance does not forbid."
                if v["state"] == "unauthenticated" else
+               f"**The rules file could not be read (`{v.get('rule_kind')}`), "
+               "and since 2026-09-13 (#283) that is an absence of rules** — "
+               "an open door, `certain` false; the transport decides next."
+               if v["state"] == "no-rules" else
                "**That is not an absence and not a permission** — a file that "
                "cannot be read says nothing either way. Proceed at a human "
                "pace and say so, or read it by hand."))

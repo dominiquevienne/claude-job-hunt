@@ -750,25 +750,37 @@ class WhichStatusMeansWhat(unittest.TestCase):
     # this one asserts the new one, code by code, so that reading it says
     # *decision*, not *gap*. The same conduct as the `ClaudeBot`/`Claude-User`
     # reversal of 2026-09-07.
+    # **And this REPLACES the 2026-09-11 table — #283, owner's decision of
+    # 2026-09-13, verbatim: «un 403 sur un robots.txt doit être considéré
+    # comme l'absence de règle... et donc une porte ouverte», then «toutes
+    # incapacité d'ouvrir robots.txt doit aboutir à l'absence de règles et
+    # donc à l'ouverture».** The rows that read `refused, False, True` on
+    # 403/429/451 now read `no-rules, True, False` — the same open door as
+    # 401, `certain` false because nothing was read — and a 5xx, retried and
+    # still failing, lands there too. A guard asserting the old rows would
+    # be restored by a future session as a fix; this one asserts the
+    # decision, code by code.
     EXPECTED = {
-        # code: (state, sweep, certain) — each code its own row, because the
-        # decision is about ONE code and the family is not the unit
-        401: ("unauthenticated", True, False),   # an absence, not established
-        403: ("refused", False, True),           # a wall that answered
-        429: ("refused", False, True),           # «slow down» — do not restart
-        451: ("refused", False, True),           # a legal demand
+        # code: (state, sweep, certain) — each code its own row
+        401: ("unauthenticated", True, False),   # #201 — the first code brought back
+        403: ("no-rules", True, False),          # #283 — was «a wall that answered»
+        429: ("no-rules", True, False),          # #283 — the first request waits Retry-After or 10 s
+        451: ("no-rules", True, False),          # #283 — was «a legal demand»
+        400: ("no-rules", True, False),          # any other 4xx: answered, nothing read
+        503: ("no-rules", True, False),          # a 5xx after the three attempts
         404: ("absent", True, True),             # knowledge: no file
         410: ("absent", True, True),
     }
 
     def test_a_4xx_on_the_rules_file_is_classified_by_code_not_by_family(self):
         """**The class of the defect this pins**: a 4xx sorted by its family
-        rather than by its code. Before #201 four codes shared one state
-        because they shared a first digit; after it, 401 opens and the other
-        three still refuse — and *only* a per-code table can say so. Mutated:
-        `(401,)` folded back into the refusing tuple → the 401 row reddens;
-        429 moved next to 401 → the 429 row reddens; `certain` set True on
-        the new branch → the 401 row reddens on the third field."""
+        rather than by its code — and, since #283, a code that still
+        refuses where the owner said open. Mutated (`-B`, detached copy,
+        2026-09-13): the 403/429/451 branch returned to `refused` → three
+        rows redden; `certain` set True on the no-rules branch → the same
+        three redden on the third field; the `_fetch` conversion of the
+        last unreachable attempt dropped → the 503 row reddens; the kind on
+        429 renamed → the kind case below reddens."""
         for code, (state, sweep, certain) in self.EXPECTED.items():
             with self.subTest(code=code):
                 v = self._verdict(code)
@@ -821,11 +833,50 @@ class WhichStatusMeansWhat(unittest.TestCase):
         will «&nbsp;fix&nbsp;» the code toward the comment."""
         with open(os.path.join(SCRIPTS, "_robots.py"), encoding="utf-8") as fh:
             src = fh.read()
-        self.assertIn("refused      403/429/451", src,
-                      "the states table still lists 401 under refused")
+        self.assertIn("no-rules     403/429/451", src,
+                      "the states table still lists 403/429/451 under refused (#283)")
+        self.assertNotIn("refused      403/429/451", src)
         self.assertNotIn("401|403", src, "_REFUSAL_STATUS still names 401")
         self.assertIn("e.code in (403, 429, 451)", src)
         self.assertIn("e.code in (401,)", src)
+        self.assertIn('"state": "no-rules"', src)
+        self.assertIn("STANDARD SINCE 2026-09-13", src, "the docstring still calls the 403 rule a departure")
+
+    def test_the_kind_names_the_failure_and_a_429_earns_the_first_request_a_wait(self):
+        """**#283, the pilot's opinion kept as a delay**: a 429 on the rules
+        file opens, and the first transport request waits `Retry-After` when
+        the host gives one, else 10 s; a timeout earns the same 10 s; a 403
+        earns nothing. The kind travels on the verdict and on `allowed()`."""
+        import _robots
+        real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        try:
+            for code, headers, kind, delay in ((429, {"Retry-After": "7"}, "no-rules-429", 7), (429, {}, "no-rules-429", 10), (403, {}, "no-rules-403", None)):
+                with self.subTest(code=code, headers=headers):
+                    _robots._CACHE.clear()
+                    _robots._ALIAS.clear()
+
+                    def fail(*a, **k):
+                        raise _robots.urllib.error.HTTPError("https://h.example/robots.txt", code, "x", headers, io.BytesIO(b""))
+                    _robots.urllib.request.urlopen = fail
+                    v = _robots.verdict("h.example")
+                    a = _robots.allowed("h.example", "/x")
+                    self.assertEqual((v["rule_kind"], v.get("first_request_delay"), a["kind"], a.get("first_request_delay")), (kind, delay, kind, delay))
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+            def timeout(*a, **k):
+                raise _robots.urllib.error.URLError("timed out")
+            _robots.urllib.request.urlopen = timeout
+            v = _robots.verdict("h.example")
+            self.assertEqual((v["state"], v["sweep"], v["certain"], v["rule_kind"], v.get("first_request_delay"), v.get("attempts")),
+                             ("no-rules", True, False, "no-rules-timeout", 10, 3))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
 
     def test_every_absent_status_is_an_absence(self):
         """**410 is a stronger 404**, not a weaker one — the host says the
@@ -890,16 +941,25 @@ class RobotsThirdState(unittest.TestCase):
         self.assertFalse(v["sweep"])          # `if not v["sweep"]` refuses
         self.assertFalse(bool(v["sweep"]))    # `if v["sweep"]` does not fetch
 
-    def test_a_403_is_a_refusal_not_an_absence(self):
-        self._serve({"state": "refused",
-                     "why": "HTTP 403 — the host refuses to serve its rules "
-                            "file"})
+    def test_a_403_is_an_absence_of_rules_since_283_and_not_a_refusal(self):
+        """**This REPLACES `test_a_403_is_a_refusal_not_an_absence` — #283,
+        owner's decision of 2026-09-13**, verbatim: «un 403 sur un robots.txt
+        doit être considéré comme l'absence de règle... et donc une porte
+        ouverte». `barbadosjobregister.gov.bb` (403, "Request is Blocked by
+        Firewall") was the founding case of the refusal (#118); it is now
+        the founding case of the absence. `certain` stays False: nothing was
+        read. A guard asserting the old reading would be restored as a fix."""
+        self._serve({"state": "no-rules", "status": 403, "kind": "no-rules-403",
+                     "why": "HTTP 403 on the rules file — nothing was read"})
         v = _robots.verdict("barbadosjobregister.gov.bb")
-        self.assertIs(v["sweep"], False)
-        self.assertIn("the reply was no", v["reason"])
-        self.assertIs(
-            _robots.allowed("barbadosjobregister.gov.bb", "/x")["allowed"],
-            False)
+        self.assertIs(v["sweep"], True)
+        self.assertIs(v["certain"], False)
+        self.assertEqual(v["rule_kind"], "no-rules-403")
+        self.assertIn("absence of rules is an open door", v["reason"])
+        a = _robots.allowed("barbadosjobregister.gov.bb", "/x")
+        self.assertIs(a["allowed"], True)
+        self.assertIs(a["certain"], False)
+        self.assertEqual(a["kind"], "no-rules-403")
 
     def test_a_404_is_still_a_permission_because_it_is_knowledge(self):
         """**The one silence that really is one.** Confusing the two
@@ -1622,11 +1682,12 @@ class WhatTheStatusMeans(unittest.TestCase):
             "u", 500, "Server Error", {}, None))
         self.assertEqual(got["state"], "unreachable")
 
-    def test_a_403_is_a_refusal(self):
+    def test_a_403_is_an_absence_of_rules_since_283(self):
+        # REPLACES `test_a_403_is_a_refusal` — #283, owner, 2026-09-13
         import urllib.error
         got = self._fetch_with(error=urllib.error.HTTPError(
             "u", 403, "Forbidden", {}, None))
-        self.assertEqual(got["state"], "refused")
+        self.assertEqual((got["state"], got["kind"], got["status"]), ("no-rules", "no-rules-403", 403))
 
     def test_200_with_a_rules_file_is_read(self):
         got = self._fetch_with(self._Resp(
@@ -3081,20 +3142,38 @@ class AnEmptyBodyIsAnOpenDoor(unittest.TestCase):
 
     # ---- the two neighbours, which must not move -------------------------
 
-    def test_a_2xx_that_is_not_200_still_stops_us(self):
-        """`algerie.tanqeeb.com` answers **202 with zero bytes**. That is not
-        a body without rules — it is not a document at all. #125."""
-        v, a = self._verdict("", "text/plain", code=202)
-        self.assertEqual(v["state"], "unreachable")
-        self.assertIsNone(v["sweep"])
-        self.assertIsNone(a["allowed"])
+    def test_a_2xx_that_is_not_200_is_an_absence_of_rules_since_283(self):
+        """`algerie.tanqeeb.com` answers **202 with zero bytes**: not a
+        document (#125), retried three times as a possible incident — and
+        since #283 (owner, 2026-09-13: «toutes incapacité d'ouvrir robots.txt
+        doit aboutir à l'absence de règles») the last failed attempt is an
+        absence of rules, `no-rules-http-202`, `certain` false. **This
+        REPLACES `test_a_2xx_that_is_not_200_still_stops_us`.**"""
+        import _robots
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
+        try:
+            v, a = self._verdict("", "text/plain", code=202)
+        finally:
+            _robots._BACKOFF = back
+        self.assertEqual((v["state"], v["sweep"], v["certain"], v["rule_kind"], v["attempts"]), ("no-rules", True, False, "no-rules-http-202", 3))
+        self.assertIs(a["allowed"], True)
 
-    def test_the_open_door_did_not_reach_the_unreachable_state(self):
-        """**The one that would undo #118.** A host we could not reach is a
-        host we know nothing about, and it looks exactly like a host that
-        closes everything to us by name — `nea.gov.kh` did."""
+    def test_a_timeout_on_the_rules_file_is_an_absence_of_rules_since_283_with_a_first_request_wait(self):
+        """**This REPLACES `test_the_open_door_did_not_reach_the_unreachable_state`
+        — #283, owner's decision of 2026-09-13, verbatim: «toutes incapacité
+        d'ouvrir robots.txt doit aboutir à l'absence de règles et donc à
+        l'ouverture».** #118's argument — a host we could not reach looks
+        like `nea.gov.kh`, which closes everything by name — was given, is
+        kept in the module header, and does not decide any more: three
+        attempts, then `no-rules-timeout`, open, `certain` false, and the
+        first transport request waits 10 s (the pilot's opinion kept as a
+        delay). The in-flight `unreachable` state survives only between two
+        attempts."""
         import _robots
         real = _robots.urllib.request.urlopen
+        back = _robots._BACKOFF
+        _robots._BACKOFF = (0, 0)
 
         def boom(*a, **k):
             raise _robots.urllib.error.URLError("timed out")
@@ -3107,17 +3186,18 @@ class AnEmptyBodyIsAnOpenDoor(unittest.TestCase):
             a = _robots.allowed("h.example", "/jobs")
         finally:
             _robots.urllib.request.urlopen = real
+            _robots._BACKOFF = back
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
-        self.assertEqual(v["state"], "unreachable")
-        self.assertIsNone(v["sweep"], "a fetch failure became a permission — "
-                                      "this is #118, the worst defect this "
-                                      "module has had")
-        self.assertIsNone(a["allowed"])
+        self.assertEqual((v["state"], v["sweep"], v["certain"], v["rule_kind"], v["first_request_delay"], v["attempts"]),
+                         ("no-rules", True, False, "no-rules-timeout", 10, 3))
+        self.assertEqual((a["allowed"], a["kind"], a["first_request_delay"]), (True, "no-rules-timeout", 10))
 
-    def test_a_403_on_robots_txt_is_still_a_refusal(self):
-        """**The host answered, and it answered no.** Nothing about an
-        absence of rules reaches this row."""
+    def test_a_403_on_robots_txt_is_an_absence_of_rules_since_283(self):
+        """**This REPLACES `test_a_403_on_robots_txt_is_still_a_refusal` —
+        #283, owner's decision of 2026-09-13.** The host answered no to the
+        rules file, and that is now the same absence as a 404 with `certain`
+        false; the transport decides next."""
         import _robots
         real = _robots.urllib.request.urlopen
 
@@ -3136,9 +3216,11 @@ class AnEmptyBodyIsAnOpenDoor(unittest.TestCase):
             _robots.urllib.request.urlopen = real
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
-        self.assertEqual(v["state"], "refused")
-        self.assertIsNot(v["sweep"], True)
-        self.assertIsNot(a["allowed"], True)
+        self.assertEqual(v["state"], "no-rules")
+        self.assertIs(v["sweep"], True)
+        self.assertIs(v["certain"], False)
+        self.assertIs(a["allowed"], True)
+        self.assertEqual(a["kind"], "no-rules-403")
 
 
 class EveryCardDeclaresItsScript(unittest.TestCase):
@@ -7349,9 +7431,10 @@ class WhichOfOurTokensMayFetch(unittest.TestCase):
                          "a path closed to both tokens is the browser branch "
                          "even when the host is open to one of them elsewhere")
 
-    def test_an_unreadable_file_is_not_the_browser_branch(self):
-        """**An unknown is not a refusal**, and it is not a licence to open a
-        browser either. #118's third state, one layer up."""
+    def test_an_unreadable_file_is_the_http_route_since_283_and_not_the_browser_branch(self):
+        """**An unread file is not a refusal, and not a licence to open a
+        browser either** — since #283 (2026-09-13) it is the ordinary route:
+        an absence of rules, `certain` false."""
         import _robots
         real = _robots.urllib.request.urlopen
         _robots._CACHE.clear()
@@ -7373,8 +7456,12 @@ class WhichOfOurTokensMayFetch(unittest.TestCase):
             _robots.time.sleep = real_sleep
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
-        self.assertEqual(i["state"], "unknown")
-        self.assertIsNone(i["token"])
+        # #283, owner's decision of 2026-09-13: an unread rules file is an
+        # absence of rules — the ordinary HTTP route under `claude-user`, not
+        # the browser branch and no longer an unknown. REPLACES the
+        # `unknown` / `None` assertion of 2026-09-11.
+        self.assertEqual(i["state"], "http")
+        self.assertEqual(i["token"], "claude-user")
 
     def test_an_open_host_prefers_the_user_token(self):
         """When both are permitted the request is a person's, and
@@ -11013,11 +11100,11 @@ class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
         self.assertEqual(len(n), 3)
 
     def test_the_verdict_is_unchanged_by_asking_less(self):
-        """Asking fewer times must not turn an unknown into anything else."""
-        _n, v = self._attempts(400)
-        self.assertEqual(v["state"], "unreachable")
-        self.assertIsNone(v["sweep"] if v["sweep"] is not True else None,
-                          "a 400 became a permission")
+        """Asking fewer times must not change the verdict — and since #283
+        (owner, 2026-09-13) the verdict on a 400 is an absence of rules,
+        `no-rules-400`, `certain` false: asked once, opened on a policy."""
+        n, v = self._attempts(400)
+        self.assertEqual((n, v["state"], v["sweep"], v["certain"], v["rule_kind"]), (1, "no-rules", True, False, "no-rules-400"))
 
 
 
@@ -13229,7 +13316,10 @@ class ARulesRefusalIsRecordedAndIsNotATransportRecord(unittest.TestCase):
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
 
-        self.assertEqual(got["state"], "refused")
+        # #283: the state is `no-rules` since 2026-09-13 — and everything
+        # this test was written for still travels: the code, the absent
+        # body, the vendor headers that are the whole evidence
+        self.assertEqual(got["state"], "no-rules")
         self.assertEqual(got["status"], 403,
                          "403, 429 and 451 are three facts and this read "
                          "`null` for all three")
@@ -13424,8 +13514,9 @@ class ANamedRefusalBindsOnlyItsOwnToken(unittest.TestCase):
                          "request must fall to the other token rather than "
                          "to nothing")
 
-    def test_an_unreadable_file_is_not_a_permission(self):
-        """The third state survives the alignment: unknown stays unknown."""
+    def test_an_unreadable_file_is_an_absence_of_rules_since_283(self):
+        """The third state survived the alignment as an unknown until #283;
+        it is an absence of rules since (owner, 2026-09-13)."""
         import _robots
         real = _robots.urllib.request.urlopen
         _robots._CACHE.clear()
@@ -13446,9 +13537,14 @@ class ANamedRefusalBindsOnlyItsOwnToken(unittest.TestCase):
             _robots.urllib.request.urlopen = real
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
-        self.assertIsNone(a["allowed"],
-                          "an unreadable file became a permission — the "
-                          "alignment must not touch the third state")
+        # #283, owner's decision of 2026-09-13: «toutes incapacité d'ouvrir
+        # robots.txt doit aboutir à l'absence de règles et donc à
+        # l'ouverture» — the third state opens, with `certain` false and the
+        # kind naming what failed. This REPLACES the assertion that it stayed
+        # an unknown; the alignment of tokens is untouched by it.
+        self.assertIs(a["allowed"], True)
+        self.assertIs(a["certain"], False)
+        self.assertEqual(a["kind"], "no-rules-unread")   # OSError("no answer"): neither a timeout, a TLS nor a named connection failure
 
 class AGuardOnAPathIsNotAGuardOnTheURL(unittest.TestCase):
     """`urlsplit` splits; 54 call sites of 55 kept only the first half.
@@ -15342,8 +15438,11 @@ class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
             "User-agent: ClaudeBot\nDisallow: /\nUser-agent: *\nAllow: /\n", True, True, "http"),
         "no group at all (#180)": ("Disallow: /admin/\nDisallow: /tmp/\n", True, True, "http"),
         "401 on the rules file (#201)": (401, True, True, "http"),
-        "403 on the rules file": (403, False, False, "closed"),
-        "429 on the rules file": (429, False, False, "closed"),
+        # #283, owner's decision of 2026-09-13: every unread rules file is an
+        # absence of rules — these two rows read (False, False, "closed")
+        # until then, and a guard that asserted that would be restored as a fix
+        "403 on the rules file (#283)": (403, True, True, "http"),
+        "429 on the rules file (#283)": (429, True, True, "http"),
     }
 
     class _Resp:
@@ -15409,11 +15508,13 @@ class ARefusalIsClassifiedByWhoWroteItNotByWhetherItRefuses(unittest.TestCase):
         self.assertEqual(i["state"], "browser")
         self.assertIn("BY NAME", i["reason"])
 
-    def test_a_rules_file_refused_at_the_transport_is_closed_with_the_transport_reason(self):
+    def test_a_rules_file_refused_at_the_transport_is_the_http_route_since_283(self):
+        # REPLACES `…_is_closed_with_the_transport_reason` (2026-09-11) — #283,
+        # owner's decision of 2026-09-13: nothing was read, nothing forbids
         _, _, i = self._paths(403)
-        self.assertEqual(i["state"], "closed")
-        self.assertIsNone(i["rule"])
-        self.assertIn("rules file itself was refused", i["reason"])
+        self.assertEqual(i["state"], "http")
+        self.assertEqual(i["token"], "claude-user")
+        self.assertIsNone(i.get("rule"))
 
     def test_verdict_follows_the_named_refusal_decision_since_2026_09_11(self):
         """**Flipped on purpose, the same day it was pinned.** This was
