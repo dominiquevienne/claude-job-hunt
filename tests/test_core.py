@@ -20151,5 +20151,175 @@ class APublicBoardPagedByTheFormItsOwnPageSubmitsAndAnEmployerThatIsOnNeitherPag
         self.assertIn("the token is the list's", e2.getvalue())
 
 
+class AWebflowRegisterWalkedPageByPageWhereWhatTheSiteHidesIsNotRead(unittest.TestCase):
+    """**`empleos_pr.py`, 2026-09-13 (#441).** Puerto Rico's central register
+    of public-service calls is a Webflow CMS site: every page is a GET, the
+    list's query key is read off the page's own «Next Page» link, and the
+    «Page N of M» pager is the witness (the site states no total). A block
+    whose class carries `w-condition-invisible` is what the site hides —
+    the closing date when the call is «Hasta Nuevo Aviso», the maximum
+    salary when none is set — and it is not read as shown. The entity is
+    the employer; the OATRH's footer address is never emitted. Mutated
+    (`-B`, detached copy): the visibility check inverted → the hidden
+    case reddens; the pager check dropped → the turn case reddens; the key
+    assumed instead of read → the walk case reddens; the salary period not
+    stated → the walk case reddens; the bound-empty section read → the
+    detail case reddens; the footer not excluded (a contact regex added to
+    the record) → the contact case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_empleos_pr", os.path.join(SCRIPTS, "empleos_pr.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _item(self, slug, title, agency="Universidad de Puerto Rico  (UPR)", region="San Juan", num="UPR-SEA-26-01AE", closing="September 30, 2026", ctype="", smin="1300.00", piloto=False):
+        date_cls = "item-data fecha-cierre" if closing else "item-data fecha-cierre w-condition-invisible"
+        hna_cls = "item-data fecha-cierre w-condition-invisible" if closing else "item-data fecha-cierre"
+        type_cls = "item-data" if ctype else "item-data w-dyn-bind-empty"
+        pil_cls = "div-block-27" if piloto else "div-block-27 w-condition-invisible"
+        return (f'<div id="w-node-x" role="listitem" class="conv-collection-item w-dyn-item"><div><div con-item="titulo-puesto" fs-cmsfilter-field="titulo" class="item-title">{title}</div></div>'
+                f'<div class="line-block data-agency"><div class="item-label">Entidad o Municipio</div><div con-item="agency-name" class="item-data agency-name">{agency}</div></div>'
+                f'<div class="line-block data-agency"><div class="item-label">Región:</div><div con-item="region-name" class="item-data agency-name">{region}</div></div>'
+                f'<div con-item="plan-piloto" class="{pil_cls}"><div>Convocatoria parte del Plan Piloto</div></div>'
+                f'<div class="line-block"><div class="item-label numconvocatoria">Número de la Convocatoria</div><div con-item="jobNumber" class="item-data num-convocatoria-2">{num}</div></div>'
+                f'<div class="line-block fecha-cierre right-side"><div class="item-label">Fecha de Cierre: </div><div data-filter="closing-date" class="{date_cls}">{closing}</div><div class="{hna_cls}">Hasta Nuevo Aviso</div></div>'
+                f'<div class="line-block"><div class="item-label">Tipo de Convocatoria:</div><div con-item="external-internal" class="{type_cls}">{ctype}</div></div>'
+                f'<div class="line-block btn-wrapper"><a href="/convocatorias/{slug}" class="link-block-3 w-inline-block"><div class="detail-btn"><div class="text-block-23">Ver detalles</div></div></a></div>'
+                f'<div id="hiddein-fields" class="hiddein-fields"><div fs-cmsfilter-field="salario" class="salario-minimo">{smin}</div><div fs-cmsfilter-field="salario" class="salario-minimo w-dyn-bind-empty"></div></div></div>')
+
+    def _page(self, page, pages, items, key="205b2a0f"):
+        nxt = f'<a href="?{key}_page={page + 1}" aria-label="Next Page" class="w-pagination-next next">Next</a>' if page < pages else ""
+        return ('<html><body><div role="list" class="conv-collection-list w-dyn-items">' + "".join(items) + "</div>"
+                f'<div role="navigation" aria-label="List" class="w-pagination-wrapper pagination">{nxt}<div aria-label="Page {page} of {pages}" role="heading" class="w-page-count page-count">{page} / {pages}</div></div>'
+                '<div class="w-pagination-wrapper"><a href="?5c02fa81_page=2" aria-label="Next Page" class="w-pagination-next">Next</a></div>'   # the agency select's own pager — a second key on the same page
+                '<div class="footer">Dirección Postal P.O Box 8476 San Juan, PR 00910-8476 Contáctenos Tel: (787) 274-4300 email: convocatorias@oatrh.pr.gov</div></body></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(pages=20, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_reads_the_key_off_the_next_link_and_the_pager_is_the_witness(self):
+        mod = self._mod()
+        p1 = self._page(1, 3, [self._item(f"a-{i}", f"Puesto {i}", ctype="Externa" if i == 0 else "") for i in range(12)])
+        p2 = self._page(2, 3, [self._item(f"b-{i}", f"Puesto B{i}", agency="Municipio de Corozal", smin="") for i in range(12)])
+        p3 = self._page(3, 3, [self._item("c-0", "Head Start", closing="", num="Head Start 2020-21-004", piloto=True)])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(len(rows), 25)
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["employer"], rows[0]["region"], rows[0]["call_number"], rows[0]["call_type"], rows[0]["closing"], rows[0]["pilot_plan"]),
+                         ("a-0", "Puesto 0", "Universidad de Puerto Rico (UPR)", "San Juan", "UPR-SEA-26-01AE", "Externa", "September 30, 2026", False))
+        self.assertEqual((rows[0]["salary_min"], rows[0]["salary_currency"], rows[0]["salary_period"], rows[0]["salary_unit_stated"]), (1300.0, "USD", "MONTH", True))
+        self.assertIsNone(rows[1]["call_type"])
+        self.assertEqual((rows[12]["salary_min"], rows[12]["salary_unit_stated"]), (None, False))
+        self.assertEqual((rows[24]["closing"], rows[24]["pilot_plan"]), ("Hasta Nuevo Aviso", True))   # the date block is hidden, the «Hasta Nuevo Aviso» block shown
+        self.assertEqual(sent, ["https://www.empleos.pr.gov/", "https://www.empleos.pr.gov/?205b2a0f_page=2", "https://www.empleos.pr.gov/?205b2a0f_page=3"])
+        self.assertIn("25 emitted over 3 page(s), site states 3 page(s) — every page walked", err)
+        for r in rows:
+            self.assertNotIn("oatrh.pr.gov", json.dumps(r))
+            self.assertNotIn("787", json.dumps(r))
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)], pages=2)
+        self.assertEqual(len(rows), 24)
+        self.assertIn("24 emitted over 2 of the 3 page(s) the site states — walked by request", err)
+
+    def test_a_page_that_did_not_turn_is_a_fault(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page(1, 3, [self._item("a-0", "Puesto")])
+        same = self._page(1, 3, [self._item("a-1", "Otro")])
+        it = iter([(200, p1), (200, same)])
+        mod.request = lambda url: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_list(argparse.Namespace(pages=20, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the page did not turn", e2.getvalue())
+
+    def _detail(self, title="Secretaria Administrativa III", smax="", special_empty=True):
+        smax_cls = 'class="data-block escala-salarial-2"' if smax else 'class="data-block escala-salarial-2 w-condition-invisible"'
+        special = ('<div class="inner-section-title">Requisitos Especiales</div><div id="data-other-req" class="w-dyn-bind-empty w-richtext"></div>' if special_empty
+                   else '<div class="inner-section-title">Requisitos Especiales</div><div id="data-other-req" class="w-richtext"><p>Licencia de conducir.</p></div>')
+        return ('<html><body>'
+                f'<div fs-cmsfilter-field="titulo" class="conv-title">{title}</div>'
+                '<div class="line-block"><div class="item-label">Entidad o Municipio</div><div fs-cmsfilter-field="entidad-gubernamental" class="item-data">Universidad de Puerto Rico  (UPR)</div></div>'
+                '<div fs-cmsfilter-field="region-pueblo" class="item-data">San Juan</div><div fs-cmsfilter-field="numero-convocatoria" class="item-data">UPR-SEA-26-01AE</div>'
+                '<div fs-cmsfilter-field="tipo-convocatoria" class="item-data w-dyn-bind-empty"></div><div fs-cmsfilter-field="grupo-ocupacional" class="item-data">Profesional y Administrativo</div>'
+                '<div class="line-block fecha-cierre"><div data-filter="closing-date" class="item-data fecha-cierre">September 30, 2026</div><div class="item-data fecha-cierre w-condition-invisible">Hasta Nuevo Aviso</div></div>'
+                '<div class="data-block escala-salarial-2"><div class="data-jobopportunity-number">Salario Mínimo Mensual:  </div><div wfu-format="usd">1300.00</div><div class="text-block-43"> $ </div></div>'
+                f'<div {smax_cls}><div class="data-jobopportunity-number">Salario Máximo Mensual:  </div><div wfu-format="usd">{smax}</div></div>'
+                '<div class="data-block escala-salarial-2 w-condition-invisible"><div class="data-jobopportunity-number">Salario Mínimo Anual:  </div><div wfu-format="usd" class="w-dyn-bind-empty"></div></div>'
+                '<div class="data-block escala-salarial-2"><div class="data-jobopportunity-number">Salario Autorizado para Reclutar:  </div><div wfu-format="usd">1706.50</div></div>'
+                '<a href="#" class="external-request-btn-piloto w-condition-invisible w-button">Solicite a través de Eightfold.ai ❯</a>'
+                '<div class="inner-section-title">Naturaleza del Trabajo:</div><div class="data-job-description w-richtext"><p>Trabajo secretarial de responsabilidad.</p><p>El empleado realizará las tareas.</p></div>'
+                '<div class="inner-section-title">Condiciones de Trabajo:</div><div class="data-job-description w-richtext"><p>TIPO DE NOMBRAMIENTO</p></div>'
+                '<div class="inner-section-title">Requisitos Mínimos</div><div class="data-minimun-req w-richtext"><p>Grado Asociado en Ciencias Secretariales.</p></div>'
+                + special +
+                '<div class="inner-section-title">Naturaleza del Examen</div><div class="w-dyn-bind-empty w-richtext"></div>'
+                '<div class="inner-section-title">Notas Importantes</div><div class="rich-text-block-7 w-condition-invisible w-dyn-bind-empty w-richtext"></div>'
+                '<div class="footer">Dirección Postal P.O Box 8476 San Juan, PR 00910-8476 Contáctenos Tel: (787) 274-4300 email: convocatorias@oatrh.pr.gov</div></body></html>')
+
+    def test_the_detail_reads_what_is_shown_and_states_the_salary_period(self):
+        import contextlib
+        mod = self._mod()
+        mod.request = lambda url: (200, self._detail())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.empleos.pr.gov/convocatorias/upr-sea-26-01ae"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["region"], d["call_number"], d["call_type"], d["occupational_group"], d["closing"]),
+                         ("upr-sea-26-01ae", "Secretaria Administrativa III", "Universidad de Puerto Rico (UPR)", "San Juan", "UPR-SEA-26-01AE", None, "Profesional y Administrativo", "September 30, 2026"))
+        self.assertEqual((d["salary_min"], d["salary_max"], d["salary_currency"], d["salary_period"], d["salary_unit_stated"], d["salary_authorised"]), (1300.0, None, "USD", "MONTH", True, 1706.5))
+        self.assertEqual(d["nature_of_work"], "Trabajo secretarial de responsabilidad.\nEl empleado realizará las tareas.")
+        self.assertEqual(d["minimum_requirements"], "Grado Asociado en Ciencias Secretariales.")
+        self.assertEqual((d["special_requirements"], d["examination"], d["notes"]), (None, None, None))   # bound empty, or hidden — not read
+        self.assertNotIn("oatrh.pr.gov", out.getvalue())
+        self.assertNotIn("787", out.getvalue())
+        # a maximum the site shows, and a special section with text
+        mod.request = lambda url: (200, self._detail(smax="1900.00", special_empty=False))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.empleos.pr.gov/convocatorias/upr-sea-26-01ae"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["salary_max"], d["special_requirements"]), (1900.0, "Licencia de conducir."))
+
+    def test_what_the_site_hides_is_not_read_as_shown(self):
+        mod = self._mod()
+        # a maximum salary block the site hides, carrying a stale value — must not be read
+        body = self._detail(smax="")
+        body = body.replace('<div class="data-block escala-salarial-2 w-condition-invisible"><div class="data-jobopportunity-number">Salario Máximo Mensual:  </div><div wfu-format="usd"></div></div>',
+                            '<div class="data-block escala-salarial-2 w-condition-invisible"><div class="data-jobopportunity-number">Salario Máximo Mensual:  </div><div wfu-format="usd">9999.00</div></div>')
+        self.assertIn("9999.00", body)
+        self.assertIsNone(mod.salary_block(body, "Salario Máximo Mensual:"))
+        self.assertEqual(mod.salary_block(body, "Salario Mínimo Mensual:"), 1300.0)
+        # the closing date: a hidden date block and a shown «Hasta Nuevo Aviso»
+        card = self._item("c-0", "Head Start", closing="")
+        self.assertEqual(mod.rows(self._page(1, 1, [card]))[0]["closing"], "Hasta Nuevo Aviso")
+        self.assertEqual(mod.shown('<div class="x">yes</div>', "class", "x"), "yes")
+        self.assertIsNone(mod.shown('<div class="x w-condition-invisible">no</div>', "class", "x w-condition-invisible"))   # a hidden block is never read, even when asked for by its full class
+
+    def test_a_page_that_is_not_a_convocatoria_is_refused(self):
+        import contextlib
+        mod = self._mod()
+        mod.request = lambda url: (200, "<html><body><h1>Page Not Found</h1></body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_ad(argparse.Namespace(url="https://www.empleos.pr.gov/convocatorias/nope"))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("not a convocatoria page", e2.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.empleos.pr.gov/piloto-destrezas"))
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
