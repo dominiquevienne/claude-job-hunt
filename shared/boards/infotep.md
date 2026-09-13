@@ -1,12 +1,13 @@
-# Board adapter — INFOTEP (Dominican Republic): reopened by the 2026-09-07 doctrine, and the transport answers a challenge
+# Board measurement — INFOTEP (`www.infotep.gob.do`, Dominican Republic): served to a tab — and it is the national training institute, not a board
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.infotep.gob.do, infotep.gob.do -->
 <!-- script: none -->
 <!-- countries: DO -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 6160 bytes titled «Attention Required! | Cloudflare», md5 `6a38c5509346` then `e24276e5e6c2` at constant size — a challenge, nothing of the site was read · 2026-09-12 11:00 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: out-of-domain · **not a board** — the tab on `/` is served (200, 90 654 B, Joomla, «Instituto Nacional de Formación Técnico Profesional | INFOTEP - Inicio»): a vocational-training institute whose «oferta» is its *oferta formativa* (courses, by regional directorate), whose «Plazas Vacantes» page is the institute's own hiring (served, 46 038 B, a menu page), and whose `/empleo` — the listing path the 12th guessed — is the server's own 404 (nginx, 1 690 B); no advertisement, no listing, no count anywhere read; the declared client met a challenge on the 11th, the tab did not on the 13th; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: none — nothing to count: the host publishes training offers and its own vacancies page, not employers' advertisements; read from a tab 16:55 UTC · 2026-09-13 -->
+<!-- route: none · not a board — the Dominican national training institute (INFOTEP); its «oferta» is courses; the country's board question is not answered by this host · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:00:36Z UTC for #233, lot 3 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -58,3 +59,20 @@ it without a person is not measured, and this card claims nothing either way.
   it to `cover-letter`; whether that page is served to a browser is not
   established here.
 - **Not an AfricaWork host** — the state's technical-training institute, under the same 1 836-byte managed block as the franchise; its challenge page is 6 160 B where the franchise ones are 5 508–5 515 B (Rocket Loader nonces in this one), and the `revolico` reading holds: a challenge is a challenge whatever the operator.
+
+## 2026-09-13 16:55 UTC — the browser route, MEASURED (#222): served, and the wrong kind of site
+
+```
+tab: /empleo                                    404 Not Found (nginx, 1 690 B) — the path this card guessed on the 12th is nothing on the site
+tab: fetch /                                    200, 90 654 B, Joomla — «INFOTEP - Inicio»; no challenge; links: /index.php/oferta-formativa/<direction-régionale>…, /index.php/sobre-nosotros/plazas-vacantes, programa-rd-trabaja, becas
+tab: fetch /index.php/sobre-nosotros/plazas-vacantes   200, 46 038 B — «Plazas Vacantes», the institute's own hiring: a menu page, no listing read
+```
+
+**INFOTEP is the Dominican Republic's national vocational-training
+institute** — its «oferta» is an *oferta formativa*, courses by regional
+directorate; «Plazas Vacantes» is the institute recruiting for itself.
+Nothing on it is an employer's advertisement. *The 12th read a challenge
+on the transport and never saw the site; the 13th saw it, and it is not
+a board.* The country's question — a public employment service with a
+listing — is not answered here (the `empleateya` / `mt.gob.do` family is
+where a Dominican public listing would live, not measured in this pass).
