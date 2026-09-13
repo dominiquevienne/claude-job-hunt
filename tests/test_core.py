@@ -19999,5 +19999,157 @@ class AnApiThatAsksWhoIsCallingGetsTheUsersOwnAddressAndNothingElseEverSeesIt(un
             self.assertNotIn(secret, out.getvalue())
 
 
+class APublicBoardPagedByTheFormItsOwnPageSubmitsAndAnEmployerThatIsOnNeitherPage(unittest.TestCase):
+    """**`jobseekers_bs.py`, 2026-09-13 (#447).** The Bahamas' Department of
+    Labour runs a PCRecruiter board: the list is one GET, every next page is
+    the page's own `googlePage` form re-posted with `morecount` set to
+    `(p-1)*24 + "$$" + (p-1)` (the page's `goToPage` does exactly that), and
+    the «a-b of N» heading is read back after every turn. The token `pcr-id`
+    travels from the list to the detail address; a detail served without it
+    is an empty shell. The employer is on neither page, `employer` is null
+    with the reason; «$0.00 — $0.00» is the board's blank, never a salary.
+    Mutated (`-B`, detached copy): `morecount` not rewritten → the turn case
+    reddens (the heading did not move); the heading check dropped → the turn
+    case reddens; the count regex broken → the walk case reddens (exit 6);
+    the employer filled from the title → the walk case reddens; the blank
+    salary emitted as 0.0 → the detail case reddens; the shell not refused
+    → the shell case reddens."""
+
+    TOKEN = "fHR4dC4Uvg0O%2Bx%3D"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobseekers_bs", os.path.join(SCRIPTS, "jobseekers_bs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _list(self, first, total, rows, morecount="24$$1"):
+        head = ('<html><form name="returntoresults" id="returntoresults" method="POST" action="/pcrbin/jobboard.aspx"><input type="hidden" name="unifiedsearch" value=""></form>'
+                f'<h1 class="litejobtitle" id="resultcount">{first}-{min(first + 23, total)} of {total}</h1>'
+                '<form id="searchForm" action="/pcrbin/jobboard.aspx" method="post"><input class="form-control" type="text" id="Keyword" name="Keyword" value=""><select name="Island/State"><option value="">Island/State</option><option value="Exuma">Exuma</option></select>'
+                '<input type="hidden" name="action" value="search"><input type="hidden" name="pcr-id" value="tok"><input type="hidden" name="locale" value=""></form><table>'
+                '<tr><th>POSITION</th><th>LOCATION</th><th>TYPE</th><th>DATE POSTED</th></tr>')
+        body = "".join(f'<tr><td><a href="/pcrbin/jobboard.aspx?action=detail&recordid={i}&pcr-id={self.TOKEN}">{t}</a></td><td>{isl}</td><td>Full-Time Regular</td><td>9/13/2026</td></tr>' for i, t, isl in rows)
+        pager = ('</table><form name="googlePage" id="googlePage" action="/pcrbin/jobboard.aspx" method="post"><input type="hidden" name="action" value=""><input type="hidden" name="showjobs" value="Y">'
+                 f'<input type="hidden" name="pcr-id" value="tok"><input name="morecount" type="hidden" value="{morecount}"><input name="sortorder" type="hidden" value=""><input name="unifiedsearch" type="hidden" value="||RC||key"></form></html>')
+        return head + body + pager
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url, data=None):
+            sent.append((url, data))
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(island=None, keyword=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_turns_pages_by_the_pager_form_and_prints_the_stated_total(self):
+        mod = self._mod()
+        p1 = self._list(1, 50, [(f"1000{i:02d}", f"Cook {i}", "New Providence") for i in range(24)])
+        p2 = self._list(25, 50, [(f"2000{i:02d}", f"Clerk {i}", "Grand Bahama") for i in range(24)])
+        p3 = self._list(49, 50, [("300000", "Nurse", ""), ("300001", "Driver", "Exuma")])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(len(rows), 50)
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["employer"], rows[0]["island"], rows[0]["job_type"], rows[0]["posted"]),
+                         ("100000", "Cook 0", None, "New Providence", "Full-Time Regular", "9/13/2026"))
+        self.assertIn("Department of Labour mediates", rows[0]["employer_hidden"])
+        self.assertEqual(rows[0]["url"], f"https://jobseekers.bahamas.gov.bs/pcrbin/jobboard.aspx?action=detail&recordid=100000&pcr-id={self.TOKEN}")
+        self.assertIsNone(rows[48]["island"])   # an empty cell is null, not ""
+        self.assertIn("50 emitted over 3 page(s), site states 50 (the whole board) — equal.", err)
+        self.assertIn("`employer` is null on all 50", err)
+        self.assertIsNone(sent[0][1])
+        self.assertEqual([v for k, v in sent[1][1] if k == "morecount"], ["24$$1"])
+        self.assertEqual([v for k, v in sent[2][1] if k == "morecount"], ["48$$2"])
+        self.assertIn(("unifiedsearch", "||RC||key"), sent[1][1])
+        self.assertIn(("showjobs", "Y"), sent[1][1])
+        # bounded by request: the note says so
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)], pages=2)
+        self.assertEqual(len(rows), 48)
+        self.assertIn("48 emitted of the 50 the site states (the whole board) — 2 page(s) of 24 walked by request", err)
+
+    def test_a_page_that_did_not_turn_is_a_fault_and_a_missing_heading_too(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._list(1, 50, [(f"1000{i:02d}", f"Cook {i}", "X") for i in range(24)])
+        same = self._list(1, 50, [(f"2000{i:02d}", f"Clerk {i}", "X") for i in range(24)])   # new rows, the heading still says 1-24
+        it = iter([(200, p1), (200, same)])
+        mod.request = lambda url, data=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(island=None, keyword=None, pages=10, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the page did not turn", e2.getvalue())
+        it = iter([(200, p1), (200, "<html><body>Processing</body></html>")])
+        mod.request = lambda url, data=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(island=None, keyword=None, pages=10, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("no «a-b of N» heading", e2.getvalue())
+
+    def test_an_island_is_posted_to_the_search_form_first(self):
+        mod = self._mod()
+        p1 = self._list(1, 50, [("100000", "Cook", "Exuma")])
+        p2 = self._list(1, 1, [("100000", "Cook", "Exuma")])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)], island="Exuma")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual([v for k, v in sent[1][1] if k == "Island/State"], ["Exuma"])
+        self.assertIn(("action", "search"), sent[1][1])
+        self.assertIn("(island Exuma)", err)
+
+    def _detail(self, title="Cook- Airport VIP Lounge", salary="$0.00 &#8212; $0.00"):
+        return ('<html><title>' + title + '</title><div><h1 class="litejobtitle" id="litejobtitle">' + title + '</h1></div><div class="jd-section-employer"><div class="jd-description-text">'
+                '<h1>Cook</h1><p><strong>Location:</strong> National Airport, New Providence, Bahamas</p><p>A fast-paced restaurant is seeking a Cook.</p><ul><li>Prepare menu items</li></ul></div></div></div>'
+                '<div class="metasub"><h2>Job Brief</h2><div><span class="detail_title">Location:</span> <span class="detail_data">New Providence</span></div>'
+                '<div><span class="detail_title">Job Type:</span> <span class="detail_data">Full-Time Regular</span></div>'
+                f'<div><span class="detail_title">Salary:</span> <span id="salary" class="detail_data">{salary}</span></div>'
+                '<div><span class="detail_title">Industry:</span> <span class="detail_data">Hospitality -Airport</span></div>'
+                '<div><span class="detail_title">Benefits:</span> <span class="detail_data"></span></div>'
+                '<div><span class="detail_title">Degree:</span> <span class="detail_data">n/a</span></div>'
+                '<div><span class="detail_title">Years Experience:</span> <span class="detail_data">0 - 2</span></div>'
+                '<hr /><span class="date_posted">Posted 4 Hours ago</span></div></html>')
+
+    def test_the_detail_reads_the_brief_and_a_blank_salary_is_no_salary(self):
+        import contextlib
+        mod = self._mod()
+        url = f"https://jobseekers.bahamas.gov.bs/pcrbin/jobboard.aspx?action=detail&recordid=153976228221339&pcr-id={self.TOKEN}"
+        mod.request = lambda u, data=None: (200, self._detail())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["island"], d["workplace"], d["job_type"], d["industry"], d["benefits"], d["degree"], d["years_experience"], d["posted_relative"]),
+                         ("153976228221339", "Cook- Airport VIP Lounge", None, "New Providence", "National Airport, New Providence, Bahamas", "Full-Time Regular", "Hospitality -Airport", None, "n/a", "0 - 2", "Posted 4 Hours ago"))
+        self.assertEqual((d["salary_min"], d["salary_max"], d["salary_currency"], d["salary_unit_stated"]), (None, None, None, False))
+        self.assertTrue(d["description"].startswith("Cook\nLocation: National Airport"))
+        self.assertIn("Prepare menu items", d["description"])
+        self.assertNotIn("Back To Results", d["description"])
+        mod.request = lambda u, data=None: (200, self._detail(salary="$1,200.00 &#8212; $1,500.00"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["salary_min"], d["salary_max"], d["salary_currency"]), (1200.0, 1500.0, "BSD"))
+
+    def test_the_shell_served_without_the_token_is_refused_and_so_is_an_address_without_it(self):
+        import contextlib
+        mod = self._mod()
+        mod.request = lambda u, data=None: (200, "<html><title>Dept of Labour Online Skills Bank</title><body><div>Processing</div></body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_ad(argparse.Namespace(url=f"https://jobseekers.bahamas.gov.bs/pcrbin/jobboard.aspx?action=detail&recordid=1&pcr-id={self.TOKEN}"))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("not a posting page", e2.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_ad(argparse.Namespace(url="https://jobseekers.bahamas.gov.bs/pcrbin/jobboard.aspx?action=detail&recordid=1"))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("the token is the list's", e2.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
