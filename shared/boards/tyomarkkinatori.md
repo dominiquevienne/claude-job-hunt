@@ -1,13 +1,15 @@
-# Board measurement — Työmarkkinatori (Finland): the public employment service's every data route lives under `/api/`, refused in writing to `*` — the search widget posts to `/api/jobpostingfulltext/search/v2/search`, the posting comes from `/api/jobposting-new/v1/public/jobpostings/<id>`, and no page carries either
+# Board adapter — Työmarkkinatori (`tyomarkkinatori.fi`, Finland): the public employment service's data lives under an `/api/` refused in writing — an adapter that requests nothing without the user's own key, and reads the widget's search with it
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: tyomarkkinatori.fi, www.tyomarkkinatori.fi -->
-<!-- script: none -->
+<!-- script: tyomarkkinatori.py -->
+<!-- host-forms: tyomarkkinatori.fi -->
+<!-- host-forms-basis: read — `tyomarkkinatori.py:HOST`, a single literal; the widget's own `baseURL: "/api"` is relative to it and the site writes no `www.` · 2026-09-13 -->
 <!-- countries: FI -->
 <!-- content: measured · rules read twice and certain (639 B, `*` refused 15 paths — **`/api/` and `/*/api/`**, `/.rest/errorlog`, the signed-in areas in three languages —, no agent named, no Sitemap line; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 on the pages: `/henkiloasiakkaat/avoimet-tyopaikat` (163 056 B) is a shell that loads the widget `TmtTyopaikkaHakuV2` (1 500 919 B of JavaScript, served), whose axios client has `baseURL: "/api"` and POSTs the search to `/api/jobpostingfulltext/search/v2/search` and GETs a posting from `/api/jobposting-new/v1/public/jobpostings/<id>` — every advertisement, listed or read, passes through the prefix the rules refuse; `/sitemap.xml` is the site's own 404; 0 advertisement links in the HTML; the open-data portal `avoindata.fi` answers a static 403 to this client · 2026-09-13 17:58 UTC -->
 <!-- witness: none reachable by a permitted path — the count lives in the search response (`totalElements`) under `/api/`; nothing was requested there -->
-<!-- route: none · every data route of the board — the search and the posting — is under `/api/`, refused in writing to `*` (`Disallow: /api/`, `/*/api/`, 2026-09-13); a refusal read in the rules is honoured by every route, browser included (borne 1); the one exit is the USER's own key `boards.tyomarkkinatori.override_robots: true`, set in their own name and conscience — the owner's decision of 2026-09-13 (#403) generalised the key to every board refused in writing; the adapter is #371's, and without the key it is skipped and says so · 2026-09-13 -->
+<!-- route: http · under the user's own `boards.tyomarkkinatori.override_robots: true` ONLY — every data route is under `/api/`, refused in writing to `*` (2026-09-13); without the key `tyomarkkinatori.py` requests nothing and exits 7 naming the rule and the key; with it the guard crosses and says so on every run (#403); no request was made under `/api/` by this repository — the key is the user's · 2026-09-13 -->
 
 **Measured 2026-09-13 17:56–17:58 UTC for #371 — a measurement of the
 rules and of where the data lives, not a decision about the host.** Every
@@ -83,3 +85,44 @@ board is closed: it says where the door is and that the user holds the key.
   of `claude-job-hunt-ab`.
 - The endpoints are quoted from `widget.js` verbatim (`baseURL:"/api"`,
   `qU.post("/jobpostingfulltext/search/v2/search"`, `.get(\`/jobposting-new/v1/public/jobpostings/\``).
+
+## 2026-09-13 — shipped on a stub, under the user's key (#371, on #403)
+
+```
+tyomarkkinatori.py search --pages 1        (no key on this machine)
+ERROR: https://tyomarkkinatori.fi/api/jobpostingfulltext/search/v2/search: refused in writing — tyomarkkinatori.fi writes `Disallow: /api/` to `User-agent: *`, and every data route of this board is under it. **This adapter requests nothing.** The one exit is yours to take, in your own name: boards.tyomarkkinatori.override_robots — absent (no boards.tyomarkkinatori.override_robots: true in …/config.yml) … — see shared/setup.md 5h and shared/robots-policy.md; the address that would get blocked is yours.
+exit 7
+```
+
+**What the adapter does with the key** — read from the widget's own code,
+exercised on a stub of its schemas, **never run against `/api/` here**:
+`POST /api/jobpostingfulltext/search/v2/search` with `{query, filters: {},
+paging: {pageNumber, pageSize: 30}, sorting: "LATEST"}` — the widget's own
+request — and the response's `totalElements` printed beside every walk
+(«33 emitted over 2 page(s), site states 33 — equal»; «2 short» when it
+is); `GET /api/jobposting-new/v1/public/jobpostings/<uuid>` for a posting,
+with every key naming a contact (`contact*`, `*phone*`, `*email*`,
+`yhteys*`) dropped and listed as dropped. The hit's fields, in the site's
+own names: `title` {fi, en, sv} (the first present, and which),
+`publishDate`, `applicationPeriodEndDate`, `employer.name`, `employerType`
+(Organization / International / Household), the municipality and region
+labels (**the street address is a premises' address and is not
+emitted**; the post office is), `employmentRelationships`,
+`continuityOfWork`, `workTime`, `tags`, `applicationUrl.value`. 3 s
+between requests — «pace as if you were welcome» — and a 403 or 429
+stops the run as a refusal (exit 7), no retry, no other agent, no
+browser.
+
+**The guard is asked with the board's name** (`allowed(host, path,
+board="tyomarkkinatori")`) so the user's key, and only it, turns the
+written «no»; the banner — what is crossed before what it costs — is
+`_robots`' own, printed once per host and run. **The key was absent on
+this machine on the day, by design: it is not the developer's to set.**
+The first keyed run is the first measurement; the card's count stays
+«none reachable by a permitted path» until then.
+
+Three tests; six mutations on a detached worktree (`python3 -B`), six red
+— `board=` dropped from the gate, the refusal exit turned into a note,
+the «equal» branch made unconditional (inert on an equal-only fixture;
+the walk case carries a 35-against-33 run since), the street address
+emitted, the 403/429 stop dropped, the dedup dropped.
