@@ -114,6 +114,8 @@ import _language          # noqa: E402
 # documents (`itjobs.py` is the model), never on the host.
 # ---------------------------------------------------------------------------
 import socket             # noqa: E402
+import urllib.request     # noqa: E402
+urllib_request_urlopen_original = urllib.request.urlopen
 
 NETWORK_ALLOWED_TESTS = frozenset()          # test ids that may leave the machine — none today
 NETWORK_ATTEMPTS = []                        # (test id, where) for every cut attempt
@@ -19578,6 +19580,119 @@ class TheUsersOwnOverrideKeyIsReadForEveryBoardAndSaidOutLoud(unittest.TestCase)
         finally:
             sys.argv[:] = real
             os.environ.pop("JOB_HUNT_BOARD", None)
+
+
+class ARouteRefusedInWritingIsTakenOnlyUnderTheUsersOwnKey(unittest.TestCase):
+    """**`tyomarkkinatori.py`, 2026-09-13 (#371, on #403).** Every data route
+    of Finland's public service is under `/api/`, refused in writing to `*`.
+    Without `boards.tyomarkkinatori.override_robots: true` the adapter
+    requests NOTHING and exits 7 naming the rule and the key; with it the
+    guard (`allowed(..., board=)`) crosses, the banner is printed, and the
+    widget's own POST is walked against `totalElements`. Exercised on a stub
+    of the widget's schemas — no request was made under `/api/`; the key was
+    absent on this machine by design. Mutated (`-B`, detached copy): the
+    gate's `board=` dropped → the keyed case reddens (the guard never sees
+    the key); the exit on refusal turned into a note → the no-key case
+    reddens (a request goes out); the «equal» branch made unconditional →
+    the short case reddens (inert on an equal-only fixture, so the walk case
+    carries a 35-against-33 run too); the street address emitted → the ad case
+    reddens; the 403/429 stop dropped → the block case reddens (exit 6, not
+    7); the dedup dropped → the walk case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_tyomarkkinatori", os.path.join(SCRIPTS, "tyomarkkinatori.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _hit(self, u, title="Kirvesmies", muni="Helsinki", region="Uusimaa"):
+        return {"id": u, "title": {"fi": title, "en": "Carpenter"}, "publishDate": "2026-09-13T06:00:00Z", "applicationPeriodEndDate": "2026-10-01T21:00:00Z",
+                "employer": {"name": "Rakennus Oy", "businessId": ["1234567-8"]}, "employerType": "Organization",
+                "location": {"address": {"streetAddress": "Mannerheimintie 1", "postalCode": "00100", "postOffice": "HELSINKI"},
+                             "municipalities": [{"value": "091", "region": "01", "label": {"fi": muni}}], "regions": [{"value": "01", "label": {"fi": region}}]},
+                "employmentRelationships": "Toistaiseksi voimassa oleva", "continuityOfWork": ["Vakituinen"], "workTime": "Kokoaikatyö", "tags": ["rakennus"],
+                "applicationUrl": {"value": "https://example.fi/apply"}}
+
+    def _resp(self, total, hits, pn):
+        return json.dumps({"content": hits, "pageSize": 30, "totalElements": total, "pageNumber": pn, "totalPages": (total + 29) // 30})
+
+    def _refuse(self, host, path, agents=None, board=None):
+        out = {"host": host, "path": path, "allowed": False, "rule": "/api/", "kind": "path", "certain": True, "reason": "refused"}
+        if board == "tyomarkkinatori" and getattr(self, "_key", False):
+            out.update(allowed=True, kind="override", overrode="/api/")
+        else:
+            out["override_available"] = f"boards.{board or '?'}.override_robots — absent (no key in /w/config.yml)"
+        return out
+
+    def test_without_the_key_nothing_is_requested_and_the_exit_names_the_key(self):
+        import contextlib
+        mod = self._mod()
+        self._key = False
+        mod.robots_allowed = self._refuse
+        sent = []
+        mod.urllib.request.urlopen = lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(AssertionError("a request left"))
+        try:
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as err:
+                mod.cmd_search(argparse.Namespace(q=None, pages=1, limit=None))
+        finally:
+            mod.urllib.request.urlopen = urllib_request_urlopen_original
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("Disallow: /api/", err.getvalue())
+        self.assertIn("boards.tyomarkkinatori.override_robots", err.getvalue())
+        self.assertEqual(sent, [])
+
+    def test_with_the_key_the_guard_is_asked_with_the_board_and_the_walk_meets_the_total(self):
+        import contextlib
+        mod = self._mod()
+        self._key = True
+        asked = []
+
+        def guard(host, path, agents=None, board=None):
+            asked.append(board)
+            return self._refuse(host, path, agents, board)
+        mod.robots_allowed = guard
+        served = iter([(200, self._resp(33, [self._hit(f"0000000{i:d}-0000-4000-8000-000000000000".replace("0000000" + str(i), f"{i:08d}")) for i in range(30)], 0)),
+                       (200, self._resp(33, [self._hit(f"{i:08d}-0000-4000-8000-000000000000") for i in range(29, 33)], 1))])
+        mod.request = lambda url, payload=None: (mod.gate(url), next(served))[1]     # the guard is asked, as request() asks it
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(argparse.Namespace(q=None, pages=None, limit=None))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual(len(rows), 33)
+        self.assertEqual((rows[0]["title"], rows[0]["title_language"], rows[0]["employer"], rows[0]["municipality"], rows[0]["region"], rows[0]["post_office"], rows[0]["employment"], rows[0]["application_url"]),
+                         ("Kirvesmies", "fi", "Rakennus Oy", "Helsinki", "Uusimaa", "HELSINKI", "Toistaiseksi voimassa oleva", "https://example.fi/apply"))
+        self.assertNotIn("Mannerheimintie", out.getvalue())
+        self.assertIn("33 emitted over 2 page(s), site states 33 (no filter) — equal.", err.getvalue())
+        self.assertEqual(set(asked), {"tyomarkkinatori"})
+        # the same walk against a total of 35 is «2 short» — never «equal» (an equal-only fixture leaves the branch untested)
+        served = iter([(200, self._resp(35, [self._hit(f"{i:08d}-0000-4000-8000-000000000000") for i in range(30)], 0)),
+                       (200, self._resp(35, [self._hit(f"{i:08d}-0000-4000-8000-000000000000") for i in range(30, 33)], 1)),
+                       (200, self._resp(35, [], 2))])
+        mod.request = lambda url, payload=None: (mod.gate(url), next(served))[1]
+        err2 = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err2):
+            mod.cmd_search(argparse.Namespace(q=None, pages=None, limit=None))
+        self.assertIn("site states 35 (no filter) — 2 short.", err2.getvalue())
+
+    def test_a_block_stops_the_run_as_a_refusal_and_the_ad_drops_contacts(self):
+        import contextlib
+        mod = self._mod()
+        self._key = True
+        mod.robots_allowed = self._refuse
+        mod.request = lambda url, payload=None: (429, "")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_search(argparse.Namespace(q=None, pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 7)
+        posting = dict(self._hit("0f0f0f0f-0000-4000-8000-000000000000"))
+        posting.update({"description": {"fi": "Teemme puutöitä."}, "contactPersons": [{"name": "Matti", "phone": "040"}], "yhteystiedot": "x"})
+        mod.request = lambda url, payload=None: (200, json.dumps(posting))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(id="0f0f0f0f-0000-4000-8000-000000000000"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["description"], d["description_language"], sorted(d["contact_dropped"])), ("Teemme puutöitä.", "fi", ["contactPersons", "yhteystiedot"]))
+        for secret in ("Matti", "040", "Mannerheimintie"):
+            self.assertNotIn(secret, out.getvalue())
 
 
 if __name__ == "__main__":
