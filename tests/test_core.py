@@ -20451,5 +20451,138 @@ class AStateListReadAtTheMinuteTheHostAsksWhereTheCardIsThePostingAndTheDetailIs
         self.assertNotIn("time.sleep", src)
 
 
+def htmlmod_escape(t):
+    import html as _h
+    return _h.escape(t)
+
+
+class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverLeaves(unittest.TestCase):
+    """**`kuntarekry.py`, 2026-09-13 (#373).** Finland's municipal recruitment
+    service renders its job cards on the server (`<job-card …>` attributes)
+    and marks its four promoted cards itself (`is-promoted="true"`, repeated
+    on every page); the site's own counter (`?view=count&format=json`) is
+    the witness and the `<ip-pagination current total>` is checked after
+    every turn. The ad carries a JobPosting and a contact person — name,
+    e-mail, telephone — in a block and often in the text: the block is not
+    read and the text is scrubbed. Mutated (`-B`, detached copy): the
+    promoted cards not skipped → the walk case reddens (28 not 24, a
+    duplicate); the pager check dropped → the turn case reddens; the counter
+    read from `total` instead of `count` → the walk case reddens (no
+    witness); the e-mail scrub dropped → the contact case reddens; the phone
+    scrub dropped → the contact case reddens; the filter not put on the
+    counter's path → the filter case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_kuntarekry", os.path.join(SCRIPTS, "kuntarekry.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, jid, key, title, pc="Espoon kaupunki", promoted=False, end="28.9.2026", end_t="15:45"):
+        return (f'<li role="listitem"><job-card {"is-promoted=\"true\" extended " if promoted else ""}profit-center="{pc}" title="{title}" publication-date="14.9.2026" publication-time="00:01" '
+                f'publication-end="{end}" publication-end-time="{end_t}" ext-id="{key}" url="/fi/tyopaikat/{title.lower().replace(" ", "-").replace(",", "")}-{key.lower()}/" job-id="{jid}" job-key="{key}"></job-card></li>')
+
+    def _page(self, cur, total, cards, promoted=()):
+        return ('<html><body><ip-section><ip-header>Tulokset<job-counter slot="aside" tags="[]"></job-counter></ip-header></ip-section>'
+                '<ip-section odd><ip-header level="2">Mainostetut työpaikat</ip-header><job-list variant="col-2">' + "".join(promoted) + '</job-list></ip-section>'
+                '<main><job-list variant="grid" ariaLabel="avointa työpaikkaa">' + "".join(cards) + '</job-list>'
+                f'<ip-pagination prev="" next="/fi/tyopaikat/sivu{cur + 1}/" current="{cur}" total="{total}"></ip-pagination></main></body></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url, accept=None):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(filter=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_skips_the_promoted_cards_and_the_counter_is_the_witness(self):
+        mod = self._mod()
+        promo = [self._card(9000 + i, f"PROMO-{i}", f"Mainos {i}", promoted=True) for i in range(4)]
+        p1 = self._page(1, 3, [self._card(1000 + i, f"ESPOO-03-13{i:02d}-26", f"Opettaja {i}") for i in range(24)], promo)
+        p2 = self._page(2, 3, [self._card(2000 + i, f"HKI-{i:02d}", f"Hoitaja {i}", pc="Helsingin kaupunki") for i in range(24)], promo)
+        p3 = self._page(3, 3, [self._card(3000, "OULU-1", "Kirjastonhoitaja", pc="Oulun kaupunki", end="", end_t="")], promo)
+        counter = (200, '{"count": 49, "total": 57}')   # a second number beside the count — a reader of the wrong key would still see one
+        rows, err, sent = self._run(mod, [counter, (200, p1), (200, p2), (200, p3)])
+        self.assertEqual(len(rows), 49)
+        self.assertEqual((rows[0]["id"], rows[0]["key"], rows[0]["title"], rows[0]["employer"], rows[0]["posted"], rows[0]["application_deadline"], rows[0]["url"]),
+                         ("1000", "ESPOO-03-1300-26", "Opettaja 0", "Espoon kaupunki", "14.9.2026", "28.9.2026 15:45", "https://kuntarekry.fi/fi/tyopaikat/opettaja-0-espoo-03-1300-26/"))
+        self.assertIsNone(rows[48]["application_deadline"])
+        self.assertFalse(any(r["title"].startswith("Mainos") for r in rows))
+        self.assertEqual(sent[0], "https://kuntarekry.fi/fi/tyopaikat/?view=count&format=json")
+        self.assertEqual(sent[1:], ["https://kuntarekry.fi/fi/tyopaikat/", "https://kuntarekry.fi/fi/tyopaikat/sivu2/", "https://kuntarekry.fi/fi/tyopaikat/sivu3/"])
+        self.assertIn("49 emitted over 3 page(s), site counts 49 (the whole site) — equal.", err)
+        rows, err, sent = self._run(mod, [counter, (200, p1), (200, p2)], pages=2)
+        self.assertEqual(len(rows), 48)
+        self.assertIn("48 emitted of the 49 the site counts (the whole site) — 2 of 3 page(s) walked by request", err)
+
+    def test_a_filter_is_a_path_segment_on_the_walk_and_on_the_counter(self):
+        mod = self._mod()
+        p1 = self._page(1, 1, [self._card(1000, "ESPOO-1", "Opettaja")])
+        rows, err, sent = self._run(mod, [(200, '{"count": 1}'), (200, p1)], filter="espoo")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(sent, ["https://kuntarekry.fi/fi/tyopaikat/espoo/?view=count&format=json", "https://kuntarekry.fi/fi/tyopaikat/espoo/"])
+        self.assertIn("(espoo)", err)
+
+    def test_a_page_that_did_not_turn_is_a_fault_and_a_dead_counter_is_said(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page(1, 3, [self._card(1000 + i, f"K-{i}", f"T {i}") for i in range(24)])
+        same = self._page(1, 3, [self._card(2000 + i, f"L-{i}", f"U {i}") for i in range(24)])
+        it = iter([(200, '{"count": 48}'), (200, p1), (200, same)])
+        mod.request = lambda url, accept=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(filter=None, pages=10, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the page did not turn", e2.getvalue())
+        rows, err, sent = self._run(mod, [(503, ""), (200, self._page(1, 1, [self._card(1, "A-1", "X")]))])
+        self.assertEqual(len(rows), 1)
+        self.assertIn("without a witness", err)
+
+    def _ad(self, desc):
+        ld = {"@context": "http://schema.org", "@type": "JobPosting", "title": "JOPO-luokan ohjaaja", "hiringOrganization": "Kristiinanseudun koulu",
+              "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressRegion": "Pohjanmaa", "addressLocality": "Kristiinankaupunki", "postalCode": 64100, "streetAddress": "Asemakatu 4-6"}},
+              "datePosted": "2026-09-11T16:00:00+03:00", "validThrough": "2026-09-28T23:59:00+03:00", "employmentType": "Osa-aikatyö, Määräaikainen",
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": "Palkkaus määräytyy KVTES 5KOU62A1 mukaan, 2 312,36 e. Lisätiedot eeva@krs.fi"},
+              "description": desc}
+        return ('<html><head><script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script></head><body>'
+                '<job-view job-ext-id="742318" job-title="JOPO-luokan ohjaaja"></job-view><main><p>' + htmlmod_escape(desc) + '</p>'
+                '<section class="contact"><p>Eeva Kumpulainen eeva.kumpulainen@krs.fi, 0401598071</p></section></main></body></html>')
+
+    def test_the_ad_reads_the_job_posting_and_no_contact_leaves_in_any_field(self):
+        import contextlib
+        mod = self._mod()
+        desc = "Tervetuloa tiimiimme! Sijoituspaikka Kristiinanseudun koulu ajalle 1.10.2026-5.6.2027. Lisätietoja antaa rehtori Eeva Kumpulainen, eeva.kumpulainen@krs.fi, puh. 040 159 8071 tai +358 40 1598071. Hakuaika päättyy 28.9.2026 klo 23:59."
+        mod.request = lambda url, accept=None: (200, self._ad(desc))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://kuntarekry.fi/fi/tyopaikat/jopo-luokan-ohjaaja-742318/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["key"], d["title"], d["employer"], d["workplace"], d["postal_code"], d["posted"], d["application_deadline"], d["employment_type"], d["salary_currency"], d["salary_unit_stated"], d["contacts_withheld"]),
+                         ("742318", "JOPO-luokan ohjaaja", "Kristiinanseudun koulu", "Kristiinankaupunki, Pohjanmaa", "64100", "2026-09-11T16:00:00+03:00", "2026-09-28T23:59:00+03:00", "Osa-aikatyö, Määräaikainen", "EUR", False, True))
+        raw = out.getvalue()
+        for secret in ("krs.fi", "0401598071", "040 159 8071", "+358 40 1598071", "Kumpulainen eeva"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("[e-mail withheld]", d["description"])
+        self.assertIn("[telephone withheld]", d["description"])
+        self.assertIn("1.10.2026-5.6.2027", d["description"])      # dates are not telephone numbers
+        self.assertIn("28.9.2026 klo 23:59", d["description"])
+        self.assertIn("[e-mail withheld]", d["salary_text"])
+        self.assertIn("2 312,36 e", d["salary_text"])
+        mod.request = lambda url, accept=None: (200, "<html><body>Sivua ei löytynyt</body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://kuntarekry.fi/fi/tyopaikat/nope-1/"))
+        self.assertEqual(cm.exception.code, 6)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
