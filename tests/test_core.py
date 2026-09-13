@@ -16719,6 +16719,72 @@ class APagedJobSitemapInTwoLanguagesAndTheEmployersIdIsNotTheAdvertisements(unit
         self.assertEqual((d["skills"], d["employment_type"], d["city"]), (["Risk Management", "Leadership"], "OTHER", "Tỉnh Ninh Bình"))
 
 
+class SixAnthropicNamesRefusedAndNotThisOneAndASpanishThousandsDot(unittest.TestCase):
+    """**`tecnoempleo.py`, 2026-09-13 (#233 lot 8 → adapter).** The rules
+    refuse the whole site to six Anthropic names and not to `Claude-User`;
+    the adapter reads under that token, records the six on the card, and
+    asks for nothing under the `*` refusals. One sitemap of 30 891 `<loc>`
+    holds 2 145 offers keyed by the `rf-` hash, with real `<lastmod>`; the
+    listing states «2.592 Ofertas» with a Spanish thousands dot, parsed to
+    2 592 and printed beside the count («447 short» on the day). The
+    JSON-LD's `identifier.value` is the employer's id, kept apart. Mutated
+    (`-B`, detached copy): the dedup removed → 3 ≠ 2; «short» → «equal» →
+    the gap case reddens; `SITE_COUNT_RE` broken → «no second source»
+    reddens the equal case; the thousands-dot strip removed → 2 592 parses
+    as 2 (the gap case reddens); the employer id taken as the offer's →
+    the ad case reddens; the lastmod set left empty → the «real dates»
+    sentence reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_tecnoempleo", os.path.join(SCRIPTS, "tecnoempleo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    URLSET = ("<urlset>"
+              "<url><loc>https://www.tecnoempleo.com</loc><lastmod>2026-09-13</lastmod></url>"
+              "<url><loc>https://www.tecnoempleo.com/analista-pki-atos/entrust/rf-8e881db6b25213fd4d41</loc><lastmod>2026-09-12</lastmod></url>"
+              "<url><loc>https://www.tecnoempleo.com/devops-ust/kubernetes/rf-1a971df8c2ef539cb64f</loc><lastmod>2026-09-10</lastmod></url>"
+              "<url><loc>https://www.tecnoempleo.com/analista-pki-atos/entrust/rf-8e881db6b25213fd4d41</loc><lastmod>2026-09-12</lastmod></url>"
+              "<url><loc>https://www.tecnoempleo.com/atos-trabajo</loc><lastmod>2026-09-13</lastmod></url></urlset>")
+
+    def _sitemap(self, mod, stated):
+        import contextlib
+        served = iter([(200, self.URLSET), (200, f"<html><body><h1>{stated} Ofertas de Trabajo en Informática y Telecomunicaciones</h1><p>1-30 de {stated}</p></body></html>")])
+        mod.get = lambda url: next(served)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_offers_are_keyed_by_the_hash_deduplicated_and_compared_to_the_stated_count(self):
+        rows, err = self._sitemap(self._mod(), "2")
+        self.assertEqual([r["id"] for r in rows], ["8e881db6b25213fd4d41", "1a971df8c2ef539cb64f"])
+        self.assertIn("5 <loc> in the sitemap; 3 of the offer shape, 2 not (company and site pages); **2 distinct offer(s)**; 2 distinct <lastmod> date(s) on them — real dates, not a rebuild stamp.", err)
+        self.assertIn("2 emitted, site states 2 on https://www.tecnoempleo.com/ofertas-trabajo/ — equal.", err)
+
+    def test_a_spanish_thousands_dot_is_parsed_and_the_gap_is_named_short(self):
+        rows, err = self._sitemap(self._mod(), "2.592")
+        self.assertIn("2 emitted, site states 2 592 on https://www.tecnoempleo.com/ofertas-trabajo/ — 2 590 short", err)
+        self.assertNotIn("equal", err)
+
+    def test_the_employers_id_is_kept_apart_from_the_offers_hash(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "http://schema.org/", "@type": "JobPosting", "title": "Analista PKI", "description": "Ubicación Madrid",
+                         "identifier": {"@type": "PropertyValue", "name": "Atos", "value": "206974"}, "datePosted": "2026-09-12", "directApply": "True",
+                         "employmentType": "FULL_TIME", "hiringOrganization": {"@type": "Organization", "name": "Atos"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "ES", "addressLocality": "Madrid", "addressRegion": "Madrid"}}}, ensure_ascii=False)
+        mod.get = lambda u: (200, f'<html><head><script type="application/ld+json">{ld}</script></head><body><a href="tel:+34-983219239">x</a></body></html>')
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.tecnoempleo.com/analista-pki-atos/entrust/rf-8e881db6b25213fd4d41"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer_id"], d["employer"], d["country"], d["city"], d["employment_type"], d["posted"]),
+                         ("8e881db6b25213fd4d41", "206974", "Atos", "ES", "Madrid", "FULL_TIME", "2026-09-12"))
+        self.assertNotIn("983219239", out.getvalue())
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
