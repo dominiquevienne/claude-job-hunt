@@ -17591,6 +17591,94 @@ class TwentyThreeSectorFilesOneIdAndARefusedLanguageNeverRead(unittest.TestCase)
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class TwoStoresInTwoSitemapsKeyedApartAndTheContactPersonNeverRead(unittest.TestCase):
+    """**`easyprace.py`, 2026-09-13 (#352).** easy-prace.cz publishes its own
+    advertisements (`/nabidka/<slug>/<id>`, `easyprace-aktivni-easy.xml`) and
+    the Úřad práce ČR's republication (`/volne-misto/<slug>/<id>`,
+    `easyprace-aktivni-up.xml`) in two sitemaps whose id spaces collide: the
+    adapter keys every row by store (`easyprace:easy:<id>` /
+    `easyprace:up:<id>`), sets aside a URL of the other store's shape in a
+    file named for one, and prints the listing's own «N výsledků» beside
+    the total — only when both stores were read. The advertisement page has
+    no JSON-LD: the `<h1>`, the employer block, the salary block,
+    label/value pairs, content rows read as fields («Směnnost») or joined
+    as the description («Popis pracovní nabídky»); the contact person the
+    page names is never read. Mutated (`-B`, detached copy): the store key
+    dropped from `ledger_id` → the colliding ids merge, reddens; the store
+    check in `entry` dropped → the foreign URL is emitted, 4 ≠ 3; the
+    single-store comparison allowed → «short» printed, reddens; the stated
+    figure replaced by the row count → «equal», reddens; the content-row
+    field mapping dropped → `shifts` None, reddens; the description joined
+    from every row including the fields → «Směnnost» leaks in, reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_easyprace", os.path.join(SCRIPTS, "easyprace.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _urlset(urls):
+        return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-11</lastmod><priority>0.7</priority></url>" for u in urls) + "</urlset>")
+
+    def _list(self, mod, pages, store="both", limit=None, no_total=False):
+        import contextlib
+        def get(url):
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(store=store, limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_two_stores_are_keyed_apart_a_foreign_shape_is_set_aside_and_the_listing_is_compared_only_to_both(self):
+        mod = self._mod()
+        easy = self._urlset(["https://www.easy-prace.cz/nabidka/stevard-ka/620969", "https://www.easy-prace.cz/volne-misto/kuchar/620969", "https://www.easy-prace.cz/nabidka/ridic/1469963"])
+        up = self._urlset(["https://www.easy-prace.cz/volne-misto/zdravotni-sestra/1469963"])
+        listing = "<html><body><p>Nabídka zaměstnání z celé České republiky</p><strong>34 578 výsledků</strong></body></html>"
+        pages = {mod.STORES["easy"][0]: easy, mod.STORES["up"][0]: up, mod.LISTING: listing}
+        rows, err = self._list(mod, pages)
+        self.assertEqual([r["ledger_id"] for r in rows], ["easyprace:easy:620969", "easyprace:easy:1469963", "easyprace:up:1469963"])
+        self.assertEqual(len({r["ledger_id"] for r in rows}), 3)
+        self.assertEqual((rows[0]["store"], rows[2]["store"], rows[2]["slug"], rows[0]["country"]), ("easy", "up", "zdravotni-sestra", "CZ"))
+        self.assertIn("4 <loc> over 2 store file(s); **3 row(s)** keyed by store — easy (the board's own): 2 distinct id(s) of 3 <loc>, 1 of another shape set aside; up (Úřad práce ČR, republished): 1 distinct id(s) of 1 <loc>.", err)
+        self.assertIn("3 emitted, site states 34 578 — 34 575 short; the two sitemaps and the listing's own count are two witnesses, and neither corrects the other.", err)
+        rows, err = self._list(mod, pages, store="up")
+        self.assertEqual([r["ledger_id"] for r in rows], ["easyprace:up:1469963"])
+        self.assertIn("site total not compared: one store read (--store up), and the listing counts both.", err)
+        self.assertNotIn("short", err)
+        with self.assertRaises(SystemExit) as cm:
+            self._list(mod, dict(pages, **{mod.STORES["up"][0]: up.replace("</url>", "</url><url></url>", 1)}), no_total=True)
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+
+    def test_the_advertisement_is_read_by_its_blocks_the_rows_are_fields_or_description_and_the_person_is_never_emitted(self):
+        import contextlib
+        mod = self._mod()
+        body = ('<html><body><h1><span class="">ZDRAVOTNÍ SESTRA</span></h1><div class="NabidkaDetail-company"><span class="NabidkaDetail-companyName">DentLive s.r.o.</span></div>'
+                '<div class="NabidkaDetail-salary">40 000 - 46 000 Kč</div>'
+                '<div class="NabidkaDetail-infoItem"><p class="NabidkaDetail-infoLabel">Lokalita</p><div class="NabidkaDetail-infoValue"><strong>Na Brně 370, Hradec Králové</strong> a další</div></div>'
+                '<div class="NabidkaDetail-infoItem"><p class="NabidkaDetail-infoLabel">Úvazek</p><div class="NabidkaDetail-infoValue">Plný úvazek</div></div>'
+                '<div class="NabidkaDetail-infoItem"><p class="NabidkaDetail-infoLabel">Vzdělání</p><div class="NabidkaDetail-infoValue">minimálně SŠ s maturitou</div></div>'
+                '<div class="NabidkaDetail-content"><div class="NabidkaDetail-contentRow"><h2>Popis pracovní nabídky</h2>Ošetřovatelská péče.</div>'
+                '<div class="NabidkaDetail-contentRow"><h2>Směnnost</h2>Jednosměnný provoz</div><div class="NabidkaDetail-contentRow"><h2>Pracovní období</h2>od 1.4.2026</div>'
+                '<div class="NabidkaDetail-contactPerson"><h3>Kontaktní osoba</h3><div class="NabidkaDetail-contactPersonItem">Jana Mertlíková</div></div></div></body></html>')
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.easy-prace.cz/volne-misto/zdravotni-sestra/1469963"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["store"], d["ledger_id"], d["title"], d["employer"], d["salary"]), ("up", "easyprace:up:1469963", "ZDRAVOTNÍ SESTRA", "DentLive s.r.o.", "40 000 - 46 000 Kč"))
+        self.assertEqual((d["place"], d["employment_type"], d["education"], d["shifts"], d["period"]), ("Na Brně 370, Hradec Králové a další", "Plný úvazek", "minimálně SŠ s maturitou", "Jednosměnný provoz", "od 1.4.2026"))
+        self.assertEqual(d["description"], "Popis pracovní nabídky: Ošetřovatelská péče.")
+        self.assertNotIn("Mertlíková", out.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.easy-prace.cz/nabidka-zamestnani/strana/2"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
