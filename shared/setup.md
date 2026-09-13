@@ -1189,6 +1189,59 @@ and the sentence to add — `no boards.hiringcafe.override_robots: true in
 the bypass happens**, in the same shape as 5f's banner: what is crossed,
 then what it costs, then how to stop.
 
+## 5h — Any board whose rules refuse in writing: the key is the user's to set
+
+**Run this whenever the user enables a board whose card in `shared/boards/`
+declares a written refusal on the route the adapter needs** — a `route:
+none · … refused in writing …` line, or a `Disallow` quoted in the card
+against the path the adapter reads (`tyomarkkinatori.md` is the first:
+`Disallow: /api/` to `*`, and every data route of the board is under
+`/api/`).
+
+**The decision behind this step, verbatim** — the repository's owner,
+2026-09-13, asked whether Työmarkkinatori could have an override:
+«&nbsp;oui, l'utilisateur doit pouvoir émettre une dérogation en son âme et
+conscience&nbsp;». *5d, 5f and 5g were three overrides decided by the owner,
+one by one. Since that day the mechanism is general and the judgement is
+the user's — for that board, in their own workspace, in their own name.*
+
+**What the flow says, in this order, and nothing it does not:**
+
+1. **What the rules refuse** — the `Disallow` line quoted from the card,
+   with the host and the date it was read: *«&nbsp;`tyomarkkinatori.fi/robots.txt`
+   writes `Disallow: /api/` to `User-agent: *` (read 2026-09-13), and the
+   search and the postings of this board are under `/api/`&nbsp;»*. A refusal
+   in writing is the operator's intention; the plugin honours it by every
+   route, browser included.
+2. **That the key exists** — `boards.<board>.override_robots: true` — and
+   what it does: the run reads the refused route anyway, says so on every
+   run (the banner of `shared/robots-policy.md`, what is crossed before what
+   it costs), one request at a time, and stops on the first block.
+3. **That the user sets it in their own name** — the address that gets
+   blocked is theirs; the act contradicts the site's rules file, and they
+   answer for it. **The flow does not recommend it, does not pre-tick it,
+   and does not set it**: absent or false, the board is skipped and the
+   skip is reported with the reason (`never-fail-silently.md`).
+
+**Three answers, no default:** enable the key (they write it in
+`config.yml` themselves, or ask the flow to write exactly that line after
+saying yes), leave the board off, decide later — a refusal is a hard off,
+never raised again for that board.
+
+```yaml
+boards:
+  tyomarkkinatori:
+    enabled: true
+    override_robots: true    # the user's line, in the user's name — absent or false → skipped, with the reason
+```
+
+**What 5h is not:** a licence to be expensive, a way round a block, or a
+reading of the four questions of `robots-policy.md` — those still say
+*obey* for an even-handed refusal, and the key is the user overruling them
+for themselves. **And it is not the owner's to take any more**: the three
+before it were, and stay in the record as decisions; the fourth and every
+one after are the user's.
+
 ## 6 — Thresholds and document preferences
 
 - **Apply-from threshold** (`AskUserQuestion`: 70 selective / 55 broad / 40

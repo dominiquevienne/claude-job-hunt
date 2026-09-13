@@ -1692,7 +1692,7 @@ def _token_agents(host, path):
     return FETCH_TOKENS
 
 
-def allowed(host, path, agents=None):
+def _allowed_by_rules(host, path, agents=None):
     """May `path` be fetched on `host`? **Longest match wins, `Allow` on a tie.**
 
     `verdict()` answers *is this host closed in one block*. **A path needs its
@@ -1972,6 +1972,75 @@ def allowed(host, path, agents=None):
            f"effect."))
     return _named(_carry(out))
 
+
+
+_BANNERED = set()
+
+
+def board_key():
+    """The config key an override is read under — `boards.<key>.override_robots`.
+
+    The key is the running adapter's own name (`hiringcafe.py` → `hiringcafe`),
+    read from `sys.argv[0]`: a test runner or a REPL has no key and therefore
+    no override — the safe state. An adapter whose key is not its file name
+    (`ats.py` reads `smartrecruiters` itself) passes `board=` explicitly.
+    `JOB_HUNT_BOARD` overrides the guess for a caller that knows better."""
+    import os
+    import sys
+    env = os.environ.get("JOB_HUNT_BOARD", "").strip()
+    if env:
+        return env
+    stem = os.path.splitext(os.path.basename(sys.argv[0] or ""))[0]
+    if not stem or stem.startswith("_") or stem in ("unittest", "pytest", "-c", "-m", "python", "python3"):
+        return None
+    return stem
+
+
+def allowed(host, path, agents=None, board=None):
+    """`_allowed_by_rules()`, then the ONE thing that can turn a written «no»
+    into a request: **the user's own `boards.<board>.override_robots: true`**.
+
+    **Owner's decision, 2026-09-13 18:2x UTC (#403), verbatim: «oui,
+    l'utilisateur doit pouvoir émettre une dérogation en son âme et
+    conscience».** Until then three overrides existed, each decided by the
+    owner (AMS, SmartRecruiters, HiringCafe) and each read by its own adapter;
+    a fourth went to the owner. The decision generalises the MECHANISM, not
+    the three cases: the key is available on every board whose rules refuse
+    in writing, and it is the user who sets it — never a default, never set
+    by `job-setup` on their behalf, always with the banner below, which says
+    what is crossed before what it costs (#192).
+
+    The guard flips a `False` only — an unreadable file (`None`) is not a
+    refusal to cross, and a permission needs nothing. It names the refusal it
+    crosses (`kind: override`, `overrode: <rule>`), and it says so on stderr
+    once per host and run, whatever the adapter prints.
+    """
+    out = _allowed_by_rules(host, path, agents)
+    if out.get("allowed") is not False:
+        return out
+    key = board or board_key()
+    if not key:
+        return out
+    try:
+        from _override import enabled as _override_enabled
+        on, where = _override_enabled(key)
+    except Exception:                                  # noqa: BLE001 — no workspace, no parser: no override
+        return out
+    if not on:
+        out["override_available"] = f"boards.{key}.override_robots — absent ({where}); the user may set it, in their own name"
+        return out
+    rule = out.get("rule")
+    out.update(allowed=True, kind="override", overrode=rule, override_where=where)
+    out["reason"] = (f"ROBOTS REFUSAL CROSSED — {out.get('host') or host} disallows {rule!r} to this agent "
+                     f"and this run is reading {path!r} anyway because you enabled {where}. "
+                     f"What it costs you: the address that gets blocked is yours, not this project's. "
+                     f"To stop: remove boards.{key}.override_robots from config.yml. See shared/robots-policy.md")
+    tag = (key, out.get("host") or host)
+    if tag not in _BANNERED:
+        _BANNERED.add(tag)
+        import sys
+        print(f"[{key}] {out['reason']}", file=sys.stderr)
+    return out
 
 def _main():
     import argparse

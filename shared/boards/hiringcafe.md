@@ -499,7 +499,7 @@ questions — the rule is even-handed and names nobody, which is *obey* — and
 neither this card nor the policy dresses it as one. It does not lift the
 edge: the host answered 403 to a script on every path on 2026-09-05, and a run
 with the key may still come back refused. **And it is the third override in
-the plugin, after AMS and SmartRecruiters; a fourth goes to the owner.**
+the plugin, after AMS and SmartRecruiters; ~~a fourth goes to the owner~~ — since 2026-09-13 (#403) the key is the user's on any board refused in writing, and the owner decides no more of them one by one.**
 
 **Three commands were building that URL, not one.** #123 named
 `hiringcafe.py:119`, found by reading this file. `ats.py` and `workday.py`

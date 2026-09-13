@@ -590,7 +590,24 @@ boards:
     override_robots: true   # same key — NOT the same rule: owner's decision 2026-09-11 (#198)
 ```
 
-**There are three, and the third does not follow from the four questions.**
+**~~There are three, and the third does not follow from the four questions.~~
+— struck on 2026-09-13.** *The owner, verbatim to the pilot the same day at
+18:2x UTC, asked whether Työmarkkinatori (#371) could have an override:
+«&nbsp;oui, l'utilisateur doit pouvoir émettre une dérogation en son âme et
+conscience&nbsp;».* **The mechanism is general, the three are its history.**
+`boards.<board>.override_robots: true` is available on every board whose
+rules refuse a route in writing, and it is the USER who sets it, in their
+own name and conscience: never a default, never set by `job-setup` on their
+behalf, always with the banner below, which says what is crossed before
+what it costs. Since #403 the guard reads it for every adapter —
+`_robots.allowed()` flips a written «no», and only a «no», when the key is
+set for the running board (`board_key()`, the adapter's file name), names
+the rule it crossed (`kind: override`) and prints the banner once per host
+and run whatever the adapter prints; without the key the refusal stands
+and the result names the key as available. **What follows is the record
+of the three that came first** — each decided by the owner, each read by
+its own adapter at the time — and it stays as history, not as a closed
+list. *The third of them did not follow from the four questions:*
 `hiringcafe.com/robots.txt` refuses `/*?searchState=*` to `User-agent: *` —
 even-handed, aimed at nobody, no sanctioned door; by this file's own rule
 that is *obey*, and it was obeyed from 2026-09-03 (#123) with collection
@@ -602,7 +619,9 @@ candidate's address. **Unconditional, and it lifts both refusals at once**:
 the rule and the suspension, because a key that lifted one would look like it
 acts and act on half. The record says this is a decision and not a reading;
 the procedure below — the key, the onboarding, the banner, one request at a
-time — applies to it unchanged. *A fourth override goes to the owner.*
+time — applies to it unchanged. *~~A fourth override goes to the owner.~~
+Since 2026-09-13 (#403) a fourth, and every one after, goes to the user who
+sets the key: the owner decided the mechanism once, for all.*
 
 **There were two before that, and there were nearly none.** SmartRecruiters was added on
 2026-09-03 by the repository's owner, on the same ground and by this same
@@ -618,8 +637,12 @@ them, and indexes marketing and documentation pages. **The most specific
 declaration for the API host is the API host's own file, and it refuses.**
 `shared/boards/smartrecruiters.md` carries the retraction.
 
-**And it does not generalise.** Greenhouse, Workable and both Lever hosts
-publish files of the same kind that permit, and are read with none of this.
+**And the READING does not generalise — the KEY does.** Greenhouse, Workable
+and both Lever hosts publish files of the same kind that permit, and are read
+with none of this; a board that permits needs no key, and the guard flips
+nothing that is not a written «no». *The sentence used to say the override
+does not generalise; since 2026-09-13 the key is general and the judgement
+stays the user's.*
 
 **Skipped, not silently obeyed.** `enabled: true` without `override_robots`
 must report the skip and say why, per `never-fail-silently.md`.
@@ -628,7 +651,10 @@ must report the skip and say why, per `never-fail-silently.md`.
 raises AMS during onboarding whenever the user's geography reaches Austria: it
 quotes the four rules, states the ground the decision rests on, says that the
 address that gets blocked is *theirs*, and says **which overrides exist** —
-three, since 2026-09-11 (`setup.md` 5d, 5f, 5g), and no others. **A sentence that said "the only one"
+three decided by the owner (`setup.md` 5d, 5f, 5g) and, since 2026-09-13,
+**the same key on any board whose card declares a written refusal**
+(`setup.md` 5h): the flow tells the user what the rules refuse, that the key
+exists, and that they set it in their own name — and does not recommend it. **A sentence that said "the only one"
 was left standing while a second was added would be worse than no sentence**:
 a user who is told the plugin overrides once, and finds it overrides twice,
 has been told something false about it. It offers three answers — enable, leave off, decide later — with
