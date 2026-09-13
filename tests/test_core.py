@@ -20188,7 +20188,7 @@ class AWebflowRegisterWalkedPageByPageWhereWhatTheSiteHidesIsNotRead(unittest.Te
                 f'<div class="line-block btn-wrapper"><a href="/convocatorias/{slug}" class="link-block-3 w-inline-block"><div class="detail-btn"><div class="text-block-23">Ver detalles</div></div></a></div>'
                 f'<div id="hiddein-fields" class="hiddein-fields"><div fs-cmsfilter-field="salario" class="salario-minimo">{smin}</div><div fs-cmsfilter-field="salario" class="salario-minimo w-dyn-bind-empty"></div></div></div>')
 
-    def _page(self, page, pages, items, key="205b2a0f"):
+    def _page(self, page, pages, items, key="7a1b2c3d"):   # not the live key — a key assumed instead of read would post the wrong one
         nxt = f'<a href="?{key}_page={page + 1}" aria-label="Next Page" class="w-pagination-next next">Next</a>' if page < pages else ""
         return ('<html><body><div role="list" class="conv-collection-list w-dyn-items">' + "".join(items) + "</div>"
                 f'<div role="navigation" aria-label="List" class="w-pagination-wrapper pagination">{nxt}<div aria-label="Page {page} of {pages}" role="heading" class="w-page-count page-count">{page} / {pages}</div></div>'
@@ -20225,7 +20225,7 @@ class AWebflowRegisterWalkedPageByPageWhereWhatTheSiteHidesIsNotRead(unittest.Te
         self.assertIsNone(rows[1]["call_type"])
         self.assertEqual((rows[12]["salary_min"], rows[12]["salary_unit_stated"]), (None, False))
         self.assertEqual((rows[24]["closing"], rows[24]["pilot_plan"]), ("Hasta Nuevo Aviso", True))   # the date block is hidden, the «Hasta Nuevo Aviso» block shown
-        self.assertEqual(sent, ["https://www.empleos.pr.gov/", "https://www.empleos.pr.gov/?205b2a0f_page=2", "https://www.empleos.pr.gov/?205b2a0f_page=3"])
+        self.assertEqual(sent, ["https://www.empleos.pr.gov/", "https://www.empleos.pr.gov/?7a1b2c3d_page=2", "https://www.empleos.pr.gov/?7a1b2c3d_page=3"])
         self.assertIn("25 emitted over 3 page(s), site states 3 page(s) — every page walked", err)
         for r in rows:
             self.assertNotIn("oatrh.pr.gov", json.dumps(r))
@@ -20265,7 +20265,7 @@ class AWebflowRegisterWalkedPageByPageWhereWhatTheSiteHidesIsNotRead(unittest.Te
                 '<div class="inner-section-title">Condiciones de Trabajo:</div><div class="data-job-description w-richtext"><p>TIPO DE NOMBRAMIENTO</p></div>'
                 '<div class="inner-section-title">Requisitos Mínimos</div><div class="data-minimun-req w-richtext"><p>Grado Asociado en Ciencias Secretariales.</p></div>'
                 + special +
-                '<div class="inner-section-title">Naturaleza del Examen</div><div class="w-dyn-bind-empty w-richtext"></div>'
+                '<div class="inner-section-title">Naturaleza del Examen</div><div class="w-dyn-bind-empty w-richtext"><p>This is some text inside of a div block.</p></div>'   # Webflow's placeholder in an unbound block — the site shows it, it is not the call's
                 '<div class="inner-section-title">Notas Importantes</div><div class="rich-text-block-7 w-condition-invisible w-dyn-bind-empty w-richtext"></div>'
                 '<div class="footer">Dirección Postal P.O Box 8476 San Juan, PR 00910-8476 Contáctenos Tel: (787) 274-4300 email: convocatorias@oatrh.pr.gov</div></body></html>')
 
