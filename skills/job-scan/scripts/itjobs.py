@@ -92,9 +92,14 @@ _PACE = Pace("api.itjobs.pt", own=1.0)
 def call(method, params):
     """One API call. The key travels in the request and appears in no message."""
     url = f"{API}/job/{method}.json"
+    # **The key before the guard.** Without a key nothing leaves this machine —
+    # not the call, and not the rules fetch the guard makes first. Until #282
+    # the guard's request hid behind the `Pace` built at import, and the
+    # «makes no request» case was green on a request it could not see.
+    key = api_key()
     gate(url)
     _PACE.wait()
-    body = urllib.parse.urlencode({**params, "api_key": api_key()}).encode()
+    body = urllib.parse.urlencode({**params, "api_key": key}).encode()
     req = urllib.request.Request(wire_url(url), data=body, method="POST", headers={
         "User-Agent": UA, "Accept": "application/json",
         "Content-Type": "application/x-www-form-urlencoded"})

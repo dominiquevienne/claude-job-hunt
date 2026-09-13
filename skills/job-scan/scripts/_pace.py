@@ -92,23 +92,52 @@ class Pace:
     def __init__(self, host, own=0.0):
         self.host = host
         self.own = max(0.0, float(own or 0.0))
-        self.first_delay = 0.0
+        self._declared = None
+        self._first_delay = 0.0
+        self._resolved = False
+        self._last = None
+
+    # **The host's rate is read on the first wait, never at construction.**
+    # Fifty-seven adapters build their `Pace` at module level, so until
+    # 2026-09-13 `import <adapter>` fetched that host's `robots.txt` — with
+    # three timeouts of 15, 25 and 40 s and two back-offs behind it. The test
+    # suite imports every adapter and paid for it in full: 4 s of CPU in
+    # 32 min of wall on the shared tree, 334 s of retry sleep with the network
+    # cut (#282). An import is not a request, and a `Pace` that is never
+    # waited on asks the host for nothing.
+    def _resolve(self):
+        if self._resolved:
+            return
+        self._resolved = True
         try:
-            v = _robots.verdict(host) or {}
+            v = _robots.verdict(self.host) or {}
             declared = v.get("crawl_delay")
             # **#283, 2026-09-13**: a 429 or a timeout on the rules file
             # earns the FIRST request of this process a wait — `Retry-After`
             # when given, else 10 s — the pilot's opinion kept as a delay,
             # never as a refusal.
-            self.first_delay = float(v.get("first_request_delay") or 0.0)
+            self._first_delay = float(v.get("first_request_delay") or 0.0)
         except Exception:                                  # noqa: BLE001
             # **An unreadable rules file is not a permission to hurry.** The
             # guard reports that separately; here it means we fall back to
             # whatever the adapter already did, never to zero.
             declared = None
-        self.declared = float(declared) if declared else None
-        self.delay = max(self.own, self.declared or 0.0)
-        self._last = None
+        self._declared = float(declared) if declared else None
+
+    @property
+    def declared(self):
+        self._resolve()
+        return self._declared
+
+    @property
+    def delay(self):
+        self._resolve()
+        return max(self.own, self._declared or 0.0)
+
+    @property
+    def first_delay(self):
+        self._resolve()
+        return self._first_delay
 
     def source(self):
         if self.declared and self.declared >= self.own:

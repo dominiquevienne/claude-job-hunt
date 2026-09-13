@@ -92,6 +92,91 @@ from _cards import card_script            # noqa: E402
 
 import _decode           # noqa: E402
 import _language          # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# THE SUITE NEVER LEAVES THE MACHINE — #282, 2026-09-13
+#
+# On the shared tree the suite took 32 min of wall for 4 s of CPU: every
+# adapter builds a `Pace` at import, `Pace` asked `_robots.verdict`, and the
+# verdict fetched the host's `robots.txt` — 57 hosts, three timeouts of 15,
+# 25 and 40 s each, two back-offs — so `import <adapter>` was a network
+# request and the suite measured the world instead of the code. `Pace` now
+# resolves lazily; this guard is what keeps the next one from shipping.
+#
+# Every name lookup and every connection to a host other than the loopback
+# raises `NetworkCut` AND is recorded against the running test; a test that
+# reached out is failed after it ran, even when the code it exercised
+# swallowed the raise — `_robots` turns an unreachable rules file into an
+# absence of rules (#283), silently. **The loud half is the record, not the
+# raise.** Tests allowed to leave the machine are listed by id below, and
+# the list is empty: an adapter is exercised on a stub of the envelope it
+# documents (`itjobs.py` is the model), never on the host.
+# ---------------------------------------------------------------------------
+import socket             # noqa: E402
+
+NETWORK_ALLOWED_TESTS = frozenset()          # test ids that may leave the machine — none today
+NETWORK_ATTEMPTS = []                        # (test id, where) for every cut attempt
+_LOOPBACK = {"127.0.0.1", "::1", "localhost", "0.0.0.0", ""}
+_current_test = ["<no test running>"]
+
+
+class NetworkCut(socket.gaierror):
+    """Raised in place of any lookup or connection that would leave the machine."""
+
+
+def _is_loopback(host):
+    h = (host or "").strip("[]").lower() if isinstance(host, str) else host
+    return h in _LOOPBACK or (isinstance(h, str) and h.startswith("127."))
+
+
+def _cut(where):
+    NETWORK_ATTEMPTS.append((_current_test[0], where))
+    if _current_test[0] in NETWORK_ALLOWED_TESTS:
+        return
+    raise NetworkCut(f"the suite does not leave the machine (#282): {where} during {_current_test[0]}")
+
+
+_real_getaddrinfo = socket.getaddrinfo
+_real_connect = socket.socket.connect
+
+
+def _guarded_getaddrinfo(host, port, *a, **k):
+    if not _is_loopback(host):
+        _cut(f"getaddrinfo({host!r}, {port!r})")
+    return _real_getaddrinfo(host, port, *a, **k)
+
+
+def _guarded_connect(self, address):
+    host = address[0] if isinstance(address, tuple) else address
+    if not _is_loopback(host):
+        _cut(f"connect({address!r})")
+    return _real_connect(self, address)
+
+
+socket.getaddrinfo = _guarded_getaddrinfo
+socket.socket.connect = _guarded_connect
+
+_real_run = unittest.TestCase.run
+
+
+def _run_and_check_the_network(self, result=None):
+    """Name the running test for the cut, and fail it afterwards if it reached out."""
+    _current_test[0] = self.id()
+    before = len(NETWORK_ATTEMPTS)
+    try:
+        return _real_run(self, result)
+    finally:
+        mine = [w for t, w in NETWORK_ATTEMPTS[before:] if t == self.id()]
+        _current_test[0] = "<no test running>"
+        if mine and self.id() not in NETWORK_ALLOWED_TESTS and result is not None:
+            msg = (f"{self.id()} tried to leave the machine {len(mine)} time(s) — first: {mine[0]}. "
+                   f"**A test that reaches the network measures the world, not the code**: stub the envelope "
+                   f"(#282), or name the test in NETWORK_ALLOWED_TESTS with the reason.")
+            result.addFailure(self, (AssertionError, AssertionError(msg), None))
+
+
+unittest.TestCase.run = _run_and_check_the_network
 import _ldjson            # noqa: E402
 import _locations         # noqa: E402
 import _match             # noqa: E402
@@ -11128,7 +11213,12 @@ class PaceArithmeticIsTestedAndNotOnlyItsWiring(unittest.TestCase):
         real = _pace._robots.verdict
         _pace._robots.verdict = lambda h, **k: {"crawl_delay": declared}
         try:
-            return _pace.Pace("h.example", own=own)
+            p = _pace.Pace("h.example", own=own)
+            # **Resolved inside the stub's window.** Since #282 the rate is
+            # read on first use, not at construction; touching `delay` here is
+            # what keeps this case off the network.
+            p.delay
+            return p
         finally:
             _pace._robots.verdict = real
 
@@ -11206,6 +11296,7 @@ class PaceArithmeticIsTestedAndNotOnlyItsWiring(unittest.TestCase):
         try:
             p = _pace.Pace("h.example", own=0.0)
             q = _pace.Pace("h.example", own=2.0)
+            p.delay, q.delay          # resolved while the guard still raises (#282: lazy since 2026-09-13)
         finally:
             _pace._robots.verdict = real
         self.assertIsNone(p.declared,
@@ -17981,6 +18072,46 @@ class ASitemapThatListsWhatHasLeftTheBoardAndASearchRefusedInWriting(unittest.Te
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             mod.cmd_ad(argparse.Namespace(url=url))
         self.assertEqual(cm.exception.code, 3)
+
+
+class TheSuiteNeverLeavesTheMachine(unittest.TestCase):
+    """**#282, 2026-09-13.** A lookup or a connection to any host but the
+    loopback raises `NetworkCut` and is recorded against the running test;
+    the loopback stays open (two cases serve a body from `127.0.0.1`). The
+    allow-list is empty and asserted so: a test that must go out is named
+    there with its reason, never let through by silence. Mutated (`-B`,
+    detached copy): the `getaddrinfo` patch removed → the lookup case reddens
+    (the real resolver answers or fails with its own error, not NetworkCut);
+    the record dropped → the record case reddens; the allow-list given a
+    member → the empty-list case reddens."""
+
+    def test_a_lookup_out_is_cut_and_recorded_against_this_test(self):
+        before = len(NETWORK_ATTEMPTS)
+        with self.assertRaises(NetworkCut) as cm:
+            socket.getaddrinfo("h.example", 443)
+        self.assertIn("getaddrinfo('h.example', 443)", str(cm.exception))
+        self.assertIn(self.id(), str(cm.exception))
+        mine = [w for t, w in NETWORK_ATTEMPTS[before:] if t == self.id()]
+        self.assertEqual(mine, ["getaddrinfo('h.example', 443)"])
+        # this attempt was the point of the case — it is not a violation, and the post-run check must not see it
+        del NETWORK_ATTEMPTS[before:]
+
+    def test_a_connection_out_is_cut_even_to_a_numeric_address(self):
+        before = len(NETWORK_ATTEMPTS)
+        s = socket.socket()
+        try:
+            with self.assertRaises(NetworkCut):
+                s.connect(("192.0.2.1", 80))            # TEST-NET-1: never routable, never looked up
+        finally:
+            s.close()
+        self.assertEqual([w for t, w in NETWORK_ATTEMPTS[before:] if t == self.id()], ["connect(('192.0.2.1', 80))"])
+        del NETWORK_ATTEMPTS[before:]
+
+    def test_the_loopback_stays_open_and_the_allow_list_is_empty(self):
+        before = len(NETWORK_ATTEMPTS)
+        self.assertTrue(socket.getaddrinfo("127.0.0.1", 0))
+        self.assertEqual(NETWORK_ATTEMPTS[before:], [])
+        self.assertEqual(NETWORK_ALLOWED_TESTS, frozenset(), "a test is allowed out — name the reason beside it")
 
 
 if __name__ == "__main__":
