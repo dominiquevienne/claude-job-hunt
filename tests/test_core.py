@@ -18561,5 +18561,132 @@ class TheSuiteNeverLeavesTheMachine(unittest.TestCase):
         self.assertEqual(NETWORK_ALLOWED_TESTS, frozenset(), "a test is allowed out — name the reason beside it")
 
 
+class ASessionBoundFormIsWalkedByItsOwnFieldsAndNoContactLeaves(unittest.TestCase):
+    """**`hellowork_jp.py`, 2026-09-13 (#304).** (Not `hellowork.py`, the French board.) Japan's public employment
+    service is a JSP form: a GET opens the session, a POST of the hidden
+    fields + the filters + `searchBtn` lists 30 cards under «検索結果 N件
+    中 a～b», and page K is a POST of the WHOLE results form plus
+    `fwListNaviBtnK` — with the form's own `action` replaced on the first
+    request and `screenId` NOT appended on the next (each doubled field
+    answered the site's system-error page, found the hard way at 17:09
+    and 17:11 UTC). The free word goes full-width. The detail page's
+    contact rows never leave. Mutated (`-B`, detached copy): `screenId`
+    appended on the page request → the walk case reddens; the free word
+    sent as typed → the zenkaku case reddens; the count regex broken → the
+    walk case reddens (exit 6); the contact drop list emptied → the ad case
+    reddens; the system-error test dropped → the error case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hellowork_jp", os.path.join(SCRIPTS, "hellowork_jp.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    FORM = ('<html><title>求人情報検索・一覧</title><form><input type="hidden" name="todohukenHidden" value="">'
+            '<input type="hidden" name="kyujinkensu" value="0"><input type="hidden" name="screenId" value="GECA110010">'
+            '<input type="hidden" name="action" value=""><input type="radio" name="kjKbnRadioBtn" value="1" checked>'
+            '<button name="searchBtn" type="submit">検索する</button></form></html>')
+    ERROR = "<html><title>ハローワークインターネットサービス - システムエラー</title><body>システムの混雑</body></html>"
+
+    @staticmethod
+    def _card(ident, title, place="東京都港区", sal="300,000円〜500,000円"):
+        return (f'<table class="kyujin m_v_1_pc"><tr class="kyujin_head"><td><div class="kyujin_head_date"><div>受付年月日</div><div>：2026年9月11日</div>'
+                f'<div>紹介期限日</div><div>：2026年11月30日</div></div><div class="kyujin_head_kbn"><span class="bg_label white_back"><div>正社員</div></span>'
+                f'<span class="bg_label white_back"><div>フル</div></span><i class="fa fa-map-marker"></i><div class="x">{place}</div></div></td></tr>'
+                f'<tr class="kyujin_body"><td><table><tr><td class="label_col"><span>職種</span></td><td class="data_col"><div class="fb">{title}</div><a>職種解説</a></td></tr>'
+                f'<tr><td class="label_col"><span>仕事の内容</span></td><td class="data_col"><div>開発<br>作業</div></td></tr>'
+                f'<tr><td class="label_col"><span>事業所名</span></td><td class="data_col"><div>株式会社 テスト</div></td></tr>'
+                f'<tr><td class="label_col"><span>就業場所</span></td><td class="data_col"><div>{place}</div></td></tr>'
+                f'<tr><td class="label_col"><span><div>賃金</div><div>（手当等を含む）</div></span></td><td class="data_col"><div>{sal}</div></td></tr>'
+                f'<tr><td class="label_col"><span>求人番号</span></td><td class="data_col"><div class="flex">{ident}</div></td></tr></table>'
+                f'<div>求人数：2名</div><a href="GECA110010.do?screenId=GECA110010&amp;action=dispDetailBtn&amp;kJNo={ident.replace("-", "")}&amp;kJKbn=1">詳細を表示</a></td></tr></table>')
+
+    def _results(self, total, first, cards, page):
+        last = first + len(cards) - 1
+        return (f'<html><title>求人情報検索・一覧</title><form><div>検索結果 {total:,}件 中&nbsp;{first}～{last}&nbsp;件を表示</div>'
+                f'<input type="hidden" name="kyujinkensu" value="{total}"><input type="hidden" name="fwListNowPage" value="{page}">'
+                f'<input type="hidden" name="screenId" value="GECA110010"><input type="hidden" name="action" value="">'
+                f'<input type="radio" name="kjKbnRadioBtn" value="1" checked><input type="hidden" name="todohukenHidden" value="13">'
+                f'<input type="text" name="freeWordInput" value="ｐｙｔｈｏｎ">' + "".join(cards) + '</form></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url, data=None):
+            sent.append((url, data))
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(pref="13", word="python", kind="1", pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_replaces_action_once_appends_screenid_never_and_prints_the_stated_count(self):
+        mod = self._mod()
+        p1 = self._results(33, 1, [self._card(f"13040-{i:08d}", f"T{i}") for i in range(30)], 1)
+        p2 = self._results(33, 31, [self._card(f"13080-{i:08d}", f"U{i}") for i in range(3)], 2)
+        rows, err, sent = self._run(mod, [(200, self.FORM), (200, p1), (200, p2)])
+        self.assertEqual(len(rows), 33)
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["employer"], rows[0]["salary_min"], rows[0]["salary_max"], rows[0]["salary_currency"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"], rows[0]["openings"], rows[0]["employment_labels"], rows[0]["referral_deadline"]),
+                         ("13040-00000000", "T0", "株式会社 テスト", 300000, 500000, "JPY", None, False, 2, ["正社員", "フル"], "2026年11月30日"))
+        self.assertIn("kJNo=1304000000000", rows[0]["url"])
+        self.assertIn("33 emitted over 2 page(s), site states 33 (一般, pref 13, «ｐｙｔｈｏｎ») — equal.", err)
+        # the first POST: exactly one `action` (searchBtn) and one `screenId`; the free word full-width
+        search = sent[1][1]
+        self.assertEqual([v for k, v in search if k == "action"], ["searchBtn"])
+        self.assertEqual([v for k, v in search if k == "screenId"], ["GECA110010"])
+        self.assertEqual([v for k, v in search if k == "freeWordInput"], ["ｐｙｔｈｏｎ"])
+        self.assertEqual([v for k, v in search if k == "todohukenHidden"], ["13"])
+        # the page-2 POST: the whole results form, the button, and `screenId` exactly once — the form's own
+        page = sent[2][1]
+        self.assertIn(("fwListNaviBtn2", "2"), page)
+        self.assertEqual([v for k, v in page if k == "screenId"], ["GECA110010"])
+        self.assertEqual([v for k, v in page if k == "action"], ["", "fwListNaviBtn2"])
+        self.assertIn(("kyujinkensu", "33"), page)
+
+    def test_a_bounded_walk_says_bounded_and_the_system_error_page_stops_it(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._results(102981, 1, [self._card(f"04010-{i:08d}", f"T{i}") for i in range(30)], 1)
+        rows, err, sent = self._run(mod, [(200, self.FORM), (200, p1)], pages=1, word=None)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("30 emitted of the 102 981 the site states (一般, pref 13) — 1 page(s) of 30 walked by request", err)
+        it = iter([(200, self.FORM), (200, self.ERROR)])
+        mod.request = lambda url, data=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(pref="13", word=None, kind="1", pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("system-error page", e2.getvalue())
+
+    def test_the_detail_drops_every_contact_row_and_keeps_the_city(self):
+        import contextlib
+        mod = self._mod()
+        rows = [("求人番号", "13040-28009562"), ("受付年月日", "2026年9月11日"), ("紹介期限日", "2026年11月30日"), ("受理安定所", "品川公共職業安定所"),
+                ("事業所番号", "1304-000001-2"), ("事業所名", "株式会社 テスト"), ("所在地", "〒105-0004 東京都港区新橋５－１３－１０"),
+                ("職種", "<a>職種解説</a><div>（ＳＥ）ｐｙｔｈｏｎエンジニア</div>"), ("就業場所", "〒105-0004<br>東京都港区新橋５－１３－１０ ＶＯＲＴ新橋ＮＥＸ ５Ｆ"),
+                ("基本給（ａ）", "259,000円〜431,000円"), ("役職／代表者名", "代表取締役 山田 太郎"), ("担当者", "人事部 田中"), ("法人番号", "1234567890123"), ("産業分類", "ソフトウェア業")]
+        detail = "<html><title>ハローワークインターネットサービス - 求人情報</title>" + "".join(f'<tr><th scope="row">{k}</th><td colspan="2"><div>{v}</div></td></tr>' for k, v in rows) + "</html>"
+        p1 = self._results(33, 1, [self._card("13040-28009562", "x")], 1)
+        it = iter([(200, self.FORM), (200, p1), (200, detail)])
+        mod.request = lambda url, data=None: next(it)
+        out = io.StringIO()
+        url = "https://www.hellowork.mhlw.go.jp/kensaku/GECA110010.do?screenId=GECA110010&action=dispDetailBtn&kJNo=1304028009562&kJKbn=1"
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=url, pref="13", word="python", kind="1"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["workplace"], d["office"], d["industry"]),
+                         ("13040-28009562", "（ＳＥ）ｐｙｔｈｏｎエンジニア", "株式会社 テスト", "東京都港区", "品川公共職業安定所", "ソフトウェア業"))
+        self.assertEqual(d["contact_dropped"], sorted(["事業所番号", "役職／代表者名", "所在地", "担当者", "法人番号"]))
+        blob = json.dumps(d, ensure_ascii=False)
+        for secret in ("山田", "田中", "新橋５－１３－１０", "1234567890123", "1304-000001-2"):
+            self.assertNotIn(secret, blob, f"{secret!r} left the adapter")
+        self.assertIn("基本給（ａ）", d["fields"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
