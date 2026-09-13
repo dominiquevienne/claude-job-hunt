@@ -20321,5 +20321,135 @@ class AWebflowRegisterWalkedPageByPageWhereWhatTheSiteHidesIsNotRead(unittest.Te
         self.assertEqual(cm.exception.code, 2)
 
 
+class AStateListReadAtTheMinuteTheHostAsksWhereTheCardIsThePostingAndTheDetailIsBare(unittest.TestCase):
+    """**`govsr.py`, 2026-09-13 (#443).** Suriname's government site asks
+    `crawl-delay: 60` and the adapter obeys (`_pace`); its WordPress REST
+    route counts the register (`X-WP-Total`) but exposes no deadline, so the
+    LIST CARDS are read — «Categorie», a summary, «Locatie», «Gepubliceerd»,
+    «Inleverdatum tot», the «Meer info» PDF — and the posting's own page,
+    which is bare, says so. The ministry is the employer; an e-mail inside
+    a card's text is withheld. Mutated (`-B`, detached copy): the
+    `X-WP-Total` header not read → the walk case reddens (no witness);
+    the deadline label misread → the walk case reddens; the e-mail not
+    withheld → the contact case reddens; the 404-past-the-end not treated
+    as the end → the end case reddens (exit 6); the page-size stop dropped
+    → the short-page case reddens; the ministry read from the slug instead
+    of the menu → the detail case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_govsr", os.path.join(SCRIPTS, "govsr.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, pid, title, ministry="Ministerie van Natuurlijke Hulpbronnen", summary="Het Ministerie zoekt een consultant.", loc="Mr. Dr. J. C. de Mirandastraat 13-15 Paramaribo, Suriname", pub="07/09/2026", deadline="30/09/2026", pdf="https://gov.sr/wp-content/uploads/2026/09/TOR.pdf"):
+        def li(t):
+            return f'<li class="elementor-icon-list-item"><span class="elementor-icon-list-text">{t}</span></li>'
+        lines = li(f"Categorie: {ministry}") + (li(summary) if summary else "") + (li(f"Locatie:   {loc}") if loc else "") + li("Locatie:  ") + li(f"Gepubliceerd: {pub}") + (li(f"Inleverdatum tot:  {deadline}") if deadline else "")
+        return (f'<div data-elementor-type="loop" data-elementor-id="15459" class="elementor elementor-15459 post-{pid} vacature type-vacature status-publish hentry category-natuurlijke-hulpbronnen">'
+                f'<h1 class="elementor-heading-title elementor-size-default">{title}</h1><ul class="elementor-icon-list-items">{lines}</ul>'
+                + (f'<a class="elementor-button" href="{pdf}"><span>Meer info</span></a>' if pdf else "") + "</div>")
+
+    def _page(self, cards, last=False):
+        nav = "" if last else '<nav class="elementor-pagination"><a class="page-numbers" href="https://gov.sr/vacatures/2/">2</a></nav>'
+        return "<html><body><header>menu</header>" + "".join(cards) + nav + "</body></html>"
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(pages=5, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_reads_the_cards_and_the_register_count_is_the_witness(self):
+        mod = self._mod()
+        api = (200, "[]", {"X-WP-Total": "13", "X-WP-TotalPages": "3"})   # the two headers differ on purpose — a reader of the wrong one would still see a number
+        p1 = self._page([self._card(100 + i, f"Vacature {i}") for i in range(6)])
+        p2 = self._page([self._card(200 + i, f"Post {i}", deadline="", pdf="") for i in range(6)])
+        p3 = self._page([self._card(300, "Laatste", summary="Stuur uw cv naar hr@gov.sr voor 1 oktober.")], last=True)
+        rows, err, sent = self._run(mod, [api, (200, p1, {}), (200, p2, {}), (200, p3, {})])
+        self.assertEqual(len(rows), 13)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["employer"], r["workplace"], r["published"], r["application_deadline"], r["terms_of_reference"], r["url"]),
+                         ("100", "Vacature 0", "Ministerie van Natuurlijke Hulpbronnen", "Mr. Dr. J. C. de Mirandastraat 13-15 Paramaribo, Suriname", "07/09/2026", "30/09/2026", "https://gov.sr/wp-content/uploads/2026/09/TOR.pdf", "https://gov.sr/?p=100"))
+        self.assertEqual(r["summary"], "Het Ministerie zoekt een consultant.")
+        self.assertEqual((rows[6]["application_deadline"], rows[6]["terms_of_reference"]), (None, None))
+        self.assertEqual(rows[12]["summary"], "Stuur uw cv naar [e-mail withheld] voor 1 oktober.")   # a mailbox in a card's text never leaves
+        self.assertNotIn("hr@gov.sr", json.dumps(rows))
+        self.assertEqual(sent, ["https://gov.sr/wp-json/wp/v2/vacature?per_page=1", "https://gov.sr/vacatures/", "https://gov.sr/vacatures/2/", "https://gov.sr/vacatures/3/"])
+        self.assertIn("13 emitted over 3 page(s), register states 13 — equal.", err)
+        # bounded by request: the note says so and names the whole register's page count
+        rows, err, sent = self._run(mod, [api, (200, p1, {})], pages=1)
+        self.assertEqual(len(rows), 6)
+        self.assertIn("6 emitted of the 13 the register states — 1 page(s) of 6 walked by request", err)
+        self.assertIn("the whole register is --pages 3", err)
+
+    def test_a_404_past_the_last_page_is_the_end_and_a_short_page_stops_the_walk(self):
+        mod = self._mod()
+        api = (200, "[]", {"X-WP-Total": "7", "X-WP-TotalPages": "2"})
+        p1 = self._page([self._card(100 + i, f"V{i}") for i in range(6)])
+        p2 = self._page([self._card(200, "Zeven")])
+        rows, err, sent = self._run(mod, [api, (200, p1, {}), (200, p2, {})])
+        self.assertEqual(len(rows), 7)
+        self.assertEqual(len(sent), 3)   # the short page ended the walk — no page 3 asked
+        # the register counts one more than the pages list (a posting the loop does not render): page 3 is the site's 404, and that is the end, not a fault
+        api13 = (200, "[]", {"X-WP-Total": "13", "X-WP-TotalPages": "3"})
+        p2full = self._page([self._card(200 + i, f"P{i}") for i in range(6)])
+        rows, err, sent = self._run(mod, [api13, (200, p1, {}), (200, p2full, {}), (404, "", {})])
+        self.assertEqual(len(rows), 12)
+        self.assertEqual(len(sent), 4)
+        self.assertIn("12 emitted over 2 page(s), register states 13 — 1 short.", err)
+        # the count not readable: the walk goes on and says it has no witness
+        rows, err, sent = self._run(mod, [(503, "", {}), (200, p1, {}), (200, p2, {})])
+        self.assertEqual(len(rows), 7)
+        self.assertIn("no count from the register", err)
+
+    def test_the_detail_is_bare_and_says_so_and_the_ministry_comes_from_the_menu(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><body><div data-elementor-type="header" class="elementor elementor-9786 post-308 elementor-location-header">'   # the template wrapper's own post-N — not the posting's
+                '<nav><ul><li><a href="https://gov.sr/ministeries/ministerie-van-landbouw-veeteelt-en-visserij/">Ministerie van Landbouw, Veeteelt en Visserij</a></li>'
+                '<li><a href="https://gov.sr/ministeries/ministerie-van-natuurlijke-hulpbronnen/" class="elementor-sub-item">Ministerie van Natuurlijke Hulpbronnen</a></li></ul></nav>'
+                '<div data-elementor-type="single-post" class="elementor post-161900 vacature type-vacature status-publish category-natuurlijke-hulpbronnen">'
+                '<p>Ministerie van Natuurlijke Hulpbronnen</p><h1 class="elementor-heading-title elementor-size-default">Energy Awareness Consultant</h1>'
+                '<div class="elementor-widget-theme-post-content"><div class="elementor-widget-container"></div></div></div></body></html>')
+        mod.request = lambda url: (200, page, {})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://gov.sr/vacature/energy-consultant/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["employer_slug"], d["detail_is_bare"]),
+                         ("161900", "Energy Awareness Consultant", "Ministerie van Natuurlijke Hulpbronnen", "natuurlijke-hulpbronnen", True))
+        mod.request = lambda url: (200, "<html><body><h1 class='x'>Pagina niet gevonden</h1></body></html>", {})
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_ad(argparse.Namespace(url="https://gov.sr/vacature/nope/"))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("not a vacature page", e2.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://gov.sr/vacatures/2/"))
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_the_pace_is_the_hosts_sixty_seconds(self):
+        """The adapter's own spacing is 3 s; the host writes 60 — the longer wins, and it is not this test's to shorten."""
+        mod = self._mod()
+        self.assertEqual(mod._PACE.own, 3.0)
+        # the rules are cut from the network in this suite: the declared delay resolves to what `_robots` cached or nothing —
+        # the assertion here is on the adapter's side of the contract: it hands the host to `Pace` and never sleeps on its own
+        with open(os.path.join(SCRIPTS, "govsr.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn('Pace(HOST, own=3.0)', src)
+        self.assertNotIn("time.sleep", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
