@@ -7,7 +7,7 @@
 <!-- countries: TR -->
 <!-- content: measured · rules read twice and certain (66 B, `Allow: /`, one Sitemap line, no agent named; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 on the root and the sitemaps: `/sitemap.xml` names 30 files, `jobdetailsitemap1.xml` (9 790 616 B, 50 000 `<loc>`) and `jobdetailsitemap2.xml` (7 432 763 B, 37 504) hold **87 504** distinct keys `/is-ilani/<slug>-0ioj<32 hex>`, a `lastmod` each, eight slugs with a literal tab; the root states «87.394 İş İlanı» — 110 more emitted than stated, two witnesses never merged; **every request under `/is-ilani/` and `/is-ilanlari` stalled without a byte** (25 s, 120 s, HEAD or GET, declared identity or curl's own name, 17:41–17:47 UTC) while the root answered in 0.4 s — the page is a browser question, `ad --url` reports and never pretends to read · 2026-09-13 17:49 UTC -->
 <!-- witness: the root page's own «87.394 İş İlanı» (2026-09-13 17:47 UTC), beside the 87 504 keys of the two job-detail sitemaps — «87 504 emitted, site states 87 394 — 110 more emitted than the site states», printed by `isinolsun.py list` and never merged; the advertisement page has never been served to this client, so no reader is written -->
-<!-- route: none · for the advertisement PAGE only: every request under /is-ilani/ stalls without a byte for a plain client (2026-09-13 17:41–17:47 UTC), nothing refused in writing — the enumeration by sitemap is shipped, the page is a browser measurement for a session with a tab; not a verdict -->
+<!-- route: none · for the advertisement PAGE only: every request under /is-ilani/ stalls without a byte — for the declared client (2026-09-13 17:41–17:47 UTC, 25 s then 120 s) AND for a real browser (a tab on the root, then same-origin `fetch()` of two advertisement addresses, one of them a link the root itself offers: no byte in 25 s and in 40 s, 18:05–18:06 UTC); nothing refused in writing, no challenge — the enumeration by sitemap is shipped, the page is a dated fact on two clients, not a verdict · 2026-09-13 -->
 
 **Shipped 2026-09-13 under #382 — Turkey's first national adapter, half of
 one by construction: the enumeration is served, the page is not.** Every
@@ -84,6 +84,22 @@ and nothing emitted, a non-advertisement URL refused). Six mutations under
 `python3 -B` on a detached copy, six reds: the dedup removed, the thousands
 dot kept, the key taken from the slug, the slug narrowed so the tab is
 lost, the stall branch dropped, the served report's count zeroed.
+
+## 2026-09-13 18:05 UTC — the advertisement page from a browser tab: the same stall (#382)
+
+```
+tab: https://isinolsun.com/is-ilani/tatli-ustasi-…-0ioj898A…     navigate — the tab never left chrome://newtab (no document arrived)
+tab: https://isinolsun.com/                                      200 «Evinin Yakınındaki O İşi Hızlıca Bul | İşin Olsun», 202 380 characters — served, no challenge; 9 /is-ilani/ links on the page
+tab: fetch('/is-ilani/tatli-ustasi-…-0ioj898A…')                 AbortError at 25 s — no byte
+tab: fetch('/is-ilani/site-yoneticisi-…-0iojB641…')  (the root's own first link)   AbortError at 40 s — no byte
+```
+
+**The stall is not a client filter**: a real browser, on the site's own
+link, with the site's own cookies, gets no byte either. Not a challenge
+(borne 2 does not enter), not a refusal in writing, not a verdict — a
+dated fact on two clients, one hour apart, from one network. The
+`ad` reader stays as it is (one attempt, a report); what would change it
+is a byte, from anywhere, on any day.
 
 ## Provenance
 
