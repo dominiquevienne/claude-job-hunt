@@ -1242,6 +1242,33 @@ for themselves. **And it is not the owner's to take any more**: the three
 before it were, and stay in the record as decisions; the fourth and every
 one after are the user's.
 
+## 5i — HeadHunter: the API asks who is calling, and the answer is the user's own address
+
+**Run this whenever `hh` is in `boards:`.** `api.hh.ru` — the API behind
+hh.ru, hh.kz, hh.uz, rabota.by and zarplata.ru — requires a contact
+address on every request (`HH-User-Agent: MyApp/1.0 (address)`, its
+specification's words) and answers 403 without one. **The plugin never
+fabricates an address.** The one it sends is the user's own, written by the
+user under `boards.hh.contact`; the owner decided the form on 2026-09-13
+(#337).
+
+**What the flow says, and nothing it does not:** that the address the user
+writes is **sent to `api.hh.ru` on every request, in that header, and to
+nothing else** — it is read by `_override.py`, the one function that opens
+the config, and appears in no output, card, test, commit or message of
+this repository; that without it the board is skipped and the skip says
+what to write; and that on 2026-09-13 the API answered 403 to the owner's
+own address on every area (`shared/boards/hh.md`) — so a key may still
+come back refused, and the adapter stops on the first 403. No risk
+assessment is offered: the decision is the user's.
+
+```yaml
+boards:
+  hh:
+    enabled: true
+    contact: "claude-job-hunt (you@example.org)"   # your address — sent to api.hh.ru, nowhere else
+```
+
 ## 6 — Thresholds and document preferences
 
 - **Apply-from threshold** (`AskUserQuestion`: 70 selective / 55 broad / 40
