@@ -17168,6 +17168,120 @@ class APagedListingWithTwoWitnessesThatNeverCorrectEachOther(unittest.TestCase):
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class ThePostIsTheUnitAndItsPositionsAreAFieldNeverAMultiplier(unittest.TestCase):
+    """**`hotnigerianjobs.py`, 2026-09-13 (#233 lot 7 → adapter).** The
+    weekly sitemap enumerates POSTS — 4 190 in `sitemap-37-2026.xml` on
+    2026-09-13 — and a post is a single (one JSON-LD `JobPosting`,
+    `totalJobOpenings`), a digest («(4 Positions)», a numbered list whose
+    links are singles of their own in the same file) or a weekly bag. The
+    adapter emits one row per `<loc>`, reads «-N-positions» from the slug
+    into `positions_in_slug`, and prints the post count and the declared
+    positions apart, never summed; the newest weekly file is chosen by
+    (year, week), not by the index's order. `post --url` on a digest emits
+    ONE row whose `positions` is the list read from the markup, compared to
+    the title's «(N Positions)»; on a single, the `JobPosting` with its
+    entity-encoded description unescaped once. Mutated (`-B`, detached
+    copy): the newest file chosen by the index's order → the newest case
+    reddens; the dedup removed → 4 ≠ 3; the positions summed into the post
+    count → the apart case reddens; the digest turned into N rows → the one
+    row case reddens; the slug's number ignored → `positions_in_slug` None,
+    reddens; the description's second unescape dropped → the single case
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hotnigerianjobs", os.path.join(SCRIPTS, "hotnigerianjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ('<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+             '<sitemap><loc>https://www.hotnigerianjobs.com/sitemap-12-2026.xml</loc><lastmod>2026-03-22T23:55:01+01:00</lastmod></sitemap>'
+             '<sitemap><loc>https://www.hotnigerianjobs.com/sitemap-37-2026.xml</loc><lastmod>2026-09-11T20:50:01+01:00</lastmod></sitemap>'
+             '<sitemap><loc>https://www.hotnigerianjobs.com/sitemap-52-2025.xml</loc><lastmod>2025-12-28T23:58:49+01:00</lastmod></sitemap></sitemapindex>')
+
+    @staticmethod
+    def _weekly(entries):
+        return ('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>https://www.hotnigerianjobs.com/hotjobs/{i}/{slug}.html</loc><lastmod>{lm}</lastmod></url>" for i, slug, lm in entries) + "</urlset>")
+
+    def _list(self, mod, pages, **kw):
+        import contextlib
+        def get(url):
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(file=kw.get("file"), limit=kw.get("limit")))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_newest_weekly_file_is_chosen_by_its_name_and_the_positions_are_printed_apart_from_the_posts(self):
+        mod = self._mod()
+        weekly = self._weekly([(957082, "bic-nigeria-job-recruitment-4-positions", "2026-09-11T13:44:53+01:00"),
+                               (957293, "hnj-exclusive-job-goody-bag-september-week-two-upd", "2026-09-11T13:05:49+01:00"),
+                               (953280, "mobile-developer-at-ardova-plc", "2026-09-07T08:29:48+01:00"),
+                               (957082, "bic-nigeria-job-recruitment-4-positions", "2026-09-11T13:44:53+01:00")])
+        pages = {mod.INDEX: self.INDEX, "https://www.hotnigerianjobs.com/sitemap-37-2026.xml": weekly}
+        rows, err = self._list(mod, pages)
+        self.assertEqual([r["id"] for r in rows], ["957082", "957293", "953280"])
+        self.assertEqual([(r["kind"], r["positions_in_slug"]) for r in rows], [("digest", 4), ("bag", None), ("single", None)])
+        self.assertEqual(rows[0]["ledger_id"], "hotnigerianjobs:957082")
+        self.assertIn("sitemap-37-2026.xml (3 weekly file(s) in the index): 4 <loc>, 4 <url>; **3 distinct post(s)** over 2 day(s), 2026-09-07 … 2026-09-11.", err)
+        self.assertIn("1 digest(s) declare 4 position(s) in their slugs, 1 weekly bag(s) — a digest's positions are posts of their own in the same file, so the two numbers are printed apart and never summed", err)
+        self.assertIn("the site states no total anywhere", err)
+
+    def test_a_digest_is_one_row_with_its_positions_read_and_compared_to_its_title(self):
+        import contextlib
+        mod = self._mod()
+        body = ('<html><head><title>BIC Nigeria Job Recruitment (4 Positions) | HotNigerianJobs</title></head><body>'
+                '<p>Posted on Fri 11th Sep, 2026 - <a href="/">hotnigerianjobs.com</a></p><p>We are recruiting to fill the following positions below:</p>'
+                '<p><strong>1.)&nbsp;Associate Manager, Shavers &amp; Lighters</strong></p><p>Location: Lagos</p><p><a href="https://www.hotnigerianjobs.com/hotjobs/956946/associate-manager.html">Click Here To View Details</a></p>'
+                '<p><strong>2.)&nbsp;Key Account Executive</strong></p><p>Location:&nbsp; Rivers</p><p><a href="https://www.hotnigerianjobs.com/hotjobs/956941/key-account-executive.html">Click Here To View Details</a></p>'
+                '<p><strong>3.)&nbsp;Area Sales Representative</strong></p><p>Location: Abia</p><p><a href="https://www.hotnigerianjobs.com/hotjobs/956940/bic-nigeria.html">Click Here To View Details</a></p>'
+                '<p><strong>Application Closing Date</strong></p><p>Not Specified.</p></body></html>')
+        mod.get = lambda url: (200, body)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_post(argparse.Namespace(url="https://www.hotnigerianjobs.com/hotjobs/957082/bic-nigeria-job-recruitment-4-positions.html"))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual(len(rows), 1)
+        d = rows[0]
+        self.assertEqual((d["kind"], d["id"], d["posted"], d["positions_stated"], d["positions_read"]), ("digest", "957082", "2026-09-11", 4, 3))
+        self.assertEqual([(p["n"], p["title"], p["location"]) for p in d["positions"]],
+                         [(1, "Associate Manager, Shavers & Lighters", "Lagos"), (2, "Key Account Executive", "Rivers"), (3, "Area Sales Representative", "Abia")])
+        self.assertEqual(d["positions"][1]["url"], "https://www.hotnigerianjobs.com/hotjobs/956941/key-account-executive.html")
+        self.assertIn("3 position(s) read, the title states 4 — 1 short; one row either way.", err.getvalue())
+
+    def test_a_single_is_its_job_posting_with_the_description_unescaped_once_and_the_openings_as_positions(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "https://schema.org/", "@type": "JobPosting", "title": "Mobile Developer", "datePosted": "2026-09-07T08:29:48+01:00",
+              "validThrough": "2026-09-09T23:59:20+01:00", "employmentType": "FULL_TIME", "hiringOrganization": {"@type": "Organization", "name": "Ardova Plc"},
+              "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressRegion": "Lagos", "addressCountry": "NG"}},
+              "totalJobOpenings": "1", "occupationalCategory": " Computer / ICT ", "industry": " Oil & Gas ",
+              "description": "&lt;p&gt;&lt;strong&gt;Job Description&lt;/strong&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Develops apps&lt;/li&gt;&lt;/ul&gt;"}
+        body = f'<html><head><script type="application/ld+json">{json.dumps(ld)}</script></head><body>Posted on Mon 07th Sep, 2026</body></html>'
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_post(argparse.Namespace(url="https://www.hotnigerianjobs.com/hotjobs/953280/mobile-developer-at-ardova-plc.html"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["kind"], d["id"], d["title"], d["employer"], d["region"], d["country"], d["positions"]), ("single", "953280", "Mobile Developer", "Ardova Plc", "Lagos", "NG", 1))
+        self.assertEqual(d["description"], "Job Description Develops apps")
+        self.assertEqual((d["category"], d["industry"]), ("Computer / ICT", "Oil & Gas"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_post(argparse.Namespace(url="https://www.hotnigerianjobs.com/role/12/accounting-jobs"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+    def test_a_file_that_disagrees_with_itself_prints_no_count(self):
+        mod = self._mod()
+        broken = self._weekly([(1, "a-at-b", "2026-09-07T00:00:00+01:00")]).replace("</url>", "</url><url><loc><![CDATA[https://www.hotnigerianjobs.com/hotjobs/2/c-at-d.html]]></loc></url><url></url>")
+        with self.assertRaises(SystemExit) as cm:
+            self._list(mod, {"https://www.hotnigerianjobs.com/sitemap-37-2026.xml": broken}, file="sitemap-37-2026.xml")
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so

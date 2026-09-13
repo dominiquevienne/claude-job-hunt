@@ -1,58 +1,85 @@
-# Board measurement — HotNigerianJobs (Nigeria): reopened by the 2026-09-07 doctrine, the transport is OPEN, and the weekly sitemap holds 4 190 posts — each a recruitment digest of «N positions»
+# Board adapter — HotNigerianJobs (Nigeria): 4 190 posts in the newest weekly sitemap, the post as the unit, and a digest's «N positions» a field that is never a multiplier — its positions are posts of their own in the same file
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.hotnigerianjobs.com, hotnigerianjobs.com -->
-<!-- script: none -->
+<!-- script: hotnigerianjobs.py -->
 <!-- countries: NG -->
-<!-- content: measured · rules read twice and certain (2 302 B, Cloudflare's managed block naming `ClaudeBot`, `*` open bar `/kgb/` and `/images/`; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 at the root (250 096 B, twice) and on the sitemaps: an index of 21 weekly files, `sitemap-37-2026.xml` alone 4 190 `/hotjobs/<id>/` URLs, 4 190 distinct ids, 5 distinct `<lastmod>`; the root lists 50 posts and `/jobs/7days/` 50; a post is a digest — «BIC Nigeria Job Recruitment (4 Positions)», «(124 Positions)» — so 4 190 posts is not 4 190 advertisements; `/jobs` answers the site's own 404 · 2026-09-12 15:30 UTC -->
-<!-- witness: none the site states — no total on any page read; the weekly sitemap is the only enumeration, and its unit is the post, not the position; no adapter yet -->
+<!-- content: measured · rules read twice and certain (2 302 B, Cloudflare's managed block naming `ClaudeBot`, `*` open bar `/kgb/` and `/images/`; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200: `/sitemap.xml` indexes 21 weekly files, the newest `sitemap-37-2026.xml` holds 4 190 posts `/hotjobs/<id>/<slug>.html` over 5 days (2026-09-07 … 09-11, ids 953270 … 957460 contiguous), 228 of them digests declaring 1 208 positions in their slugs and 1 weekly bag — a digest's positions are single posts in the same file (BIC's four are 956940 … 956946), so 4 190 double-counts and the adapter prints posts and positions apart, never summed; a single carries a `JobPosting` with `totalJobOpenings`, a digest a numbered list read as ONE row; no total stated anywhere on the site · 2026-09-13 16:05 UTC -->
+<!-- witness: none the site states — the weekly sitemap is the only enumeration, checked against itself (`<loc>` = `<url>`, 4 190 = 4 190) and never against a figure the site does not give; a digest's title «(N Positions)» is compared to the N read from its list, one row either way -->
 
-**Measured 2026-09-12 at 15:27:55Z UTC for #233, lot 7 — a measurement of
-the transport, not a decision about the host.** Every fetch under the
-declared identity, the guard on the exact path first, `bin/fetch-body.py`.
+**Shipped 2026-09-13 — the card of 2026-09-12 (a transport measurement for
+#233, lot 7, «measured, no adapter yet») is replaced by this one.** Every
+fetch under the declared identity, the guard on the exact path first.
 
-## The rules — reopened by the doctrine of 2026-09-07, and 4 190 posts behind them
+```
+hotnigerianjobs.py list                              # every post of the newest weekly file — 4 190 on 2026-09-13, one sitemap read, ~1 s
+hotnigerianjobs.py list --file sitemap-12-2026.xml   # an older week, by name
+hotnigerianjobs.py post --url https://www.hotnigerianjobs.com/hotjobs/<id>/<slug>.html
+```
+
+## The rules — 4 190 posts behind a managed block that names ClaudeBot and opens to Claude-User
 
 ```
 robots.txt      read twice, certain: True, 2302 B, md5 f98a071dcf74 both times — the managed block (`ClaudeBot` named and refused, `*` open) plus `Disallow: /kgb/`, `/images/`; `Sitemap: http://www.hotnigerianjobs.com/sitemap.xml`
-identity("/")   http, claude-user
-verdict()       sweep True, sweep_token claude-user
-allowed()       True on `/`, `/jobs`, `/jobs/7days/`, `/sitemap.xml`, `/sitemap-37-2026.xml`
-crawl_delay     none
+identity("/")   http, claude-user      <- the group naming ClaudeBot does not bind Claude-User (owner, 2026-09-07)
+verdict()       sweep True, sweep_token claude-user   <- since #230 (2026-09-11)
+allowed()       True on `/`, `/sitemap.xml`, `/sitemap-37-2026.xml`, `/hotjobs/957082/…`
+crawl_delay     none  -> Pace(HOST, own=2.0), two seconds between requests, ours — a post page is 180–195 kB
 ```
 
-## The transport — 200
+## The sitemap — posts, and what a post is
 
-```
-GET https://www.hotnigerianjobs.com/                     200, 250 096 B   (15:27:55Z, 15:27:56Z — same size, a per-response token)  «Search for jobs & find your dream job | HotNigerianJobs»
-GET https://www.hotnigerianjobs.com/jobs                 404, 18 260 B    (15:28:53Z, twice)  the site's own «404 - Page not found» — a guessed path
-GET https://www.hotnigerianjobs.com/sitemap.xml          200, 3 005 B     (15:29:48Z)  index of 21 weekly files, `sitemap-37-2026.xml` first (lastmod 2026-09-11)
-GET https://www.hotnigerianjobs.com/sitemap-37-2026.xml  200, 730 202 B   (15:30:03Z, byte-identical twice)  4 190 <loc>
-GET https://www.hotnigerianjobs.com/jobs/7days/          200, 179 233 B   (15:30:04Z)  50 `/hotjobs/<id>/` links
-```
-
-## What the sitemap says — posts, not positions
-
-| question | answer |
+| question | answer (2026-09-13, 16:05 UTC) |
 | :-- | --: |
-| files in the index | 21, one a week (`sitemap-<week>-<year>.xml`), 37/2026 first |
-| `<loc>` in `sitemap-37-2026.xml` | **4 190**, all `/hotjobs/<id>/<slug>.html`, 4 190 distinct ids, 5 distinct `<lastmod>` |
-| posts on the root and on `/jobs/7days/` | 50 each; 1 006 links on the root, 318 of them `/role/<n>/`, 162 `/discipline/`, 63 `/field/`, 39 `/location/` — facets |
-| the unit | **a post** — «BIC Nigeria Job Recruitment (4 Positions)», «(124 Positions)», «HNJ Exclusive Job Goody Bag — September Week Two»: a digest that bundles positions, and a weekly bag |
-| a stated total | none found on any page read |
+| the index | 21 weekly files `sitemap-<week>-<year>.xml`; **37-2026 first** (lastmod 2026-09-11), then 12-2026 back to 45-2025 — weeks 13–36 of 2026 absent; the adapter picks the newest by (year, week), not by the index's order |
+| `sitemap-37-2026.xml` | **4 190** `<loc>`, 4 190 `<url>`, 4 190 distinct ids, 953270 … 957460 (a contiguous range of exactly 4 190), 5 `lastmod` days: 07 → 819, 08 → 969, 09 → 965, 10 → 709, 11 → 728 |
+| a SINGLE | «Mobile Developer at Ardova Plc» (953280, 194 813 B): one JSON-LD `JobPosting` — `title`, `hiringOrganization.name`, `datePosted`, `validThrough` (2026-09-09, two days after posting), `employmentType`, `addressRegion` «Lagos», `addressCountry` NG, **`totalJobOpenings` «1»**, `occupationalCategory`, `industry`, a `description` entity-encoded a second time inside the JSON |
+| a DIGEST | «BIC Nigeria Job Recruitment (4 Positions)» (957082, 180 948 B): no JSON-LD; «Posted on Fri 11th Sep, 2026»; a numbered list «1.) Title / Location: Lagos / Click Here To View Details» — **and each link is a single post of its own, in the same weekly file** (956940, 956941, 956943, 956946) |
+| a BAG | «HNJ Exclusive Job Goody Bag — September Week Two» (957293): a weekly digest of digests, one per file |
+| digests by slug | **228** posts whose slug ends «-N-positions», declaring **1 208** positions; the slug is cut at ~50 characters («…-job-recruitment» 274 times), so a digest whose number fell off reads as a single until its page is opened |
+| a stated total | **none** — no page read states one; the sitemap is checked against itself |
 
-**4 190 posts a week is not 4 190 advertisements** — the position count is
-inside each post's title and body, and a digest of 124 positions is one
-`<loc>`. *The adapter's first question is the post page: what a «position»
-looks like there, and whether one post can be emitted as many rows.*
+**The post is the unit, and the positions are a field.** *4 190 posts is
+not 4 190 advertisements — a digest of 124 positions is one `<loc>` — and
+it is not 4 190 − 228 either, because a digest's positions are posts too:
+the two numbers describe two different objects and the adapter prints them
+apart: «4 190 distinct post(s)» and «228 digest(s) declare 1 208 position(s)
+in their slugs … printed apart and never summed».* `post --url` on a digest
+emits **one row** whose `positions` is the list `{n, title, location, url}`
+and whose `positions_stated` is the title's number, «4 read, the title
+states 4 — equal; one row» on BIC; it never walks the list's links and never
+turns one post into N rows.
 
-## What this card is, and is not
+## What the adapter does, and refuses to do
 
-- **A measurement, not an adapter** — `script: none`, a measurement DUE.
-  **Candidate adapter**, with the unit named: the weekly sitemaps enumerate
-  posts, the post page is the object. *Nigeria is at zero adapters.*
-- **Not a verdict that the host is closed** — nothing refuses us; the 404 on
-  `/jobs` is the site's own page, served.
-- **No configuration.** A user with a URL from this host can hand it to
-  `cover-letter`.
+- **Reads the index, then ONE weekly file** — 4 190 rows from one 730 kB
+  request; `--file` names another week. `_sitemap.count` checks `<loc>`
+  against `<url>` and a file that disagrees with itself prints no count
+  (exit 6).
+- **`post --url`**: a single → its `JobPosting`, `totalJobOpenings` →
+  `positions`, the description unescaped once before the tags are stripped;
+  a digest → one row, the list read by its «`<strong>N.)`» markers.
+- **Never emits a contact.** No recruiter address, no phone.
+- **Not a verdict that anything is closed** — nothing refuses us.
+
+## Tests
+
+`ThePostIsTheUnitAndItsPositionsAreAFieldNeverAMultiplier` in
+`tests/test_core.py` — four cases (the newest file by name, the dedup, the
+two numbers apart; a digest as one row with 3 read against 4 stated; a
+single with its description unescaped once and a non-post URL refused; a
+file that disagrees with itself). Six mutations under `python3 -B` on a
+detached copy, six reds, each on the case that names it: the newest file
+by the index's order, the dedup removed, the positions summed into the post
+count, the digest emitted as N rows, the slug's number ignored, the second
+unescape dropped.
+
+## Provenance
+
+- `hnj/index.xml` (3 005 B, 16:05:11Z), `hnj/s37.xml` (730 202 B),
+  `hnj/digest.html` (180 948 B), `hnj/single.html` (194 813 B) —
+  2026-09-13, `bin/fetch-body.py`, provenance beside each, scratchpad of
+  `claude-job-hunt-ab`.
+- `hotnigerianjobs.py list --limit 2` at 16:1x UTC: the three
+  `[hotnigerianjobs]` lines quoted above verbatim.
