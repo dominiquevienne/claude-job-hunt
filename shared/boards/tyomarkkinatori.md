@@ -7,7 +7,7 @@
 <!-- countries: FI -->
 <!-- content: measured · rules read twice and certain (639 B, `*` refused 15 paths — **`/api/` and `/*/api/`**, `/.rest/errorlog`, the signed-in areas in three languages —, no agent named, no Sitemap line; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 on the pages: `/henkiloasiakkaat/avoimet-tyopaikat` (163 056 B) is a shell that loads the widget `TmtTyopaikkaHakuV2` (1 500 919 B of JavaScript, served), whose axios client has `baseURL: "/api"` and POSTs the search to `/api/jobpostingfulltext/search/v2/search` and GETs a posting from `/api/jobposting-new/v1/public/jobpostings/<id>` — every advertisement, listed or read, passes through the prefix the rules refuse; `/sitemap.xml` is the site's own 404; 0 advertisement links in the HTML; the open-data portal `avoindata.fi` answers a static 403 to this client · 2026-09-13 17:58 UTC -->
 <!-- witness: none reachable by a permitted path — the count lives in the search response (`totalElements`) under `/api/`; nothing was requested there -->
-<!-- route: none · every data route of the board — the search and the posting — is under `/api/`, refused in writing to `*` (`Disallow: /api/`, `/*/api/`, 2026-09-13); a refusal read in the rules is honoured by every route, browser included (borne 1); the only exit is an owner's override key, as for SmartRecruiters and HiringCafe — a decision, not a measurement · 2026-09-13 -->
+<!-- route: none · every data route of the board — the search and the posting — is under `/api/`, refused in writing to `*` (`Disallow: /api/`, `/*/api/`, 2026-09-13); a refusal read in the rules is honoured by every route, browser included (borne 1); the one exit is the USER's own key `boards.tyomarkkinatori.override_robots: true`, set in their own name and conscience — the owner's decision of 2026-09-13 (#403) generalised the key to every board refused in writing; the adapter is #371's, and without the key it is skipped and says so · 2026-09-13 -->
 
 **Measured 2026-09-13 17:56–17:58 UTC for #371 — a measurement of the
 rules and of where the data lives, not a decision about the host.** Every
@@ -48,12 +48,18 @@ Sitemap:        none declared; `/sitemap.xml` answers the site's own 404 («Sivu
 everyone, and both the list and the posting sit behind it. A browser tab
 renders the same widget calling the same `/api/`; borne 1 of §2 quater
 says a written refusal is not walked around by a browser either.* **What
-would open this board is an owner's override key — the form of
+would open this board is the user's own override key — the form of
 `boards.smartrecruiters.override_robots` and `boards.hiringcafe.override_robots`,
-activated by the user and costing the user's own address — and that is a
-decision the owner takes on #371, not a measurement this card can make.**
-The card does not say the board is closed: it says where the door is and
-who holds the key.
+set by the user and costing the user's own address.** *Until 2026-09-13 that
+key was the owner's to grant, board by board; on that day the owner decided
+the mechanism once and for all — «&nbsp;oui, l'utilisateur doit pouvoir
+émettre une dérogation en son âme et conscience&nbsp;» (#403) — and the
+guard reads `boards.<board>.override_robots` for every adapter.* The
+adapter is #371's: `POST /api/jobpostingfulltext/search/v2/search` for the
+list, `GET /api/jobposting-new/v1/public/jobpostings/<id>` for a posting,
+`totalElements` as the witness, no contact — skipped without the key, and
+saying so; with it, the banner on every run. The card does not say the
+board is closed: it says where the door is and that the user holds the key.
 
 ## What this card is, and is not
 

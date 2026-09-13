@@ -19485,5 +19485,100 @@ class ASiteThatStatesItsCountWhenItRefusesToListAndHidesTheEmployerBehindALogin(
         self.assertNotIn("Teve út", json.dumps(d))
 
 
+class TheUsersOwnOverrideKeyIsReadForEveryBoardAndSaidOutLoud(unittest.TestCase):
+    """**#403, owner's decision of 2026-09-13: «oui, l'utilisateur doit
+    pouvoir émettre une dérogation en son âme et conscience».** The
+    mechanism is general: `_robots.allowed()` flips a written «no» — and
+    only a «no» — when the user's own `boards.<board>.override_robots: true`
+    is set for the running adapter (`board_key()` from `sys.argv[0]`, or an
+    explicit `board=`); it names the rule it crossed, and it prints the
+    banner once per host and run, what is crossed before what it costs.
+    Without the key the refusal stands and the result names the key as
+    available. A test runner has no key. Mutated (`-B`, detached copy): the
+    `is not False` test loosened to `if out["allowed"]` → the unreadable
+    case reddens (a None is flipped); `on` ignored → the no-key case reddens
+    (flipped without consent); the banner's per-host memory dropped → the
+    once case reddens; `board_key()` returning the stem under a test runner →
+    the runner case reddens."""
+
+    def _refusing(self, host):
+        return {"host": host, "requested_host": host, "sweep": False, "state": "read", "allow": [], "disallow": ["/api/"],
+                "group": "*", "certain": True, "reason": "refused in writing"}
+
+    def _with(self, verdict, enabled, argv0="tyomarkkinatori.py"):
+        import contextlib
+        real_v, real_e, real_argv = _robots.verdict, None, sys.argv[:]
+        import _override
+        real_e = _override.enabled
+        _robots.verdict = verdict
+        _override.enabled = enabled
+        _robots._BANNERED.clear()
+        sys.argv = [argv0]
+
+        def restore():
+            _robots.verdict = real_v
+            _override.enabled = real_e
+            sys.argv[:] = real_argv
+            _robots._BANNERED.clear()
+        return restore
+
+    def test_without_the_key_the_refusal_stands_and_names_the_key(self):
+        import contextlib
+        restore = self._with(lambda h, agents=None: self._refusing(h), lambda board: (False, f"no boards.{board}.override_robots: true in /w/config.yml"))
+        try:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                a = _robots.allowed("tyomarkkinatori.fi", "/api/x")
+            self.assertIs(a["allowed"], False)
+            self.assertIn("boards.tyomarkkinatori.override_robots — absent", a["override_available"])
+            self.assertEqual(err.getvalue(), "")
+        finally:
+            restore()
+
+    def test_with_the_key_the_refusal_is_crossed_named_and_said_once_per_host(self):
+        import contextlib
+        restore = self._with(lambda h, agents=None: self._refusing(h), lambda board: (True, f"boards.{board}.override_robots: true in /w/config.yml"))
+        try:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                a = _robots.allowed("tyomarkkinatori.fi", "/api/x")
+                b = _robots.allowed("tyomarkkinatori.fi", "/api/y")
+                c = _robots.allowed("other.example", "/api/z")
+            self.assertEqual((a["allowed"], a["kind"], a["overrode"]), (True, "override", "/"))
+            self.assertTrue(b["allowed"])
+            banner = err.getvalue()
+            self.assertEqual(banner.count("ROBOTS REFUSAL CROSSED"), 2, banner)
+            self.assertLess(banner.index("disallows"), banner.index("What it costs you"), "what is crossed comes before what it costs (#192)")
+            self.assertIn("boards.tyomarkkinatori.override_robots: true in /w/config.yml", banner)
+            self.assertIn("other.example", banner)
+        finally:
+            restore()
+
+    def test_an_unreadable_file_is_not_a_refusal_to_cross_and_a_runner_has_no_key(self):
+        import contextlib
+        unknown = {"host": "h.example", "requested_host": "h.example", "sweep": None, "state": "unreachable", "certain": False, "reason": "could not be read"}
+        restore = self._with(lambda h, agents=None: unknown, lambda board: (True, "boards.x.override_robots: true in /w/config.yml"))
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                a = _robots.allowed("h.example", "/x")
+            self.assertIsNone(a["allowed"])
+            self.assertNotEqual(a.get("kind"), "override")
+        finally:
+            restore()
+        real = sys.argv[:]
+        try:
+            sys.argv = ["hiringcafe.py"]
+            self.assertEqual(_robots.board_key(), "hiringcafe")
+            sys.argv = ["/usr/lib/python3/unittest/__main__.py"]
+            self.assertIsNone(_robots.board_key())
+            sys.argv = ["python3", "-m", "unittest"]
+            self.assertIsNone(_robots.board_key())
+            os.environ["JOB_HUNT_BOARD"] = "explicit"
+            self.assertEqual(_robots.board_key(), "explicit")
+        finally:
+            sys.argv[:] = real
+            os.environ.pop("JOB_HUNT_BOARD", None)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
