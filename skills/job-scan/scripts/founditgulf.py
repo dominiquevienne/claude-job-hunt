@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """foundit Gulf (`www.founditgulf.com`, formerly Monster Gulf) — the Gulf + Egypt board, read through its active-jobs sitemaps and the JobPosting every advertisement carries.
 
-  founditgulf.py sitemap [--limit N] [--no-site-total]
-  founditgulf.py ad --url <advertisement URL>
+  founditgulf.py sitemap [--host www.founditgulf.com|www.foundit.com.ph] [--limit N] [--no-site-total]
+  founditgulf.py ad --url <advertisement URL>            # the host is read from the URL
+
+TWO HOSTS, ONE STACK — 2026-09-13 (#233, lot 8): `www.foundit.com.ph`, the
+Philippine franchise, publishes the same hand-written group closing `/jobs/`
+and `/search/` and the same `/xmlsitemap/` index (37 children, two
+`active-jobs` files, a `todays` file); the adapter takes it as a second host,
+never reads those two paths on it either, and keys its rows `foundit-ph:`.
 
 THE ACTIVE-JOBS SITEMAPS ARE THE ROUTE — AND `/jobs/`, `/search/` ARE NEVER TOUCHED
 
@@ -58,14 +64,24 @@ from _sitemap import locs as sitemap_locs, maybe_gunzip
 from _ua import UA
 from _zero import empty_first_page
 
-HOST = "www.founditgulf.com"
-BASE = "https://" + HOST
-INDEX = BASE + "/xmlsitemap/sitemap-index.xml"
-TODAY = BASE + "/xmlsitemap/todays-jobs-sitemap.xml"
+# **Two hosts, one stack, one hand-written refusal each** (#233, lot 8: the
+# Philippine franchise publishes the same six-agent group closing /jobs/ and
+# /search/, and the same /xmlsitemap/ index). The source key names the host.
+HOSTS = {"www.founditgulf.com": "founditgulf", "www.foundit.com.ph": "foundit-ph"}
+HOST = "www.founditgulf.com"                 # the default; `--host` chooses, `ad` reads it from the URL
 ACTIVE_RE = re.compile(r"/xmlsitemap/active-jobs-sitemap\d+\.xml(?:\.gz)?$")
-AD_RE = re.compile(r"^https://www\.founditgulf\.com/job/[^/?#]*-(\d+)/?$")
+AD_RE = re.compile(r"^https://(www\.founditgulf\.com|www\.foundit\.com\.ph)/job/[^/?#]*-(\d+)/?$")
 DMY_RE = re.compile(r"^(\d{2})-(\d{2})-(\d{4})$")
-SLOGAN_RE = re.compile(r"Over\s+([\d,]+)\+?\s+jobs", re.I)
+# «Over 800,000+ jobs to explore» on the Gulf root, «100,000+ Jobs in Philippines» on the Philippine one — slogans both
+SLOGAN_RE = re.compile(r"(?:Over\s+)?([\d,]+)\+\s+jobs", re.I)
+
+
+def urls(host):
+    base = "https://" + host
+    return base, base + "/xmlsitemap/sitemap-index.xml", base + "/xmlsitemap/todays-jobs-sitemap.xml"
+
+
+BASE, INDEX, TODAY = urls(HOST)
 NEVER = ("/jobs/", "/search/")   # the hand-written refusal's paths — not read by this adapter, under any token
 
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -84,7 +100,7 @@ def note(msg):
 def gate(url):
     parts = urllib.parse.urlsplit(url)
     path = full_path(parts)
-    if parts.netloc == HOST and any(path.startswith(p) for p in NEVER):
+    if parts.netloc in HOSTS and any(path.startswith(p) for p in NEVER):
         # **Not a rules verdict — a promise.** The rules permit these to
         # claude-user; the adapter declines them so that the hand-written
         # refusal is honoured in substance while the owner decides.
@@ -97,12 +113,13 @@ def gate(url):
     return a
 
 
-_PACE = Pace(HOST, own=2.0)   # no Crawl-delay declared; 2 s is ours
+_PACES = {}
 
 
 def get(url, binary=False):
     gate(url)
-    _PACE.wait()
+    host = urllib.parse.urlsplit(url).netloc
+    _PACES.setdefault(host, Pace(host, own=2.0)).wait()   # no Crawl-delay declared on either host; 2 s is ours
     req = urllib.request.Request(wire_url(url), headers={
         "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.5",
         "Accept-Language": "en"})
@@ -138,13 +155,18 @@ def ids_of(xml):
     for loc in sitemap_locs(xml):
         m = AD_RE.match(loc.strip())
         if m:
-            out.append((m.group(1), loc.strip()))
+            out.append((m.group(2), loc.strip()))
         else:
             unmatched += 1
     return out, unmatched
 
 
 def cmd_sitemap(a):
+    host = getattr(a, "host", None) or HOST
+    if host not in HOSTS:
+        die(f"{host}: not a foundit host this adapter knows — one of {', '.join(HOSTS)}")
+    src = HOSTS[host]
+    BASE, INDEX, TODAY = urls(host)
     code, index = get(INDEX)
     if code != 200:
         die(f"{INDEX}: HTTP {code}", EXIT_PARTIAL)
@@ -164,7 +186,7 @@ def cmd_sitemap(a):
             if ident in seen:
                 continue
             seen.add(ident)
-            rows.append({"source": "founditgulf", "ledger_id": f"founditgulf:{ident}", "id": ident, "url": loc})
+            rows.append({"source": src, "ledger_id": f"{src}:{ident}", "id": ident, "url": loc})
     if raw == 0:
         die(empty_first_page("founditgulf", "", "<loc>", where=active[0]), EXIT_PARTIAL)
     for r in rows[:a.limit] if a.limit else rows:
@@ -192,15 +214,16 @@ def cmd_sitemap(a):
     code, page = get(BASE + "/")
     m = SLOGAN_RE.search(page or "") if code == 200 else None
     if m:
-        note(f"the root says «Over {m.group(1)}+ jobs to explore» — a network slogan, not this board's count; "
+        note(f"the root says «{m.group(1)}+ jobs» — a slogan, not this board's count; "
              f"the sitemaps hold {th(len(rows))}.")
 
 
 def cmd_ad(a):
     m = AD_RE.match(a.url.strip())
     if not m:
-        die(f"{a.url}: not an advertisement address — expected {BASE}/job/<slug>-<id>")
-    ident = m.group(1)
+        die(f"{a.url}: not an advertisement address — expected https://<host>/job/<slug>-<id> on one of {', '.join(HOSTS)}")
+    host, ident = m.group(1), m.group(2)
+    src = HOSTS[host]
     code, body = get(a.url)
     if code == 404:
         die(f"{a.url}: HTTP 404", EXIT_GONE)
@@ -224,10 +247,10 @@ def cmd_ad(a):
     skills = d.get("skills")
     country = (addr.get("addressCountry") or "").strip() if isinstance(addr, dict) else ""
     print(json.dumps({
-        "source": "founditgulf",
-        # the ISO-2 the advertisement carries — AE, SA, QA, KW, BH, OM, EG on 2026-09-12 — never assumed from the board
+        "source": src,
+        # the ISO-2 the advertisement carries — AE, SA, QA, KW, BH, OM, EG on the Gulf host on 2026-09-12 — never assumed from the board
         "country": country or None,
-        "ledger_id": f"founditgulf:{ident}", "id": ident, "url": a.url,
+        "ledger_id": f"{src}:{ident}", "id": ident, "url": a.url,
         "title": text(d.get("title")),
         "employer": (org.get("name") if isinstance(org, dict) else None),
         "employment_type": d.get("employmentType") or None,
@@ -251,6 +274,7 @@ def main():
     p = argparse.ArgumentParser(description="foundit Gulf — the Gulf + Egypt board, through its active-jobs sitemaps and the JSON-LD its pages carry; /jobs/ and /search/ are never read.")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("sitemap", help="distinct advertisement ids — the index + its active files (4 on 2026-09-12), + today's file and the root for the second document")
+    s.add_argument("--host", default=HOST, help="www.founditgulf.com (default) or www.foundit.com.ph")
     s.add_argument("--limit", type=int)
     s.add_argument("--no-site-total", action="store_true")
     s.set_defaults(fn=cmd_sitemap)

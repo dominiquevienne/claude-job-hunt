@@ -1,46 +1,74 @@
-# Board measurement — foundit Philippines (formerly Monster): the same stack and the same hand-written `ClaudeBot: Disallow /jobs/ /search/` as foundit Gulf, the transport OPEN, the sitemap index served
+# Board adapter — foundit Philippines (formerly Monster): the second host of `founditgulf.py` — 42 504 advertisements in two active-jobs sitemaps, the same hand-written `ClaudeBot: Disallow /jobs/ /search/`, never read here either
 
 <!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.foundit.com.ph, foundit.com.ph -->
-<!-- script: none -->
-<!-- countries: PH -->
-<!-- content: measured · rules read twice and certain (703 B — a hand-written group naming `GPTBot`, `ClaudeBot`, `CCBot`, `Bytespider`, `Meta-ExternalAgent`, `Google-Extended` with `Allow: /` and `Disallow: /jobs/`, `/search/`; `Claude-User` under `*`; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 at the root (194 625 B, «100,000+ Jobs in Philippines») and at `/xmlsitemap/sitemap-index.xml` (5 601 B, byte-identical twice): 37 children, `active-jobs-sitemap0.xml.gz`, `active-jobs-sitemap1.xml.gz`, `todays-jobs-sitemap.xml.gz` among them — the enumeration `founditgulf.py` reads on the Gulf host; the active files were not counted here · 2026-09-13 -->
-<!-- witness: the sitemap index — 37 children of the same names as `www.founditgulf.com`'s; the count of the active files is the adapter's first run, not this card's; no adapter yet -->
+<!-- script: founditgulf.py -->
+<!-- countries: PH SG MY -->
+<!-- content: measured · rules read twice and certain (703 B — a hand-written group naming `GPTBot`, `ClaudeBot`, `CCBot`, `Bytespider`, `Meta-ExternalAgent`, `Google-Extended` with `Allow: /` and `Disallow: /jobs/`, `/search/`; `Claude-User` under `*`; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200: the sitemap index (37 children) and its 2 active-jobs files hold 42 504 `<loc>`, 42 504 distinct ids — PH 40 491, SG 78, MY 57 by the slug, 1 552 without a place in it; today's file lists 1 031 and 23 of them are NOT among the active — the adapter says so; a `JobPosting` JSON-LD on 10 of 10 sampled, `addressCountry: PH` on all ten · 2026-09-13 10:52 UTC -->
+<!-- witness: today's sitemap against the active ones — «today's sitemap lists 1 031 and 23 of them are NOT among the 42 504 active — the two files disagree; the active count may be short» on 2026-09-13 10:52 UTC; the root's «100,000+ Jobs in Philippines» printed as a slogan, never compared -->
 
-**Measured 2026-09-13 for #233, lot 8 — a measurement of the transport, not a
-decision about the host.** Every fetch under the declared identity, the
-guard on the exact path first, `bin/fetch-body.py`.
-
-## The rules — reopened by the doctrine of 2026-09-07, and 37 sitemap children behind them
+**Shipped 2026-09-13 as a second host of `founditgulf.py` — measured in lot
+8 of #233 and shipped the same hour, under the condition recorded on
+`founditgulf.md`: the adapter reads neither `/jobs/` nor `/search/`, the two
+paths the operator closed by hand to six AI crawlers, on this host either
+(`gate()` exits 7 on them for both hosts; mutated, red).** The line
+«refusal written by hand naming ClaudeBot, `/jobs/` `/search/`» stays here
+for the owner, as on the Gulf card.
 
 ```
-robots.txt      read twice, certain: True, 703 B, md5 365ec2d7dab4 both times — WRITTEN BY HAND: `User-Agent: GPTBot / ClaudeBot / CCBot / Bytespider / Meta-ExternalAgent / Google-Extended`: Allow /, Disallow /jobs/, /search/
-identity("/")   http, claude-user      <- not named; the group that names ClaudeBot does not bind Claude-User (owner, 2026-09-07)
+python3 skills/job-scan/scripts/founditgulf.py sitemap --host www.foundit.com.ph [--limit N] [--no-site-total]   # index + 2 active files (+ today's + the root): 3 to 5 requests
+python3 skills/job-scan/scripts/founditgulf.py ad --url https://www.foundit.com.ph/job/<slug>-<id>              # the host is read from the URL; rows keyed foundit-ph:
+```
+
+## The rules — a refusal written by hand, and it names `ClaudeBot`
+
+```
+robots.txt      read twice, certain: True, 703 B, md5 365ec2d7dab4 both times — WRITTEN BY HAND:
+                `User-Agent: GPTBot / ClaudeBot / CCBot / Bytespider / Meta-ExternalAgent / Google-Extended`: Allow: /, Disallow: /jobs/, /search/
+identity("/")   http, claude-user       <- not named; the group that names ClaudeBot does not bind Claude-User (owner, 2026-09-07; #233: the hand-written four are measured like the others)
 verdict()       sweep True — «refuses 2 path(s) to claudebot and not the site as a whole»
-allowed()       True on `/`, `/xmlsitemap/sitemap-index.xml`; `/jobs/` and `/search/` are not read by the family adapter under any token (a promise, see founditgulf.md)
-crawl_delay     none
+allowed()       True on `/`, `/xmlsitemap/sitemap-index.xml`, `/xmlsitemap/active-jobs-sitemap0.xml.gz`, `/job/<slug>-<id>`
+adapter         refuses `/jobs/` and `/search/` itself on this host too (exit 7) — a promise, not a rules verdict
+crawl_delay     none — 2 s is ours
 ```
 
-## The transport
+## The transport — 200 everywhere asked
 
 ```
-GET https://www.foundit.com.ph/                              200, 194 625 B   (10:22:20Z, 10:22:21Z — same size, a per-response token)  «100,000+ Jobs in Philippines: Apply for September 2026 Hiring» — a slogan
-GET https://www.foundit.com.ph/xmlsitemap/sitemap-index.xml  200, 5 601 B     (10:23:28Z, byte-identical at 10:23:30Z)  37 children
+GET https://www.foundit.com.ph/                                        200, 194 625 B   (10:22:20Z, 10:22:21Z — same size)  «100,000+ Jobs in Philippines: Apply for September 2026 Hiring» — a slogan
+GET https://www.foundit.com.ph/xmlsitemap/sitemap-index.xml            200, 5 601 B     (10:23:28Z, byte-identical at 10:23:30Z)  37 children
+GET https://www.foundit.com.ph/xmlsitemap/active-jobs-sitemap{0,1}.xml.gz   200          (10:52Z, by the adapter)   42 504 <loc> in all
+GET https://www.foundit.com.ph/xmlsitemap/todays-jobs-sitemap.xml      200              (10:52Z)  1 031 <loc>
+GET https://www.foundit.com.ph/job/<slug>-<id>  ×10                    200              (10:53–10:54Z)  JobPosting JSON-LD on all ten
 ```
 
-## What the pages say
+## What the sitemaps say — 42 504 advertisements, and a disagreement the adapter names
 
 | question | answer |
 | :-- | --: |
-| index children | **37** — `active-jobs-sitemap0`, `active-jobs-sitemap1`, `todays-jobs-sitemap`, and facets by location, function, skill, designation, as on the Gulf host |
-| the root's figure | «100,000+ Jobs in Philippines» — a slogan, not a count (the Gulf host says «Over 800,000+»); never compared |
-| the active count | **not read here** — two gzip files; `founditgulf.py`'s `sitemap` command generalised to this host would print it beside today's file |
+| `<loc>` across `active-jobs-sitemap0..1` | **42 504** — `/job/<slug>-<id>`, **42 504 distinct ids**, 0 of another shape |
+| `todays-jobs-sitemap.xml` | 1 031 — **23 of them NOT among the 42 504 active**: «the two files disagree; the active count may be short» (printed each run; «consistent» on the Gulf host the day before) |
+| by the slug's tail | **PH 40 491** · SG 78 · MY 57 · SA 1 · two places 325 · none 1 552 — `countries: PH SG MY`, the country read per advertisement by `ad` |
+| the root's figure | «100,000+ Jobs in Philippines» — a slogan, printed and named, never compared |
+| a stated count of this board | none found — the listing pages are not read; the second document is today's file against the active ones |
 
-**Same stack, same refusal, same condition**: `/jobs/` and `/search/` are the paths the operator closed by hand to six AI crawlers; the family adapter never reads them (`founditgulf.md`). The line stays on this card for the owner.
+## What an advertisement carries — 10 of 10 sampled, 10:53 UTC
+
+Ten drawn at random (seed 20260913) from the 42 504: `JobPosting` on all
+ten, `addressCountry: PH` on all ten, `addressLocality` «Philippines» (no
+city) on all ten, `employmentType` «Full time» on all ten, `datePosted`
+2026-07-07 → 2026-09-10 (`DD-MM-YYYY` on the site, ISO beside),
+`monthsOfExperience` 1 on three (a placeholder), 12–84 on the rest, `skills`
+0–10; no `baseSalary` field, as on the Gulf host.
 
 ## What this card is, and is not
 
-- **A measurement, not an adapter** — `script: none`, a measurement DUE. **Candidate: the `founditgulf.py` stack with `www.foundit.com.ph` as a second host** (`countries:` read per advertisement, as there — a PH board lists abroad too); the active files' count is its first run.
-- **Not a verdict that the host is closed** — nothing in the rules refuses `Claude-User`.
-- **No configuration.** A user with a URL from this host can hand it to `cover-letter`.
+- **An adapter's second host, shipped under the same recorded condition** —
+  `sitemap --host www.foundit.com.ph`, `ad` on a PH URL; rows keyed
+  `foundit-ph:`. No key, no browser; three to five requests for the
+  enumeration.
+- **Not a verdict on the hand-written refusal** — recorded as written, for
+  the owner; the adapter honours it in substance and the doctrine in law.
+- **No configuration.** A user with a URL from this host can hand it to
+  `cover-letter`.

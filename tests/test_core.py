@@ -16241,7 +16241,7 @@ class TheActiveSitemapsAreTheRouteAndTheHandWrittenPathsAreNeverRead(unittest.Te
         self.assertEqual([r["id"] for r in rows], ["18080752", "18080754"])
         self.assertIn("2 active-jobs file(s) of 4 index children; 4 <loc>, 3 of the advertisement shape, 1 not; **2 distinct advertisement id(s)**", err)
         self.assertIn("today's sitemap lists 1, 1 of them among the 2 active — consistent.", err)
-        self.assertIn("«Over 800,000+ jobs to explore» — a network slogan", err)
+        self.assertIn("the root says «800,000+ jobs» — a slogan, not this board's count", err)
 
     def test_an_id_in_todays_and_not_among_the_active_is_said_so_with_the_count(self):
         rows, err = self._sitemap(self._mod(), self._served([18080754, 99999999]))
@@ -16274,6 +16274,41 @@ class TheActiveSitemapsAreTheRouteAndTheHandWrittenPathsAreNeverRead(unittest.Te
         d = json.loads(out.getvalue())
         self.assertEqual((d["country"], d["id"], d["posted"], d["posted_as_published"], d["valid_through"]), ("EG", "66495664", "2026-09-10", "10-09-2026", "2026-10-25"))
         self.assertEqual((d["months_of_experience"], d["industries"], d["skills"], d["employer"]), (24, ["Other"], ["water pumps"], "ATEC"))
+
+    def test_the_philippine_host_is_a_second_host_with_its_own_key_and_the_same_never_read_paths(self):
+        """**2026-09-13, #233 lot 8.** `www.foundit.com.ph` publishes the same
+        stack and the same hand-written refusal; `--host` chooses it, the rows
+        are keyed `foundit-ph:`, the slogan «100,000+ Jobs in Philippines» is
+        named as one, and `gate()` exits 7 on its `/jobs/` too. Mutated: the
+        `HOSTS` gate narrowed to the Gulf host → this case reddens."""
+        import contextlib
+        mod = self._mod()
+        PH = "https://www.foundit.com.ph"
+        index = "<sitemapindex><sitemap><loc>" + PH + "/xmlsitemap/active-jobs-sitemap0.xml.gz</loc></sitemap></sitemapindex>"
+        def get(url, binary=False):
+            if url == PH + "/xmlsitemap/sitemap-index.xml":
+                return 200, index
+            if "active-jobs-sitemap0" in url:
+                return 200, f"<urlset><url><loc>{PH}/job/nurse-x-501</loc></url><url><loc>{PH}/job/nurse-y-502</loc></url></urlset>"
+            if url == PH + "/xmlsitemap/todays-jobs-sitemap.xml":
+                return 200, f"<urlset><url><loc>{PH}/job/nurse-x-501</loc></url></urlset>"
+            if url == PH + "/":
+                return 200, "<html><title>100,000+ Jobs in Philippines: Apply for September 2026 Hiring</title></html>"
+            raise AssertionError("asked for " + url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(host="www.foundit.com.ph", limit=None, no_site_total=False))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual([(r["source"], r["ledger_id"]) for r in rows], [("foundit-ph", "foundit-ph:501"), ("foundit-ph", "foundit-ph:502")])
+        self.assertIn("today's sitemap lists 1, 1 of them among the 2 active — consistent.", err.getvalue())
+        self.assertIn("the root says «100,000+ jobs» — a slogan", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.gate(PH + "/jobs/")
+        self.assertEqual(cm.exception.code, 7)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.gate(PH + "/search/it-jobs")
+        self.assertEqual(cm.exception.code, 7)
 
 
 class AHiddenFlagSplitsOneStoreIntoOwnAndMediated(unittest.TestCase):

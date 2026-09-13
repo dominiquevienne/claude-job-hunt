@@ -98,3 +98,13 @@ Ten drawn at random (seed 20260912) from the 58 930, plus the one read at 11:40:
   the owner; the adapter honours it in substance and the doctrine in law.
 - **No configuration.** A user with a URL from this host can hand it to
   `cover-letter`.
+
+## 2026-09-13 — a second host: `www.foundit.com.ph`
+
+The Philippine franchise publishes the same stack (`/xmlsitemap/` index, two
+`active-jobs` files, a `todays` file) and the same hand-written group
+closing `/jobs/` and `/search/`. `sitemap --host www.foundit.com.ph` reads
+it, rows keyed `foundit-ph:`, the two paths never read there either
+(`gate()` exits 7 on both hosts; mutated, red). Its own card:
+`foundit-ph.md` — 42 504 distinct on 2026-09-13, and a disagreement between
+today's file and the active ones that the adapter names.
