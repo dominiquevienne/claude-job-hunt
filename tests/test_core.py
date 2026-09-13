@@ -17034,5 +17034,80 @@ class ASitemapAndAFooterThatBothCountTheArchiveAndAListingThatDatesTheLive(unitt
         self.assertEqual((d["employer"], d["employer_site"], d["over_90_days"]), ("Yupi!", None, True))
         self.assertIn("«mais de 90 dias»", err)
 
+class ASitemapThatIsASubsetIsPrintedBesideTheWholeTheSiteStates(unittest.TestCase):
+    """**`enjapan.py`, 2026-09-12.** The job file holds 10 811 dated
+    `/desc_<id>/`; the front page states «求人数 125248 件» — twelve times
+    more. The adapter prints both and names the gap as two questions, never
+    corrects one into the other; `--since` filters on the file's `<lastmod>`;
+    the description is HTML-escaped twice by the site and unescaped until
+    stable; `identifier.value` is emitted as published and named for what it
+    is. Mutated (`-B`, detached copy): the site-count regex broken → the
+    gap case reddens («no second source»); `--since` inverted → the since
+    case reddens; a single unescape → the description case reddens; the
+    dedup dropped → the count case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_enjapan", os.path.join(SCRIPTS, "enjapan.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ("<sitemapindex><sitemap><loc>https://employment.en-japan.com/sitemap_static.xml.gz</loc></sitemap>"
+             "<sitemap><loc>https://employment.en-japan.com/sitemap_work_0001.xml.gz</loc></sitemap></sitemapindex>")
+    WORK = ("<urlset>" + "".join(f"<url><loc>https://employment.en-japan.com/desc_{i}/</loc><lastmod>{d}</lastmod></url>"
+                                 for i, d in ((1442658, "2026-09-11"), (1398181, "2025-12-22"), (1442658, "2026-09-11")))
+            + "<url><loc>https://employment.en-japan.com/comp_9/</loc></url></urlset>")
+    HOME = "<html><body><div>求人数 <span>125248</span> 件！ <span>2026年9月10日 更新！</span></div></body></html>"
+
+    def _sitemap(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(since=None, limit=None, no_site_total=False)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_file_count_and_the_sites_count_are_both_printed_and_the_gap_named(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self.WORK), (200, self.HOME)])
+        self.assertEqual([(r["id"], r["lastmod"]) for r in rows], [("1442658", "2026-09-11"), ("1398181", "2025-12-22")])
+        self.assertIn("**2 distinct advertisement id(s)**, 0 without <lastmod>; 2 emitted.", err)
+        self.assertIn("2 in the sitemap, site states 125 248 (updated 2026-09-10) — 125 246 short; the sitemap is the subset", err)
+        self.assertNotIn("no second source", err)
+
+    def test_since_filters_on_the_files_lastmod_and_says_so(self):
+        rows, err = self._sitemap(self._mod(), [(200, self.INDEX), (200, self.WORK)], since="2026-09-01", no_site_total=True)
+        self.assertEqual([r["id"] for r in rows], ["1442658"])
+        self.assertIn("**2 distinct advertisement id(s)**, 0 without <lastmod>; 1 emitted dated on or after 2026-09-01.", err)
+
+    def test_the_ad_unescapes_the_twice_escaped_description_and_names_the_identifier(self):
+        import contextlib
+        mod = self._mod()
+        desc = "&amp;lt;p&amp;gt;■　仕事内容&amp;lt;br&amp;gt;営業&amp;lt;/p&amp;gt;"
+        ld = json.dumps({"@context": "http://schema.org/", "@type": "JobPosting", "title": "パートナーセールス",
+                         "description": desc, "datePosted": "2026-09-11", "validThrough": "2026-12-10",
+                         "hiringOrganization": {"@type": "Organization", "name": "株式会社X"},
+                         "jobLocation": [{"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "新宿区", "addressRegion": "東京都", "addressCountry": "JP"}}],
+                         "employmentType": ["FULL_TIME"],
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "JPY", "value": {"@type": "QuantitativeValue", "minValue": 4000000, "maxValue": 5500000, "unitText": "YEAR"}},
+                         "identifier": {"@type": "PropertyValue", "name": "株式会社X", "value": "140476"}}, ensure_ascii=False)
+        page = f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>'
+        mod.get = lambda url: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://employment.en-japan.com/desc_1442658/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual(d["description"], "■ 仕事内容\n営業")
+        self.assertEqual((d["id"], d["identifier_value"], d["places"], d["salary_min"], d["salary_unit"], d["employment_type"]),
+                         ("1442658", "140476", ["東京都 新宿区"], 4000000, "YEAR", ["FULL_TIME"]))
+        self.assertIn("employer-side number as published, not the advertisement id", err.getvalue())
+        # the English rendering is a refused path and is not an advertisement address here
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://employment.en-japan.com/desc_eng_1442658/"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
