@@ -1,12 +1,13 @@
-# Board adapter — Sudan Careers (Sudan): reopened by the 2026-09-07 doctrine, and the transport answers a challenge
+# Board measurement — Sudan Careers (`www.sudancareers.com`, Sudan): the challenge of the 11th was not met on the 13th — served to a tab, 28 of 28
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.sudancareers.com, sudancareers.com -->
 <!-- script: none -->
 <!-- countries: SD -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root answers HTTP 403 to that client on 2 fetches: 5515 bytes titled «Attention Required! | Cloudflare», md5 `0130507effc9` then `719805e27b1a` at constant size — a challenge, nothing of the site was read · 2026-09-11 22:10 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **28 distinct advertisement addresses** over `/job-vacancies-search-sudan?page=0…` (25 + 3; the next page empty), read from a connected browser tab, **against «28 Job ads found» stated by the page — equal**; the pager is zero-based, as on every AfricaWork host read since `ghanajob.md`; no challenge met by the tab on the 13th where the declared client met one on the 11th; the rules as on the 11th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «28 Job ads found», read on every page and printed beside the distinct count («28 emitted, site states 28 — equal»); the declared client's challenge («Attention Required!», 5 515 B, md5 moving) on `/` on the 11th · 2026-09-13 -->
+<!-- route: browser · 28 · 2026-09-13 -->
 
 **Measured 2026-09-11 at 22:10:49Z UTC for #233, lot 1 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -48,3 +49,12 @@ measured, and this card claims nothing either way.
 - **No script, no configuration.** A user with a URL from this host can hand
   it to `cover-letter`; whether that page is served to a browser is not
   established here.
+
+## 2026-09-13 16:55 UTC — the browser route, MEASURED (#222): no challenge to the tab, 28 of 28
+
+```
+tab: /                                        200 «Job Vacancies and Recruitment in Sudan | Sudancareers.com» — no interstitial; the home page links /job-vacancies-search-sudan
+tab: fetch /job-vacancies-search-sudan?page=0,1,2     25 · 3 · 0  →  **28 distinct data-href addresses**, «28 Job ads found» — **equal**; every address carries its id
+```
+
+**The procedure is `ghanajob.md`'s six steps** — guard on the exact listing path first (`*` open, certain), one tab, `fetch('?page=0,1,2…')` 1.5 s apart until a page carries no card, the site's own count read on every page and printed beside the distinct count. The challenge this card recorded on the 11th was for the declared client; the tab was served on its first request. *Whether the challenge is for the client alone or intermittent is not decided by two days; both are recorded.* The smallest AfricaWork inventory read so far — a country at war, 28 advertisements.
