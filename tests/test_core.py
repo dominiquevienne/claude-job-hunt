@@ -17847,6 +17847,105 @@ class NamedAsClaudeUserWhereEveryoneElseIsRefusedAndTheAddressInTheProseWithheld
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class TheStatesOwnStoreByDefaultTheRepublishedOnRequestAndTheContactSectionNeverRead(unittest.TestCase):
+    """**`sluzbyzamestnanosti.py`, 2026-09-13 (#342).** The Slovak public
+    employment service's board answers a JSON search (`/search/ponuky`,
+    `pageNr`/`pageSize`, `zdrojPonuky=VPM` for the state's own store) whose
+    answer carries the site's own `countVPM` beside the rows: the adapter
+    reads the state's store by default, keys every row by `uuid`, links an
+    external row to the portal that holds it and an own row to its page
+    here, prints «n emitted, site states N» from the answer's count and
+    never compares a bounded walk, nor the positions figure. The
+    advertisement page is a `<dl>`; everything at or after «Kontaktná
+    osoba» is cut before reading. Mutated (`-B`, detached copy): the
+    `zdrojPonuky=VPM` parameter dropped → the default reads all sources,
+    reddens; the dedup removed → 4 ≠ 3; the external row linked to the
+    page here instead of its portal → reddens; the positions figure
+    compared instead of `countVPM` → reddens; the contact cut dropped →
+    the contact's «Internetová adresa» fills `employer_site`, reddens (a
+    first fixture had no label of the adapter's in that section and left
+    the cut unexercised — the fixture, not the guard); the place's «location_on» tail
+    kept → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_sluzbyzamestnanosti", os.path.join(SCRIPTS, "sluzbyzamestnanosti.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _answer(items, count, page, size=100):
+        return json.dumps({"countVPM": count, "countZamestnavatelia": 5324, "countPocetVolnychMiest": 128448, "pageNr": page, "pageSize": size, "pracovnePonuky": items}, ensure_ascii=False)
+
+    @staticmethod
+    def _item(uuid, title, src=1, portal=None, url=None, salary=1200.0):
+        return {"uuid": uuid, "nazovPracovnehoMiesta": title, "zamestnavatelObchodneMeno": "Mikádo", "miestoVykonuPrace": "Skalica - Skalica", "zakladnaMzda": salary,
+                "zakladnaMzdaZaObdobie": "MESIAC", "naposledyZmenene": "2026-09-13T12:42:27", "priznakZdroj": src, "zdrojVytvorenia": "EXT" if src == 3 else "VPM", "externyPortal": portal, "urlExternyPortal": url}
+
+    def _list(self, mod, answers, source="VPM", pages=None, limit=None, no_total=False):
+        import contextlib, urllib.parse
+        asked = []
+        def get(url, accept=None):
+            asked.append(url)
+            q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+            key = (q.get("zdrojPonuky", "all"), int(q.get("pageNr", 1)))
+            if key in answers:
+                return 200, answers[key]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(source=source, pages=pages, limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_states_store_is_read_by_default_keyed_by_uuid_and_compared_to_the_answers_own_count(self):
+        mod = self._mod()
+        a1 = self._answer([self._item("7f97c15a-d87d-42ce-9c07-9cb986ef87e9", "Layouter"), self._item("b4e15b7a-46ab-4d98-9079-6fd773217515", "Pomocný pracovník", src=3, portal="profesia.sk", url="https://www.profesia.sk/O5354102")], 3, 1, size=2)
+        a2 = self._answer([self._item("7f97c15a-d87d-42ce-9c07-9cb986ef87e9", "Layouter"), self._item("960b5dd5-85db-422b-a962-39691615bcfb", "Sociálny pracovník", src=2)], 3, 2, size=2)
+        answers = {("VPM", 1): a1, ("VPM", 2): a2, ("all", 1): self._answer([self._item("x1", "A", src=3, portal="worki.sk", url="https://www.worki.sk/1")], 25563, 1, size=100)}
+        rows, err, asked = self._list(mod, answers)
+        self.assertTrue(all("zdrojPonuky=VPM" in u for u in asked), asked)
+        self.assertEqual([r["id"] for r in rows], ["7f97c15a-d87d-42ce-9c07-9cb986ef87e9", "b4e15b7a-46ab-4d98-9079-6fd773217515", "960b5dd5-85db-422b-a962-39691615bcfb"])
+        self.assertEqual((rows[0]["store"], rows[0]["entered_via"], rows[0]["url"], rows[0]["salary"], rows[0]["ledger_id"]),
+                         ("own", "úrad PSVR", "https://www.sluzbyzamestnanosti.gov.sk/pracovne-ponuky/7f97c15a-d87d-42ce-9c07-9cb986ef87e9", "1200 € / mesiac", "sz:7f97c15a-d87d-42ce-9c07-9cb986ef87e9"))
+        self.assertEqual((rows[1]["store"], rows[1]["external_portal"], rows[1]["url"]), ("external", "profesia.sk", "https://www.profesia.sk/O5354102"))
+        self.assertEqual(rows[2]["entered_via"], "Portál SZ")
+        self.assertIn("2 page(s) of 2 read (the state's own store, zdrojPonuky=VPM); **3 distinct advertisement(s)** — 2 the state's own, 1 republished from external portals.", err)
+        self.assertIn("3 emitted, site states 3 — equal (site also states 5 324 employers and 128 448 positions — positions, not advertisements, never compared).", err)
+        rows, err, asked = self._list(mod, answers, source="all", pages=1)
+        self.assertFalse(any("zdrojPonuky" in u for u in asked))
+        self.assertIn("the walk stopped at page 1 of 256, so the count is a lower bound", err)
+        self.assertIn("site states 25 563", err)
+        self.assertIn("1 emitted from a bounded walk, not compared.", err)
+        self.assertNotIn("short", err)
+
+    def test_the_advertisement_page_is_a_dl_cut_before_the_contact_section(self):
+        import contextlib
+        mod = self._mod()
+        body = ('<html><body><h1>Layouter/ka elektronických systémov PCB/ASIC (muž/žena)</h1><h2>Údaje o pracovnej pozícii</h2><dl>'
+                '<dt>Miesto výkonu práce, Ďalšie miesto výkonu práce</dt><dd>Einsteinova 11 , 85101 Bratislava-Petržalka - Bratislava V Slovensko <span>location_on</span> Google maps</dd>'
+                '<dt>Základná zložka mzdy v eurách (v hrubom)</dt><dd>4 500 € mesačne</dd><dt>Id VPM</dt><dd>2677107</dd><dt>Zdroj</dt><dd>úrad PSVR</dd>'
+                '<dt>Názov pracovnej pozície</dt><dd>Layouter/ka elektronických systémov PCB/ASIC (muž/žena)</dd><dt>Počet voľných miest</dt><dd>1</dd>'
+                '<dt>Náplň práce</dt><dd>• Návrh layoutu elektronických obvodov</dd><dt>Pracovný a mimopracovný pomer</dt><dd>Pracovný pomer na určitú dobu</dd>'
+                '<dt>Názov spoločnosti</dt><dd>Continium Technologies s.r.o.</dd><dt>IČO</dt><dd>53614836</dd></dl>'
+                '<h2>Kontaktná osoba</h2><dl><dt>Meno</dt><dd>Jana Nováková</dd><dt>Telefón</dt><dd>+421 900 123 456</dd><dt>Internetová adresa</dt><dd>jana.novakova@example.sk</dd></dl></body></html>')
+        mod.get = lambda url, accept=None: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.sluzbyzamestnanosti.gov.sk/pracovne-ponuky/7f97c15a-d87d-42ce-9c07-9cb986ef87e9?pageNr=1"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["place"], d["salary"], d["vpm_id"], d["source_label"], d["employer"], d["employer_ico"], d["positions"]),
+                         ("7f97c15a-d87d-42ce-9c07-9cb986ef87e9", "Layouter/ka elektronických systémov PCB/ASIC (muž/žena)", "Einsteinova 11 , 85101 Bratislava-Petržalka - Bratislava V Slovensko", "4 500 € mesačne", "2677107", "úrad PSVR", "Continium Technologies s.r.o.", "53614836", "1"))
+        self.assertEqual(d["description"], "• Návrh layoutu elektronických obvodov")
+        self.assertIsNone(d["employer_site"])   # the contact section's «Internetová adresa» would fill it if the cut were dropped
+        self.assertNotIn("Nováková", out.getvalue())
+        self.assertNotIn("+421", out.getvalue())
+        self.assertNotIn("example.sk", out.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profesia.sk/O5354102"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
