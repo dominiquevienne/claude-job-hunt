@@ -19755,5 +19755,134 @@ class ARouteRefusedInWritingIsTakenOnlyUnderTheUsersOwnKey(unittest.TestCase):
             self.assertNotIn(secret, out.getvalue())
 
 
+class AnApiThatAsksWhoIsCallingGetsTheUsersOwnAddressAndNothingElseEverSeesIt(unittest.TestCase):
+    """**`hh.py`, 2026-09-13 (#337).** `api.hh.ru` requires a contact address
+    on every request; the plugin never fabricates one. The adapter reads
+    `boards.hh.contact` from the user's own config, sends it in
+    `HH-User-Agent: claude-job-hunt/<v> (<contact>)` beside our UA, and
+    prints it NOWHERE — not in the refusal, not in a row, not in a note.
+    Without it: nothing requested, exit 7 saying what to write. `found` is
+    the witness; the window ends at 2 000; a vacancy's `contacts` are
+    dropped and listed. Measured 2026-09-13 18:52 UTC with the owner's key:
+    403 `{"errors":[{"type":"forbidden"}]}` on all four areas, with the
+    contact in either header — the API refuses this address, and the
+    adapter stops. Mutated (`-B`, detached copy): the contact check moved
+    after the guard → the no-key case reddens (a request leaves); the
+    contact echoed in the 403 message → the secrecy case reddens; the
+    header name changed → the header case reddens; `found` compared to the
+    page count → the walk case reddens; `contacts` kept → the ad case
+    reddens; the window check dropped → the window case reddens."""
+
+    SECRET = "someone.private@example.org"
+
+    def _mod(self, contact=None):
+        spec = importlib.util.spec_from_file_location("_hh", os.path.join(SCRIPTS, "hh.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.contact = (lambda: (contact, "boards.hh.contact in /w/config.yml")) if contact else (lambda: (None, "no boards.hh.contact in /w/config.yml"))
+        mod.robots_allowed = lambda host, path, agents=None, board=None: {"allowed": True, "certain": True, "reason": "absent"}
+        return mod
+
+    def _item(self, i):
+        return {"id": str(100000 + i), "name": f"Инженер {i}", "employer": {"id": "7", "name": "ООО Ромашка"}, "area": {"id": "16", "name": "Минск"},
+                "salary": {"from": 2000, "to": 3000, "currency": "BYR", "gross": True}, "published_at": "2026-09-13T10:00:00+0300",
+                "schedule": {"name": "Полный день"}, "experience": {"name": "1–3 года"}, "employment": {"name": "Полная занятость"},
+                "snippet": {"requirement": "Опыт <highlighttext>Python</highlighttext>", "responsibility": "Разработка"},
+                "alternate_url": f"https://rabota.by/vacancy/{100000 + i}", "professional_roles": [{"name": "Программист"}]}
+
+    def test_without_the_contact_nothing_is_requested_and_the_exit_says_what_to_write(self):
+        import contextlib
+        mod = self._mod(None)
+        sent = []
+        # the guard's own rules fetch is a request too: without the contact, not even that leaves
+        mod.robots_allowed = lambda host, path, agents=None, board=None: sent.append(("guard", host)) or {"allowed": True, "certain": True}
+        mod.urllib.request.urlopen = lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(AssertionError("a request left"))
+        try:
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as err:
+                mod.cmd_search(argparse.Namespace(area="16", text=None, pages=1, limit=None))
+        finally:
+            mod.urllib.request.urlopen = urllib_request_urlopen_original
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("boards:", err.getvalue())
+        self.assertIn("contact:", err.getvalue())
+        self.assertEqual(sent, [])
+
+    def test_the_contact_travels_in_the_header_and_appears_in_no_text(self):
+        import contextlib
+        mod = self._mod(self.SECRET)
+        seen = []
+
+        class R:
+            def __init__(self, code, body): self.code, self.body, self.headers = code, body, {}
+            def getcode(self): return self.code
+            def read(self): return self.body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        def urlopen(req, timeout=None):
+            seen.append(dict(req.header_items()))
+            return R(200, json.dumps({"found": 2, "pages": 1, "per_page": 100, "page": 0, "items": [self._item(1), self._item(2)]}).encode())
+        mod.urllib.request.urlopen = urlopen
+        mod.decode_body = lambda raw, headers: (raw.decode("utf-8"), "utf-8")
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_search(argparse.Namespace(area="16", text=None, pages=None, limit=None))
+        finally:
+            mod.urllib.request.urlopen = urllib_request_urlopen_original
+        hdr = {k.lower(): v for k, v in seen[0].items()}
+        self.assertEqual(hdr["hh-user-agent"], f"claude-job-hunt/{mod.version()} ({self.SECRET})")
+        self.assertIn("Claude-User", hdr["user-agent"])
+        self.assertNotIn(self.SECRET, out.getvalue() + err.getvalue(), "the contact left the adapter in a text")
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual((rows[0]["country"], rows[0]["front"], rows[0]["employer"], rows[0]["salary_currency"], rows[0]["salary_gross"], rows[0]["salary_unit_stated"], rows[0]["requirement"]),
+                         ("BY", "rabota.by", "ООО Ромашка", "BYR", True, False, "Опыт Python"))
+        self.assertIn("2 emitted over 1 page(s), site states 2 (area 16 BY, rabota.by) — equal.", err.getvalue())
+        # the same two items against a stated 3 are «1 short» — never «equal»
+        mod.urllib.request.urlopen = lambda req, timeout=None: R(200, json.dumps({"found": 3, "pages": 1, "per_page": 100, "page": 0, "items": [self._item(1), self._item(2)]}).encode())
+        err3 = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err3):
+                mod.cmd_search(argparse.Namespace(area="16", text=None, pages=None, limit=None))
+        finally:
+            mod.urllib.request.urlopen = urllib_request_urlopen_original
+        self.assertIn("site states 3 (area 16 BY, rabota.by) — 1 short.", err3.getvalue())
+        # a 403 names no address either
+        mod.urllib.request.urlopen = lambda req, timeout=None: (_ for _ in ()).throw(mod.urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, io.BytesIO(b'{"errors":[{"type":"forbidden"}]}')))
+        try:
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+                mod.cmd_search(argparse.Namespace(area="16", text=None, pages=1, limit=None))
+        finally:
+            mod.urllib.request.urlopen = urllib_request_urlopen_original
+        self.assertEqual(cm.exception.code, 7)
+        self.assertNotIn(self.SECRET, e2.getvalue())
+
+    def test_the_window_ends_at_two_thousand_and_the_ad_drops_contacts(self):
+        import contextlib
+        mod = self._mod(self.SECRET)
+        served = []
+
+        def api(url):
+            served.append(url)
+            p = int(re.search(r"[?&]page=(\d+)", url).group(1))     # not `per_page=`
+            return 200, {"found": 5000, "pages": 50, "per_page": 100, "page": p, "items": [self._item(p * 100 + i) for i in range(100)]}
+        mod.api = api
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(argparse.Namespace(area="113", text=None, pages=None, limit=None))
+        self.assertEqual(len(served), 20)
+        self.assertNotIn("page=20", " ".join(served))
+        self.assertIn("the API's window ends at 2 000 results", err.getvalue())
+        vac = dict(self._item(5)); vac.update({"description": "<p>Мы ищем</p>", "key_skills": [{"name": "Python"}], "contacts": {"name": "Иван", "email": "ivan@x.by", "phones": [{"number": "123"}]}, "contact_person": "x"})
+        mod.api = lambda url: (200, vac)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(id="100005"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["description"], d["key_skills"], d["contact_dropped"]), ("Мы ищем", ["Python"], ["contact_person", "contacts"]))
+        for secret in ("Иван", "ivan@", "123"):
+            self.assertNotIn(secret, out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
