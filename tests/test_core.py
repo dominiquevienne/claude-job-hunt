@@ -19180,5 +19180,114 @@ class OneFileThreeHostsAndAListingWalkThatEndsWhereTheRulesSay(unittest.TestCase
         self.assertNotIn("Do not pay", json.dumps(d))
 
 
+class AWebFormsSearchTurnsItsPagesByPostbackAndTheEmployerStaysBehindTheLogin(unittest.TestCase):
+    """**`iskur.py`, 2026-09-13 (#381).** Türkiye's public agency is an
+    ASP.NET WebForms page: a search is the form re-posted with one
+    `__EVENTTARGET`, and every next page is the RESULTS form re-posted with
+    `btnNext` (the pager echoes the page in `txtCurrentPage`). The rows are
+    the share buttons' data attributes; «Toplam Kayıt: N» is printed beside
+    every walk. The employer's name is behind a login and `employer` is
+    null with the reason. Mutated (`-B`, detached copy): the event pair not
+    stripped before re-posting → the walk case reddens (two targets on one
+    request); `btnNext` swapped for `btnLast` → the walk case reddens (the
+    pager check); the total regex broken → the walk case reddens (exit 6);
+    the employer filled from the type → the login case reddens; `--il` not
+    overriding the select → the province case reddens; the `__VIEWSTATE`
+    check dropped → the firewall case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_iskur", os.path.join(SCRIPTS, "iskur.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _form(self, total=None, pages=None, cur=None, rows=()):
+        head = ('<html><form><input type="hidden" name="__VIEWSTATE" value="vs"><input type="hidden" name="__EVENTVALIDATION" value="ev">'
+                '<input type="hidden" name="__EVENTTARGET" value=""><input type="hidden" name="__EVENTARGUMENT" value="">'
+                '<input type="text" name="ctl04$ctlArananMetin2" value=""><select name="ctl04$ctlIl"><option value="">--Tüm İller--</option><option value="1">ADANA</option><option value="34">İSTANBUL</option></select>'
+                '<select name="ctl04$ctlCalismaYeri"><option value=""></option><option selected="selected" value="1">Yurtiçi</option></select>')
+        body = ""
+        if total is not None:
+            body += f'<div>Sonraki Sayfa &gt; Son Sayfa &gt;&gt; <input type="text" name="ctl04$ctlDataPagerDetay$txtCurrentPage" value="{cur}"> / {pages} Sayfaya Git - Toplam Kayıt: {total}</div>'
+        for ident, occ, il in rows:
+            body += (f'<tr><td><a href="javascript:__doPostBack(\'x\',\'\')">{occ}</a><span>İşyeri adını görmek için Sisteme Üye Girişi yapmanız gerekmektedir.</span><span>Özel</span> / <span>Daimi</span> / <span>Tam Zamanlı</span></td>'
+                     f'<td><a class="dropdown-toggle share-toggle" data-url=\'http://esube.iskur.gov.tr/Istihdam/AcikIsIlanDetay.aspx?uiID={ident}\' data-ilanno=\'{ident}\' data-sontarih=\'15.09.2026\' data-il=\'İl Geneli Başvuru ({il}) \' data-acikissayi=\'1\' data-isverentur=\'Özel\' data-calismasekli=\'Tam Zamanlı\' data-meslekler=\'{occ}\'></a></td></tr>')
+        return head + body + "</form></html>"
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url, data=None):
+            sent.append((url, data))
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(il=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_posts_one_target_at_a_time_and_prints_the_stated_total(self):
+        mod = self._mod()
+        p1 = self._form(34049, 2270, 1, [(f"000098066{i:02d}", f"Meslek {i}", "ÇANKIRI / ŞABANÖZÜ") for i in range(15)])
+        p2 = self._form(34049, 2270, 2, [(f"000098065{i:02d}", f"Meslek B{i}", "ANKARA / ÇANKAYA") for i in range(15)])
+        rows, err, sent = self._run(mod, [(200, self._form()), (200, p1), (200, p2)], pages=2)
+        self.assertEqual(len(rows), 30)
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["employer"], rows[0]["employer_type"], rows[0]["work_type"], rows[0]["workplace"], rows[0]["positions"], rows[0]["application_deadline"]),
+                         ("00009806600", "Meslek 0", None, "Özel", "Tam Zamanlı", "İl Geneli Başvuru (ÇANKIRI / ŞABANÖZÜ)", 1, "15.09.2026"))
+        self.assertIn("login required", rows[0]["employer_hidden"])
+        self.assertIn("30 emitted of the 34 049 the site states (all provinces), 2 270 page(s) of 15 — 2 walked by request", err)
+        search, nxt = sent[1][1], sent[2][1]
+        self.assertEqual([v for k, v in search if k == "__EVENTTARGET"], ["ctl04$ctlAcikIsPageCommand$CommandItem_Search"])
+        self.assertEqual([v for k, v in nxt if k == "__EVENTTARGET"], ["ctl04$ctlDataPagerDetay$btnNext"])
+        self.assertIn(("__VIEWSTATE", "vs"), nxt)
+        self.assertIn(("ctl04$ctlDataPagerDetay$txtCurrentPage", "1"), nxt)
+
+    def test_a_province_overrides_the_select_and_a_firewall_page_stops_the_run(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._form(3847, 257, 1, [("00009806673", "Tekniker", "İSTANBUL / ÜSKÜDAR")])
+        rows, err, sent = self._run(mod, [(200, self._form()), (200, p1)], il="34", pages=1)
+        self.assertEqual([v for k, v in sent[1][1] if k == "ctl04$ctlIl"], ["34"])
+        self.assertIn("(il 34)", err)
+        # the form is served, then the search POST is answered by the firewall — the postback's own check catches it
+        it = iter([(200, self._form()), (200, "<html><body>Request Rejected</body></html>")])
+        mod.request = lambda url, data=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(il=None, pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("no __VIEWSTATE", e2.getvalue())
+
+    def test_a_page_that_did_not_turn_is_a_fault(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._form(34049, 2270, 1, [(f"000098066{i:02d}", f"M{i}", "X") for i in range(15)])
+        same = self._form(34049, 2270, 1, [(f"000098067{i:02d}", f"N{i}", "X") for i in range(15)])   # new rows, but the pager still says 1
+        it = iter([(200, self._form()), (200, p1), (200, same)])
+        mod.request = lambda url, data=None: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(il=None, pages=3, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the page did not turn", e2.getvalue())
+
+    def test_the_detail_reads_what_is_public_and_names_what_is_behind_the_login(self):
+        import contextlib
+        mod = self._mod()
+        page = ("<html><title>Türkiye İş Kurumu - İşgücü İstemi Detayı</title><div>İşgücü İstemi</div><p>İlan detaylarını görmek ve iş başvurusu yapmak için sisteme giriş yapınız.</p>"
+                "<div>Meslek Bilgileri</div><table><tr><th>Meslek</th><th>Deneyim</th></tr><tr><td>Beden İşçisi (Genel)</td><td>Yıl</td></tr></table>"
+                "<div>En Az Öğrenim Seviyesi</div><div>:</div><div>Okur Yazar Olmayan</div><div>En Fazla Öğrenim Seviyesi</div><div>:</div><div>×</div></html>")
+        mod.request = lambda url, data=None: (200, page)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://esube.iskur.gov.tr/Istihdam/AcikIsIlanDetay.aspx?uiID=00009806651"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["education_min"], d["education_max"], d["login_required_for"]),
+                         ("00009806651", "Beden İşçisi (Genel)", "Okur Yazar Olmayan", None, ["employer", "description", "application"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
