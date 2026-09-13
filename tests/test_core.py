@@ -16874,6 +16874,84 @@ class AnArchiveSizedCountIsNeverComparedAndTheCardSaysWhenItCloses(unittest.Test
                          ("2026/09/lodge-chef-jobs-ngonzi-crater-escape", "UG", "Kampala", None, "UGX", 1, "2026-09-22T00:00"))
 
 
+class AServerRenderedCardIsReadByItsTagNotByAByteWindow(unittest.TestCase):
+    """**`pngjobseek.py`, 2026-09-13 (#233 lot 7 → adapter).** A React Router
+    app rendered on the server, no JSON-LD anywhere: the card is read from
+    its rendered cells — title, employer (the logo's alt), «City, Province»,
+    work type, a date recognised by shape, snippet, category — and the pages
+    are walked until one adds nothing. The card's opening tag carries a long
+    style attribute before its class: the first version tested a 200-byte
+    window and lost 6 of 31 cards («25 emitted, site states 31 — 6 short»);
+    the tag is tested now. `ad` reads the head cells after «Back to Jobs»
+    and the «Job Description» / «Requirements» blocks. Mutated (`-B`,
+    detached copy): the tag test replaced by the 200-byte window → the
+    long-style card is lost (reddens); the dedup removed → 3 ≠ 2; «short» →
+    «equal» → the gap case reddens; `STATED_RE` broken → «no second source»
+    reddens; the date shape widened to any cell → the place shifts (reddens);
+    «Requirements» split dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pngjobseek", os.path.join(SCRIPTS, "pngjobseek.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, title, emp, style_len=10):
+        style = "--x:" + "a" * style_len + ";"
+        return (f'<div style="{style}" class="_card_vl4pl_1 m_1b7284a3 mantine-Paper-root"><div class="_logoColumn_vl4pl_73"><img alt="{emp}"/></div>'
+                f'<div class="_contentColumn_vl4pl_164"><a href="/jobs/{i}"><h4 class="_titleText_vl4pl_159">{title}</h4></a>'
+                f'<div class="_metadataRow_vl4pl_1"><span>{emp}</span><span>Port Moresby, National Capital District</span><span>Full Time</span><span>11 September 2026</span></div>'
+                f'<p>A snippet…</p><span>Administration</span></div></div>')
+
+    def _page(self, cards, stated=31):
+        return f'<html><body><style>.x{{}}</style><h2>{stated} jobs found</h2><p>Showing 1 – 25 of {stated}</p>' + "".join(cards) + "</body></html>"
+
+    def _list(self, mod, pages):
+        import contextlib
+        def get(url):
+            m = re.search(r"page=(\d+)$", url)
+            k = int(m.group(1)) if m else 1
+            return (200, pages[k - 1]) if k <= len(pages) else (200, self._page([]))
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_a_card_with_a_long_style_is_read_and_the_pages_are_walked_to_the_stated_count(self):
+        p1 = self._page([self._card(18293, "Finance Officer", "BCFW"), self._card(18292, "Coordinator", "Palladium PNG Limited", style_len=400)], stated=3)
+        p2 = self._page([self._card(18293, "Finance Officer", "BCFW"), self._card(18254, "STORE PERSON", "R &amp; A Marine Services Ltd")], stated=3)
+        rows, err = self._list(self._mod(), [p1, p2])
+        self.assertEqual([r["id"] for r in rows], ["18293", "18292", "18254"])
+        self.assertEqual((rows[1]["employer"], rows[1]["place"], rows[1]["work_type"], rows[1]["posted"], rows[1]["category"]),
+                         ("Palladium PNG Limited", "Port Moresby, National Capital District", "Full Time", "2026-09-11", "Administration"))
+        self.assertEqual(rows[2]["employer"], "R & A Marine Services Ltd")
+        self.assertIn("**3 distinct advertisement id(s)**", err)
+        self.assertIn("3 emitted, site states 3 — equal.", err)
+
+    def test_a_stated_count_above_the_emitted_is_named_short(self):
+        p1 = self._page([self._card(18293, "Finance Officer", "BCFW")], stated=31)
+        rows, err = self._list(self._mod(), [p1])
+        self.assertIn("1 emitted, site states 31 — 30 short.", err)
+        self.assertNotIn("equal", err)
+
+    def test_the_ad_reads_the_head_and_splits_description_from_requirements(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><body><style>.x{}</style><a>Back to Jobs</a><h1>STORE PERSON</h1><span>R &amp; A Marine Services Ltd</span><span>Kokopo</span>'
+                '<span>Others</span><span>Not Disclosed</span><span>31 August 2026</span><h3>Job Description</h3><p>Seeking a store person.</p><p>Fast-paced.</p>'
+                '<h3>Requirements</h3><p>• Tertiary Qualification</p><button>Apply Now</button><footer>x</footer></body></html>')
+        mod.get = lambda u: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://www.pngjobseek.com/jobs/18254"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["employer"], d["city"], d["category"], d["salary_as_published"], d["posted"]),
+                         ("18254", "STORE PERSON", "R & A Marine Services Ltd", "Kokopo", "Others", "Not Disclosed", "2026-08-31"))
+        self.assertEqual((d["description"], d["requirements"]), ("Seeking a store person.\nFast-paced.", "• Tertiary Qualification"))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
