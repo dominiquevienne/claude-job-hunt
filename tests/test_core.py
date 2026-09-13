@@ -17668,7 +17668,8 @@ class TwoAddressShapesOnOnePageAndAPagerThatClosesUnderTheReader(unittest.TestCa
     branch dropped → the walk case reddens (exit 6); «Jobs found» regex
     broken → the two-figures case reddens; the JSON-LD supplement dropped →
     the hyphen ad case reddens (`posted` None); `--pages` bound ignored →
-    the bounded case reddens."""
+    the bounded case reddens; the per-page anchor check dropped → the
+    partial-page case reddens (rows printed, exit 0)."""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_gulftalent", os.path.join(SCRIPTS, "gulftalent.py"))
@@ -17718,6 +17719,17 @@ class TwoAddressShapesOnOnePageAndAPagerThatClosesUnderTheReader(unittest.TestCa
         rows, err = self._list(self._mod(), [(200, self._page([self._row(1, "a")], found=None, panel=7)), (404, "")])
         self.assertIn("site states 7", err)
         self.assertNotIn("no second source", err)
+
+    def test_a_page_read_in_part_is_a_reader_fault_not_a_count(self):
+        import contextlib
+        # a row whose anchor is on the page and whose id the reader cannot take — a bounded walk would never see it short
+        broken = '<a class="job-results-item" href="/uae/jobs/x-9"><p class="title">X</p></a>'
+        mod = self._mod()
+        mod.get = lambda url: (200, self._page([self._row(1, "a"), broken]))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            mod.cmd_list(argparse.Namespace(country="uae", pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("2 listing anchor(s) on the page, 1 read — a partial read of a page is a reader fault", err.getvalue())
 
     def test_a_bounded_walk_says_bounded_and_never_short(self):
         rows, err = self._list(self._mod(), [(200, self._page([self._row(1, "a"), self._row(2, "b")]))], pages=1)

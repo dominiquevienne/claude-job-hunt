@@ -199,9 +199,14 @@ def cmd_list(a):
         if found is None:
             found, panel = jobs_found(body), site_count(body)
         items = rows_on(body)
+        anchors = body.count("job-results-item")
         if page == 1 and not items:
             die(empty_first_page("gulftalent", body, "listing row", where=url,
-                                 candidates=body.count("job-results-item")), EXIT_PARTIAL)
+                                 candidates=anchors), EXIT_PARTIAL)
+        if len(items) < anchors:
+            # the hyphen-only pattern read 21 of 25 with no symptom (2026-09-13); a bounded walk cannot see a per-page
+            # shortfall from the stated count, so the page's own anchors are the second source here
+            die(f"{url}: {anchors} listing anchor(s) on the page, {len(items)} read — a partial read of a page is a reader fault, not a count.", EXIT_PARTIAL)
         new = 0
         for r in items:
             if r["id"] in seen:

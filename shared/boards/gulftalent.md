@@ -55,6 +55,10 @@ underscore before the id — **4 rows of 25 on the page read carried the
 underscore**. The first pattern, written for the hyphen from the JobPosting
 `url`, matched 21 of 25 and printed «22 emitted» over two pages with no
 symptom; the id is now read from `data-ga-label` and the address as written.
+**And a bounded walk cannot see that shortfall** — «21 of 25» is invisible
+to «N emitted of the X the site states — walked by request» — so every page
+is checked against its own anchors: fewer rows read than `job-results-item`
+on the page is a reader fault and exits 6, never a count.
 
 ```
 15 681 emitted over 628 page(s), site states 15 681 («Jobs found», uae) — equal; page 629 carried no new row, pager closes at 628; panel `job_count` 15 680 — 1 apart, neither corrected.
