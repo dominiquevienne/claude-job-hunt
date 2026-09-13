@@ -1,12 +1,13 @@
-# Board adapter — Emploi.ma (Morocco): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Emploi.ma (Morocco): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.emploi.ma, emploi.ma -->
 <!-- script: none -->
 <!-- countries: MA -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 12:22 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **639 distinct advertisement addresses** over `/recherche-jobs-maroc?page=0…` (25 × 25 + 14; the next page empty), read from a connected browser tab, **against «644 Offres d'emploi trouvées» stated by the page — 5 short (a walk of a live board that posts as it is read; not a page missed: the walk started at zero)**; the pager is zero-based, as on every AfricaWork host read since `ghanajob.md`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «644 Offres d'emploi trouvées», read on every page of the walk and printed beside the distinct count («639 emitted, site states 644 — 5 short») · 2026-09-13 -->
+<!-- route: browser · 639 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 12:22:54Z UTC for #233, lot 6 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -49,6 +50,25 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:45 UTC — the browser route, MEASURED (#222): the 403 is for the declared client alone
+
+One Claude-in-Chrome tab, the guard on `/recherche-jobs-maroc` first (`*` open, certain).
+**No challenge, no interstitial** — borne 0 held: the 25-byte 403 above goes
+to the declared HTTP client and to nobody else.
+
+```
+navigate https://www.emploi.ma/recherche-jobs-maroc      200 — «644 Offres d'emploi trouvées» · 25 cards a page · pager zero-based (the link labelled «2» is ?page=1)
+fetch ?page=0, 1, 2 …  (25 × 25 + 14)        **639 distinct /offre-emploi-maroc/<slug>-<id>** · the next page → 0 cards   10:45 UTC
+                                       **639 emitted, site states 644 — 5 short.**
+GET /offre-emploi-maroc/hotesse-air-steward-casablanca-9006473                  200 — a JobPosting in JSON-LD (datePosted 2026-09-13T01:00:01+01:00), the JSON rejected by a strict parser (control characters) — read tolerantly, as `ghanajob.md` says
+```
+
+**The procedure is `ghanajob.md`'s six steps with this host's two paths**
+— `/recherche-jobs-maroc` for the listing, `/offre-emploi-maroc/<slug>-<id>` for the
+advertisement (the id is the trailing number): guard → tab → `?page=0, 1,
+2 …` until empty, 1.5 s apart → **«n emitted, site states N»** → the
+JobPosting read tolerantly → close.
 
 ## What this card is, and is not
 

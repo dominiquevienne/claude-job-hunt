@@ -1,12 +1,13 @@
-# Board adapter — Ezega (Ethiopia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Ezega (Ethiopia): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403 — and served to a browser
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.ezega.com, ezega.com -->
 <!-- script: none -->
 <!-- countries: ET -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:56 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **1 advertisement served** — the «Featured Jobs» strip on `/jobs/AllPostedJobs` carries one (Sales Engineer, KAMUR MODERN LIVING, Addis Ababa, Sep 08 2026) and the «Latest Jobs» list answers «No Active Jobs available for the selected criteria»; read from a connected browser tab; the site states no count; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the site's own sentence «No Active Jobs available for the selected criteria» under its latest-jobs table, beside one featured row — a zero the site states, not one a reader produced · 2026-09-13 -->
+<!-- route: browser · 1 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 11:56:27Z UTC for #233, lot 5 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -45,6 +46,25 @@ case where a browser is legitimate** (#66: it changes the layer, not the
 permission). Not measured here: this session has no browser instrument; an
 OPEN under a real browser would make this host a candidate for a browser
 adapter, and that is the pilot's to assign.
+
+## 2026-09-13 10:46 UTC — the browser route, MEASURED (#222): served, and nearly empty
+
+One Claude-in-Chrome tab, the guard on `/Jobs` and `/jobs/AllPostedJobs`
+first. **No challenge** — the 25-byte 403 goes to the declared client alone.
+An ASP.NET WebForms site (`__doPostBack` links, a login pane, an
+Amharic/English toggle).
+
+```
+navigate /Jobs                     200 «Jobs in Ethiopia | Job Vacancy in Ethiopia | EthioJobs - Ezega Jobs» — a landing page with advice text, links to /jobs/AllPostedJobs
+navigate /jobs/AllPostedJobs       200 — «Featured Jobs in Ethiopia»: 1 row (Sep 08 2026 · Sales Engineer – Epoxy Flooring Solutions · KAMUR MODERN LIVING · Addis Ababa)
+                                   «Latest Jobs in Ethiopia»: **«No Active Jobs available for the selected criteria»** · filters (category, location, experience, education) unset
+```
+
+**One advertisement on the day, and the site's own sentence for the rest.**
+A route to one is a route; the count is the site's, and it is 1. *The
+advertisement row has no link of its own in the markup read (a WebForms
+postback), so no address was opened.* What reopens the volume question: a
+day the latest-jobs table is not empty.
 
 ## What this card is, and is not
 
