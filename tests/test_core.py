@@ -17679,6 +17679,89 @@ class TwoStoresInTwoSitemapsKeyedApartAndTheContactPersonNeverRead(unittest.Test
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class TwoJobDetailSitemapsAgainstTheRootsOwnCountAndAPageThatIsReportedNotRead(unittest.TestCase):
+    """**`isinolsun.py`, 2026-09-13 (#382).** İşin Olsun lists 87 504 keys
+    `/is-ilani/<slug>-0ioj<32 hex>` in two job-detail sitemaps (eight slugs
+    carry a literal tab; the key behind them is sound); the adapter dedups
+    on the hex key, sets aside a URL of another shape, and prints the root's
+    own «87.394 İş İlanı» beside its count, never merged. The advertisement
+    page stalled without a byte for every plain client on 2026-09-13, so
+    `ad --url` REPORTS: stalled → exit 6 with the dated fact; served → exit
+    6 naming the status, the size and the JobPosting count, because no reader
+    was ever written against a page never served. Mutated (`-B`, detached
+    copy): the dedup removed → 4 ≠ 3; the thousands dot kept → the stated
+    figure cannot be read, reddens; the key taken from the slug → reddens;
+    the tab-tolerant slug narrowed to `[a-z0-9-]` → the tab URL is set
+    aside, 2 ≠ 3; the stall branch dropped → exit 2 instead of 6, reddens;
+    the served report's JobPosting count zeroed → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_isinolsun", os.path.join(SCRIPTS, "isinolsun.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _urlset(urls):
+        return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-13T02:10:10.3840802+03:00</lastmod></url>" for u in urls) + "</urlset>")
+
+    INDEX = ('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+             '<sitemap><loc>https://isinolsun.com/sitemaps/jobdetailsitemap1.xml</loc></sitemap><sitemap><loc>https://isinolsun.com/sitemaps/positionlistsitemap.xml</loc></sitemap>'
+             '<sitemap><loc>https://isinolsun.com/sitemaps/jobdetailsitemap2.xml</loc></sitemap></sitemapindex>')
+    K1, K2, K3 = "898A255D98D1435E9AFB8E145D933CEF", "D48726A154CF4A618AE9CAA5431712C3", "4D6E7EDEA9DE4BA9852AFB27739407BA"
+
+    def _list(self, mod, pages, limit=None, no_total=False):
+        import contextlib
+        def get(url, timeout=120):
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_keys_are_deduped_the_tab_slug_kept_the_other_shape_set_aside_and_the_root_count_printed_apart(self):
+        mod = self._mod()
+        f1 = self._urlset([f"https://isinolsun.com/is-ilani/tatli-ustasi-carmen-tatlicilik-0ioj{self.K1}", "https://isinolsun.com/is-ilanlari/istanbul",
+                           f"https://isinolsun.com/is-ilani/kalite-kontrol-elemani-bandido-cosmetics-\tbandido-cosmetics-0ioj{self.K3}"])
+        f2 = self._urlset([f"https://isinolsun.com/is-ilani/guvenlik-gorevlisi-dad89-0ioj{self.K2}", f"https://isinolsun.com/is-ilani/tatli-ustasi-carmen-tatlicilik-0ioj{self.K1}"])
+        root = "<html><body><div>16.155.987 İndirme</div><div>87.394 İş İlanı</div></body></html>"
+        rows, err = self._list(mod, {mod.INDEX: self.INDEX, "https://isinolsun.com/sitemaps/jobdetailsitemap1.xml": f1, "https://isinolsun.com/sitemaps/jobdetailsitemap2.xml": f2, mod.BASE + "/": root})
+        self.assertEqual([r["id"] for r in rows], [self.K1, self.K3, self.K2])
+        self.assertEqual((rows[0]["ledger_id"], rows[0]["slug"], rows[0]["country"]), (f"isinolsun:{self.K1}", "tatli-ustasi-carmen-tatlicilik", "TR"))
+        self.assertIn("2 job-detail file(s), 5 <loc>; **3 distinct advertisement key(s)** of the shape /is-ilani/<slug>-0ioj<hex>, 1 of another shape set aside.", err)
+        self.assertIn("3 emitted, site states 87 394 — 87 391 short; the sitemaps and the root's own count are two witnesses, and neither corrects the other.", err)
+        self.assertNotIn("16 155 987", err)
+
+    def test_the_page_is_reported_stalled_or_served_and_never_pretended_read(self):
+        import contextlib
+        mod = self._mod()
+        url = f"https://isinolsun.com/is-ilani/tatli-ustasi-carmen-tatlicilik-0ioj{self.K1}"
+        mod.get = lambda u, timeout=120: (None, f"stalled: no answer in {timeout} s (TimeoutError)")
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url=url, timeout=30))
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+        self.assertIn("stalled: no answer in 30 s", err.getvalue())
+        self.assertIn("no reader is written against a page never served", err.getvalue())
+        ld = '<script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Tatlı Ustası","description":"x","datePosted":"2026-09-13","hiringOrganization":{"@type":"Organization","name":"Carmen"}}</script>'
+        mod.get = lambda u, timeout=120: (200, f"<html><head>{ld}</head><body>Tatlı Ustası <a href='mailto:ik@example.com.tr'>başvur</a></body></html>")
+        out, err = io.StringIO(), io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url=url, timeout=30))
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+        self.assertIn("SERVED — HTTP 200", err.getvalue())
+        self.assertIn("1 JobPosting in JSON-LD", err.getvalue())
+        self.assertEqual(out.getvalue(), "")
+        self.assertNotIn("ik@example.com.tr", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://isinolsun.com/is-ilanlari/istanbul", timeout=30))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
