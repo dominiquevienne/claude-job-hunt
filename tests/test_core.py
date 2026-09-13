@@ -17167,13 +17167,17 @@ class AKeyedApiExercisedOnAStubExitsCleanlyWithoutTheKeyAndNeverPrintsIt(unittes
             calls.append((req.full_url.rsplit("/", 1)[-1].replace(".json", ""), dict(mod.urllib.parse.parse_qsl(req.data.decode()))))
             code, body = next(it)
             return _R(code, body)
+        real = mod.urllib.request.urlopen      # the module is the process-wide urllib: patched, then restored
         mod.urllib.request.urlopen = fake_urlopen
         out, err = io.StringIO(), io.StringIO()
         ns = argparse.Namespace(limit=None, pages=None, type=None, contract=None, query=None, id=None)
         for k, v in kw.items():
             setattr(ns, k, v)
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            fn(ns)
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                fn(ns)
+        finally:
+            mod.urllib.request.urlopen = real
         return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), calls
 
     def test_without_the_key_it_exits_7_with_the_note_and_makes_no_request(self):
@@ -17181,10 +17185,14 @@ class AKeyedApiExercisedOnAStubExitsCleanlyWithoutTheKeyAndNeverPrintsIt(unittes
         mod = self._mod()
         mod.secret_get = lambda var, name=None: None
         attempted = []
+        real = mod.urllib.request.urlopen
         mod.urllib.request.urlopen = lambda *a, **k: attempted.append(1)
         err = io.StringIO()
-        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
-            mod.cmd_list(argparse.Namespace(limit=None, pages=None, type=None, contract=None))
+        try:
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                mod.cmd_list(argparse.Namespace(limit=None, pages=None, type=None, contract=None))
+        finally:
+            mod.urllib.request.urlopen = real
         self.assertEqual(cm.exception.code, 7)
         self.assertIn("ITJOBS_API_KEY", err.getvalue())
         self.assertIn("www.itjobs.pt/api", err.getvalue())

@@ -155,7 +155,10 @@ def card(j):
             "employer_site": co.get("url"), "ref": (j.get("ref") or "").strip() or None,
             "locations": names(j.get("locations")), "types": names(j.get("types")), "contracts": names(j.get("contracts")),
             "work_model": j.get("workModel"),
+            # the API states no currency and no period for salaryMin/Max — the documentation's 11000–17000 on
+            # a Lisbon job read as EUR a year, and «read as» is not «stated»: the unit is emitted as not stated
             "salary_min": j.get("salaryMin") or None, "salary_max": j.get("salaryMax") or None,
+            "salary_currency": None, "salary_unit_stated": False,
             "posted": j.get("publishedAt"), "updated": j.get("updatedAt")}
 
 
