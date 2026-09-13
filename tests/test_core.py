@@ -19388,5 +19388,102 @@ class AWebFormsSearchTurnsItsPagesByPostbackAndTheEmployerStaysBehindTheLogin(un
                          ("00009806651", "Beden İşçisi (Genel)", "Okur Yazar Olmayan", None, ["employer", "description", "application"]))
 
 
+class ASiteThatStatesItsCountWhenItRefusesToListAndHidesTheEmployerBehindALogin(unittest.TestCase):
+    """**`vmp.py`, 2026-09-13 (#358).** Hungary's public service lists a
+    search only when it is small enough; too large, it answers «A lista
+    túl sok elemet tartalmaz (N)» — and that N is the board's own count,
+    printed and exited on (6), never guessed around. A listed search is
+    walked against «(N találat)», 50 a page. The employer is «Bejelentkezés
+    után látható» on every row and stays null. `categories` sums the 25
+    categories' counts, listed or refused, and calls the sum a bound. The
+    detail states the salary as monthly gross HUF — the one unit stated on
+    a card in this batch. Mutated (`-B`, detached copy): the refusal regex
+    broken → the refusal case reddens (exit 6 for the wrong reason); the
+    employer taken from the cell → the login case reddens; «(N találat)»
+    regex broken → the walk case reddens; the dedup dropped → the walk case
+    reddens; the category sum not counting refused ones → the categories
+    case reddens; the salary unit set to null → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_vmp", os.path.join(SCRIPTS, "vmp.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(ident, occ, edu="főiskola", place="Budapest 11. ker.", emp="<i>Bejelentkezés után látható</i>"):
+        return f'<tr> <td><a href="/allas/reszletek/{ident}">{occ}</a></td> <td><a href="/allas/reszletek/{ident}">{edu}</a></td> <td><a href="/allas/reszletek/{ident}">{place}</a></td> <td> {emp} </td> </tr>'
+
+    def _listed(self, n, rows):
+        return f"<html><body><td>Találatok listája ({n} találat)</td><tbody>" + "".join(rows) + "</tbody></body></html>"
+
+    REFUSED = "<html><body><li>A lista túl sok elemet tartalmaz (1806), kérjük, szűkítse az eredményt keresési feltételek meghatározásával!</li></body></html>"
+
+    def _run(self, mod, fn, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def get(url):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(kulcsszo=None, helyseg=None, kategoria=None, isk=None, pages=None, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fn(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_a_listed_search_is_walked_against_its_count_and_the_employer_stays_null(self):
+        mod = self._mod()
+        p1 = self._listed(52, [self._row(600000 + i, f"{1000 + i} - Foglalkozás {i}") for i in range(50)])
+        p2 = self._listed(52, [self._row(600049, "1049 - Foglalkozás 49"), self._row(600050, "1050 - Foglalkozás 50"), self._row(600051, "1051 - Foglalkozás 51")])
+        rows, err, asked = self._run(mod, mod.cmd_search, [(200, p1), (200, p2)], helyseg="Budapest")
+        self.assertEqual(len(rows), 52)
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["feor"], rows[0]["employer"], rows[0]["education"], rows[0]["workplace"]), ("600000", "Foglalkozás 0", "1000", None, "főiskola", "Budapest 11. ker."))
+        self.assertIn("login required", rows[0]["employer_hidden"])
+        self.assertIn("52 emitted over 2 page(s), site states 52 (helyseg=Budapest) — equal.", err)
+        self.assertIn("oldal=2", asked[1])
+
+    def test_a_refused_search_prints_the_sites_count_and_stops(self):
+        import contextlib
+        mod = self._mod()
+        mod.get = lambda url: (200, self.REFUSED)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as err:
+            mod.cmd_search(argparse.Namespace(kulcsszo=None, helyseg=None, kategoria=None, isk=None, pages=None, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the site states 1 806 for this search and refuses to list it", err.getvalue())
+        self.assertIn("narrow", err.getvalue())
+
+    def test_categories_sum_listed_and_refused_counts_and_call_it_a_bound(self):
+        mod = self._mod()
+        served = [(200, self.REFUSED)] + [(200, self._listed(4, [self._row(1, "1 - a")])) if k % 2 else (200, "<html><li>A lista túl sok elemet tartalmaz (100), kérjük</li></html>") for k in range(1, 26)]
+        rows, err, asked = self._run(mod, mod.cmd_categories, served)
+        self.assertEqual(len(rows), 25)
+        self.assertEqual(sum(r["count"] for r in rows), 13 * 4 + 12 * 100)
+        self.assertIn("1 252 summed over 25 categories (13 listed, 12 refused with their count) — a sum of categories, an upper bound; the site states 1 806 unfiltered.", err)
+
+    def test_the_detail_states_its_salary_unit_and_cuts_the_address_to_the_city(self):
+        import contextlib
+        mod = self._mod()
+        lines = ["Általános irodai adminisztrátor - ügyintéző (8015711)", "Alapadatok", "A foglalkoztató részletes adatainak megjelenítéséhez kérjük jelentkezzen be!",
+                 "Munkakör (FEOR)", "Általános irodai adminisztrátor", "Gyakorlati idő", "nincs", "Munkakör kiegészítése", "ügyintéző",
+                 "Felajánlott havi bruttó kereset (Ft)", "373 200 - 0", "Munkavégzés helye", "1139 Budapest 13. ker. Teve út 4-6",
+                 "Elvárt iskolai végzettség", "főiskola", "Megjegyzés", "Végzendő tevékenység:", "- adatok rögzítése", "Érvényesség időtartama", "2026.01.20 - 2026.09.25",
+                 "Alkalmazni kívánt létszám", "40 fő", "Teljes/rész munkaidő (óra)", "8 / 0", "Munkarend", "kötött nappali munkavégzés"]
+        page = "<html><body>" + "".join(f"<div>{l}</div>" for l in lines) + "</body></html>"
+        mod.get = lambda url: (200, page)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://vmp.munka.hu/allas/reszletek/590506"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["title"], d["reference"], d["employer"], d["workplace"], d["salary_currency"], d["salary_min"], d["salary_max"], d["salary_unit"], d["salary_gross"], d["salary_unit_stated"], d["headcount"], d["valid_through"], d["hours"]),
+                         ("Általános irodai adminisztrátor - ügyintéző", "8015711", None, "Budapest 13. ker.", "HUF", 373200, None, "MONTH", True, True, 40, "2026.09.25", "8 / 0"))
+        self.assertEqual(d["description"], "Végzendő tevékenység:\n- adatok rögzítése")
+        self.assertNotIn("Teve út", json.dumps(d))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
