@@ -18776,5 +18776,125 @@ class ASessionBoundFormIsWalkedByItsOwnFieldsAndNoContactLeaves(unittest.TestCas
         self.assertIn("基本給（ａ）", d["fields"])
 
 
+class AnUnkeyedApiWithAWindowAndASitemapThatAgreesToFive(unittest.TestCase):
+    """**`arbeidsplassen.py`, 2026-09-13 (#365).** Norway's public service:
+    the declared sitemap (13 615 uuids with lastmod) and the unkeyed search
+    API its page calls (`hits.total.value` 13 620 the same minute; `from`
+    capped at 10 000 — «Pagination depth exceeds maximum allowed window»;
+    `positioncount.sum` a headcount, printed and never compared; a 429
+    stops the run). The advertisement page's «Kontaktperson» section is
+    dropped whole. Mutated (`-B`, detached copy): the window guard dropped
+    → the window case reddens (the API's error becomes exit 6); the 429
+    branch dropped → the 429 case reddens (exit 6, not 7); the headcount
+    compared as a count → the search case reddens; the uuid dedup dropped
+    → the sitemap case reddens; «Kontaktperson» kept → the ad case
+    reddens; `--since` inverted → the sitemap case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_arbeidsplassen", os.path.join(SCRIPTS, "arbeidsplassen.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    U = ["4ff26012-fb75-43ae-bc30-7a1f2a6a40c0", "29b96134-562e-47a2-9d8c-487b94c905e4", "5b145521-4126-4088-8821-db9c1c3320d2"]
+
+    def _hit(self, u, title="Bilselger", src="FINN"):
+        return {"_source": {"uuid": u, "title": title, "businessName": "Gudim Nyere Bil As", "published": "2026-09-13T19:21:52+02:00", "expires": "2026-10-31",
+                            "source": src, "locationList": [{"country": "NORGE", "address": "Kokstadvegen 50 B", "city": "KOKSTAD", "county": "VESTLAND", "municipal": "BERGEN"}],
+                            "properties": {"applicationdue": "Snarest", "remote": "Hjemmekontor ikke mulig", "workLanguage": ["Norsk"]},
+                            "occupationList": [{"level1": "Salg og service", "level2": "Salg"}], "categoryList": [{"name": "Bilselger"}]}}
+
+    def _api(self, total, hits, head=92):
+        return json.dumps({"hits": {"total": {"value": total, "relation": "eq"}, "hits": hits}, "aggregations": {"positioncount": {"doc_count": total, "sum": {"value": head}}}})
+
+    def _search(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def get(url, accept="text/html"):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(q=None, county=None, municipal=None, pages=None, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_walk_prints_the_total_beside_the_count_and_the_headcount_apart(self):
+        rows, err, asked = self._search(self._mod(), [(200, self._api(3, [self._hit(self.U[0]), self._hit(self.U[1], src="IMPORTAPI")])), (200, self._api(3, [self._hit(self.U[2]), self._hit(self.U[0])]))], q="python")
+        self.assertEqual([r["id"] for r in rows], self.U)
+        self.assertEqual((rows[0]["employer"], rows[0]["county"], rows[0]["listed_via"], rows[0]["application_due"], rows[1]["listed_via"]), ("Gudim Nyere Bil As", "VESTLAND", "FINN", "Snarest", "IMPORTAPI"))
+        self.assertNotIn("Kokstadvegen", json.dumps(rows))
+        self.assertIn("3 emitted over 2 page(s), site states 3 (q=python) — equal.", err)
+        self.assertIn("92 POSITIONS (positioncount.sum) — a headcount, not advertisements; printed, never compared", err)
+        self.assertIn("q=python", asked[0])
+
+    def test_the_window_and_the_429_stop_the_walk_and_say_so(self):
+        import contextlib
+        mod = self._mod()
+        # 10 000-deep window: page 101 is never asked
+        asked = []
+
+        def get(url, accept="text/html"):
+            asked.append(url)
+            p = len(asked)
+            return 200, self._api(10050, [self._hit(f"{p:04x}{i:04x}-0000-4000-8000-000000000000") for i in range(100)])
+        mod.get = get
+        mod.PAGE_SIZE = 100
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(argparse.Namespace(q=None, county=None, municipal=None, pages=None, limit=None))
+        self.assertEqual(len(asked), 100)
+        self.assertNotIn("from=10000", asked[-1])
+        self.assertIn("the API's window ends at from=10000", err.getvalue())
+        # a 429 is a refusal, exit 7, no retry
+        it2 = iter([(429, "")])
+        mod.get = lambda url, accept="text/html": next(it2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(q=None, county=None, municipal=None, pages=None, limit=None))
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("429", e2.getvalue())
+
+    def test_the_sitemap_dedupes_filters_on_lastmod_and_prints_the_apis_total(self):
+        import contextlib
+        mod = self._mod()
+        xml = "<urlset><url><loc>https://arbeidsplassen.nav.no/stillinger</loc><lastmod>2026-09-13</lastmod></url>" + "".join(
+            f"<url><loc>https://arbeidsplassen.nav.no/stillinger/stilling/{u}</loc><lastmod>{d}</lastmod></url>" for u, d in ((self.U[0], "2026-09-13"), (self.U[1], "2026-06-30"), (self.U[0], "2026-09-13"))) + "</urlset>"
+        it = iter([(200, xml), (200, self._api(5, [self._hit(self.U[0])]))])
+        mod.get = lambda url, accept="text/html": next(it)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(limit=None, since="2026-09-01"))
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual([r["id"] for r in rows], [self.U[0]])
+        self.assertIn("**2 distinct advertisement uuid(s)** in the sitemap, 0 without <lastmod>; 1 emitted dated on or after 2026-09-01.", err.getvalue())
+        self.assertIn("2 in the sitemap, the API states 5 — 3 more in the API", err.getvalue())
+
+    def test_the_ad_reads_the_list_and_the_sections_and_drops_the_contact_section_whole(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><body><main><h1>Bilselger</h1><dl><dt><span>Oppstart</span></dt><dd>Etter avtale</dd><dt><span>Type ansettelse</span></dt><dd>Fast, heltid 100%</dd>'
+                '<dt><span>Sektor</span></dt><dd><p>Privat</p></dd><dt><span>Nettsted</span></dt><dd><a href="https://gudimbil.com/">https://gudimbil.com/</a></dd>'
+                '<dt><span>Hentet fra</span></dt><dd>Stillingsregistrering</dd></dl>'
+                '<h2>Om jobben</h2><p>Er du rå på salg</p><h2>Arbeidsoppgaver</h2><ul><li>Salg av nye biler</li></ul>'
+                '<h2>Kontaktperson for stillingen</h2><p>Petter Gudim</p><p>petter@gudimbil.com</p><p>92027927</p>'
+                '<h2>Om bedriften</h2><p>Familieeid</p><h2>Del annonsen</h2><a>Facebook</a></main></body></html>')
+        mod.get = lambda url, accept="text/html": (200, page)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=f"https://arbeidsplassen.nav.no/stillinger/stilling/{self.U[0]}"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["title"], d["engagement"], d["sector"], d["listed_via"], d["sections"]["Arbeidsoppgaver"], d["contact_dropped"]),
+                         ("Bilselger", "Fast, heltid 100%", "Privat", "Stillingsregistrering", "Salg av nye biler", ["Kontaktperson for stillingen"]))
+        blob = json.dumps(d, ensure_ascii=False)
+        for secret in ("Petter", "petter@", "92027927"):
+            self.assertNotIn(secret, blob, f"{secret!r} left the adapter")
+        self.assertNotIn("Del annonsen", d["sections"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
