@@ -19410,23 +19410,6 @@ class ASiteThatStatesItsCountWhenItRefusesToListAndHidesTheEmployerBehindALogin(
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_vmp", os.path.join(SCRIPTS, "vmp.py"))
-class ARouteToNothingPrimesOverALivingScript(unittest.TestCase):
-    """**#404, owner's decision of 2026-09-13: «un script qui ne rend rien ne
-    compte pas et est classé comme infaisable».** `isinolsun.py` enumerates
-    87 504 keys and no advertisement page answers on two clients; its card
-    carries a living `script:` AND `route: none · <reason> · date`. In
-    `bin/country-boards.py` the `route: none` line is read FIRST: such a
-    card is «infaisable» — dated and motivated by its own line — never
-    «fait», out of «faisable», named in the summary. Both directions: a
-    living script WITHOUT a route line stays «fait». Mutated (`-B`, detached
-    copy): the `route_none_of` check moved after the script check → the
-    primed fixture is «fait» (reddens); `faisable` no longer subtracting the
-    class → the ratio case reddens; the reason regex broken → the access
-    label loses the reason (reddens)."""
-
-    def _tool(self):
-        spec = importlib.util.spec_from_file_location("_country_boards_404", os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod
@@ -19504,6 +19487,29 @@ class ARouteToNothingPrimesOverALivingScript(unittest.TestCase):
                          ("Általános irodai adminisztrátor - ügyintéző", "8015711", None, "Budapest 13. ker.", "HUF", 373200, None, "MONTH", True, True, 40, "2026.09.25", "8 / 0"))
         self.assertEqual(d["description"], "Végzendő tevékenység:\n- adatok rögzítése")
         self.assertNotIn("Teve út", json.dumps(d))
+
+
+class ARouteToNothingPrimesOverALivingScript(unittest.TestCase):
+    """**#404, owner's decision of 2026-09-13: «un script qui ne rend rien ne
+    compte pas et est classé comme infaisable».** `isinolsun.py` enumerates
+    87 504 keys and no advertisement page answers on two clients; its card
+    carries a living `script:` AND `route: none · <reason> · date`. In
+    `bin/country-boards.py` the `route: none` line is read FIRST: such a
+    card is «infaisable» — dated and motivated by its own line — never
+    «fait», out of «faisable», named in the summary. Both directions: a
+    living script WITHOUT a route line stays «fait». Mutated (`-B`, detached
+    copy): the `route_none_of` check moved after the script check → the
+    primed fixture is «fait» (reddens); `faisable` no longer subtracting the
+    class → the ratio case reddens; the reason regex broken → the access
+    label loses the reason (reddens)."""
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards_404", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
     def test_a_script_with_route_none_is_not_feasible_and_a_script_without_it_is_done(self):
         import tempfile
         mod = self._tool()
