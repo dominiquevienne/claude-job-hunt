@@ -41,3 +41,16 @@ readings, each dated.*
   is slow, geo-fenced, or down this hour is exactly what the next read will
   say.
 - **No script, no configuration.**
+
+## 2026-09-13 — #283: a timeout on the rules file is an absence of rules; the transport timed out too
+
+Since #283 (owner's decision of 2026-09-13: «toutes incapacité d'ouvrir
+robots.txt doit aboutir à l'absence de règles») the three timeouts on
+`/robots.txt` are `no-rules-timeout` — `allowed: True, certain: False` — and
+the first transport request waits 10 s. Measured on 2026-09-13 (15:48 UTC): the
+guard opened, `bin/fetch-body.py` waited its 10 s and asked for the root,
+**and the root timed out as well** (`URLError: timed out`, 25 s). *The
+INDETERMINATE moves from the rules file to the transport: nothing forbids,
+and nothing answers. A measurement to redo, from another network or at
+another hour; not a verdict.* `route:` is not declared — nothing was
+served.

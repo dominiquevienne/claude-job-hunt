@@ -4,7 +4,7 @@
 
 <!-- hosts: emploi.lefigaro.fr -->
 <!-- countries: FR -->
-<!-- witness: none possible — the host answers **403 on its own `robots.txt`** as of 2026-09-05, so the 244 815 figure was taken when it replied and is not reproducible today; that is a fact about the number's future, not a defect of this card -->
+<!-- witness: none possible by script today — the host answers 403 on its own `robots.txt` (an absence of rules since #283, 2026-09-13) and a Cloudflare challenge on the root (5 517 B, moving md5, twice on 2026-09-13: borne 2); the 244 815 figure was taken when it replied (2026-09-05) and is not reproducible by this client — a fact about the number's future, not about the board -->
 **Re-tested 2026-09-02: the constraint holds.** `emploi.lefigaro.fr/robots.txt` still answers **HTTP 403** with 4 579 bytes of `text/html` to a scripted request.
 
 A large French generalist board — **244 815 ads in its own sitemap** — run by
@@ -280,3 +280,22 @@ Everything is fetched from the browse paths the site publishes in its own
 sitemaps, in the user's own browser, at the volume one person's job search
 needs. The search page and the search API stay untouched, because the site
 asked.
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+««none possible» (05.09), 244 815 not reproducible» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://emploi.lefigaro.fr/                          403, 5 517 B, md5 9d5499f9c1a1   (15:30:09Z)
+GET https://emploi.lefigaro.fr/                          403, 5 517 B, md5 f90458ad1c55   (15:30:10Z)
+```
+
+**The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

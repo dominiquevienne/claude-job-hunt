@@ -50,3 +50,24 @@ From here those look the same, and the card says so rather than choosing.
 Nothing about what the site serves, its size, its fields, or whether a
 browser is served — **because a browser was not opened.** *A tab would
 have been the doctrine's route only after the rules opened a path.*
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+«host-closed, certain (12.09)» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://kazibongo.com/                               403, 9 B, md5 722969577a96   (15:29:16Z)
+GET https://kazibongo.com/                               403, 9 B, md5 722969577a96   (15:29:19Z)
+GET https://kazibongo.com/jobs                           403, 9 B, md5 722969577a96   (15:29:21Z)
+GET https://kazibongo.com/jobs                           403, 9 B, md5 722969577a96   (15:29:23Z)
+```
+
+**The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

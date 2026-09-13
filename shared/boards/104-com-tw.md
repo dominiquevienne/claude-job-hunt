@@ -65,3 +65,24 @@ Nothing about the board's size, its markup, its ids or its language — nothing
 was read. Nothing about the operator's intention — no rule was read either.
 **«Taiwan has no board» is not a sentence this repository can write from this
 card; «Taiwan's largest board serves our client a challenge page» is.**
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+«host-closed, rule "/", certain True» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://www.104.com.tw/                              403, 5 597 B, md5 dc352ca5f4b6   (15:29:59Z)
+GET https://www.104.com.tw/                              403, 5 597 B, md5 3f926bc2aa17   (15:30:00Z)
+GET https://www.104.com.tw/jobs/search/                  403, 5 654 B, md5 1657645d8e22   (15:30:01Z)
+GET https://www.104.com.tw/jobs/search/                  403, 5 654 B, md5 921f89163317   (15:30:02Z)
+```
+
+**The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

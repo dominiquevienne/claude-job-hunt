@@ -4,7 +4,7 @@
 
 <!-- hosts: www.cadremploi.fr -->
 <!-- countries: FR -->
-**Re-tested 2026-09-02: the constraint holds.** `cadremploi.fr/robots.txt` still answers **HTTP 403** with 4 574 bytes of `text/html` to a scripted request — the rules themselves are unreadable to anything but a browser.
+**Re-tested 2026-09-02: the constraint holds.** `cadremploi.fr/robots.txt` still answers **HTTP 403** with 4 574 bytes of `text/html` to a scripted request — the rules file answers 403 to a scripted request — an absence of rules since #283 (2026-09-13), not a closure — and the transport answers a Cloudflare challenge on the root (5 512 B, moving md5, twice on 2026-09-13: borne 2, nothing is defeated). The line of 2026-09-02 that followed here («unreadable to anything but a browser») is withdrawn as a scope: it described the rules file, and the board's door is the transport.
 
 The reference board for French **cadres** alongside the APEC — one of the oldest,
 now part of the HelloWork group.
@@ -184,3 +184,22 @@ own job search — and it does not touch the paths Cloudflare closes to scripts.
 A `403` or a challenge in the browser is a **stop**: report it and hand it to
 the user. Never retry it in a loop, and never move this board to a script to get
 around it.
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+««the rules themselves are unreadable to anything but a browser» (02.09)» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://www.cadremploi.fr/                           403, 5 512 B, md5 0b76e7ac897c   (15:30:06Z)
+GET https://www.cadremploi.fr/                           403, 5 512 B, md5 1608401b7602   (15:30:07Z)
+```
+
+**The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

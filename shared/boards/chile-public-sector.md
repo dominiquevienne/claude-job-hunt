@@ -114,3 +114,15 @@ card exists to say does not exist** — see the title.
 
 If an adapter is ever built here, `_pace.Pace` reads the ten seconds from the
 host at run time; the number is not to be copied into the source.
+
+## 2026-09-13 — #283: the S3 `AccessDenied` on `www.trabajaenelestado.cl/robots.txt` is the general case now, and the transport answers 200
+
+The 111-byte S3 `AccessDenied` on the rules file — the exception this
+repository measured the day the 403 rule shipped (2026-09-04) — is what
+every 403 on a rules file is since #283 (owner's decision of 2026-09-13): an
+absence of rules, `no-rules-403`, `certain: False`. Under the new guard the
+root answers **200, 40 102 B, byte-identical twice** (15:30:12Z,
+15:30:14Z — «Trabaja en el Estado | Servicio Civil», an SPA whose data
+route is `elastic.serviciocivil.cl/listado_teee/_doc/_search`, named in the
+page). *Served; the data route and its own rules are the adapter's first
+question, not this card's.*

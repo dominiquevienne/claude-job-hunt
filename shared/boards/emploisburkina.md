@@ -148,3 +148,14 @@ the run was also refused, and 35 seconds is not a test of recovery.* **What
 would test it: a single request after a long idle period.** *Two observations
 now share a shape; neither isolates the variable, and the honest reading is that
 we do not know what trips it.*
+
+## 2026-09-13 — #283: a timeout on the rules file is an absence of rules — and today the file reads
+
+The INDETERMINATE of 2026-09-08 («could not be read after 3 attempt(s)») was
+a verdict on a rules file that did not answer; since #283 (owner's decision
+of 2026-09-13) that is `no-rules-timeout`, open on `certain: False`, with the
+first transport request waiting 10 s. On 2026-09-13 it does not even come to that:
+`/robots.txt` **reads** (348 B, `sweep: True, certain: True`) and the root
+answers **200, 309 107 B, twice** (15:28:52Z, 15:28:55Z, the host's
+`Crawl-delay: 1` honoured). *The measurement above stands as dated; the
+host is served today.*

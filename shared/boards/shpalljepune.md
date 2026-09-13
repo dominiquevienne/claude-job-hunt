@@ -6,8 +6,7 @@
 <!-- script: none -->
 <!-- countries: XK -->
 <!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file is refused (403 ×2, cloudflare) — no open path for any client, browser included, under the 2026-09-09 table where 403 stays a refusal · 2026-09-13 -->
-
+<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
 **In the #222 candidate list from the Kosovo country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -43,3 +42,22 @@ serves no rules to anyone look the same from here.*
 
 Nothing about what the site serves, its size, or whether a browser is
 served — a browser was not opened.
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+«route: none — Cloudflare 403 on the rules file (13.09)» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://shpalljepune.com/                            403, 5 515 B, md5 affb7bb464e3   (15:29:27Z)
+GET https://shpalljepune.com/                            403, 5 515 B, md5 58dc39ee2343   (15:29:28Z)
+```
+
+**The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

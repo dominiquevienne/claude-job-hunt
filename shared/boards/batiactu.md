@@ -3,8 +3,8 @@
 <!-- hosts: emploi.batiactu.com -->
 <!-- script: batiactu.py -->
 <!-- countries: FR -->
-<!-- content: indeterminate · the host refuses its own `robots.txt` with HTTP 403, so the guard returns `allowed=False` and the adapter emits nothing; whether that refusal is the operator's or a provider's wall is NOT established · 2026-09-07 -->
-<!-- witness: none possible — nothing can be fetched while the rules file itself answers 403 -->
+<!-- content: indeterminate · the host answers 403 on its own `robots.txt` — an absence of rules since #283 (2026-09-13), `no-rules-403`, so the guard opens on `certain: False` — and the transport answers a static 403 (18 887 B, byte-identical twice on 2026-09-13) at the root, so the adapter still emits nothing; refused at the client on the page, family (1) of #222, a browser not measured · 2026-09-13 -->
+<!-- witness: none served — the root answers a static 403 to this client on 2026-09-13 (18 887 B ×2); a browser route is legitimate and not yet measured -->
 
 **9 984 offres** of French construction and public works — the largest sector
 this repository had no coverage for at all. `jobology.md` reaches transport,
@@ -298,3 +298,22 @@ plausibly a misconfiguration they would want to know about.
 **Not verified, and deliberately:** whether the same body is served to other
 agent strings today. `robots-policy.md` forbids retrying under another name,
 and that holds when the retry would suit us.
+
+## 2026-09-13 — #283: an unread rules file is an absence of rules, and the transport measured
+
+**Owner's decision of 2026-09-13, verbatim: «toutes incapacité d'ouvrir robots.txt
+doit aboutir à l'absence de règles et donc à l'ouverture».** This card read
+«content: indeterminate — the host refuses its own robots.txt (07.09), the adapter emits nothing» — a verdict taken on the rules file alone. Since #283 the 403 on
+`/robots.txt` is `no-rules-403`, `allowed: True, certain: False`: nothing
+was read, nothing forbids, and **the transport decides**. Measured with
+`bin/fetch-body.py --allow-refusal` under the new guard, the root (and a
+listing path where one was known) twice:
+
+```
+GET https://emploi.batiactu.com/                         403, 18 887 B, md5 114bb0701024   (15:30:04Z)
+GET https://emploi.batiactu.com/                         403, 18 887 B, md5 114bb0701024   (15:30:05Z)
+```
+
+**The transport answers a **static 403** — the same bytes on every fetch: a refusal at the transport aimed at the client, family (1) of #222, where a browser is legitimate and is not measured here.** *A verdict of closure was never
+this card's to give (§2 sexies); what it gives now is a dated transport
+reading, and the class it falls in.*

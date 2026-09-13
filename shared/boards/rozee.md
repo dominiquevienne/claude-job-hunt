@@ -160,3 +160,16 @@ itself says «none is possible from 2026-09-07» — the host answers 403 to its
 own `robots.txt`, so the rules are unreadable and nothing above can be
 re-read by any route. *A route that the rules cannot open is not a coverage,
 and the hand-list was wrong to keep it.*
+
+## 2026-09-13 — #283: the rules file reads again, and the transport answers 200
+
+**«None is possible from 2026-09-07»** was written when `/robots.txt`
+answered 403 — a verdict on the rules file alone, and since #283 (owner's
+decision of 2026-09-13) that would be an absence of rules, not a closure. On
+2026-09-13 the file **reads**: `verdict()` `state: read`, 466 B, `sweep: True,
+certain: True`; and the root answers **200, 778 605 B, twice** (15:14:22Z,
+15:14:25Z — «Jobs in Pakistan - ROZEE.PK»). *The 52 readable
+advertisements and the 2 607-`<loc>` `jobs.xml` above are the 2026-09-05
+reading; whether they are still reachable is the next measurement, with the
+sitemap declared today.* **The «none possible» sentence is withdrawn as a
+property of the host: it was a fact of 2026-09-07.**

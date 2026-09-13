@@ -19,7 +19,7 @@ application, one is general classifieds, and two were open and unmeasured.
 ## What the other Kosovar hosts do, re-measured
 
 ```
-shpalljepune.com · portalpune.com   403 on /robots.txt — unchanged since 04.09
+shpalljepune.com · portalpune.com   403 on /robots.txt — refused at the client on the RULES FILE since 04.09; since #283 (2026-09-13) that is an absence of rules, and the transport answers a Cloudflare challenge ×2 on 2026-09-13 (borne 2) — see their cards
 kastori.net                         open, and see below
 kosovajob.com                       open, server-rendered, 617 links — unbuilt
 merrjep.com                         general classifieds, not a job board
