@@ -16,6 +16,10 @@ owner's decision, not this script's.
 
 THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
 
+    NON FAISABLE        the card declares `route: none · <reason> · date` — READ FIRST,
+                        whatever `script:` says (#404, owner 2026-09-13: «un script qui
+                        ne rend rien ne compte pas et est classé comme infaisable»);
+                        dated and motivated by its own line; out of «faisable»
     fait                a script exists (`script:` names a .py) — OR the card declares
                         `route: browser · <count> · YYYY-MM-DD` with a count > 0 (#264,
                         2026-09-12: a browser route measured to a count is a coverage,
@@ -43,7 +47,12 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
     fait / total      = fait / total                        — écartés compris
 
 **The denominator is our list, not the market** (#195 ②) — one fixed sentence,
-printed on every page. And boards declared `countries: *` (worldwide meta-boards)
+printed on every page. **A multi-country card counts on EVERY country it
+declares** — `iso2 in cs`, so `jobberman.md` (NG KE UG) sits on three pages
+and `stepstone` on six: the owner's decision of 2026-09-13 (#404, «les
+adaptateurs multipays doivent apparaître pour chacun des pays»), which
+reverses the 08.09 rule of the Atlas that counted «propres au pays» as
+exactly-one-country cards. And boards declared `countries: *` (worldwide meta-boards)
 are listed apart and counted apart: they carry no country code, so «one row per
 card whose `countries:` carries the country» does not include them, and folding
 them into the ratio would add the same 25 rows to 186 pages.
@@ -201,11 +210,39 @@ def route_of(card):
     return kind, n, date
 
 
+ROUTE_NONE = re.compile(r"^\s*none\b\s*(?:·\s*(.*?))?\s*$", re.S)
+
+
+def route_none_of(card):
+    """A declared `route: none · <reason> · YYYY-MM-DD` — (reason, date) — or None.
+
+    **Owner's decision, 2026-09-13 18:2x UTC (#404): «un script qui ne rend rien
+    ne compte pas et est classé comme infaisable».** `isinolsun.py` enumerates
+    87 504 keys and no advertisement page answers, on two clients, on the day:
+    the card carries a living `script:` AND `route: none` — and the `route:
+    none` line PRIMES. Such a card is «non faisable», dated and motivated by
+    its own line, never «fait»; it leaves the day a page answers and the line
+    is removed."""
+    v = card["h"].get("route")
+    if v is None:
+        return None
+    m = ROUTE_NONE.match(v)
+    if not m:
+        return None
+    rest = m.group(1) or ""
+    date = date_of(rest)
+    reason = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d.*$", "", rest).strip() or "a route to nothing"
+    return reason, date
+
+
 def access_of(card):
     """What the card DECLARES about the route. Returns (label, basis)."""
     h = card["h"]
     if h.get("robots", "").strip() == "keyed-api":
         return "API à clé", "`robots: keyed-api`"
+    rn = route_none_of(card)
+    if rn:
+        return f"route: none — {rn[0][:140]}" + (f" ({rn[1]})" if rn[1] else ""), "`route: none` (prime sur `script:`, #404)"
     rt = route_of(card)
     if rt and rt[0] == "browser":
         return (f"navigateur — route déclarée, {rt[1]} annonce(s)" + (f" au {rt[2]}" if rt[2] else ""),
@@ -236,10 +273,18 @@ def access_of(card):
 
 
 def classify(card):
-    """One of: fait · faisable · indetermine · reverifier."""
+    """One of: fait · faisable · indetermine · reverifier · ecarte · infaisable.
+
+    **`route: none` is read FIRST** (#404, 2026-09-13): a card that declares a
+    route to nothing is «non faisable» — dated by its own line, motivated by
+    its own line — whatever its `script:` says. A script that yields nothing
+    does not count."""
     h = card["h"]
     script = h.get("script", "").strip()
     measured = date_of(h.get("content", "")) or date_of(h.get("verified", ""))
+    rn = route_none_of(card)
+    if rn:
+        return "infaisable", rn[1] or measured
     if script and script != "none":
         return "fait", measured
     rt = route_of(card)
@@ -292,6 +337,9 @@ def status_of(card, cls, measured):
             return f"adaptateur `{script}`"
         rt = route_of(card)
         return f"route navigateur — {rt[1]} annonce(s)" + (f" au {rt[2]}" if rt and rt[2] else "")
+    if cls == "infaisable":
+        rn = route_none_of(card)
+        return "NON FAISABLE — `route: none`" + (f" (`{script}` livré, rend rien)" if script and script != "none" else "") + (f" au {rn[1]}" if rn and rn[1] else "")
     label = {"faisable": "mesuré sans adaptateur — faisable établi",
              "indetermine": "mesuré sans adaptateur — INDÉTERMINÉ",
              "ecarte": "écarté — NON validé par le propriétaire",
@@ -314,10 +362,10 @@ def covers_text(card):
 
 def table(cards, iso2):
     own, world, undeclared = rows_for(cards, iso2)
-    n = {"fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0}
+    n = {"fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0}
     lines = ["| Board | Ce qu'il couvre | Accès | Statut | Mesuré |",
              "| :-- | :-- | :-- | :-- | :-- |"]
-    named_ind, named_rev, named_exc = [], [], []
+    named_ind, named_rev, named_exc, named_inf = [], [], [], []
     for c in own:
         cls, measured = classify(c)
         n[cls] += 1
@@ -330,15 +378,18 @@ def table(cards, iso2):
             named_rev.append(c["name"])
         if cls == "ecarte":
             named_exc.append(c["name"])
+        if cls == "infaisable":
+            named_inf.append(c["name"])
     total = len(own)
     # #232: total minus the exclusions that are dated AND motivated — the
     # indeterminate and the undated stay in, named apart. `fait + faisable`
     # was the flattery #195 ① forbids: it shrank with every host not read.
-    faisable = total - n["ecarte"]
+    # #404: a `route: none` card is dated and motivated by its own line — it leaves «faisable» too
+    faisable = total - n["ecarte"] - n["infaisable"]
     return {"lines": lines, "n": n, "total": total, "faisable": faisable,
             "world": world, "undeclared": undeclared,
             "named_ind": named_ind, "named_rev": named_rev,
-            "named_exc": named_exc}
+            "named_exc": named_exc, "named_inf": named_inf}
 
 
 def render_md(iso2, t, all_cards):
@@ -361,9 +412,11 @@ def render_md(iso2, t, all_cards):
         f"écartés VALIDÉS   0     aucune fiche ne déclare une exclusion validée par le propriétaire",
         f"écartés NON validés {n['ecarte']}   refus écrit à `*` (borne 1) ou nom sans délégation — hors de «faisable», dans «total», à valider (§2 sexies)"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
+        f"NON FAISABLES     {n['infaisable']}     `route: none` daté et motivé — prime sur `script:` (#404, 13.09.2026 : un script qui ne rend rien ne compte pas)"
+        + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else ""),
         f"total             {t['total']}",
         "",
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés - non faisables ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2}, indéterminés, à revérifier et écartés compris)",
         "```",
         "",
@@ -404,8 +457,10 @@ def render_html(iso2, t, all_cards):
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else "") + "\n"
         f"écartés VALIDÉS   0\nécartés NON validés {n['ecarte']}"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else "") + "\n"
+        f"NON FAISABLES     {n['infaisable']}"
+        + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else "") + "\n"
         f"total             {t['total']}\n\n"
-        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)\n"
+        f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés - non faisables ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)\n"
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2})"))
     out.append("</pre>")
     out.append(f"<p><em>{e(NOTICE)}</em></p>")
@@ -433,7 +488,7 @@ def cmd_all(cards, members_path):
         cls, _m = classify(c)
         for iso2 in cs:
             d = per.setdefault(iso2, {"cards": 0, "fait": 0, "faisable": 0,
-                                      "indetermine": 0, "reverifier": 0, "ecarte": 0})
+                                      "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0})
             d["cards"] += 1
             d[cls] += 1
     if not members_path:
@@ -442,10 +497,10 @@ def cmd_all(cards, members_path):
               "needs the members file (atlas-pages.txt shape: ISO3<TAB>name…).",
               file=sys.stderr)
         keys = sorted(per)
-        print("iso2\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated")
+        print("iso2\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible")
         for k in keys:
             d = per[k]
-            print(f"{k}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}")
+            print(f"{k}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}")
         print(f"# {len(keys)} ISO2 declared · {undeclared} card(s) without countries: are invisible here",
               file=sys.stderr)
         return 0
@@ -456,20 +511,20 @@ def cmd_all(cards, members_path):
                 continue
             parts = line.rstrip("\n").split("\t")
             members.append((parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""))
-    print("iso3\tiso2\tname\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated")
+    print("iso3\tiso2\tname\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible")
     with_cards = with_adapter = unmapped = 0
     seen2 = set()
     for iso3, name in members:
         iso2 = ISO3_TO_2.get(iso3)
         if iso2 is None:
             unmapped += 1
-            print(f"{iso3}\tUNMAPPED\t{name}\t?\t?\t?\t?\t?\t?")
+            print(f"{iso3}\tUNMAPPED\t{name}\t?\t?\t?\t?\t?\t?\t?")
             continue
         seen2.add(iso2)
-        d = per.get(iso2, {"cards": 0, "fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0})
+        d = per.get(iso2, {"cards": 0, "fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0})
         with_cards += d["cards"] > 0
         with_adapter += d["fait"] > 0
-        print(f"{iso3}\t{iso2}\t{name}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}")
+        print(f"{iso3}\t{iso2}\t{name}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}")
     orphans = sorted(set(per) - seen2)
     print(f"# {len(members)} members · {with_cards} with at least one card · "
           f"{with_adapter} with at least one adapter · {unmapped} UNMAPPED (not zero: unknown) · "

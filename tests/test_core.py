@@ -15093,7 +15093,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("total             4", out)
         # #232: the INDÉTERMINÉ (delta) and the à REVÉRIFIER (gamma) stay IN
         # the denominator — 1 / 4, not 1 / 2 — and are named as counting
-        self.assertIn("fait / faisable   1 / 4    (faisable = total - écartés datés et motivés ; "
+        self.assertIn("fait / faisable   1 / 4    (faisable = total - écartés datés et motivés - non faisables ; "
                       "dont 1 indéterminé(s) et 1 à revérifier, qui COMPTENT)", out)
         self.assertIn("fait / total      1 / 4    (total = toutes les fiches déclarant XX", out)
         self.assertIn("Ce n'est pas le marché du pays.", out)
@@ -16724,7 +16724,7 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
     `route:` line; (b) a `route: browser` line without a count above zero,
     or with a kind other than browser / http / none. And
     `bin/country-boards.py` counts a `route: browser` card as «fait» with
-    «navigateur» in the access column, a `route: none` card as before.
+    «navigateur» in the access column, a `route: none` card as «non faisable» since #404.
     Population asserted: at least 12 cards declare `route: browser` on
     2026-09-12. Mutated (`-B`, detached copy): the guard's prose pattern
     emptied → the undeclared fixture passes (the negative reddens); the count
@@ -16813,13 +16813,15 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
         self.assertEqual(mod.route_of(by["walked"]), ("browser", 262, "2026-09-12"))
         self.assertIsNone(mod.route_of(by["nothing"]))
         self.assertEqual(mod.classify(by["walked"])[0], "fait")
-        self.assertEqual(mod.classify(by["nothing"])[0], "faisable")
+        # #404 (2026-09-13): a declared `route: none` is «non faisable» — dated and motivated by its own
+        # line — no longer «faisable»; until then this fixture was counted as feasible
+        self.assertEqual(mod.classify(by["nothing"])[0], "infaisable")
         self.assertEqual(mod.classify(by["silent"])[0], "faisable")
         acc, basis = mod.access_of(by["walked"])
         self.assertTrue(acc.startswith("navigateur"), acc)
         self.assertEqual(basis, "`route: browser`")
         t = mod.table(cards, "XX")
-        self.assertEqual((t["n"]["fait"], t["n"]["faisable"], t["total"]), (1, 2, 3))
+        self.assertEqual((t["n"]["fait"], t["n"]["faisable"], t["n"]["infaisable"], t["total"], t["faisable"]), (1, 1, 1, 3, 2))
         self.assertIn("route navigateur — 262 annonce(s) au 2026-09-12", "\n".join(t["lines"]))
 
 
@@ -19408,6 +19410,23 @@ class ASiteThatStatesItsCountWhenItRefusesToListAndHidesTheEmployerBehindALogin(
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_vmp", os.path.join(SCRIPTS, "vmp.py"))
+class ARouteToNothingPrimesOverALivingScript(unittest.TestCase):
+    """**#404, owner's decision of 2026-09-13: «un script qui ne rend rien ne
+    compte pas et est classé comme infaisable».** `isinolsun.py` enumerates
+    87 504 keys and no advertisement page answers on two clients; its card
+    carries a living `script:` AND `route: none · <reason> · date`. In
+    `bin/country-boards.py` the `route: none` line is read FIRST: such a
+    card is «infaisable» — dated and motivated by its own line — never
+    «fait», out of «faisable», named in the summary. Both directions: a
+    living script WITHOUT a route line stays «fait». Mutated (`-B`, detached
+    copy): the `route_none_of` check moved after the script check → the
+    primed fixture is «fait» (reddens); `faisable` no longer subtracting the
+    class → the ratio case reddens; the reason regex broken → the access
+    label loses the reason (reddens)."""
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards_404", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod
@@ -19485,6 +19504,41 @@ class ASiteThatStatesItsCountWhenItRefusesToListAndHidesTheEmployerBehindALogin(
                          ("Általános irodai adminisztrátor - ügyintéző", "8015711", None, "Budapest 13. ker.", "HUF", 373200, None, "MONTH", True, True, 40, "2026.09.25", "8 / 0"))
         self.assertEqual(d["description"], "Végzendő tevékenység:\n- adatok rögzítése")
         self.assertNotIn("Teve út", json.dumps(d))
+    def test_a_script_with_route_none_is_not_feasible_and_a_script_without_it_is_done(self):
+        import tempfile
+        mod = self._tool()
+        d = tempfile.mkdtemp()
+
+        def card(name, body):
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        head = "<!-- countries: XX -->\n<!-- content: measured · 87 504 keys enumerated, no page answers · 2026-09-13 -->\n<!-- witness: the sitemap · 2026-09-13 -->\n"
+        card("primed", "# P\n\n<!-- script: primed.py -->\n" + head + "<!-- route: none · every advertisement page stalls without a byte on two clients · 2026-09-13 -->\n")
+        card("living", "# L\n\n<!-- script: living.py -->\n" + head)
+        card("walked", "# W\n\n<!-- script: none -->\n" + head + "<!-- route: browser · 12 · 2026-09-13 -->\n")
+        cards = mod.read_cards(d)
+        by = {c["name"]: c for c in cards}
+        self.assertEqual(mod.route_none_of(by["primed"]), ("every advertisement page stalls without a byte on two clients", "2026-09-13"))
+        self.assertIsNone(mod.route_none_of(by["living"]))
+        self.assertIsNone(mod.route_none_of(by["walked"]))
+        self.assertEqual(mod.classify(by["primed"]), ("infaisable", "2026-09-13"))
+        self.assertEqual(mod.classify(by["living"])[0], "fait")
+        self.assertEqual(mod.classify(by["walked"])[0], "fait")
+        acc, basis = mod.access_of(by["primed"])
+        self.assertIn("stalls without a byte", acc)
+        self.assertIn("prime sur `script:`", basis)
+        self.assertIn("NON FAISABLE", mod.status_of(by["primed"], "infaisable", "2026-09-13"))
+        t = mod.table(cards, "XX")
+        self.assertEqual((t["n"]["fait"], t["n"]["infaisable"], t["total"], t["faisable"]), (2, 1, 3, 2))
+        self.assertEqual(t["named_inf"], ["primed"])
+        self.assertIn("NON FAISABLES     1", mod.render_md("XX", t, cards))
+
+    def test_the_repository_has_the_one_card_the_decision_was_taken_on(self):
+        mod = self._tool()
+        cards = mod.read_cards(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared", "boards"))
+        by = {c["name"]: c for c in cards}
+        self.assertEqual(mod.classify(by["isinolsun"])[0], "infaisable")
+        self.assertEqual(by["isinolsun"]["h"].get("script"), "isinolsun.py")
 
 
 class TheUsersOwnOverrideKeyIsReadForEveryBoardAndSaidOutLoud(unittest.TestCase):
