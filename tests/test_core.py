@@ -17109,5 +17109,111 @@ class ASitemapThatIsASubsetIsPrintedBesideTheWholeTheSiteStates(unittest.TestCas
             mod.cmd_ad(argparse.Namespace(url="https://employment.en-japan.com/desc_eng_1442658/"))
 
 
+class AKeyedApiExercisedOnAStubExitsCleanlyWithoutTheKeyAndNeverPrintsIt(unittest.TestCase):
+    """**`itjobs.py`, 2026-09-13.** Every call needs `ITJOBS_API_KEY`; without
+    it the adapter exits 7 with the where-to-put-it note and makes no request;
+    with it (a stub here — no live call was made) it walks `/job/list.json`
+    50 a page, prints «n emitted, site states total», reads `error.message`
+    in a 200 body as the answer («Job not found.» → exit 3), and the key
+    appears in no output. Mutated (`-B`, detached copy): the missing-key
+    `die` dropped → the no-key case reddens (a request is attempted); the
+    `error` branch dropped → the not-found case reddens; «short» for «equal»
+    → the gap case reddens; the key logged in a note → the no-echo case
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_itjobs", os.path.join(SCRIPTS, "itjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(i):
+        return {"id": i, "companyId": 7, "company": {"id": 7, "name": "AskBlue", "url": "http://www.askblue.pt", "slug": "askblue"},
+                "title": f" Programador {i}", "body": "<p>corpo</p>", "ref": "", "salaryMin": 11000, "salaryMax": 17000, "workModel": 0,
+                "types": [{"id": "1", "name": "Full Time"}], "locations": [{"id": "14", "name": "Lisboa"}],
+                "publishedAt": "2026-09-12 13:37:20", "updatedAt": "2026-09-12 13:37:20", "slug": f"programador-{i}"}
+
+    def _run(self, mod, fn, served, key="k-1234567890", **kw):
+        """Served bodies go through the REAL `call()` — `urlopen` is the stub —
+        so a key echoed anywhere inside the request path reaches the captured
+        output and the no-echo assertion can see it."""
+        import contextlib
+        it = iter(served)
+        calls = []
+        mod.secret_get = (lambda var, name=None: key)
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        class _R:
+            headers = {}
+
+            def __init__(self, code, body):
+                self._c, self._b = code, body.encode("utf-8")
+
+            def read(self):
+                return self._b
+
+            def getcode(self):
+                return self._c
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, timeout=60):
+            calls.append((req.full_url.rsplit("/", 1)[-1].replace(".json", ""), dict(mod.urllib.parse.parse_qsl(req.data.decode()))))
+            code, body = next(it)
+            return _R(code, body)
+        mod.urllib.request.urlopen = fake_urlopen
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(limit=None, pages=None, type=None, contract=None, query=None, id=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            fn(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), calls
+
+    def test_without_the_key_it_exits_7_with_the_note_and_makes_no_request(self):
+        import contextlib
+        mod = self._mod()
+        mod.secret_get = lambda var, name=None: None
+        attempted = []
+        mod.urllib.request.urlopen = lambda *a, **k: attempted.append(1)
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            mod.cmd_list(argparse.Namespace(limit=None, pages=None, type=None, contract=None))
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("ITJOBS_API_KEY", err.getvalue())
+        self.assertIn("www.itjobs.pt/api", err.getvalue())
+        self.assertEqual(attempted, [])
+
+    def test_the_walk_prints_the_sites_total_beside_the_count_and_never_the_key(self):
+        mod = self._mod()
+        page1 = json.dumps({"total": 52, "page": 1, "limit": 50, "results": [self._job(i) for i in range(1, 51)]})
+        page2 = json.dumps({"total": 52, "page": 2, "limit": 50, "results": [self._job(51), self._job(52), self._job(51)]})
+        rows, err, calls = self._run(mod, mod.cmd_list, [(200, page1), (200, page2)])
+        self.assertEqual(len(rows), 52)
+        self.assertEqual((rows[0]["title"], rows[0]["employer"], rows[0]["locations"], rows[0]["salary_min"], rows[0]["url_shape_confirmed"]),
+                         ("Programador 1", "AskBlue", ["Lisboa"], 11000, False))
+        self.assertIn("52 emitted, site states 52 over 2 page(s) — equal.", err)
+        self.assertEqual([c[1]["page"] for c in calls], ["1", "2"])
+        self.assertEqual([c[1]["api_key"] for c in calls], ["k-1234567890"] * 2)   # the key travels in the request…
+        self.assertNotIn("k-1234567890", err + json.dumps(rows))                     # …and appears in no output
+        rows, err, _ = self._run(mod, mod.cmd_list, [(200, json.dumps({"total": 90, "page": 1, "limit": 50, "results": [self._job(1), self._job(2)]}))])
+        self.assertIn("2 emitted, site states 90 over 1 page(s) — 88 short.", err)
+
+    def test_a_not_found_in_a_200_body_is_gone_and_a_record_is_read_in_full(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, mod.cmd_ad, [(200, json.dumps({"error": {"message": "Job not found."}}))], id="9")
+        self.assertEqual(cm.exception.code, 3)
+        rows, err, _ = self._run(mod, mod.cmd_ad, [(200, json.dumps({**self._job(125378), "country": "PT"}))], id="125378")
+        self.assertEqual((rows[0]["id"], rows[0]["description"], rows[0]["country"]), (125378, "corpo", "PT"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
