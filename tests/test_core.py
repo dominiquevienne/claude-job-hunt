@@ -17762,6 +17762,91 @@ class TwoJobDetailSitemapsAgainstTheRootsOwnCountAndAPageThatIsReportedNotRead(u
         self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
 
 
+class NamedAsClaudeUserWhereEveryoneElseIsRefusedAndTheAddressInTheProseWithheld(unittest.TestCase):
+    """**`duunitori.py`, 2026-09-13 (#374).** Duunitori's rules refuse `*`
+    and name `Claude-User` to let it in; the advertisements are 92 pages
+    of `sitemap-jobentry.xml?p=N` (200 a page) whose URL stem ends in a
+    source token of no fixed shape and the id — the id is the key, the
+    stem the slug; a bounded walk is a lower bound and is not compared; the
+    witness is the listing's own «Löysimme N työpaikkaa», and the second
+    figure of that sentence (published in the last week) is never read.
+    The advertisement's JSON-LD `title` is the normalised occupation, so
+    the title is the page's `<h1>` and the JSON-LD's goes to `occupation`;
+    an e-mail address in the description's prose is withheld. Mutated
+    (`-B`, detached copy): the dedup removed → 4 ≠ 3; the key taken from
+    the stem → reddens; the bounded walk compared → «short», reddens; the
+    stated regex loosened to the second figure → 5 993 read, reddens; the
+    title taken from the JSON-LD → «harjoittelija», reddens; the redaction
+    dropped → the address leaks, reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_duunitori", os.path.join(SCRIPTS, "duunitori.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _urlset(urls):
+        return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-13</lastmod><changefreq>always</changefreq></url>" for u in urls) + "</urlset>")
+
+    INDEX = ('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+             '<sitemap><loc>https://duunitori.fi/sitemap-company.xml</loc></sitemap><sitemap><loc>https://duunitori.fi/sitemap-jobentry.xml</loc></sitemap>'
+             '<sitemap><loc>https://duunitori.fi/sitemap-jobentry.xml?p=2</loc></sitemap><sitemap><loc>https://duunitori.fi/sitemap-jobentry.xml?p=3</loc></sitemap></sitemapindex>')
+    LISTING = "<html><body><h1>Työpaikat yhdellä haulla</h1><p>Löysimme 18 302 työpaikkaa, joista 5 993 on julkaistu viimeisen viikon aikana.</p></body></html>"
+
+    def _list(self, mod, pages, n=None, limit=None, no_total=False):
+        import contextlib
+        def get(url):
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(pages=n, limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_pages_are_walked_the_id_is_the_key_whatever_the_token_and_the_first_figure_is_the_witness(self):
+        mod = self._mod()
+        p1 = self._urlset(["https://duunitori.fi/tyopaikat/tyo/eta-capital-oy-sahkoasentaja-sdsuu-20568574", "https://duunitori.fi/tyopaikat/tyo/myyja-pori-satasairaala-sairaalantie-3-srs-k-20566891", "https://duunitori.fi/yritys/ey"])
+        p2 = self._urlset(["https://duunitori.fi/tyopaikat/tyo/eta-capital-oy-sahkoasentaja-sdsuu-20568574"])
+        p3 = self._urlset(["https://duunitori.fi/tyopaikat/tyo/senior-consultant-mainframe-modernization-scsom-18062313"])
+        pages = {mod.INDEX: self.INDEX, "https://duunitori.fi/sitemap-jobentry.xml": p1, "https://duunitori.fi/sitemap-jobentry.xml?p=2": p2, "https://duunitori.fi/sitemap-jobentry.xml?p=3": p3, mod.LISTING: self.LISTING}
+        rows, err = self._list(mod, pages)
+        self.assertEqual([r["id"] for r in rows], ["20568574", "20566891", "18062313"])
+        self.assertEqual((rows[1]["slug"], rows[1]["ledger_id"], rows[0]["country"]), ("myyja-pori-satasairaala-sairaalantie-3-srs-k", "duunitori:20566891", "FI"))
+        self.assertIn("3 of 3 jobentry page(s) read, 5 <loc>; **3 distinct advertisement id(s)**, 1 repeated across pages — the paging is not a partition, so as many may be missing at the page boundaries, 1 of another shape set aside.", err)
+        self.assertIn("3 emitted, site states 18 302 — 18 299 short; the sitemap and the listing's own count are two witnesses, and neither corrects the other.", err)
+        self.assertNotIn("5 993", err)
+        rows, err = self._list(mod, pages, n=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("the walk stopped at page 1 of 3, so the count is a lower bound", err)
+        self.assertIn("site states 18 302; 2 emitted from a bounded walk, not compared.", err)
+        self.assertNotIn("short", err)
+
+    def test_the_title_is_the_h1_the_occupation_is_the_json_lds_and_the_address_in_the_prose_is_withheld(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "title": "harjoittelija", "datePosted": "2026-08-24T21:00:00+00:00", "validThrough": "2026-09-20T20:59:00+00:00",
+              "employmentType": "INTERN", "hiringOrganization": {"@type": "Organization", "name": "ernst & young", "sameAs": "http://www.ey.com/fi"},
+              "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Helsinki", "addressCountry": "FI"}},
+              "description": "<p>Join us.</p><p>If you have any questions, you can contact EY’s recruitment team at rekrytointi@fi.ey.com or +358 40 123 4567.</p>"}
+        body = f'<html><head><script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script></head><body><h1>EY Trainee Program</h1><a href="mailto:rekrytointi@fi.ey.com">rekrytointi@fi.ey.com</a></body></html>'
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://duunitori.fi/tyopaikat/tyo/ernst-young-ey-trainee-program-sdsuu-20512921"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["title"], d["occupation"], d["employer"], d["city"], d["country"], d["employment_type"]), ("20512921", "EY Trainee Program", "harjoittelija", "ernst & young", "Helsinki", "FI", "INTERN"))
+        self.assertEqual(d["valid_through"], "2026-09-20T20:59:00+00:00")
+        self.assertIn("recruitment team at [e-mail withheld]", d["description"])
+        self.assertNotIn("fi.ey.com", out.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://duunitori.fi/yritys/ey"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
