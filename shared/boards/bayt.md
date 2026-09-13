@@ -1,8 +1,11 @@
 # Assessed — Bayt.com: the rules permit, Cloudflare refuses, the browser reads
 
-<!-- verified: 2026-09-03 -->
+<!-- verified: 2026-09-13 -->
 <!-- hosts: www.bayt.com -->
 <!-- countries: AE SA EG JO LB KW QA BH OM MA -->
+<!-- content: measured · **the UAE listing states three figures and the card names them**: «13.6K jobs found» in the listing header, «8378 jobs openings» in its prose, and a pager to 333 pages of 30 (≤ 9 990) — read from a connected browser tab at 12:51 UTC, 30 `/en/uae/jobs/<slug>-<id>/` cards and a JSON-LD ItemList on the page; the declared client gets a 403 of 5 695 B whose md5 moves between two reads (a challenge page, family 3), which the tab passed with nothing to click · 2026-09-13 -->
+<!-- witness: three figures the site states about one listing, none equal to another — the header's 13.6K, the prose's 8 378, the pager's 333 × 30; the card carries all three rather than choosing · 2026-09-13 -->
+<!-- route: browser · 13600 · 2026-09-13 -->
 
 The largest job site in the Middle East and North Africa. **No adapter, and
 the reason is a layer, not a policy.**
@@ -66,3 +69,23 @@ otherwise would produce a Cloudflare interstitial parsed as a board.
 **The check that separates the layers is one request**: fetch `robots.txt`
 and one page. If the first is served and the second is a 5 507-byte
 interstitial, the wall is Cloudflare's and the rules have said nothing.
+
+
+## 2026-09-13 — the browser route, MEASURED (#222): three figures on one listing, and a challenge the tab passed without a click
+
+```
+declared client   GET /en/uae/jobs/     403, 5 695 B, cloudflare — twice, md5 f966d2… then a2f1cd…: a MOVING body, family (3) of robots-policy.md (a challenge page)
+tab               /en/uae/jobs/         200 «Jobs in UAE (Sep 2026) - Bayt.com» — no visible challenge, no click asked
+                  header «13.6K jobs found» · prose «Bayt.com currently has 8378 jobs openings … 3966 jobs in Dubai, 1661 jobs in Abu Dhabi, 185 jobs in Al Ain»
+                  30 /en/uae/jobs/<slug>-<id>/ cards · JSON-LD ItemList · pager ?page=2 … 333  (333 × 30 = 9 990)
+```
+
+**The tab was served; the client meets a challenge page that the tab
+cleared by itself** — «a passive interstitial is re-read; a challenge
+that asks for a click is a stop» (`robots-policy.md`), and nothing asked
+for a click. **Three counts on one page**: 13.6K in the header, 8 378 in
+the prose, ≤ 9 990 by the pager — the adapter prints the header's figure
+as the site's and the other two beside it, never one corrected into
+another. The procedure: guard → tab → read the header → `?page=1 … 333`
+1.5 s apart collecting `/en/uae/jobs/<slug>-<id>/` → «n emitted, site
+states 13.6K (header) / 8 378 (prose)» → close. *One page read.*
