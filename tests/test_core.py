@@ -17373,6 +17373,126 @@ class ThePostIsTheUnitAndItsPositionsAreAFieldNeverAMultiplier(unittest.TestCase
         self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
 
 
+class OneSitemapSortedByShapeAndTheListingsOwnCountOnTwoHosts(unittest.TestCase):
+    """**`profesia.py`, 2026-09-13 (#343).** Profesia's `sitemap.php` mixes
+    advertisements `/praca/<employer>/O<id>` with facets of every other
+    shape; the adapter keeps the `O<id>` form of ITS host only (the Czech
+    front `/prace/` is the same stack, `--host`), dedups on the id, counts
+    the facets it set aside, and prints the listing page's own
+    `"count":N … "scenario":"standard"` beside what it emitted — never the
+    capped «10000 pracovných ponúk» popup. The advertisement page has no
+    JSON-LD: the title is the `<h1>`, `datePosted` a microdata span, the
+    employer a link whose `C<id>` is the EMPLOYER's id (kept apart), the
+    salary a `salary-range`, the type/start/description read by their
+    labels in either of the page's two layouts, the description cut at
+    «Základná zložka mzdy». Mutated (`-B`, detached copy): the host check
+    dropped → a `.cz` URL on the `.sk` host is emitted, 4 ≠ 3; the dedup
+    removed → 4 ≠ 3; the `standard` scenario turned into `hot` → the stated
+    figure reads 42, reddens; `employer_id` taken from the advertisement's
+    own id → reddens; the description's stop words dropped → «Základná»
+    leaks in, reddens; the facet count replaced by the row count →
+    reddens (a first fixture had 3 facets for 3 rows and hid it — the
+    fixture, not the guard, was inert)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_profesia", os.path.join(SCRIPTS, "profesia.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _sitemap(urls):
+        return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                + "".join(f"<url><loc>{u}</loc><lastmod>2026-08-13T10:10:13+01:00</lastmod></url>" for u in urls) + "</urlset>")
+
+    @staticmethod
+    def _listing(count):
+        return ('<html><body><div class="modal-body">Vybraným kritériám vyhovuje 10000 pracovných ponúk.</div><script>var x = \'{"searches":[{"stats":{"items":[],"from":0,"count":42,"criteria":{"sort":"hot"},"scenario":"hot"}},'
+                f'{{"stats":{{"items":[],"from":0,"count":{count},"criteria":{{"sort":"validity.from_time"}},"scenario":"standard"}}}}]}}\'</script></body></html>')
+
+    def _list(self, mod, pages, host="www.profesia.sk", limit=None, no_total=False):
+        import contextlib
+        def get(url):
+            if url in pages:
+                return 200, pages[url]
+            raise AssertionError(url)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(argparse.Namespace(host=host, limit=limit, no_site_total=no_total))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_advertisement_shape_of_the_host_is_kept_the_facets_set_aside_and_the_listings_count_printed_apart(self):
+        mod = self._mod()
+        sm = self._sitemap(["https://www.profesia.sk/praca/manpowergroup-slovensko/O5338670", "https://www.profesia.sk/praca/bratislava/",
+                            "https://www.profesia.sk/praca/deltech/O5338698", "https://www.profesia.sk/praca/inzinier-kvality/",
+                            "https://www.profesia.sk/praca/manpowergroup-slovensko/O5338670", "https://www.profesia.sk/praca/lidl/O5338700",
+                            "https://www.profesia.cz/prace/hana-cosmetics/O5339846", "https://www.profesia.sk/praca/nitriansky-kraj/"])
+        rows, err = self._list(mod, {"https://www.profesia.sk/sitemap.php": sm, "https://www.profesia.sk/praca/": self._listing(14773)})
+        self.assertEqual([r["id"] for r in rows], ["5338670", "5338698", "5338700"])
+        self.assertEqual((rows[0]["employer_slug"], rows[0]["country"], rows[0]["source"], rows[0]["ledger_id"]), ("manpowergroup-slovensko", "SK", "profesia", "profesia:5338670"))
+        self.assertIn("**3 distinct advertisement id(s)** of the shape /praca/<employer>/O<id>, 4 facet URL(s) set aside by their shape.", err)
+        self.assertIn("3 emitted, site states 14 773 — 14 770 short; the sitemap and the listing's own count are two witnesses, and neither corrects the other.", err)
+        self.assertNotIn("10 000", err)
+        self.assertNotIn("10000", err)
+
+    def test_the_czech_front_is_the_same_stack_under_its_own_host_and_says_equal(self):
+        mod = self._mod()
+        sm = self._sitemap(["https://www.profesia.cz/prace/hana-cosmetics/O5339846", "https://www.profesia.cz/prace/praha/", "https://www.profesia.cz/prace/adecco/O5278057"])
+        rows, err = self._list(mod, {"https://www.profesia.cz/sitemap.php": sm, "https://www.profesia.cz/prace/": self._listing(2)}, host="www.profesia.cz")
+        self.assertEqual([(r["id"], r["country"], r["source"]) for r in rows], [("5339846", "CZ", "profesia-cz"), ("5278057", "CZ", "profesia-cz")])
+        self.assertIn("2 emitted, site states 2 — equal.", err)
+        with self.assertRaises(SystemExit) as cm:
+            self._list(mod, {"https://www.profesia.cz/sitemap.php": sm.replace("</url>", "</url><url></url>", 1)}, host="www.profesia.cz", no_total=True)
+        self.assertEqual(cm.exception.code, mod.EXIT_PARTIAL)
+
+    AD_SK = ('<html><body><h1 class="job-title">Inžinier/ka kvality Junior/Senior</h1><div class="overall-info"><strong>ID: </strong>5338670&nbsp;<strong> Dátum zverejnenia: </strong> <span>13.8.2026</span>'
+             '<span class="hidden" itemprop="datePosted">2026-08-13</span><span><strong>lokalita: </strong><a href="/praca/okres-levice/">okres Levice</a> &nbsp; <strong>Pozícia: </strong><a href="/praca/x/">Inžinier</a>'
+             '<strong>Spoločnosť: </strong><a href="/praca/manpowergroup-slovensko-s-r-o/C20401">ManpowerGroup Slovensko s.r.o.</a></span></div>'
+             '<div class="upper-info-box-title bold">Miesto práce</div><span class="upper-info-box-content">okres Levice</span>'
+             '<div class="upper-info-box-title bold">Druh pracovného pomeru</div><span class="upper-info-box-content">plný úväzok</span>'
+             '<div class="upper-info-box-title bold">Termín nástupu</div><span class="upper-info-box-content">Dohodou</span>'
+             '<div class="upper-info-box-title bold">Mzdové podmienky (brutto)</div><span class="upper-info-box-content"><span class="salary-range d-block">1 700 - 2 000 EUR/mesiac</span></span>'
+             '<h3>Informácie o pracovnom mieste</h3><h4>Náplň práce</h4><div>Starostlivosť o kvalitu.</div><h4>Spoločnosť, pre ktorú je pozícia obsadzovaná</h4><div>Automobilový priemysel</div>'
+             '<strong>Základná zložka mzdy (brutto):</strong> 1 700 EUR/mesiac <a href="mailto:hr@example.sk">Reagovať na ponuku</a></body></html>')
+
+    def test_the_advertisement_is_read_by_its_labels_and_the_employers_id_is_not_the_advertisements(self):
+        import contextlib
+        mod = self._mod()
+        mod.get = lambda url: (200, self.AD_SK)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profesia.sk/praca/manpowergroup-slovensko/O5338670"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer_id"], d["employer"], d["ledger_id"]), ("5338670", "20401", "ManpowerGroup Slovensko s.r.o.", "profesia:5338670"))
+        self.assertEqual((d["title"], d["place"], d["employment_type"], d["start"], d["salary"], d["posted"], d["country"]),
+                         ("Inžinier/ka kvality Junior/Senior", "okres Levice", "plný úväzok", "Dohodou", "1 700 - 2 000 EUR/mesiac", "2026-08-13", "SK"))
+        self.assertEqual(d["description"], "Náplň práce Starostlivosť o kvalitu. Spoločnosť, pre ktorú je pozícia obsadzovaná Automobilový priemysel")
+        self.assertNotIn("Základná", d["description"])
+        self.assertNotIn("hr@example.sk", out.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profesia.sk/praca/bratislava/"))
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+
+    def test_the_other_layout_carries_microdata_and_the_czech_host_keeps_its_country(self):
+        import contextlib
+        mod = self._mod()
+        body = ('<html><body><h1 itemprop="title">Marketing &amp; E-commerce Assistant</h1><h2 itemprop="hiringOrganization"><span>Hana Cosmetics, s.r.o.</span></h2>'
+                '<div class="overall-info"><strong>ID: </strong>5339846&nbsp;<span class="hidden" itemprop="datePosted">2026-08-16</span><strong>lokalita: </strong><a href="/prace/maly-cetin/">Malý Cetín</a>'
+                '<strong>Společnost: </strong><a href="/prace/hana-cosmetics-s-r-o/C227927">Hana Cosmetics, s.r.o.</a></div>'
+                '<strong>Miesto práce</strong><br><span itemprop="jobLocation"><span itemprop="address">Malý Cetín, Slovensko</span></span>'
+                '<strong>Druh pracovného pomeru</strong><br><span itemprop="employmentType">plný úväzok, skrátený úväzok, živnosť</span>'
+                '<strong>Termín nástupu</strong><br><span>asap</span><strong>Mzdové podmienky (brutto)</strong><br /><span class="salary-range d-block">1 500 EUR/mesiac</span>'
+                '<div class="details" itemprop="description"><h3>Informácie o pracovnom mieste</h3><h4>Náplň práce</h4><p>Hľadáme človeka.</p></div><strong>Spodní hranice mzdy (brutto):</strong> 1 500 EUR/mesiac</body></html>')
+        mod.get = lambda url: (200, body)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.profesia.cz/prace/hana-cosmetics/O5339846"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["source"], d["country"], d["language"], d["employer_id"], d["place"]), ("profesia-cz", "CZ", "cs", "227927", "Malý Cetín"))
+        self.assertEqual((d["employment_type"], d["start"], d["salary"], d["description"]), ("plný úväzok, skrátený úväzok, živnosť", "asap", "1 500 EUR/mesiac", "Náplň práce Hľadáme človeka."))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
