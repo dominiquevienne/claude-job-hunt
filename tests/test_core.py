@@ -17754,5 +17754,122 @@ class ARefusedSearchIsNeverTakenAndTheOpenListingStatesTheCount(unittest.TestCas
         self.assertEqual(len(attempts), 1)
 
 
+class TwoAddressShapesOnOnePageAndAPagerThatClosesUnderTheReader(unittest.TestCase):
+    """**`gulftalent.py`, 2026-09-13.** The listing's rows carry the id in
+    `data-ga-label` and the address in two shapes — `…-632616` and
+    `…_632494`, 4 rows of 25 on the page read; a hyphen-only pattern emits
+    21 and no symptom. The page states its count twice («15,681 Jobs found»
+    visible, `panel-data` `job_count` 15680 cached) and the adapter prints
+    both, corrects neither. Past the last page the site answers 404 — the
+    witness is the pager closing under the reader, never a copied figure.
+    Only the hyphen shape carries a JobPosting; `ad` reads the page fields on
+    both and says which it had. Mutated (`-B`, detached copy): the
+    underscore dropped from `AD_RE` → the ad case reddens (not an address);
+    the dedup dropped → the walk case reddens (6 rows, not 5); the 404
+    branch dropped → the walk case reddens (exit 6); «Jobs found» regex
+    broken → the two-figures case reddens; the JSON-LD supplement dropped →
+    the hyphen ad case reddens (`posted` None); `--pages` bound ignored →
+    the bounded case reddens; the per-page anchor check dropped → the
+    partial-page case reddens (rows printed, exit 0)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_gulftalent", os.path.join(SCRIPTS, "gulftalent.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(ident, slug, sep="-", title="T", co="Co", loc="Dubai", date="12 Sep 2026"):
+        return (f'<a class="ga-job-impression ga-job-click job-results-item section" data-ga-label="{ident}" '
+                f'data-ga-dimension-three="uae" data-cy="job-result-link" href="/uae/jobs/{slug}{sep}{ident}">'
+                f'<div><p class="title padding-all-none inline"> {title} </p><div class="company-name">{co}</div>'
+                f'<div class="location">{loc}</div><div class="date pull-right"> {date} </div></div></a>')
+
+    def _page(self, rows, found="15,681", panel=15680):
+        head = (f"<div class=\"job-count\"> {found} Jobs found </div>" if found else "") + \
+               (f"<div panel-data='{{\"job_count\":{panel},\"this_page\":\"x\"}}'></div>" if panel is not None else "")
+        return "<html><body>" + head + "".join(rows) + "</body></html>"
+
+    def _list(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        mod.get = lambda url: next(it)
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(country="uae", pages=None, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_both_shapes_are_read_the_overlap_is_deduped_and_the_404_closes_the_pager(self):
+        p1 = self._page([self._row(632616, "personal-assistant"), self._row(632494, "cfo-office-manager", sep="_"), self._row(631877, "auditor", sep="_")])
+        # a live board moved by one between the two reads: 631877 is the last row of page 1 and the first of page 2
+        p2 = self._page([self._row(631877, "auditor", sep="_"), self._row(631875, "fin-ops"), self._row(631874, "hostess")], found="15,682")
+        rows, err = self._list(self._mod(), [(200, p1), (200, p2), (404, "")])
+        self.assertEqual([r["id"] for r in rows], ["632616", "632494", "631877", "631875", "631874"])
+        self.assertEqual(rows[1]["url"], "https://www.gulftalent.com/uae/jobs/cfo-office-manager_632494")
+        self.assertEqual((rows[0]["country"], rows[0]["employer"], rows[0]["posted_label"]), ("AE", "Co", "12 Sep 2026"))
+        self.assertIn("5 emitted over 2 page(s), site states 15 681 («Jobs found», uae) — 15 676 short; page 3 answered 404, pager closes at 2", err)
+
+    def test_the_two_figures_are_both_printed_and_neither_is_corrected(self):
+        rows, err = self._list(self._mod(), [(200, self._page([self._row(1, "a")], found="15,681", panel=15680)), (404, "")])
+        self.assertIn("site states 15 681 («Jobs found», uae)", err)
+        self.assertIn("panel `job_count` 15 680 — 1 apart, neither corrected", err)
+        # the panel alone is the second source when the visible figure is absent
+        rows, err = self._list(self._mod(), [(200, self._page([self._row(1, "a")], found=None, panel=7)), (404, "")])
+        self.assertIn("site states 7", err)
+        self.assertNotIn("no second source", err)
+
+    def test_a_page_read_in_part_is_a_reader_fault_not_a_count(self):
+        import contextlib
+        # a row whose anchor is on the page and whose id the reader cannot take — a bounded walk would never see it short
+        broken = '<a class="job-results-item" href="/uae/jobs/x-9"><p class="title">X</p></a>'
+        mod = self._mod()
+        mod.get = lambda url: (200, self._page([self._row(1, "a"), broken]))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            mod.cmd_list(argparse.Namespace(country="uae", pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("2 listing anchor(s) on the page, 1 read — a partial read of a page is a reader fault", err.getvalue())
+
+    def test_a_bounded_walk_says_bounded_and_never_short(self):
+        rows, err = self._list(self._mod(), [(200, self._page([self._row(1, "a"), self._row(2, "b")]))], pages=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("walked by request (--pages/--limit), not a shortfall", err)
+        self.assertNotIn("short;", err)
+
+    def test_the_ad_reads_the_page_on_both_shapes_and_the_jsonld_only_where_it_is(self):
+        import contextlib
+        mod = self._mod()
+        fields = ('<h2 class="x"> Black Pearl </h2></a><p>Dubai, UAE</p><p>Posted on: 12 Sep 2026</p>'
+                  '<h1 data-cy="job-title"> CFO Office Manager </h1>'
+                  '<span style="color: #6c757d">Job Type: </span><span> Full Time</span>'
+                  '<span style="color: #6c757d">Salary: </span><span> 1000 - 2000 AED</span>'
+                  '<span style="color: #6c757d">Job Function: </span><span> Legal</span>'
+                  '<div id="text-container" class="job-description"><span class="truncate-text"><p>Body &amp; more</p></span></div>')
+        ld = json.dumps({"@context": "https://schema.org", "@type": "JobPosting", "title": "PA", "datePosted": "2026-09-13T00:00:00+00:00",
+                         "validThrough": "2026-12-11T23:00:00+00:00", "directApply": True,
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "AED", "value": {"@type": "QuantitativeValue", "minValue": 1000, "maxValue": 2000, "unitText": "MONTH"}}})
+
+        def ad(url, page):
+            mod.get = lambda u: (200, page)
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_ad(argparse.Namespace(url=url))
+            return json.loads(out.getvalue()), err.getvalue()
+        # the underscore shape carries a BreadcrumbList and nothing else — as on the day
+        bc = '<script type="application/ld+json">{"@type": "BreadcrumbList", "itemListElement": []}</script>'
+        d, err = ad("https://www.gulftalent.com/uae/jobs/cfo-office-manager_632494", f"<html><head>{bc}</head><body>{fields}</body></html>")
+        self.assertEqual((d["id"], d["employer"], d["salary_currency"], d["salary_min"], d["salary_max"], d["salary_unit_stated"], d["jsonld"], d["posted"], d["posted_label"], d["description"]),
+                         ("632494", "Black Pearl", "AED", 1000, 2000, False, False, None, "12 Sep 2026", "Body & more"))
+        self.assertIn("no JobPosting on this page", err)
+        d, err = ad("https://www.gulftalent.com/uae/jobs/personal-assistant-632616", f'<html><head><script type="application/ld+json">{ld}</script></head><body>{fields}</body></html>')
+        self.assertEqual((d["id"], d["jsonld"], d["posted"], d["salary_unit"], d["salary_unit_stated"], d["direct_apply"]),
+                         ("632616", True, "2026-09-13T00:00:00+00:00", "MONTH", True, True))
+        # a page-address shape that is neither is not an advertisement
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.gulftalent.com/uae/jobs/2"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
