@@ -1,12 +1,13 @@
-# Board adapter — Emploi.cd (DR Congo): reopened by the 2026-09-07 doctrine, and the transport answers a challenge
+# Board measurement — Emploi.cd (`www.emploi.cd`, DR Congo): the challenge of the 12th was not met on the 13th — served to a tab, 70 of 70, six addresses without a number
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-13 -->
 
 <!-- hosts: www.emploi.cd, emploi.cd -->
 <!-- script: none -->
 <!-- countries: CD -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 5508 bytes titled «Attention Required! | Cloudflare», md5 `7b749ec356bd` then `e8f3834e6d7c` at constant size — a challenge, nothing of the site was read · 2026-09-12 10:54 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- content: measured · **70 distinct advertisement addresses** over `/recherche-jobs-congo-rdc?page=0…` (25 + 25 + 20; the next page empty), read from a connected browser tab, **against «70 Offres d'emploi trouvées» stated by the page — equal**; six of the seventy addresses carry no trailing id and are keyed by path; the pager is zero-based; `/recherche-jobs-rdc` (the path this card named on the 12th) answers 404 — the site's own link is `/recherche-jobs-congo-rdc`; the rules as on the 12th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230 · 2026-09-13 -->
+<!-- witness: the page's own «70 Offres d'emploi trouvées», read on every page and printed beside the distinct count («70 emitted, site states 70 — equal»); the declared client's 25-byte 403 (md5 9ccabba20b9f) on the same path, the family's vendor default · 2026-09-13 -->
+<!-- route: browser · 70 · 2026-09-13 -->
 
 **Measured 2026-09-12 at 10:54:54Z UTC for #233, lot 2 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -62,3 +63,15 @@ it without a person is not measured, and this card claims nothing either way.
   verdict copied from a sibling**: two members of this very lot answer a
   challenge where the other five answer the static default, under one and the
   same rules file.
+
+## 2026-09-13 16:34–16:35 UTC — the browser route, MEASURED (#222): no challenge today, 70 of 70
+
+```
+tab: /recherche-jobs-rdc                200 «Page non trouvée» — the path this card named on the 12th is a 404 page; the home page links /recherche-jobs-congo-rdc
+tab: fetch /recherche-jobs-congo-rdc?page=0,1,2,3     25 · 25 · 20 · 0  →  **70 distinct data-href addresses**, «70 Offres d'emploi trouvées» on every page — **equal**
+                                        6 of the 70 addresses end in a slug with no number (…/retail-operations-specialist-local-congolese); keyed by path
+```
+
+**The procedure is `ghanajob.md`'s six steps** — guard on the exact listing path (`*` open, certain), one tab, `fetch('?page=0,1,2…')` 1.5 s apart until a page carries no card, the site's own «N Offres d'emploi trouvées» read on every page and printed beside the distinct count. The declared client gets the family's 25-byte 403 (md5 `9ccabba20b9f…`) on the same path — the vendor's default, for the client alone. **The cards are keyed by their `data-href` address, not by a trailing number**: on `emploi.cd` six of seventy addresses carry no id at all (`…/retail-operations-specialist-local-congolese`), and a reader keyed on the number printed «64 emitted, site states 70 — 6 short» with nothing else wrong — the same shape as `gulftalent.md`'s two address shapes, found the same day.
+
+**The challenge this card recorded on the 12th («Attention Required!», md5 moving) was not met by the tab on the 13th** — the page was served on the first request, no interstitial. Whether the challenge is for the client alone or intermittent is not decided by two days; both are recorded.
