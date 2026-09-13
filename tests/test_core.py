@@ -16594,6 +16594,96 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
         self.assertIn("route navigateur — 262 annonce(s) au 2026-09-12", "\n".join(t["lines"]))
 
 
+class APagedJobSitemapInTwoLanguagesAndTheEmployersIdIsNotTheAdvertisements(unittest.TestCase):
+    """**`topdev.py`, 2026-09-13 (#233 lot 8 → adapter).** `/sitemap-jobs.xml`
+    is an index of 249 `jobs_desc_en_page_<n>.xml` and 249 `_vi_` pages of
+    20 `<loc>` each, the same ids in both languages; the adapter reads one
+    language, takes the URL's trailing number as the id, dedups, and prints
+    the distinct count beside the search page's «Tuyển dụng N việc làm» —
+    «equal» / «k short»; a bounded walk (`--pages`) is a lower bound and is
+    not compared. The JSON-LD's `identifier.value` is the EMPLOYER's id
+    (94346 for MBBANK), kept apart from the advertisement's; the salary
+    sentence «9.000.000 VND to 55.000.000 VND» is emitted as published beside
+    the parsed min / max. Mutated (`-B`, detached copy): `PAGE_RE` for `en`
+    made to match nothing → the walk dies (the equal case errors); the dedup
+    removed → 3 ≠ 2; «short» → «equal» → the gap case reddens; `SITE_COUNT_RE`
+    broken → «no second source» reddens the equal case; the `employer_id`
+    taken as the advertisement's id → the ad case reddens; `bounded` forced
+    False → the bounded case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_topdev", os.path.join(SCRIPTS, "topdev.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ("<sitemapindex>" + "".join(f"<sitemap><loc>https://topdev.vn/sitemap/jobs_desc_{l}_page_{n}.xml</loc></sitemap>"
+                                       for l in ("en", "vi") for n in (1, 2)) + "<sitemap><loc>https://topdev.vn/sitemap-skills.xml</loc></sitemap></sitemapindex>")
+
+    @staticmethod
+    def _page(ids, lang="en"):
+        seg = "detail-jobs" if lang == "en" else "viec-lam"
+        return "<urlset>" + "".join(f"<url><loc>https://topdev.vn/{seg}/java-developer-x-{i}</loc><lastmod>2026-09-13</lastmod></url>" for i in ids) + "</urlset>"
+
+    def _served(self, stated="4942"):
+        pages = {1: [2125929, 2125916], 2: [2125916, 2128546]}
+        def get(url):
+            if url.endswith("/sitemap-jobs.xml"):
+                return 200, self.INDEX
+            m = re.search(r"jobs_desc_(en|vi)_page_(\d+)\.xml$", url)
+            if m:
+                return 200, self._page(pages[int(m.group(2))], m.group(1))
+            if url.endswith("/viec-lam/tim-kiem"):
+                return 200, f"<html><body><h1>Tuyển dụng {stated} việc làm lương cao [Update 13/9/2026]</h1></body></html>"
+            raise AssertionError(url)
+        return get
+
+    def _sitemap(self, mod, get, pages=None, lang="en"):
+        import contextlib
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(argparse.Namespace(lang=lang, pages=pages, limit=None, no_site_total=False))
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_two_pages_are_deduplicated_and_compared_to_the_stated_count(self):
+        rows, err = self._sitemap(self._mod(), self._served(stated="3"))
+        self.assertEqual([r["id"] for r in rows], ["2125929", "2125916", "2128546"])
+        self.assertIn("2 of 2 en sitemap page(s) read; 4 <loc>, 4 of the advertisement shape, 0 not; **3 distinct advertisement id(s)**.", err)
+        self.assertIn("3 emitted, site states 3 on https://topdev.vn/viec-lam/tim-kiem — equal.", err)
+        rows, err = self._sitemap(self._mod(), self._served(stated="3"), lang="vi")
+        self.assertEqual([r["url"].split("/")[3] for r in rows], ["viec-lam"] * 3)
+
+    def test_a_stated_count_above_the_distinct_is_named_short_and_a_bounded_walk_is_not_compared(self):
+        rows, err = self._sitemap(self._mod(), self._served(stated="4942"))
+        self.assertIn("3 emitted, site states 4 942 on https://topdev.vn/viec-lam/tim-kiem — 4 939 short", err)
+        rows, err = self._sitemap(self._mod(), self._served(stated="4942"), pages=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("the walk stopped at page 1, so the count is a lower bound", err)
+        self.assertIn("site states 4 942 on https://topdev.vn/viec-lam/tim-kiem; 2 emitted from a bounded walk — not compared.", err)
+
+    def test_the_employers_id_is_kept_apart_and_the_salary_sentence_is_emitted_as_published(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "http://schema.org", "@type": "JobPosting", "title": "Chuyên viên KHCN", "datePosted": "2026-09-13",
+                         "validThrough": "2026-09-16", "skills": "Risk Management, Leadership", "industry": "Information Technology",
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "VND", "value": {"@type": "QuantitativeValue", "unitText": "MONTH",
+                                        "minValue": "9000000", "maxValue": "55000000", "value": "9.000.000 VND to 55.000.000 VND"}},
+                         "description": "<p>Địa điểm</p>", "identifier": {"@type": "PropertyValue", "name": "MBBANK", "value": 94346},
+                         "hiringOrganization": {"@type": "Organization", "name": "MBBANK", "sameAs": "https://topdev.vn/companies/mbbank-94346"},
+                         "employmentType": ["OTHER"], "directApply": "TRUE",
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Tỉnh Ninh Bình", "addressRegion": "Tỉnh Ninh Bình", "addressCountry": "VN"}}}, ensure_ascii=False)
+        mod.get = lambda u: (200, f'<html><head><script type="application/ld+json">{ld}</script></head><body></body></html>')
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url="https://topdev.vn/detail-jobs/chuyen-vien-khcn-mbbank-2125929"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["employer_id"], d["employer"], d["country"], d["page_language"]), ("2125929", "94346", "MBBANK", "VN", "en"))
+        self.assertEqual((d["salary_min"], d["salary_max"], d["salary_unit"], d["salary_currency"], d["salary_as_published"]),
+                         (9000000, 55000000, "MONTH", "VND", "9.000.000 VND to 55.000.000 VND"))
+        self.assertEqual((d["skills"], d["employment_type"], d["city"]), (["Risk Management", "Leadership"], "OTHER", "Tỉnh Ninh Bình"))
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
