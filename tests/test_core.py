@@ -18065,6 +18065,159 @@ class AStateApiWalkedToTheCountItStatesWithContactsWithheld(unittest.TestCase):
         self.assertEqual(cm.exception.code, 3)
 
 
+class ANetworkFrontIsWalkedByItsOwnPayloadAndTheTableNamesTheCountry(unittest.TestCase):
+    """**`buscojobs.py`, 2026-09-13 (#425).** One Next.js platform, 22 hosts,
+    21 countries: `list --host` walks `/ofertas/<p>` and reads
+    `__NEXT_DATA__` — `resultadosIniciales.count` is the count the site
+    states, `ofertas` the rows, the JSON-LD `ItemList` the public URLs;
+    the country comes from the adapter's table (Guatemala states no
+    `Pais.Codigo`). A walk to the count prints «N emitted, site states N
+    — equal», a gap exits 6, a challenge (HTTP 405 «Human Verification»)
+    exits 7 after printing what it has, a bounded walk says so. The
+    ad's contact fields are never emitted and the prose is redacted.
+    Mutated (`-B`, detached copy): the dedup dropped → the walk case
+    reddens (page 2 repeats one id); the gap exit removed → the short
+    case reddens; the challenge detection neutralised → the challenge
+    case reddens; EMAIL_RE neutralised → the ad case reddens; the
+    ItemList URLs dropped → the walk case reddens (the URL falls back to
+    the id form); the country read from the payload instead of the table
+    → the country case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_buscojobs", os.path.join(SCRIPTS, "buscojobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(i, host, code="PY"):
+        return {"IdOferta": i, "CargoVacante": f"Puesto {i}", "NombreEmpresa": f"Empresa {i}", "Confidencial": 0, "Fuente": None,
+                "Ciudad": {"Nombre": "Asunción"}, "Departamento": {"Nombre": "Central"}, "Pais": {"Nombre": "X", "Codigo": code},
+                "FechaInicio": "2026-09-01T00:00:00.000Z", "Descripcion": "Texto.", "PermiteTeletrabajo": 1, "EsPasantia": 0}
+
+    @classmethod
+    def _page(cls, host, ids, count, code="PY"):
+        rows = [cls._row(i, host, code) for i in ids]
+        nd = json.dumps({"buildId": "x", "props": {"pageProps": {"query": {}, "resultadosIniciales": {"count": count, "ofertas": rows, "facets": {}}}}})
+        ld = json.dumps({"@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": n + 1, "url": f"https://{host}/puesto-{i}-en-asuncion-ID-{i}"} for n, i in enumerate(ids)]})
+        return f'<html><head><script type="application/ld+json" data-next-head="">{ld}</script></head><body><script id="__NEXT_DATA__" type="application/json">{nd}</script></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(host="www.buscojobs.com.py", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_count_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.py"
+        pages = {f"https://{h}/ofertas": (200, self._page(h, range(1, 16), 29)),
+                 f"https://{h}/ofertas/2": (200, self._page(h, [15] + list(range(16, 30)), 29))}
+        code, rows, err, asked = self._run(mod, pages, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 29)
+        self.assertEqual(len({r["id"] for r in rows}), 29)
+        self.assertIn("29 emitted over 2 page(s), site states 29 (PY) — equal", err)
+        self.assertEqual(asked, [f"https://{h}/ofertas", f"https://{h}/ofertas/2"])
+        self.assertEqual(rows[0]["url"], f"https://{h}/puesto-1-en-asuncion-ID-1")   # the ItemList's URL, not the id fallback
+        self.assertEqual(rows[0]["ledger_id"], f"buscojobs:{h}:1")
+        self.assertEqual(rows[0]["flags"], ["remote"])
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.py"
+        pages = {f"https://{h}/ofertas": (200, self._page(h, range(1, 16), 40)),
+                 f"https://{h}/ofertas/2": (200, self._page(h, [], 40))}
+        code, rows, err, _ = self._run(mod, pages, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 15)
+        self.assertIn("15 emitted over 2 page(s), site states 40 (PY) — 25 short", err)
+
+    def test_a_challenge_met_on_the_walk_prints_what_it_has_and_exits_refused(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.py"
+        pages = {f"https://{h}/ofertas": (200, self._page(h, range(1, 16), 40)),
+                 f"https://{h}/ofertas/2": (405, "<html><head><title>Human Verification</title></head></html>")}
+        code, rows, err, _ = self._run(mod, pages, all=True)
+        self.assertEqual(code, 7, err)
+        self.assertEqual(len(rows), 15)
+        self.assertIn("page 2 answered a challenge", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.py"
+        pages = {f"https://{h}/ofertas": (200, self._page(h, range(1, 16), 40))}
+        code, rows, err, asked = self._run(mod, pages, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 15)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_the_country_comes_from_the_table_when_the_payload_states_none(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.gt"
+        pages = {f"https://{h}/ofertas": (200, self._page(h, [1, 2], 2, code=None))}
+        code, rows, err, _ = self._run(mod, pages, host=h, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["country"] for r in rows], ["GT", "GT"])
+        import contextlib
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.front("www.buscojobs.xx")
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_the_ad_withholds_the_contact_fields_and_redacts_the_prose(self):
+        mod = self._mod()
+        h = "www.buscojobs.com.py"
+        o = {"IdOferta": 127138, "CargoVacante": "Sales Manager", "NombreEmpresa": None, "Confidencial": 0, "NroPuestosVacantes": 3,
+             "Empresa": {"IdEmpresa": 1, "Nombre": "Qlead", "PaginaWeb": "https://q.example", "Email": "x@q.example"},
+             "EmailEmpresa": "rrhh@q.example", "TelefonoEmpresa": "+595 21 123 4567", "NombreContactoEmpresa": "Ana", "EmailContactoEmpresa": "ana@q.example",
+             "DireccionEmpresa": "Calle 1", "EdadDesde": 25, "EdadHasta": 40, "Sexo": "F", "SueldoDesde": 0, "SueldoHasta": 0,
+             "DescripcionMarkdown": "Escribir a rrhh@q.example o llamar al 0981 123 456. Desde el 2026-09-01.", "FechaFin": "2026-09-29T00:00:00.000Z",
+             "Cargo": {"Nombre": "Ventas"}, "JornadaLaboral": {"Nombre": "Completa"}, "NivelJerarquico": {"Nombre": "Empleado"},
+             "Idiomas": [{"Nombre": "Español"}], "Conocimientos": [{"Nombre": "CRM"}], "EstadoNombre": "Publicada",
+             "Pais": {"Codigo": "PY"}, "Ciudad": None, "Departamento": {"Nombre": "Paraguay"}, "FechaInicio": "2026-07-31T00:00:00.000Z"}
+        nd = json.dumps({"props": {"pageProps": {"slug": "s", "idOferta": 127138, "oferta": o}}})
+        url = f"https://{h}/sales-manager-remoto-en-paraguay-ID-127138"
+        pages = {url: (200, f'<html><body><script id="__NEXT_DATA__" type="application/json">{nd}</script></body></html>'),
+                 f"https://{h}/x-ID-9": (200, '<html><body><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"oferta":null}}}</script></body></html>')}
+        import contextlib
+        mod.request = lambda u: pages[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["employer"], "Qlead")
+        self.assertEqual(r["positions"], 3)
+        self.assertEqual(r["schedule"], "Completa")
+        self.assertNotIn("@", text)
+        self.assertNotIn("123 456", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        self.assertIn("2026-09-01", r["description"])   # a date is not a phone
+        for k in ("EdadDesde", "EdadHasta", "Sexo", "Ana", "Calle 1", "q.example"):
+            self.assertNotIn(k, text)
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url=f"https://{h}/x-ID-9"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
