@@ -19703,6 +19703,144 @@ class AnAtsTenantReadThroughTheJsonRouteItsOwnPageCallsWhereCountIsTheWitness(un
         self.assertEqual(cm.exception.code, 3)
 
 
+class AnAvaturePortalFollowedNextAfterNextWhereTheCountIsStatedOrSaidMissing(unittest.TestCase):
+    """**`avature.py`, 2026-09-14 (#450).** `list --host` reads the portal's
+    locale path from where `/careers` redirects, follows the list's own
+    «Next» link until it is gone, dedups on the job id, reads the
+    portal's «of N» when `list-controls__text` carries one and compares
+    (exit 6 on a gap), and says «the portal states no count — not
+    compared» when it is empty (exit 0 at the pager's end). `ad` reads
+    the details article's labelled fields, the banner title and the
+    unlabelled body, withholds contacts, exits 3 without the article.
+    Mutated (`-B`, detached copy): the dedup dropped → the walk case
+    reddens (page 2 repeats one id); the gap exit removed → the short
+    case reddens; the «Next» link no longer followed → the walk case
+    reddens (one page read); the «of N» regex neutralised → the walk case
+    reddens (compared as «no count»); EMAIL_RE neutralised → the ad case
+    reddens; the body extraction dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_avature", os.path.join(SCRIPTS, "avature.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    H = "acme.avature.net"
+
+    @classmethod
+    def _card(cls, i):
+        return (f'<article class="article article--result"><div class="article__header"><div class="article__header__text"><h5 class="article__header__text__subtitle">Acme Unit</h5>'
+                f'<h3 class="article__header__text__title article__header__text__title--7"><a href="https://{cls.H}/en_US/careers/JobDetail/Puesto-{i}/{i}">\n Puesto {i}\n </a></h3></div></div>'
+                f'<div class="article__content"><div class="article__content__field"><div class="article__content__field__label">Location:</div><div class="article__content__field__value">Basel |\n Switzerland</div></div>'
+                f'<div class="article__content__field"><div class="article__content__field__label">Job Number:</div><div class="article__content__field__value">{i}</div></div></div></article>')
+
+    @classmethod
+    def _page(cls, ids, next_offset=None, stated=""):
+        nxt = f'<a class="list-controls__pagination__item paginationNextLink" href="https://{cls.H}/en_US/careers/SearchJobs/?jobRecordsPerPage=6&amp;jobOffset={next_offset}">Next &gt;&gt;</a>' if next_offset is not None else ""
+        return f'<html><body>{"".join(cls._card(i) for i in ids)}<div class="list-controls"><div class="list-controls__text">\n {stated}\n </div><div class="list-controls__pagination">{nxt}</div></div></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            if url.endswith("/careers"):
+                return (200, "<html></html>", f"https://{self.H}/en_US/careers")
+            for key, body in fixtures.items():
+                if key in url:
+                    return (200, body, url)
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(host=self.H, path="", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_follows_next_to_the_end_reads_the_stated_count_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {"SearchJobs/?jobRecordsPerPage=6&jobOffset=6": self._page([6] + list(range(7, 12)), stated="Showing 7-11 of 11 results"),
+              "SearchJobs/": self._page(range(1, 7), next_offset=6, stated="Showing 1-6 of 11 results")}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 11)
+        self.assertEqual(len({r["id"] for r in rows}), 11)
+        self.assertIn("11 emitted over 2 page(s), portal states 11 (acme.avature.net/en_US/careers) — equal", err)
+        self.assertEqual(asked[0], f"https://{self.H}/careers")
+        self.assertEqual(len(asked), 3)
+        self.assertEqual(rows[0]["title"], "Puesto 1")
+        self.assertEqual(rows[0]["company"], "Acme Unit")
+        self.assertEqual(rows[0]["location"], "Basel | Switzerland")
+        self.assertEqual(rows[0]["job_number"], "1")
+        self.assertIsNone(rows[0]["country"])
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {"SearchJobs/": self._page(range(1, 7), stated="Showing 1-6 of 30 results")}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 6)
+        self.assertIn("6 emitted over 1 page(s), portal states 30 (acme.avature.net/en_US/careers) — 24 short", err)
+
+    def test_a_portal_that_states_no_count_is_said_so_and_not_compared(self):
+        mod = self._mod()
+        fx = {"SearchJobs/?jobRecordsPerPage=6&jobOffset=6": self._page(range(7, 10)), "SearchJobs/": self._page(range(1, 7), next_offset=6)}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 9)
+        self.assertIn("9 emitted over 2 page(s) (acme.avature.net/en_US/careers) — the portal states no count; the pager's end was reached, not compared", err)
+
+    def test_a_bounded_walk_says_so(self):
+        mod = self._mod()
+        fx = {"SearchJobs/": self._page(range(1, 7), next_offset=6, stated="Showing 1-6 of 30 results")}
+        code, rows, err, asked = self._run(mod, fx, pages=1, path="/en_US/careers")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 6)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)   # the path given, no redirect read
+
+    def test_the_ad_reads_the_fields_the_banner_title_and_the_body_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+
+        def vf(label, value):
+            return f'<div class="article__content__view__field  m--b--m"><div class="article__content__view__field__label">\n {label}\n </div><div class="article__content__view__field__value">\n {value}\n </div></div>'
+        body = ('<html><body><h1>Acme Home Page</h1><h2 class="banner__text__title banner__text__title--3">\n Sr Machinist\n </h2>'
+                '<article class="article article--details  js_collapsible"><div class="article__content"><div class="article__content__view">'
+                + vf("Location(s)", "ChengDu, Sichuan") + vf("Company", "Molex") + vf("Career Field", "Engineering") + vf("Job Number", "194367")
+                + '<div class="article__content__view__field "><div class="article__content__view__field__value"><p><strong>Your Job</strong></p><p>Run the machine.</p><p>Contact hr@molex.com or +86 28 1234 5678.</p></div></div>'
+                '</div></div></article></body></html>')
+        url = f"https://{self.H}/en_US/careers/JobDetail/Sr-Machinist/194367"
+        fx = {url: (200, body, url), f"https://{self.H}/en_US/careers/JobDetail/x/9": (200, "<html><body>nothing</body></html>", "")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["title"], "Sr Machinist")
+        self.assertEqual(r["location"], "ChengDu, Sichuan")
+        self.assertEqual(r["company"], "Molex")
+        self.assertEqual(r["career_field"], "Engineering")
+        self.assertEqual(r["job_number"], "194367")
+        self.assertIn("Run the machine.", r["description"])
+        self.assertNotIn("@", text)
+        self.assertNotIn("1234 5678", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url=f"https://{self.H}/en_US/careers/JobDetail/x/9"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
