@@ -1,12 +1,13 @@
 # Board adapter — Revolico (Cuba): rules open, and an anti-robot challenge
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.revolico.com -->
 <!-- script: none -->
 <!-- countries: CU -->
 <!-- content: indeterminate · the root answers HTTP 403 with a 5 642-byte Cloudflare interstitial titled `Just a moment...`; nothing of the site was read · 2026-09-07 -->
-<!-- witness: none — nothing was served -->
+<!-- witness: none the site states — «Empleos» is a classifieds section without a count; from a connected tab (no challenge shown, 2026-09-14 10:22–10:27 UTC) the search `?category=empleos_` pages to `page=23` (page 30 empty), about a hundred items a page and some forty on the last — about 2 200, the walk's own rough figure, mixing job offers, job seekers («Busco empleo») and goods; nothing is served to the declared client (the moving «Just a moment…», never defeated) · 2026-09-14 -->
+<!-- route: browser · 2200 · 2026-09-14 -->
 
 **Cuba's third named host. Its rules open and its transport serves a
 challenge, and those are two different kinds of «no».**
@@ -65,3 +66,27 @@ This host is reachable only through a control we do not defeat.
 **Nothing here is a permanent verdict about Revolico** — an interstitial is a
 configuration, and it is dated 2026-09-07 like every other observation on a
 third-party site in this repository.
+
+## 2026-09-14 10:22–10:27 UTC — the challenge does not show to a connected tab
+
+The 5 642-byte «Just a moment…» with a moving fingerprint is what the
+declared client gets (2026-09-07; borne 2, never defeated). A connected
+tab was not challenged:
+
+```
+tab, /empleos                                    served — redirects to /search?cu=0&category=empleos_ («Empleos Cuba - Revolico»)
+tab, /search?cu=0&category=empleos_              served — «Destacados» then the list: about a hundred classifieds, /item/<slug>-<id>, a price on many, pager 1 … 6 «Siguiente >»
+tab, …&page=23                                   served — «Página 23», some forty items, «< Anterior 1 … 20 21 22 23», no «Siguiente»: the last page
+tab, …&page=30                                   served — «Página 30», an empty list
+```
+
+**`route: browser · 2200 · 2026-09-14`** — about 2 200 classifieds by
+the pager (22 pages of about a hundred and a last of about forty), the
+site's own count nowhere; the section mixes offers («Se busca dependiente»,
+«Gestores de venta»), seekers («Busco empleo») and goods, so a reader
+sorts them by the title. What a session does from a tab: the search
+`?category=empleos_&page=N` to the last page, the id from the `/item/…-<id>`
+tail, the price and the title from the card, the ad page for the text —
+telephone numbers in the text (they are the way to apply here) withheld.
+No script: the declared client is challenged (#404).
+
