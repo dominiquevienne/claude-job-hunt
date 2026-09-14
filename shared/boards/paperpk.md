@@ -1,6 +1,6 @@
 # Board measurement — PaperPk (`www.paperpk.com`, Pakistan): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.paperpk.com, paperpk.com -->
 <!-- script: none -->
@@ -61,3 +61,15 @@ GET https://www.paperpk.com/                             403, 6 163 B, md5 c1f29
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:42 UTC — «Sorry, you have been blocked» to a connected tab
+
+`https://www.paperpk.com/` in a real browser: Cloudflare's «Attention
+Required! — Sorry, you have been blocked — You are unable to access
+paperpk.com», a block page and not a challenge (nothing to solve; the
+operator's firewall rule refuses the visitor). Borne 0 of the 2026-09-07
+doctrine: a refusal rendered to a real browser is the operator's. `route:
+none` stands; the word «closed» is the owner's (§2 sexies). The same
+publisher's `paperpk.jobz.pk` is linked from Jobz.pk (`jobz-pk.md`), which
+a tab reads.
+
