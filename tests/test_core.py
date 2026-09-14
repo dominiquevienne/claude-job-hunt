@@ -19575,6 +19575,134 @@ class AWordPressCategoryReadThroughItsRestApiWhereTheHeaderStatesTheTotal(unitte
             self.assertEqual(cm.exception.code, 3)
 
 
+class AnAtsTenantReadThroughTheJsonRouteItsOwnPageCallsWhereCountIsTheWitness(unittest.TestCase):
+    """**`eightfold.py`, 2026-09-14 (#451).** `list --host` reads the
+    employer's `domain` from the tenant's careers page, walks
+    `/api/apply/v2/jobs?domain=…&start=…&num=10` to the `count` the
+    tenant states, dedups on the position id, exits 6 on a gap, says
+    «bounded» when bounded, and names the PCSX variant (403 «Not
+    authorized for PCSX») with exit 7. `ad` reads one position by URL —
+    the vanity host accepted — reduces the description to text and
+    withholds contacts. Mutated (`-B`, detached copy): the dedup dropped
+    → the walk case reddens (page 2 repeats one id); the gap exit
+    removed → the short case reddens; `count` no longer read → the walk
+    case reddens; the domain read from the page dropped → the walk case
+    reddens (the route is built with an empty domain); the PCSX branch
+    removed → the PCSX case reddens (exit 6 instead of 7); EMAIL_RE
+    neutralised → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eightfold", os.path.join(SCRIPTS, "eightfold.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _pos(i):
+        return {"id": 562949978000000 + i, "name": f"Engineer {i}", "location": "Basel,Switzerland", "locations": ["Basel,Switzerland"], "department": "R&D", "business_unit": "Pharma",
+                "t_create": 1788307200, "t_update": 1788787123, "ats_job_id": f"88{i}", "work_location_option": "onsite", "locale": "en_US",
+                "canonicalPositionUrl": f"https://talent.acme.com/careers/job/{562949978000000 + i}"}
+
+    PAGE = '<html><body><script>var config = {"postApplyReviewLink": {"url": "/api/apply/v2/profile/review/initialize_user?domain=acme.com"}};</script></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url, accept="application/json"):
+            asked.append(url)
+            for key, v in fixtures.items():
+                if key in url:
+                    return v
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(host="acme.eightfold.ai", domain="", q="", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reads_the_domain_from_the_page_reaches_count_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {"/careers": (200, self.PAGE),
+              "domain=acme.com&start=0&num=10": (200, json.dumps({"count": 19, "positions": [self._pos(i) for i in range(1, 11)]})),
+              "domain=acme.com&start=10&num=10": (200, json.dumps({"count": 19, "positions": [self._pos(10)] + [self._pos(i) for i in range(11, 20)]}))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 19)
+        self.assertEqual(len({r["id"] for r in rows}), 19)
+        self.assertIn("19 emitted over 2 page(s), tenant states 19 (acme.eightfold.ai, domain acme.com) — equal", err)
+        self.assertEqual(asked[0], "https://acme.eightfold.ai/careers")
+        self.assertIn("domain=acme.com", asked[1])
+        self.assertEqual(rows[0]["ledger_id"], "eightfold:acme.eightfold.ai:562949978000001")
+        self.assertEqual(rows[0]["url"], "https://talent.acme.com/careers/job/562949978000001")
+        self.assertEqual(rows[0]["locations"], ["Basel,Switzerland"])
+        self.assertEqual(rows[0]["posted"], "2026-09-02")   # 1788307200 is 2026-09-02T00:00 UTC
+        self.assertIsNone(rows[0]["country"])
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {"/careers": (200, self.PAGE),
+              "start=0&num=10": (200, json.dumps({"count": 40, "positions": [self._pos(i) for i in range(1, 11)]})),
+              "start=10&num=10": (200, json.dumps({"count": 40, "positions": []}))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 10)
+        self.assertIn("10 emitted over 2 page(s), tenant states 40 (acme.eightfold.ai, domain acme.com) — 30 short", err)
+
+    def test_a_bounded_walk_says_so_and_a_given_domain_skips_the_page(self):
+        mod = self._mod()
+        fx = {"start=0&num=10": (200, json.dumps({"count": 40, "positions": [self._pos(i) for i in range(1, 11)]}))}
+        code, rows, err, asked = self._run(mod, fx, domain="acme.com", pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 10)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)   # no careers page read when the domain is given
+
+    def test_a_pcsx_tenant_is_named_and_refused_not_mistaken_for_a_gap(self):
+        mod = self._mod()
+        fx = {"/careers": (200, self.PAGE), "start=0&num=10": (403, '{"message": "Not authorized for PCSX"}')}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 7, err)
+        self.assertEqual(rows, [])
+        self.assertIn("PCSX variant", err)
+
+    def test_the_ad_reads_one_position_by_its_vanity_url_reduces_the_description_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        p = self._pos(7)
+        p["job_description"] = "<table><tr><td><p>Lead the team.</p><ul><li>Go</li></ul><p>Contact: hr@acme.com, +41 61 123 45 67.</p></td></tr></table>"
+        p["apply_redirect_url"] = "https://jobs.acme.com/apply/7"
+        fx = {"/careers": (200, self.PAGE), "/api/apply/v2/jobs/562949978000007?domain=acme.com": (200, json.dumps(p)),
+              "/api/apply/v2/jobs/562949978000009?domain=acme.com": (404, "")}
+        mod.request = lambda u, accept="application/json": next(v for k, v in fx.items() if k in u)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(host=None, id=None, url="https://talent.acme.com/careers/job/562949978000007", domain=""))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["tenant"], "talent.acme.com")
+        self.assertEqual(r["employer_domain"], "acme.com")
+        self.assertEqual(r["title"], "Engineer 7")
+        self.assertTrue(r["apply_is_external"])
+        self.assertIn("Lead the team.", r["description"])
+        self.assertNotIn("<", r["description"])
+        self.assertNotIn("@", text)
+        self.assertNotIn("123 45 67", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(host="acme.eightfold.ai", id="562949978000009", url=None, domain="acme.com"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
