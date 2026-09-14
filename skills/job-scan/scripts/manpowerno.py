@@ -201,7 +201,7 @@ def record(body, jid, url):
         "work_hours": jp.get("workHours") or dl.get("Heltid/deltid"),
         "sector": dl.get("Bransje"),
         "positions": int(positions) if positions and positions.isdigit() else positions,
-        "salary_min": None, "salary_max": None, "salary_unit_stated": False, "salary_text": val or None,   # empty on every ad read
+        "salary_min": None, "salary_max": None, "salary_currency": (one(jp.get("baseSalary")).get("currency") or "").strip() or None, "salary_unit_stated": False, "salary_text": val or None,   # empty on every ad read
         "posted": compact_date(jp.get("datePosted")) or nb_date(dl.get("Publisert")),
         "posted_on_page": nb_date(dl.get("Publisert")),
         "valid_through": compact_date(jp.get("validThrough")), "deadline_on_page": nb_date(dl.get("Søknadsfrist")),
