@@ -25555,7 +25555,7 @@ class ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling(unittest.TestCas
         self.assertTrue(any("not `forbids-automation" in b for b in self._complaints("x.md", malformed, good_sec)))
         other_clause = card.replace("clause V.2", "clause IX")
         self.assertTrue(any("does not quote the clause" in b for b in self._complaints("x.md", other_clause, good_sec)))
-        for owed, _ in self.OWED:
+        for owed in ("own browser", "responsibility", "not a risk assessment", "terms_acknowledged", "never on by default"):   # written out, not read from OWED — a phrase dropped from OWED must redden here
             with self.subTest(owed=owed):
                 lacking = good_sec.replace(owed, "…")
                 self.assertTrue(any(f"lacks «{owed}»" in b for b in self._complaints("x.md", card, lacking)))
