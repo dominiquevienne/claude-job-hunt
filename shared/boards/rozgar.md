@@ -1,12 +1,13 @@
 # Board adapter — Rozgar (Pakistan)
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.rozgar.pk -->
 <!-- script: none -->
 <!-- countries: PK -->
 <!-- content: indeterminate · the sitemap holds 3 URLs, frozen since 2020, and the 327 kB homepage carries 0 `JobPosting` — no enumerable surface was found on 2 paths · 2026-09-05 -->
 <!-- witness: none found — nothing on the site states a total, and the sitemap counts pages rather than advertisements -->
+<!-- route: none · a connected tab is served the same landing page the client gets — «بہتر نوکری ڈھونڈیں», «نوکری تلاش کریں» (a control that does nothing in a desktop tab), «انسٹال ایپ» and an `inapp://getToken` link: the job list lives in the mobile application, not on the web; a route to nothing from a browser (2026-09-14 10:50 UTC) · 2026-09-14 -->
 <!-- hosts-source: third brand of the house that operates `rozee.pk`, itself found through `mihnati.com`'s declaration · 2026-09-05 -->
 
 **Not disqualified. Not qualifiable.** The distinction matters and this card
@@ -79,3 +80,18 @@ bundle's route table, or find the API the front end calls.
 
 *And the sitemap's own contents are the clearest thing on this host:
 `/post-job` is in it and no job is.*
+
+## 2026-09-14 10:49–10:51 UTC — a connected tab sees the same landing page
+
+`https://www.rozgar.pk/` in a real browser renders the JavaScript
+application the client's 327 KB carried: an Urdu landing («بہتر نوکری
+ڈھونڈیں» — find a better job; «نوکری تلاش کریں» — search for a job;
+«EMPLOYER»; «انسٹال ایپ» — install the app; «Rozgar is a service of …»)
+with three links: `inapp://getToken`, `/how-it-works`, `/privacy-policy`.
+The «search for a job» control changes nothing in a desktop tab; no
+list, no count, no advertisement is reachable from the web. **Rozgar is a
+mobile application with a web landing page, not a web board**: a route to
+nothing (#404), `route: none` with that reason. What remains for
+Pakistan on the web: `jobs-gov-pk` and the press republished on
+`jobz-pk.md`; Rozee is excluded (2026-09-14).
+
