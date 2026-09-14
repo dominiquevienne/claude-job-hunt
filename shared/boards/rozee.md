@@ -173,3 +173,38 @@ advertisements and the 2 607-`<loc>` `jobs.xml` above are the 2026-09-05
 reading; whether they are still reachable is the next measurement, with the
 sitemap declared today.* **The «none possible» sentence is withdrawn as a
 property of the host: it was a fact of 2026-09-07.**
+
+## 2026-09-14 00:4x UTC — the route re-measured for #298: the sitemap is alive again, and every advertisement now leaves the host
+
+```
+GET /sitemap/jobs.xml                          200 — 2 688 <loc>, lastmod 2026-06-17 … 2026-09-13 (1 220 in September, 1 437 in August); 2 675 of the form /<company>-<title>-jobs-<id>, 13 `.php`
+GET /<slug>-jobs-1874462  (lastmod 2026-09-13)  200 → https://www.rozeegpt.ai/seeker/<slug>-156426?…  2 557 B — the RozeeGPT shell, «AI-Powered Career Co-Pilot», no JobPosting   (3 of 3 fresh draws)
+GET /<slug>-jobs-1857075  (lastmod 2026-06)     403 → https://riphah.rozee.pk/job-detail.php?jid=…      6 250 B — «Just a moment...», a challenge on the employer's subdomain (1 of 1 old draw)
+GET /category/information-technology-automation-jobs   200, 358 151 B — no advertisement card in the markup; the list is rendered on the client
+www.rozeegpt.ai/robots.txt                     `User-agent: *` Disallow: /panel/ · **Disallow: https://api.rozeegpt.ai/** · Allow: /
+```
+
+**What changed since the 5th**: the file is no longer an archive (its
+newest `lastmod` is the day before this read, against 7 June then), and
+the addresses have changed shape — the `.php` form that predicted a
+readable `JobPosting` is 13 of 2 688 now. **What did not change, and got
+worse**: an advertisement's address on `www.rozee.pk` redirects to
+`www.rozeegpt.ai/seeker/…`, a 2 557-byte client-rendered shell with no
+JobPosting — on every fresh draw — and the data that shell fetches lives
+on `api.rozeegpt.ai`, **which RozeeGPT's rules refuse in writing** (a
+`Disallow` written as an absolute URL, malformed for the standard and
+plain in its intent). The old addresses go to an employer subdomain
+behind a challenge (borne 2).
+
+**So the HTTP route yields addresses, dates and slugs — not
+advertisements.** A sitemap-only adapter would emit 2 688 records whose
+title and employer are guessed from a slug with no marked boundary
+(`advert-snitch-pvt-ltd` / `b2b-lead-generation-appointment-setter`), and
+whose content is on a host the rules refuse: **not built**, and this
+section is why. **The detail is a browser candidate** — `/seeker/` is
+open on `www.rozeegpt.ai`, the refusal names the API host, and a tab
+renders the page as the site intends (borne 1 not crossed, borne 2 not
+met on the fresh addresses); not measured on the day (the extension did
+not answer). #298 carries this measurement; the issue stays open for the
+owner's decision on the browser route.
+
