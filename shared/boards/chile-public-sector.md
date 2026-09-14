@@ -126,3 +126,14 @@ root answers **200, 40 102 B, byte-identical twice** (15:30:12Z,
 route is `elastic.serviciocivil.cl/listado_teee/_doc/_search`, named in the
 page). *Served; the data route and its own rules are the adapter's first
 question, not this card's.*
+
+## 2026-09-14 — #302: Trabaja en el Estado has an adapter, and this card's title is now history for one of the five
+
+`trabajaenelestado.py` (`trabajaenelestado.md`) reads the index the page
+queries itself — `elastic.serviciocivil.cl`, no rule written — with the
+page's own filters and a plain sort: 349 open calls stated and emitted on
+2026-09-14. **What this card said still holds for the rest**: the detail
+addresses are on `www.empleospublicos.cl`, which says `Disallow: /`, and
+the adapter emits them as data and never fetches them; the four other
+portals have no adapter, for the reasons above.
+
