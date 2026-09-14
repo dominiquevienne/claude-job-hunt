@@ -21098,5 +21098,120 @@ class AListingWhosePlaceAndDateAreTheIconsSpansAndWhoseHostIsOneOfTwentyOne(unit
         self.assertEqual(cm.exception.code, 6)
 
 
+class AnEntryPageTheServerRendersEmptyAndACardWhoseFigureSitsInAStrong(unittest.TestCase):
+    """**`jobscz.py`, 2026-09-14 (#351).** Jobs.cz renders its search cards
+    on the server — except the country-wide page 1, which is the client-
+    rendered entry page: the walk without a locality starts at page 2 and
+    says so; with `--locality` every page is served from the first. The
+    count «Našli jsme N nabídek» sits in a `<strong>` with a no-break
+    space in the figure, so it is read from the page's text; a card's
+    salary tag «45 000 – 60 000 Kč» is a range in CZK with no period. The
+    ad's contact block (a person's name, an address, a telephone) is not
+    read and the text is scrubbed. Mutated (`-B`, detached copy): the
+    country walk started at page 1 → the country case reddens; the count
+    read from the raw markup → the walk case reddens (no witness); the
+    no-break space not stripped from figures → the salary case reddens;
+    the search token kept on the address → the walk case reddens; the
+    contact block read as the employer → the contact case reddens; the
+    phone scrub dropped → the contact case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobscz", os.path.join(SCRIPTS, "jobscz.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, ident, title, emp="Fokus Labe, z.ú.", loc="Ústecký kraj + 3 další lokality", status="Přidáno včera", sal="45 000 &zwj;–&zwj; 60 000 Kč", tag="Odpovězte teď a budete mezi prvními"):
+        tags = (f'<span   class="Tag Tag--success Tag--small Tag--subtle"\n>   {sal}  </span>' if sal else "") + (f'<span class="Tag Tag--neutral Tag--small Tag--subtle" >{tag}</span>' if tag else "")
+        return (f'<article\n    class="SearchResultCard"\n\n><header class="SearchResultCard__header" ><h2 data-test-ad-title="{title}" class="SearchResultCard__title" >'
+                f'<a data-jobad-id="{ident}" data-link="jd-detail" href="https://www.jobs.cz/rpd/{ident}/?searchId=d7d9260e-a342&amp;rps=233" class="link-primary SearchResultCard__titleLink" > {title} </a></h2>'
+                f'<div data-test-ad-status="default" class="SearchResultCard__status" > {status} </div></header><div class="SearchResultCard__body" >{tags}</div>'
+                f'<footer class="SearchResultCard__footer" ><ul class="SearchResultCard__footerList"><li class="SearchResultCard__footerItem" > <svg></svg> <span translate="no">{emp}</span> </li>'
+                f'<li data-test="serp-locality" class="SearchResultCard__footerItem" > <svg></svg> {loc} </li></ul></footer></article>')
+
+    def _page(self, total, cards, entry=False):
+        if entry:
+            return '<html><body><div class="SearchNoUserInputEntry">Nabídky práce</div></body></html>'
+        return f'<html><body><p>Našli jsme <strong>{total:,}</strong> nabídek</p>'.replace(",", " ") + "".join(cards) + '<nav><ul class="Pagination"><li><a href="/prace/?page=2">2</a></li></ul></nav></body></html>'
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(locality=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_a_locality_is_walked_from_page_one_and_the_count_is_read_from_the_text(self):
+        mod = self._mod()
+        p1 = self._page(35, [self._card(2001424000 + i, f"Sestra {i}") for i in range(30)])
+        p2 = self._page(35, [self._card(2001425000 + i, f"Lékař {i}", sal="", tag="") for i in range(5)])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)], locality="praha")
+        self.assertEqual(len(rows), 35)
+        r = rows[0]
+        self.assertEqual((r["id"], r["url"], r["title"], r["employer"], r["workplace"], r["status"], r["tags"], r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit_stated"]),
+                         ("2001424000", "https://www.jobs.cz/rpd/2001424000/", "Sestra 0", "Fokus Labe, z.ú.", "Ústecký kraj + 3 další lokality", "Přidáno včera", ["Odpovězte teď a budete mezi prvními"], 45000, 60000, "CZK", False))
+        self.assertNotIn("searchId", r["url"])
+        self.assertEqual((rows[30]["salary_min"], rows[30]["tags"]), (None, []))
+        self.assertEqual(sent, ["https://www.jobs.cz/prace/praha/", "https://www.jobs.cz/prace/praha/?page=2"])
+        self.assertIn("35 emitted over 2 page(s), site states 35 (praha) — equal.", err)
+        rows, err, sent = self._run(mod, [(200, p1)], locality="praha", pages=1)
+        self.assertIn("30 emitted of the 35 the site states (praha) — 1 page(s) of 30 walked by request", err)
+
+    def test_the_country_walk_starts_at_page_two_because_page_one_is_the_clients(self):
+        mod = self._mod()
+        p2 = self._page(16019, [self._card(1000 + i, f"A {i}") for i in range(30)])
+        p3 = self._page(16019, [self._card(2000 + i, f"B {i}") for i in range(30)])
+        rows, err, sent = self._run(mod, [(200, p2), (200, p3)], pages=2)
+        self.assertEqual(len(rows), 60)
+        self.assertEqual(sent, ["https://www.jobs.cz/prace/?page=2", "https://www.jobs.cz/prace/?page=3"])
+        self.assertIn("rendered on the client", err)
+        self.assertIn("60 emitted of the 16 019 the site states (the whole country) — 2 page(s) of 30 walked by request", err)
+        # the entry page served where a list was expected: no count, no card — the walk says the site lists nothing rather than inventing
+        rows, err, sent = self._run(mod, [(200, self._page(0, [], entry=True))], locality="nowhere")
+        self.assertEqual(rows, [])
+        self.assertIn("the site lists nothing", err)
+
+    def _ad(self):
+        return ('<html><body><h1 class="typography-heading-large-text">Všeobecná / psychiatrická sestra</h1>'
+                '<a data-test="jd-info-location" href="https://www.mapy.cz/?q=x" class="link-secondary" >Ústecký kraj</a>'
+                '<div data-test="jd-salary" class="IconWithText" ><svg></svg><span class="accessibility-hidden" > Plat </span><p>45 000 &zwj;–&zwj; 60 000 Kč</p></div>'
+                '<div data-test="jd-info-item" class="IconWithText" ><svg></svg><span class="accessibility-hidden" > Společnost </span><p>Fokus Labe, z.ú.</p></div>'
+                '<div data-test="jd-info-item" class="IconWithText" ><svg></svg><p class="text-secondary"> Typ pracovního poměru </p><p>Práce na plný úvazek</p></div>'
+                '<div data-test="jd-benefits" class="IconWithText mb-600" ><svg></svg><p>Mobilní telefon</p></div>'
+                '<div data-jobad="body" data-test="jd-body-richtext" class="RichContent mb-1400" ><p>Pracovní nabídka</p><p>Hledáme sestru. Volejte 777 245 947 nebo pište na jana@fokuslabe.cz, případně +420 601 234 567.</p></div>'
+                '<div class="mb-1400"><p>Kontaktní údaje</p><a data-test="jd-contact-company" href="/jof/1/" > Martina Vojtíšková </a>'
+                '<span itemprop="address" data-test="jd-contact-address">Soumarská 1541/8, 14000 Praha 10</span><p data-test="jd-contact-phone" > 777 245 947 </p></div></body></html>')
+
+    def test_the_ad_reads_the_page_and_the_contact_block_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        mod.request = lambda url: (200, self._ad())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobs.cz/rpd/2001424002/?searchId=abc&rps=233"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["url"], d["title"], d["employer"], d["workplace"], d["salary_text"], d["salary_min"], d["salary_max"], d["salary_currency"], d["benefits"], d["contacts_withheld"]),
+                         ("2001424002", "https://www.jobs.cz/rpd/2001424002/", "Všeobecná / psychiatrická sestra", "Fokus Labe, z.ú.", "Ústecký kraj", "45 000 – 60 000 Kč", 45000, 60000, "CZK", ["Mobilní telefon"], True))
+        self.assertEqual(d["info"], ["Typ pracovního poměru\nPráce na plný úvazek"])
+        self.assertEqual(d["description"], "Hledáme sestru. Volejte [telephone withheld] nebo pište na [e-mail withheld], případně [telephone withheld].")
+        raw = out.getvalue()
+        for secret in ("Vojtíšková", "Soumarská", "777 245 947", "fokuslabe.cz", "601 234 567"):
+            self.assertNotIn(secret, raw)
+        mod.request = lambda url: (200, "<html><body><h1>Stránka nenalezena</h1></body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobs.cz/rpd/1/"))
+        self.assertEqual(cm.exception.code, 6)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
