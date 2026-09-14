@@ -19546,7 +19546,7 @@ class ASitemapThatListsWhatHasLeftTheBoardAndASearchRefusedInWriting(unittest.Te
         rows, err, asked = self._sitemap(self._mod(), [(200, self.INDEX), (200, f1), (200, f2)])
         self.assertEqual([r["id"] for r in rows], [self.U1, self.U2, self.U3])
         self.assertEqual(asked[1:], ["https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-1.xml", "https://nationalevacaturebank.nl/cdn/sitemaps/vacature/vacature-2.xml"])
-        self.assertIn("**3 distinct advertisement uuid(s)** in 2 file(s) (vacature-1.xml 2, vacature-2.xml 1); 3 emitted; the index's own lastmod 2026-09-02T06:21:42Z.", err)
+        self.assertIn("**3 distinct advertisement uuid(s)** on www.nationalevacaturebank.nl in 2 file(s) (vacature-1.xml 2, vacature-2.xml 1); 3 emitted; the index's own lastmod 2026-09-02T06:21:42Z.", err)   # the host is named since #295 (Intermediair by --host)
         self.assertIn("The site states no figure by HTTP", err)
 
     def test_the_sample_tells_410_from_404_and_open_from_expired(self):
@@ -21955,6 +21955,94 @@ class TheWholeRegisterIsOneOpenDataFileAndThePortalsOwnSearchIsNeverSent(unittes
         with mock.patch.object(mod.urllib.request, "urlopen", lambda req, timeout=0: Resp(body, len(body))):
             code, text, headers = mod.request(mod.DUMP)
         self.assertEqual((code, json.loads(text)), (200, {"polozky": [1, 2, 3]}))
+
+
+class ASecondBoardOnTheSameTemplateIsAHostAndARecruitersAddressIsNotAField(unittest.TestCase):
+    """**`nationalevacaturebank.py --host intermediair`, 2026-09-14 (#295).**
+    DPG Media's second board is the same template to the line: `--host`
+    names the board, the index is asked on that host, `source` and
+    `ledger_id` carry the board's key, a file that named the other board's
+    host yields no row, and `ad --url` reads the board off the address.
+    And a correction to #287: `hiringOrganization.email` on this template
+    is a recruiter's own address — it is no longer a field, and the
+    description is scrubbed. Mutated (`-B`, detached copy): the host not
+    put on the index → the host case reddens; the key not on the record →
+    the host case reddens; the other board's rows accepted → the cross
+    case reddens; the e-mail field restored → the contact case reddens;
+    the description not scrubbed → the contact case reddens; the unknown
+    host accepted → the bad-host case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_nvb2", os.path.join(SCRIPTS, "nationalevacaturebank.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    U1, U2 = "001dcbef-12f4-41a6-afaf-dc24184f8404", "006cffb8-1e44-4f9e-9a05-c9ae95daaea9"
+    INDEX = "<sitemapindex><sitemap><loc>https://intermediair.nl/cdn/sitemaps/vacature/vacature-1.xml</loc><lastmod>2026-09-14T00:21:16Z</lastmod></sitemap></sitemapindex>"
+
+    def _file(self, *triples):
+        return "<urlset>" + "".join(f"<url><loc>https://www.{host}.nl/vacature/{u}/{slug}</loc></url>" for host, u, slug in triples) + "</urlset>"
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def get(url):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(host="intermediair", limit=None, sample=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_sitemap(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_host_names_the_board_and_the_other_boards_rows_are_not_this_boards(self):
+        mod = self._mod()
+        f1 = self._file(("intermediair", self.U1, "change-manager"), ("nationalevacaturebank", self.U2, "forklift"), ("intermediair", self.U2, "consultant"))
+        rows, err, asked = self._run(mod, [(200, self.INDEX), (200, f1)])
+        self.assertEqual(asked[0], "https://www.intermediair.nl/cdn/sitemaps/vacature.xml")
+        self.assertEqual([(r["source"], r["ledger_id"], r["id"], r["url"]) for r in rows],
+                         [("intermediair", f"intermediair:{self.U1}", self.U1, f"https://www.intermediair.nl/vacature/{self.U1}/change-manager"),
+                          ("intermediair", f"intermediair:{self.U2}", self.U2, f"https://www.intermediair.nl/vacature/{self.U2}/consultant")])
+        self.assertIn("**2 distinct advertisement uuid(s)** on www.intermediair.nl in 1 file(s) (vacature-1.xml 2)", err)
+        # the default is still Nationale Vacaturebank
+        rows, err, asked = self._run(mod, [(200, self.INDEX.replace("intermediair", "nationalevacaturebank")), (200, self._file(("nationalevacaturebank", self.U1, "x")))], host=None)
+        self.assertEqual(asked[0], "https://www.nationalevacaturebank.nl/cdn/sitemaps/vacature.xml")
+        self.assertEqual(rows[0]["source"], "nationalevacaturebank")
+
+    def test_an_unknown_host_is_refused_before_any_request(self):
+        import contextlib
+        mod = self._mod()
+        asked = []
+        mod.get = lambda url: asked.append(url) or (200, "")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_sitemap(argparse.Namespace(host="monsterboard", limit=None, sample=None))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertEqual(asked, [])
+        self.assertIn("nationalevacaturebank, intermediair", e2.getvalue())
+
+    def test_the_ad_reads_the_board_off_the_address_and_the_recruiters_address_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        ld = json.dumps({"@context": "https://schema.org/", "@type": "JobPosting", "title": "Change manager", "datePosted": "2026-08-31T22:00:00Z", "validThrough": "2026-10-31T22:59:59Z",
+                         "description": "<p>Reageer via anjo.k@teameiffel.example of bel ons.</p>", "employmentType": ["FULL_TIME", "PART_TIME"],
+                         "hiringOrganization": {"@type": "Organization", "name": "Team EIFFEL", "email": "anjo.k@teameiffel.example"},
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Utrecht", "addressRegion": "Utrecht", "addressCountry": "NL", "postalCode": "3528BJ"}}})
+        mod.get = lambda url: (200, f'<html><head><script type="application/ld+json" data-next-head="">{ld}</script></head><body>{"x" * 3000}</body></html>')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=f"https://www.intermediair.nl/vacature/{self.U1}/change-manager-energietransitie"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["source"], d["ledger_id"], d["id"], d["title"], d["employer"], d["city"], d["contacts_withheld"]),
+                         ("intermediair", f"intermediair:{self.U1}", self.U1, "Change manager", "Team EIFFEL", "Utrecht", True))
+        self.assertNotIn("employer_email", d)
+        self.assertNotIn("teameiffel.example", out.getvalue())
+        self.assertIn("[e-mail withheld]", d["description"])
 
 
 if __name__ == "__main__":
