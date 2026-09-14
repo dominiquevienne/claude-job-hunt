@@ -1,12 +1,12 @@
 # Board measurement — Jobz.pk (`www.jobz.pk`, Pakistan): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.jobz.pk, jobz.pk -->
 <!-- script: none -->
 <!-- countries: PK -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- witness: none the site states — a directory of employer and newspaper pages, not a counted list; from a connected tab (no challenge shown, 2026-09-14 10:39–10:42 UTC) the newspaper feed `/dawn_jobs/` carries 25 entries dated «14-Sep-2026» and no pager — the day's republished Dawn advertisements; six such feeds (Jang, Express, The News, Dawn, Nawaiwaqt, Mashriq), 655 employer / topic pages linked from `/latest-jobs-in-pakistan/`; nothing is served to the declared client (the Cloudflare challenge, never defeated) · 2026-09-14 -->
+<!-- route: browser · 25 · 2026-09-14 -->
 **In the #222 candidate list from the Pakistan country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -63,3 +63,19 @@ GET https://www.jobz.pk/jobs                             403, 5 691 B, md5 70286
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:39–10:42 UTC — the challenge does not show to a connected tab
+
+```
+tab, /                            served — the home: 985 links, newspaper feeds (/jang_jobs/, /express_jobs/, /the_news_jobs/, /dawn_jobs/, /nawaiwaqt_jobs/, /mashriq_jobs/), employer pages (/anti-narcotics-force-anf-vacancies/ …), test results, date sheets
+tab, /latest-jobs-in-pakistan/    served — a directory: 655 employer / topic pages linked, no dated list, no pager, no count
+tab, /dawn_jobs/                  served — 25 entries dated «14-Sep-2026», the day's Dawn advertisements republished, no pager
+```
+
+**`route: browser · 25 · 2026-09-14`** — one newspaper feed's day; the
+board is a republisher of the press's job advertisements, organised by
+paper and by employer, and states no count. What a session does from a
+tab: the six `/<paper>_jobs/` feeds, the dated entries of the day, the
+entry's page for the scanned advertisement and its text; no JobPosting
+was seen. No script: the declared client is challenged (#404).
+
