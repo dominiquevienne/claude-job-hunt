@@ -71,6 +71,7 @@ Run: `python3 -m unittest discover -s tests -v`
 """
 
 import argparse
+import datetime
 import hashlib
 import io
 import json
@@ -22313,6 +22314,163 @@ class ASecondBoardOnTheSameTemplateIsAHostAndARecruitersAddressIsNotAField(unitt
         self.assertNotIn("employer_email", d)
         self.assertNotIn("teameiffel.example", out.getvalue())
         self.assertIn("[e-mail withheld]", d["description"])
+
+
+class OneGeneralistOnFiveFrontsWhoseListIsAnArchiveWalkedByDateAndWhoseAdvertHoldsSeveralPositions(unittest.TestCase):
+    """**`myjobmag.py`, 2026-09-14 (#391).** MyJobMag is one template on
+    five hosts, named by `--host`; every front refuses a query string in
+    writing, so the pager is the path `/jobs/page/N` and a `?` is never
+    sent. The list states no count and is an archive going back years, so
+    the walk is newest-first and stops at the first card older than
+    `--days`, saying so; a 200 page without one card is a changed
+    template (exit 6). A card is a position or an advert of several, and
+    `ad` emits one record per position block, its labelled fields, the
+    salary with the period the site prints, the JSON-LD parsed despite its
+    raw newlines; the «Method of Application» text — where an employer
+    writes the address to send a CV to — is scrubbed. Mutated (`-B`,
+    detached copy): the query-string guard dropped → the guard case
+    reddens; the date stop made inclusive → the walk case reddens; the
+    employer not read off the title → the walk case reddens; the advert
+    kind not told apart → the walk case reddens; the application text not
+    scrubbed → the ad case reddens; the salary period dropped → the ad
+    case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_myjobmag", os.path.join(SCRIPTS, "myjobmag.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, path, title, date, employer=None, slug=None):
+        logo = (f'<a  href="/jobs-at/{slug}"  ><img src="/company_logo/x.png" alt="{employer}" width="100%" /></a>' if slug
+                else f'<a  ><img src="/company_logo/86/default-company-logo.png" alt="{title}" width="100%" title=" logo" /></a>')
+        return (f'<li class="job-list-li"><ul><li class="job-logo">{logo}</li><li class="job-info"><ul><li class="mag-b"><h2><a style=" " href="{path}">{title}</a></h2></li>'
+                f'<li class="job-desc">We recruit. Write to hr@firm.example or 0803 123 4567 ...</li><li class="job-item"><ul><li id="job-date">{date}</li></ul></li></ul></li></ul></li>')
+
+    def _page(self, cards, cur, last):
+        pager = "".join(f"<li><a href='/jobs/page/{i}'>{i}</a></li>" if i != cur else f"<li><a class='current_page'>{i}</a></li>" for i in range(1, last + 1)).replace("href='/jobs/page/1'", "href='/jobs'")
+        return f'<html><body><h1 class="main-h2-2">Jobs in Nigeria</h1><ul class="job-list">{"".join(cards)}</ul><div class="mag-b bm-b-20"><ul class=\'setPaginate\'>{pager}</ul></div></body></html>'
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(host=None, days=None, pages=None, limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_list if cmd == "list" else mod.cmd_ad)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_list_is_walked_by_date_on_the_named_front_and_never_with_a_query(self):
+        import contextlib
+        mod = self._mod()
+        today = datetime.date.today()
+        d = lambda n: (today - datetime.timedelta(days=n)).strftime("%d %B")   # the site prints «12 September» for this year
+        floor = today - datetime.timedelta(days=30)
+        p1 = self._page([self._card("/job/event-rental-sales-representative-luxelayer-rentals", "Event Rental Sales Representative at Luxelayer Rentals", d(2), "Luxelayer Rentals", "luxelayer-rentals"),
+                         self._card("/jobs/medical-consultants-at-bergstein-hospital-1", "Medical Consultants at Bergstein Hospital", d(2), "Bergstein Hospital", "bergstein-hospital"),
+                         self._card("/job/farm-poultry-attendant", "Farm Poultry Attendant at Regal Bablo Farms", d(3)),
+                         self._card("/job/event-rental-sales-representative-luxelayer-rentals", "Event Rental Sales Representative at Luxelayer Rentals", d(2), "Luxelayer Rentals", "luxelayer-rentals")], 1, 3)
+        p2 = self._page([self._card("/job/on-the-floor-day", "On the Floor Day at Edge Ltd", floor.strftime("%d %B") if floor.year == today.year else floor.strftime("%d %B, %Y"), "Edge Ltd", "edge-ltd"),
+                         self._card("/job/old-one", "Old One at Past Ltd", "10 June, 2024", "Past Ltd", "past-ltd"),
+                         self._card("/job/older-one", "Older One at Past Ltd", "06 May, 2024", "Past Ltd", "past-ltd")], 2, 3)
+        p3 = self._page([self._card("/job/oldest", "Oldest at Past Ltd", "01 May, 2024", "Past Ltd", "past-ltd")], 3, 3)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(asked, ["https://www.myjobmag.com/jobs", "https://www.myjobmag.com/jobs/page/2"])
+        self.assertEqual([r["id"] for r in rows], ["event-rental-sales-representative-luxelayer-rentals", "medical-consultants-at-bergstein-hospital-1", "farm-poultry-attendant", "on-the-floor-day"])
+        a, b, c, e = rows
+        self.assertEqual((a["source"], a["country"], a["kind"], a["url"], a["employer"], a["employer_slug"], a["posted"], a["contacts_withheld"]),
+                         ("myjobmag-ng", "NG", "position", "https://www.myjobmag.com/job/event-rental-sales-representative-luxelayer-rentals", "Luxelayer Rentals", "luxelayer-rentals", (today - datetime.timedelta(days=2)).isoformat(), True))
+        self.assertEqual((b["kind"], b["url"], b["ledger_id"]), ("advert", "https://www.myjobmag.com/jobs/medical-consultants-at-bergstein-hospital-1", "myjobmag-ng:advert:medical-consultants-at-bergstein-hospital-1"))
+        self.assertEqual((c["employer"], c["employer_slug"]), ("Regal Bablo Farms", None))   # no /jobs-at/ page: the employer is the title's tail
+        self.assertEqual(e["posted"], floor.isoformat())   # the day of the floor itself is still in
+        self.assertEqual(a["summary"], "We recruit. Write to [e-mail withheld] or [telephone withheld] ...")
+        self.assertNotIn("hr@firm", raw)
+        self.assertIn("4 card(s) emitted over 2 page(s) on www.myjobmag.com (NG), newest-first, stopped at the first card dated 2024-06-10 — older than --days 30; the site states no count and its list is an archive: walked by date, not a shortfall.", err)
+        self.assertIn("1 of them are adverts", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)], days=9999)
+        self.assertEqual((len(asked), len(rows)), (3, 7))
+        self.assertIn("7 card(s) emitted over 3 page(s) on www.myjobmag.com (NG) — the pager ended; the site states no count.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1.replace("Jobs in Nigeria", "Jobs in Kenya"))], host="ke", pages=1)
+        self.assertEqual((asked, rows[0]["source"], rows[0]["country"], rows[0]["url"][:26]), (["https://www.myjobmag.co.ke/jobs"], "myjobmag-ke", "KE", "https://www.myjobmag.co.ke"))
+        self.assertIn("bounded by --pages/--limit", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>Jobs in Nigeria</h1><ul class=\"job-list\"></ul></body></html>")])
+        self.assertEqual(cm.exception.code, 6)   # 200 and not one card: the template changed, not an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], host="www.myjobmag.example")
+        self.assertEqual(cm.exception.code, 2)
+        # the guard on the wire: a query string is refused in writing on every front, and the adapter refuses it before the gate
+        mod = self._mod()   # a fresh module — `_run` replaced `request`
+        mod.gate = lambda url: {"allowed": True}
+        mod.pace_for = lambda host: type("P", (), {"wait": staticmethod(lambda: None)})()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.myjobmag.com/jobs?page=2")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_emits_one_record_per_position_and_the_application_text_is_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        head = ('<ul class="job-element"><li><a href="/jobs-by-industry/general">View Jobs in General</a> / <a href="/jobs-at/bergstein-hospital">View Jobs at Bergstein Hospital</a></li></ul>'
+                '<div class="read-date-sec"><div class="read-date-sec-li" id="posted-date"><b class="tc-o">Posted:</b> Sep 12, 2026</div><div class="read-date-sec-li"><b class="tc-bl3">Deadline:</b> Sep 25, 2026</div></div>')
+
+        def block(pid, slug, title, keys, desc):
+            ks = "".join(f'<li><span class="jkey-title">{k}</span> <span class="jkey-info">{v}</span></li>' for k, v in keys)
+            return f'<h2  class="mag-b " id="job{pid}"><a href=\'/job/{slug}\' class=\'subjob-title\'>{title} </a></h2><ul class="job-key-info">{ks}</ul><div class="job-details"><p><strong>Job Description</strong></p><ul><li>{desc}</li></ul></div>'
+        method = ('<h2 id="application-method" style="margin-top:10px;" class="mag-b ts-18"><b>Method of Application </b></h2><div class="mag-b bm-b-30"> Interested candidates should send their CV to careers@bergstein.example or call Dr Okafor on 0803 123 4567 (or +234 803 123 4567). </div>')
+        advert = "<html><body>" + head + block(1333338, "consultant-cardiologist-bergstein-hospital", "Consultant Cardiologist",
+                                                  [("Job Type", '<a href="/jobs-by-type/full-time">Full Time</a>'), ("Qualification", '<a href="/jobs-by-education/bsc">BA/BSc/HND</a>'), ("Experience", ""), ("Location", "<a href='/jobs-location/lagos'>Lagos</a>"), ("City", "<a href='/jobs-city/ikorodu'>Ikorodu</a>"), ("Job Field", '<a href="/jobs-by-field/medical">Medical / Healthcare</a>&nbsp'), ("Salary Range", "₦150,000 - ₦200,000/month")],
+                                                  "Provide specialist consultation; questions to cardio@bergstein.example") \
+            + block(1333339, "consultant-radiologist-bergstein-hospital", "Consultant Radiologist",
+                    [("Job Type", "Contract"), ("Location", "Lagos"), ("Salary Range", "₦2,500,000")], "Read images.") + method + "</body></html>"
+        rows, err, asked, raw = self._run(mod, [(200, advert)], cmd="ad", url="https://www.myjobmag.com/jobs/medical-consultants-at-bergstein-hospital-1")
+        self.assertEqual(asked, ["https://www.myjobmag.com/jobs/medical-consultants-at-bergstein-hospital-1"])
+        self.assertEqual([r["id"] for r in rows], ["1333338", "1333339"])
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["url"], r["advert_url"], r["title"], r["employer"], r["employer_slug"], r["job_type"], r["qualification"], r["experience"], r["location"], r["city"], r["job_field"]),
+                         ("myjobmag-ng:position:1333338", "https://www.myjobmag.com/job/consultant-cardiologist-bergstein-hospital", "https://www.myjobmag.com/jobs/medical-consultants-at-bergstein-hospital-1", "Consultant Cardiologist", "Bergstein Hospital", "bergstein-hospital", "Full Time", "BA/BSc/HND", None, "Lagos", "Ikorodu", "Medical / Healthcare"))
+        self.assertEqual((r["salary_text"], r["salary_min"], r["salary_max"], r["salary_currency_sign"], r["salary_unit"], r["salary_unit_stated"], r["posted"], r["deadline"], r["valid_through"], r["contacts_withheld"]),
+                         ("₦150,000 - ₦200,000/month", 150000, 200000, "₦", "month", True, "2026-09-12", "2026-09-25", None, True))
+        self.assertEqual(r["description"], "Job Description\nProvide specialist consultation; questions to [e-mail withheld]")
+        self.assertEqual(r["application_method"], "Interested candidates should send their CV to [e-mail withheld] or call Dr Okafor on [telephone withheld] (or [telephone withheld]).")
+        self.assertEqual((rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_unit"], rows[1]["salary_unit_stated"], rows[1]["job_type"], rows[1]["qualification"]), (2500000, 2500000, None, False, "Contract", None))
+        for secret in ("bergstein.example", "0803 123 4567", "+234 803", "803 123 4567"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("2 position(s) on https://www.myjobmag.com/jobs/medical-consultants-at-bergstein-hospital-1", err)
+        # a single-position page: the JSON-LD's description carries a raw newline, and it is still read
+        ld = '{"@context": "http://schema.org", "@type": "JobPosting", "title": "Event Rental Sales Representative", "datePosted": "2026-09-12T10:19:07+01:00", "validThrough": "2026-09-26T00:00:00+0000", "hiringOrganization": {"@type": "Organization", "name": "Luxelayer Rentals"}, "employmentType": "Full Time , Onsite", "industry": "General", "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Lagos", "addressRegion": "Lagos", "addressCountry": "NG"}}, "description": "&lt;p&gt;line one\n\nline two&lt;/p&gt;"}'
+        single = ('<html><body><script type="application/ld+json">' + ld + '</script>'
+                  + '<div class="read-date-sec"><div class="read-date-sec-li" id="posted-date"><b class="tc-o">Posted:</b> Sep 12, 2026</div><div class="read-date-sec-li"><b class="tc-bl3">Deadline:</b> Not specified</div></div>'
+                  + '<h2  class="mag-b " id="job1333235"><span class=\'subjob-title\'>Event Rental Sales Representative</span></h2><ul class="job-key-info"><li><span class="jkey-title">Job Type</span> <span class="jkey-info">Full Time</span></li></ul><div class="job-details"><p>Generate business.</p></div>'
+                  + '<h2 id="application-method"><b>Method of Application </b></h2><div class="mag-b bm-b-30"> Apply using the Apply Now button below. </div></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, single)], cmd="ad", url="https://www.myjobmag.com/job/event-rental-sales-representative-luxelayer-rentals/")
+        r = rows[0]
+        self.assertEqual((len(rows), r["id"], r["url"], r["advert_url"], r["employer"], r["employer_slug"], r["deadline"], r["valid_through"], r["employment_type"], r["industry"], r["region"], r["address_country"], r["description"], r["application_method"]),
+                         (1, "1333235", "https://www.myjobmag.com/job/event-rental-sales-representative-luxelayer-rentals", None, "Luxelayer Rentals", None, "Not specified", "2026-09-26", "Full Time , Onsite", "General", "Lagos", "NG", "Generate business.", "Apply using the Apply Now button below."))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.myjobmag.co.ke/job/gone")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.myjobmag.com/jobs-at/bergstein-hospital")
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_a_card_date_without_a_year_is_this_year_unless_it_would_be_tomorrow(self):
+        mod = self._mod()
+        today = datetime.date(2026, 9, 14)
+        self.assertEqual(mod.card_date("12 September", today), "2026-09-12")
+        self.assertEqual(mod.card_date("10 June, 2024", today), "2024-06-10")
+        self.assertEqual(mod.card_date("06 May, 2024", today), "2024-05-06")
+        self.assertEqual(mod.card_date("30 December", datetime.date(2027, 1, 2)), "2026-12-30")   # read on 2 January: last year's
+        self.assertEqual(mod.card_date("Today", today), None)
+        self.assertEqual(mod.page_date("Sep 12, 2026"), "2026-09-12")
+        self.assertEqual(mod.page_date("Not specified"), "Not specified")
 
 
 if __name__ == "__main__":
