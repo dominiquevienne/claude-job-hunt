@@ -6,7 +6,7 @@
 <!-- script: none -->
 <!-- countries: TZ -->
 <!-- content: indeterminate · 2 hosts, same rules; 4 paths tried under the permitted token and all 4 answer HTTP 403 with a 5 637-byte Cloudflare interstitial titled `Just a moment...`, md5 different on two fetches of the same URL at constant size — a challenge, not a page; nothing of the site was read · 2026-09-11 13:20 UTC -->
-<!-- witness: none — nothing was served. The site's own «44 156» (2026-09-02, `shared/plausible-and-false.md`) is a WordPress archive counter with expired advertisements inside it, cited there and not re-read here · **browser, 2026-09-14 10:04 UTC: `/jobs/` served to a connected tab without the interstitial — «44,393 jobs found», WordPress posts 15 a page, `/jobs/page/2/ … /3415/`, the last carrying 14; the count is the archive's (posts since the site began — tenders, notices and results among them), not a count of live advertisements; the ad page carries a WebPage / BreadcrumbList / WebSite / Organization graph and no JobPosting** -->
+<!-- witness: none — nothing was served. The site's own «44 156» (2026-09-02, `shared/plausible-and-false.md`) is a WordPress archive counter with expired advertisements inside it, cited there and not re-read here · **browser, 2026-09-14 10:04 UTC: `/jobs/` served to a connected tab without the interstitial — «44,393 jobs found», WordPress posts 15 a page, `/jobs/page/2/ … /3415/`, the last carrying 14; the count is the archive's (posts since the site began — tenders, notices and results among them), not a count of live advertisements; the ad page carries a WebPage / BreadcrumbList / WebSite / Organization graph and no JobPosting** · **the bound, one page, 10:16 UTC: page 1 of `/jobs/` holds 15 posts, every title dated «September 2026» (the cards render no `<time>`; the month lives in the title), 13 of them vacancies (a job at a named employer, or a recruitment digest of a named body — TIRA 9 posts, NSI 13, councils 59), 1 a tender, 1 a digest of other posts; the archive's 44 393 is the site's counter, the live fraction is what a walk stopped at the first older month yields** -->
 <!-- route: browser · 44393 · 2026-09-14 -->
 
 **Tanzania's first host on a card.** *The rules open and the transport serves a
@@ -106,7 +106,11 @@ tab, /jobs/<slug>/           served — WebPage / BreadcrumbList / WebSite / Org
 ```
 
 **`route: browser · 44393 · 2026-09-14`**, with the caveat written on the
-line: the count is the archive's — every post the site ever filed under
+line and a bound of one page (10:16 UTC): page 1 holds 15 posts, every
+title dated «September 2026» — 13 vacancies (a job at a named employer,
+or a recruitment digest of a named body), 1 tender, 1 digest of other
+posts; no `<time>` on the cards, the month is in the title. The count is
+the archive's — every post the site ever filed under
 «jobs», tenders and exam notices among them — not a count of live
 advertisements; a session reading from a tab walks `/jobs/page/N/` from 1
 and stops at the first post older than the window it wants, the slug as
