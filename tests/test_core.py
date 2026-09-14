@@ -25471,5 +25471,96 @@ class ASlovakBoardWhoseListingStatesItsCountAndPagesByPathAndWhoseAdIsCutBeforeI
         self.assertEqual(cm.exception.code, 2)
 
 
+class ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling(unittest.TestCase):
+    """**#428, 2026-09-14.** The owner's decision on Trabajópolis, verbatim:
+    «navigateur avec disclaimer à l'utilisateur lors de la souscription». A
+    card that declares `<!-- terms: forbids-automation · <clause> · date -->`
+    names a site whose conditions of use forbid automated access while its
+    rules file does not; `shared/setup.md` §5j must then, for that board,
+    say the clause, say that the reading happens in the user's own browser,
+    and say that the responsibility is the user's — a disclaimer, not a
+    risk assessment, never set by default. **Both directions**: a `terms:`
+    card whose board §5j does not name → red; a `terms:` line of another
+    shape → red; §5j without the clause, the browser or the responsibility
+    → red; a card without `terms:` owes nothing. Mutated (`-B`, detached
+    copy): the card's `terms:` line removed → the population floor reddens;
+    §5j's board name removed → the walk reddens; the `terms:` shape check
+    dropped → the malformed fixture passes (reddens); the responsibility
+    phrase check dropped → the fixture without it passes (reddens)."""
+
+    TERMS = re.compile(r"^\s*forbids-automation\s*·\s*(.+?)\s*·\s*(20\d\d-\d\d-\d\d)\s*$")
+    OWED = (("own browser", "where the reading happens"),
+            ("responsibility", "whose it is"),
+            ("not a risk assessment", "what the flow does not do"),
+            ("terms_acknowledged", "the key the user writes"),
+            ("never on by default", "that nothing pre-ticks it"))
+
+    @staticmethod
+    def _headers(text):
+        return {m.group(1): m.group(2) for m in re.finditer(r"^<!--\s*([a-z-]+):\s*(.*?)\s*-->\s*$", text, re.M)}
+
+    @staticmethod
+    def _section(setup_text):
+        m = re.search(r"^## 5j\b.*?(?=^## )", setup_text, re.M | re.S)
+        return re.sub(r"\s+", " ", m.group(0)) if m else ""   # words, not line wraps
+
+    def _complaints(self, name, card_text, setup_text):
+        """The guard as a function of one card and the flow's text — fixtures exercise it both ways, the walk uses the same code."""
+        h = self._headers(card_text)
+        if "terms" not in h:
+            return []
+        bad = []
+        m = self.TERMS.match(h["terms"])
+        if not m:
+            bad.append(f"{name}: `terms:` is not `forbids-automation · <clause> · YYYY-MM-DD` — {h['terms'][:60]!r}")
+        sec = self._section(setup_text)
+        board = name[:-3] if name.endswith(".md") else name
+        if not sec:
+            bad.append(f"{name}: `shared/setup.md` has no §5j — the disclaimer has nowhere to be said")
+            return bad
+        if f"`{board}.md`" not in sec and f"  {board}:" not in sec:
+            bad.append(f"{name}: declares `terms:` and §5j does not name `{board}` — the user would enable it without hearing the clause")
+        if m and m.group(1) not in sec:
+            bad.append(f"{name}: §5j does not quote the clause the card declares ({m.group(1)})")
+        for owed, why in self.OWED:
+            if owed not in sec:
+                bad.append(f"{name}: §5j lacks «{owed}» — {why}")
+        return bad
+
+    def _repo(self):
+        return pathlib.Path(SCRIPTS).parent.parent.parent
+
+    def test_every_terms_card_is_said_in_the_flow(self):
+        setup = (self._repo() / "shared" / "setup.md").read_text(encoding="utf-8")
+        bad, declared = [], 0
+        for card in sorted((self._repo() / "shared" / "boards").glob("*.md")):
+            if card.name == "README.md":
+                continue
+            text = card.read_text(encoding="utf-8")
+            if "terms" in self._headers(text):
+                declared += 1
+            bad += self._complaints(card.name, text, setup)
+        self.assertGreaterEqual(declared, 1, "no card declares `terms:` — trabajopolis.md did on 2026-09-14; the line was lost or the walk narrowed")
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_guard_reddens_in_both_directions_on_fixtures(self):
+        good_sec = ("## 5j — terms\n\n`x.md` (clause V.2). Read in the user's own browser; the responsibility is the user's; "
+                    "a disclaimer, not a risk assessment; `terms_acknowledged`; never on by default.\n\n```yaml\nboards:\n  x:\n    terms_acknowledged: true\n```\n\n## 6 — next\n")
+        card = "# X\n\n<!-- script: none -->\n<!-- countries: XX -->\n<!-- terms: forbids-automation · clause V.2 · 2026-09-14 -->\n"
+        self.assertEqual(self._complaints("x.md", card, good_sec), [])
+        self.assertEqual(self._complaints("y.md", "# Y\n\n<!-- script: none -->\n<!-- countries: YY -->\n", ""), [])   # no terms: nothing owed
+        unnamed = good_sec.replace("`x.md`", "`z.md`").replace("  x:", "  z:")
+        self.assertTrue(any("does not name `x`" in b for b in self._complaints("x.md", card, unnamed)))
+        malformed = card.replace("forbids-automation · clause V.2 · 2026-09-14", "forbidden, see clause V.2")
+        self.assertTrue(any("not `forbids-automation" in b for b in self._complaints("x.md", malformed, good_sec)))
+        other_clause = card.replace("clause V.2", "clause IX")
+        self.assertTrue(any("does not quote the clause" in b for b in self._complaints("x.md", other_clause, good_sec)))
+        for owed, _ in self.OWED:
+            with self.subTest(owed=owed):
+                lacking = good_sec.replace(owed, "…")
+                self.assertTrue(any(f"lacks «{owed}»" in b for b in self._complaints("x.md", card, lacking)))
+        self.assertTrue(any("no §5j" in b for b in self._complaints("x.md", card, "## 6 — next\n")))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

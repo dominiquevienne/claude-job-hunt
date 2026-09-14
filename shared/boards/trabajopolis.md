@@ -1,4 +1,4 @@
-# Board adapter — Trabajópolis (`www.trabajopolis.bo`, Bolivia): the root is served, every list route and the sitemap answer a robot challenge, and the terms of use forbid automated access in writing — measured 2026-09-14, no adapter, the owner's decision pending (#428)
+# Board adapter — Trabajópolis (`www.trabajopolis.bo`, Bolivia): the root is served, every list route and the sitemap answer a robot challenge, and the terms of use forbid automated access in writing — measured 2026-09-14; the owner's decision: a browser route with a disclaimer said to the user when the board is enabled (#428)
 
 <!-- verified: 2026-09-14 -->
 
@@ -7,7 +7,8 @@
 <!-- countries: BO -->
 <!-- content: measured · **the root answers 200 (418 KB, «Más de 115.000 ofertas de empleo gestionadas» — a lifetime claim, not a list count); every list route answers HTTP 403 with a 642 KB page titled «Trabajópolis - Trabajos en Bolivia» that says «debemos verificar que usted no es un robot … Enable JavaScript and cookies to continue», md5 moving between two reads of the same address (e33bc678400a / 57788834d653), and the page cites the terms of use: clause V.2 forbids access «mediante bots, arañas o cualquier medio automático»; `/buscar-trabajos`, `/empleos/la-paz`, `/categorias/informatica` and `/sitemap.xml` all answer that page (00:49–00:50 UTC)** · 2026-09-14 -->
 <!-- witness: none — no list was ever served to the declared client, so no count of the site's own was read; the root's «115.000» is «ofertas … gestionadas» over fifteen years, not a count of live ads · 2026-09-14 -->
-<!-- route: none · every list route and the sitemap answer a robot challenge (borne 2, not defeated, nobody asked to defeat it), and the terms of use forbid automated access in writing; the browser branch is not opened on a challenge — the owner decides whether this host is closed (§2 sexies) · 2026-09-14 -->
+<!-- route: none · a browser route is the owner's decision of 2026-09-14 04:4x UTC («navigateur avec disclaimer à l'utilisateur lors de la souscription») and is not measured yet — a tab on the list, once the extension answers, gives `route: browser · N · date`; until then every list route answers a robot challenge to the declared client (borne 2, not defeated, nobody asked to defeat it) and nothing is rendered · 2026-09-14 -->
+<!-- terms: forbids-automation · clause V.2 · 2026-09-14 -->
 
 **What was measured, and what was not tried.** Issue #428 was opened
 under #411 (Bolivia, never searched) on the root's «115.000 ofertas» — a
@@ -60,9 +61,24 @@ and `/js/stats/hit.js` — a SmartJobBoard-style platform. `Sitemap:
 https://www.trabajopolis.bo/sitemap.xml`, which answers the challenge page
 to the declared client.
 
-## If the owner decides otherwise
+## The owner's decision, 2026-09-14 04:4x UTC — a browser, with a disclaimer
 
-The day the owner rules that a browser may be pointed at this host, the
-measurement is the same as any browser route (`route: browser · N · date`):
-a tab on `/buscar-trabajos`, the count the list states, the walk to it. It
-is not done here, because the page says what it is.
+Verbatim to the pilot: «&nbsp;4. navigateur avec disclaimer à l'utilisateur
+lors de la souscription&nbsp;». Two consequences, one done here and one
+waiting:
+
+1. **The header line `terms: forbids-automation · clause V.2 · 2026-09-14`
+   is declared on this card**, and `shared/setup.md` §5j reads it: when the
+   user enables `trabajopolis`, the flow **says the clause** — the terms of
+   use forbid access «&nbsp;mediante bots, arañas o cualquier medio
+   automático&nbsp;» (V.2, read 2026-09-14 on the challenge page) — and that
+   the reading happens **in the user's own browser, under the user's own
+   responsibility**; a disclaimer, not a risk assessment; the user writes
+   `boards.trabajopolis.terms_acknowledged: true` themselves or the board
+   stays off, and the skip says why. The guard
+   `ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling` keeps the
+   card and the flow together in both directions.
+2. **The measurement waits for the extension**: a tab on `/buscar-trabajos`,
+   the count the list states, a stable key, a JobPosting or not — then
+   `route: browser · N · date` replaces the `route: none` line above. Not done
+   here: the extension did not answer this session.
