@@ -22473,5 +22473,137 @@ class OneGeneralistOnFiveFrontsWhoseListIsAnArchiveWalkedByDateAndWhoseAdvertHol
         self.assertEqual(mod.page_date("Not specified"), "Not specified")
 
 
+class AnOldGeneralistWhosePagerStatesThePagesAndWhoseTelephoneBlockIsMaskedAndNeverRead(unittest.TestCase):
+    """**`eleman.py`, 2026-09-14 (#384).** Eleman.net's rules refuse the
+    site's search parameters (`*?t=*`, `*?ilan_id=*` …) and leave the
+    list, its `?sy=N` pager and the ads open: `sy` is the only parameter
+    the adapter sends, any other is refused before the gate. The list
+    states no total; the pager's «1 / 243» is the site's own page count,
+    printed beside every walk; a highlighted card (`renkli-ilan`) is a
+    card. The ad's JSON-LD carries the salary with `unitText` MONTH — a
+    period — and «45.000 TL» is forty-five thousand; the labelled boxes
+    give the positions, the gender wanted, the age range; the «İletişim»
+    block — masked telephone numbers — is never read and the description
+    is scrubbed. Mutated (`-B`, detached copy): the parameter guard
+    dropped → the guard case reddens; the highlighted card's class tail
+    not matched → the walk case reddens; the pager's count not read →
+    the walk case reddens; the thousands dot read as a decimal → the ad
+    case reddens; the description not scrubbed → the ad case reddens;
+    the positions box not read → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eleman", os.path.join(SCRIPTS, "eleman.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, slug, ident, title, employer, place, benefits="Yemek", urgent=False, tel=True, sal=True, highlighted=False):
+        badges = ('<div class="ilantik-acil" title="Acil İlan"><div class="ikon-kutu"><i class="hgi"></i></div><span>ACİL İLAN</span></div>' if urgent else "") \
+            + ('<div class="ilantik" title="Telefonla başvuru yapabilirsiniz."><span class="ilantik-ikon"><i class="hgi hgi-call-02"></i></span></div>' if tel else "") \
+            + ('<div class="ilantik" title="Maaş Bilgisi Olan"><span class="ilantik-ikon"><i class="hgi hgi-turkish-lira"></i></span></div>' if sal else "")
+        return (f'<div class="c-box__body ilan_listeleme_bol {"renkli-ilan " if highlighted else ""}" >\n <a href="https://www.eleman.net/is-ilani/{slug}-i{ident}" title="{title} iş ilanı" target="_blank">'
+                f'<h3 class="c-showcase-box__title u-gap-bottom-xsmall">{title} <div class="ilantik-grubu">{badges}</div></h3>'
+                f'<div class="l-flex"><span class="c-showcase-box__body c-showcase-box c-showcase-box--lite"> <span class="c-showcase-box__subtitle"><i class="hgi hgi-corporate"></i> {employer} <br> <i class="hgi hgi-location-01"></i> {place}</span>'
+                f'<span class="c-showcase-box__text u-equalize-line-height " style="x"><i class="hgi hgi-eraser-add"></i> <span style="line-height:1;">{benefits}</span></span>'
+                f'<span class="c-showcase-box__text " style="line-height:1.5;">Aranıyor, bilgi için 0537 611 22 33 ya da ik@firma.example ...</span></span> <div class="u-flex u-flex-align-middle "></div></div> </a></div>')
+
+    def _page(self, cards, cur, total):
+        opts = "".join(f'<option value="https://www.eleman.net/is-ilanlari?sy={i}">{i}</option>' for i in range(1, total + 1) if i != cur)
+        return (f'<html><body><h1><strong>iş ilanları</strong></h1>{"".join(cards)}<div class="c-box__footer"><ul class="c-pagination u-clear-gap"><li class="c-pagination__item"><select class="c-selectbox">'
+                f'<option value="0" selected="selected">{cur} / {total}</option>{opts}</select></li></ul></div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(city=None, pages=10, limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_list if cmd == "list" else mod.cmd_ad)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_prints_the_pagers_own_page_count_and_a_highlighted_card_is_a_card(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card("tecrubeli-garson-sinpas-cankaya-net-45-000-tip", 4762495, "Tecrübeli Garson / Sinpaş Çankaya / Net 45 000+tip", "Sinpaş John Filippo", "Ankara - Çankaya"),
+                         self._card("e-ticaret-depo-personelleri-dfc-istanbul", 4762489, "E-Ticaret Depo Personelleri (Dfc - İstanbul)", "Workex", "Tekirdağ - Çerkezköy, Kapaklı", "Servis, Yemek, Prim", urgent=True, tel=False),
+                         self._card("makine-teknisyeni-teknikeri", 4728427, "Makine Teknisyeni / Teknikeri", "Temka", "Tekirdağ - Çorlu", highlighted=True, sal=False)], 1, 3)
+        p2 = self._page([self._card("cnc-torna-ustasi", 4735789, "Cnc Torna Ustası", "Bir Firma", "Tekirdağ - Çorlu"),
+                         self._card("tecrubeli-garson-sinpas-cankaya-net-45-000-tip", 4762495, "Tecrübeli Garson (again)", "Sinpaş John Filippo", "Ankara - Çankaya")], 2, 3)
+        p3 = self._page([self._card("saha-operasyon-temsilcisi-hadi", 4571766, "Saha Operasyon Temsilcisi", "Hadi", "İstanbul Avrupa - Beylikdüzü", highlighted=True)], 3, 3)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(asked, ["https://www.eleman.net/is-ilanlari", "https://www.eleman.net/is-ilanlari?sy=2", "https://www.eleman.net/is-ilanlari?sy=3"])
+        self.assertEqual([r["id"] for r in rows], ["4762495", "4762489", "4728427", "4735789", "4571766"])
+        a, b, c = rows[:3]
+        self.assertEqual((a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["benefits"], a["urgent"], a["apply_by_telephone"], a["salary_stated"], a["highlighted"], a["contacts_withheld"]),
+                         ("eleman:4762495", "https://www.eleman.net/is-ilani/tecrubeli-garson-sinpas-cankaya-net-45-000-tip-i4762495", "Tecrübeli Garson / Sinpaş Çankaya / Net 45 000+tip", "Sinpaş John Filippo", "Ankara - Çankaya", "Yemek", False, True, True, False, True))
+        self.assertEqual(a["summary"], "Aranıyor, bilgi için [telephone withheld] ya da [e-mail withheld] ...")
+        self.assertEqual((b["urgent"], b["apply_by_telephone"], b["benefits"]), (True, False, "Servis, Yemek, Prim"))
+        self.assertEqual((c["highlighted"], c["salary_stated"], c["employer"]), (True, False, "Temka"))
+        self.assertNotIn("ik@firma", raw)
+        self.assertIn("5 emitted over 3 page(s) of /is-ilanlari — the 3 pages the pager states, all walked; the site states no total, the pager is the witness.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)], pages=2)
+        self.assertEqual(len(rows), 4)
+        self.assertIn("4 emitted over 2 of the 3 page(s) the pager states for /is-ilanlari, 30 a page — walked by request (--pages/--limit), not a shortfall; the site states no total.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1.replace("iş ilanları", "İstanbul iş ilanları"))], city="istanbul", pages=1)
+        self.assertEqual((asked, len(rows)), (["https://www.eleman.net/is-ilanlari/istanbul"], 3))
+        self.assertIn("of the 3 page(s) the pager states for /is-ilanlari/istanbul", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>iş ilanları</h1></body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        # the wire guard: only `sy` goes out; the site's own search parameters are refused in writing
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.eleman.net/is-ilanlari?t=arama&sy=2")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_reads_the_posting_and_the_boxes_and_the_masked_telephones_never_leave(self):
+        import contextlib
+        mod = self._mod()
+        ld = ('{"@context": "http://schema.org", "@type": "JobPosting", "title": "Tecrübeli Garson / Sinpaş Çankaya / Net 45 000+Tip", "datePosted": "2026-09-14 00:15:46", "description": "**GARSON**&lt;br /&gt;line\n\ntwo", "jobBenefits": "Yemek", "employmentType": "Tam Zamanlı", "industry": ["Restorancılık"],'
+              ' "jobLocation": {"@type": "Place", "address": [{"@type": "PostalAddress", "addressLocality": "Ankara,Çankaya", "addressRegion": "Ankara", "addressCountry": "TR"}]},'
+              ' "hiringOrganization": {"@type": "Organization", "url": "https://www.eleman.net/firma/sinpas-john-filippo-f2118906", "name": "Sinpaş John Filippo", "logo": ""}, "validThrough": "2026-10-14",'
+              ' "baseSalary": {"@type": "MonetaryAmount", "currency": "TRY", "value": {"@type": "QuantitativeValue", "value": "45000", "unitText": "MONTH"}}}')
+        page = ('<html><body><script type="application/ld+json">' + ld + '</script><h1>Tecrübeli Garson</h1>'
+                '<span class="is_ilani_ozellik_kutusu"><i class="icon icon-try"></i> Maaş: 45.000 TL</span> <span class="is_ilani_ozellik_kutusu"> <i class="icon"></i> Yan Haklar: Yemek</span>'
+                '<div class="c-box__body"> <div class="d-information"> <div style="word-wrap:break-word;" class="u-font-size-sm">**GARSON / SERVİS PERSONELİ ARANIYOR**<br/><br/>Sinpaş Altınoran Çarşı’da garson arıyoruz.<br/>İRTİBAT 0537 611 22 33 · ik@sinpas.example</div> <p class="u-text-center">Eleman.net\'te yayınlanmaktadır. İlan No: 4762495</p></div>'
+                '<hr><span class="is_ilani_ozellik_kutusu"> <i class="icon icon-venus-mars"></i> Kadın veya Erkek</span> <span class="is_ilani_ozellik_kutusu"> <i class="icon"></i> 24 - 55 arası</span> <span class="is_ilani_ozellik_kutusu"> <i class="icon"></i> No: 4762495</span> <span class="is_ilani_ozellik_kutusu"> <i class="icon icon-users"></i> Kişi Sayısı: 2</span> <span class="is_ilani_ozellik_kutusu"> <i class="icon"></i> <a href="https://www.eleman.net/is-ilanlari/tam-zamanli-full-time" class="normal-a">Tam Zamanlı</a></span>'
+                '<h5 class="u-font-weight-bold">İletişim:</h5><div class="ilan_detay_iletisim_kapsayici"> <p> <a rel="nofollow" href="https://www.eleman.net/aday/basvuru_yap.php?ilan_id=4762495&iletisim_bilgisi=1"> Ara: 0537 611 ** **</a> <a href="#">Ara: 0312 503 ** **</a> Telefon bilgisi görebilmek için giriş yapmalısınız.</p></div></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.eleman.net/is-ilani/tecrubeli-garson-sinpas-cankaya-net-45-000-tip-i4762495")
+        self.assertEqual(asked, ["https://www.eleman.net/is-ilani/tecrubeli-garson-sinpas-cankaya-net-45-000-tip-i4762495"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["employer"], r["employer_url"], r["locations"], r["region"], r["employment_type"], r["industry"], r["benefits"]),
+                         ("4762495", "Tecrübeli Garson / Sinpaş Çankaya / Net 45 000+Tip", "Sinpaş John Filippo", "https://www.eleman.net/firma/sinpas-john-filippo-f2118906", ["Ankara - Çankaya"], "Ankara", "Tam Zamanlı", ["Restorancılık"], "Yemek"))
+        self.assertEqual((r["salary_text"], r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit"], r["salary_unit_stated"]), ("45.000 TL", 45000, 45000, "TRY", "month", True))
+        self.assertEqual((r["positions"], r["gender_wanted"], r["age_range"], r["posted"], r["valid_through"], r["contacts_withheld"]), (2, "Kadın veya Erkek", "24 - 55 arası", "2026-09-14", "2026-10-14", True))
+        self.assertEqual(r["description"], "**GARSON / SERVİS PERSONELİ ARANIYOR**\nSinpaş Altınoran Çarşı’da garson arıyoruz.\nİRTİBAT [telephone withheld] · [e-mail withheld]")
+        for secret in ("0537 611", "0312 503", "sinpas.example", "iletisim", "İletişim"):
+            self.assertNotIn(secret, raw)
+        # a posting without `baseSalary`: the box «1.250.000 TL» is the figure — one million two hundred and fifty thousand, no period printed
+        ld2 = ld.replace(', "baseSalary": {"@type": "MonetaryAmount", "currency": "TRY", "value": {"@type": "QuantitativeValue", "value": "45000", "unitText": "MONTH"}}', "")
+        self.assertNotIn("baseSalary", ld2)
+        rows, err, asked, raw = self._run(mod, [(200, page.replace(ld, ld2).replace("Maaş: 45.000 TL", "Maaş: 1.250.000 TL"))], cmd="ad", url="https://www.eleman.net/is-ilani/tecrubeli-garson-sinpas-cankaya-net-45-000-tip-i4762495")
+        self.assertEqual((rows[0]["salary_text"], rows[0]["salary_min"], rows[0]["salary_max"], rows[0]["salary_currency"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"]), ("1.250.000 TL", 1250000, 1250000, "TRY", None, False))
+        # no JSON-LD and no description block: the template changed
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>x</h1></body></html>")], cmd="ad", url="https://www.eleman.net/is-ilani/x-i1")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.eleman.net/is-ilani/x-i1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.eleman.net/firma/sinpas-john-filippo-f2118906")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
