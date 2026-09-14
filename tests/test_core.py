@@ -22736,5 +22736,143 @@ class AnOldGeneralistWhosePagerStatesThePagesAndWhoseTelephoneBlockIsMaskedAndNe
         self.assertEqual(cm.exception.code, 2)
 
 
+class AGeneralistThatAsksTenSecondsWhosePagerCountsFromZeroAndWhoseBodyNamesTheRecruiter(unittest.TestCase):
+    """**`jobly.py`, 2026-09-14 (#376).** Jobly's rules ask `Crawl-delay: 10`
+    and refuse the apply link; the listing states its count («12 737
+    avointa työpaikkaa»), printed beside every walk, and its pager counts
+    from zero — `?page=1` is the second page — with a guard that refuses a
+    page serving page 1's cards again. The sitemap's two files carry every
+    advertisement id (rows repeated across the files counted once, articles
+    set aside), printed against the listing's count and never merged with
+    it. The ad's JobPosting lists employment types and places; its
+    `baseSalary` is stated only when a value AND a period are printed; the
+    body names the recruitment consultant with telephone and e-mail —
+    including Cloudflare's «[email protected]» placeholder — and is
+    scrubbed. Mutated (`-B`, detached copy): the pager counted from one →
+    the walk case reddens; the same-cards guard dropped → the walk case
+    reddens; a repeated id counted twice → the sitemap case reddens; the
+    article rows not set aside → the sitemap case reddens; the placeholder
+    not scrubbed → the ad case reddens; the salary period taken as stated
+    without a value → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobly", os.path.join(SCRIPTS, "jobly.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, nid, slug, title, org, date="13.09.2026", loc="95900 Kolari, Lappi"):
+        return (f'<div class="views-row"><article id="node-{nid}"  about="/tyopaikka/{slug}-{nid}" class="node node-job"><div class="job__logo"><a href="https://www.jobly.fi/tyopaikka/{slug}-{nid}" class="recruiter-job-link" title="{title}"></a>'
+                f'<ul class="links"><li><a href="/job-bookmarks-anon/{nid}?destination=search/job" title="Tallenna työpaikka" rel="nofollow"><span>Tallenna työpaikka</span></a></li></ul></div>'
+                f'<div class="job__content"><h2 class="node__title"><a href="https://www.jobly.fi/tyopaikka/{slug}-{nid}" class="recruiter-job-link" title="{title}">\n {title} </a></h2>'
+                f'<div class="description"><span class="date">\n {date}, </span><span class="recruiter-company-profile-job-organization">{org}</span></div><div class="location"><span>{loc}</span></div></div></article></div>')
+
+    def _page(self, cards, pages=3, total="12 737"):
+        pager = "".join(f'<li class="pager__item"><a href="/tyopaikat?page={i}">{i + 1}</a></li>' for i in range(1, pages))
+        return (f'<html><body><div class="view-header"><h1 class="search-result-header">Avoimet työpaikat Joblyssa</h1><p>Etsitkö uutta työpaikkaa? Tällä hetkellä meillä on <strong>{total}</strong> avointa työpaikkaa. Voit etsiä.</p></div>'
+                f'<div class="view-content">{"".join(cards)}</div><h2 class="element-invisible">Pages</h2><ul class="pager"><li class="pager__item pager__item--current">1</li>{pager}</ul></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = {"list": argparse.Namespace(pages=5, limit=None), "sitemap": argparse.Namespace(limit=None), "ad": argparse.Namespace()}[cmd]
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_counts_its_pages_from_zero_and_prints_the_listings_own_count(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card(2685791, "tarjoilija-lapland-hotels-olos-olostunturi", "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "Lapland Hotels"),
+                         self._card(2756802, "osa-aikainen-puhelinmyyja", "Osa-aikainen puhelinmyyjä | Iltavuorot", "Intensive Sales Partners Oy", loc="21200 Raisio, Raahe")])
+        p2 = self._page([self._card(2756802, "osa-aikainen-puhelinmyyja", "Osa-aikainen puhelinmyyjä | Iltavuorot (again)", "Intensive Sales Partners Oy"),
+                         self._card(2756700, "infrahankkeiden-valvoja", "Infrahankkeiden valvoja, Pääkaupunkiseutu", "Academic Work", date="12.09.2026", loc="Uusimaa")])
+        p3 = self._page([self._card(2756600, "kokki", "Kokki", "Ravintola Oy", date="12.09.2026")])
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(asked, ["https://www.jobly.fi/tyopaikat", "https://www.jobly.fi/tyopaikat?page=1", "https://www.jobly.fi/tyopaikat?page=2"])
+        self.assertEqual([r["id"] for r in rows], ["2685791", "2756802", "2756700", "2756600"])
+        a = rows[0]
+        self.assertEqual((a["ledger_id"], a["url"], a["title"], a["employer"], a["posted"], a["location"], a["contacts_withheld"]),
+                         ("jobly:2685791", "https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791", "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "Lapland Hotels", "2026-09-13", "95900 Kolari, Lappi", True))
+        self.assertEqual((rows[2]["posted"], rows[2]["location"]), ("2026-09-12", "Uusimaa"))
+        self.assertIn("4 emitted over 3 page(s) of 20, the listing states 12 737 — walked by request (--pages/--limit), 10 s a page as the host asks; not a shortfall.", err)
+        self.assertIn("never followed", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 2))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)])   # a pager that does not page serves page 1 again
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([]))])
+        self.assertEqual(cm.exception.code, 6)
+        rows, err, asked, raw = self._run(mod, [(200, p1.replace("<strong>12 737</strong> avointa työpaikkaa", "<strong>2</strong> avointa työpaikkaa"))], pages=1)
+        self.assertIn("2 emitted over 1 page(s), the listing states 2 — equal.", err)
+
+    def test_the_sitemap_is_the_inventory_counted_once_and_never_merged_with_the_listing(self):
+        mod = self._mod()
+        listing = self._page([self._card(1, "x", "X", "Y")], total="3")
+        index = '<?xml version="1.0"?><sitemapindex><sitemap><loc>https://www.jobly.fi/sitemap.xml?page=1</loc><lastmod>2026-09-13T21:41Z</lastmod></sitemap><sitemap><loc>https://www.jobly.fi/sitemap.xml?page=2</loc></sitemap></sitemapindex>'
+        f1 = ('<?xml version="1.0"?><urlset><url><loc>https://www.jobly.fi/tyopaikka/marjamyyja-1073547</loc><lastmod>2023-04-14T10:00Z</lastmod></url>'
+              '<url><loc>https://www.jobly.fi/artikkelit/tyonhakijoille/uusi-vuosi-uusi-tyopaikka-0</loc><lastmod>2021-06-22T11:48Z</lastmod></url>'
+              '<url><loc>https://www.jobly.fi/tyopaikka/siivooja-1613896</loc><lastmod>2026-09-13T21:01Z</lastmod></url>'
+              '<url><loc>https://www.jobly.fi/tyopaikat</loc></url></urlset>')
+        f2 = ('<?xml version="1.0"?><urlset><url><loc>https://www.jobly.fi/tyopaikka/parturi-kampaaja-2752019</loc><lastmod>2026-09-12T08:00Z</lastmod></url>'
+              '<url><loc>https://www.jobly.fi/tyopaikka/siivooja-1613896</loc><lastmod>2026-09-13T21:01Z</lastmod></url>'
+              '<url><loc>https://www.jobly.fi/tyopaikka/tarjoilija-2752022</loc></url>'
+              '<url><loc>https://www.jobly.fi/en/jobs</loc></url></urlset>')
+        rows, err, asked, raw = self._run(mod, [(200, listing), (200, index), (200, f1), (200, f2)], cmd="sitemap")
+        self.assertEqual(asked, ["https://www.jobly.fi/tyopaikat", "https://www.jobly.fi/sitemap.xml", "https://www.jobly.fi/sitemap.xml?page=1", "https://www.jobly.fi/sitemap.xml?page=2"])
+        self.assertEqual([r["id"] for r in rows], ["1073547", "1613896", "2752019", "2752022"])
+        self.assertEqual((rows[0]["url"], rows[0]["lastmod"], rows[3]["lastmod"], rows[0]["ledger_id"]), ("https://www.jobly.fi/tyopaikka/marjamyyja-1073547", "2023-04-14T10:00Z", None, "jobly:1073547"))
+        self.assertIn("4 advertisement id(s) in 2 file(s) (lastmod 2023-04-14 … 2026-09-13; 3 other rows set aside), the listing states 3 — 1 more in the sitemap than the listing states: the sitemap keeps expired advertisements; the two witnesses are never merged.", err)
+        rows, err, asked, raw = self._run(mod, [(200, listing.replace("<strong>3</strong>", "<strong>4</strong>")), (200, index), (200, f1), (200, f2)], cmd="sitemap", limit=2)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("the listing states 4 — equal.", err)
+        self.assertIn("2 emitted of the 4 — bounded by --limit.", err)
+
+    def test_the_ad_lists_places_and_types_and_the_recruiters_named_in_the_body_never_leave_with_their_numbers(self):
+        import contextlib
+        mod = self._mod()
+        ld = ('{"@context": "http://schema.org", "@type": "JobPosting", "title": "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "datePosted": "2026-09-13", "validThrough": "2026-11-01", "hiringOrganization": {"@type": "Organization", "name": "Lapland Hotels"}, "employmentType": ["TEMPORARY"],'
+              ' "jobLocation": [{"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "FI", "addressLocality": "Kolari", "postalCode": "95900"}}, {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "FI", "addressRegion": "Lappi", "addressLocality": "Lappi"}}],'
+              ' "directApply": false, "description": "x", "occupationalCategory": "Hotelli- ja ravintola-ala, Matkailu", "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": {"@type": "QuantitativeValue", "minValue": "", "maxValue": "", "unitText": "MONTH"}}}')
+        body = ('<div class="field field--name-body field--type-text-with-summary field--label-hidden"><div class="field__items"><div class="field__item even" property="content:encoded"><hr /><center><p><strong>Tiivistelmä työpaikkailmoituksesta:</strong></p></center><ul>'
+                '<li>Haemme tarjoilijoita Lapland Hotels Olokselle talvikaudelle 2026–2027, työt alkavat 19.12.2026–4.1.2027.</li>'
+                '<li>Lisätietoja antaa rekrytointikonsultti Irja Sand (044-7866005, <a href="/cdn-cgi/l/email-protection#abc8"><span class="__cf_email__" data-cfemail="ee9d">[email&#160;protected]</span></a> ).</li></ul>'
+                '<p></p><center><br /><em>Tämä tiivistelmä on luotu tekoälyn avulla.</em></center><br /><hr /><p>StaffPoint hakee <strong>Ski Shop ‑työntekijää</strong>. Työtunteja tarjolla 90h/3vk.</p>'
+                '<p><strong>Lisätietoja työpaikasta</strong></p><p>Susanna Kähkönen<br />Rekrytointikonsultti<br />susanna@staffpoint.example<br />+358 40 123 4567</p></div></div></div>')
+        page = ('<html><body><script type="application/ld+json">' + ld + '</script><h1>Ski Shop-työntekijä</h1><ul class="links"><li class="recruiter_job_application"><a href="/node/2685791/apply-external" title="Hae paikkaa" rel="nofollow"><span>Hae paikkaa</span></a></li></ul>'
+                '<div class="content clearfix">' + body + '</div>'
+                '<div class="panel-pane pane-entity-field pane-node-field-job-region"><div class="field field--name-field-job-region field--type-taxonomy-term-reference field--label-hidden"><div class="field__items"><div class="field__item even">95900 Kolari</div><div class="field__item odd">Lappi</div></div></div></div>'
+                '<div class="panel-pane"><div class="field field--name-field-job-employment-type-term field--type-taxonomy-term-reference field--label-hidden"><div class="field__items"><div class="field__item even">Määräaikainen ja projektityö</div></div></div></div>'
+                '<div class="panel-pane pane-custom pane-1 job-published-date"><p>Julkaistu 13.09.2026</p></div></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791")
+        self.assertEqual(asked, ["https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["employer"], r["employment_type"], r["employment_type_term"], r["locations"], r["region_items"], r["category"], r["posted"], r["valid_through"], r["direct_apply"], r["contacts_withheld"]),
+                         ("2685791", "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "Lapland Hotels", ["TEMPORARY"], "Määräaikainen ja projektityö", ["95900 Kolari", "Lappi"], ["95900 Kolari", "Lappi"], "Hotelli- ja ravintola-ala, Matkailu", "2026-09-13", "2026-11-01", False, True))
+        self.assertEqual((r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit"], r["salary_unit_stated"]), (None, None, None, None, False))   # a period printed without a value is not a stated salary
+        self.assertEqual(r["description"], "Tiivistelmä työpaikkailmoituksesta:\nHaemme tarjoilijoita Lapland Hotels Olokselle talvikaudelle 2026–2027, työt alkavat 19.12.2026–4.1.2027.\nLisätietoja antaa rekrytointikonsultti Irja Sand ([telephone withheld], [e-mail withheld] ).\nTämä tiivistelmä on luotu tekoälyn avulla.\nStaffPoint hakee Ski Shop ‑työntekijää . Työtunteja tarjolla 90h/3vk.\nLisätietoja työpaikasta\nSusanna Kähkönen\nRekrytointikonsultti\n[e-mail withheld]\n[telephone withheld]")
+        for secret in ("7866005", "staffpoint.example", "[email", "protected]", "40 123 4567", "apply-external"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [(200, page.replace('"minValue": "", "maxValue": ""', '"minValue": "2500", "maxValue": "3100"'))], cmd="ad", url="https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791")
+        self.assertEqual((rows[0]["salary_min"], rows[0]["salary_max"], rows[0]["salary_currency"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"]), (2500, 3100, "EUR", "month", True))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.jobly.fi/tyopaikka/x-1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.jobly.fi/node/2685791/apply-external")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
