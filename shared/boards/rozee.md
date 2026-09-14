@@ -1,6 +1,6 @@
 # Board adapter — Rozee (Pakistan)
 
-<!-- verified: 2026-09-07 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.rozee.pk -->
 <!-- script: none -->
@@ -8,6 +8,7 @@
 <!-- content: measured · order of magnitude 52 readable advertisements, from 2 607 `<loc>` in `jobs.xml` of which the `.php` form is 52; 4 292 URLs in the index of which 1 685 are not advertisements · 2026-09-05 -->
 <!-- witness: none found — the site serves no counter, and the sitemap's own totals count pages rather than advertisements. **And none is possible from 2026-09-07**: the host answers 403 to its own `robots.txt`, so nothing above can be re-read · figures 2026-09-05, closure 2026-09-07 -->
 <!-- hosts-source: declared by `www.mihnati.com/robots.txt`, read with `bin/fetch-body.py` · 2026-09-05 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 6. exclure, non fonctionnel ») — measured: the sitemap yields 2 688 addresses and every advertisement redirects to a client-rendered RozeeGPT shell whose API is refused in writing (2026-09-14 00:4x UTC) · 2026-09-14 -->
 
 **Not built, and the figure is why.** Found because `mihnati.com` — a card of
 this repository — declares **`https://www.rozee.pk/sitemap/sitemap_index.xml`**
@@ -208,3 +209,12 @@ met on the fresh addresses); not measured on the day (the extension did
 not answer). #298 carries this measurement; the issue stays open for the
 owner's decision on the browser route.
 
+## 2026-09-14 04:4x UTC — the owner's decision, and this card's verdict is his
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 6. exclure, non fonctionnel »)** — relayed verbatim by the pilot (#298). What was measured above is
+unchanged; what changes is who says «closed»: until this line the card
+could only say what it had read and that the verdict was the owner's to
+give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+leads with it, dated, so the Atlas and the country page (#404: a card
+declaring `route: none` is «non faisable», excluded from the feasible
+denominator) read a decision and not a measurement. The sitemap is alive (2 688 `<loc>` on 2026-09-14) and every advertisement leaves the host for a client-rendered shell whose API is refused in writing — a route to addresses, not to advertisements; the owner has excluded it.

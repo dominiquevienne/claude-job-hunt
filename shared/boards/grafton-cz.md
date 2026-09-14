@@ -7,7 +7,7 @@
 <!-- countries: CZ -->
 <!-- content: measured · **no live posting reachable without a credential**: `www.grafton.cz/robots.txt` (200, 1 744 B, Drupal's default under `*`, `/search/` and the account pages refused) names `/grafton_cz/sitemap.xml` — an index dated **2026-02-25** (33 pages of 2 000 rows) whose job rows are 742 `/cs/jobs/` rows on page 1, 1 431 on page 33, the newest dated 2026-02-25 — and that newest one answers «Tato pozice již není aktuální» (archived 2026-03-10); the listing `/cs/job-search` (200) is a Vue app (`#vue-jobs-app`, `data-domain="grafton_cz"`) whose `data-config` carries the search backend — `https://search.skinner.freely.agency`, index `elasticsearch_index_grafton_grafton`, **and a Basic-auth user and password (`roelastic`) the page hands to every visitor** — and the server renders not one posting; a job page (`/cs/jobs/<slug>`, 200) is server-rendered with labelled fields (Lokalita, Obor, Druh pozice, Mzda, Zveřejněno, Referenční číslo) and a «Kontaktní osoba» block naming the consultant with a `tel:` link — read on two archived ones — read by the declared client, the guard on the exact path, 03:1x–03:2x UTC · 2026-09-14 -->
 <!-- witness: none — the count lives in the Elasticsearch answer, behind the credential; the sitemap's rows are dated and archived; the measurement is the set of addresses read, each with its code and size · 2026-09-14 -->
-<!-- route: none · the only live inventory is an Elasticsearch index on a third-party host reached with a login embedded in the page — authenticating with a credential that is not the user's is not a road the plugin takes without the owner's decision; the sitemap is stale and its newest job archived; the job pages are readable one by one but nothing names the live ones · 2026-09-14 -->
+<!-- route: none · fermé toutes voies, navigateur compris — validé par le propriétaire le 14.09.2026 (verbatim : « 5. considérer le site comme totalement fermé (y compris browser) ») — measured: the only live inventory is an Elasticsearch index on a third-party host reached with a login embedded in the page — authenticating with a credential that is not the user's is not a road the plugin takes without the owner's decision; the sitemap is stale and its newest job archived; the job pages are readable one by one but nothing names the live ones · 2026-09-14 -->
 
 **Grafton is Gi Group's recruitment and staffing brand in Central Europe;
 its CZ front lists its openings through a search backend the plugin
@@ -67,3 +67,13 @@ roads (sitemap, job pages) render only archived postings. The Czech and
 Slovak fronts share the backend, the index and the login (`data-domain`
 tells them apart) — one decision covers both (`grafton-cz.md`,
 `grafton-sk.md`).
+
+## 2026-09-14 04:4x UTC — the owner's decision, and this card's verdict is his
+
+**fermé toutes voies, navigateur compris — validé par le propriétaire le 14.09.2026 (verbatim : « 5. considérer le site comme totalement fermé (y compris browser) »)** — relayed verbatim by the pilot (#356). What was measured above is
+unchanged; what changes is who says «closed»: until this line the card
+could only say what it had read and that the verdict was the owner's to
+give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+leads with it, dated, so the Atlas and the country page (#404: a card
+declaring `route: none` is «non faisable», excluded from the feasible
+denominator) read a decision and not a measurement. Closed on every road, the browser included: the live inventory sits behind a credential that is not the user's, and the owner has ruled that no road is taken — this card carries no browser candidacy.

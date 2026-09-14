@@ -7,7 +7,7 @@
 <!-- countries: NG -->
 <!-- content: measured · **no vacancy on any page the site links**: `/page-vacancies` (200, 28 501 B) is a description of the Recruitment Board's mission with no listing; `/page-job_application_process` (200) says «Page currently under construction»; `/advert_tenders` answers 404; `/circulars` (200) says «This list is currently empty»; `/news` (200) carries promotion and examination notices (the latest 9 Sep 2026) as PDFs, none a recruitment; the rules request answers the site's own 404 page — an absence, certain, open; read by the declared client, 01:0x UTC · 2026-09-14 -->
 <!-- witness: none — the site states no count and lists no vacancy; the measurement is the set of pages read, each with its code and size · 2026-09-14 -->
-<!-- route: none · the site publishes no vacancy listing — a recruitment exercise, when the commission runs one, is announced as a news item with a PDF; there is nothing for a script to render (#404: a script that yields nothing does not count) · 2026-09-14 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible ») — measured: the site publishes no vacancy listing — a recruitment exercise, when the commission runs one, is announced as a news item with a PDF; there is nothing for a script to render (#404: a script that yields nothing does not count) · 2026-09-14 -->
 
 **The commission that appoints into Nigeria's federal civil service — and
 its site, on the day, lists nothing to apply to.** Issue #389, opened
@@ -47,3 +47,13 @@ GET /news                                        200, 29 987 B — promotion and
 - **To rouvrir**: a recruitment notice in `/news`, or a listing under
   «Vacancies» — the two observations that would renverser this card,
   named here.
+
+## 2026-09-14 04:4x UTC — the owner's decision, and this card's verdict is his
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible »)** — relayed verbatim by the pilot (#389). What was measured above is
+unchanged; what changes is who says «closed»: until this line the card
+could only say what it had read and that the verdict was the owner's to
+give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+leads with it, dated, so the Atlas and the country page (#404: a card
+declaring `route: none` is «non faisable», excluded from the feasible
+denominator) read a decision and not a measurement. A recruitment exercise, when the commission announces one, is a news item with a PDF: the owner has excluded the board as a board, not the commission's news page.
