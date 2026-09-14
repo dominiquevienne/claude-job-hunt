@@ -4,11 +4,11 @@
 
 <!-- hosts: emploisburkina.bf -->
 <!-- hosts-source: named by the Burkina Faso country page, rank consigned, 2026-09-04; its sitemap is declared on the third-party host `afriqueemplois.com` and the guard was taken there separately · 2026-09-07 -->
-<!-- script: none -->
+<!-- script: emploisburkina.py -->
 <!-- countries: BF -->
 <!-- content: indeterminate · remeasured 2026-09-08 09:01-09:07 UTC at 10 s spacing: of the 24 URLs the network attributes to this host, **4 serve a real `JobPosting`**, **7 redirect to the site root** (271 550 bytes each, identical), and **13 could not be read at all** — the host stopped accepting connections after the 11th request and never resumed. So the live count is **between 4 and 17**, and no single number describes it · 2026-09-08 -->
-<!-- witness: the site's own «2305 offres» on the root and `numberOfItems: 2305` in its CollectionPage JSON-LD (a category page: «165 offres d'emploi dans la catégorie», `numberOfItems: 165`), read by the declared client on 2026-09-14 10:47–10:53 UTC at 3 s spacing, 200 on every page asked (7 requests, no connection refused today); the pages carry 3–4 cards each, the rest of the list behind `/api/load-more?page=N&category=…` — `/api/` is refused in writing — and the «EXCLUSIF» cards behind a subscription modal; the network's job sitemaps on `afriqueemplois.com` (`sitemap-jobs.xml`, `sitemap-jobs-BF.xml`) answer 500, twice · 2026-09-14 -->
-<!-- route: none · served, and the list is locked: 3–4 cards a page in the HTML, the rest by `/api/load-more` (refused in writing, honoured by every route), the «EXCLUSIF» ads behind a paid subscription, the network's sitemaps 500 today, no JobPosting on the post page any more (there was one on 2026-09-08); a script would render a score of advertisements against a stated 2 305 — the pilot to say whether that counts; next control of the sitemaps 2026-09-21 · 2026-09-14 -->
+<!-- witness: the site's own «2305 offres» on the root and `numberOfItems: 2305` in its CollectionPage JSON-LD (a category page: «165 offres d'emploi dans la catégorie», `numberOfItems: 165`), read by the declared client on 2026-09-14 10:47–10:53 UTC at 3 s spacing, 200 on every page asked (7 requests, no connection refused today); the pages carry 3–4 cards each, the rest of the list behind `/api/load-more?page=N&category=…` — `/api/` is refused in writing — and the «EXCLUSIF» cards behind a subscription modal; the network's job sitemaps on `afriqueemplois.com` (`sitemap-jobs.xml`, `sitemap-jobs-BF.xml`) answer 500, twice · 2026-09-14 · **`emploisburkina.py list` on 2026-09-14 11:1x UTC: «22 emitted from 6 page(s) (66 exclusive card(s) set aside — behind a subscription, never opened), the site states 2 305 — 2 283 short» — the pilot's reading of 11:0x UTC: a score of open advertisements is not nothing, and what closes is the route (a refused `/api/`, a paid subscription, a 500 sitemap), not the board** -->
+<!-- route: http · 22 · 2026-09-14 -->
 
 **Burkina Faso had no card in this repository.** This one records a
 measurement that **stopped**, and why.
@@ -189,4 +189,27 @@ stated 2 305, «short» by design — which is something rendered and next to
 nothing covered; the pilot decides whether that counts (#404). **Next
 control 2026-09-21**: the BF sitemap of `afriqueemplois.com`; if it
 answers, it is the inventory and a script follows.
+
+## 2026-09-14 11:0x–11:2x UTC — the adapter, on the pilot's reading
+
+The pilot's decision, to cite as such: *«ça compte — #404 dit "un script
+qui ne rend RIEN ne compte pas"; une vingtaine d'annonces ouvertes n'est
+pas rien, et le défaut du propriétaire est qu'on utilise le board. Ce qui
+ferme est la ROUTE vers le reste, pas le board»* (carried to the owner to
+reverse if he wants). So **`emploisburkina.py`** reads only what the site
+serves without exception:
+
+```
+list    the root and the five category pages (/category/12, 13, 14, 16, 25), 3 s apart — the open cards (/post/<id>: title, excerpt, level badge, date), the «EXCLUSIF» cards counted and never opened; «22 emitted from 6 page(s) (66 exclusive card(s) set aside …), the site states 2 305 — 2 283 short» on the day
+ad      /post/<id> — the <h1>, «Date limite», the body up to «POSTULER», scrubbed of e-mail addresses and Burkinabè telephone numbers; no JobPosting on this site today
+never   /api/load-more (refused in writing, exit 7 before the gate), the accounts, /subscription, an exclusive card
+```
+
+**`route: http · 22 · 2026-09-14`**, with «2 305 stated» on the witness
+line: the number is small because the list beyond the fifteen cards a
+page is a refused route and the exclusives are a paid product — the
+shortfall is the site's, printed on every run and never filled. The
+control of the network's sitemap (2026-09-21) stands: if
+`afriqueemplois.com/sitemap-jobs-BF.xml` answers, it is the inventory and
+`list` grows to it.
 
