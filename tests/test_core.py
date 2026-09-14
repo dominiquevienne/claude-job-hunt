@@ -23865,5 +23865,125 @@ class TheCzechAndHungarianFrontsAreTheFrenchPlatformAndAHostWhoseOtherLanguageIs
         self.assertEqual((b["code"], b["key"], mod.INDEX), ("fr", "randstad-fr", "https://www.randstad.fr/sitemaps/sitemap.xml"))
 
 
+class TwoNeighbourhoodBoardsOnOneNextStackWhoseAdCarriesTheRecruiterAndNeverEmitsHer(unittest.TestCase):
+    """**`pracezarohem.py --host cz|sk`, 2026-09-14 (#355, #347).** Alma's
+    «work around the corner» boards are one Next.js stack on two hosts:
+    `--host` names the board, its listing path (`/nabidky`, `/ponuky`), its
+    country and key; the page's `__NEXT_DATA__` carries the adverts and the
+    site's own `numFound`, printed beside every walk with the regions the
+    site counts; `?page=N` counted from one with a guard against a pager
+    that does not page; only `page` is ever sent. A card's salary text
+    («od 1 000 €», «25 190 - 36 210 Kč») is read without a period. The ad's
+    state carries `recruiter` {name, email, phone} — never emitted — and
+    labelled properties and texts, scrubbed. Mutated (`-B`, detached copy):
+    the host's listing path not used → the host case reddens; the key not
+    on the record → the host case reddens; `numFound` not read → the walk
+    case reddens; «od» read as a range → the walk case reddens; the
+    recruiter emitted → the ad case reddens; the text not scrubbed → the
+    ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pracezarohem", os.path.join(SCRIPTS, "pracezarohem.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _adv(self, aid, title, company, place, salary=None, age="Jen pár hodin", agency=False, stars=None):
+        return {"id": aid, "title": title, "company": company, "valid": True, "validStart": 1789329550, "validEnd": 1791921630, "salary": salary, "ageGroup": 1, "ageGroupStr": age,
+                "toppedPzr": False, "personalAgency": agency, "replyCount": 0, "location": {"coords": ["50.07", "14.34"], "place": place, "placeDetail": f"Ulice 1, {place}"},
+                "atmoskop": {"numberOfReviews": 1049, "employerSatisfaction": 60, "stars": stars, "url": "https://www.atmoskop.cz/x"} if stars else None}
+
+    def _page(self, adverts, num_found, page=1, regions=(("Hlavní město Praha", 3607), ("Jihočeský", 1109))):
+        d = {"props": {"pageProps": {"navigators": {"location": {"navigators": [{"areaName": "Česko", "items": [{"areaName": n, "areaUrl": n.lower(), "count": c} for n, c in regions]}]}},
+                                     "adverts": {"adverts": adverts, "advertsCount": len(adverts), "numFound": num_found}, "page": page}}, "page": "/advrts/[[...slugs]]"}
+        return '<html><body><div id="__next">x</div><script id="__NEXT_DATA__" type="application/json">' + json.dumps(d, ensure_ascii=False) + "</script></body></html>"
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(host=None, region=None, pages=3, limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_list if cmd == "list" else mod.cmd_ad)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_prints_the_sites_numfound_and_the_regions_and_pages_from_one(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._adv("PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "Recruiter/grafik (ž/m)", "Kaufland Česká republika v.o.s.", "Praha-Břevnov", stars=3.0),
+                         self._adv("G2-2001321946-aden_brand0", "Referent odtahů", "Správa služeb hl. m. Prahy", "Praha-Libeň", salary="25 190 - 36 210 Kč"),
+                         self._adv("PROF-1", "Čašníčka", "D&W Group", "Bratislava", salary="od 1 000 €", agency=True)], 20758)
+        p2 = self._page([self._adv("G2-2001321946-aden_brand0", "Referent odtahů (again)", "Správa", "Praha"), self._adv("PZRG-x", "Skladník", "Alza", "Praha-Holešovice", salary="45 000 Kč")], 20758, page=2)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2)], pages=2)
+        self.assertEqual(asked, ["https://www.pracezarohem.cz/nabidky", "https://www.pracezarohem.cz/nabidky?page=2"])
+        self.assertEqual([r["id"] for r in rows], ["PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "G2-2001321946-aden_brand0", "PROF-1", "PZRG-x"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["address"], a["age"], a["employer_rating"], a["employer_reviews"], a["contacts_withheld"]),
+                         ("pracezarohem", "CZ", "pracezarohem:PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "https://www.pracezarohem.cz/dl/jd/PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "Recruiter/grafik (ž/m)", "Kaufland Česká republika v.o.s.", "Praha-Břevnov", "Ulice 1, Praha-Břevnov", "Jen pár hodin", 3.0, 1049, True))
+        self.assertEqual((rows[1]["salary_text"], rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_currency"], rows[1]["salary_unit_stated"]), ("25 190 - 36 210 Kč", 25190, 36210, "CZK", False))
+        self.assertEqual((rows[2]["salary_min"], rows[2]["salary_max"], rows[2]["salary_currency"], rows[2]["agency"]), (1000, None, "EUR", True))   # «od 1 000 €» — a floor, not a range
+        self.assertEqual((rows[3]["salary_min"], rows[3]["salary_max"]), (45000, 45000))
+        self.assertIn("4 emitted over 2 page(s) of 50, the site states 20 758 on www.pracezarohem.cz/nabidky — walked by request (--pages/--limit), not a shortfall.", err)
+        self.assertIn("regions the site counts: Hlavní město Praha 3 607, Jihočeský 1 109.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], host="sk", region="bratislavsky", pages=1)
+        self.assertEqual((asked, rows[0]["source"], rows[0]["country"], rows[0]["url"][:27]), (["https://www.pracazarohom.sk/ponuky/bratislavsky"], "pracazarohom", "SK", "https://www.pracazarohom.sk"))
+        self.assertIn("the site states 20 758 on www.pracazarohom.sk/ponuky/bratislavsky", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([self._adv("A", "x", "y", "z"), self._adv("B", "x", "y", "z")], 2))])
+        self.assertIn("2 emitted over 1 page(s), the site states 2 on www.pracezarohem.cz/nabidky — equal.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)], pages=2)
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no state</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], host="www.pracezarogiem.pl")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.pace_for = lambda host: type("P", (), {"wait": staticmethod(lambda: None)})()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.pracezarohem.cz/dl/jd/G2-1?mode=b2b")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_reads_the_pages_state_and_the_recruiter_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        adv = {"result": "success", "id": "G2-2001321946-aden_brand0", "title": "Referent / Referentka Odboru odtahů a vraků", "company": "Správa služeb hlavního města Prahy", "companyWeb": None,
+               "recruiter": {"name": "Tomáš Rozkovec", "email": "rozkovec.tomas@sshmp.example", "phone": "+420 771 264 896", "initials": "TR"},
+               "location": {"coords": ["50.11", "14.48"], "label": "Kundratka 1951/19, Praha-Libeň", "addressIncomplete": False}, "salary": "25 190 - 36 210 Kč", "salaryDetailed": "25 190 - 36 210 Kč hrubého",
+               "descFields": {"jobProperties": [{"label": "Úvazek", "value": "Práce na plný úvazek"}, {"label": "Smlouva", "value": "Pracovní smlouva"}],
+                              "jobText": [{"value": "<p><strong>Co vás čeká</strong></p><ul><li>agendy odtahů</li><li>dotazy na 771 264 896 nebo rozkovec.tomas@sshmp.example</li></ul>"}],
+                              "companyText": [{"value": "<p>Příspěvková organizace, tel. 0905 123 456.</p>"}]},
+               "desc": "<p>x</p>", "language": "cs", "cvRequired": False, "webUrl": "https://www.pracezarohem.cz/dl/jd/G2-2001321946-aden_brand0?mode=b2b", "valid": True, "validEnd": 1791748799, "ageGroup": 4, "ageGroupStr": "2 dny",
+               "replyMethod": "form", "locations": [{"coords": ["50.11", "14.48"], "label": "Kundratka 1951/19, Praha-Libeň"}], "atmoskop": {"numberOfReviews": 5, "employerSatisfaction": 60, "stars": 3, "url": "x"}}
+        page = '<html><body><script id="__NEXT_DATA__" type="application/json">' + json.dumps({"props": {"pageProps": {"advert": adv, "appLink": "https://b2c.pzr.sk/l/Fv6Ob3Zf9h", "cognitoToken": "eyJ"}}, "page": "/dl/jd/[id]"}, ensure_ascii=False) + "</script></body></html>"
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.pracezarohem.cz/dl/jd/G2-2001321946-aden_brand0")
+        self.assertEqual(asked, ["https://www.pracezarohem.cz/dl/jd/G2-2001321946-aden_brand0"])
+        r = rows[0]
+        self.assertEqual((r["source"], r["id"], r["title"], r["employer"], r["employer_url"], r["locations"], r["address"], r["salary_text"], r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit_stated"], r["properties"], r["age"], r["valid_end"], r["reply_method"], r["cv_required"], r["employer_rating"], r["contacts_withheld"], r["language"]),
+                         ("pracezarohem", "G2-2001321946-aden_brand0", "Referent / Referentka Odboru odtahů a vraků", "Správa služeb hlavního města Prahy", None, ["Kundratka 1951/19, Praha-Libeň"], "Kundratka 1951/19, Praha-Libeň", "25 190 - 36 210 Kč hrubého", 25190, 36210, "CZK", False, {"Úvazek": "Práce na plný úvazek", "Smlouva": "Pracovní smlouva"}, "2 dny", 1791748799, "form", False, 3, True, "cs"))
+        self.assertEqual(r["description"], "Co vás čeká\nagendy odtahů\ndotazy na [telephone withheld] nebo [e-mail withheld]")
+        self.assertEqual(r["employer_text"], "Příspěvková organizace, tel. [telephone withheld].")
+        for secret in ("Rozkovec", "sshmp.example", "771 264 896", "0905 123 456", "recruiter", "b2c.pzr.sk", "mode=b2b", "cognito"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [(200, page.replace('"www.pracezarohem.cz', '"www.pracazarohom.sk'))], cmd="ad", url="https://www.pracazarohom.sk/dl/jd/PROF-d9f823a4")
+        self.assertEqual((rows[0]["source"], rows[0]["country"], rows[0]["id"]), ("pracazarohom", "SK", "PROF-d9f823a4"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.pracezarohem.cz/dl/jd/G2-1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.pracezarohem.cz/deeplink/G2-1")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
