@@ -146,7 +146,7 @@ def flight(body):
         s = json.loads('"' + raw + '"')
     except ValueError:
         return {}
-    b, i, out = s.encode("utf-8"), 0, {}
+    b, i, out = s.encode("utf-8"), 0, {}   # the decoded page re-encoded: the chunk lengths are in UTF-8 bytes (not a body — `decode_body` read the declaration)
     while i < len(b):
         m = re.match(rb"([0-9a-f]+):", b[i:])
         if not m:
@@ -160,12 +160,12 @@ def flight(body):
         if b[i:i + 1] == b"T":
             k = b.find(b",", i)
             n = int(b[i + 1:k], 16)
-            out[cid] = b[k + 1:k + 1 + n].decode("utf-8", "replace")
+            out[cid] = b[k + 1:k + 1 + n].decode(errors="replace")
             i = k + 1 + n
         else:
             j = b.find(b"\n", i)
             j = len(b) if j < 0 else j
-            out[cid] = b[i:j].decode("utf-8", "replace")
+            out[cid] = b[i:j].decode(errors="replace")
             i = j + 1
     return out
 
