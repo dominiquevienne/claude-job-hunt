@@ -1,12 +1,13 @@
 # Board adapter — Duapune (Albania): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: duapune.com -->
 <!-- script: none -->
 <!-- countries: AL -->
 <!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root answers HTTP 403 to that client on 2 fetches: 25 bytes, md5 `9ccabba20b9f` both times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-11 22:10 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- witness: the search page's own «892 postime aktive» on `/search/advanced/filter`, read from a connected tab on page 1 and page 18 (10:54–10:58 UTC) — 50 cards a page, `?page=2 … 18`, page 18 carrying 42: 17 × 50 + 42 = 892, equal; the header's «907 Punë aktive» is another counter of the same site (the search's figure is the list's); the city facet Tiranë 711; nothing is served to the declared client (403, 25 B, the provider default) · 2026-09-14 -->
+<!-- route: browser · 892 · 2026-09-14 -->
 
 **Measured 2026-09-11 at 22:10:56Z UTC for #233, lot 1 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -51,3 +52,21 @@ adapter, and that is the pilot's to assign.
 - **No script, no configuration.** A user with a URL from this host can hand
   it to `cover-letter`; whether that page is served to a browser is not
   established here.
+
+## 2026-09-14 10:54–10:58 UTC — served to a connected tab
+
+```
+tab, /                               served — «907 Punë aktive», «191525 Punëkërkues», «14253 Punëdhënës»; links to /jobs/<id>-<slug>, /employers/<slug>, /search/…
+tab, /search/advanced/filter         served — «892 postime aktive», 50 cards a page (title, employer, category, city, the closing date and «mbaron sot / edhe N ditë»), the category counts («Kamarier (40 postime)» …), the city counts (Tiranë 711, Durrës 79 …), pager ?page=2 … 18
+tab, /search/advanced/filter?page=18 served — 42 cards, the last: 17 × 50 + 42 = 892, equal to the search's statement
+cards                                /jobs/<6-digit id>-<slug>; the ad page not read this session
+```
+
+**`route: browser · 892 · 2026-09-14`** — the search's own count; the
+header's «907» is the site's other counter. What a session does from a
+tab: `/search/advanced/filter?page=N` to the last, the id from
+`/jobs/<id>-<slug>`, the card's employer, category, city and closing date,
+the ad page for the text. No script: the declared client gets the
+provider's 25-byte 403 (#404). GjejPunë24, the other Albanian board, is
+`route: none`; Duapune is the country's board from a tab.
+
