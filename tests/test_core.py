@@ -18218,6 +18218,151 @@ class ANetworkFrontIsWalkedByItsOwnPayloadAndTheTableNamesTheCountry(unittest.Te
         self.assertEqual(cm.exception.code, 3)
 
 
+class ATemplateNetworkWalkedByItsCardsWhereTheHeaderStatesTheCount(unittest.TestCase):
+    """**`unmejorempleo.py`, 2026-09-14 (#427).** One PHP template, thirteen
+    fronts: `list --host` walks `/empleos?np=<p>` twenty cards a page,
+    reads the header's «Empleos A a B de N» as the count the site states
+    (the masthead's «Tenemos N ofertas» as the fallback), dedups on the
+    id, prints «N emitted, site states N — equal», exits 6 on a gap; a
+    bounded walk says so. The last card of a page is `item-normal
+    item-last` and is a card. `ad` reads the `<h4>` pairs of
+    `article.trabajo`, strips the ad slot inside a value, withholds
+    addresses and phones, exits 3 without the article. Mutated (`-B`,
+    detached copy): the dedup dropped → the walk case reddens (page 2
+    repeats one id); the gap exit removed → the short case reddens; the
+    `item-last` form dropped from CARD_RE → the walk case reddens (19 of
+    20); the header regex neutralised → the walk case reddens (the
+    fixture's masthead states another number); EMAIL_RE neutralised → the
+    ad case reddens; the `<ins>` strip removed → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_unmejorempleo", os.path.join(SCRIPTS, "unmejorempleo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, last=False, featured=False):
+        cls = "item-destacado" if featured else ("item-normal item-last" if last else "item-normal")
+        tag = '<span class="pull-right text-danger">Oferta destacada</span>' if featured else ""
+        return (f'<div class="{cls}">{tag}<h3 class="no-margin-top"><a\n href="empleo-en_miranda_puesto_{i}-{i}.html">Puesto {i} <i class="fa fa-link"></i></a></h3>'
+                f'<ul class="list-unstyled"><li class="text-primary">\n Ubicaci&oacute;n: Caracas | Estado : Miranda</li>'
+                f'<li>Resumen {i}...</li><li class="text-warning">\n Publicaci&oacute;n: 12/09/2026 -\n Salario: {"A convenir" if i % 2 else "----------"}</li></ul></div>')
+
+    @classmethod
+    def _page(cls, ids, stated, a=1, masthead=None):
+        ids = list(ids)
+        cards = "".join(cls._card(i, last=(n == len(ids) - 1), featured=(n == 0)) for n, i in enumerate(ids))
+        head = f'<span class="ofertas">Tenemos <strong>{masthead if masthead is not None else stated:,} ofertas</strong></span>'
+        hdr = f'<header id="h_empleo"><span><strong>Empleos {a} a {a + len(ids) - 1} de {stated:,}</strong></span></header>' if stated is not None else ""
+        return f"<html><body>{head}<article>{hdr}{cards}</article><nav class=\"paginator-ume\"></nav></body></html>"
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(host="www.unmejorempleo.com.ve", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_count_the_last_card_counts_and_a_repeated_id_does_not(self):
+        mod = self._mod()
+        h = "www.unmejorempleo.com.ve"
+        fx = {f"https://{h}/empleos": (200, self._page(range(1, 21), 39, masthead=1519)),
+              f"https://{h}/empleos?np=1": (200, self._page([20] + list(range(21, 40)), 39, a=21, masthead=1519))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 39)
+        self.assertEqual(len({r["id"] for r in rows}), 39)
+        self.assertIn("39 emitted over 2 page(s), site states 39 (VE) — equal", err)
+        self.assertEqual(asked, [f"https://{h}/empleos", f"https://{h}/empleos?np=1"])
+        self.assertEqual(rows[0]["url"], f"https://{h}/empleo-en_miranda_puesto_1-1.html")
+        self.assertEqual(rows[0]["posted"], "2026-09-12")
+        self.assertEqual(rows[0]["salary_text"], "A convenir")
+        self.assertIsNone(rows[1]["salary_text"])   # «----------» is no salary
+        self.assertTrue(rows[0]["featured"])
+        self.assertIsNone(rows[1]["featured"])
+        self.assertEqual(rows[0]["region"], "Miranda")
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        h = "www.unmejorempleo.com.ve"
+        fx = {f"https://{h}/empleos": (200, self._page(range(1, 21), 50)),
+              f"https://{h}/empleos?np=1": (200, self._page([], 50, a=21))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 20)
+        self.assertIn("20 emitted over 2 page(s), site states 50 (VE) — 30 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        h = "www.unmejorempleo.com.ve"
+        fx = {f"https://{h}/empleos": (200, self._page(range(1, 21), 50))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 20)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_a_front_not_in_the_table_is_refused_and_the_chooser_is_not_a_front(self):
+        mod = self._mod()
+        import contextlib
+        self.assertNotIn("www.unmejorempleo.com", mod.HOSTS)
+        self.assertEqual(len(mod.HOSTS), 13)
+        for host in ("www.unmejorempleo.com", "pr.unmejorempleo.com"):
+            with self.assertRaises(SystemExit) as cm:
+                with contextlib.redirect_stderr(io.StringIO()):
+                    mod.front(host)
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_the_ad_reads_the_labelled_pairs_strips_the_ad_slot_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        h = "hn.unmejorempleo.com"
+        art = ("<h1>Contador General</h1><article class='trabajo'><h4 class=\"empresa\">Empresa</h4> <a href=\"empresa-empleo_en_acme-1.html\">ACME S.A.</a>"
+               "<h4>Descripci&oacute;n de la Empresa</h4> Escriba a rrhh@acme.hn o llame al 2234-5678 / +504 9876 543 210"
+               "<h4>Estado</h4> Cort&eacute;s <h4>Localidad</h4> San Pedro Sula <div class=\"advert4\"><ins class=\"adsbygoogle\">x</ins><script>(adsbygoogle=1);</script></div>"
+               "<h4>Tipo de Contrataci&oacute;n</h4> Tiempo Completo <h4>Descripci&oacute;n de la Plaza</h4> L&iacute;nea uno.<br>L&iacute;nea dos, desde el 2026-09-01."
+               "<h4>M&iacute;nimo Nivel Acad&eacute;mico Requerido</h4> Universidad Completa <h4>M&iacute;nimo Nivel de Ingl&eacute;s Requerido</h4> Intermedio"
+               "<h4>M&iacute;nima Experiencia Laboral Requerida</h4> 3-5 a&ntilde;os <div class=\"row\">\n<div class=\"col-xs-12 aplicar text-center\"><button>Aplicar</button></div></div></article>")
+        url = f"https://{h}/empleo-en_cortes_contador_general-777.html"
+        fx = {url: (200, f"<html><body>{art}</body></html>"), f"https://{h}/empleo-en_x_y-9.html": (200, "<html><body><h1>x</h1></body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["employer"], "ACME S.A.")
+        self.assertEqual(r["location"], "San Pedro Sula")   # the ad slot inside the value is gone
+        self.assertEqual(r["contract"], "Tiempo Completo")
+        self.assertEqual(r["description"], "Línea uno.\nLínea dos, desde el 2026-09-01.")
+        self.assertEqual(r["experience"], "3-5 años")
+        self.assertEqual(r["country"], "HN")
+        self.assertNotIn("@", text)
+        self.assertNotIn("9876 543 210", text)
+        self.assertIn("[e-mail withheld]", r["employer_description"])
+        self.assertIn("[phone withheld]", r["employer_description"])
+        self.assertIn("2234-5678", r["employer_description"])   # eight digits: not a phone under this file's rule — a date's shape, kept
+        self.assertNotIn("adsbygoogle", text)
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url=f"https://{h}/empleo-en_x_y-9.html"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
