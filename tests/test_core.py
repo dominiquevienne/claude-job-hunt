@@ -22874,5 +22874,138 @@ class AGeneralistThatAsksTenSecondsWhosePagerCountsFromZeroAndWhoseBodyNamesTheR
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnAggregatorThatAsksThirtySecondsWhoseRedirectedAdsHaveNoReadableAddressAndWhoseBodyCarriesTheContactBlock(unittest.TestCase):
+    """**`allasportal.py`, 2026-09-14 (#360).** Állásportál's rules ask
+    `Crawl-Delay: 30` and refuse `/munka/redirect/` — the only address of
+    the ads it gathers from other boards. The list states its count
+    («8661 állás»), printed beside every walk and beside the job sitemap's
+    rows, never merged; a card is hosted (`jobshow`, an address here) or
+    redirected (`redirect`, url null with the reason, never followed); a
+    private advertiser has no employer. The hosted ad's body carries the
+    employer's «Kapcsolati adatok» block — scrubbed of Hungarian numbers
+    and e-mail addresses; the employer's own apply page on another host is
+    named and never fetched. Mutated (`-B`, detached copy): the redirected
+    card given its refused address → the walk case reddens; the same-cards
+    guard dropped → the walk case reddens; the count's thousands dot kept →
+    the walk case reddens; a repeated slug counted twice → the sitemap
+    case reddens; the telephone not scrubbed → the ad case reddens; the
+    apply link taken from the site's own host → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_allasportal", os.path.join(SCRIPTS, "allasportal.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, jid, title, kind="jobshow", slug=None, employer="Eastmen Human Resources B.V.", age="3 napja", county="Pest megye", snippet="Amit csinálni fogsz: konténereket szállítani, hívj: 06 30 123 4567"):
+        href = f"https://allasportal.hu/munka-{slug}/" if kind == "jobshow" else f"https://allasportal.hu/munka/redirect/{jid}"
+        head = f'<a href="https://allasportal.hu/munkahely-x/" target="_blank" class="card-head" alt="{employer} állások"><h2><span>{employer}</span></h2></a>' if employer else ""
+        return (f'<div class="card" style="flex-grow:1;width:100%;"><div class="comp-logo"><span class="date-info">{age}</span>{head}</div>'
+                f'<a href="{href}" target="_blank" data-job="{jid}" data-jobtype="{kind}" class="pos" >{title}</a><hr><p>{snippet}</p>'
+                f'<a href="https://allasportal.hu/v-pest-varmegye/" class="loc">{county}</a><div class="row"><div class="col-lg-5"><a href="{href}" target="_blank" data-job="{jid}" data-jobtype="{kind}" class="btn" >Állás megtekintése</a></div>'
+                f'<div class="col-lg-7 jobad-cta"><a href="/munka/sendmail/{jid}" class="btn-send">Továbbküldöm</a></div></div></div>')
+
+    def _page(self, cards, cur=1, last=3, total="8.661"):
+        pager = "".join(f'<a href="/munka/list{"" if i == 1 else "?page=" + str(i)}" class="page {"active" if i == cur else ""}">{i}</a>' for i in range(1, last + 1))
+        return (f'<html><body><section class="search-detail"><span class="res"><strong>{total} állás</strong> - összegyűjtöttük a nagy állásoldalak összes találatát</span></section>'
+                f'<section class="search-results">{"".join(cards)}</section><div class="col-12 pager">{pager}</div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = {"list": argparse.Namespace(pages=3, limit=None), "sitemap": argparse.Namespace(limit=None), "ad": argparse.Namespace()}[cmd]
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_carries_the_redirected_cards_without_their_refused_address(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card(2656850, "Store disztribúció CE driver", slug="store-disztribucio-ce-driver", age="3 hónapja - még aktuális"),
+                         self._card(2674421, "Eladó-Pénztáros-Csemegepultos", kind="redirect", employer="SPAR", age="6 napja", snippet="Munkatársakat keresünk!"),
+                         self._card(2675069, "Segédmunkást keresek!", slug="segedmunkast-keresek", employer=None, county="Eger", snippet="Azonnali kezdéssel! Írj: gazda@example.hu")], cur=1)
+        p2 = self._page([self._card(2675069, "Segédmunkást keresek! (again)", slug="segedmunkast-keresek", employer=None),
+                         self._card(2670000, "Targoncavezető", slug="targoncavezeto-9", employer="Work Force Kft.", age="tegnapi")], cur=2)
+        p3 = self._page([self._card(2660000, "Operátor", slug="operator-3", employer="Pensum Group Kft.", age="még aktuális")], cur=3)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(asked, ["https://allasportal.hu/munka/list", "https://allasportal.hu/munka/list?page=2", "https://allasportal.hu/munka/list?page=3"])
+        self.assertEqual([r["id"] for r in rows], ["2656850", "2674421", "2675069", "2670000", "2660000"])
+        a, b, c = rows[:3]
+        self.assertEqual((a["kind"], a["url"], a["url_withheld"], a["title"], a["employer"], a["county"], a["age"], a["contacts_withheld"]),
+                         ("hosted", "https://allasportal.hu/munka-store-disztribucio-ce-driver/", None, "Store disztribúció CE driver", "Eastmen Human Resources B.V.", "Pest megye", "3 hónapja - még aktuális", True))
+        self.assertEqual(a["summary"], "Amit csinálni fogsz: konténereket szállítani, hívj: [telephone withheld]")
+        self.assertEqual((b["kind"], b["url"], b["employer"], b["age"], b["summary"]), ("redirect", None, "SPAR", "6 napja", "Munkatársakat keresünk!"))
+        self.assertIn("refused in writing", b["url_withheld"])
+        self.assertEqual((c["employer"], c["county"], c["summary"]), (None, "Eger", "Azonnali kezdéssel! Írj: [e-mail withheld]"))
+        for secret in ("/munka/redirect/2674421", "06 30 123 4567", "gazda@"):   # the reason names the path's shape, never the address
+            self.assertNotIn(secret, raw)
+        self.assertIn("5 emitted over 3 page(s) of 15, the list states 8 661 — walked by request (--pages/--limit), 30 s a page as the host asks; not a shortfall.", err)
+        self.assertIn("1 of the 5 are ads on other boards", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 3))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([]))])
+        self.assertEqual(cm.exception.code, 6)
+        rows, err, asked, raw = self._run(mod, [(200, p1.replace("8.661 állás", "3 állás"))], pages=1)
+        self.assertIn("3 emitted over 1 page(s), the list states 3 — equal.", err)
+
+    def test_the_job_sitemap_is_counted_by_slug_against_the_lists_count_and_never_merged(self):
+        mod = self._mod()
+        listing = self._page([self._card(1, "x", slug="x")], total="8661")
+        xml = ('<?xml version="1.0"?><urlset><url><loc>https://allasportal.hu/munka-09-26-rendezvenykisegito-diakmunka/</loc></url>'
+               '<url><loc>https://allasportal.hu/munka-operator-3/</loc></url><url><loc>https://allasportal.hu/munka-operator-3/</loc></url>'
+               '<url><loc>https://allasportal.hu/munkahely-spar/</loc></url><url><loc>https://allasportal.hu/munka-targoncavezeto-9/</loc></url></urlset>')
+        rows, err, asked, raw = self._run(mod, [(200, listing), (200, xml)], cmd="sitemap")
+        self.assertEqual(asked, ["https://allasportal.hu/munka/list", "https://allasportal.hu/sitemap_job.xml"])
+        self.assertEqual([r["id"] for r in rows], ["09-26-rendezvenykisegito-diakmunka", "operator-3", "targoncavezeto-9"])
+        self.assertEqual((rows[1]["url"], rows[1]["ledger_id"], rows[1]["kind"]), ("https://allasportal.hu/munka-operator-3/", "allasportal:slug:operator-3", "hosted"))
+        self.assertIn("3 hosted advertisement(s) in the job sitemap (1 other rows set aside), the list states 8 661 (hosted and redirected together) — 8 658 fewer than the list states, which counts the redirected ads too. The two witnesses are never merged.", err)
+        rows, err, asked, raw = self._run(mod, [(200, listing.replace("8661 állás", "2 állás")), (200, xml)], cmd="sitemap", limit=1)
+        self.assertEqual(len(rows), 1)
+        self.assertIn("the list states 2 (hosted and redirected together) — 1 more in the sitemap than the list states.", err)
+
+    def test_the_hosted_ad_names_the_employers_apply_page_and_scrubs_its_contact_block(self):
+        import contextlib
+        mod = self._mod()
+        page = ('<html><body><div class="comp-logo"><a href="https://allasportal.hu/munkahely-eastmen-human-resources-b-v/" target="_blank" class="card-head"><h2><span>Eastmen Human Resources B.V.</span></h2></a></div><hr><h1>Store disztribúció CE driver</h1>'
+                '<a href="/v-pest-varmegye/" class="loc">Pest megye</a><hr><div class="jobad-categs"><a href="/k-szallitmanyozas/">  Logisztika / Beszerzés / Szállítás /\n   Szállítmányozás</a><a href="/k-raktarozas/">Szakmunkák</a></div>'
+                '<div class="row reorder"><script>$(document).ready(function() { send_statistic("/munka/statclick/JOBID", "2656850", false, "", "/sessionid"); });</script>'
+                '<div class="col-12 col-lg-9 order-1"><div><h1>Store disztribúció CE driver</h1><p>Fizetés: 552 - 593</p><p><strong>Amit csinálni fogsz:</strong> konténereket szállítani.</p>'
+                '<p>Kapcsolati adatok:</p><p><strong> Telefon:</strong> +36 1 808 8376</p><p><strong> Email:</strong> <a href="/cdn-cgi/l/email-protection#ab"><span class="__cf_email__">[email&#160;protected]</span></a></p><p>Mobil: 06-30-123-4567, hr@eastmen.example</p></div>'
+                '<p><a href="https://www.eastmen.hu/allas/store-disztribucio-ce-driver/#d-apply" target="_blank" rel="nofollow" data-job="2656850" data-jobtype="direct" data-jobapply="1" class="btn-fill-orange">JELENTKEZEM</a></p></div>'
+                '<div class="col-12 col-lg-3 order-3"><h3>HASONLÓ ÁLLÁSOK</h3><div class="card"><a href="https://allasportal.hu/munka-sofor-101/" data-job="2675581" data-jobtype="jobshow" class="pos">Sofőr</a></div></div>'
+                '<div class="jobad-cta"><a href="/munka/sendmail/2656850" class="btn-send">Továbbküldöm</a></div></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://allasportal.hu/munka-store-disztribucio-ce-driver/")
+        self.assertEqual(asked, ["https://allasportal.hu/munka-store-disztribucio-ce-driver/"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["ledger_id"], r["title"], r["employer"], r["county"], r["categories"], r["apply_url"], r["contacts_withheld"]),
+                         ("2656850", "allasportal:2656850", "Store disztribúció CE driver", "Eastmen Human Resources B.V.", "Pest megye", ["Logisztika / Beszerzés / Szállítás / Szállítmányozás", "Szakmunkák"], "https://www.eastmen.hu/allas/store-disztribucio-ce-driver/#d-apply", True))
+        self.assertEqual(r["description"], "Store disztribúció CE driver\nFizetés: 552 - 593\nAmit csinálni fogsz: konténereket szállítani.\nKapcsolati adatok:\nTelefon: [telephone withheld]\nEmail: [e-mail withheld]\nMobil: [telephone withheld], [e-mail withheld]")
+        for secret in ("808 8376", "123-4567", "eastmen.example", "protected]", "Sofőr", "statclick"):
+            self.assertNotIn(secret, raw)
+        # the apply button pointing at the site's own (refused) redirect is not an apply page
+        rows, err, asked, raw = self._run(mod, [(200, page.replace("https://www.eastmen.hu/allas/store-disztribucio-ce-driver/#d-apply", "https://allasportal.hu/munka/redirect/2656850"))], cmd="ad", url="https://allasportal.hu/munka-store-disztribucio-ce-driver/")
+        self.assertEqual(rows[0]["apply_url"], None)
+        self.assertNotIn("/munka/redirect/", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://allasportal.hu/munka-x/")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://allasportal.hu/munka/redirect/2674421")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
