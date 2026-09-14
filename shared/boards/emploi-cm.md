@@ -1,13 +1,13 @@
-# Board measurement — Emploi.cm (`www.emploi.cm`, Cameroon): 403 to the declared client, and a challenge to the tab that did not lift
+# Board measurement — Emploi.cm (`www.emploi.cm`, Cameroon): 403 to the declared client; a challenge to the tab on 2026-09-13, the whole board to the tab on 2026-09-14 — «405 Offres d'emploi trouvées», `route: browser`
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.emploi.cm, emploi.cm -->
 <!-- script: none -->
 <!-- countries: CM -->
 <!-- content: measured · **a Cloudflare challenge to a real browser** — the tab on `/` renders «Un instant…» (28 580 characters of interstitial) and is still on it 10 s later, 16:35 UTC; nothing of the board was read by any client; the declared client's 25-byte 403 on the same path as on the 11th; the rules as on the 11th — `ClaudeBot` refused, `*` open, the 2026-09-07 doctrine and #230; the fifth of the five AfricaWork hosts read that day, the only one to challenge a browser — the tab was not asked to wait past ten seconds · 2026-09-13 -->
-<!-- witness: none — nothing served to any client; the interstitial is the only body from the tab, the 25-byte 403 the only body from the declared client · 2026-09-13 -->
-<!-- route: none · a challenge to the tab («Un instant…», not lifted in 10 s) — borne 2: the plugin neither defeats one nor asks the user to; the only AfricaWork host of the five read on 2026-09-13 to challenge a browser · 2026-09-13 -->
+<!-- witness: the site's own «405 Offres d'emploi trouvées» on `/recherche-jobs-cameroun`, read from a connected tab (no interstitial today, 2026-09-14 09:58 UTC) — 25 a page, a zero-based pager to `?page=16` carrying 5: 16 × 25 + 5 = 405, equal; the front page's «3637 postes ouverts» is another figure (positions), not this count; nothing is served to the declared client (403, 25 B) · 2026-09-14 -->
+<!-- route: browser · 405 · 2026-09-14 -->
 
 **Measured 2026-09-11 at 22:10:46Z UTC for #233, lot 1 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -64,3 +64,22 @@ tab: /            «Un instant…» — a Cloudflare interstitial, 28 580 charac
 ```
 
 **Borne 2 of the 2026-09-07 doctrine**: a challenge is where the browser branch stops; the plugin neither defeats one nor asks the user to. The four sister hosts read in the same ten minutes (`emploi.cd`, `emploibenin`, `emploisenegal`, and `job-cameroun`, which is not AfricaWork) were served without one — so the challenge is this host's setting, not the family's. **Not a verdict that the host is closed** — the owner's, on his express validation; recorded: one tab, ten seconds, one day.
+
+## 2026-09-14 09:58–10:02 UTC — no interstitial today; the board from a tab
+
+The tab that got «Un instant…» on 2026-09-13 is served at once today:
+
+```
+tab, /                                       served — «Trouvez votre futur job parmi 3637 postes ouverts» (positions, not the list's count), 10 regions, 17 trades, the latest ads
+tab, /recherche-jobs-cameroun                served — «405 Offres d'emploi trouvées», 25 cards /offre-emploi-cameroun/<slug>-<id>, pager ?page=1 … 16 (zero-based)
+tab, /recherche-jobs-cameroun?page=16        served — 5 cards, the last: 16 × 25 + 5 = 405, equal to the statement
+tab, /offre-emploi-cameroun/<slug>-1226742   served — two JSON-LD blocks the browser's JSON.parse rejects (the AfricaWork form; `_ldjson`'s repair reads them on the sister hosts)
+```
+
+**`route: browser · 405 · 2026-09-14`** — the AfricaWork procedure from a
+tab (`africawork.py`'s walk driven from the tab: the zero-based pager, the
+id from the address tail, the count the page prints beside the walk, the
+repaired JobPosting). The declared client still gets the provider's
+25-byte 403. The interstitial of 2026-09-13 was a reading of that day, not
+a property of the host.
+
