@@ -1,6 +1,6 @@
 # Board measurement — Barbados Job Register (`www.barbadosjobregister.gov.bb`, Barbados): «Request is Blocked by Firewall» to the declared client and to a real browser alike
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.barbadosjobregister.gov.bb, barbadosjobregister.gov.bb -->
 <!-- script: none -->
@@ -80,3 +80,16 @@ refusal rendered to everyone from this machine is not a client filter
 served to its island — and that is not measured from Switzerland; a reader
 inside Barbados is the only route this card leaves untested.* Nothing of
 the register was read.
+
+## 2026-09-14 09:50 UTC — the same answer a day later, from a connected tab
+
+`www.barbadosjobregister.gov.bb/` and `/jobs`: «Request is Blocked by
+Firewall», the only text on the page, twice; the apex
+`barbadosjobregister.gov.bb/`: the browser's own certificate error page
+(«Erreur liée à la confidentialité»), never clicked through. Two readings
+a day apart, the client and a real browser alike — the firewall refuses
+everyone from here (borne 0 of the 2026-09-07 doctrine: a 403 rendered to
+all is the operator's refusal, not an infrastructure that does not know
+us). `route: none` stands; the word «closed» is the owner's (§2 sexies),
+and #305 waits for it — or for a reader inside Barbados.
+
