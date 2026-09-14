@@ -43,8 +43,43 @@ import urllib.request
 from _robots import allowed as robots_allowed, full_path
 
 BASE = "https://www.adecco.com"
-SITEMAP = BASE + "/sitemap-jobs-france-fr.xml"
+# THE SAME PLATFORM FOR OTHER COUNTRIES — `--host no`, `--host fi` (#369, #380, 2026-09-14).
+# `www.adecco.no` and `www.adecco.fi` answer 301 to `www.adecco.com/nb-no` and `/fi-fi`; the
+# country's ads are one file of `jobsindex.xml` each (`sitemap-jobs-norway-nb.xml`,
+# `sitemap-jobs-finland-fi.xml`, beside `sitemap-jobs-france-fr.xml`), with the same JobPosting
+# on the ad (the agency as `hiringOrganization`, «null» strings, zero salaries). What differs is
+# named per board: the sitemap file, the language asked for, the ledger key and the country.
+BOARDS = {
+    "fr": {"file": "sitemap-jobs-france-fr.xml", "lang": "fr-FR,fr;q=0.9", "key": "adecco", "country": "FR", "name": "France"},
+    "no": {"file": "sitemap-jobs-norway-nb.xml", "lang": "nb-NO,nb;q=0.9", "key": "adecco-no", "country": "NO", "name": "Norway"},
+    "fi": {"file": "sitemap-jobs-finland-fi.xml", "lang": "fi-FI,fi;q=0.9", "key": "adecco-fi", "country": "FI", "name": "Finland"},
+}
+BOARD = dict(BOARDS["fr"], code="fr")   # rewired by --host before any request
+SITEMAP = BASE + "/" + BOARD["file"]
 from _ua import UA
+MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# French 06 12 34 56 78 / +33 …, Norwegian 991 29 992 / +47 …, Finnish 040 123 4567 / +358 …
+PHONE_RE = re.compile(r"(?<![\d+])(?:\+33[\s ]?\(?0?\)?[\s ]?\d(?:[\s .-]?\d{2}){4}|0\d(?:[\s .-]?\d{2}){4}|(?:\+47[\s ]?)?(?:\d{2}[\s ]?\d{2}[\s ]?\d{2}[\s ]?\d{2}|\d{3}[\s ]?\d{2}[\s ]?\d{3})|(?:\+358[\s ]?\(?0?\)?[\s ]?|0)\d{1,3}[\s -]?\d{2,4}[\s -]?\d{2,4}(?:[\s -]?\d{1,3})?)(?!\d)")
+
+
+def use_board(host):
+    """`--host fr|no|fi`, a country code or a hostname (`www.adecco.no`) → the board; an unknown one is refused before any request."""
+    global BOARD, SITEMAP
+    h = (host or "fr").strip().lower()
+    for k, b in BOARDS.items():
+        if h in (k, f"www.adecco.{k}", f"adecco.{k}", b["country"].lower()):
+            BOARD = dict(b, code=k)
+            SITEMAP = BASE + "/" + b["file"]
+            return BOARD
+    die(f"--host {host!r}: not a front this adapter reads — " + ", ".join(f"{k} ({b['name']}, {b['file']})" for k, b in BOARDS.items()))
+
+
+def scrub(t):
+    """The description names the consultant with e-mail and telephone («anette…@adecco.no, 991 29 992»): withheld."""
+    if not t:
+        return t
+    t = MAIL_RE.sub("[e-mail withheld]", t)
+    return PHONE_RE.sub("[telephone withheld]", t)
 URL_BLOCK_RE = re.compile(r"(?s)<url>(.*?)</url>")
 # Reads the plain `<loc>https://…</loc>` and the CDATA-wrapped form both.
 # hays.fr serves the second, where the first non-space character after the tag
@@ -88,7 +123,7 @@ def _robots_gate(url, tag, exit_code=7):
     if not a["allowed"]:
         die(f"{url}: {a['reason']}", exit_code)
     if a.get("requested_host") and a["host"] != a["requested_host"]:
-        print(f"[adecco] robots.txt for {a['requested_host']} was read from "
+        print(f"[{BOARD['key']}] robots.txt for {a['requested_host']} was read from "
               f"{a['host']} — a redirect crossed hosts. A platform that has "
               f"been renamed reaches an adapter this way before it reaches it "
               f"as a rename.", file=__import__("sys").stderr)
@@ -115,7 +150,7 @@ def get(url, retries=2, gone_is_ok=False):
     req = urllib.request.Request(safe_url(url), headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
-        "Accept-Language": "fr-FR,fr;q=0.9",
+        "Accept-Language": BOARD["lang"],
     })
     for attempt in range(retries + 1):
         try:
@@ -222,19 +257,20 @@ def card(url, lastmod):
     page = get(url, gone_is_ok=True)
     ident = url.rstrip("/").rsplit("/", 1)[-1]
     if page is None:
-        return {"id": ident, "ledger_id": f"adecco:{ident}", "url": url,
+        return {"id": ident, "ledger_id": f"{BOARD['key']}:{ident}", "url": url,
                 "gone": True}
     # One reader for every board's ld+json: tolerant of the quote style
     # on the script tag, and strict=False on the parse. Issue #76.
     jp = (postings(page) or [None])[-1]
     if jp is None:
-        return {"id": ident, "ledger_id": f"adecco:{ident}", "url": url,
+        return {"id": ident, "ledger_id": f"{BOARD['key']}:{ident}", "url": url,
                 "json_ld": False}
     addr = one(jp.get("jobLocation")).get("address") or {}
     sal = one(jp.get("baseSalary")).get("value") or {}
     return {
         "id": ident,
-        "ledger_id": f"adecco:{ident}",
+        "ledger_id": f"{BOARD['key']}:{ident}",
+        "source": BOARD["key"],
         "url": url,
         "job_id": clean(jp.get("jobId")),
         "title": clean(jp.get("title")),
@@ -271,7 +307,8 @@ def card(url, lastmod):
         # 60. A real per-ad date, which is rare enough to say.
         "valid_through": clean(jp.get("validThrough")),
         "lastmod": lastmod,
-        "description": description_text(jp.get("description")),
+        "description": scrub(description_text(jp.get("description"))),
+        "contacts_withheld": True,
         "json_ld": True,
     }
 
@@ -284,29 +321,29 @@ def cmd_discover(a):
             continue
         ident = url.rstrip("/").rsplit("/", 1)[-1]
         print(json.dumps({"url": url, "id": ident,
-                          "ledger_id": f"adecco:{ident}", "lastmod": mod},
+                          "ledger_id": f"{BOARD['key']}:{ident}", "source": BOARD["key"], "lastmod": mod},
                          ensure_ascii=False))
         n += 1
         if a.limit and n >= a.limit:
             break
-    print(f"[adecco] {n} of {len(rows)} ads in the France sitemap",
+    print(f"[{BOARD['key']}] {n} of {len(rows)} ads in the {BOARD['name']} sitemap",
           file=sys.stderr)
-    print("[adecco] these are URLs. The department in the slug is truncated "
+    print(f"[{BOARD['key']}] these are URLs. The department in the slug is truncated "
           "and unusable — read the doc before filtering on it.",
           file=sys.stderr)
 
 
 def cmd_search(a):
     rows = entries()
-    print(f"[adecco] {len(rows)} ads in the France sitemap", file=sys.stderr)
+    print(f"[{BOARD['key']}] {len(rows)} ads in the {BOARD['name']} sitemap", file=sys.stderr)
     if a.since:
         rows = [r for r in rows if (r[1] or "") >= a.since]
-        print(f"[adecco] {len(rows)} since {a.since}", file=sys.stderr)
+        print(f"[{BOARD['key']}] {len(rows)} since {a.since}", file=sys.stderr)
     if a.ville:
         v = a.ville.strip().lower()
         before = len(rows)
         rows = [r for r in rows if v in r[0].lower()]
-        print(f"[adecco] {len(rows)} of {before} match --ville {a.ville!r} "
+        print(f"[{BOARD['key']}] {len(rows)} of {before} match --ville {a.ville!r} "
               "in the slug, filtered before any fetch", file=sys.stderr)
     want = (a.region or "").strip().lower() or None
     kept, dropped, read, gone = 0, 0, 0, 0
@@ -330,13 +367,13 @@ def cmd_search(a):
         print(json.dumps(c, ensure_ascii=False))
         kept += 1
         time.sleep(a.delay)
-    print(f"[adecco] {kept} kept, {read} ads read", file=sys.stderr)
+    print(f"[{BOARD['key']}] {kept} kept, {read} ads read", file=sys.stderr)
     if gone:
-        print(f"[adecco] {gone} were already gone — the sitemap lists retired "
+        print(f"[{BOARD['key']}] {gone} were already gone — the sitemap lists retired "
               "ads and the site answers 410 for them, which is honest and "
               "worth saying rather than hiding", file=sys.stderr)
     if dropped:
-        print(f"[adecco] {dropped} dropped by --region. The department cannot "
+        print(f"[{BOARD['key']}] {dropped} dropped by --region. The department cannot "
               "be known before reading the ad: the sitemap slug truncates it "
               "— 'seine-et-marne' becomes 'marne' — so filtering costs a "
               "fetch per ad. Narrow with --since first.", file=sys.stderr)
@@ -348,12 +385,14 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    d = sub.add_parser("discover", help="ad URLs from the France sitemap")
+    d = sub.add_parser("discover", help="ad URLs from the country's sitemap")
+    d.add_argument("--host", help="fr (default) · no · fi — the country's front, or its hostname")
     d.add_argument("--since", help="keep lastmod >= this ISO date")
     d.add_argument("--limit", type=int)
     d.set_defaults(func=cmd_discover)
 
     s = sub.add_parser("search", help="read ads, optionally by department")
+    s.add_argument("--host", help="fr (default) · no · fi — the country's front, or its hostname")
     s.add_argument("--region", help="department spelled out, e.g. Morbihan — "
                    "checked on the ad, so it costs one fetch per candidate")
     s.add_argument("--ville", help="substring of the URL slug, e.g. lorient. "
@@ -367,6 +406,9 @@ def main():
     s.set_defaults(func=cmd_search)
 
     a = p.parse_args()
+    use_board(getattr(a, "host", None))
+    if a.cmd == "search" and a.region and BOARD["code"] != "fr":
+        die("--region is the French department spelled out; the Norwegian and Finnish fronts carry no such field — use --ville on the slug, or --all")
     if a.cmd == "search" and not (a.region or a.ville or a.since or a.all):
         die("give --ville, --region, --since or --all. Without one of them the "
             "sweep reads all 13 293 ads one page load at a time.")
