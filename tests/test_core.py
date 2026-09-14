@@ -19216,6 +19216,107 @@ class AListPagedByOffsetWhereTheSitemapAndThePagerAreTheTwoFiguresOfTheSite(unit
         self.assertEqual(cm.exception.code, 3)
 
 
+class AOnePageBoardWhereTheMenuBadgeStatesTheCountAndPlacesAreRenderedTwice(unittest.TestCase):
+    """**`kode24.py`, 2026-09-14 (#367).** `list` reads the one list page
+    of `kodejobb.no/stillinger`, the menu badge «Alle stillinger N» as the
+    count the site states, the cards' places rendered twice (light/dark)
+    and emitted once, dedups on the uuid, exits 6 on a gap. `ad` reads
+    the JobPosting, the «Frist» d.m.yyyy into ISO when the JSON-LD lacks
+    it, the prose, and withholds contacts. Mutated (`-B`, detached copy):
+    the dedup dropped → the list case reddens (a card repeated); the gap
+    exit removed → the short case reddens; the badge regex neutralised →
+    the list case reddens; the place dedup dropped → the list case
+    reddens (each place twice); EMAIL_RE neutralised → the ad case
+    reddens; the date conversion dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_kode24", os.path.join(SCRIPTS, "kode24.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, places=("Oslo",)):
+        u = f"0000{i:04d}-0000-4000-8000-00000000000{i % 10}"
+        pl = "".join(f'<span class="p-2 pl-3 bg-pink-500/10 rounded-xl flex dark:hidden"><span class="text-pink-500"><svg></svg></span>{p}</span><span class="p-2 pl-3 bg-pink-500/10 rounded-xl flex hidden dark:flex"><span class="text-pink-500"><svg></svg></span>{p}</span>' for p in places)
+        return (f'<li class="job-list-item bg-gray-50"> <a class="flex" href="/stillinger/acme-{i}/{u}"><div class="badges"><div class="inline-flex">Ny</div></div>'
+                f'<div class="job-title-from-customer text-2xl">Utvikler {i}</div><div class="job-company-name font">ACME {i}</div><div class="job-title mb-4">Bli med oss</div>'
+                f'<div class="job-location comma-separated-list flex">{pl}</div><div class="relative p-2 job-due-date flex"><span class="flex"><svg></svg>Frist: </span><span>om {i} dager</span></div></a></li>')
+
+    @classmethod
+    def _page(cls, n, stated):
+        cards = "".join(cls._card(i, places=(("Oslo", "Remote") if i == 2 else ("Oslo",))) for i in range(1, n + 1))
+        return f'<html><body><a href="/stillinger">Alle stillinger<div class="inline-flex">{stated}</div></a><ul id="job-list">{cards}</ul></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        mod.request = lambda u: fixtures[u]
+        a = argparse.Namespace(limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue()
+
+    def test_the_list_reaches_the_badges_count_with_places_once_and_a_repeated_card_not_counted_twice(self):
+        mod = self._mod()
+        page = self._page(5, 5)
+        page = page.replace("</ul>", self._card(5) + "</ul>")   # the fifth card once more
+        code, rows, err = self._run(mod, {"https://kodejobb.no/stillinger": (200, page)})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 5)
+        self.assertIn("5 emitted over 1 page, site states 5 («Alle stillinger») — equal", err)
+        self.assertEqual(rows[0]["title"], "Utvikler 1")
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["locations"], ["Oslo"])           # rendered twice, emitted once
+        self.assertEqual(rows[1]["locations"], ["Oslo", "Remote"])
+        self.assertEqual(rows[0]["deadline_text"], "om 1 dager")
+        self.assertTrue(rows[0]["new"])
+        self.assertTrue(rows[0]["url"].startswith("https://kodejobb.no/stillinger/acme-1/"))
+
+    def test_a_list_short_of_the_badges_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {"https://kodejobb.no/stillinger": (200, self._page(3, 9))})
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 3)
+        self.assertIn("3 emitted over 1 page, site states 9 («Alle stillinger») — 6 short", err)
+
+    def test_the_ad_reads_the_job_posting_the_frist_and_the_prose_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Utvikler 7", "description": "Bli med oss", "datePosted": "2026-09-11",
+              "employmentType": "full-time", "hiringOrganization": {"@type": "Organization", "name": "ACME 7"}, "jobLocation": {"@type": "Place", "address": {"addressLocality": "Oslo", "addressCountry": "NO"}}}
+        body = ('<html><body><script type="application/ld+json">' + json.dumps(ld) + '</script>'
+                '<p><div class="font-semibold">Firma:</div><div>ACME 7</div></p><p><div class="font-semibold">Arbeidssted:</div><div>Oslo</div></p><p><div class="font-semibold">Frist:</div><div>27.9.2026</div></p></div></div>'
+                '<div class="p-4 lg:p-0"><p>Vi søker utvikler.</p><p>Kontakt Kari Nordmann, 91 23 45 67, kari@acme.no.</p></div><footer></footer></body></html>')
+        url = "https://kodejobb.no/stillinger/acme-7/00000007-0000-4000-8000-000000000007"
+        fx = {url: (200, body), "https://kodejobb.no/stillinger/x/00000009-0000-4000-8000-000000000009": (200, "<html><body>nei</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["employer"], "ACME 7")
+        self.assertEqual(r["location"], "Oslo")
+        self.assertEqual(r["posted"], "2026-09-11")
+        self.assertEqual(r["valid_through"], "2026-09-27")   # from the prose's «Frist: 27.9.2026», the JSON-LD lacking it
+        self.assertIn("Vi søker utvikler.", r["description"])
+        self.assertNotIn("@", text)
+        self.assertNotIn("23 45 67", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://kodejobb.no/stillinger/x/00000009-0000-4000-8000-000000000009"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
