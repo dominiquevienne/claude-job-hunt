@@ -1,12 +1,13 @@
-# Board adapter — Ministry of Labour (Guyana): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
+# Board adapter — Ministry of Labour (Guyana): reopened by the 2026-09-07 doctrine, the transport refuses the client with a static 403, and a browser is served a broken site (2026-09-14)
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: labour.gov.gy, www.labour.gov.gy -->
 <!-- script: none -->
 <!-- countries: GY -->
 <!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:56 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- witness: none — nothing was served to the client; the browser was served an error page on every path · 2026-09-14 -->
+<!-- route: none · the host serves a browser (the provider 403 is for the client only) but the site itself is broken — WordPress «There has been a critical error on this website» on `/`, `www.`, `/vacancies` and the REST root, 09:09–09:11 UTC, two reads of the root five minutes apart; a route to nothing today; whether a job bank lives here stays unknown — next control 2026-09-21 · 2026-09-14 -->
 
 **Measured 2026-09-12 at 11:56:58Z UTC for #233, lot 5 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -59,3 +60,22 @@ adapter, and that is the pilot's to assign.
   it to `cover-letter`; whether that page is served to a browser is not
   established here.
 - **A ministry, under the bare 1 836-byte managed block, refusing with the provider default** — whether a job bank lives on this host or on another (as Barbados' does, `labour-gov-bb`) is not established: nothing was served. *Not a verdict; a 403 to the plain client, browser not measured.*
+
+## Browser reading, 2026-09-14 09:09–09:11 UTC (#314)
+
+The extension answered this session, so the browser route named above was
+measured: a tab on `https://labour.gov.gy/`, then `www.labour.gov.gy/`,
+`/vacancies`, `/wp-json/wp/v2/pages`, and the root again five minutes later.
+**Every one of them was served — no provider 403 to a browser — and every
+one of them is the same page: «WordPress › Error — There has been a critical
+error on this website. Learn more about troubleshooting WordPress.»** The
+managed 403 is for the client only; behind it the site is down today.
+
+So: the browser route is confirmed legitimate and open, and it leads to
+nothing — `route: none` with this reason, dated, not a verdict on the
+host (§2 sexies). Whether the ministry publishes vacancies here is still
+unknown; the Barbadian counterpart (`labour-gov-bb`) points elsewhere.
+**Next control 2026-09-21**: the same tab on the root; if WordPress answers,
+the measurement is the usual one (the list, its count, a stable key, a
+JobPosting or not) and `route: browser · N · date` replaces the line.
+
