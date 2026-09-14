@@ -6,7 +6,7 @@
 <!-- script: none -->
 <!-- countries: PK -->
 <!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue ») — measured: Cloudflare's «Sorry, you have been blocked» to a real browser on 2026-09-14 — a block page, not a challenge; the declared client challenged · 2026-09-14 -->
 **In the #222 candidate list from the Pakistan country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -72,4 +72,8 @@ doctrine: a refusal rendered to a real browser is the operator's. `route:
 none` stands; the word «closed» is the owner's (§2 sexies). The same
 publisher's `paperpk.jobz.pk` is linked from Jobz.pk (`jobz-pk.md`), which
 a tab reads.
+
+## 2026-09-14 11:0x UTC — non faisable, validé par le propriétaire
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue »)** — relayed verbatim by the pilot (#323). What was measured above is the measurement; the word «closed» is the owner's, and he has given it: Cloudflare's «Sorry, you have been blocked» to a real browser on 2026-09-14 — a block page, not a challenge; the declared client challenged. The card stays as the record of the measurements; `route: none` is dated and motivated by this line, and the Atlas excludes the entry from the feasible denominator (#404). What would reopen it is written in the sections above; nothing is scheduled.
 

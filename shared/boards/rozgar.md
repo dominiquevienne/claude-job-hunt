@@ -7,7 +7,7 @@
 <!-- countries: PK -->
 <!-- content: indeterminate · the sitemap holds 3 URLs, frozen since 2020, and the 327 kB homepage carries 0 `JobPosting` — no enumerable surface was found on 2 paths · 2026-09-05 -->
 <!-- witness: none found — nothing on the site states a total, and the sitemap counts pages rather than advertisements -->
-<!-- route: none · a connected tab is served the same landing page the client gets — «بہتر نوکری ڈھونڈیں», «نوکری تلاش کریں» (a control that does nothing in a desktop tab), «انسٹال ایپ» and an `inapp://getToken` link: the job list lives in the mobile application, not on the web; a route to nothing from a browser (2026-09-14 10:50 UTC) · 2026-09-14 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue ») — measured: a mobile application with a web landing page — no list, no count, no advertisement reachable from the web (2026-09-14) · 2026-09-14 -->
 <!-- hosts-source: third brand of the house that operates `rozee.pk`, itself found through `mihnati.com`'s declaration · 2026-09-05 -->
 
 **Not disqualified. Not qualifiable.** The distinction matters and this card
@@ -94,4 +94,8 @@ mobile application with a web landing page, not a web board**: a route to
 nothing (#404), `route: none` with that reason. What remains for
 Pakistan on the web: `jobs-gov-pk` and the press republished on
 `jobz-pk.md`; Rozee is excluded (2026-09-14).
+
+## 2026-09-14 11:0x UTC — non faisable, validé par le propriétaire
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue »)** — relayed verbatim by the pilot (#315). What was measured above is the measurement; the word «closed» is the owner's, and he has given it: a mobile application with a web landing page — no list, no count, no advertisement reachable from the web (2026-09-14). The card stays as the record of the measurements; `route: none` is dated and motivated by this line, and the Atlas excludes the entry from the feasible denominator (#404). What would reopen it is written in the sections above; nothing is scheduled.
 

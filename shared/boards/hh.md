@@ -1,6 +1,6 @@
 # Board adapter — HeadHunter (`api.hh.ru`: hh.ru, hh.kz, hh.uz, rabota.by, zarplata.ru): one file for the network's five fronts, the user's own contact address on every request — and a 403 to that address on the day, on all four areas
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: api.hh.ru, hh.ru, hh.kz, hh.uz, rabota.by, zarplata.ru -->
 <!-- script: hh.py -->
@@ -9,7 +9,7 @@
 <!-- countries: RU KZ BY UZ -->
 <!-- content: measured · **HTTP 403 `{"errors":[{"type":"forbidden"}]}` on `/vacancies?area=<id>` for all four areas (16 BY, 40 KZ, 97 UZ, 113 RU), with the owner's own contact sent in `HH-User-Agent` beside our UA AND, in a second probe, as the whole `User-Agent: claude-job-hunt/<v> (<contact>)` — the two forms the API's specification names; 18:52 UTC, one request per area plus two probes; no `robots.txt` on the API host (404, an absence)**; the fronts' figures are `rabota-by.md`'s (30 406 for `area=16`, 1 025 175 for the network, 12.09) and are not this adapter's; the adapter is exercised on a stub of the documented envelope · 2026-09-13 -->
 <!-- witness: the API's `found` per area — the witness the adapter prints beside every walk when the API answers; on the day it answered 403 to the address, and the adapter stopped without a retry; nothing else is compared · 2026-09-13 -->
-<!-- route: http · under the user's own `boards.hh.contact` ONLY — the API requires a contact address and the plugin never fabricates one; without the key nothing is requested (exit 7); with the owner's key the API refused this address on 2026-09-13 (403 on four areas) — a dated fact, not a verdict · 2026-09-13 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 7. ok ») — measured: the API answers 403 «forbidden» from this network with the owner's own address, without it, and in the specification's two header forms alike (2026-09-14 09:08 UTC) — the adapter is no longer proposed; the key `boards.hh.contact` and the warning of `job-setup` stay documented as history · 2026-09-14 -->
 
 **Four countries of #233 behind one API — and the API asks who is
 calling.** Issue #337 (the owner's decision of 2026-09-13 on the form of
@@ -105,3 +105,8 @@ until the no-key case counted the guard as a request), the contact echoed
 in the 403 message, the header renamed, the «equal» branch made
 unconditional (inert on an equal-only fixture until a 3-against-2 run was
 added), `contacts` kept, the window check dropped.
+
+## 2026-09-14 11:0x UTC — non faisable, validé par le propriétaire
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 7. ok »)** — relayed verbatim by the pilot (#337). What was measured above is the measurement; the word «closed» is the owner's, and he has given it: the API answers 403 «forbidden» from this network with the owner's own address, without it, and in the specification's two header forms alike (2026-09-14 09:08 UTC) — the adapter is no longer proposed; the key `boards.hh.contact` and the warning of `job-setup` stay documented as history. The card stays as the record of the measurements; `route: none` is dated and motivated by this line, and the Atlas excludes the entry from the feasible denominator (#404). What would reopen it is written in the sections above; nothing is scheduled.
+

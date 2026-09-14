@@ -7,7 +7,7 @@
 <!-- countries: TZ -->
 <!-- content: measured · **403 «Forbidden», 9 bytes, to a real browser as well** — the tab on `/jobs` and `fetch()` of `/` and `/jobs` from it, 16:25 UTC, the same nine bytes the declared client got; `www.` does not connect from the tab either; a refusal rendered to everyone is the operator's (borne 0), so no route is open by any legitimate means and nothing of the board was read · 2026-09-13 -->
 <!-- witness: none — nothing served to any client; the 9-byte «Forbidden» is the only body, from the declared client (15:29 UTC, twice) and from a browser tab (16:25 UTC) · 2026-09-13 -->
-<!-- route: none · 403 to a real browser too — the operator's refusal, not a client filter (borne 0); the guard opens on `certain: False` since #283 and the transport closes to everyone · 2026-09-13 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue ») — measured: «Forbidden», 9 bytes, to the declared client and to a real browser on 2026-09-13 and 2026-09-14 · 2026-09-14 -->
 
 **Tanzania's named board, in the #222 candidate list as a single-host
 country.** *This card is a measurement and not an adapter, and it is a
@@ -96,4 +96,8 @@ his express validation; recorded: two clients, one day, nine bytes.
 only text is «Forbidden» — the 9-byte body of 2026-09-13, to a real
 browser, a day later. Borne 0 again: the operator refuses everyone from
 here. `route: none` stands; the word «closed» is the owner's (§2 sexies).
+
+## 2026-09-14 11:0x UTC — non faisable, validé par le propriétaire
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue »)** — relayed verbatim by the pilot (#303). What was measured above is the measurement; the word «closed» is the owner's, and he has given it: «Forbidden», 9 bytes, to the declared client and to a real browser on 2026-09-13 and 2026-09-14. The card stays as the record of the measurements; `route: none` is dated and motivated by this line, and the Atlas excludes the entry from the feasible denominator (#404). What would reopen it is written in the sections above; nothing is scheduled.
 
