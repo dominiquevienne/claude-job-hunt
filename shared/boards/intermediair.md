@@ -1,11 +1,13 @@
-# Board measurement — Intermediair (`www.intermediair.nl`, Netherlands): DPG Media's second board on the same template as Nationale Vacaturebank — 2 495 in a fresh sitemap, 19 of 20 served, a `--host` away from an adapter
+# Board adapter — Intermediair (`www.intermediair.nl`, Netherlands): DPG Media's second board on the same template as Nationale Vacaturebank — `nationalevacaturebank.py --host intermediair`, 2 160 in the sitemap on the 14th, 10 of 10 sampled served, the recruiter's address no longer a field
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.intermediair.nl, intermediair.nl -->
-<!-- script: none -->
+<!-- script: nationalevacaturebank.py -->
+<!-- host-forms: www.intermediair.nl, intermediair.nl -->
+<!-- host-forms-basis: read — `nationalevacaturebank.py:BOARDS["intermediair"]` is `www.intermediair.nl`; the sitemap index sends its one file to the apex `intermediair.nl` and the guard is taken there on the exact path; every `<loc>` and every page carries `www.` · 2026-09-14 -->
 <!-- countries: NL -->
-<!-- content: measured · **2 495 distinct advertisement uuids in the declared sitemap (`/cdn/sitemaps/vacature.xml` → one file, index lastmod 2026-09-13T15:21:17Z, no `<lastmod>` per entry) — and of 20 drawn at random, 19 served with a JobPosting whose validThrough is 2026-09-26 … 2026-11-11, 1 answered 404**; `bin/fetch-body.py` and a 20-page sample by the declared client, 16:16–16:17 UTC; **the site states «2.361 banen» on its search page** (read once in a tab at 16:19 UTC — rendered from the API behind the search the rules refuse; not readable by HTTP; the route is HTTP, the sitemap), 134 fewer than the file — the same DPG template as `nationalevacaturebank.md` · 2026-09-13 -->
+<!-- content: measured · **2 160 distinct advertisement uuids in the declared sitemap (`/cdn/sitemaps/vacature.xml` → one file on the apex host, index lastmod 2026-09-14T00:21:16Z) — and of 10 drawn spread over the file, 10 served with a JobPosting whose validThrough is on or after the day**; `nationalevacaturebank.py sitemap --host intermediair --sample 10` by the declared client, 00:36–00:37 UTC (2 495 and 19 of 20 on the 13th at 16:16 UTC); **the site states no figure by HTTP** — its «2.361 banen» (a tab, 16:19 UTC on the 13th) is rendered from the API behind the search the rules refuse, never copied into the adapter; the same DPG template as `nationalevacaturebank.md`, the same rules to the line · 2026-09-14 -->
 <!-- witness: the sample — 19 of 20 served open (a proportion that predicts ≈ 2 370 live of 2 495, and the tab's «2.361» sits inside it), the index's lastmod an hour before the read; the tab's figure is read once, never copied into an adapter · 2026-09-13 -->
 
 **No `host-forms:` is declared, because no script ships to reach a form**
@@ -68,3 +70,44 @@ host needs a different reader. **Issue: see the `adapter` label** (opened
 - **How the 2 495 relate to the sister's 89 733** — different boards of
   one group; whether advertisements are shared was not read.
 - **The one 404** — a uuid in a file written an hour earlier.
+
+## 2026-09-14 — shipped (#295): `--host intermediair`
+
+`nationalevacaturebank.py sitemap --host intermediair [--limit N]
+[--sample K]` and `ad --url <www.intermediair.nl/vacature/<uuid>/<slug>>`
+— the board's key is read off the address. **The same script**: the
+index is asked on the named host, the file on the apex host is guarded on
+its exact path, `source` and `ledger_id` carry `intermediair`, and a
+file that named the sister's host would yield no row (a fault, not a
+row). Measured 2026-09-14 00:36–00:37 UTC: **2 160 distinct uuids** (335
+fewer than the 13th — the file is fresh, its lastmod fifteen minutes
+before the read), **10 of 10 sampled served open**; `ad` on one.
+
+**A correction to the sister's adapter, shipped in the same PR**:
+`hiringOrganization.email` on this template is a recruiter's own address
+(a first name at the employer's domain on the ad read) — #287 emitted it
+as `employer_email`; it is no longer a field on either board,
+`contacts_withheld` says so, and the description is scrubbed of e-mail
+addresses.
+
+```
+nationalevacaturebank.py sitemap --host intermediair --sample 10 --limit 3
+[nationalevacaturebank] **2 160 distinct advertisement uuid(s)** on www.intermediair.nl in 1 file(s) (vacature-1.xml 2 160); 3 emitted (--limit 3); the index's own lastmod 2026-09-14T00:21:16Z.
+[nationalevacaturebank] The site states no figure by HTTP — its «N banen» is rendered in a browser from the API behind the search the rules refuse; no second figure is compared here.
+[nationalevacaturebank] Sample of 10 spread over the file(s): 10 served with a JobPosting whose validThrough is on or after 2026-09-14, 0 gone (410), 0 gone (404), 0 other — **the sitemap lists what has left the board**; its count is not the live inventory.
+```
+
+### Configuration
+
+```yaml
+boards:
+  intermediair:
+    enabled: true
+    host: intermediair      # the board key `nationalevacaturebank.py` takes; the sister is the default
+```
+
+Three tests; six mutations on a detached worktree (`python3 -B`), six
+red — the host not put on the index, the key not on the record, the
+other board's rows accepted, the e-mail field restored, the description
+not scrubbed, the unknown host accepted.
+
