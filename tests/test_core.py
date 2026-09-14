@@ -21368,5 +21368,107 @@ class AnEntryPageTheServerRendersEmptyAndACardWhoseFigureSitsInAStrong(unittest.
         self.assertEqual(cm.exception.code, 6)
 
 
+class ACardThatNamesItsOwnFieldsAndAnAdThatMayLiveOnTheEmployersHost(unittest.TestCase):
+    """**`pracecz.py`, 2026-09-14 (#353).** Prace.cz renders its listing from
+    page 1 with cards that label their own fields (hidden «Lokalita:»,
+    «Název firmy:», «Typ úvazku:», «Plat:» — the salary printed with its
+    period, «Kč/měsíc»); a card's link is one of three shapes and the UUID
+    is the id in all of them; an employer-hosted ad's site address
+    redirects to the employer's own host, which `ad` refuses to read. The
+    JobPosting's `QuantitativeValue` carries the unit. The contact block
+    never leaves. Mutated (`-B`, detached copy): the UUID read from the
+    site's shape only → the walk case reddens (13 cards lost); the period
+    stated without a printed one → the salary case reddens; the redirect
+    to another host followed → the redirect case reddens; the unit taken
+    from the QuantitativeValue dropped → the ad case reddens; the e-mail
+    scrub dropped → the ad case reddens; the count read from the raw
+    markup → the walk case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pracecz", os.path.join(SCRIPTS, "pracecz.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, uuid, title, emp="LAMPS, a.s.", loc="Praha-Horní Počernice", typ="Plný úvazek", plat="35&nbsp;000 – 45&nbsp;000 Kč/měsíc", shape="site"):
+        href = {"site": f"/nabidka/{uuid}/?rps=2078", "firm": f"/firma/3gxr37-fast-cr-a-s/nabidka/{uuid}/?rps=2077", "employer": f"https://o2.jobs.cz/pd/2000555295?originJobAdUuid={uuid}&amp;rps=2078"}[shape]
+        li = '<li class="Flex"><span class="accessibility-hidden">{}<!-- -->:</span><span class="typography-body-medium-regular text-wrap-pretty">{}<span class="JobCardDescription__delimiter" aria-hidden="true"></span></span></li>'
+        plat_li = f'<li class="Flex"><svg></svg><span class="typography-body-medium-semibold text-primary"><span class="accessibility-hidden">Plat<!-- -->:</span>{plat}</span></li>' if plat else ""
+        return (f'<article class="JobCard-module-scss-module__ki5xOq__JobCard"><header><h2 data-testid="job-card-title" class="JobCardTitle"><a data-testid="advert-link" class="link-primary" href="{href}">{title}</a></h2></header>'
+                f'<div class="JobCardBody"><ul>{li.format("Lokalita", loc)}{li.format("Název firmy", emp)}{li.format("Typ úvazku", typ)}</ul><ul>{plat_li}</ul></div></article>')
+
+    def _page(self, total, cards):
+        return f'<html><body><h1>Našli jsme <strong>{total:,}</strong> nabídek</h1>'.replace(",", "&nbsp;") + '<article class="Card">not a job</article>' + "".join(cards) + '<nav><a href="?page=2">2</a></nav></body></html>'
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            code, body = next(it)
+            return code, body, url
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_reads_every_link_shape_and_the_labelled_fields(self):
+        mod = self._mod()
+        u = lambda i: f"{i:08x}-5c6b-43ad-9aeb-eeca4f63bc0e"
+        p1 = self._page(45, [self._card(u(i), f"Skladník {i}") for i in range(20)] + [self._card(u(100 + i), f"Asistent {i}", emp="O2 Czech Republic a.s.", shape="employer", plat="") for i in range(13)] + [self._card(u(200 + i), f"Prodavač {i}", emp="FAST ČR, a.s.", shape="firm", plat="26&nbsp;000 Kč") for i in range(7)])
+        p2 = self._page(45, [self._card(u(300 + i), f"Řidič {i}", plat="180 Kč/hod") for i in range(5)])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)])
+        self.assertEqual(len(rows), 45)
+        r = rows[0]
+        self.assertEqual((r["id"], r["url"], r["hosted_by_employer"], r["title"], r["employer"], r["workplace"], r["employment"], r["salary_text"], r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_period"], r["salary_unit_stated"]),
+                         (u(0), f"https://www.prace.cz/nabidka/{u(0)}/", None, "Skladník 0", "LAMPS, a.s.", "Praha-Horní Počernice", "Plný úvazek", "35 000 – 45 000 Kč/měsíc", 35000, 45000, "CZK", "MONTH", True))
+        self.assertEqual((rows[20]["id"], rows[20]["hosted_by_employer"], rows[20]["url"], rows[20]["salary_min"]), (u(100), "o2.jobs.cz", f"https://www.prace.cz/nabidka/{u(100)}/", None))
+        self.assertEqual((rows[33]["id"], rows[33]["salary_min"], rows[33]["salary_max"], rows[33]["salary_period"], rows[33]["salary_unit_stated"]), (u(200), 26000, 26000, None, False))
+        self.assertEqual((rows[40]["salary_min"], rows[40]["salary_period"]), (180, "HOUR"))
+        self.assertEqual(sent, ["https://www.prace.cz/nabidky/", "https://www.prace.cz/nabidky/?page=2"])
+        self.assertIn("45 emitted over 2 page(s), site states 45 — equal.", err)
+        rows, err, sent = self._run(mod, [(200, p1)], pages=1)
+        self.assertIn("40 emitted of the 45 the site states — 1 page(s) of 40 walked by request", err)
+
+    def _ad(self):
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Práce ve skladu", "description": "<p>Velkoobchod hraček přijme skladníka. Životopis na hr@lamps.example, tel. 777 123 456.</p>",
+              "identifier": {"@type": "PropertyValue", "name": "LAMPS, a.s.", "value": "d224qy"}, "datePosted": "2026-08-24T13:49:26+02:00", "validThrough": "2026-09-23T23:59:59+02:00", "employmentType": ["FULL_TIME", "EMPLOYEE"],
+              "hiringOrganization": {"@type": "Organization", "name": "LAMPS, a.s."}, "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Ve žlíbku", "addressLocality": "Praha", "postalCode": "19300", "addressCountry": "CZE"}},
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "CZK", "value": {"@type": "QuantitativeValue", "minValue": 35000, "maxValue": 45000, "unitText": "MONTH"}}}
+        return ('<html><head><script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script></head><body><main><h1>Práce ve skladu</h1>'
+                '<ul><li data-testid="benefit-item-1">Příspěvek na dovolenou</li><li data-testid="benefit-item-2">Mobilní telefon</li></ul>'
+                '<section><h2>Kontaktní údaje</h2><p>Jana Nováková</p><p>Ve žlíbku 2906/1b, 19300 Praha 9</p><p>+420 777 123 456</p></section></main></body></html>')
+
+    def test_the_ad_is_its_job_posting_with_the_unit_the_page_states_and_no_contact(self):
+        import contextlib
+        mod = self._mod()
+        uid = "a94cd5e8-5c6b-43ad-9aeb-eeca4f63bc0e"
+        mod.request = lambda url: (200, self._ad(), url)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url=f"https://www.prace.cz/firma/x/nabidka/{uid}/?rps=1"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["url"], d["title"], d["employer"], d["workplace"], d["posted"], d["employment_type"], d["salary_min"], d["salary_max"], d["salary_currency"], d["salary_period"], d["salary_unit_stated"], d["benefits"], d["contacts_withheld"]),
+                         (uid, f"https://www.prace.cz/nabidka/{uid}/", "Práce ve skladu", "LAMPS, a.s.", "Praha, 19300", "2026-08-24T13:49:26+02:00", "FULL_TIME, EMPLOYEE", 35000, 45000, "CZK", "MONTH", True, ["Příspěvek na dovolenou", "Mobilní telefon"], True))
+        self.assertEqual(d["description"], "Velkoobchod hraček přijme skladníka. Životopis na [e-mail withheld], tel. [telephone withheld].")
+        for secret in ("Nováková", "lamps.example", "777 123 456", "2906/1b"):
+            self.assertNotIn(secret, out.getvalue())
+        # an employer-hosted ad: the site's address answers 200 from another host — not read
+        mod.request = lambda url: (200, "<html><body>Detail pozice | O2</body></html>", "https://o2.jobs.cz/detail-pozice?r=detail&id=2001350573&originJobAdUuid=" + uid)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_ad(argparse.Namespace(url=f"https://www.prace.cz/nabidka/{uid}/"))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("redirected to o2.jobs.cz", e2.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.prace.cz/nabidky/"))
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
