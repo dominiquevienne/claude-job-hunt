@@ -22588,6 +22588,11 @@ class AnOldGeneralistWhosePagerStatesThePagesAndWhoseTelephoneBlockIsMaskedAndNe
         self.assertEqual(r["description"], "**GARSON / SERVİS PERSONELİ ARANIYOR**\nSinpaş Altınoran Çarşı’da garson arıyoruz.\nİRTİBAT [telephone withheld] · [e-mail withheld]")
         for secret in ("0537 611", "0312 503", "sinpas.example", "iletisim", "İletişim"):
             self.assertNotIn(secret, raw)
+        # a posting without `baseSalary`: the box «1.250.000 TL» is the figure — one million two hundred and fifty thousand, no period printed
+        ld2 = ld.replace(', "baseSalary": {"@type": "MonetaryAmount", "currency": "TRY", "value": {"@type": "QuantitativeValue", "value": "45000", "unitText": "MONTH"}}', "")
+        self.assertNotIn("baseSalary", ld2)
+        rows, err, asked, raw = self._run(mod, [(200, page.replace(ld, ld2).replace("Maaş: 45.000 TL", "Maaş: 1.250.000 TL"))], cmd="ad", url="https://www.eleman.net/is-ilani/tecrubeli-garson-sinpas-cankaya-net-45-000-tip-i4762495")
+        self.assertEqual((rows[0]["salary_text"], rows[0]["salary_min"], rows[0]["salary_max"], rows[0]["salary_currency"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"]), ("1.250.000 TL", 1250000, 1250000, "TRY", None, False))
         # no JSON-LD and no description block: the template changed
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             self._run(mod, [(200, "<html><body><h1>x</h1></body></html>")], cmd="ad", url="https://www.eleman.net/is-ilani/x-i1")
