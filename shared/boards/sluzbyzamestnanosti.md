@@ -43,6 +43,8 @@ allowed()       True on `/pracovne-ponuky`, `/search/ponuky?…`, `/pracovne-pon
 | the six sources the page filters on | Portál SZ (`VPM`), profesia.sk (3), Fajn skupina (5), kariera.sk (1), eures.sk (4), worki.sk (2) — the external rows carry `urlExternyPortal` (`https://www.profesia.sk/O5354102`) and **no page on this host** |
 | a row | `uuid` (the key: `sz:<uuid>`), `nazovPracovnehoMiesta`, `zamestnavatelObchodneMeno`, `miestoVykonuPrace` («Skalica - Skalica»), `zakladnaMzda` 1200.0 + `MESIAC`, `naposledyZmenene`, `priznakZdroj`, `externyPortal`, `urlExternyPortal` |
 
+**Note, 2026-09-14 04:2x UTC (#344):** `zdrojPonuky=WRK` answers `countVPM` 537 — the worki.sk rows republished here — and all 537 ids are in worki.sk's own 623 (`worki.md`, `worki.py`): 86 advertisements live only on the board, and every body does. The «worki.sk (2)» count in the table above was the page's filter on 2026-09-13; the search answer on 2026-09-14 says 537.
+
 **The state's store is the default, and it is the inventory that matters
 here**: the 13 437 republished rows are read at their source by
 `profesia.py` and the others; the adapter says how many of each it
