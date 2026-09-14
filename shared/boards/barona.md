@@ -6,7 +6,8 @@
 <!-- script: none -->
 <!-- countries: FI -->
 <!-- content: measured · **no posting readable over HTTP by this client**: `www.barona.fi` (WordPress; rules 205 B — `Disallow: /wp-json/`, `/?rest_route=`; five sitemaps, none of jobs) serves `/tyopaikat/` (200, 231 002 B) as a page whose job widget is filled client-side and whose empty state says «Kaikki Baronan työpaikat löytyvät Barona Careersista» — the postings are on `www.baronacareers.com`; that host's rules (219 B) open everything but `/ahoy/`, `/api/v1/browse/events/`, `…/jobs/*/viewed` and `?from_apply=`, name `sitemap.xml.gz` and refuse `trovitBot` by name — **and its transport answers 403, 25 B, `md5 9ccabba20b9f4ec7d18bd6644579e5bf` to this client on `/`, `/fi/fi/job`, `/api/v1/browse/jobs` and `/sitemap.xml.gz`, twice on the root at the same fingerprint (02:52–02:53 UTC): the provider's static block seen on ten other hosts, not a challenge and not the editor's page** · 2026-09-14 -->
-<!-- witness: none — the marketing site prints no count and the careers host answers nothing this client can read; the measurement is the set of addresses, each with its code, size and md5 · 2026-09-14 -->
+<!-- witness: none — the marketing site prints no count and the careers host answers nothing this client can read; the measurement is the set of addresses, each with its code, size and md5 · 2026-09-14 · **browser, 2026-09-14 09:1x UTC: `www.baronacareers.com/fi/fi/job` served to a connected tab — a sliding pager of 10 (`?page=N`, no total printed), 29 pages, 283 rows, 277 distinct slugs (6 repeated across adjacent page boundaries on two identical walks — a pager unstable on ties), the site states no count; each ad page carries a JobPosting with `identifier.value` as the key** -->
+<!-- route: browser · 277 · 2026-09-14 -->
 
 **Barona is Finland's largest staffing and recruitment group; its
 postings are served by its own careers portal, `www.baronacareers.com`,
@@ -58,9 +59,31 @@ articles, press releases, cases and offices, no postings.
 ## 2026-09-14 — measured, no adapter
 
 No script: nothing is served to this client on either host that a
-script could render (#404). No `route:` line: the browser candidate is
-named and not measured. What replaces it for a Finnish search today:
+script could render (#404). The browser candidate is measured below
+(`route: browser · 277 · 2026-09-14`). What replaces it for a Finnish search today:
 Duunitori (`duunitori.md`), Jobly (`jobly.md`), Kuntarekry and
 Valtiolle (`kuntarekry.md`, `valtiolle.md`), Työmarkkinatori
 (`tyomarkkinatori.md`) — and Barona's postings appear on some of them
 under Barona's name.
+
+## Browser reading, 2026-09-14 09:14–09:21 UTC (#377)
+
+The extension answered this session, so the candidate was measured from
+a connected tab — the same path the client is refused on:
+
+```
+www.baronacareers.com/fi/fi/job          served — «Avoimet työpaikat», 10 cards a page, a sliding pager «Edellinen 1 2 3 Seuraava» (?page=N), no total printed anywhere on the page
+?page=2 … ?page=28                       10 rows each; ?page=29: 3 rows and no «Seuraava»; ?page=30, 35, 40: 0 rows
+the walk (twice, identical)              283 rows, 277 distinct slugs; 6 slugs repeated on adjacent pages (3/4, 5/6, 5/6, 16/17, 17/19, 19/20): a pager unstable on ties, the same six both times
+the list's JSON-LD                       an ItemList of 10 (`numberOfItems`, name, url /fi/fi/jobs/<slug>) per page
+the ad /fi/fi/jobs/<slug>                200, ~93 KB — a JobPosting: identifier {Barona Careers, 97757}, datePosted, validThrough, description, employmentType, educationRequirements, experienceRequirements, industry, skills, hiringOrganization (the client — «Rittal Oy» — or a Barona company), jobLocation with postcode; the page text names the consultant with an e-mail («Lisätietoja tästä työpaikasta antaa …») — never to be emitted
+```
+
+**`route: browser · 277 · 2026-09-14`.** The site states no count a
+reader can compare to; 277 distinct over 29 pages is the walk's own
+figure, and the six boundary repeats say the true number is 277 or a few
+more. What an adapter would do from a tab: the `?page=N` walk until
+«Seuraava» disappears, the ad's JobPosting by `identifier.value`, the
+consultant's line withheld whole. Not written here — a browser adapter is
+a procedure a session follows, and the card is what it follows.
+
