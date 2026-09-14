@@ -24798,5 +24798,118 @@ class ANordicAgencyWhoseListingStatesItsCountButPagesByAServerActionAndWhoseAdSh
         self.assertEqual(cm.exception.code, 2)
 
 
+class AStaffingBoardWhoseListIsFilledByThePagesOwnServerActionReplayedWithItsOwnParameters(unittest.TestCase):
+    """**`staffpoint.py`, 2026-09-14 (#378).** StaffPoint's job list is not on
+    the server and not in the sitemap: the page's client fills it by a
+    Next.js server action (`fetchJobs`, a POST to the page's own address with
+    a `Next-Action` id bound to the build). The adapter reads the id from the
+    page's own script on every run, replays the call with the page's own
+    parameters, and prints emitted against the `totalCount` the call states.
+    The ad's JobPosting carries `applicationContact.email` — a named
+    consultant — **never emitted**; the description scrubbed; `/search`
+    (refused in writing) never sent. Mutated (`-B`, detached copy): the
+    action id hard-coded instead of read → the list case reddens; the first
+    call's page taken as the whole list → the list case reddens; the count
+    not read → the list case reddens; `/search` guard dropped → the guard
+    case reddens; the contact emitted → the ad case reddens; the description
+    not scrubbed → the ad case reddens."""
+
+    ACTION = "7f1d24a7affd5b9bf6f66977dc75e51338b8fa823f"
+    PAGE = '<html><body><script src="/_next/static/chunks/app/%5Blocale%5D/jobs/page-43e9d0e72a607496.js" async=""></script></body></html>'
+    CHUNK = 'let s=(0,a.createServerReference)("7f1d24a7affd5b9bf6f66977dc75e51338b8fa823f",a.callServer,void 0,a.findSourceMapURL,"fetchJobs");let eT=(0,a.createServerReference)("7f5127f58a0d8db2130eeccd14da589924ecb97afb",a.callServer,void 0,a.findSourceMapURL,"fetchOpportunities")'
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_staffpoint", os.path.join(SCRIPTS, "staffpoint.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(i, name, et="Määräaikainen", until="27.09.2026", lang="fi"):
+        return {"id": i, "image": "https://content.example/x.jpg", "name": name, "validFrom": "11.09.2026", "validUntil": until, "isNew": True, "isExpiring": False,
+                "employmentType": {"id": 1, "name": et}, "locations": [{"id": 509, "name": "Pohjois-Savo", "cities": [{"id": 291, "name": "Varkaus"}]}, {"id": 509, "name": "Pohjois-Savo", "cities": [{"id": 292, "name": "Kuopio"}]}],
+                "fields": [{"id": 2, "name": "Asiakaspalvelu"}], "language": lang, "jobAdBaseUrl": f"https://www.staffpoint.fi/tyopaikat/{name.lower().replace(' ', '-')}-Z5l9{i}"}
+
+    def _component(self, jobs, total):
+        return '0:{"a":"$@1","f":"","b":"-FUPW7cJPg0STXJwu9cIw"}\n1:' + json.dumps({"jobs": jobs, "totalCount": total}, ensure_ascii=False) + "\n"
+
+    def _ad(self, desc="Palkka 13,13–14,93€/h. Lisätietoja Minna Lamberg, minna.lamberg@staffpoint.example, puh. 040 123 4567."):
+        jp = {"@context": "https://schema.org/", "@type": "JobPosting", "applicationContact": {"@type": "ContactPoint", "email": "minna.lamberg@staffpoint.example"},
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": {"@type": "QuantitativeValue", "minValue": 13.13, "maxValue": 14.93}}, "datePosted": "2026-09-11", "employerOverview": "Määräaikainen",
+              "hiringOrganization": {"@type": "Organization", "name": "K-Citymarket"}, "identifier": "JR1K", "industry": ["Asiakaspalvelu"],
+              "jobLocation": [{"@type": "Place", "name": "Pohjois-Savo", "address": [{"@type": "PostalAddress", "addressLocality": "Varkaus"}]}],
+              "name": "Myyjiä, K-Citymarket Varkaus", "title": "Myyjiä, K-Citymarket Varkaus", "description": desc, "url": "https://www.staffpoint.fi/tyopaikat/myyjia-k-citymarket-varkaus-Z5l97L", "validThrough": "2026-09-27"}
+        return '<html><head><script type="application/ld+json">' + json.dumps(jp, ensure_ascii=False) + "</script></head><body>x</body></html>"
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, data=None, headers=None):
+            asked.append((url, json.loads(data.decode("utf-8")) if data else None, (headers or {}).get("Next-Action")))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None, lang=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_pages_own_call_replayed_and_its_count(self):
+        import contextlib
+        mod = self._mod()
+        jobs = [self._job("JR1K", "Myyjia Varkaus"), self._job("ERPa", "Lumityo", et="Keikkatyö", until="Jatkuva haku"), self._job("XAx3", "Sandblaster", et="Permanent", lang="en")]
+        served = [(200, self.PAGE), (200, self.CHUNK), (200, self._component(jobs[:2], 3)), (200, self._component(jobs, 3))]
+        rows, err, asked, raw = self._run(mod, served)
+        self.assertEqual([u for u, _, _ in asked], ["https://www.staffpoint.fi/tyopaikat", "https://www.staffpoint.fi/_next/static/chunks/app/%5Blocale%5D/jobs/page-43e9d0e72a607496.js", "https://www.staffpoint.fi/tyopaikat", "https://www.staffpoint.fi/tyopaikat"])
+        self.assertEqual(asked[2][1:], ([{"sortBy": "startDate", "sortOrder": "desc", "openApplications": "false", "size": "9"}], self.ACTION))   # the page's first load, with the id the script carries
+        self.assertEqual(asked[3][1], [{"sortBy": "startDate", "sortOrder": "desc", "openApplications": "false", "size": "3"}])                  # then the whole list, size = totalCount
+        self.assertEqual([r["id"] for r in rows], ["JR1K", "ERPa", "XAx3"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["employment_type"], a["regions"], a["cities"], a["fields"], a["posted"], a["valid_through"], a["continuous"], a["is_new"], a["language"], a["contacts_withheld"]),
+                         ("staffpoint", "FI", "staffpoint:JR1K", "https://www.staffpoint.fi/tyopaikat/myyjia-varkaus-Z5l9JR1K", "myyjia-varkaus", "Myyjia Varkaus", "Määräaikainen", ["Pohjois-Savo"], ["Kuopio", "Varkaus"], ["Asiakaspalvelu"], "2026-09-11", "2026-09-27", False, True, "fi", True))
+        self.assertEqual((rows[1]["valid_through"], rows[1]["continuous"], rows[2]["language"]), ("Jatkuva haku", True, "en"))
+        self.assertIn("3 emitted, the site states 3 (the page's own fetchJobs call, `totalCount`) — equal.", err)
+        # a different build: the id must come from the script, never from memory
+        chunk2 = self.CHUNK.replace(self.ACTION, "00aa11bb22cc33dd44ee55ff66aa77bb88cc99dd00")
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, chunk2), (200, self._component(jobs, 3))])
+        self.assertEqual(asked[2][2], "00aa11bb22cc33dd44ee55ff66aa77bb88cc99dd00")
+        self.assertEqual((len(asked), len(rows)), (3, 3))   # the first page already carried the whole list: no second call
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, self.CHUNK), (200, self._component(jobs, 12))], limit=2)
+        self.assertEqual((len(asked), len(rows)), (3, 2))
+        self.assertIn("2 emitted of the 12 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE), (200, "let s=1;")])
+        self.assertEqual(cm.exception.code, 6)   # the script no longer names fetchJobs: a changed page, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE), (200, self.CHUNK), (200, '0:{"a":"$@1"}\n1:{"jobs":[]}\n')])
+        self.assertEqual(cm.exception.code, 6)   # no totalCount: not an empty market
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.staffpoint.fi/search?q=x")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_its_jobposting_with_the_consultant_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad())], cmd="ad", url="https://www.staffpoint.fi/tyopaikat/myyjia-k-citymarket-varkaus-Z5l97L")
+        a = rows[0]
+        self.assertEqual((a["id"], a["ledger_id"], a["url_id"], a["title"], a["company"], a["employer_is_the_agency"], a["agency"], a["employment_type"], a["industry"], a["regions"], a["cities"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit_stated"], a["posted"], a["valid_through"]),
+                         ("JR1K", "staffpoint:JR1K", "Z5l97L", "Myyjiä, K-Citymarket Varkaus", "K-Citymarket", False, "StaffPoint", "Määräaikainen", ["Asiakaspalvelu"], ["Pohjois-Savo"], ["Varkaus"], 13.13, 14.93, "EUR", False, "2026-09-11", "2026-09-27"))
+        self.assertEqual(a["description"], "Palkka 13,13–14,93€/h. Lisätietoja Minna Lamberg, [e-mail withheld], puh. [telephone withheld].")
+        for secret in ("lamberg@", "applicationContact", "040 123"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.staffpoint.fi/tyopaikat/myyjia-k-citymarket-varkaus-Z5l97L")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.staffpoint.fi/haku")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
