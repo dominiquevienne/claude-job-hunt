@@ -23390,5 +23390,145 @@ class AListWhoseEveryParameterAnswersGoneReadOneFirstPageAtATimeAndAnAdBehindNoL
         self.assertEqual(cm.exception.code, 2)
 
 
+class ATechBoardWhoseApiHostRefusesEverythingAndWhoseOfferPageCarriesItsOwnState(unittest.TestCase):
+    """**`startupjobs.py`, 2026-09-14 (#354).** StartupJobs' listing fetches
+    its offers from `back.startupjobs.cz`, whose rules refuse everything in
+    writing — never sent; the offer page on `www.` is server-rendered with
+    the whole offer object in its `__NUXT_DATA__` payload (devalue's flat
+    array, wrappers unwrapped), and the offers sitemap names the ids. No
+    count is stated on a page this client may read: the sitemap is the
+    inventory and the note says so. The record is the object's own fields
+    — company, salary with its `measure` (a period), locations, skills,
+    languages, benefits, the employer's external link never fetched — and
+    the text scrubbed. Mutated (`-B`, detached copy): the refused host
+    guard dropped → the guard case reddens; a wrapper not unwrapped → the
+    ad case reddens; a repeated id counted twice → the sitemap case
+    reddens; the salary period taken as stated without a value → the ad
+    case reddens; the e-mail not scrubbed → the ad case reddens; a gone
+    offer counted as read → the list case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_startupjobs", os.path.join(SCRIPTS, "startupjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _payload(self, offer):
+        # devalue's shape: a flat array; index 0 the root; wrappers as ["Reactive", i]; every value an index
+        arr = []
+
+        def put(v):
+            if isinstance(v, dict):
+                i = len(arr); arr.append(None); arr[i] = {k: put(x) for k, x in v.items()}; return i
+            if isinstance(v, list):
+                i = len(arr); arr.append(None); arr[i] = [put(x) for x in v]; return i
+            i = len(arr); arr.append(v); return i
+        state_i = put({"state": {"$svue-query": {"queries": [
+            {"queryKey": ["catalog", "fields"], "state": {"data": {"@id": "/api/fields", "totalItems": 11}}},
+            {"queryKey": [{"_id": "apiOffersIdGet", "baseUrl": "https://back.startupjobs.cz", "path": {"id": "24290"}}], "state": {"data": "__OFFER__"}},
+        ]}}})
+        # wrap the offer in Reactive/Ref wrappers, as Nuxt does
+        off_i = put(offer)
+        ref_i = len(arr); arr.append(["Ref", off_i])
+        react_i = len(arr); arr.append(["Reactive", ref_i])
+        # patch the placeholder
+        for i, v in enumerate(arr):
+            if v == "__OFFER__":
+                for j, d in enumerate(arr):
+                    if isinstance(d, dict):
+                        for k, x in d.items():
+                            if x == i:
+                                d[k] = react_i
+        return '<html><body><div id="__nuxt">x</div><script type="application/json" id="__NUXT_DATA__" data-ssr="true">' + json.dumps(arr, ensure_ascii=False) + "</script></body></html>"
+
+    def _offer(self, salary=None, external=None):
+        return {"createdAt": "2020-06-22T20:48:14.000Z", "updatedAt": "2026-09-13T14:02:27.000Z", "promotionSince": "2026-09-13T14:02:27.000Z", "exclusive": False,
+                "company": {"name": "Applifting", "slug": "applifting", "type": "start", "logo": "x", "areas": [{"id": 11, "name": {"cs": "Technologie", "en": "Technology"}}], "verified": False},
+                "status": "published", "slug": "fullstack-agentic-engineer", "name": {"cs": "🤖Fullstack Agentic Engineer", "en": "🤖Fullstack Agentic Engineer"},
+                "description": {"cs": "<p>Ahoj 👋</p><p>Piš na jobs@applifting.example nebo volej 777 123 456.</p>", "en": ""}, "shifts": [160], "collaborations": ["hybrid", "onsite", "employment"],
+                "locations": [{"@id": "/api/locations/3", "id": 3, "type": "place", "name": {"cs": "Praha, Česko", "en": "Prague, Czechia"}, "place": {"cs": "Praha", "en": "Prague"}, "region": {"cs": "Hlavní město Praha", "en": "Prague"}, "country": {"cs": "Česko", "en": "Czechia"}}],
+                "salary": salary if salary is not None else {"minimum": 75000, "maximum": 112000, "measure": "monthly", "currency": "CZK"},
+                "benefits": {"cs": [{"id": 1, "name": "13. a 14. plat"}], "en": [{"id": 1, "name": "13th and 14th salary"}]}, "seniorities": ["medior", "senior"],
+                "languages": {"cs": [{"name": "angličtina", "group": 1, "level": 2}], "en": [{"name": "English", "group": 1, "level": 2}]},
+                "skills": [{"name": "JavaScript", "slug": "4", "type": "required", "weight": 2}, {"name": "Kotlin", "slug": "9", "type": "nice-to-have", "weight": 1}],
+                "breadcrumbs": [{"id": 180, "name": {"cs": "Vývoj", "en": "Development"}}], "fieldId": 180, "externalLink": external,
+                "descriptionShort": {"cs": "Ahoj 👋 v Appliftingu hledáme někoho.", "en": ""}}
+
+    def _run(self, mod, served, cmd="sitemap", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"sitemap": mod.cmd_sitemap, "list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    INDEX = '<?xml version="1.0"?><sitemapindex><sitemap><loc>https://www.startupjobs.cz/sitemap/blog.xml</loc></sitemap><sitemap><loc>https://www.startupjobs.cz/sitemap/offers.xml</loc></sitemap></sitemapindex>'
+    OFFERS = ('<?xml version="1.0"?><urlset><url><loc>https://www.startupjobs.cz/nabidka/21242/customer-care-chat-and-mail</loc></url><url><loc>https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer</loc></url>'
+              '<url><loc>https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer-again</loc></url><url><loc>https://www.startupjobs.cz/firma/applifting</loc></url><url><loc>https://www.startupjobs.cz/nabidka/36746/linux-server-administrator</loc></url></urlset>')
+
+    def test_the_sitemap_is_the_inventory_and_no_count_is_claimed(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS)])
+        self.assertEqual(asked, ["https://www.startupjobs.cz/sitemap_index.xml", "https://www.startupjobs.cz/sitemap/offers.xml"])
+        self.assertEqual([(r["id"], r["slug"]) for r in rows], [("21242", "customer-care-chat-and-mail"), ("24290", "fullstack-agentic-engineer"), ("36746", "linux-server-administrator")])
+        self.assertEqual((rows[1]["url"], rows[1]["ledger_id"], rows[1]["country"], rows[1]["contacts_withheld"]), ("https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer", "startupjobs:24290", "CZ", True))
+        self.assertIn("3 offer id(s) in the offers sitemap (1 other rows set aside) — the site states no count on a page this client may read (its count is on back.startupjobs.cz, refused in writing): the sitemap is the inventory, not the site's statement.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS)], limit=1)
+        self.assertEqual((len(rows), "1 emitted of the 3 — bounded by --limit." in err), (1, True))
+
+    def test_the_list_reads_each_offer_from_its_page_and_a_gone_one_is_counted_gone(self):
+        import contextlib
+        mod = self._mod()
+        page = self._payload(self._offer())
+        rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS), (200, page), (404, ""), (200, page)], cmd="list")
+        self.assertEqual(asked[2:], ["https://www.startupjobs.cz/nabidka/21242/customer-care-chat-and-mail", "https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer", "https://www.startupjobs.cz/nabidka/36746/linux-server-administrator"])
+        self.assertEqual([r["id"] for r in rows], ["21242", "36746"])
+        self.assertIn("2 offer(s) read from their pages, 1 gone since the sitemap, of the 3 the offers sitemap names — 3 read by request (--limit), not a shortfall; the site states no count this client may read.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS), (200, page)], cmd="list", limit=1)
+        self.assertEqual((len(asked), len(rows)), (3, 1))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.INDEX), (200, self.OFFERS), (200, "<html><body>no state</body></html>")], cmd="list", limit=1)
+        self.assertEqual(cm.exception.code, 6)
+        # the refused host: never sent, and refused before the rules are even asked
+        mod = self._mod()
+        mod.robots_allowed = lambda host, path, agents=None: {"allowed": True, "reason": "stub"}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.gate("https://back.startupjobs.cz/api/offers/24290")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_own_state_unwrapped_and_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        page = self._payload(self._offer(external="https://applifting.example/jobs/24290"))
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer")
+        self.assertEqual(asked, ["https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["employer"], r["employer_slug"], r["employer_type"], r["employer_areas"], r["field"], r["collaborations"], r["shifts_hours_month"], r["seniorities"], r["status"], r["created"], r["updated"], r["promoted_since"], r["external_link"], r["contacts_withheld"], r["language"]),
+                         ("24290", "🤖Fullstack Agentic Engineer", "Applifting", "applifting", "start", ["Technologie"], "Vývoj", ["hybrid", "onsite", "employment"], [160], ["medior", "senior"], "published", "2020-06-22", "2026-09-13", "2026-09-13", "https://applifting.example/jobs/24290", True, "cs"))
+        self.assertEqual(r["locations"], [{"name": "Praha, Česko", "place": "Praha", "region": "Hlavní město Praha", "country": "Česko", "type": "place"}])
+        self.assertEqual((r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit"], r["salary_unit_stated"]), (75000, 112000, "CZK", "monthly", True))
+        self.assertEqual((r["skills"], r["languages"], r["benefits"]), ([{"name": "JavaScript", "type": "required"}, {"name": "Kotlin", "type": "nice-to-have"}], [{"name": "angličtina", "level": 2}], ["13. a 14. plat"]))
+        self.assertEqual((r["summary"], r["description"]), ("Ahoj 👋 v Appliftingu hledáme někoho.", "Ahoj 👋\nPiš na [e-mail withheld] nebo volej [telephone withheld]."))
+        for secret in ("applifting.example/", "jobs@", "777 123 456"):
+            self.assertIn(secret, raw) if secret == "applifting.example/" else self.assertNotIn(secret, raw)   # the employer's own page is a link, not a contact
+        rows, err, asked, raw = self._run(mod, [(200, self._payload(self._offer(salary={"minimum": None, "maximum": None, "measure": "monthly", "currency": "CZK"})))], cmd="ad", url="https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer")
+        self.assertEqual((rows[0]["salary_min"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"]), (None, "monthly", False))   # a period without a figure is not a stated salary
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.startupjobs.cz/nabidka/1/x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.startupjobs.cz/firma/applifting")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
