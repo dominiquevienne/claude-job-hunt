@@ -24530,5 +24530,135 @@ class AStaffingFrontThatNamesUsInItsRulesWhoseListingStateIsTheWitnessAndWhoseRe
         self.assertEqual(cm.exception.code, 2)
 
 
+class ANordicAgencyWhoseListingStatesItsCountButPagesByAServerActionAndWhoseAdShipsItsObjectInFlightData(unittest.TestCase):
+    """**`academicwork.py`, 2026-09-14 (#370).** Academic Work Norway's listing is
+    a React Server Components page that states «40 treff» and the pager's
+    `totalItems` in its flight data, but pages by a server action — so the
+    sitemap's `/ledige-stillinger/j/<slug>/<id>` rows are the inventory and
+    each ad page is read for the `advert` object its flight data ships, whose
+    long texts are `$<id>` references to `T<hex>,` chunks (a byte length).
+    **`owningCm` — the consultant's name and e-mail — is on every advert and
+    never emitted**; texts scrubbed; `/api/` refused before the gate.
+    Mutated (`-B`, detached copy): `totalItems` not read → the walk case
+    reddens (exit 6 on a good page); the text reference not resolved → the
+    walk case reddens; the chunk length read in characters → the walk case
+    reddens (a multibyte text); `owningCm` emitted → the walk case reddens;
+    the text not scrubbed → the ad case reddens; the `/api/` guard dropped →
+    the guard case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_academicwork", os.path.join(SCRIPTS, "academicwork.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _push(*chunks):
+        """Flight chunks as the page ships them — `<id>:<payload>` lines, a `T` chunk with its byte length, each pushed as a JS string literal."""
+        out = []
+        for cid, payload in chunks:
+            if isinstance(payload, bytes):
+                line = cid + ":T" + format(len(payload), "x") + "," + payload.decode("utf-8")
+            else:
+                line = cid + ":" + payload + "\n"
+            out.append('<script>self.__next_f.push([1,' + json.dumps(line, ensure_ascii=False) + '])</script>')
+        return "<html><body>" + "".join(out) + "</body></html>"
+
+    def _advert(self, oid, slug, title, jt=("recruitment", "Rekruttering"), company="Sonitor Technologies AS", show=True, lead="Vår teknologi er avgjørende."):
+        return {"advertId": "0ab4cbaf-" + oid, "shortAdvertId": oid, "country": "NO", "language": "nb", "publishTimestamp": "2026-09-07T13:35:55.290Z", "unpublishTimestamp": "2027-03-07T00:00:00.000Z", "published": True,
+                "advertTitle": title, "startDate": "2026-09-01T21:59:59.999Z", "startDateDescription": "Snarest, etter avtale", "slug": slug, "url": f"/ledige-stillinger/j/{slug}/{oid}", "absoluteUrl": f"https://www.academicwork.no/ledige-stillinger/j/{slug}/{oid}", "externalApplicationUrl": None,
+                "locations": [{"id": "x", "city": "Oslo", "country": "NO", "coordinates": {"lat": 59.91, "lon": 10.64}}], "locationCity": "Lysaker",
+                "businessArea": {"id": "b", "label": "Teknologi"}, "jobCategory": {"id": "c", "label": "Elektroteknikk"}, "role": {"id": "r", "label": "Elektronikkdesigner"}, "jobTags": [], "jobType": {"id": jt[0], "label": jt[1]}, "workExtent": {"id": "fullTime", "label": "Fulltid"}, "isAcademyAdvert": False,
+                "summary": {"companyName": {"title": "Selskap", "text": company}, "locationCity": {"title": "By", "text": "Lysaker"}, "startDate": {"title": "Start dato", "text": "Snarest, etter avtale"}, "workExtent": {"title": "Omfang", "text": "Fulltid, 100%"}, "jobType": {"title": "Type stilling", "text": jt[1]}, "other": {"title": "Andre", "text": "Mulighet for å jobbe hybrid"}, "greenJob": None},
+                "showInfoBox": True, "showCompanyName": show, "companyName": company, "companySiteUrl": "https://sonitor.com", "companyLogoUrl": "https://awlogo.example/x.jpeg", "isFallbackCompanyLogo": False,
+                "advertText": {"leadIn": lead, "yourNewWorkplace": {"title": "Om stillingen", "text": "$37"}, "workTasks": {"title": "Arbeidsoppgaver", "text": "Bygge bro mellom utvikling og produksjon."}, "requirements": {"title": "Vi søker deg som", "text": "$38"}, "clientInformation": {"title": company, "text": "Grunnlagt i Oslo i 1997."}},
+                "owningCm": {"employeeRef": 98713944, "name": "Kari Nordmann-Secret", "email": "kari.nordmann@academicwork.example"}}
+
+    def _ad_page(self, ad, workplace="Sonitor utvikler sanntids lokaliseringssystemer (RTLS) – ultralyd og radio.", reqs="- Høyere utdannelse innen elektronikk\n- Spørsmål: kari.nordmann@academicwork.example, tlf 902 94 240"):
+        header = '["$","$L36",null,{"advert":' + json.dumps(ad, ensure_ascii=False) + ',"ref":null}]'
+        return self._push(("37", workplace.encode("utf-8")), ("38", reqs.encode("utf-8")), ("b", header))
+
+    def _listing(self, total, n_cards=10):
+        return self._push(("33", '["$","span",null,{"children":"' + str(total) + ' treff"}],["$","$L4e",null,{"currentPage":1,"pageSize":10,"totalItems":' + str(total) + ',"setPage":"$h4f"}]'))
+
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><loc>https://www.academicwork.no/auth/sign-in</loc><lastmod>2025-12-30</lastmod></url>'
+               '<url><loc>https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7</loc><lastmod>2026-09-07</lastmod></url>'
+               '<url><loc>https://www.academicwork.no/artikler/jobbsoker/cv-tips</loc><lastmod>2026-01-01</lastmod></url>'
+               '<url><loc>https://www.academicwork.no/ledige-stillinger/j/ready-for-a-temporary-assignment/QGJSIS</loc><lastmod>2026-09-11</lastmod></url>'
+               '<url><loc>https://www.academicwork.no/ledige-stillinger/j/servicetekniker/UEV7UW</loc></url></urlset>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(host=None, limit=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_stated_count_the_sitemaps_inventory_and_the_flight_objects(self):
+        import contextlib
+        mod = self._mod()
+        a1 = self._advert("TGU2N7", "elektronikkingenir-til-sonitor", "Elektronikkingeniør til Sonitor Technologies")
+        a2 = self._advert("UEV7UW", "servicetekniker", "Er du Falkenbergs nye servicetekniker?", jt=("staffing", "Bemanning"), company="Hidden AS", show=False)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing(3)), (200, self.SITEMAP), (200, self._ad_page(a1)), (404, ""), (200, self._ad_page(a2))])
+        self.assertEqual(asked, ["https://www.academicwork.no/ledige-stillinger", "https://www.academicwork.no/sitemap.xml", "https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7", "https://www.academicwork.no/ledige-stillinger/j/ready-for-a-temporary-assignment/QGJSIS", "https://www.academicwork.no/ledige-stillinger/j/servicetekniker/UEV7UW"])
+        self.assertEqual([r["id"] for r in rows], ["TGU2N7", "UEV7UW"])   # the sitemap's order; QGJSIS gone
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["agency"], a["job_type"], a["job_type_id"], a["employer_is_the_agency"], a["place"], a["locations"], a["business_area"], a["category"], a["role"], a["work_extent"], a["work_extent_text"], a["start_date"], a["start_text"], a["other"], a["is_academy"], a["posted"], a["valid_through"], a["language"], a["lastmod"], a["contacts_withheld"]),
+                         ("academicwork-no", "NO", "academicwork-no:TGU2N7", "https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7", "Elektronikkingeniør til Sonitor Technologies", "Sonitor Technologies AS", "Academic Work", "Rekruttering", "recruitment", False, "Lysaker", [{"city": "Oslo", "country": "NO", "lat": 59.91, "lon": 10.64}], "Teknologi", "Elektroteknikk", "Elektronikkdesigner", "Fulltid", "Fulltid, 100%", "2026-09-01", "Snarest, etter avtale", "Mulighet for å jobbe hybrid", False, "2026-09-07", "2027-03-07", "nb", "2026-09-07", True))
+        self.assertEqual(a["about_the_job"], "Sonitor utvikler sanntids lokaliseringssystemer (RTLS) – ultralyd og radio.")   # a `$37` reference, a multibyte chunk read by its byte length
+        self.assertEqual(a["requirements"], "- Høyere utdannelse innen elektronikk\n- Spørsmål: [e-mail withheld], tlf [telephone withheld]")
+        self.assertEqual((a["tasks"], a["about_the_company"], a["lead_in"]), ("Bygge bro mellom utvikling og produksjon.", "Grunnlagt i Oslo i 1997.", "Vår teknologi er avgjørende."))
+        self.assertEqual((rows[1]["company"], rows[1]["employer_is_the_agency"], rows[1]["job_type"]), (None, True, "Bemanning"))   # the client hidden when the site hides it
+        self.assertNotIn("salary_min", a)   # no salary field on this board
+        for secret in ("Nordmann", "academicwork.example", "employeeRef", "owningCm", "902 94 240"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("2 emitted (3 in the sitemap, 1 gone), the site states 3 — 1 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing(3)), (200, self.SITEMAP), (200, self._ad_page(a1)), (200, self._ad_page(a2))], limit=2)
+        self.assertEqual((len(asked), len(rows)), (4, 2))
+        self.assertIn("2 emitted of the 3 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._push(("33", '["$","span",null,{"children":"Ledige stillinger"}]')))])
+        self.assertEqual(cm.exception.code, 6)   # a 200 without the count is a changed template, never an empty market
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], cmd="sitemap")
+        self.assertEqual(([r["id"] for r in rows], rows[0]["lastmod"], rows[2]["lastmod"]), (["TGU2N7", "QGJSIS", "UEV7UW"], "2026-09-07", None))
+        self.assertIn("3 job row(s) in www.academicwork.no's sitemap (2 other rows set aside", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], host="www.academicwork.se")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.academicwork.no/api/adverts")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_own_object_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        a1 = self._advert("TGU2N7", "elektronikkingenir-til-sonitor", "Elektronikkingeniør til Sonitor Technologies", lead="Skriv til kari.nordmann@academicwork.example eller ring +47 902 94 240.")
+        rows, err, asked, raw = self._run(mod, [(200, self._ad_page(a1))], cmd="ad", url="https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7")
+        self.assertEqual(asked, ["https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7"])
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["lead_in"]), ("TGU2N7", "Elektronikkingeniør til Sonitor Technologies", "Skriv til [e-mail withheld] eller ring [telephone withheld]."))
+        self.assertNotIn("Nordmann", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no flight</body></html>")], cmd="ad", url="https://www.academicwork.no/ledige-stillinger/j/elektronikkingenir-til-sonitor/TGU2N7")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.academicwork.no/auth/sign-in")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
