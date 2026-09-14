@@ -1,12 +1,13 @@
 # Board adapter — JobGuinée Pro (Guinea): reopened by the 2026-09-07 doctrine, and the transport refuses the client with a static 403
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.jobguinee-pro.com, jobguinee-pro.com -->
 <!-- script: none -->
 <!-- countries: GN -->
 <!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 10:55 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- witness: the site's own «493 offres d'emploi disponibles en Guinée» and «Affichage de 1–20 sur 493 offres» on `/jobs`, read from a connected tab (no challenge, 2026-09-14 10:59–11:02 UTC); the home's category counts («42 offres», «15 offres» …); 20 cards a page, the pager a client control (no `?page=` address); nothing is served to the declared client (403, 25 B, the provider default) · 2026-09-14 -->
+<!-- route: browser · 493 · 2026-09-14 -->
 
 **Measured 2026-09-12 at 10:55:06Z UTC for #233, lot 2 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -64,3 +65,19 @@ adapter, and that is the pilot's to assign.
   verdict copied from a sibling**: two members of this very lot answer a
   challenge where the other five answer the static default, under one and the
   same rules file.
+
+## 2026-09-14 10:59–11:02 UTC — served to a connected tab
+
+```
+tab, /                      served — the home (jobguinee-pro.com without www), category counts («42 offres», «15 offres» …), /offres, /jobs
+tab, /offres                served — a hub page (no cards)
+tab, /jobs                  served — «493 offres d'emploi disponibles en Guinée», «Affichage de 1–20 sur 493 offres», the town facets (Conakry's communes among them), sort by relevance / newest / most viewed / salary; 20 cards a page, the pager a client control
+```
+
+**`route: browser · 493 · 2026-09-14`** — the list's own count. What a
+session does from a tab: `/jobs`, the pager clicked to the end (no
+address per page), the card's link as the key, the ad page for the text.
+No script: the declared client gets the provider's 25-byte 403 (#404).
+Guinea's other board, EmploiGuinée, is `route: browser · 57` the same
+day.
+
