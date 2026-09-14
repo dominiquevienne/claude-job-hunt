@@ -18799,6 +18799,141 @@ class AClassifiedsListWhereTheSectionAndTheListStateTwoNumbersAndTheListsIsCompa
         self.assertEqual(cm.exception.code, 3)
 
 
+class ATwelveCardListWhereTheBadgesAreNamedByTheirClassAndTheDatesMixTwoLanguages(unittest.TestCase):
+    """**`boliviatrabajo.py`, 2026-09-14 (#431).** `list` walks
+    `/ofertas?q=&page=<p>` twelve cards a page to the «N ofertas
+    publicadas» the list states (the pager's last link stops it when the
+    count is not reached), dedups on the id, exits 6 on a gap, says
+    «bounded» when bounded. A card's badges are category / contract /
+    salary named by their class — a card without a contract shows the
+    salary second and must not be read as a contract. Dates «12 Sep 2026»
+    and «01 Aug 2026» (Spanish and English abbreviations on the same
+    list) go ISO. `ad` reads the JobPosting with its `baseSalary` currency
+    and withholds addresses and phones. Mutated (`-B`, detached copy): the
+    dedup dropped → the walk case reddens (page 2 repeats one id); the
+    gap exit removed → the short case reddens; the badge key read by
+    position → the walk case reddens (the fixture's second card has no
+    contract); the English months dropped → the walk case reddens («01
+    Aug 2026» stays text); EMAIL_RE neutralised → the ad case reddens;
+    the currency dropped from the record → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_boliviatrabajo", os.path.join(SCRIPTS, "boliviatrabajo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, contract=True, date="12 Sep 2026"):
+        c = '<span class="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-slate-100 dark:bg-slate-800 text-slate-600">Full Time</span>' if contract else ""
+        return (f'<article class="bg-white"><span class="w-[52px]">A</span><div class="min-w-0"><div class="flex flex-wrap gap-1.5 mb-2">'
+                f'<span class="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-bg-blue-soft text-primary">Informática</span>{c}'
+                f'<span class="text-xs font-semibold px-2.5 py-1 rounded-[6px] bg-accent/10 text-accent-dark">3.300 Bs.</span></div>'
+                f'<h3 class="font-display"><a class="text-slate-900" href="oferta/{i}-puesto-{i}">Puesto {i}</a></h3>'
+                f'<div class="text-sm text-slate-500 dark:text-slate-500">ACME {i} · La Paz  · Publicado: {date}</div></div><a href="oferta/{i}-puesto-{i}">Postular ahora</a></article>')
+
+    @classmethod
+    def _page(cls, ids, stated, last):
+        cards = "".join(cls._card(i, contract=(i != 2), date=("01 Aug 2026" if i == 3 else "12 Sep 2026")) for i in ids)
+        pager = "".join(f'<a href="ofertas?q=&amp;page={p}">{p}</a>' for p in range(2, last + 1))
+        return f'<html><body><p>{stated:,} ofertas publicadas en Bolivia</p>{cards}<nav>{pager}</nav></body></html>'.replace(",", ".")
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(q="", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_count_reads_the_badges_by_class_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {"https://trabajo.info.bo/ofertas?q=&page=1": (200, self._page(range(1, 13), 23, 2)),
+              "https://trabajo.info.bo/ofertas?q=&page=2": (200, self._page([12] + list(range(13, 24)), 23, 2))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 23)
+        self.assertEqual(len({r["id"] for r in rows}), 23)
+        self.assertIn("23 emitted over 2 page(s), site states 23 (all) — equal", err)
+        self.assertEqual(asked, ["https://trabajo.info.bo/ofertas?q=&page=1", "https://trabajo.info.bo/ofertas?q=&page=2"])
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["location"], "La Paz")
+        self.assertEqual(rows[0]["category"], "Informática")
+        self.assertEqual(rows[0]["contract"], "Full Time")
+        self.assertEqual(rows[0]["salary_text"], "3.300 Bs.")
+        self.assertEqual(rows[0]["posted"], "2026-09-12")
+        self.assertIsNone(rows[1]["contract"])              # the second card has no contract badge…
+        self.assertEqual(rows[1]["salary_text"], "3.300 Bs.")   # …and its salary is still the salary
+        self.assertEqual(rows[2]["posted"], "2026-08-01")   # «01 Aug 2026», the English abbreviation, goes ISO too
+        self.assertEqual(rows[0]["url"], "https://trabajo.info.bo/oferta/1-puesto-1")
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {"https://trabajo.info.bo/ofertas?q=&page=1": (200, self._page(range(1, 13), 40, 4)),
+              "https://trabajo.info.bo/ofertas?q=&page=2": (200, self._page([], 40, 4))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 12)
+        self.assertIn("12 emitted over 2 page(s), site states 40 (all) — 28 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        fx = {"https://trabajo.info.bo/ofertas?q=&page=1": (200, self._page(range(1, 13), 40, 4))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 12)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_the_ad_reads_the_job_posting_with_its_currency_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        ld = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Puesto 7", "identifier": {"@type": "PropertyValue", "value": "7"},
+              "datePosted": "2026-09-12T16:28:18", "validThrough": "2026-09-30T12:27:00",
+              "description": "Requisitos.\nEnviar CV a rrhh@acme.bo o al 75200077 / +591 2 2441234.",
+              "hiringOrganization": {"@type": "Organization", "name": "ACME 7"},
+              "jobLocation": {"@type": "Place", "address": {"addressLocality": "La Paz ", "addressRegion": "Nacional", "streetAddress": "Calle 1"}},
+              "employmentType": "CONTRACTOR", "baseSalary": {"@type": "MonetaryAmount", "currency": "BOB", "value": {"@type": "QuantitativeValue", "minValue": 5500, "maxValue": 6000, "unitText": "MONTH"}}}
+        body = ('<html><body><script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script>'
+                '<dt>Modalidad</dt><dd>Presencial</dd><dt>Salario</dt><dd>5.500 - 6.000 Bs.</dd></body></html>')
+        url = "https://trabajo.info.bo/oferta/7-puesto-7"
+        fx = {url: (200, body), "https://www.trabajo.info.bo/oferta/9-x": (200, "<html><body>nada</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["employer"], "ACME 7")
+        self.assertEqual(r["location"], "La Paz")
+        self.assertEqual(r["posted"], "2026-09-12")
+        self.assertEqual(r["valid_through"], "2026-09-30")
+        self.assertEqual((r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit"]), (5500, 6000, "BOB", "MONTH"))
+        self.assertEqual(r["salary_text"], "5.500 - 6.000 Bs.")
+        self.assertEqual(r["modality"], "Presencial")
+        self.assertNotIn("@", text)
+        self.assertNotIn("75200077", text)
+        self.assertNotIn("2441234", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://www.trabajo.info.bo/oferta/9-x"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
