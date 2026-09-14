@@ -18935,6 +18935,137 @@ class ATwelveCardListWhereTheBadgesAreNamedByTheirClassAndTheDatesMixTwoLanguage
         self.assertEqual(cm.exception.code, 3)
 
 
+class AClassifiedsWhereBuscoIsTheOfferAndInvisibleWatermarksAreStripped(unittest.TestCase):
+    """**`clasipar.py`, 2026-09-14 (#434).** The category page states
+    «Búsqueda y postulación de Empleos (N)» — the witness; the list mixes
+    «Busco» (an employer looking) and «Ofrezco» (a worker offering), the
+    default emits «Busco» only and says how many were passed over, and
+    the walk compares ALL rows read to the category's count. Titles and
+    descriptions carry spans styled `font-size:0` («Fuente del anuncio:
+    <url>») — stripped before any text is read. Ids are deduplicated; a
+    gap exits 6; a bounded walk says so. `ad` reads the details, the
+    price as text, the description, and withholds addresses and phones.
+    Mutated (`-B`, detached copy): the dedup dropped → the walk case
+    reddens (page 2 repeats one id); the gap exit removed → the short
+    case reddens; the mode filter dropped → the walk case reddens
+    («Ofrezco» rows emitted); the watermark strip dropped → the walk case
+    reddens («Fuente del anuncio» in a title); the category regex
+    neutralised → the walk case reddens; EMAIL_RE neutralised → the ad
+    case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_clasipar", os.path.join(SCRIPTS, "clasipar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    WM = '<span style="font-size:0 !important;" class="7bg3rowwe"> Fuente del anuncio:https://clasipar.paraguay.com/x </span>'
+
+    @classmethod
+    def _card(cls, i, mode="Busco"):
+        u = f"https://clasipar.paraguay.com/empleos/ventas/puesto-{i}-{i}"
+        return (f'<article class="box-anuncio"><figure><a href="{u}"><img></a></figure><div class="box-anuncio__descripcion"><h2><a href="{u}" class="titAnuncio" title="Puesto {i}">Puesto {cls.WM}{i}</a></h2>'
+                f'<p class="price">Gs. 3.000.000</p><h6><span><strong>{mode}</strong> | Ofrecido por: <strong>Particular</strong> | </span><a href="https://clasipar.paraguay.com/empleos/ventas/localidad:asuncion-1" title="Ventas en Asunción"> Ventas en Asunción </a></h6></div></article>')
+
+    @classmethod
+    def _page(cls, ids, last):
+        cards = "".join(cls._card(i, mode=("Ofrezco" if i % 3 == 0 else "Busco")) for i in ids)
+        pager = "".join(f'<li><a href="javascript:;" onclick="ads_list({p})" data-page="{p}">{p}</a></li>' for p in range(1, last + 1))
+        return f'<html><body><span>Empleos (900)</span>{cards}<ul class="pagination">{pager}</ul></body></html>'
+
+    CAT = '<html><body><span>Empleos (1.248)</span><h2 class="tit-2">Búsqueda y postulación de Empleos&nbsp;<small>(48)</small></h2></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(mode="busco", sub="", pages=None, all=False, passes=1, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reads_to_the_categorys_count_emits_busco_only_and_strips_the_watermark(self):
+        mod = self._mod()
+        fx = {"https://clasipar.paraguay.com/categorias/empleos": (200, self.CAT),
+              "https://clasipar.paraguay.com/empleos": (200, self._page(range(1, 26), 2)),
+              "https://clasipar.paraguay.com/empleos/page-2": (200, self._page([25] + list(range(26, 49)), 2))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 32)   # 48 read, the 16 multiples of three are «Ofrezco»
+        self.assertTrue(all(r["mode"] == "busco" for r in rows))
+        self.assertIn("48 read over 2 page(s), category states 48 (32 «busco» emitted, 16 «ofrezco» passed over) — equal", err)
+        self.assertIn("the menu says «Empleos (1 248)» on the category page and «Empleos (900)» on the list", err)
+        self.assertEqual(asked[:2], ["https://clasipar.paraguay.com/categorias/empleos", "https://clasipar.paraguay.com/empleos"])
+        self.assertEqual(rows[0]["title"], "Puesto 1")   # the watermark span is gone
+        self.assertNotIn("Fuente del anuncio", json.dumps(rows, ensure_ascii=False))
+        self.assertEqual(rows[0]["location"], "Asunción")
+        self.assertEqual(rows[0]["price_text"], "Gs. 3.000.000")
+        self.assertEqual(rows[0]["offered_by"], "Particular")
+
+    def test_a_walk_short_of_the_categorys_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {"https://clasipar.paraguay.com/categorias/empleos": (200, self.CAT),
+              "https://clasipar.paraguay.com/empleos": (200, self._page(range(1, 26), 3)),
+              "https://clasipar.paraguay.com/empleos/page-2": (200, self._page([], 3))}
+        code, rows, err, _ = self._run(mod, fx, all=True, mode="all")
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 25)
+        self.assertIn("25 read over 2 page(s), category states 48 — 23 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        fx = {"https://clasipar.paraguay.com/categorias/empleos": (200, self.CAT),
+              "https://clasipar.paraguay.com/empleos": (200, self._page(range(1, 26), 3))}
+        code, rows, err, asked = self._run(mod, fx, pages=1, mode="all")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 25)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 2)
+
+    def test_the_ad_reads_the_details_and_the_description_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        body = ('<html><body><h2 class="tit-detalle">Detalle de:<span>' + self.WM + 'BUSCAMOS CAJERO</span></h2>'
+                '<p class="desc-user">' + self.WM + 'Se busca cajero.<br /> Enviar CV a rrhh@acme.com.py o llamar al 0981 123 456.' + self.WM + '</p>'
+                '<h3 class="user-price">Gs. 4.200.000</h3><h6><strong>BUSCO</strong></h6>'
+                '<div class="grid anuncio-detalles"><div><span>Ciudad:</span> <h6>Asunción</h6></div><div><span>Nro. de Anuncio:</span> <h6>77</h6></div>'
+                '<div><span>Zona</span> <h6>Barrio Gral Diaz</h6></div><div><span>Publicado el:</span> <h6>12/09/2026</h6></div></div></body></html>')
+        url = "https://clasipar.paraguay.com/empleos/administracion/buscamos-cajero-77"
+        fx = {url: (200, body), "https://clasipar.paraguay.com/empleos/ventas/x-9": (200, "<html><body>nada</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["title"], "BUSCAMOS CAJERO")
+        self.assertEqual(r["mode"], "busco")
+        self.assertEqual(r["location"], "Asunción")
+        self.assertEqual(r["zone"], "Barrio Gral Diaz")
+        self.assertEqual(r["posted"], "2026-09-12")
+        self.assertEqual(r["price_text"], "Gs. 4.200.000")
+        self.assertNotIn("Fuente del anuncio", text)
+        self.assertNotIn("@", text)
+        self.assertNotIn("123 456", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://clasipar.paraguay.com/empleos/ventas/x-9"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
