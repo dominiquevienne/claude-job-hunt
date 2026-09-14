@@ -19317,6 +19317,138 @@ class AOnePageBoardWhereTheMenuBadgeStatesTheCountAndPlacesAreRenderedTwice(unit
         self.assertEqual(cm.exception.code, 3)
 
 
+class ALoaderPagedUntilEmptyWhereTheSitemapIsTheSitesFigureAndABannerSitsBetweenCards(unittest.TestCase):
+    """**`toptalent.py`, 2026-09-14 (#388).** `list` reads the sitemap's ad
+    count first (six-digit ids only — a slug ending in a year is an
+    article), posts the list's own loader page after page until it
+    answers nothing, dedups on the id, compares and exits 6 on a gap; a
+    bounded walk says so; a «build your CV» banner between two cards
+    does not swallow the card after it. `ad` reads the page's fields
+    and withholds the recruiter's address at the end of the body.
+    Mutated (`-B`, detached copy): the dedup dropped → the walk case
+    reddens (page 2 repeats one id); the gap exit removed → the short
+    case reddens; the sitemap id pattern widened to four digits → the
+    walk case reddens (an article counted); the banner boundary dropped
+    from the card pattern → the walk case reddens (a card lost); EMAIL_RE
+    neutralised → the ad case reddens; the double decoding dropped → the
+    ad case reddens («&amp;ouml;» stays)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_toptalent", os.path.join(SCRIPTS, "toptalent.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i):
+        return (f'<a href="/acme-pozisyon-{i}-12{i:04d}" class="position">\n<div class="row"><div class="col-9"><div class="card-body"><h5 class="card-title f-16">Pozisyon {i}</h5>'
+                f'<p class="card-text">\n ACME {i}\n <span class="text-grey-l f-12 pl-3">Ankara</span>\n</p><span class=\'ml-5 badge-circle-green\'>Son {i} Gün</span></div></div></div>\n</a>\n')
+
+    BANNER = '<div class="row">\n<div class="col-md-12"><h3>Hazır CV örnekleri</h3><a href="/cv-hazirlama" class="btn">Hemen CV Oluştur</a></div></div>\n'
+
+    @classmethod
+    def _page(cls, ids):
+        ids = list(ids)
+        out = ""
+        for n, i in enumerate(ids):
+            out += cls._card(i)
+            if n == 1:
+                out += cls.BANNER   # the site's banner after the second card
+        return out
+
+    @staticmethod
+    def _sitemap(ids, extra=()):
+        return ('<?xml version="1.0"?><urlset>' + "".join(f"<url><loc>https://toptalent.co/acme-pozisyon-{i}-12{i:04d}</loc></url>" for i in ids)
+                + "".join(f"<url><loc>https://toptalent.co/{e}</loc></url>" for e in extra) + "</urlset>")
+
+    SM = "https://toptalent.co/sitemap.xml"
+    L = "https://toptalent.co/Job/SearchJob"
+
+    def _run(self, mod, fixtures, sitemap, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url, payload=None):
+            asked.append((url, payload["PageNumber"] if payload else None))
+            if url == self.SM:
+                return (200, sitemap)
+            return (200, fixtures.get(payload["PageNumber"], "\n    \n"))
+        mod.request = fake
+        a = argparse.Namespace(q="", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_sitemaps_count_past_the_banner_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        pages = {1: self._page(range(1, 10)), 2: self._page([9] + list(range(10, 18)))}
+        code, rows, err, asked = self._run(mod, pages, self._sitemap(range(1, 18), extra=["dunyanin-en-guclu-100-kadini-2023", "top100-2019"]), all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 17)   # the two articles in the sitemap are not ads
+        self.assertEqual(len({r["id"] for r in rows}), 17)
+        self.assertIn("17 emitted over 2 page(s), sitemap lists 17 — equal", err)
+        self.assertEqual([p for u, p in asked], [None, 1, 2, 3])   # the sitemap, then pages until the empty one
+        self.assertEqual(rows[2]["title"], "Pozisyon 3")   # the card after the banner
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["location"], "Ankara")
+        self.assertEqual(rows[0]["badge"], "Son 1 Gün")
+        self.assertEqual(rows[0]["url"], "https://toptalent.co/acme-pozisyon-1-120001")
+
+    def test_a_walk_short_of_the_sitemaps_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, {1: self._page(range(1, 10))}, self._sitemap(range(1, 30)), all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 9)
+        self.assertIn("9 emitted over 1 page(s), sitemap lists 29 — 20 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        code, rows, err, asked = self._run(mod, {1: self._page(range(1, 10)), 2: self._page(range(10, 19))}, self._sitemap(range(1, 30)), pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 9)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 2)
+
+    def test_the_ad_reads_the_fields_decodes_twice_and_withholds_the_address(self):
+        mod = self._mod()
+        import contextlib
+        body = ('<html><head><title>Toptalent.co | AI Video Prod&#252;ksiyon Stajyeri - FISS</title></head><body>'
+                '<h5 class="fw-600 f-16">Departman</h5><p>\n • Dijital<br>\n</p><h5 class="fw-600 f-16 mt-3">Lokasyon</h5><p>\n T&#252;m T&#252;rkiye<br>\n</p>'
+                '<h5 class="fw-600 f-16">Kimler Başvurabilir?</h5><input type="button" value="4. Sınıf" /><input type="button" value="Hazırlık" /></div>'
+                "<span class='badge-circle-green'>Son 40 Gün</span>"
+                '<div class="col-12 job-content"><style>.x{}</style><p>FISS, kilo y&amp;ouml;netimi s&amp;uuml;recinde.</p><p>Başvuru: contact@fissmethod.com veya 0532 123 45 67.</p></div></div></div></body></html>')
+        url = "https://toptalent.co/fiss-ai-video-produksiyon-stajyeri-121756"
+        fx = {url: (200, body), "https://toptalent.co/x-999999": (200, "<html><body>yok</body></html>")}
+        mod.request = lambda u, payload=None: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["title"], "AI Video Prodüksiyon Stajyeri")
+        self.assertEqual(r["employer"], "FISS")
+        self.assertEqual(r["department"], "Dijital")
+        self.assertEqual(r["location"], "Tüm Türkiye")
+        self.assertEqual(r["who_may_apply"], ["4. Sınıf", "Hazırlık"])
+        self.assertEqual(r["badge"], "Son 40 Gün")
+        self.assertIn("kilo yönetimi sürecinde", r["description"])   # decoded twice
+        self.assertNotIn("@", text)
+        self.assertNotIn("123 45 67", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://toptalent.co/x-999999"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
