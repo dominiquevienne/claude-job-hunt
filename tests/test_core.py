@@ -18518,6 +18518,152 @@ class ARegionalListPagedThroughItsOwnSessionLoaderWhereThePageCountIsTheWitness(
         self.assertEqual(cm.exception.code, 3)
 
 
+class AListPagedAtTheRootWhereThreeNumbersAreStatedAndOneIsTheListsOwn(unittest.TestCase):
+    """**`hondutrabajos.py`, 2026-09-14 (#438).** The front page states
+    three numbers («+4,017 ofertas laborales activas», a stat box, a
+    hand-written «Más de 115 vacantes activas»); the witness is the
+    list's own «+N ofertas laborales activas», printed beside the emitted
+    count; the banner is printed, not compared. `list` walks `/?page=<p>`
+    twelve cards a page to the count or to the pager's last page, dedups
+    on the URL's key (the same key the ad page yields — one ledger id for
+    both), exits 6 on a gap, says «bounded» when bounded. `ad` reads the
+    page's JobPosting and the «DATOS TÉCNICOS» block, withholds the
+    recruiter's address the description ends with. Mutated (`-B`,
+    detached copy): the dedup dropped → the walk case reddens (page 2
+    repeats one key); the gap exit removed → the short case reddens; the
+    stated-count regex neutralised → the walk case reddens (the count is
+    required); the last-page stop removed → the last-page case reddens (the
+    fixture has no page past the pager's last); EMAIL_RE neutralised →
+    the ad case reddens; the ledger keyed on the numeric id → the ledger
+    case reddens (the ad page has no numeric id)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hondutrabajos", os.path.join(SCRIPTS, "hondutrabajos.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i):
+        return (f'<div \n    class="job-card group relative"><h3><a href="https://www.hondutrabajos.com/empleo/puesto-{i}-k{i}" class="block" title="Puesto {i}">Puesto {i}</a></h3>'
+                f'<a href="https://www.hondutrabajos.com/empresa/acme-x" class="truncate">\n ACME {i}\n </a><span class="truncate">Cortés</span>'
+                f'<span class="text-[11px] font-bold hidden sm:inline">Remoto</span>'
+                f'<span class="text-[9.5px] uppercase font-black tracking-wider">\n Tiempo Completo\n </span>'
+                f'<span class="rounded-full border dark:border-slate-650">\n +2 años\n </span>'
+                f'<span class="tracking-wider animate-pulse">\n ¡Cierra pronto!\n </span><span>hace {i} días</span><button @click.prevent="toggleSave({1000 + i})"></button></div>')
+
+    @classmethod
+    def _page(cls, ids, stated, last, banner=115):
+        head = f'<span>+{stated:,} ofertas laborales activas en Honduras</span><span class="opacity-80">Más de {banner} vacantes activas</span>'
+        pager = "".join(f'<a href="https://www.hondutrabajos.com/?page={p}">{p}</a>' for p in range(2, last + 1))
+        return f"<html><body>{head}{''.join(cls._card(i) for i in ids)}<nav>{pager}</nav></body></html>"
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_count_stops_at_the_pagers_last_page_and_a_repeated_key_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {"https://www.hondutrabajos.com/": (200, self._page(range(1, 13), 23, 2)),
+              "https://www.hondutrabajos.com/?page=2": (200, self._page([12] + list(range(13, 24)), 23, 2))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 23)
+        self.assertEqual(len({r["key"] for r in rows}), 23)
+        self.assertIn("23 emitted over 2 page(s), site states 23 — equal", err)
+        self.assertIn("banner «Más de 115 vacantes activas» — a hand-written floor, not compared", err)
+        self.assertEqual(asked, ["https://www.hondutrabajos.com/", "https://www.hondutrabajos.com/?page=2"])
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["modality"], "Remoto")
+        self.assertEqual(rows[0]["contract"], "Tiempo Completo")
+        self.assertEqual(rows[0]["experience"], "+2 años")
+        self.assertTrue(rows[0]["closing_soon"])
+        self.assertEqual(rows[0]["posted_relative"], "hace 1 días")
+        self.assertEqual(rows[0]["id"], "1001")
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {"https://www.hondutrabajos.com/": (200, self._page(range(1, 13), 40, 4)),
+              "https://www.hondutrabajos.com/?page=2": (200, self._page([], 40, 4))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 12)
+        self.assertIn("12 emitted over 2 page(s), site states 40 — 28 short", err)
+
+    def test_the_walk_stops_at_the_pagers_last_page_when_the_count_is_not_reached_and_says_how_short(self):
+        """The pager is the list's own end; past it the site answers page 1 again on some boards — this one is not asked."""
+        mod = self._mod()
+        fx = {"https://www.hondutrabajos.com/": (200, self._page(range(1, 13), 30, 2)),
+              "https://www.hondutrabajos.com/?page=2": (200, self._page(range(13, 25), 30, 2))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 24)
+        self.assertIn("24 emitted over 2 page(s), site states 30 — 6 short", err)
+        self.assertEqual(len(asked), 2)   # page 3 is never requested
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        fx = {"https://www.hondutrabajos.com/": (200, self._page(range(1, 13), 40, 4))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 12)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_the_ad_reads_the_job_posting_and_the_ledger_key_is_the_lists(self):
+        mod = self._mod()
+        import contextlib
+        ld = {"@context": "https://schema.org/", "@type": "JobPosting", "title": "Puesto 7", "description": "Requisitos.\n• Experiencia.\nSalario: L 16,400 + bono\nCorreo para aplicar: rrhh@acme.hn o WhatsApp 9876-5432 / +504 3300 1234",
+              "datePosted": "2026-09-12T00:00:00+00:00", "validThrough": "2026-09-30T18:00:09+00:00", "employmentType": "FULL_TIME",
+              "hiringOrganization": {"@type": "Organization", "name": "ACME 7", "sameAs": "https://www.hondutrabajos.com/empresa/acme-x"},
+              "jobLocation": {"@type": "Place", "address": {"addressLocality": "Cortés", "addressCountry": "HN"}}}
+        body = ('<html><body><script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script>'
+                '<div>UBICACIÓN EXACTA</div><p class="x">Cortés</p><div>CONTRATO</div><p>Tiempo Completo</p><div>MODALIDAD</div><p>Oficina</p><div>VACANTES</div><p>2</p><div>EXPERIENCIA</div><p>1 año</p></body></html>')
+        url = "https://www.hondutrabajos.com/empleo/puesto-7-k7"
+        fx = {url: (200, body), "https://www.hondutrabajos.com/empleo/x-k9": (200, "<html><body>no posting</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["ledger_id"], "hondutrabajos:k7")
+        self.assertEqual(r["employer"], "ACME 7")
+        self.assertEqual(r["posted"], "2026-09-12")
+        self.assertEqual(r["valid_through"], "2026-09-30")
+        self.assertEqual(r["positions"], 2)
+        self.assertEqual(r["modality"], "Oficina")
+        self.assertIn("Salario: L 16,400 + bono", r["description"])   # the prose is kept, never parsed
+        self.assertNotIn("@", text)
+        self.assertNotIn("9876-5432", text)
+        self.assertNotIn("3300 1234", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        # the same key on the list side: one ledger id for both readings
+        lst = self._page([7], 1, 1)
+        self.assertEqual(mod.cards(lst)[0]["ledger_id"], "hondutrabajos:k7")
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://www.hondutrabajos.com/empleo/x-k9"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
