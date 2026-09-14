@@ -18664,6 +18664,141 @@ class AListPagedAtTheRootWhereThreeNumbersAreStatedAndOneIsTheListsOwn(unittest.
         self.assertEqual(cm.exception.code, 3)
 
 
+class AClassifiedsListWhereTheSectionAndTheListStateTwoNumbersAndTheListsIsCompared(unittest.TestCase):
+    """**`clasificadosonline.py`, 2026-09-14 (#442).** The section page
+    states «3,581 Oportunidades de Empleos», the list states «1 al 30 de
+    3000»: both the site's own, both printed, the walk compared to the
+    list's — the number its pager serves — and the difference named. Rows
+    are microdata + record-row; the list's `datePosted` meta is the ad's
+    expiry (measured on three ads) and is emitted as `valid_through`; US
+    dates go ISO; ids are deduplicated; a gap exits 6; a bounded walk says
+    so. `ad` reads the microdata and the two prose spans, withholds
+    addresses and phones, exits 3 without the microdata. Mutated (`-B`,
+    detached copy): the dedup dropped → the walk case reddens (page 2
+    repeats one id); the gap exit removed → the short case reddens; the
+    list's «de N» regex neutralised → the walk case reddens; the date
+    conversion dropped → the walk case reddens (ISO expected); EMAIL_RE
+    neutralised → the ad case reddens; the section figure dropped from the
+    note → the walk case reddens (the difference is named)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_clasificadosonline", os.path.join(SCRIPTS, "clasificadosonline.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(i):
+        return (f'<div itemscope="" itemtype="https://schema.org/JobPosting"><meta itemprop="title" content="Puesto {i}"><meta itemprop="datePosted" content=" 9/20/2026 8:47:10 PM"><meta itemprop="hiringOrganization" content=" ACME {i}, Puerto Rico"></div>'
+                f'<!-- Start: Record row --><tr><td><table class="record-row   recordRowText"><tr><td><div><a href="Detail.asp?JobId={i}" class="recordRowTitle">Puesto {i}</a></div>'
+                f'<div><a href="/PartnersListingJobsID.asp?ID=1" class="  recordRowText">ACME {i}</a> - <a href="/Empleos/Listing.asp?subcat=35" class=" espLine  recordRowText ">Servicio al Cliente</a></div>'
+                f'<div><a  class=" recordRowText" href="/Empleos/Listing.asp?JobsCat=1&subcat=35&Pueblo=Arecibo" >Arecibo</a> Puerto Rico <br></div>'
+                f'<div><span class="recordRowShadowBold">\n $10.5\n / hr\n </span>\n Full Time <br></div></td></tr></table></td></tr><!-- End: Record row -->')
+
+    @classmethod
+    def _page(cls, ids, a, stated):
+        ids = list(ids)
+        return f'<html><body><span class="esp"> {a} al {a + len(ids) - 1} de {stated:,} empleos en Puerto Rico</span>' + "".join(cls._row(i) for i in ids) + "</body></html>"
+
+    SEC = '<html><body><span class="Prox22BlackNound esp"><b>3,581&nbsp;Oportunidades de Empleos Puerto Rico</b></span></body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            for k, v in fixtures.items():
+                if url.startswith(k):
+                    return v
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(pages=None, all=False, limit=0, cat="", town="", q="")
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_lists_count_names_the_sections_figure_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        L = "https://www.clasificadosonline.com/Empleos/Listing.asp?"
+        fx = {"https://www.clasificadosonline.com/empleos/": (200, self.SEC),
+              L + "JobsCat=%&subcat=%&Pueblo=&txkey=&Submit=ENCUENTRA+EMPLEO&offset=0": (200, self._page(range(1, 31), 1, 59)),
+              L + "JobsCat=%&subcat=%&Pueblo=&txkey=&Submit=ENCUENTRA+EMPLEO&offset=30": (200, self._page([30] + list(range(31, 60)), 31, 59))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 59)
+        self.assertEqual(len({r["id"] for r in rows}), 59)
+        self.assertIn("59 emitted over 2 page(s), list states 59 — equal", err)
+        self.assertIn("the section page states 3 581", err)
+        self.assertIn("3 522 more than the list serves, a difference of the site's own", err)
+        self.assertEqual(len(asked), 3)
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["location"], "Arecibo")
+        self.assertEqual(rows[0]["salary_text"], "$10.5 / hr")
+        self.assertEqual(rows[0]["schedule"], "Full Time")
+        self.assertEqual(rows[0]["valid_through"], "2026-09-20T20:47:10")   # the list's datePosted meta is the expiry, ISO
+        self.assertNotIn("posted", rows[0])
+
+    def test_a_walk_short_of_the_lists_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        L = "https://www.clasificadosonline.com/Empleos/Listing.asp?"
+        fx = {"https://www.clasificadosonline.com/empleos/": (200, self.SEC),
+              L + "JobsCat=%&subcat=%&Pueblo=&txkey=&Submit=ENCUENTRA+EMPLEO&offset=0": (200, self._page(range(1, 31), 1, 90)),
+              L + "JobsCat=%&subcat=%&Pueblo=&txkey=&Submit=ENCUENTRA+EMPLEO&offset=30": (200, self._page([], 31, 90))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("30 emitted over 2 page(s), list states 90 — 60 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        L = "https://www.clasificadosonline.com/Empleos/Listing.asp?"
+        fx = {"https://www.clasificadosonline.com/empleos/": (200, self.SEC),
+              L + "JobsCat=%&subcat=%&Pueblo=&txkey=&Submit=ENCUENTRA+EMPLEO&offset=0": (200, self._page(range(1, 31), 1, 90))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 2)
+
+    def test_the_ad_reads_the_microdata_and_the_prose_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        body = ('<html><body><meta itemprop="title" content="Puesto 7"><meta itemprop="datePosted" content="9/13/2026 9:24:08 PM"><meta itemprop="validThrough" content="9/20/2026 8:47:10 PM">'
+                '<meta itemprop="hiringOrganization" content="ACME 7"><meta itemprop="employmentType" content="Generales"><meta itemprop="salaryCurrency" content="USD">'
+                '<span class="Roboto comment more">Se solicita cajero. Llamar al 787-555-1234 o escribir a rrhh@acme.pr</span><span class="Roboto comment more">Requisitos: escuela superior<br><br></span>'
+                ' Desde $10.50 Hasta $12.00 hr </body></html>')
+        url = "https://www.clasificadosonline.com/Empleos/Detail.asp?JobId=7"
+        fx = {url: (200, body), "https://www.clasificadosonline.com/Empleos/Detail.asp?JobId=9": (200, "<html><body>nada</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["employer"], "ACME 7")
+        self.assertEqual(r["posted"], "2026-09-13T21:24:08")
+        self.assertEqual(r["valid_through"], "2026-09-20T20:47:10")
+        self.assertEqual(r["salary_currency"], "USD")
+        self.assertEqual(r["salary_text"], "Desde $10.50 Hasta $12.00 hr")
+        self.assertIn("Requisitos: escuela superior", r["description"])
+        self.assertNotIn("@", text)
+        self.assertNotIn("555-1234", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://www.clasificadosonline.com/Empleos/Detail.asp?JobId=9"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
