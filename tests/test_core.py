@@ -20952,7 +20952,7 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
             return next(it)
         mod.request = request
         out, err = io.StringIO(), io.StringIO()
-        ns = argparse.Namespace(filter=None, pages=10, limit=None)
+        ns = argparse.Namespace(host=None, filter=None, pages=10, limit=None)
         for k, v in kw.items():
             setattr(ns, k, v)
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -20974,10 +20974,10 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
         self.assertFalse(any(r["title"].startswith("Mainos") for r in rows))
         self.assertEqual(sent[0], "https://kuntarekry.fi/fi/tyopaikat/?view=count&format=json")
         self.assertEqual(sent[1:], ["https://kuntarekry.fi/fi/tyopaikat/", "https://kuntarekry.fi/fi/tyopaikat/sivu2/", "https://kuntarekry.fi/fi/tyopaikat/sivu3/"])
-        self.assertIn("49 emitted over 3 page(s), site counts 49 (the whole site) — equal.", err)
+        self.assertIn("49 emitted over 3 page(s), site counts 49 (kuntarekry.fi) — equal.", err)   # the host is named since #372 (Valtiolle by --host)
         rows, err, sent = self._run(mod, [counter, (200, p1), (200, p2)], pages=2)
         self.assertEqual(len(rows), 48)
-        self.assertIn("48 emitted of the 49 the site counts (the whole site) — 2 of 3 page(s) walked by request", err)
+        self.assertIn("48 emitted of the 49 the site counts (kuntarekry.fi) — 2 of 3 page(s) walked by request", err)
 
     def test_a_filter_is_a_path_segment_on_the_walk_and_on_the_counter(self):
         mod = self._mod()
@@ -20985,7 +20985,7 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
         rows, err, sent = self._run(mod, [(200, '{"count": 1}'), (200, p1)], filter="espoo")
         self.assertEqual(len(rows), 1)
         self.assertEqual(sent, ["https://kuntarekry.fi/fi/tyopaikat/espoo/?view=count&format=json", "https://kuntarekry.fi/fi/tyopaikat/espoo/"])
-        self.assertIn("(espoo)", err)
+        self.assertIn("(kuntarekry.fi, espoo)", err)
 
     def test_a_page_that_did_not_turn_is_a_fault_and_a_dead_counter_is_said(self):
         import contextlib
@@ -20995,7 +20995,7 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
         it = iter([(200, '{"count": 48}'), (200, p1), (200, same)])
         mod.request = lambda url, accept=None: next(it)
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
-            mod.cmd_search(argparse.Namespace(filter=None, pages=10, limit=None))
+            mod.cmd_search(argparse.Namespace(host=None, filter=None, pages=10, limit=None))
         self.assertEqual(cm.exception.code, 6)
         self.assertIn("the page did not turn", e2.getvalue())
         rows, err, sent = self._run(mod, [(503, ""), (200, self._page(1, 1, [self._card(1, "A-1", "X")]))])
@@ -21564,6 +21564,85 @@ class AWholeBoardInOneAnswerWhereTheCountIsPositionsAndTheContactsAreAField(unit
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             mod.cmd_ad(argparse.Namespace(url="https://www.jobbnorge.no/search", language="1"))
         self.assertEqual(cm.exception.code, 2)
+
+
+class TheStatesBoardIsTheMunicipalitiesTemplateAndAHost(unittest.TestCase):
+    """**`kuntarekry.py --host valtiolle`, 2026-09-14 (#372).** Finland's
+    State board is the same operator and the same template as the
+    municipalities': `--host` names the board, the counter and the list
+    are asked on that host, `source` and `ledger_id` carry the board's
+    key, the card's addresses are built on that host, and `ad --url`
+    reads the board off the address; an unknown host is refused before
+    any request. Mutated (`-B`, detached copy): the host not put on the
+    counter → the host case reddens; the host not put on the list → the
+    host case reddens; the key not on the record → the host case reddens;
+    the card's address built on the default host → the host case reddens;
+    the board not read off the ad's address → the ad case reddens; the
+    unknown host accepted → the bad-host case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_kuntarekry2", os.path.join(SCRIPTS, "kuntarekry.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, jid, key, title, pc="Puolustusvoimat"):
+        return (f'<li role="listitem"><job-card profit-center="{pc}" title="{title}" publication-date="14.9.2026" publication-time="00:01" publication-end="5.10.2026" publication-end-time="16:15" '
+                f'ext-id="{key}" url="/fi/tyopaikat/{title.lower().replace(" ", "-")}-{key}/" job-id="{jid}" job-key="{key}"></job-card></li>')
+
+    def _page(self, cur, total, cards):
+        return ('<html><body><job-list variant="grid">' + "".join(cards) + f'</job-list><ip-pagination prev="" next="/fi/tyopaikat/sivu{cur + 1}/" current="{cur}" total="{total}"></ip-pagination></body></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url, accept=None):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(host="valtiolle", filter=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_host_names_the_board_on_the_counter_the_list_and_the_record(self):
+        mod = self._mod()
+        p1 = self._page(1, 1, [self._card(303417, "24521", "Opetusaliupseeri"), self._card(303418, "24522", "Ulosottoylitarkastaja", pc="Ulosottolaitos")])
+        rows, err, sent = self._run(mod, [(200, '{"count": 2}'), (200, p1)])
+        self.assertEqual(sent, ["https://valtiolle.fi/fi/tyopaikat/?view=count&format=json", "https://valtiolle.fi/fi/tyopaikat/"])
+        self.assertEqual([(r["source"], r["ledger_id"], r["url"], r["employer"]) for r in rows],
+                         [("valtiolle", "valtiolle:303417", "https://valtiolle.fi/fi/tyopaikat/opetusaliupseeri-24521/", "Puolustusvoimat"),
+                          ("valtiolle", "valtiolle:303418", "https://valtiolle.fi/fi/tyopaikat/ulosottoylitarkastaja-24522/", "Ulosottolaitos")])
+        self.assertIn("2 emitted over 1 page(s), site counts 2 (valtiolle.fi) — equal.", err)
+        rows, err, sent = self._run(mod, [(200, '{"count": 1}'), (200, self._page(1, 1, [self._card(1, "9", "Lakimies")]))], host=None)
+        self.assertEqual(sent[0], "https://kuntarekry.fi/fi/tyopaikat/?view=count&format=json")
+        self.assertEqual(rows[0]["source"], "kuntarekry")
+
+    def test_the_ad_reads_the_board_off_the_address_and_an_unknown_host_is_refused(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "http://schema.org", "@type": "JobPosting", "title": "Opetusaliupseeri", "hiringOrganization": "Puolustusvoimat", "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressRegion": "Uusimaa", "addressLocality": "Kirkkonummi"}},
+              "datePosted": "2026-09-14T00:00:00+03:00", "validThrough": "2026-10-05T16:15:00+03:00", "baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": "2 699,38 €/kk. Tiedustelut 0299 326200."}, "description": "Haemme opetusaliupseeria.", "employmentType": "Määräaikainen"}
+        mod.request = lambda url, accept=None: (200, '<html><head><script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script></head><body><job-view job-ext-id="24521" job-title="Opetusaliupseeri"></job-view></body></html>')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://valtiolle.fi/fi/tyopaikat/opetusaliupseeri-joukkueen-varajohtaja-24521/"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["source"], d["ledger_id"], d["key"], d["employer"], d["salary_currency"]), ("valtiolle", "valtiolle:key:24521", "24521", "Puolustusvoimat", "EUR"))
+        self.assertEqual(d["salary_text"], "2 699,38 €/kk. Tiedustelut [telephone withheld].")
+        self.assertNotIn("0299 326200", out.getvalue())
+        asked = []
+        mod.request = lambda url, accept=None: asked.append(url) or (200, "")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(host="kela", filter=None, pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertEqual(asked, [])
+        self.assertIn("kuntarekry, valtiolle", e2.getvalue())
 
 
 if __name__ == "__main__":
