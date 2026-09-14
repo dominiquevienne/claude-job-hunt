@@ -1,12 +1,12 @@
 # Board measurement — Shpallje Pune (`shpalljepune.com`, Kosovo): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: shpalljepune.com -->
 <!-- script: none -->
 <!-- countries: XK -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- witness: none the list states — the site's «14782» is a lifetime counter of postings, not the list's; from a connected tab (no challenge shown, 2026-09-14 10:33–10:36 UTC) `/jobs` pages `?page=2 … 9`, page 9 the last with 13 cards, page 1 with at least 20 (the finder's cap): about 173 if twenty a page, the walk's own figure; nothing is served to the declared client (the Cloudflare challenge, never defeated) · 2026-09-14 -->
+<!-- route: browser · 173 · 2026-09-14 -->
 **In the #222 candidate list from the Kosovo country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -61,3 +61,13 @@ GET https://shpalljepune.com/                            403, 5 515 B, md5 58dc3
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:33–10:36 UTC — the challenge does not show to a connected tab
+
+```
+tab, /                       served — the home: latest postings, employers (/employer/<slug>), «14782» (a lifetime counter)
+tab, /jobs                   served — cards (title, employer, «Full Time», a closing date, the town, «PREMIUM», «Aktive», «Shiko detajet»), pager ?page=2 … 9 «Next »»; at least 20 cards (the finder's cap)
+tab, /jobs?page=9            served — 13 cards, «Next »» disabled: the last page
+```
+
+**`route: browser · 173 · 2026-09-14`** — about 173 if twenty a page (8 × 20 + 13), the walk's own figure; the site states no list count («14782» is lifetime). Tenders («Kërkesë për ofertë», «Ftesë për Ofertë») sit among the postings and are told apart by their title. What a session does from a tab: `/jobs?page=N` to the last, the card's «Shiko detajet» address as the key, the closing date and town from the card, the ad page for the text. No script: the declared client is challenged (#404).

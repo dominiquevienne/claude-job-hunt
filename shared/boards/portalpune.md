@@ -1,12 +1,12 @@
 # Board measurement — Portal Pune (`portalpune.com`, Kosovo): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: portalpune.com -->
 <!-- script: none -->
 <!-- countries: XK -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- witness: the site's own «192 konkurse aktive» on `/jobs`, read from a connected tab (no challenge shown, 2026-09-14 10:37 UTC) — 192 distinct `/jobs/<id>-<slug>` on the one page, equal; the home's «408 Vende të lira pune» is positions and «36.361 Konkurse të publikuara» lifetime, neither this count; nothing is served to the declared client (the Cloudflare challenge, never defeated) · 2026-09-14 -->
+<!-- route: browser · 192 · 2026-09-14 -->
 **In the #222 candidate list from the Kosovo country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -61,3 +61,18 @@ GET https://portalpune.com/                              403, 4 575 B, md5 49831
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:36–10:38 UTC — the challenge does not show to a connected tab
+
+```
+tab, /                       served — the home: «408 Vende të lira pune» (positions), «36.361 Konkurse të publikuara» (lifetime), «+7 konkurse sot», employers (/businesses/<slug>)
+tab, /jobs                   served — «192 konkurse aktive», every card on the one page: 192 distinct /jobs/<10-digit id>-<slug>, no pager, no load-more
+```
+
+**`route: browser · 192 · 2026-09-14`** — equal to the statement. The
+same postings as Shpallje Pune's (the KEC tender, the «Shofer (kategoria
+C)» ad) appear on both — two boards on one Kosovar market, the id
+different on each. What a session does from a tab: `/jobs`, the id from
+`/jobs/<id>-<slug>`, the card, the ad page for the text. No script: the
+declared client is challenged (#404).
+
