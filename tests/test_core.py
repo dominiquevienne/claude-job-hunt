@@ -24911,5 +24911,128 @@ class AStaffingBoardWhoseListIsFilledByThePagesOwnServerActionReplayedWithItsOwn
         self.assertEqual(cm.exception.code, 2)
 
 
+class AStaffingBoardWhoseListIsThePagesOwnGraphQLQueryReplayedAndWhoseClientIsHiddenWhenTheSiteHidesIt(unittest.TestCase):
+    """**`eezy.py`, 2026-09-14 (#379).** Eezy's list is filled on the client by
+    the page's own GraphQL query (`elasticJobs`) to the group's API; the RSS
+    the rules name as the sitemap holds 10 ads among 328 facets. The adapter
+    reads the query text from the page's own `_app` script on every run,
+    sends the page's first call, then one call with `to` = the `available`
+    the answer states, and prints emitted against it. **The client's name is
+    withheld wherever `hideCustomer` is true — the site hides it, so does
+    the adapter; `recruitmentPerson` on the ad is never emitted; a line of
+    the text that carried a telephone or an e-mail is withheld whole, name
+    included.** Mutated (`-B`, detached copy): the query text hard-coded
+    instead of read → the list case reddens; the first page taken as the
+    whole list → the list case reddens; `available` not read → the list case
+    reddens; `hideCustomer` ignored → the list case reddens; the recruiter
+    emitted → the ad case reddens; the contact line kept → the ad case
+    reddens."""
+
+    QUERY = "\n  query(\n    $searchStringArr: [String!]\n    $locations: [String!]!\n    $from: Float\n    $to: Float\n  ) {\n    elasticJobs(\n      filter: { searchStringArr: $searchStringArr, locations: $locations, from: $from, to: $to }\n    ) {\n      pageResults {\n        available\n        from\n        to\n      }\n      jobs {\n        id\n        name\n        customer\n        hideCustomer\n        source\n        fieldOfWorks\n        workLocations {\n          name\n        }\n      }\n    }\n  }\n"
+    PAGE = '<html><head><script src="/_next/static/chunks/pages/_app-ea0f7574a6fd3991.js" defer=""></script></head><body></body></html>'
+
+    @classmethod
+    def _chunk(cls, query=None):
+        q = json.dumps(query if query is not None else cls.QUERY)[1:-1]
+        return 'function f(){var e=(0,r.Z)(["' + q + '"]);return f=function(){return e},e}function p(){var e=(0,r.Z)(["\\n  query { other { x } }\\n"]);return p=function(){return e},e}'
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eezy", os.path.join(SCRIPTS, "eezy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(i, name, customer="Jyväskylän Aluetaksi Oy", hide=False, source="Core"):
+        return {"id": i, "name": name, "logo": None, "customer": customer, "customerDescription": "", "hideCustomer": hide, "source": source, "fieldOfWorks": ["Toimisto-, hallinto ja asiakaspalvelu"], "workLocations": [{"name": "Vaasa"}, {"name": "Pohjanmaa"}]}
+
+    @staticmethod
+    def _answer(jobs, available, to):
+        return json.dumps({"data": {"elasticJobs": {"pageResults": {"available": available, "from": 0, "to": to, "showingFallbackAdverts": False}, "jobs": jobs}}}, ensure_ascii=False)
+
+    @staticmethod
+    def _ad_page(ad):
+        d = {"props": {"pageProps": {"jobAdvert": ad, "_nextI18Next": {}}, "__N_SSP": True}, "page": "/tyopaikat/[jobAdvertId]"}
+        return '<html><body><script id="__NEXT_DATA__" type="application/json">' + json.dumps(d, ensure_ascii=False) + "</script></body></html>"
+
+    def _advert(self, i, hide=False, desc="<p>Megalattioille haetaan <strong>valutyöntekijää</strong>.</p><p>Lisätietoja antaa rekrytointikonsultti Saara Saalo-Secret p. 040 183 6260 tai saara.saalo@eezy.example.</p><p>Sijainti: Helsinki</p>"):
+        return {"__typename": "ElasticJobAdvert", "id": i, "name": "Valutyöntekijä", "source": "Personnel", "applyLink": "https://ats.talentadore.example/apply/valutyontekija/ZzJbKK", "description": desc, "descriptionPlain": "x",
+                "customer": "Megalattiat Oy", "customerDescription": "<p>Lattiat.</p>", "hideCustomer": hide, "logo": None, "endTime": "2026-09-27", "startTime": "2026-09-11T11:58:19+00:00", "worktitle": "Valutyöntekijä",
+                "fieldOfWorks": ["Talonrakennusala"], "typeOfWorkRelationship": "Toistaiseksi voimassa oleva työsuhde", "workRelationshipMode": None, "locationCity": "Helsinki", "locationAddress": None, "isDeleted": False,
+                "workLocations": [{"__typename": "workLocation", "name": "Helsinki"}], "recruitmentPerson": {"__typename": "RecruitmentPerson", "firstname": "Saara", "lastname": "Saalo-Secret", "photo": "https://x.example/p.jpg", "email": "saara.saalo@eezy.example", "phoneNumber": "0401836260"}}
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, data=None, headers=None):
+            asked.append((url, json.loads(data.decode("utf-8")) if data else None))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_pages_own_query_replayed_its_count_and_the_hidden_client(self):
+        import contextlib
+        mod = self._mod()
+        jobs = [self._job("bYZRVGfF5Oz4ANQGG3Y7Ig", "Asiakasneuvojia Vaasaan"), self._job("e_dzVYVh4bNvO83gy2YcWg", "Kokki Ouluun", customer="Hidden Oy", hide=True), self._job("BMJ55", "Valutyöntekijä", customer="Megalattiat Oy", source="Personnel")]
+        served = [(200, self.PAGE), (200, self._chunk()), (200, self._answer(jobs[:2], 3, 20)), (200, self._answer(jobs, 3, 3))]
+        rows, err, asked, raw = self._run(mod, served)
+        self.assertEqual([u for u, _ in asked], ["https://tyopaikat.eezy.fi/fi", "https://tyopaikat.eezy.fi/_next/static/chunks/pages/_app-ea0f7574a6fd3991.js", "https://api.eezy.fi/api", "https://api.eezy.fi/api"])
+        self.assertEqual(asked[2][1], {"query": self.QUERY, "variables": {"locations": [], "from": 0, "to": 20}})   # the page's first load, the query as the script carries it
+        self.assertEqual(asked[3][1]["variables"], {"locations": [], "from": 0, "to": 3})                            # then the whole list, to = available
+        self.assertEqual([r["id"] for r in rows], ["bYZRVGfF5Oz4ANQGG3Y7Ig", "e_dzVYVh4bNvO83gy2YcWg", "BMJ55"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_hidden"], a["agency"], a["fields"], a["places"], a["feed"], a["language"], a["contacts_withheld"]),
+                         ("eezy", "FI", "eezy:bYZRVGfF5Oz4ANQGG3Y7Ig", "https://tyopaikat.eezy.fi/fi/tyopaikat/bYZRVGfF5Oz4ANQGG3Y7Ig", "Asiakasneuvojia Vaasaan", "Jyväskylän Aluetaksi Oy", False, "Eezy", ["Toimisto-, hallinto ja asiakaspalvelu"], ["Vaasa", "Pohjanmaa"], "Core", "fi", True))
+        self.assertEqual((rows[1]["company"], rows[1]["company_hidden"]), (None, True))   # the site hides it; so does the adapter
+        self.assertNotIn("Hidden Oy", raw)
+        self.assertIn("3 emitted, the site states 3 (the page's own elasticJobs query, `available`) — equal.", err)
+        self.assertIn("withheld on 1 where the site hides it", err)
+        # another build carries another text: the query must come from the script, never from memory
+        q2 = self.QUERY.replace("hideCustomer\n", "hideCustomer\n        logo\n")
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, self._chunk(q2)), (200, self._answer(jobs, 3, 20))])
+        self.assertEqual(asked[2][1]["query"], q2)
+        self.assertEqual((len(asked), len(rows)), (3, 3))   # the first call already carried the whole list: no second call
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, self._chunk()), (200, self._answer(jobs, 40, 20))], limit=2)
+        self.assertEqual((len(asked), len(rows)), (3, 2))
+        self.assertIn("2 emitted of the 40 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE), (200, 'function f(){var e=(0,r.Z)(["\\n  query { other { x } }\\n"]);return e}')])
+        self.assertEqual(cm.exception.code, 6)   # the script no longer carries elasticJobs: a changed page, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE), (200, self._chunk()), (200, json.dumps({"data": {"elasticJobs": {"pageResults": {"from": 0, "to": 20}, "jobs": []}}}))])
+        self.assertEqual(cm.exception.code, 6)   # no `available`: not an empty market
+
+    def test_the_ad_is_the_pages_own_object_with_the_recruiter_and_the_contact_line_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad_page(self._advert("BMJ55")))], cmd="ad", url="https://tyopaikat.eezy.fi/fi/tyopaikat/BMJ55")
+        self.assertEqual([u for u, _ in asked], ["https://tyopaikat.eezy.fi/fi/tyopaikat/BMJ55"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["ledger_id"], a["title"], a["work_title"], a["company"], a["company_hidden"], a["company_text"], a["employment_type"], a["work_mode"], a["place"], a["places"], a["fields"], a["posted"], a["valid_through"], a["feed"], a["deleted"], a["apply_host"]),
+                         ("BMJ55", "eezy:BMJ55", "Valutyöntekijä", "Valutyöntekijä", "Megalattiat Oy", False, "Lattiat.", "Toistaiseksi voimassa oleva työsuhde", None, "Helsinki", ["Helsinki"], ["Talonrakennusala"], "2026-09-11", "2026-09-27", "Personnel", False, "ats.talentadore.example"))
+        self.assertEqual(a["description"], "Megalattioille haetaan valutyöntekijää .\n[contact withheld]\nSijainti: Helsinki")   # the line that carried the telephone and the e-mail goes whole, the name with it (the space before the period is `text()` closing the `<strong>`)
+        for secret in ("Saalo", "eezy.example", "040 183", "0401836260", "recruitmentPerson", "ZzJbKK"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [(200, self._ad_page(self._advert("BMJ56", hide=True)))], cmd="ad", url="https://tyopaikat.eezy.fi/fi/tyopaikat/BMJ56")
+        self.assertEqual((rows[0]["company"], rows[0]["company_hidden"]), (None, True))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://tyopaikat.eezy.fi/fi/tyopaikat/BMJ55")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no state</body></html>")], cmd="ad", url="https://tyopaikat.eezy.fi/fi/tyopaikat/BMJ55")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://eezy.fi/tyopaikat/")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
