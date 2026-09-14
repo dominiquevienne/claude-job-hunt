@@ -23268,5 +23268,127 @@ class TheHungarianBoardIsTheFinnishTemplateAndAHost(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
 
+class AListWhoseEveryParameterAnswersGoneReadOneFirstPageAtATimeAndAnAdBehindNoLogin(unittest.TestCase):
+    """**`secretcv.py`, 2026-09-14 (#385).** SecretCV's rules open `*` and
+    refuse the pager, the search and the application parameters to a
+    named crawler; its transport answers 410 to this client on EVERY
+    parameterised address, with the next page's cards in the body — a
+    readable body is not an answer, the code decides. So the adapter never
+    sends a parameter (one in an address is refused before the gate),
+    reads the first page of `/is-ilanlari` and, on request, the first page
+    of each city and sector list the site links, deduplicated by id, and
+    prints the list's own «20.409 İş İlanı Listelendi» and the pager's
+    342 pages beside what it read — first pages only, never a shortfall
+    claimed. The ad answers 200 to anyone: its JobPosting, its labelled
+    table, its description ended at the login button, scrubbed; the
+    application is a login, never touched. Mutated (`-B`, detached copy):
+    the parameter guard dropped → the guard case reddens; a repeated id
+    counted twice across lists → the list case reddens; an unlinked
+    section accepted → the list case reddens; the description not ended
+    at the login button → the ad case reddens; a salary «-» read as a
+    figure → the ad case reddens; the telephone not scrubbed → the ad
+    case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_secretcv", os.path.join(SCRIPTS, "secretcv.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, jid, slug, title, firm="amasya-et-urunleri-10868", company="Amasya Et Ürünleri", city="İstanbul Avrupa", age="1 gün önce"):
+        return (f'<div class="cv-job-box job-list job-search-cv-box  job-content-box "><div class="content"><div class="body"><a href="https://www.secretcv.com/{firm}/{slug}-is-ilanlari-{jid}" title="{title}" class="title lh-title ">\n {title}\n</a>'
+                f'<a href="https://www.secretcv.com/firma/{firm}-is-ilanlari" title="{company}" class="company ">\n {company}\n</a><span class="city d-grid "><span><i class="bi bi-geo-alt-fill"></i>\n {city}\n</span><small class="text-muted mt-1">İlan Tarihi: {age}</small></span></div></div>'
+                f'<div class="job-right-content text-center"><a href="https://www.secretcv.com/giris-yap?redirect=1&amp;ilanId={jid}" class="btn btn-sm btn-green" title="İşe Başvur">İşe Başvur</a></div></div>')
+
+    def _page(self, cards, total="20.409", last=342, sections=("istanbul", "ankara", "cagri-merkezi")):
+        links = "".join(f'<a href="https://www.secretcv.com/is-ilanlari/{s}-is-ilanlari" title="{s}">{s}</a>' for s in sections)
+        return (f'<html><body><span class="total-job-text">\n {total} İş İlanı Listelendi\n</span>{"".join(cards)}<nav class="cv-pagination"><ul class="pagination">'
+                f'<li><a class="page-link" href="https://www.secretcv.com/is-ilanlari/?sf={last}" title="Son Sayfa">Son</a></li><li><a class="page-link" href="https://www.secretcv.com/is-ilanlari/?sf=2" title="Sonraki Sayfa">Sonraki</a></li></ul></nav><div class="footer">{links}</div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(sections=None, limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_list if cmd == "list" else mod.cmd_ad)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_first_pages_only_the_lists_the_site_links_and_never_a_parameter(self):
+        import contextlib
+        mod = self._mod()
+        main = self._page([self._card(1877236, "magaza-mudur-yardimcisi-city-center-outlet-avm", "Mağaza Müdür Yardımcısı (City Center Outlet AVM)"),
+                           self._card(1877200, "satis-danismani-izmir-agora-avm", "Satış Danışmanı (İzmir Agora AVM)", city="İzmir", age="Bugün")])
+        ist = self._page([self._card(1877236, "magaza-mudur-yardimcisi-city-center-outlet-avm", "Mağaza Müdür Yardımcısı (again)"),
+                          self._card(1877100, "kasiyer-istanbul", "Kasiyer", firm="migros-12", company="Migros", city="İstanbul Anadolu", age="2 gün önce")])
+        cm_ = self._page([self._card(1877050, "cagri-merkezi-temsilcisi", "Çağrı Merkezi Temsilcisi", firm="teleperformance-7", company="Teleperformance", city="Tüm Türkiye")])
+        rows, err, asked, raw = self._run(mod, [(200, main)])
+        self.assertEqual(asked, ["https://www.secretcv.com/is-ilanlari"])
+        self.assertEqual([r["id"] for r in rows], ["1877236", "1877200"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["employer_slug"], a["city"], a["age"], a["contacts_withheld"]),
+                         ("secretcv", "TR", "secretcv:1877236", "https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236", "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "Amasya Et Ürünleri", "amasya-et-urunleri-10868-is-ilanlari", "İstanbul Avrupa", "1 gün önce", True))
+        self.assertIn("2 emitted from 1 first page(s) (2 cards, 2 distinct), the list states 20 409 over 342 pages — the pager answers 410 to this client: first pages only, never a shortfall claimed; --sections all reads the 3 lists the site links.", err)
+        self.assertNotIn("giris-yap", raw)
+        rows, err, asked, raw = self._run(mod, [(200, main), (200, ist), (200, cm_)], sections="istanbul,cagri-merkezi")
+        self.assertEqual(asked, ["https://www.secretcv.com/is-ilanlari", "https://www.secretcv.com/is-ilanlari/istanbul-is-ilanlari", "https://www.secretcv.com/is-ilanlari/cagri-merkezi-is-ilanlari"])
+        self.assertEqual([(r["id"], r.get("section")) for r in rows], [("1877236", None), ("1877200", None), ("1877100", "istanbul-is-ilanlari"), ("1877050", "cagri-merkezi-is-ilanlari")])   # the repeated id counted once
+        self.assertIn("4 emitted from 3 first page(s) (5 cards, 4 distinct), the list states 20 409", err)
+        rows, err, asked, raw = self._run(mod, [(200, main), (200, ist), (200, cm_), (200, cm_)], sections="all")
+        self.assertEqual(len(asked), 4)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, main)], sections="hesabim")
+        self.assertEqual(cm.exception.code, 2)   # not a list the site links
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><span class='total-job-text'>0 İş İlanı Listelendi</span></body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.secretcv.com/is-ilanlari/?sf=2")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_reads_the_posting_and_the_table_and_stops_at_the_login_button(self):
+        import contextlib
+        mod = self._mod()
+        ld = ('{"@context": "http://schema.org", "@type": "JobPosting", "datePosted": "2026-09-13T05:00:11+03:00", "url": "https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236", "description": "x", "employmentType": "Tam Zamanlı",'
+              ' "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "İstanbul Avrupa", "addressRegion": "İstanbul Avrupa", "addressCountry": "TR", "postalCode": "-"}},'
+              ' "hiringOrganization": {"@type": "Organization", "url": "https://www.secretcv.com/firma/amasya-et-urunleri-10868-is-ilanlari", "name": "Amasya Et Ürünleri"},'
+              ' "baseSalary": {"@type": "MonetaryAmount", "currency": "TRY", "value": {"@type": "QuantitativeValue", "value": "-", "unitText": "MONTH"}},'
+              ' "qualifications": "En az lise mezunu, bilgi için 0532 111 22 33", "name": "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "title": "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "validThrough": "2027-01-08"}')
+        table = "".join(f'<div class="row"><div class="col-6"><span class="title">\n {k}\n</span></div><div class="col-6"><span class="desc">\n {v}\n</span></div></div>'
+                        for k, v in (("İlan Tarihi", "10-09-2026"), ("İstihdam Türü", "Tam Zamanlı"), ("Sektör", "Mağazacılık / Perakendecilik"), ("Eğitim Seviyesi", "Lise (Mezun),\n Üniversite (Mezun)"), ("Şehirler", "İstanbul Avrupa"), ("Yabancı Uyruklu Çalışabilir", "Farketmez")))
+        page = ('<html><body><script type="application/ld+json">' + ld + '</script>' + table
+                + '<div class="cv-card content-job"><h2 class="cj-title">Amasya Et Ürünleri - Mağaza Müdür Yardımcısı</h2><span class="cj-title">\n İş Açıklaması\n</span><p>Ekur Et Entegre tesisi kırmızı et üretmektedir.</p><ul><li>Mağaza personellerini eğitmek,</li><li>Sorular için ik@amasya.example veya 0216 572 25 25</li></ul>'
+                + '<a href="https://www.secretcv.com/giris-yap?redirect=1&amp;ilanId=1877236" class="btn">İşe Başvur</a><p>İlana başvuru yapabilmeniz için <b>secretcv.com</b>\'a kayıtlı CV\'nizin olması gerekmektedir.</p></div></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236")
+        self.assertEqual(asked, ["https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["employer"], r["employer_url"], r["city"], r["employment_type"], r["sector"], r["education"], r["foreigners"], r["posted"], r["posted_on_page"], r["valid_through"], r["contacts_withheld"]),
+                         ("1877236", "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "Amasya Et Ürünleri", "https://www.secretcv.com/firma/amasya-et-urunleri-10868-is-ilanlari", "İstanbul Avrupa", "Tam Zamanlı", "Mağazacılık / Perakendecilik", "Lise (Mezun), Üniversite (Mezun)", "Farketmez", "2026-09-13", "2026-09-10", "2027-01-08", True))
+        self.assertEqual((r["salary_min"], r["salary_max"], r["salary_currency"], r["salary_unit"], r["salary_unit_stated"]), (None, None, None, None, False))   # «-» with a period is not a salary
+        self.assertEqual(r["description"], "Ekur Et Entegre tesisi kırmızı et üretmektedir.\nMağaza personellerini eğitmek,\nSorular için [e-mail withheld] veya [telephone withheld]")
+        self.assertEqual(r["qualifications"], "En az lise mezunu, bilgi için [telephone withheld]")
+        for secret in ("amasya.example", "572 25 25", "111 22 33", "İşe Başvur", "giris-yap", "kayıtlı CV"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [(200, page.replace('"value": "-"', '"value": "45.000"'))], cmd="ad", url="https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236")
+        self.assertEqual((rows[0]["salary_min"], rows[0]["salary_currency"], rows[0]["salary_unit"], rows[0]["salary_unit_stated"]), (45000, "TRY", "month", True))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.secretcv.com/x-1/y-is-ilanlari-1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.secretcv.com/giris-yap?redirect=1&ilanId=1877236")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
