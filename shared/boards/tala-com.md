@@ -1,13 +1,13 @@
 # Assessed, adapter not built — Tala-Com (DR Congo)
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.tala-com.com -->
 <!-- script: none -->
 <!-- countries: CD -->
 <!-- content: measured · 31 live advertisements under `/offres-demploi/`, read in a browser across the three pages the site paginates — 15 + 15 + 1, no address repeated between pages · 2026-09-08 -->
-<!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 -->
-<!-- route: none · the 31 were read in a browser on 2026-09-08, and the name is clientHold / NXDOMAIN since 2026-09-11 — a route to nothing declares no browser route · 2026-09-12 -->
+<!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 · **2026-09-14 09:43 UTC: the name resolves again on 1.1.1.1 and 8.8.8.8 (two Cloudflare addresses, NOERROR); from a connected tab `/offres-demploi/` is served without challenge — 15 cards, `/offres-demploi/page/2/` 12, no page 3: 27 distinct `/offres-emploi/<slug>/`, the site states no total; the ad page carries WebPage / BreadcrumbList / WebSite / Organization JSON-LD (a `datePublished`), no JobPosting; four e-mail addresses in the ad read — never to be emitted** -->
+<!-- route: browser · 27 · 2026-09-14 -->
 
 **A national board in a country of a hundred million people, and it refused our
 client at the transport for three days.**
@@ -127,3 +127,25 @@ the name is `clientHold` at the registrar and NXDOMAIN on every resolver
 (section above). *A route to a host that does not resolve is a route to
 nothing, and a route to nothing is not a coverage.* The line returns the
 day the name comes back and a count is read again.
+
+## 2026-09-14 09:43–09:47 UTC — the name is back, and a tab reads the board
+
+`dig @1.1.1.1` and `@8.8.8.8` both answer NOERROR with two Cloudflare
+addresses (172.67.163.152, 104.21.10.145): the `clientHold` of 2026-09-11
+is lifted. The declared client still gets the provider's 25-byte 403
+(`9ccabba20b9f`, 2026-09-13); a connected tab is served:
+
+```
+tab, /offres-demploi/            served, no challenge — 16 <article> (15 ads + 1 company block), pager /offres-demploi/page/2/
+tab, /offres-demploi/page/2/     served — 12 ads, no page 3: 27 distinct /offres-emploi/<slug>/ (31 on 2026-09-08)
+tab, /offres-emploi/chef-dequipe-psycho-social/   served, 240 KB — WebPage / BreadcrumbList / WebSite / Organization JSON-LD, datePublished 2026-09-11; no JobPosting; four e-mail addresses in the text
+```
+
+**`route: browser · 27 · 2026-09-14`** — the walk's own figure, the site
+states none. What a session does from a tab: `/offres-demploi/page/N/`
+until the pager ends, the slug of `/offres-emploi/<slug>/` as the key, the
+ad's `datePublished` from its WebPage node, the body with every e-mail
+address and telephone withheld. No script: the client is refused (#404).
+The control of 2026-09-21 in the pilot's deferred tasks can be closed as
+done here.
+
