@@ -111,3 +111,10 @@ read from `total` instead of `count`, the e-mail scrub dropped, the
 telephone scrub dropped, the filter not put on the counter's path (the
 fixture's counter carries a second number and a `+358` form beside the
 `040` one — no symmetric sample this time).
+
+## 2026-09-14 — #372: Valtiolle by `--host valtiolle`
+
+The State's board (`valtiolle.md`) is the same operator and the same
+template; this script reads it with `--host valtiolle` — 212 counted, 212
+emitted on the day. The notes name the host since («site counts 1 356
+(kuntarekry.fi)»).

@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""Kuntarekry (`kuntarekry.fi`) — the recruitment service of Finland's municipalities and wellbeing-services counties, through the server-rendered job cards its own pages carry; the site's own «count» printed beside every walk; the contact person on every ad never leaves. Issue #373.
+"""Kuntarekry (`kuntarekry.fi`) — the recruitment service of Finland's municipalities and wellbeing-services counties, through the server-rendered job cards its own pages carry; the site's own «count» printed beside every walk; the contact person on every ad never leaves. Issue #373. **And Valtiolle (`valtiolle.fi`), the State's own board on the same template and the same operator, by `--host valtiolle` (#372).**
 
-  kuntarekry.py search [--filter <slug>] [--pages N] [--limit N]
-  kuntarekry.py ad --url <https://kuntarekry.fi/fi/tyopaikat/<slug>-<key>/>
+  kuntarekry.py search [--host valtiolle] [--filter <slug>] [--pages N] [--limit N]
+  kuntarekry.py ad --url <https://kuntarekry.fi/fi/tyopaikat/<slug>-<key>/>      (the host is read off the address)
+
+TWO HOSTS, ONE TEMPLATE. `--host` names the board — `kuntarekry` (the default) or `valtiolle`
+— and everything below was read the same on both: the same `<job-card>` markup, the same
+`<ip-pagination>`, the same `?view=count&format=json` counter, the same JobPosting with the
+contact block on the ad. Valtiolle measured 2026-09-14 00:5x UTC: «count: 212», 24 cards a page
+over 9 pages, no promoted card, the rules on the apex `valtiolle.fi` `*` Allow: / (the `www.`
+host answers its home page to the rules request — an absence); the record's `source` and
+`ledger_id` carry the board's key, and `ad --url` reads the board off the address.
 
 THE ROUTE IS THE PAGE — a Lit web-components site whose LIST is rendered by the server:
 
@@ -47,13 +55,14 @@ from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
+BOARDS = {"kuntarekry": "kuntarekry.fi", "valtiolle": "valtiolle.fi"}   # one operator, one template — each host measured before it was listed
 HOST = "kuntarekry.fi"
 BASE = f"https://{HOST}"
 LIST = f"{BASE}/fi/tyopaikat/"
 PAGE_SIZE = 24
 CARD_RE = re.compile(r"<job-card\b([^>]*)>", re.S)
 PAGER_RE = re.compile(r'<ip-pagination\b([^>]*)>', re.S)
-DETAIL_RE = re.compile(r"^https?://(?:www\.)?kuntarekry\.fi/fi/tyopaikat/([a-z0-9][a-z0-9.-]*-[a-z0-9-]+)/?$", re.I)
+DETAIL_RE = re.compile(r"^https?://(?:www\.)?(kuntarekry|valtiolle)\.fi/fi/tyopaikat/([a-z0-9][a-z0-9.-]*-[a-z0-9-]+)/?$", re.I)
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 PHONE_RE = re.compile(r"(?<![\d.])(?:\+358|0)\s?\d{1,3}(?:[ -]?\d{2,4}){2,3}(?!\d)")   # a Finnish number in any of its spacings; a date (1.10.2026) never starts with 0 after a dot
 
@@ -80,12 +89,26 @@ def gate(url):
     return a
 
 
-_PACE = Pace(HOST, own=2.0)   # no Crawl-delay in the rules; 2 s is ours
+_PACES = {}
+
+
+def pace_for(host):
+    if host not in _PACES:
+        _PACES[host] = Pace(host, own=2.0)   # no Crawl-delay in either rules file; 2 s is ours
+    return _PACES[host]
+
+
+def board_of(name):
+    """The board key → its host, or a clean exit naming the boards the script knows."""
+    key = (name or "kuntarekry").strip().lower()
+    if key not in BOARDS:
+        die(f"--host {name!r}: the boards this script reads are {', '.join(BOARDS)} — each measured before it was listed")
+    return key, BOARDS[key]
 
 
 def request(url, accept="text/html,application/xhtml+xml"):
     gate(url)
-    _PACE.wait()
+    pace_for(urllib.parse.urlsplit(url).netloc).wait()
     req = urllib.request.Request(wire_url(url), headers={"User-Agent": UA, "Accept": accept, "Accept-Language": "fi"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -120,14 +143,14 @@ def scrub(s):
     return PHONE_RE.sub("[telephone withheld]", s)
 
 
-def list_url(flt, page):
-    base = LIST + (flt.strip("/") + "/" if flt else "")
+def list_url(flt, page, host=HOST):
+    base = f"https://{host}/fi/tyopaikat/" + (flt.strip("/") + "/" if flt else "")
     return base if page == 1 else f"{base}sivu{page}/"
 
 
-def stated(flt):
+def stated(flt, host=HOST):
     """The site's own counter — the JSON its `<job-counter>` asks for, on the same path as the walk."""
-    code, body = request(list_url(flt, 1) + "?view=count&format=json", accept="application/json")
+    code, body = request(list_url(flt, 1, host) + "?view=count&format=json", accept="application/json")
     if code != 200:
         return None
     try:
@@ -149,7 +172,7 @@ def pager(body):
         return None
 
 
-def cards(body):
+def cards(body, key="kuntarekry", host=HOST):
     """One record per `<job-card>` that is not promoted — the site marks its four «Mainostetut» cards itself."""
     out = []
     for m in CARD_RE.finditer(body or ""):
@@ -160,9 +183,9 @@ def cards(body):
         if not ident:
             continue
         out.append({
-            "source": "kuntarekry", "country": "FI", "ledger_id": f"kuntarekry:{ident}", "id": ident,
+            "source": key, "country": "FI", "ledger_id": f"{key}:{ident}", "id": ident,
             "key": a.get("job-key") or None,                          # the site's own key — ESPOO-03-1327-26
-            "url": BASE + a["url"] if a.get("url", "").startswith("/") else (a.get("url") or None),
+            "url": f"https://{host}" + a["url"] if a.get("url", "").startswith("/") else (a.get("url") or None),
             "title": a.get("title") or None,
             "employer": a.get("profit-center") or a.get("organisation-title") or None,   # the hiring unit as the card names it
             "organisation": a.get("organisation-title") or None,
@@ -174,15 +197,16 @@ def cards(body):
 
 
 def cmd_search(a):
-    total = stated(a.filter)
-    where = f"({a.filter})" if a.filter else "(the whole site)"
+    key, host = board_of(getattr(a, "host", None))
+    total = stated(a.filter, host)
+    where = f"({host}" + (f", {a.filter}" if a.filter else "") + ")"
     if total is None:
         note(f"the site's counter did not answer for {where} — the walk goes on without a witness.")
     out, seen, pageno = [], set(), 0
     pages_total = None
     while True:
         pageno += 1
-        url = list_url(a.filter, pageno)
+        url = list_url(a.filter, pageno, host)
         code, body = request(url)
         if code == 404 and pageno > 1:
             pageno -= 1
@@ -194,7 +218,7 @@ def cmd_search(a):
             die(f"{url}: asked for page {pageno}, the pager says current={pg[0]} — the page did not turn.", EXIT_PARTIAL)
         if pg:
             pages_total = pg[1]
-        rows = cards(body)
+        rows = cards(body, key, host)
         if pageno == 1 and not rows:
             if (total or 0) > 0:
                 die(f"{url}: the site counts {total} and the first page carries no card — a reading fault, not an empty list.", EXIT_PARTIAL)
@@ -243,7 +267,8 @@ def jsonld(body):
 def cmd_ad(a):
     m = DETAIL_RE.match((a.url or "").strip())
     if not m:
-        die(f"{a.url}: not a posting address — expected {LIST}<slug>-<key>/")
+        die(f"{a.url}: not a posting address — expected https://<kuntarekry|valtiolle>.fi/fi/tyopaikat/<slug>-<key>/")
+    board = m.group(1).lower()
     code, body = request(a.url)
     if code in (404, 410):
         die(f"{a.url}: HTTP {code}", EXIT_GONE)
@@ -257,9 +282,9 @@ def cmd_ad(a):
     loc = d.get("jobLocation") if isinstance(d.get("jobLocation"), dict) else {}
     addr = loc.get("address") if isinstance(loc.get("address"), dict) else {}
     sal = d.get("baseSalary") if isinstance(d.get("baseSalary"), dict) else {}
-    key = jv.get("job-ext-id") or m.group(1).rsplit("-", 1)[-1]
+    key = jv.get("job-ext-id") or m.group(2).rsplit("-", 1)[-1]
     print(json.dumps({
-        "source": "kuntarekry", "country": "FI", "ledger_id": f"kuntarekry:key:{key}", "key": key, "url": a.url,
+        "source": board, "country": "FI", "ledger_id": f"{board}:key:{key}", "key": key, "url": a.url,
         "title": d.get("title") or jv.get("job-title") or None,
         "employer": d.get("hiringOrganization") if isinstance(d.get("hiringOrganization"), str) else (d.get("hiringOrganization") or {}).get("name"),
         "workplace": ", ".join(x for x in (addr.get("addressLocality"), addr.get("addressRegion")) if x) or None,
@@ -278,6 +303,7 @@ def main():
     p = argparse.ArgumentParser(description="Kuntarekry — Finland's municipal recruitment service through the job cards its pages render; the site's own count beside every walk; no contact ever leaves. Issue #373.")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("search", help="the open postings, 24 a page, 2 s apart, 10 pages unless told otherwise; --filter is a path segment the site itself links (espoo, pirkanmaa, sosiaaliala, an organisation's slug)")
+    s.add_argument("--host", default="kuntarekry", help="the board: kuntarekry (default) or valtiolle — one operator, one template")
     s.add_argument("--filter")
     s.add_argument("--pages", type=int, default=10)
     s.add_argument("--limit", type=int)
