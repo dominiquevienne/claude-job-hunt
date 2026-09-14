@@ -24419,5 +24419,116 @@ class AnAgencyBoardWhoseSitemapIsTheInventoryAndWhosePageWritesTheTownInTheRegio
         self.assertIn("1 job(s) read from their pages, 1 gone since the sitemap, of the 2 the sitemap names — 2 read by request (--limit), not a shortfall; the site states no count a client reads.", err)
 
 
+class AStaffingFrontThatNamesUsInItsRulesWhoseListingStateIsTheWitnessAndWhoseRecruiterNeverLeaves(unittest.TestCase):
+    """**`trenkwalder.py`, 2026-09-14 (#349).** Trenkwalder Slovakia's rules
+    name `Claude-User` (open but `/api/*`) at `Crawl-delay: 10`; `/jobs` is
+    server-rendered with its search state — `nbHits`, the number the page
+    prints, and up to 30 full records — and its pager is client-side, so the
+    sitemap's other ids are read from their pages and the total is printed
+    against `nbHits`. The record is the site's object: the national texts,
+    the salary only when `publishSalary` is true (with its period), the
+    agency as employer; **`recruiter` — name, e-mail, telephone — is on
+    every record and never emitted**; `/api/*` is refused before the gate.
+    Mutated (`-B`, detached copy): the sitemap's other ids not read → the
+    walk case reddens; `nbHits` not read → the walk case reddens; the
+    salary read when not published → the walk case reddens; the recruiter
+    emitted → the walk case reddens; the text not scrubbed → the ad case
+    reddens; the `/api/*` guard dropped → the guard case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_trenkwalder", os.path.join(SCRIPTS, "trenkwalder.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _hit(self, oid, title, place="Lengau", country=("Austria", "Rakúsko"), publish=False, smin=None, smax=None, desc="<ul><li>Zváranie</li></ul>"):
+        return {"publishingStatus": "Published", "country": "SK", "language": "SK", "web": {"applicationUrl": f"https://sk.trenkwalder.com/application?jobId={oid}", "jobUrl": f"https://sk.trenkwalder.com/jobs/{oid}", "tags": [{"en": "Hot-job", "national": "Hot-job"}, {"en": "Foreign", "national": "Zahraničie"}], "jobAdDate": "2026-08-17T12:37:14Z"},
+                "jobLocation": {"location": place, "zipCode": "07746", "region": {"en": "Upper Austria", "national": "Upper Austria"}, "country": {"en": country[0], "national": country[1]}},
+                "jobBranch": {"id": "0012", "name": "SKM01 Bratislava", "street": "Gagarinova 7A", "city": "Bratislava", "zip": "821 03", "country": "Slovakia"},
+                "jobContent": {"companyInformation": "<p>Pre strojársku spoločnosť.</p>", "compensationBenefits": "<ul><li>Základná mzda 2 806,53 € brutto / mesačne</li></ul>", "jobDescription": desc, "jobRequirements": "<ul><li>Technické vzdelanie</li></ul>", "languageFormality": "Formal"},
+                "jobObject": {"title": title, "subtitle": None, "branch": "SKM01 Bratislava", "jobCategory": [{"en": "Production / Operation", "national": "Výroba"}], "industry": [{"en": "Machinery", "national": "Strojné zariadenia"}], "jobType": "Blue collar", "mainJobCategory": {"en": "Production / Operation", "national": "Výroba"}, "mainIndustry": {"en": "Machinery", "national": "Strojné zariadenia"}, "typeOfPlacement": {"en": "Leasing", "national": "Leasing"}},
+                "jobParams": {"startDate": "2026-08-17", "endDate": "2026-09-17", "lastChange": "2026-08-17T12:37:14Z", "createdDate": "2026-08-13T11:21:03Z"},
+                "jobInfo": {"hoursPerWeek": 40, "workSchedule": {"en": "Full-time", "national": "Plný úväzok"}, "currency": "EUR", "salaryMin": smin, "salaryMax": smax, "salaryPeriod": {"en": "Month", "national": "Mesiac"}, "classification": {"en": "Skilled blue collar", "national": "Kvalifikovaný BC"}, "publishSalary": publish},
+                "recruiter": {"email": "l.auda@trenkwalder.example", "firstName": "Ľuboš", "id": "0034", "lastName": "Auda-Secret", "mobilePhone": "+421902942408", "phone": "+421902942408", "contactInfo": "Trenkwalder a.s.<br>Ľuboš Auda", "quote": "Acta, non verba.", "jobTitle": "Senior Recruiter"},
+                "account": {"logoURL": "No permission for account logo publishing", "logoShow": False, "clientId": "0015"}, "objectID": oid}
+
+    def _listing(self, hits, nb):
+        d = {"props": {"pageProps": {"serverState": {"initialResults": {"PROD_SK_New_Index_1_date": {"state": {}, "results": [{"hits": hits, "nbHits": nb, "hitsPerPage": 30, "page": 0, "nbPages": 2}]}}}, "serverUrl": "https://sk.trenkwalder.com"}}, "page": "/jobs"}
+        return '<html><body><div id="__next">Našli sme pre Vás ' + str(nb) + ' možných výsledkov.</div><script id="__NEXT_DATA__" type="application/json">' + json.dumps(d, ensure_ascii=False) + "</script></body></html>"
+
+    def _page(self, hit):
+        d = {"props": {"pageProps": {"job": hit, "jobDetailsBody": []}}, "page": "/jobs/[id]"}
+        return '<html><body><script id="__NEXT_DATA__" type="application/json">' + json.dumps(d, ensure_ascii=False) + "</script></body></html>"
+
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><loc>https://sk.trenkwalder.com/jobs/a0tbI00000kf4BpQAI</loc><lastmod>2026-08-17T12:40:42Z</lastmod></url>'
+               '<url><loc>https://sk.trenkwalder.com/jobs/a0tbI00000hlJjrQAE</loc><lastmod>2026-09-11T12:40:42Z</lastmod></url><url><loc>https://sk.trenkwalder.com/jobs/a0tbI00000gfXmWQAU</loc></url></urlset>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(host=None, limit=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_listing_state_and_the_sitemaps_rest_against_nbhits(self):
+        import contextlib
+        mod = self._mod()
+        h1 = self._hit("a0tbI00000kf4BpQAI", "Zvárač MIG/MAG")
+        h2 = self._hit("a0tbI00000hlJjrQAE", "Projektový manažér", place="Bratislava", country=("Slovakia", "Slovensko"), publish=True, smin=2200, smax=2800)
+        h3 = self._hit("a0tbI00000gfXmWQAU", "Operátor výroby", publish=False, smin=1500, smax=1500)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([h1, h2], 3)), (200, self.SITEMAP), (200, self._page(h3))])
+        self.assertEqual(asked, ["https://sk.trenkwalder.com/jobs", "https://sk.trenkwalder.com/sitemap-jobs", "https://sk.trenkwalder.com/jobs/a0tbI00000gfXmWQAU"])
+        self.assertEqual([r["id"] for r in rows], ["a0tbI00000kf4BpQAI", "a0tbI00000hlJjrQAE", "a0tbI00000gfXmWQAU"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["employer_is_the_agency"], a["place"], a["postal_code"], a["region"], a["job_country"], a["category"], a["industry"], a["job_type"], a["placement"], a["work_schedule"], a["hours_per_week"], a["tags"], a["office_city"], a["posted"], a["valid_through"], a["status"], a["language"], a["contacts_withheld"]),
+                         ("trenkwalder-sk", "SK", "trenkwalder-sk:a0tbI00000kf4BpQAI", "https://sk.trenkwalder.com/jobs/a0tbI00000kf4BpQAI", "Zvárač MIG/MAG", "Trenkwalder", True, "Lengau", "07746", "Upper Austria", "Rakúsko", "Výroba", "Strojné zariadenia", "Blue collar", "Leasing", "Plný úväzok", 40, ["Hot-job", "Zahraničie"], "Bratislava", "2026-08-17", "2026-09-17", "Published", "sk", True))
+        self.assertEqual((a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"]), (None, None, None, None, False))
+        self.assertEqual((rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_currency"], rows[1]["salary_unit"], rows[1]["salary_unit_stated"]), (2200, 2800, "EUR", "Mesiac", True))
+        self.assertEqual((rows[2]["salary_min"], rows[2]["salary_unit_stated"]), (None, False))   # a figure the site does not publish is not read
+        self.assertEqual((a["description"], a["requirements"], a["benefits"], a["company_text"]), ("Zváranie", "Technické vzdelanie", "Základná mzda 2 806,53 € brutto / mesačne", "Pre strojársku spoločnosť."))
+        for secret in ("Auda", "trenkwalder.example", "902942408", "recruiter", "clientId", "application?jobId"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("3 emitted (2 from the listing's first page, 1 read from their pages, 0 gone), the site states 3 — equal.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([h1, h2], 2))])
+        self.assertEqual((len(asked), len(rows)), (1, 2))
+        self.assertIn("2 emitted (2 from the listing's first page, 0 read from their pages, 0 gone), the site states 2 — equal.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([h1, h2], 3))], limit=2)
+        self.assertEqual((len(asked), len(rows)), (1, 2))
+        self.assertIn("2 emitted of the 3 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no state</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://sk.trenkwalder.com/api/jobs")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_own_object_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        h = self._hit("a0tbI00000kf4BpQAI", "Zvárač MIG/MAG", desc="<ul><li>Zváranie</li><li>Otázky: l.auda@trenkwalder.example, 0902 942 408</li></ul>")
+        rows, err, asked, raw = self._run(mod, [(200, self._page(h))], cmd="ad", url="https://sk.trenkwalder.com/jobs/a0tbI00000kf4BpQAI")
+        self.assertEqual(asked, ["https://sk.trenkwalder.com/jobs/a0tbI00000kf4BpQAI"])
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["description"]), ("a0tbI00000kf4BpQAI", "Zvárač MIG/MAG", "Zváranie\nOtázky: [e-mail withheld], [telephone withheld]"))
+        self.assertNotIn("Auda", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://sk.trenkwalder.com/jobs/a0tbI00000kf4BpQAI")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://sk.trenkwalder.com/application?jobId=a0tbI00000kf4BpQAI")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
