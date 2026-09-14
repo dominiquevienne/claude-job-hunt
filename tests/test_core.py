@@ -21470,5 +21470,101 @@ class ACardThatNamesItsOwnFieldsAndAnAdThatMayLiveOnTheEmployersHost(unittest.Te
         self.assertEqual(cm.exception.code, 2)
 
 
+class AWholeBoardInOneAnswerWhereTheCountIsPositionsAndTheContactsAreAField(unittest.TestCase):
+    """**`jobbnorge.py`, 2026-09-14 (#366).** Norway's public-sector board
+    serves every open posting in one API answer (`/v3/jobs`), and its
+    counter (`/v1/jobs/count`) counts POSITIONS — the page itself sums
+    `positionCount` — so the adapter prints postings emitted, positions
+    summed and positions counted, «equal» when the sum is the count. The
+    employer is the department when the site says so
+    (`regardDepartmentAsEmployer`). The ad's data route carries
+    `contacts` — persons with telephones — never emitted; the text is
+    scrubbed. Mutated (`-B`, detached copy): the count compared to the
+    number of postings → the walk case reddens; the duplicate id kept →
+    the walk case reddens; the department not taken as the employer when
+    the site says so → the walk case reddens; the contacts emitted → the
+    ad case reddens; the phone scrub dropped → the ad case reddens; the
+    primary location not put first → the walk case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobbnorge", os.path.join(SCRIPTS, "jobbnorge.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _job(self, ident, title, employer="Finnmark fylkeskommune (FFK)", dept="Kirkenes Tannklinikk", regard=False, positions=1, locs=None, promoted=False):
+        locs = locs if locs is not None else [{"address": "Hessengveien 6", "area": "Hesseng", "municipality": "Sør-Varanger", "county": "Finnmark", "isDomestic": True, "isPrimary": True, "zipCode": "9912"}]
+        return {"id": ident, "jobScope": "Heltid", "jobDuration": "Fast", "deadline": "16.09.2026", "employer": employer, "employerID": 2731, "regardDepartmentAsEmployer": regard,
+                "department": dept, "departmentID": 20889, "title": title, "summary": "Ved klinikken har vi ledig stilling. Ring 93 46 26 68.", "logo": "x",
+                "link": f"https://www.jobbnorge.no/ledige-stillinger/stilling/{ident}", "promoted": promoted, "positionCount": positions, "locations": locs, "publicationDate": "19.08.2026",
+                "jobType": {"id": 378, "name": "UN1 - Undervisnings- og forskerstillinger"} if regard else {}}
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(language="1", limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_whole_list_in_one_answer_and_the_count_of_positions_as_the_witness(self):
+        mod = self._mod()
+        jobs = [self._job(306650, "Tannlege 100 % fast", promoted=True),
+                self._job(306651, "Sykepleier", positions=3, locs=[{"municipality": "Bodø", "county": "Nordland", "isDomestic": True, "isPrimary": False, "zipCode": "8006"}, {"area": "Mørkved", "municipality": "Bodø", "county": "Nordland", "isDomestic": True, "isPrimary": True, "zipCode": "8049"}]),
+                self._job(306652, "Førsteamanuensis", employer="NTNU", dept="Institutt for fysikk", regard=True),
+                self._job(306650, "Tannlege 100 % fast (again)"),
+                self._job(306653, "Rådgiver, Brussel", locs=[{"municipality": "Brussel", "county": "", "isDomestic": False, "isPrimary": True}])]
+        rows, err, asked = self._run(mod, [(200, "6"), (200, json.dumps({"jobs": jobs}, ensure_ascii=False))])
+        self.assertEqual(asked, ["https://publicapi.jobbnorge.no/v1/jobs/count", "https://publicapi.jobbnorge.no/v3/jobs?language=1"])
+        self.assertEqual([r["id"] for r in rows], ["306650", "306651", "306652", "306653"])
+        r = rows[0]
+        self.assertEqual((r["title"], r["employer"], r["employer_parent"], r["department"], r["workplace"], r["postal_code"], r["job_scope"], r["job_duration"], r["positions"], r["promoted"], r["posted"], r["application_deadline"], r["url"]),
+                         ("Tannlege 100 % fast", "Finnmark fylkeskommune (FFK)", None, "Kirkenes Tannklinikk", "Hesseng, Sør-Varanger, Finnmark", "9912", "Heltid", "Fast", 1, True, "19.08.2026", "16.09.2026", "https://www.jobbnorge.no/ledige-stillinger/stilling/306650"))
+        self.assertEqual(r["summary"], "Ved klinikken har vi ledig stilling. Ring [telephone withheld].")
+        self.assertEqual((rows[1]["workplace"], rows[1]["locations"], rows[1]["positions"]), ("Mørkved, Bodø, Nordland", ["Bodø, Nordland", "Bodø, Nordland"], 3))   # the primary first
+        self.assertEqual((rows[2]["employer"], rows[2]["employer_parent"], rows[2]["job_type"]), ("Institutt for fysikk", "NTNU", "UN1 - Undervisnings- og forskerstillinger"))
+        self.assertEqual((rows[3]["abroad"], rows[3]["workplace"]), (True, "Brussel"))
+        self.assertIn("4 posting(s) emitted, 6 position(s) summed, site counts 6 positions — equal.", err)
+        rows, err, asked = self._run(mod, [(200, "7"), (200, json.dumps({"jobs": jobs}, ensure_ascii=False))])
+        self.assertIn("6 position(s) summed, site counts 7 positions — 1 short.", err)
+        rows, err, asked = self._run(mod, [(200, "6"), (200, json.dumps({"jobs": jobs}, ensure_ascii=False))], limit=2)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 posting(s) emitted of the 4 the list carries (--limit)", err)
+
+    def test_the_ad_reads_the_pages_own_data_and_the_contacts_never_leave(self):
+        import contextlib
+        mod = self._mod()
+        d = {"components": [{"heading": "Tannlege 100 % fast Kirkenes tannklinikk", "text": "<p>Vi søker tannlege. Spørsmål til Marit på +47 934 62 668 eller marit@ffk.example.</p>"}],
+             "jobGapComponents": [{"gapType": 1, "title": "Om stillingen", "content": "<p>Ved Kirkenes tannklinikk har vi ledig fast stilling.</p>"}, {"gapType": 2, "title": "Kvalifikasjonskrav", "content": "<ul><li>Norsk autorisasjon</li></ul>"}],
+             "contacts": [{"name": "Marit Charlotte Aronsen", "phone": "+4793462668", "title": "Overtannlege"}], "positionCount": 1, "isPublished": True}
+        mod.request = lambda url: (200, json.dumps(d, ensure_ascii=False))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobbnorge.no/ledige-stillinger/stilling/306650/tannlege-100-fast-kirkenes-tannklinikk", language="1"))
+        r = json.loads(out.getvalue())
+        self.assertEqual((r["id"], r["url"], r["title"], r["positions"], r["published"], r["contacts_withheld"]), ("306650", "https://www.jobbnorge.no/ledige-stillinger/stilling/306650", "Tannlege 100 % fast Kirkenes tannklinikk", 1, True, True))
+        self.assertEqual([s["title"] for s in r["sections"]], ["Om stillingen", "Kvalifikasjonskrav"])
+        self.assertEqual(r["sections"][1]["text"], "Norsk autorisasjon")
+        self.assertEqual(r["description"], "Vi søker tannlege. Spørsmål til Marit på [telephone withheld] eller [e-mail withheld].")
+        for secret in ("Aronsen", "93462668", "934 62 668", "ffk.example", "contacts\""):
+            self.assertNotIn(secret, out.getvalue())
+        mod.request = lambda url: (200, '{"error": "not found"}')
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobbnorge.no/ledige-stillinger/stilling/1", language="1"))
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobbnorge.no/search", language="1"))
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
