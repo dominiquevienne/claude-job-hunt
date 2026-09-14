@@ -25677,5 +25677,110 @@ class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheI
         self.assertEqual(cm.exception.code, 2)
 
 
+class ABurkinabeBoardThatServesFifteenCardsAPageAndKeepsTheRestBehindARefusedRouteAndASubscription(unittest.TestCase):
+    """**`emploisburkina.py`, 2026-09-14 (#300).** The root and each category
+    page state their count («2305 offres») and carry fifteen cards: the
+    open ones link `/post/<id>`, the «EXCLUSIF» ones open a subscription
+    (`data-exclusive-offer` — counted, never opened); the rest of the list
+    loads by `/api/load-more`, refused in writing and never sent. The
+    adapter emits only the open cards and prints the shortfall — the
+    pilot's reading of 2026-09-14: a score of open ads is not nothing, and
+    what closes is the route, not the board. Mutated (`-B`, detached copy):
+    the stated count not read → the walk case reddens; the exclusive cards
+    emitted → the walk case reddens; the refused-path guard dropped → the
+    guard case reddens; the description not scrubbed → the ad case
+    reddens; the category pages skipped → the walk case reddens; the
+    deadline not read → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_emploisburkina", os.path.join(SCRIPTS, "emploisburkina.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(jid, title, level="Multiple", exclusive=False):
+        if exclusive:
+            return f'<article class="bg-white"><a href="#" data-exclusive-offer="{jid}" data-exclusive-url="https://emploisburkina.bf/post/{jid}" onclick="showSubscriptionModal(); return false;"><h3 class="text-lg">{title}</h3><p class="text-gray-600 text-sm">Secret excerpt, écrire à secret@example.bf</p></a></article>'
+        return (f'<article class="bg-white"><a href="https://emploisburkina.bf/post/{jid}" class="flex"><div class="flex-1 p-5"><span class="inline-flex items-center px-2.5">{level}</span>'
+                f'<h3 class="text-lg font-semibold">{title}</h3><p class="text-gray-600 text-sm line-clamp-2 mb-3">Un extrait. Contact : rh@example.bf ou 70 12 34 56.</p>'
+                f'<span class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 mr-1"></i> 14 sept. 2026 </span></div></a></article>')
+
+    @classmethod
+    def _page(cls, total, cards):
+        return (f'<html><body><h2>Offres d\'emploi</h2> <span>{total} offres</span><div id="posts-container">' + "".join(cards) + '</div><script>fetch(`https://emploisburkina.bf/api/load-more?${p}`)</script></body></html>')
+
+    POST = ('<html><head><title>Caritas Suisse recrute 03 experts | Emplois Burkina</title></head><body><nav>Emplois Burkina Offres Talents</nav>'
+            '<span class="flex items-center text-gray-500 text-sm"><i data-lucide="calendar"></i> Date limite: 14 sept. 2026 </span>'
+            '<h1 class="text-2xl">Caritas Suisse recrute 03 experts</h1><div><p>Appel à candidatures. Lieu des postes : Gaoua.</p><p>Contact : soumission@example.ch ou 70 11 22 33.</p></div>'
+            '<a class="btn" data-event="apply_click">POSTULER</a><div>Commander un CV</div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None) if cmd == "list" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_open_cards_the_exclusives_set_aside_and_the_shortfall_said(self):
+        import contextlib
+        mod = self._mod()
+        root = self._page(2305, [self._card("38265", "Caritas Suisse recrute 03 experts"), self._card("38274", "CBM recrute", exclusive=True), self._card("38229", "L'IDLO recrute", level="Niveau BAC+3")])
+        cat = lambda ids, excl=1: self._page(165, [self._card(i, "Poste " + i) for i in ids] + [self._card("9" + i, "Exclusif " + i, exclusive=True) for i in ids[:excl]])
+        served = [(200, root), (200, cat(["38229", "38300"])), (200, cat(["38301"])), (200, cat([])), (200, cat(["38302"], 0)), (200, cat([]))]
+        rows, err, asked, raw = self._run(mod, served)
+        self.assertEqual(asked, ["https://emploisburkina.bf/"] + [f"https://emploisburkina.bf/category/{c}" for c in ("12", "13", "14", "16", "25")])
+        self.assertEqual([r["id"] for r in rows], ["38265", "38229", "38300", "38301", "38302"])   # 38229 once — seen on the root first
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["level"], a["posted"], a["language"], a["contacts_withheld"]),
+                         ("emploisburkina", "BF", "emploisburkina:38265", "https://emploisburkina.bf/post/38265", "Caritas Suisse recrute 03 experts", "Multiple", "2026-09-14", "fr", True))
+        self.assertEqual(a["excerpt"], "Un extrait. Contact : [e-mail withheld] ou [telephone withheld].")
+        self.assertEqual((rows[1]["level"], rows[2]["category_page"]), ("Niveau BAC+3", "12"))
+        for secret in ("38274", "CBM recrute", "secret@", "rh@example", "70 12 34 56"):
+            self.assertNotIn(secret, raw)   # an exclusive card is never emitted, and no contact leaves
+        self.assertIn("5 emitted from 6 page(s) (3 exclusive card(s) set aside — behind a subscription, never opened), the site states 2 305 — 2 300 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, root), (200, cat(["38300"]))], limit=2)
+        self.assertEqual((len(asked), len(rows)), (1, 2))   # the root alone carries the two asked for
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '<html><body><div id="posts-container">' + self._card("1", "x") + "</div></body></html>")])
+        self.assertEqual(cm.exception.code, 6)   # no stated count: a changed template, never an empty market
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://emploisburkina.bf/api/load-more?page=2", "https://emploisburkina.bf/subscription", "https://emploisburkina.bf/talents/create"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_own_markup_scrubbed_with_its_deadline(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.POST)], cmd="ad", url="https://emploisburkina.bf/post/38265")
+        self.assertEqual(asked, ["https://emploisburkina.bf/post/38265"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["ledger_id"], a["title"], a["deadline"]), ("38265", "emploisburkina:38265", "Caritas Suisse recrute 03 experts", "2026-09-14"))
+        self.assertEqual(a["description"], "Appel à candidatures. Lieu des postes : Gaoua.\nContact : [e-mail withheld] ou [telephone withheld].")   # cut before POSTULER; the <title> never mistaken for the heading
+        self.assertNotIn("soumission@", raw)
+        self.assertNotIn("Commander un CV", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://emploisburkina.bf/post/38265")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no heading</body></html>")], cmd="ad", url="https://emploisburkina.bf/post/38265")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://emploisburkina.bf/category/12")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
