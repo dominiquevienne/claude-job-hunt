@@ -20585,5 +20585,107 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
         self.assertEqual(cm.exception.code, 6)
 
 
+class AnIndexThePageQueriesItselfWhereTheAppointedNameAndTheRefusingHostNeverLeave(unittest.TestCase):
+    """**`trabajaenelestado.py`, 2026-09-13 (#302).** Chile's public-service
+    calls are read from the Elasticsearch route the page posts to itself —
+    the same `term` filters and page size, a plain sort in place of the
+    page's Painless script, `hits.total` the witness. Records without the
+    site's `ID Conv` (28 of 349 on the day) take the index's `_id` and say
+    so. `Ganador` — the appointed person — is never emitted; the detail
+    addresses on `www.empleospublicos.cl` (Disallow: /) are emitted as data
+    and never fetched — there is no `ad` command. Mutated (`-B`, detached
+    copy): the script sort restored → the query case reddens; the `_id`
+    fallback dropped → the walk case reddens (short); `Ganador` emitted →
+    the personal-data case reddens; `hits.total` read as the hit count →
+    the walk case reddens; the window stop dropped → the window case
+    reddens; the refusing-host note dropped → the address case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_trabajaenelestado", os.path.join(SCRIPTS, "trabajaenelestado.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _hit(self, esid, conv, cargo="Técnico en Enfermería", inst="Servicio de Salud Metropolitano Oriente", url=None, estado="postulacion", ganador=""):
+        return {"_id": esid, "_source": {"ID Conv": conv, "Datesum": 753861, "Ministerio": "Ministerio de Salud", "Cargo": cargo, "Area de Trabajo": "Salud",
+                                          "Fecha inicio Convocatoria": "27/05/2026 0:00:00", "Fecha cierre Convocatoria": "03/06/2026 23:59:00",
+                                          "URL": url if url is not None else f"https://www.empleospublicos.cl/pub/convocatorias/convpostularavisoTrabajo.aspx?i={conv}&c=0&j=0",
+                                          "Region": "Región Metropolitana de Santiago", "Ciudad": "Providencia", "Institucion/Entidad": inst, "Tipo Convocatoria": "EEPP",
+                                          "Estado": estado, "Tipo Postulacion": "Postulacion en linea", "Cargo Profesional": "Técnicos", "Codigo Region": "region13", "Ganador": ganador}}
+
+    def _page(self, hits, total):
+        return (200, json.dumps({"took": 2, "hits": {"total": total, "hits": hits}}, ensure_ascii=False))
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(body):
+            sent.append(body)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(estado="postulacion", region=None, pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_sends_the_pages_own_filters_with_a_plain_sort_and_the_total_is_the_witness(self):
+        mod = self._mod()
+        p1 = self._page([self._hit(f"es{i}", str(139000 + i)) for i in range(36)], 40)
+        # four records without the site's id (the JUNJI feed), on another host — the index's own _id stands in
+        p2 = self._page([self._hit(f"jj{i}", "", cargo=f"Ranking de Reemplazo {i}", inst="Junta Nacional de Jardines Infantiles", url=f"https://junji.myfront.cl/oferta-de-empleo/{19900 + i}/") for i in range(4)], 40)
+        rows, err, sent = self._run(mod, [p1, p2])
+        self.assertEqual(len(rows), 40)
+        r = rows[0]
+        self.assertEqual((r["id"], r["id_is_index_id"], r["title"], r["employer"], r["ministry"], r["region"], r["region_code"], r["city"], r["call_type"], r["opens"], r["closes"], r["status"]),
+                         ("139000", False, "Técnico en Enfermería", "Servicio de Salud Metropolitano Oriente", "Ministerio de Salud", "Región Metropolitana de Santiago", "region13", "Providencia", "EEPP", "27/05/2026 0:00:00", "03/06/2026 23:59:00", "postulacion"))
+        self.assertIn("Disallow: /", r["url_not_fetched"])
+        self.assertEqual((rows[36]["id"], rows[36]["id_is_index_id"], rows[36]["url_not_fetched"]), ("jj0", True, None))
+        self.assertIn("40 emitted over 2 page(s), index states 40 (Estado postulacion) — equal.", err)
+        self.assertIn("36 of the 40 addresses are on www.empleospublicos.cl", err)
+        q = sent[0]
+        self.assertEqual((q["from"], q["size"], q["track_total_hits"]), (0, 36, True))
+        self.assertEqual(q["query"], {"bool": {"must": [{"term": {"Estado": "postulacion"}}]}})
+        self.assertNotIn("_script", json.dumps(q))      # a client does not send scripts to someone else's cluster
+        self.assertEqual(q["sort"][0], {"Datesum": "asc"})
+        self.assertEqual(sent[1]["from"], 36)
+        rows, err, sent = self._run(mod, [self._page([self._hit("a", "1")], 1)], estado="finalizadas", region="region13")
+        self.assertEqual(sent[0]["query"]["bool"]["must"], [{"term": {"Estado": "finalizadas"}}, {"term": {"Codigo Region": "region13"}}])
+        rows, err, sent = self._run(mod, [self._page([self._hit("a", "1")], 1)], estado="todos")
+        self.assertEqual(sent[0]["query"], {"match_all": {}})
+
+    def test_the_appointed_person_never_leaves_and_a_bad_state_is_refused(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, sent = self._run(mod, [self._page([self._hit("a", "45483", estado="finalizadas", ganador="María José Pérez Soto")], 1)], estado="finalizadas")
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("Pérez", json.dumps(rows, ensure_ascii=False))
+        self.assertNotIn("Ganador", json.dumps(rows))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_list(argparse.Namespace(estado="abiertas", region=None, pages=10, limit=None))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertFalse(hasattr(mod, "cmd_ad"))       # there is no detail command: the addresses are on a host that says no
+
+    def test_the_window_stops_the_walk_and_a_total_in_es7_shape_is_read(self):
+        mod = self._mod()
+        mod.PAGE_SIZE = 2
+        mod.WINDOW = 4
+        pages = [self._page([self._hit(f"e{p}{i}", str(p * 10 + i)) for i in range(2)], 9) for p in range(3)]
+        rows, err, sent = self._run(mod, pages, pages=50)
+        self.assertEqual(len(rows), 4)                 # two pages of two, then the window
+        self.assertEqual(len(sent), 2)
+        self.assertIn("window ends at 4", err)
+        self.assertIn("9 stated", err)
+        mod.PAGE_SIZE, mod.WINDOW = 36, 10000
+        es7 = (200, json.dumps({"hits": {"total": {"value": 1, "relation": "eq"}, "hits": [self._hit("z", "9")]}}))
+        rows, err, sent = self._run(mod, [es7])
+        self.assertEqual(len(rows), 1)
+        self.assertIn("index states 1", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
