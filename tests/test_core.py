@@ -20013,6 +20013,121 @@ class ATaleoCareerSectionIsReadByItsOwnPagerAndItsDeclaredSlotNames(unittest.Tes
         self.assertEqual(cm.exception.code, 3)
 
 
+class AJobviteTenantIsPagedByItsSearchPageAndTheViewAllPageIsNotTheInventory(unittest.TestCase):
+    """**`jobvite.py`, 2026-09-14 (#454).** `list --tenant` reads
+    `jobs.jobvite.com/<tenant>/search?q=&l=` — not `/jobs`, the «View All»
+    page that showed 97 rows where the search page states 224 — follows
+    `jv-pagination-next` until it is gone, dedups on the job id, reads
+    the site's «1-50 of N» (`jv-pagination-text`) and compares (exit 6 on
+    a gap; «the site states no count» when absent). A tenant the host
+    does not know is a 200 on the editor's support page: exit 3 from the
+    final URL. `ad` reads `jv-header`, the meta's department, locations and
+    «Req.Num.», the description with its leading HTML comment dropped,
+    withholds contacts. Mutated (`-B`, detached copy): the dedup dropped
+    → the walk case reddens (page 2 repeats one id); the gap exit removed
+    → the short case reddens; the «Next» link no longer followed → the
+    walk case reddens; `unknown_tenant` neutralised → the unknown case
+    reddens; the comment strip dropped → the ad case reddens; EMAIL_RE
+    neutralised → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobvite", os.path.join(SCRIPTS, "jobvite.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(i, loc="Basel, Switzerland"):
+        return f'<tr><td class="jv-job-list-name">\n <a href="/acme/job/o{i:05d}">Puesto {i}</a>\n</td><td class="jv-job-list-location">\n {loc}\n</td></tr>'
+
+    @classmethod
+    def _page(cls, ids, nxt=None, stated="1-2 of 3"):
+        text = f'<div class="jv-pagination-text"> {stated} </div>' if stated else ""
+        link = f'<a href="{nxt}" class="jv-pagination-next"> Next </a>' if nxt else ""
+        multi = '<div class="jv-meta"> 5 Locations </div>'
+        body = "".join(cls._row(i) if i != 9 else cls._row(i, multi) for i in ids)
+        return f'<html><body><article class="jv-page-body"><table class="jv-job-list jv-search-list"><tbody>{body}</tbody></table><div class="jv-pagination">{text}{link}</div></article></body></html>'
+
+    def _run(self, mod, fixtures, final=None, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            for key, body in fixtures.items():
+                if url.endswith(key):
+                    return (200, body, final or url)
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(tenant="acme", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_follows_next_to_the_end_reads_the_stated_count_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {"/acme/search?q=&l=": self._page([1, 2], nxt="/acme/search/?p=1", stated="1-2 of 3"), "/acme/search/?p=1": self._page([2, 9], stated="3-3 of 3")}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["id"] for r in rows], ["o00001", "o00002", "o00009"])
+        self.assertIn("3 emitted over 2 page(s), site states 3 (jobs.jobvite.com/acme) — equal", err)
+        self.assertEqual(asked, ["https://jobs.jobvite.com/acme/search?q=&l=", "https://jobs.jobvite.com/acme/search/?p=1"])
+        self.assertEqual((rows[0]["title"], rows[0]["location"], rows[0]["url"]), ("Puesto 1", "Basel, Switzerland", "https://jobs.jobvite.com/acme/job/o00001"))
+        self.assertEqual((rows[2]["location"], rows[2]["locations_count"]), ("5 Locations", 5))
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        code, rows, err, asked = self._run(mod, {"/acme/search?q=&l=": self._page([1, 2], stated="1-2 of 30")}, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted over 1 page(s), site states 30 (jobs.jobvite.com/acme) — 28 short", err)
+
+    def test_a_site_that_states_no_count_is_said_so_and_a_bounded_walk_says_so(self):
+        mod = self._mod()
+        code, rows, err, asked = self._run(mod, {"/acme/search?q=&l=": self._page([1, 2], stated="")}, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertIn("the site states no count", err)
+        self.assertIn("not compared", err)
+        fx = {"/acme/search?q=&l=": self._page([1, 2], nxt="/acme/search/?p=1"), "/acme/search/?p=1": self._page([3])}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual((code, len(rows), len(asked)), (0, 2, 1), err)
+        self.assertIn("walk bounded by request (--pages 1", err)
+
+    def test_a_tenant_the_host_does_not_know_is_a_200_on_the_support_page_and_exits_gone(self):
+        mod = self._mod()
+        code, rows, err, asked = self._run(mod, {"/acme/search?q=&l=": "<html><body>Job Seeker FAQs</body></html>"}, final="https://www.jobvite.com/support/job-seeker-support/?invalid=1", all=True)
+        self.assertEqual(code, 3, err)
+        self.assertEqual(rows, [])
+        self.assertIn("does not know the tenant «acme»", err)
+
+    def test_the_ad_reads_the_header_the_meta_and_the_description_without_its_comment_and_withholds_contacts(self):
+        mod = self._mod()
+        page = ('<html><body><article class="jv-page-body"><div class="jv-wrapper"><h2 class="jv-header">\n Systems Engineer\n</h2>'
+                "<p class=\"jv-job-detail-meta\"> Sales <span class='jv-inline-separator'></span> Little Rock, Arkansas <span class=\"jv-inline-separator\"></span> Bentonville, Arkansas <span class='jv-inline-separator'></span>Req.Num.: 32278 </p>"
+                '<div class="jv-job-detail-description" ng-non-bindable> <!-- removed ===== <p>An older text that nobody should read.</p> removed=====---> <p><strong>The Opportunity</strong></p><p>Write to hr@acme.example or call +1 415 555 0100 01.</p></div>'
+                '<div class="jv-job-detail-bottom-actions"><a href="/acme/job/o00001/apply">Apply</a></div></div></article></body></html>')
+        mod.request = lambda u: (200, page, u)
+        import contextlib
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://jobs.jobvite.com/acme/job/o00001"))
+        r = json.loads(out.getvalue())
+        self.assertEqual((r["id"], r["title"], r["department"], r["location"], r["req_number"]), ("o00001", "Systems Engineer", "Sales", "Little Rock, Arkansas | Bentonville, Arkansas", "32278"))
+        self.assertEqual(r["description"], "The Opportunity\nWrite to [e-mail withheld] or call [phone withheld].")
+        self.assertNotIn("older text", r["description"])
+        mod.request = lambda u: (200, "<html>Job Seeker FAQs</html>", "https://www.jobvite.com/support/job-seeker-support/?invalid=1")
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            mod.cmd_ad(argparse.Namespace(url="https://jobs.jobvite.com/acme/job/o00001"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
