@@ -25562,5 +25562,120 @@ class ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling(unittest.TestCas
         self.assertTrue(any("no §5j" in b for b in self._complaints("x.md", card, "## 6 — next\n")))
 
 
+class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheInventory(unittest.TestCase):
+    """**`asako.py`, 2026-09-14 (#338).** Asako.mg prints its count on the
+    server («<strong>253</strong> offres disponibles») and loads its cards
+    by a client action, so the sitemap's `/annonces/<slug>-<hex>` rows are
+    the inventory and each ad is read for its JobPosting — or, on the older
+    ads that carry none, from the page's own markup (`<h1>`, «chez X» in the
+    title, «Publiée le», «Lieu de travail», the prose sections). The count
+    is printed beside every walk; texts scrubbed; `/api/`, `/go/` and the
+    accounts (refused in writing to `Claude-User` by name) never sent.
+    Mutated (`-B`, detached copy): the stated count not read → the walk
+    case reddens; the legacy reader dropped → the walk case reddens (exit
+    6 on a real page); the description not scrubbed → the ad case reddens;
+    the refused-path guard dropped → the guard case reddens; the sitemap's
+    non-ad rows counted as ads → the sitemap case reddens; `TELECOMMUTE`
+    not read → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_asako", os.path.join(SCRIPTS, "asako.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LISTING = '<html><body><p class="text-asako-muted"><strong class="font-semibold">253</strong> <!-- -->offres disponibles</p><script>self.__next_f.push([1,"x"])</script></body></html>'
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><loc>https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18</loc><lastmod>2026-09-07T11:11:30.877Z</lastmod></url>'
+               '<url><loc>https://www.asako.mg/emploi/antananarivo</loc><lastmod>2026-09-14T09:50:24.127Z</lastmod></url>'
+               '<url><loc>https://www.asako.mg/annonces/charge-de-support-de-logiciel-10053</loc><lastmod>2026-04-25T08:00:00.000Z</lastmod></url>'
+               '<url><loc>https://www.asako.mg/profil-entreprise/madixy</loc></url></urlset>')
+
+    @staticmethod
+    def _ad(desc="Nous recherchons un profil polyvalent. Écrire à rima@example.mg ou au 034 12 345 67.", remote=True):
+        jp = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Assistant virtuel polyvalent", "description": desc, "identifier": {"@type": "PropertyValue", "name": "Asako.mg", "value": "b3546c18-dd8f-412e-a88b-b80b29261653"},
+              "datePosted": "2026-09-07T11:11:30.877449+00:00", "validThrough": "2026-09-21T11:42:01.280Z", "directApply": True, "employmentType": "CONTRACTOR",
+              "hiringOrganization": {"@type": "Organization", "name": "RIMA CHEMIRIK", "url": "https://www.asako.mg/profil-entreprise/rima-chemirik", "sameAs": "https://www.theyellowbureau.com/"},
+              "responsibilities": "Contenu\nRepost et publication", "qualifications": "Excellent rédactionnel", "skills": ["Excellent rédactionnel en français", "Réactif"], "industry": "Centres d'appels & BPO", "occupationalCategory": "Assistant virtuel"}
+        if remote:
+            jp["jobLocationType"] = "TELECOMMUTE"
+            jp["applicantLocationRequirements"] = {"@type": "Country", "name": "Madagascar"}
+        else:
+            jp["jobLocation"] = {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Antananarivo", "addressRegion": "Analamanga"}}
+        return '<html><head><script type="application/ld+json">' + json.dumps(jp, ensure_ascii=False) + '</script></head><body><h1>x</h1></body></html>'
+
+    LEGACY = ('<html><head><title>Chargé de support de logiciel chez MADIXY | Asako.mg</title></head><body><h1 class="font-heading">Chargé de support de logiciel</h1>'
+              '<div class="text-sm"><svg></svg> · Publiée le 25 avril 2026 <svg></svg></div><div><span>Lieu de travail</span><div class="flex"><div class="x">Andranomena</div></div></div>'
+              '<div><h2 class="h"><span>Missions<!-- --> </span><strong>principales</strong></h2></div><div class="prose prose-sm"><ul><li>Être le support des clients : appeler le 034 12 345 67</li><li>Recueillir des informations</li></ul></div>'
+              '<div><h2 class="h"><span>Profil<!-- --> </span><strong>recherché</strong></h2></div><div class="prose prose-sm"><p>Support pour des clients français, cv à madixy@example.mg</p></div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_stated_count_the_sitemaps_ads_and_the_two_kinds_of_page(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.LISTING), (200, self.SITEMAP), (200, self._ad()), (200, self.LEGACY)])
+        self.assertEqual(asked, ["https://www.asako.mg/emploi", "https://www.asako.mg/sitemap.xml", "https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18", "https://www.asako.mg/annonces/charge-de-support-de-logiciel-10053"])
+        self.assertEqual([r["id"] for r in rows], ["b3546c18", "10053"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["uuid"], a["title"], a["company"], a["company_site"], a["employment_type"], a["place"], a["remote"], a["applicant_country"], a["industry"], a["category"], a["skills"], a["posted"], a["valid_through"], a["direct_apply"], a["responsibilities"], a["lastmod"], a["contacts_withheld"]),
+                         ("asako", "MG", "asako:b3546c18", "b3546c18-dd8f-412e-a88b-b80b29261653", "Assistant virtuel polyvalent", "RIMA CHEMIRIK", "https://www.theyellowbureau.com/", "CONTRACTOR", None, True, "Madagascar", "Centres d'appels & BPO", "Assistant virtuel", ["Excellent rédactionnel en français", "Réactif"], "2026-09-07", "2026-09-21", True, "Contenu\nRepost et publication", "2026-09-07", True))
+        self.assertEqual(a["description"], "Nous recherchons un profil polyvalent. Écrire à [e-mail withheld] ou au [telephone withheld].")
+        b = rows[1]
+        self.assertEqual((b["no_jobposting"], b["title"], b["company"], b["place"], b["posted"], b["responsibilities"], b["qualifications"], b["uuid"]),
+                         (True, "Chargé de support de logiciel", "MADIXY", "Andranomena", "2026-04-25", "Être le support des clients : appeler le [telephone withheld]\nRecueillir des informations", "Support pour des clients français, cv à [e-mail withheld]", None))
+        for secret in ("rima@", "madixy@", "034 12 345 67"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("2 emitted (2 in the sitemap, 0 gone), the site states 253 — 251 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.LISTING), (200, self.SITEMAP), (200, self._ad())], limit=1)
+        self.assertEqual((len(asked), len(rows)), (3, 1))
+        self.assertIn("1 emitted of the 253 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no count</body></html>")])
+        self.assertEqual(cm.exception.code, 6)   # no stated count: a changed template, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.LISTING), (200, self.SITEMAP), (200, "<html><body>neither a JobPosting nor a heading</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], cmd="sitemap")
+        self.assertEqual(([r["id"] for r in rows], rows[0]["lastmod"], rows[1]["slug"]), (["b3546c18", "10053"], "2026-09-07", "charge-de-support-de-logiciel"))
+        self.assertIn("2 ad row(s) in the sitemap (2 other rows set aside", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://www.asako.mg/api/offres", "https://www.asako.mg/go/x", "https://www.asako.mg/candidat/cv"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_its_jobposting_scrubbed_with_the_place_when_not_remote(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad(remote=False))], cmd="ad", url="https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18")
+        self.assertEqual(asked, ["https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["place"], a["region"], a["remote"], a["applicant_country"]), ("b3546c18", "Antananarivo", "Analamanga", False, None))
+        self.assertEqual(a["description"], "Nous recherchons un profil polyvalent. Écrire à [e-mail withheld] ou au [telephone withheld].")
+        self.assertNotIn("rima@", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.asako.mg/emploi/antananarivo")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
