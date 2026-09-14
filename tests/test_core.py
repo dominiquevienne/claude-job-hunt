@@ -18363,6 +18363,161 @@ class ATemplateNetworkWalkedByItsCardsWhereTheHeaderStatesTheCount(unittest.Test
         self.assertEqual(cm.exception.code, 3)
 
 
+class ARegionalListPagedThroughItsOwnSessionLoaderWhereThePageCountIsTheWitness(unittest.TestCase):
+    """**`caribbeanjobsonline.py`, 2026-09-14 (#449).** One list per
+    territory: `list --country` GETs `/jobs/<slug>`, reads
+    `page_max_count` — the page count the site states, it states no item
+    count — and POSTs the site's own loader
+    (`ajax_vacResults.asp?nextID=results_page<p>`) for the pages after
+    the first, on the session the GET opened. Ids are deduplicated; a
+    walk to the stated pages prints «pages equal»; a stated page that
+    comes back empty exits 6 and says how many short; a list with no
+    cards and no count says so and emits nothing; a bounded walk says so.
+    `ad` reads the key-point rows, turns dd/mm/yyyy into ISO, withholds
+    addresses and phones, exits 3 without the rows. Mutated (`-B`,
+    detached copy): the dedup dropped → the walk case reddens (page 2
+    repeats one id); the empty-page exit removed → the short case
+    reddens; the loader route replaced by the `?pageno=` GET → the walk
+    case reddens (the fixture answers page 1 to `?pageno=`); the page
+    count read from the pager's last link instead of `page_max_count` →
+    the walk case reddens (the fixture's pager names another number);
+    EMAIL_RE neutralised → the ad case reddens; the date conversion
+    dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_caribbeanjobsonline", os.path.join(SCRIPTS, "caribbeanjobsonline.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, n):
+        return (f'<div class="row cursor vac-result-row jobType1" onClick="goToURL(\'https://www.caribbeanjobsonline.com/job/puesto-{i}.htm\');" title="Puesto {i}">'
+                f'<div class="col-md-12 jobtitle">\n<b>Puesto {i} - Nassau</b></div><span class="compName">Posted by <a href="https://www.caribbeanjobsonline.com/client/acme-1.htm">ACME {i}</a></span>'
+                f'<div class="row marginTop10"><div class="col-md-12">Summary {i}.</div></div>'
+                f'<a href="https://www.caribbeanjobsonline.com/job/puesto-{i}-{i}.htm" title="Puesto {i}"><div class="logo"></div></a>'
+                f'<div class="job-details-item-bar"><span><b>Salary & Benefits:</b>  </span><span><b>Town/City:</b> Nassau</span><!--<span><b>Contract Type:</b> Full-Time</span>--></div>'
+                f'<a class="btn-default" href="https://www.caribbeanjobsonline.com/job/puesto-{i}-{i}.htm">View Details</a></div><!--{n}-->')
+
+    @classmethod
+    def _grid(cls, ids):
+        return '<div class="vac_res_grid">' + "".join(cls._card(i, 1) for i in ids) + "</div>"
+
+    @classmethod
+    def _page(cls, ids, pages, pager_says=None):
+        grid = cls._grid(ids) if ids else ""
+        head = f"<script>var page_max_count = {pages};</script>" if pages is not None else ""
+        pager = f'<p class="small paging_result_text">Page 1 of {pager_says if pager_says is not None else pages}.</p><a href="https://www.caribbeanjobsonline.com/jobs/bahamas?pageno={pager_says if pager_says is not None else pages}">>></a>' if pages is not None else ""
+        return f'<html><head><title>Jobs in Bahamas - Caribbean Jobs Online</title></head><body>{head}<div id="results_page1" class="results_page_holder">{grid}</div>{pager}</body></html>'
+
+    def _run(self, mod, fixtures, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url, post=False):
+            asked.append((url, post))
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(country="bahamas", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reads_the_stated_pages_through_the_loader_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        L = "https://www.caribbeanjobsonline.com/include/ajax_vacResults.asp?nextID=results_page"
+        fx = {"https://www.caribbeanjobsonline.com/jobs/bahamas": (200, self._page(range(1, 11), 3, pager_says=2)),
+              "https://www.caribbeanjobsonline.com/jobs/bahamas?pageno=2": (200, self._page(range(1, 11), 3, pager_says=2)),
+              f"{L}2": (200, self._grid([10] + list(range(11, 20)))), f"{L}3": (200, self._grid([20, 21, 22, 23]))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 23)
+        self.assertEqual(len({r["id"] for r in rows}), 23)
+        self.assertIn("23 emitted over 3 page(s), site states 3 page(s) (bahamas, BS) — pages equal", err)
+        self.assertEqual(asked, [("https://www.caribbeanjobsonline.com/jobs/bahamas", False), (f"{L}2", True), (f"{L}3", True)])
+        self.assertEqual(rows[0]["title"], "Puesto 1")
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["location"], "Nassau")
+        self.assertIsNone(rows[0]["contract"])   # a commented-out span is not a value
+        self.assertEqual(rows[0]["country"], "BS")
+        self.assertEqual(rows[0]["url"], "https://www.caribbeanjobsonline.com/job/puesto-1-1.htm")
+
+    def test_a_stated_page_that_comes_back_empty_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        L = "https://www.caribbeanjobsonline.com/include/ajax_vacResults.asp?nextID=results_page"
+        fx = {"https://www.caribbeanjobsonline.com/jobs/bahamas": (200, self._page(range(1, 11), 4)),
+              f"{L}2": (200, self._grid(range(11, 21))), f"{L}3": (200, '<div class="vac_res_grid">\n</div>')}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 20)
+        self.assertIn("20 emitted over 2 page(s), site states 4 page(s) (bahamas, BS) — page 3 came back empty, 2 page(s) short", err)
+
+    def test_a_list_with_no_cards_and_no_count_says_so_and_emits_nothing(self):
+        mod = self._mod()
+        fx = {"https://www.caribbeanjobsonline.com/jobs/anguilla": (200, self._page([], None))}
+        code, rows, err, asked = self._run(mod, fx, country="anguilla", all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(rows, [])
+        self.assertIn("0 emitted, the page lists nothing and states no page count (anguilla, AI)", err)
+        self.assertEqual(len(asked), 1)
+        import contextlib
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_list(argparse.Namespace(country="atlantis", pages=None, all=True, limit=0))
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        fx = {"https://www.caribbeanjobsonline.com/jobs/bahamas": (200, self._page(range(1, 11), 4))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 10)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_the_ad_reads_the_key_points_turns_the_dates_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+
+        def row(k, v):
+            return f'<div class="row"><div class="col-md-3 col-xs-12"><b>{k}</b></div><div class="col-md-9 col-xs-12 vacDetails-detailData">{v}</div></div>'
+        body = ('<html><body><h1>Supervisor, Annual Review</h1><div class="jobKeyPoints">' + row("Organisation", "Bank of The Bahamas") + row("Reference", "VAC-65987")
+                + row("Contract Type", "Full-Time") + row("Industries", "Banking &amp; Financial Services") + row("Location", "Nassau") + row("Salary &amp; Benefits", " ")
+                + row("Date Posted", "\n\t\t\t10/09/2026\n\t\t") + row("Expiry Date", "24/09/2026") + "</div>"
+                + '<div class="col-md-12 col-xs-12 vacDetails-job-summary">Send your CV to hr@bob.bs or call +1 242 555 12345.</div>'
+                + '<div class="col-md-12 col-xs-12 vacDetails-job-details"><p><strong>Overview</strong></p><p>Line one.</p><ul><li>Item</li></ul></div>\n</div></body></html>')
+        url = "https://www.caribbeanjobsonline.com/job/supervisor-annual-review-65987.htm"
+        fx = {url: (200, body), "https://www.caribbeanjobsonline.com/job/x-9.htm": (200, "<html><body><h1>x</h1></body></html>")}
+        mod.request = lambda u, post=False: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r)
+        self.assertEqual(r["employer"], "Bank of The Bahamas")
+        self.assertEqual(r["reference"], "VAC-65987")
+        self.assertEqual(r["industry"], "Banking & Financial Services")
+        self.assertEqual(r["posted"], "2026-09-10")
+        self.assertEqual(r["valid_through"], "2026-09-24")
+        self.assertIsNone(r["salary_text"])
+        self.assertEqual(r["description"], "Overview\nLine one.\nItem")
+        self.assertNotIn("@", text)
+        self.assertNotIn("555 12345", text)
+        self.assertIn("[e-mail withheld]", r["summary"])
+        self.assertIn("[phone withheld]", r["summary"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://www.caribbeanjobsonline.com/job/x-9.htm"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
