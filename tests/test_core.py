@@ -19449,6 +19449,132 @@ class ALoaderPagedUntilEmptyWhereTheSitemapIsTheSitesFigureAndABannerSitsBetween
         self.assertEqual(cm.exception.code, 3)
 
 
+class AWordPressCategoryReadThroughItsRestApiWhereTheHeaderStatesTheTotal(unittest.TestCase):
+    """**`jobsgarden.py`, 2026-09-14 (#364).** `list` walks the site's REST
+    API (`posts?categories=8&per_page=100&page=p`), reads `X-WP-Total` on
+    the first answer as the count the site states, dedups on the id,
+    strips the bracketed reference from the title and emits it as
+    `reference`, maps the sub-category to a practice, exits 6 on a gap;
+    a bounded walk says so. `ad` reads the post by slug (with content)
+    and the page's header line «date • place • sector», withholds
+    contacts («[kukac]» included), exits 3 on an unknown slug or a post
+    outside the jobs category. Mutated (`-B`, detached copy): the dedup
+    dropped → the walk case reddens (page 2 repeats one id); the gap
+    exit removed → the short case reddens; `X-WP-Total` no longer read →
+    the walk case reddens; the reference kept in the title → the walk
+    case reddens; EMAIL_RE neutralised → the ad case reddens; the header
+    line dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobsgarden", os.path.join(SCRIPTS, "jobsgarden.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _post(i, cats=(5, 8), content=None):
+        p = {"id": i, "link": f"https://www.jobsgarden.hu/slug{i}/", "title": {"rendered": f"Engineer {i} (VB-{10000 + i})"}, "date": "2026-09-11T10:23:10",
+             "modified": "2026-09-12T08:00:00", "excerpt": {"rendered": f"<p>Partnerünk számára keresünk <b>Engineer {i}</b> pozícióba szakembert.</p>\n"}, "categories": list(cats)}
+        if content is not None:
+            p["content"] = {"rendered": content}
+        return p
+
+    def _run(self, mod, answers, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            for key, (code, body, headers) in answers.items():
+                if key in url:
+                    return code, body, headers
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    def test_the_walk_reaches_the_stated_total_with_the_reference_split_off_and_a_repeated_id_not_counted_twice(self):
+        mod = self._mod()
+        h = {"X-WP-Total": "129", "X-WP-TotalPages": "2"}
+        answers = {"page=1&": (200, json.dumps([self._post(i) for i in range(1, 101)]), h),
+                   "page=2&": (200, json.dumps([self._post(100, cats=(6, 8))] + [self._post(i, cats=(4, 8)) for i in range(101, 130)]), h)}
+        code, rows, err, asked = self._run(mod, answers, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 129)
+        self.assertEqual(len({r["id"] for r in rows}), 129)
+        self.assertIn("129 emitted over 2 page(s), site states 129 (X-WP-Total) — equal", err)
+        self.assertEqual(len(asked), 2)
+        self.assertEqual(rows[0]["title"], "Engineer 1")
+        self.assertEqual(rows[0]["reference"], "VB-10001")
+        self.assertEqual(rows[0]["practice"], "it")
+        self.assertEqual(rows[100]["practice"], "industry")
+        self.assertEqual(rows[0]["posted"], "2026-09-11")
+        self.assertIn("Partnerünk számára keresünk Engineer 1", rows[0]["summary"])
+
+    def test_a_walk_short_of_the_stated_total_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        h = {"X-WP-Total": "150", "X-WP-TotalPages": "2"}
+        answers = {"page=1&": (200, json.dumps([self._post(i) for i in range(1, 101)]), h), "page=2&": (200, "[]", h)}
+        code, rows, err, _ = self._run(mod, answers, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 100)
+        self.assertIn("100 emitted over 2 page(s), site states 150 (X-WP-Total) — 50 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        h = {"X-WP-Total": "150", "X-WP-TotalPages": "2"}
+        answers = {"page=1&": (200, json.dumps([self._post(i) for i in range(1, 101)]), h)}
+        code, rows, err, asked = self._run(mod, answers, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 100)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 1)
+
+    def test_the_ad_reads_the_post_and_the_pages_header_line_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+        post = self._post(7, content="<p>Your Responsibilities:</p><ul><li>Lead.</li></ul><p>Jelentkezés: kovacs.anna[kukac]jobsgarden.hu vagy +36 70 399 9557.</p>")
+        page = '<html><body><div class="jg-job-header-card"><h2 class="jg-job-title">Engineer 7 (VB-10007)</h2><div class="jg-job-attributes">\n 2026-08-25 • Budapest • IT </div></div></body></html>'
+        answers = {"slug=slug7": (200, json.dumps([post]), {}), "https://www.jobsgarden.hu/slug7/": (200, page, {}),
+                   "slug=slug9": (200, "[]", {}), "slug=blog1": (200, json.dumps([self._post(1, cats=(12,))]), {})}
+
+        def fake(url):
+            for key, v in answers.items():
+                if key in url:
+                    return v
+            raise KeyError(url)
+        mod.request = fake
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobsgarden.hu/slug7/"))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["title"], "Engineer 7")
+        self.assertEqual(r["reference"], "VB-10007")
+        self.assertEqual(r["location"], "Budapest")
+        self.assertEqual(r["sector"], "IT")
+        self.assertEqual(r["header_line"], "2026-08-25 • Budapest • IT")
+        self.assertIn("Your Responsibilities:", r["description"])
+        self.assertNotIn("kukac", text)
+        self.assertNotIn("399 9557", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        for u in ("https://www.jobsgarden.hu/slug9/", "https://www.jobsgarden.hu/blog1/"):
+            with self.assertRaises(SystemExit) as cm:
+                with contextlib.redirect_stderr(io.StringIO()):
+                    mod.cmd_ad(argparse.Namespace(url=u))
+            self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
