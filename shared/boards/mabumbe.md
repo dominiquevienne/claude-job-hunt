@@ -1,12 +1,13 @@
 # Board adapter — Mabumbe (Tanzania): rules open to `Claude-User`, and an anti-robot challenge on every path
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: mabumbe.com, www.mabumbe.com -->
 <!-- script: none -->
 <!-- countries: TZ -->
 <!-- content: indeterminate · 2 hosts, same rules; 4 paths tried under the permitted token and all 4 answer HTTP 403 with a 5 637-byte Cloudflare interstitial titled `Just a moment...`, md5 different on two fetches of the same URL at constant size — a challenge, not a page; nothing of the site was read · 2026-09-11 13:20 UTC -->
-<!-- witness: none — nothing was served. The site's own «44 156» (2026-09-02, `shared/plausible-and-false.md`) is a WordPress archive counter with expired advertisements inside it, cited there and not re-read here -->
+<!-- witness: none — nothing was served. The site's own «44 156» (2026-09-02, `shared/plausible-and-false.md`) is a WordPress archive counter with expired advertisements inside it, cited there and not re-read here · **browser, 2026-09-14 10:04 UTC: `/jobs/` served to a connected tab without the interstitial — «44,393 jobs found», WordPress posts 15 a page, `/jobs/page/2/ … /3415/`, the last carrying 14; the count is the archive's (posts since the site began — tenders, notices and results among them), not a count of live advertisements; the ad page carries a WebPage / BreadcrumbList / WebSite / Organization graph and no JobPosting** -->
+<!-- route: browser · 44393 · 2026-09-14 -->
 
 **Tanzania's first host on a card.** *The rules open and the transport serves a
 challenge — two different kinds of «no», and the second is the one that
@@ -94,3 +95,23 @@ the page that carries it was not served.
 - **No script, no configuration.** A user who has a mabumbe.com URL from
   elsewhere can hand it to `cover-letter`; whether that page is served to a
   browser is not established here.
+
+## 2026-09-14 10:03–10:06 UTC — no interstitial to a connected tab
+
+```
+tab, /                       served — the front page: a job search form (locations, 150 categories), «Featured Jobs», «Sponsored Jobs»
+tab, /jobs/                  served — «44,393 jobs found», 15 posts a page, pager /jobs/page/2/ … /3415/
+tab, /jobs/page/3415/        served — 14 posts, no page 3416
+tab, /jobs/<slug>/           served — WebPage / BreadcrumbList / WebSite / Organization JSON-LD; no JobPosting
+```
+
+**`route: browser · 44393 · 2026-09-14`**, with the caveat written on the
+line: the count is the archive's — every post the site ever filed under
+«jobs», tenders and exam notices among them — not a count of live
+advertisements; a session reading from a tab walks `/jobs/page/N/` from 1
+and stops at the first post older than the window it wants, the slug as
+the key, the post's own date and employer from its title («… job at
+<employer> <month> <year>»). The declared client gets the moving «Just a
+moment…» (2026-09-11, 2026-09-13) — never defeated; the tab was not
+challenged today.
+
