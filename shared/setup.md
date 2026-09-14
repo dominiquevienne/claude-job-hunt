@@ -1269,6 +1269,62 @@ boards:
     contact: "claude-job-hunt (you@example.org)"   # your address — sent to api.hh.ru, nowhere else
 ```
 
+## 5j — Any board whose terms of use forbid automated access in writing: the disclaimer, said when the board is enabled
+
+**Run this whenever the user enables a board whose card in
+`shared/boards/` carries a `terms:` header line** — the declared form is
+`<!-- terms: forbids-automation · <clause> · YYYY-MM-DD -->`, and the first
+card to carry it is `trabajopolis.md` (clause V.2, read 2026-09-14). A
+`terms:` line means the site's own conditions of use forbid access
+«&nbsp;mediante bots, arañas o cualquier medio automático&nbsp;» — by bots,
+spiders or any automatic means — while its `robots.txt` leaves the route
+open: the refusal is written, only somewhere else.
+
+**The decision behind this step, verbatim** — the repository's owner,
+2026-09-14 04:4x UTC, on Trabajópolis (#428): «&nbsp;4. navigateur avec
+disclaimer à l'utilisateur lors de la souscription&nbsp;». *A browser
+route, with a disclaimer to the user at the moment they subscribe to the
+board. The same form as 5h: a line the user writes in their own name, never
+set by the flow, never on by default.*
+
+**What the flow says, in this order, and nothing it does not:**
+
+1. **What the terms forbid** — the clause quoted from the card, with the
+   date it was read: *«&nbsp;`trabajopolis.bo`'s terms of use, clause V.2
+   (read 2026-09-14), forbid access by bots, spiders or any automatic means;
+   its `robots.txt` does not refuse the list&nbsp;»*.
+2. **Where the reading happens** — **in the user's own browser**, from a
+   tab the plugin drives, under the user's own account and address; the
+   plugin never sends a request of its own to a route the terms forbid.
+3. **Whose responsibility it is** — **the user's**. The plugin states the
+   clause and the fact; it does not assess a risk, does not recommend, does
+   not pre-tick, does not set the key. **This is a disclaimer, not a risk
+   assessment** — the owner's words on hh (#337, «&nbsp;ce n'est pas de notre
+   ressort&nbsp;») apply here too.
+
+**Three answers, no default:** the user writes
+`boards.<board>.terms_acknowledged: true` in `config.yml` themselves (or
+asks the flow to write exactly that line after saying yes), leaves the
+board off, or decides later — a refusal is a hard off, never raised again
+for that board. **Absent or false, the board is skipped and the skip says
+why** (`never-fail-silently.md`), naming the clause and the key.
+
+```yaml
+boards:
+  trabajopolis:
+    enabled: true
+    terms_acknowledged: true    # the user's line, in the user's name — absent or false → skipped, with the clause and this key named
+```
+
+**What 5j is not:** a way to read the board without a browser (the route
+stays a browser route — the site's challenge is never defeated and nobody
+is asked to defeat it), a licence to be expensive, or a reading of
+`robots.txt` — a `Disallow` in the rules is 5h's matter and is honoured by
+every route; 5j is about a refusal written in the conditions of use. **The
+guard `ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling` reddens
+when a card carries `terms:` and this section does not name its board, and
+when this section loses the clause, the browser, or the responsibility.**
+
 ## 6 — Thresholds and document preferences
 
 - **Apply-from threshold** (`AskUserQuestion`: 70 selective / 55 broad / 40
