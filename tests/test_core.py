@@ -20479,7 +20479,8 @@ class AMunicipalBoardWhoseCardsAreRenderedByTheServerAndWhoseContactPersonNeverL
         return mod
 
     def _card(self, jid, key, title, pc="Espoon kaupunki", promoted=False, end="28.9.2026", end_t="15:45"):
-        return (f'<li role="listitem"><job-card {"is-promoted=\"true\" extended " if promoted else ""}profit-center="{pc}" title="{title}" publication-date="14.9.2026" publication-time="00:01" '
+        flag = 'is-promoted="true" extended ' if promoted else ""   # built outside the f-string: Python 3.9 refuses a backslash inside one
+        return (f'<li role="listitem"><job-card {flag}profit-center="{pc}" title="{title}" publication-date="14.9.2026" publication-time="00:01" '
                 f'publication-end="{end}" publication-end-time="{end_t}" ext-id="{key}" url="/fi/tyopaikat/{title.lower().replace(" ", "-").replace(",", "")}-{key.lower()}/" job-id="{jid}" job-key="{key}"></job-card></li>')
 
     def _page(self, cur, total, cards, promoted=()):
