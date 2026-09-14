@@ -91,3 +91,11 @@ fields joined into the description.
   of `claude-job-hunt-ab`.
 - `easyprace.py list --limit 1` at 17:31:29–17:31:49 UTC: the two
   `[easyprace]` lines quoted above verbatim.
+
+## 2026-09-14 — the register itself is direct now
+
+The Úřad práce ČR store this board republishes (24 546 `/volne-misto/` on
+2026-09-13) is read at its source by `uradprace.py` (`uradprace.md`, #350):
+the Ministry's open-data file carried 39 887 postings for 101 207 positions
+on 2026-09-13 — 15 341 more than the republication. The `--store up` run
+here stays what it is: the board's copy, keyed apart.

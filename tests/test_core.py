@@ -21791,5 +21791,171 @@ class TheStatesBoardIsTheMunicipalitiesTemplateAndAHost(unittest.TestCase):
         self.assertIn("kuntarekry, valtiolle", e2.getvalue())
 
 
+class TheWholeRegisterIsOneOpenDataFileAndThePortalsOwnSearchIsNeverSent(unittest.TestCase):
+    """**`uradprace.py`, 2026-09-14 (#350).** The Czech public employment
+    service's own search is a web component that POSTs `*/rest/*` — refused in
+    writing by `up.gov.cz/robots.txt` — and the Ministry publishes the same
+    register as an open-data file on `data.mpsv.cz`: one file is the whole
+    register, its postings and positions printed, its `Last-Modified` the
+    witness, and a body shorter than `Content-Length` is a short file (exit
+    6), never a smaller register. The places are codes resolved through the
+    published lists (municipality → district → region); an employer who asked
+    to be anonymous (`anosp`) is null with a reason, place withheld; the
+    contact person every record carries never leaves, and every free text —
+    the profession too, one was an e-mail address on the day — is scrubbed.
+    Filters are resolved against the lists and an unknown name is an error,
+    never an empty market. Mutated (`-B`, detached copy): the description not
+    scrubbed → the register case reddens; the anonymous flag not honoured →
+    the register case reddens; the district not derived from the
+    municipality → the register case reddens; the hourly unit mapped to month
+    → the register case reddens; the short-body check relaxed → the short
+    case reddens; `--changed-since` made exclusive → the filter case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_uradprace", os.path.join(SCRIPTS, "uradprace.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LISTS = {
+        "kraje": {"polozky": [{"id": "Kraj/19", "nazev": {"cs": "Hlavní město Praha"}}, {"id": "Kraj/116", "nazev": {"cs": "Jihomoravský kraj"}}, {"id": "Kraj/27", "nazev": {"cs": "Středočeský kraj"}}, {"id": "Kraj/35", "nazev": {"cs": "Jihočeský kraj"}}]},
+        "okresy": {"polozky": [{"id": "Okres/9999", "nazev": {"cs": "území Hlavního města Prahy"}, "kraj": "Kraj/19"}, {"id": "Okres/3702", "nazev": {"cs": "Brno-město"}, "kraj": "Kraj/116"},
+                               {"id": "Okres/3204", "nazev": {"cs": "Kolín"}, "kraj": "Kraj/27"}, {"id": "Okres/3301", "nazev": {"cs": "České Budějovice"}, "kraj": "Kraj/35"}]},
+        "obce": {"polozky": [{"id": "Obec/554782", "nazev": {"cs": "Praha"}, "okres": "Okres/9999"}, {"id": "Obec/582786", "nazev": {"cs": "Brno"}, "okres": "Okres/3702"}, {"id": "Obec/533831", "nazev": {"cs": "Kolín"}, "okres": "Okres/3204"}]},
+        "cz-isco": {"polozky": [{"id": "CzIsco/93340", "nazev": {"cs": "Doplňovači zboží"}}, {"id": "CzIsco/51201", "nazev": {"cs": "Kuchaři (kromě šéfkuchařů)"}}]},
+    }
+
+    def _item(self, pid, title, isco, publish="ano", employer=("JS HOSPITALITY s.r.o.", "06070591"), positions=1, salary=(22500, 25000), unit="mesic", place=None, changed="2026-09-13T23:12:44.473Z", desc=None, langs=None):
+        contact = {"komuSeHlasit": {"email": "hr1@janhotels.example", "telefon": "266133004", "jmeno": "Zdislava", "prijmeni": "Hrušková-Secret", "titulPredJmenem": None, "titulZaJmenem": None, "poziceVeSpolecnosti": None},
+                   "kdeSeHlasit": {"email": None, "telefon": "+420 777 888 999", "mistoKontaktu": "Bohemia Properties a.s.", "adresa": None}}
+        return {"portalId": pid, "id": f"VolneMisto/{pid}", "referencniCislo": f"R{pid}", "azylant": False, "cizinecMimoEu": True, "datumVlozeni": "2026-09-08T00:00:00.000Z", "datumZmeny": changed,
+                "mesicniMzdaDo": salary[1], "mesicniMzdaOd": salary[0], "modraKarta": False, "pocetHodinTydne": 40, "pocetMist": positions, "pozadovanaProfese": {"cs": title},
+                "statniSpravaSamosprava": False, "terminUkonceniPracovnihoPomeru": None, "terminZahajeniPracovnihoPomeru": "2026-10-01", "souhlasAgenturyAgentura": False, "souhlasAgenturyUzivatel": False,
+                "upresnujiciInformace": {"cs": desc} if desc else None, "urlAdresa": None, "zamestnaneckaKarta": True, "expirace": None, "minPozadovaneVzdelani": {"id": "VzdelaniDetailniKategorie/bezVzdel"},
+                "smennost": {"id": "Smennost/pruznaPd"}, "typMzdy": {"id": f"TypMzdy/{unit}"} if unit else None, "zverejnovat": {"id": f"ZverejnovatVpm/{publish}"}, "mistoVykonuPrace": place,
+                "zamestnavatel": {"ico": employer[1], "nazev": employer[0]} if employer else None, "profeseCzIsco": {"id": f"CzIsco/{isco}"}, "pracovnePravniVztahy": [{"id": "PracovnepravniVztah/plny"}],
+                "vhodnostiPracovnihoMista": [{"id": "VhodnostProTypZamestnance/zdravi"}], "kontaktniPracoviste": {"id": "KontaktniPracoviste/ABA"}, "vyhodyVolnehoMista": None, "pozadovanaDovednost": None,
+                "pozadovanaJazykovaZnalost": langs, "pozadovanePovolani": None, "pozadovaneVzdelani": None, "prvniKontaktSeZamestnavatelem": contact}
+
+    def _register(self):
+        adr = lambda obec, kraj, okres, psc: {"cisloDomovni": 590, "cisloOrientacni": "14", "psc": psc, "kraj": {"id": kraj} if kraj else None, "okres": {"id": okres} if okres else None, "obec": {"id": obec}, "ulice": {"nazev": "Cuřínova"}}
+        return [
+            self._item(1, "Doplňovači zboží", "93340", positions=2, desc="Volejte 777 123 456 nebo pište na sef@firma.example, znalost vietnamštiny výhodou",
+                       place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/adrprov"}, "obec": None, "okresy": None, "adresaText": None,
+                              "pracoviste": [{"email": "provoz@firma.example", "nazev": "Cuřínova sídlo", "telefon": "222333444", "adresa": adr("Obec/554782", "Kraj/19", "Okres/9999", "14200")}]},
+                       langs=[{"urovenZnalosti": {"id": "UrovenZnalostiJazyka/pas"}, "jazyk": {"id": "Jazyk/jiny"}, "popis": "Hindština — ptejte se na hr@firma.example"}]),
+            self._item(2, "Pomocní kuchaři", "51201", publish="anosp", employer=("Skrytý podnik s.r.o.", "11111111"), positions=3,
+                       place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/obec"}, "obec": {"id": "Obec/554782"}, "okresy": None, "adresaText": None, "pracoviste": None}),
+            self._item(3, "office.ak.sedivy@email.example", "51201", salary=(150, None), unit="hod", changed="2026-09-01T10:00:00.000Z",
+                       place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/obec"}, "obec": {"id": "Obec/582786"}, "okresy": None, "adresaText": None, "pracoviste": None}),
+            self._item(4, "Kuchaři (kromě šéfkuchařů)", "51201", salary=(None, None), unit=None, changed="2026-08-20T10:00:00.000Z",
+                       place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/okres"}, "obec": None, "okresy": [{"id": "Okres/3301"}, {"id": "Okres/3204"}], "adresaText": None, "pracoviste": None}),
+            self._item(5, "Doplňovači zboží", "93340", positions=4, changed="2026-08-31T23:59:59.000Z",
+                       place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/adrprov"}, "obec": None, "okresy": None, "adresaText": None,
+                              "pracoviste": [{"email": None, "nazev": "C & F Manufacturing s.r.o.", "telefon": None, "adresa": adr("Obec/533831", None, None, "28101")}]}),
+            self._item(6, "Kuchaři (kromě šéfkuchařů)", "51201", place={"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/celaCR"}, "obec": None, "okresy": None, "adresaText": None, "pracoviste": None}),
+        ]
+
+    def _run(self, mod, register=None, **kw):
+        import contextlib
+        register = self._register() if register is None else register
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            name = url.rsplit("/", 1)[1][:-5]
+            if name in self.LISTS:
+                return 200, json.dumps(self.LISTS[name], ensure_ascii=False), {}
+            return 200, json.dumps({"polozky": register}, ensure_ascii=False), {"Last-Modified": "Sun, 13 Sep 2026 20:07:40 GMT"}
+        mod.request = request
+        ns = argparse.Namespace(kraj=None, okres=None, obec=None, isco=None, profese=None, changed_since=None, limit=None, cache=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_list(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_register_is_one_file_its_places_are_the_lists_and_the_contacts_never_leave(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod)
+        self.assertEqual(asked, [mod.CODELISTS[k] for k in ("kraje", "okresy", "obce", "cz-isco")] + [mod.DUMP])
+        self.assertEqual([r["id"] for r in rows], ["1", "2", "3", "4", "5", "6"])
+        a = rows[0]
+        self.assertEqual((a["title"], a["isco"], a["employer"], a["employer_ico"], a["positions"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["url"], a["contacts_withheld"]),
+                         ("Doplňovači zboží", "Doplňovači zboží", "JS HOSPITALITY s.r.o.", "06070591", 2, 22500, 25000, "CZK", "month", True, "https://up.gov.cz/volna-mista-v-cr#/volna-mista-detail/1", True))
+        self.assertEqual((a["place_type"], a["workplace_name"], a["street"], a["postal_code"], a["municipality"], a["districts"], a["region"], a["region_code"]),
+                         ("adrprov", "Cuřínova sídlo", "Cuřínova 590/14", "14200", "Praha", ["území Hlavního města Prahy"], "Hlavní město Praha", "19"))
+        self.assertEqual(a["description"], "Volejte [telephone withheld] nebo pište na [e-mail withheld], znalost vietnamštiny výhodou")
+        self.assertEqual(a["languages"], [{"language": "jiny", "level": "pas", "note": "Hindština — ptejte se na [e-mail withheld]"}])
+        b = rows[1]   # anonymous at the employer's request: no name, no IČO, no place — even when the file carried them
+        self.assertEqual((b["employer"], b["employer_ico"], b["publication"], b["place_type"], b["municipality"], b["region"]), (None, None, "anosp", None, None, None))
+        self.assertIn("ZverejnovatVpm/anosp", b["employer_withheld"])
+        c = rows[2]   # a municipality-typed place: district and region derived through the lists; an hourly wage; a profession that was an address
+        self.assertEqual((c["title"], c["municipality"], c["districts"], c["region"], c["salary_min"], c["salary_max"], c["salary_unit"], c["salary_unit_stated"]), ("[e-mail withheld]", "Brno", ["Brno-město"], "Jihomoravský kraj", 150, None, "hour", True))
+        d = rows[3]   # districts: both named, the region from the first; no wage at all
+        self.assertEqual((d["districts"], d["region"], d["municipality"], d["salary_min"], d["salary_currency"], d["salary_unit"], d["salary_unit_stated"]), (["České Budějovice", "Kolín"], "Jihočeský kraj", None, None, None, None, False))
+        e = rows[4]   # an establishment whose address names the municipality only: district and region derived
+        self.assertEqual((e["workplace_name"], e["postal_code"], e["municipality"], e["districts"], e["region"]), ("C & F Manufacturing s.r.o.", "28101", "Kolín", ["Kolín"], "Středočeský kraj"))
+        self.assertEqual((rows[5]["place_type"], rows[5]["address_text"], rows[5]["region"]), ("celaCR", "celá ČR", None))
+        for secret in ("Hrušková", "Zdislava", "janhotels", "266133004", "777 888 999", "komuSeHlasit", "kdeSeHlasit", "provoz@", "222333444", "777 123 456", "sef@firma", "hr@firma", "sedivy", "Skrytý", "11111111", '"telefon"', '"email"'):
+            self.assertNotIn(secret, raw)
+        self.assertIn("6 posting(s) in the file (Last-Modified: Sun, 13 Sep 2026 20:07:40 GMT), 12 position(s) summed — one file is the whole register, nothing paged.", err)
+        self.assertIn("6 emitted, 12 position(s).", err)
+        self.assertIn("there is no `ad` command", err)
+
+    def test_filters_are_resolved_against_the_lists_and_an_unknown_name_is_an_error_not_an_empty_market(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, _, _ = self._run(mod, kraj="jihomoravsky")
+        self.assertEqual(([r["id"] for r in rows], "1 of them match --kraj Jihomoravský kraj." in err), (["3"], True))
+        rows, err, _, _ = self._run(mod, kraj="19")
+        self.assertEqual([r["id"] for r in rows], ["1"])
+        rows, err, _, _ = self._run(mod, okres="kolin")
+        self.assertEqual([r["id"] for r in rows], ["4", "5"])
+        rows, err, _, _ = self._run(mod, obec="Praha")
+        self.assertEqual([r["id"] for r in rows], ["1"])   # the anonymous record's Praha is withheld with the rest
+        rows, err, _, _ = self._run(mod, isco="512", profese="kuchar")
+        self.assertEqual([r["id"] for r in rows], ["2", "4", "6"])
+        rows, err, _, _ = self._run(mod, changed_since="2026-09-01")
+        self.assertEqual([r["id"] for r in rows], ["1", "2", "3", "6"])   # the day itself is in; 23:59:59 the day before is out
+        rows, err, _, _ = self._run(mod, limit=2)
+        self.assertEqual(([r["id"] for r in rows], "2 emitted of the 6 — bounded by --limit, not a shortfall." in err), (["1", "2"], True))
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, kraj="nowhere")
+        self.assertEqual((cm.exception.code, out.getvalue()), (2, ""))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, kraj="kraj")   # four entries carry the word: ambiguous, not the first one
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_a_short_body_is_a_short_file_not_a_smaller_register(self):
+        import contextlib
+        from unittest import mock
+        mod = self._mod()
+        mod.robots_allowed = lambda host, path, agents=None: {"allowed": True, "reason": "stub"}
+        mod._PACE.wait = lambda: None
+
+        class Resp:
+            def __init__(self, body, length):
+                self._b, self.headers = body, {"Content-Length": str(length), "Content-Type": "application/json"}
+            def read(self):
+                return self._b
+            def getcode(self):
+                return 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+        body = b'{"polozky": [1, 2, 3]}'
+        with mock.patch.object(mod.urllib.request, "urlopen", lambda req, timeout=0: Resp(body[:10], len(body))):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(mod.DUMP)
+        self.assertEqual(cm.exception.code, 6)
+        with mock.patch.object(mod.urllib.request, "urlopen", lambda req, timeout=0: Resp(body, len(body))):
+            code, text, headers = mod.request(mod.DUMP)
+        self.assertEqual((code, json.loads(text)), (200, {"polozky": [1, 2, 3]}))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
