@@ -25265,7 +25265,7 @@ class ASlovakBoardWhoseListingStatesItsCountAndPagesByPathAndWhoseAdIsCutBeforeI
           '<div><h4 class="h6">Internetová stránka</h4><div class="lh-md"><a href="http://www.ovb.sk">http://www.ovb.sk</a></div></div>'
           '<div><h4 class="h6">Charakteristika spoločnosti</h4><div class="lh-md">Sme skúsená obchodná spoločnosť.</div></div>'
           '<div><h4 class="h6">Kontaktná osoba</h4><div class="lh-md">Rastislav Beran-Secret</div><div>Telefón: +421 908 486 840 <a href="tel:+421908486840">zavolať</a></div></div></section>'
-          '<section><h2 class="h5">Podobné pracovné ponuky</h2><h4 class="h6">Iná ponuka</h4><div>Kontakt: 0905 111 222</div></section></body></html>')
+          '<section><h2 class="h5">Podobné pracovné ponuky</h2><h4 class="h6">Ďalšie požiadavky</h4><div>Ozvite sa: Beran-Secret, 0905 111 222</div></section></body></html>')   # a section named like one the record reads, after the cut: never read
 
     def _run(self, mod, served, cmd="list", **kw):
         import contextlib
@@ -25340,10 +25340,10 @@ class ASlovakBoardWhoseListingStatesItsCountAndPagesByPathAndWhoseAdIsCutBeforeI
         a = rows[0]
         self.assertEqual((a["id"], a["ledger_id"], a["title"], a["company"], a["company_id"], a["company_reg_no"], a["company_address"], a["company_site"], a["company_text"], a["place"], a["place_notes"], a["start_date"], a["posted"], a["updated"], a["contract"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["positions"]),
                          ("2061450", "worki:2061450", "Vzťahový pracovník - región Prešov (M/Ž)", "Rastislav Beran", "57023", "53651421", "A. Sládkoviča 802/3, 08221, Veľký Šariš, Slovensko", "http://www.ovb.sk", "Sme skúsená obchodná spoločnosť.", "Tomášikova 6810/58, 080 01 Prešov, Slovensko", ["Home office"], "Ihneď", "2026-06-11", "2026-09-14", "Práca na živnosť", 150, 2000, "EUR", "mesiac", True, 3))
-        self.assertEqual((a["description"], a["benefits"], a["experience"], a["driving_licence"]), ("Rozširovanie klientskej databázy.\nServis klientov.", "flexibilný pracovný čas", "Bez požiadavky na prax", "Skupina B"))
+        self.assertEqual((a["description"], a["benefits"], a["experience"], a["driving_licence"], a["other_requirements"]), ("Rozširovanie klientskej databázy.\nServis klientov.", "flexibilný pracovný čas", "Bez požiadavky na prax", "Skupina B", None))   # the last one lives after the cut
         self.assertEqual(a["selection_process"], "Zašlite životopis na [e-mail withheld] alebo volajte [telephone withheld].")
         self.assertEqual(a["salary_text"], "od 150 € do 2 000 € za mesiac\nPríjem je pravidelný vo forme provízií")
-        for secret in ("Beran-Secret", "908 486", "908486840", "Kontaktná", "gmail.example", "0905 111 222", "Iná ponuka"):
+        for secret in ("Beran-Secret", "908 486", "908486840", "Kontaktná", "gmail.example", "0905 111 222", "Ozvite"):
             self.assertNotIn(secret, raw)
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             self._run(mod, [(404, "")], cmd="ad", url="https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-x")
