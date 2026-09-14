@@ -24321,5 +24321,103 @@ class TheNordicFrontsAreTheFrenchPlatformsCountryFilesAndAHostWhoseConsultantIsW
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnAgencyBoardWhoseSitemapIsTheInventoryAndWhosePageWritesTheTownInTheRegionField(unittest.TestCase):
+    """**`manpowerno.py`, 2026-09-14 (#368).** Manpower Norway's search is a
+    client-side app that states no count a client reads; the sitemap's
+    `/nb/jobb/<id>/<slug>` rows are the inventory (the English twins and
+    the facet pages set aside), printed never as the site's statement. The
+    job page's JobPosting writes dates in a compact form and the county in
+    `addressLocality` and the town in `addressRegion` — emitted as written,
+    the town also read from the body's «Arbeidssted» — beside the page's
+    labelled list («Publisert: 10 september, 2026», «Antall stillinger»).
+    The agency is the employer on every ad; the body is scrubbed of
+    Norwegian numbers and e-mails. Mutated (`-B`, detached copy): the
+    English twin counted as a job → the sitemap case reddens; a repeated id
+    counted twice → the sitemap case reddens; the compact date not read →
+    the ad case reddens; the Norwegian month not read → the ad case
+    reddens; the scrub dropped → the ad case reddens; a gone job counted
+    as read → the list case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_manpowerno", os.path.join(SCRIPTS, "manpowerno.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><loc>https://www.manpower.no/</loc><lastmod>2026-09-01T00:00:00+00:00</lastmod></url>'
+               '<url><loc>https://www.manpower.no/nb/jobb/53700/radgiveroffentligeanskaffelser</loc><lastmod>2026-09-10T12:56:13+00:00</lastmod></url>'
+               '<url><loc>https://www.manpower.no/en/job/53700/radgiveroffentligeanskaffelser</loc><lastmod>2026-09-10T12:56:13+00:00</lastmod></url>'
+               '<url><loc>https://www.manpower.no/nb/jobb/53700/radgiveroffentligeanskaffelser</loc></url>'
+               '<url><loc>https://www.manpower.no/sok/ledig-stilling-bergen</loc></url>'
+               '<url><loc>https://www.manpower.no/nb/jobb/53493/kundemottaker</loc><lastmod>2026-09-07T07:01:48+00:00</lastmod></url></urlset>')
+
+    def _ad(self, jid, title, desc_html, region="Bergen", locality="Vestland", positions="1"):
+        ld = json.dumps({"@context": "https://schema.org", "@graph": [{"@type": "BreadcrumbList", "itemListElement": []},
+                        {"@type": "JobPosting", "identifier": {"@type": "PropertyValue", "name": "Manpower", "value": jid}, "title": title, "description": "Erfaring fra offentlige anskaffelser?", "datePosted": "20260910T125613", "validThrough": "20260917T215959Z",
+                         "employmentType": "Vikariat/ engasjement", "industry": ["2b90"], "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": locality, "addressLocality": locality, "addressRegion": region, "postalCode": "5014", "addressCountry": "NORWAY"}},
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "", "value": {"@type": "QuantitativeValue", "value": "", "unitText": ""}}, "workHours": "Heltid", "hiringOrganization": {"@id": "https://www.manpower.no/#organization"}, "url": f"https://www.manpower.no/nb/jobb/{jid}/x", "directApply": True}]}, ensure_ascii=False)
+        details = "".join(f'<li><div class="job-details-text"> <!-- -->{k}<!-- --> <!-- -->{v}</div></li>' for k, v in (("Referansenummer:", jid), ("Publisert:", "10 september, 2026"), ("Ansettelsesform:", "Vikariat/ engasjement"), ("Bransje:", '<a class="industry-link" href="/nb/sok?x">Offentlig administrasjon</a> , <a href="/nb/sok?y">Økonomi og regnskap</a>'), ("Søknadsfrist :", "16 september, 2026"), ("Antall stillinger:", positions), ("Heltid/deltid:", "Heltid")))
+        return ('<html><body><script data-react-helmet="true" type="application/ld+json">' + ld + '</script><h1 class="title reversed">' + title + '</h1><ul class="job-details-list">' + details + '</ul>'
+                '<section class="details-block job"><article class="col-lg-8"><div class="single-job fullscreen"><div class="details-rich-text"><h2><p class="large job-teaser">Erfaring fra offentlige anskaffelser?</p></h2>' + desc_html + '</div></div></article></section></body></html>')
+
+    def _run(self, mod, served, cmd="sitemap", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"sitemap": mod.cmd_sitemap, "list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_sitemaps_norwegian_job_rows_are_the_inventory_counted_once(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)])
+        self.assertEqual(asked, ["https://www.manpower.no/sitemap.xml"])
+        self.assertEqual([(r["id"], r["slug"], r["lastmod"]) for r in rows], [("53700", "radgiveroffentligeanskaffelser", "2026-09-10T12:56:13+00:00"), ("53493", "kundemottaker", "2026-09-07T07:01:48+00:00")])
+        self.assertEqual((rows[0]["source"], rows[0]["country"], rows[0]["ledger_id"], rows[0]["contacts_withheld"]), ("manpower-no", "NO", "manpower-no:53700", True))
+        self.assertIn("2 job row(s) in the sitemap (3 other rows set aside — pages, facets, the English twins) — the site's search renders no count a client reads: the sitemap is the inventory, not the site's statement.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], limit=1)
+        self.assertEqual((len(rows), "1 emitted of the 2 — bounded by --limit." in err), (1, True))
+
+    def test_the_ad_reads_the_posting_the_list_and_the_body_and_the_town_from_the_page(self):
+        import contextlib
+        mod = self._mod()
+        page = self._ad("53700", "Rådgiver, offentlige anskaffelser", "<p><div><span>Vil du jobbe med offentlige anskaffelser?</span></div></p><p>Arbeidssted: Bergen</p><p>Spørsmål til Kari på kari@manpower.example eller 991 29 992.</p><p>Manpower er Norges største bemanningsbyrå.</p>")
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.manpower.no/nb/jobb/53700/radgiveroffentligeanskaffelser")
+        self.assertEqual(asked, ["https://www.manpower.no/nb/jobb/53700/radgiveroffentligeanskaffelser"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["reference"], r["title"], r["teaser"], r["company"], r["employer_is_the_agency"], r["locality_as_written"], r["region_as_written"], r["postal_code"], r["place_text"], r["employment_type"], r["work_hours"], r["sector"], r["positions"], r["contacts_withheld"]),
+                         ("53700", "53700", "Rådgiver, offentlige anskaffelser", "Erfaring fra offentlige anskaffelser?", "Manpower", True, "Vestland", "Bergen", "5014", "Bergen", "Vikariat/ engasjement", "Heltid", "Offentlig administrasjon , Økonomi og regnskap", 1, True))
+        self.assertEqual((r["posted"], r["posted_on_page"], r["valid_through"], r["deadline_on_page"], r["salary_min"], r["salary_unit_stated"]), ("2026-09-10", "2026-09-10", "2026-09-17", "2026-09-16", None, False))
+        self.assertEqual(r["description"], "Erfaring fra offentlige anskaffelser?\nVil du jobbe med offentlige anskaffelser?\nArbeidssted: Bergen\nSpørsmål til Kari på [e-mail withheld] eller [telephone withheld].\nManpower er Norges største bemanningsbyrå.")
+        for secret in ("manpower.example", "991 29 992"):
+            self.assertNotIn(secret, raw)
+        # the compact date is the site's; the page's Norwegian month stands in when the posting has none
+        rows, err, asked, raw = self._run(mod, [(200, page.replace('"datePosted": "20260910T125613", ', ""))], cmd="ad", url="https://www.manpower.no/nb/jobb/53700/x")
+        self.assertEqual(rows[0]["posted"], "2026-09-10")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>x</h1></body></html>")], cmd="ad", url="https://www.manpower.no/nb/jobb/1/x")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.manpower.no/sok/ledig-stilling-bergen")
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_the_list_reads_the_sitemaps_jobs_and_counts_the_gone(self):
+        mod = self._mod()
+        page = self._ad("53700", "Rådgiver", "<p>x</p>")
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP), (200, page), (404, "")], cmd="list")
+        self.assertEqual(asked[1:], ["https://www.manpower.no/nb/jobb/53700/radgiveroffentligeanskaffelser", "https://www.manpower.no/nb/jobb/53493/kundemottaker"])
+        self.assertEqual(([r["id"] for r in rows], rows[0]["lastmod"]), (["53700"], "2026-09-10T12:56:13+00:00"))
+        self.assertIn("1 job(s) read from their pages, 1 gone since the sitemap, of the 2 the sitemap names — 2 read by request (--limit), not a shortfall; the site states no count a client reads.", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
