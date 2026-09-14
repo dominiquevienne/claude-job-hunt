@@ -19066,6 +19066,156 @@ class AClassifiedsWhereBuscoIsTheOfferAndInvisibleWatermarksAreStripped(unittest
         self.assertEqual(cm.exception.code, 3)
 
 
+class AListPagedByOffsetWhereTheSitemapAndThePagerAreTheTwoFiguresOfTheSite(unittest.TestCase):
+    """**`kariera.py`, 2026-09-14 (#345).** The site states no count in
+    words: its offers sitemap and its pager's last page are its two
+    figures. `list --all` reads the sitemap's count first, walks
+    `/pracovne-ponuky?od=<0,30,…>` to the pager's end, dedups on the id
+    («Top» ads repeat across pages), compares the distinct count to the
+    sitemap's and exits 6 on a gap; a bounded walk says so. `sitemap`
+    enumerates the offers sitemap (id, url, lastmod) and prints the
+    pager's figure beside it. A salary «od 1 700 - 2 200 EUR» is never
+    redacted (eight digits); a phone of nine is. `ad` reads the labelled
+    blocks and the h2/h3 sections, withholds contacts, exits 3 without
+    the template. Mutated (`-B`, detached copy): the dedup dropped → the
+    walk case reddens (page 2 repeats one id); the gap exit removed → the
+    short case reddens; the sitemap's count no longer read before the
+    walk → the walk case reddens (nothing to compare to); the salary
+    redacted like prose → the walk case reddens (the salary carries eight
+    digits); EMAIL_RE neutralised → the ad case reddens; the sitemap id
+    regex neutralised → the sitemap case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_kariera", os.path.join(SCRIPTS, "kariera.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, top=False):
+        badge = '<span class="top">Top</span>' if top else ""   # built outside the f-string: Python 3.9 refuses a backslash inside one
+        return (f'<div class="offer"><div class="offer-top"><div class="offer-top-left"><h2 class="offer-title"><a href="pracovna-ponuka/{i}/puesto-{i}">Puesto {i}</a></h2>'
+                f'<div class="offer-employer"><a href="ponuky-spolocnosti/acme" class="employer">ACME {i}</a></div><div class="offer-locality">Bratislava</div></div></div>'
+                f'<div class="offer-bottom"><div class="offer-bottom-left"><ul class="offer-info"><li><img src="e.svg" alt="€">od 1 700 - 2 200 EUR/Mesiac</li></ul></div>'
+                f'<div class="offer-bottom-right">{badge}<span class="date">14.09.2026</span><button class="add_to_fav" data-link="user_favorites.php?offer_id={i}"></button></div></div></div>')
+
+    @classmethod
+    def _page(cls, ids, last_od):
+        return ('<html><body>' + "".join(cls._card(i, top=(i == 1)) for i in ids)
+                + f'<ul class="paginator"><li><a href="pracovne-ponuky?od=30">2</a></li><li><a href="pracovne-ponuky?od={last_od}" class="end">N</a></li></ul></body></html>')
+
+    @staticmethod
+    def _sitemap(ids):
+        return '<?xml version="1.0"?><urlset>' + "".join(f"<url><loc>https://kariera.zoznam.sk/pracovna-ponuka/{i}/puesto-{i}</loc><lastmod>2026-09-14T03:15:06+02:00</lastmod></url>" for i in ids) + "</urlset>"
+
+    def _run(self, mod, fixtures, fn="cmd_list", **kw):
+        import contextlib
+        asked = []
+
+        def fake(url):
+            asked.append(url)
+            return fixtures[url]
+        mod.request = fake
+        a = argparse.Namespace(pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                getattr(mod, fn)(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    SM = "https://kariera.zoznam.sk/sitemap-29052025/offers"
+    L = "https://kariera.zoznam.sk/pracovne-ponuky"
+
+    def test_the_walk_reaches_the_sitemaps_count_at_the_pagers_end_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        fx = {self.SM: (200, self._sitemap(range(1, 60))),
+              self.L: (200, self._page(range(1, 31), 30)),
+              self.L + "?od=30": (200, self._page([1] + list(range(31, 60)), 30))}
+        code, rows, err, asked = self._run(mod, fx, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 59)
+        self.assertEqual(len({r["id"] for r in rows}), 59)
+        self.assertIn("59 emitted over 2 page(s), sitemap lists 59 — equal (1 key(s) seen twice across pages", err)
+        self.assertIn("the pager ends at page 2 of 30", err)
+        self.assertEqual(asked, [self.SM, self.L, self.L + "?od=30"])
+        self.assertEqual(rows[0]["salary_text"], "od 1 700 - 2 200 EUR/Mesiac")   # eight digits: a salary, not a phone
+        self.assertEqual(rows[0]["employer"], "ACME 1")
+        self.assertEqual(rows[0]["posted"], "2026-09-14")
+        self.assertTrue(rows[0]["top"])
+        self.assertIsNone(rows[1]["top"])
+
+    def test_a_walk_short_of_the_sitemaps_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        fx = {self.SM: (200, self._sitemap(range(1, 91))),
+              self.L: (200, self._page(range(1, 31), 30)),
+              self.L + "?od=30": (200, self._page([], 30))}
+        code, rows, err, _ = self._run(mod, fx, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("30 emitted over 2 page(s), sitemap lists 90 — 60 short", err)
+
+    def test_a_bounded_walk_says_so_and_is_not_compared(self):
+        mod = self._mod()
+        fx = {self.SM: (200, self._sitemap(range(1, 91))), self.L: (200, self._page(range(1, 31), 60))}
+        code, rows, err, asked = self._run(mod, fx, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("walk bounded by request", err)
+        self.assertEqual(len(asked), 2)
+
+    def test_the_sitemap_enumerates_the_ids_with_lastmod_and_names_the_pagers_figure(self):
+        mod = self._mod()
+        fx = {self.SM: (200, self._sitemap(range(1, 60))), self.L: (200, self._page(range(1, 31), 30))}
+        code, rows, err, asked = self._run(mod, fx, fn="cmd_sitemap", limit=0)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 59)
+        self.assertEqual(rows[0]["lastmod"], "2026-09-14T03:15:06+02:00")
+        self.assertEqual(rows[0]["ledger_id"], "kariera:1")
+        self.assertIn("59 emitted from the offers sitemap (59 URLs, 59 distinct ids); the list's pager ends at page 2 of 30 (60 at most — consistent with the sitemap)", err)
+
+    def test_the_ad_reads_the_blocks_and_the_sections_and_withholds_contacts(self):
+        mod = self._mod()
+        import contextlib
+
+        def block(label, value):
+            return f'<li><div class="offer-detail-info-icon"></div><div class="offer-detail-info-content"><div class="offer-label"> {label}: </div><div class="offer-info">{value}</div></div></li>'
+        body = ('<html><body><div class="offer-detail-top"><div class="offer-detail-top-left"><h1>Posudkový lekár</h1><div class="offer-company"><a href="ponuky-spolocnosti/sp">\n Sociálna poisťovňa </a></div></div></div>'
+                '<ul class="offer-detail-info">' + block("Miesto práce", '<a href="x">Zvolen</a>') + block("Ponúkaný plat (základná mzda)", "2 945 EUR<br />od 2 945 € brutto") + block("Druh pracovného pomeru", "plný úväzok") + '</ul>'
+                '<h2>Informácie o pracovnom mieste</h2><p>Hľadáme lekárov.<br />Kontakt: Ing. Novák, 0903 123 456, novak@sp.sk.</p>'
+                '<h3> Benefity a ďalšie výhody: </h3><p>Týždeň dovolenky navyše.</p>'
+                '<h2>Požiadavky na zamestnanca</h2><ul class="offer-detail-info">' + block("Minimálne požadované vzdelanie", "vysokoškolské II. stupňa") + '</ul>'
+                '<h2>Informácie o spoločnosti</h2><h3> Charakteristika spoločnosti: </h3><p>Verejnoprávna inštitúcia.</p><footer></footer></body></html>')
+        url = "https://kariera.zoznam.sk/pracovna-ponuka/1497703/posudkovy-lekar"
+        fx = {url: (200, body), "https://kariera.zoznam.sk/pracovna-ponuka/9/x": (200, "<html><body>nic</body></html>")}
+        mod.request = lambda u: fx[u]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertEqual(r["employer"], "Sociálna poisťovňa")
+        self.assertEqual(r["location"], "Zvolen")
+        self.assertEqual(r["salary_text"], "2 945 EUR od 2 945 € brutto")
+        self.assertEqual(r["contract"], "plný úväzok")
+        self.assertEqual(r["education"], "vysokoškolské II. stupňa")
+        self.assertEqual(r["benefits"], "Týždeň dovolenky navyše.")
+        self.assertEqual(r["employer_description"], "Verejnoprávna inštitúcia.")
+        self.assertIn("Hľadáme lekárov.", r["description"])
+        self.assertNotIn("@", text)
+        self.assertNotIn("123 456", text)
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[phone withheld]", r["description"])
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(url="https://kariera.zoznam.sk/pracovna-ponuka/9/x"))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
