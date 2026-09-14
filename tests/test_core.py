@@ -23007,5 +23007,116 @@ class AnAggregatorThatAsksThirtySecondsWhoseRedirectedAdsHaveNoReadableAddressAn
         self.assertEqual(cm.exception.code, 2)
 
 
+class TheHungarianBoardIsTheFinnishTemplateAndAHost(unittest.TestCase):
+    """**`jobly.py --host cvonline-hu`, 2026-09-14 (#362).** CVOnline Hungary
+    is the same Jobiqo/Drupal recruiter template as Jobly: `--host` names
+    the board, the listing and the sitemap are asked on that host at its
+    own paths, `source` and `ledger_id` carry the board's key, the count
+    is read from the board's own `<h1>` («5 681 ÁLLÁS VÁR»), a card whose
+    address is not the board's ad shape (a company page, a tier without
+    the slug) is not a card, the ad's body is the employer's template
+    (`recruiter_job_template`) rather than the node's body field, the date
+    «Frissítés dátuma:», Hungarian numbers scrubbed; `ad --url` reads the
+    board off the address; an unknown host is refused before any request.
+    Mutated (`-B`, detached copy): the host's listing path not used → the
+    host case reddens; the key not on the record → the host case reddens;
+    the card's address not checked against the board's ad shape → the host
+    case reddens; the template body not read → the ad case reddens; the
+    Hungarian number not scrubbed → the ad case reddens; the unknown host
+    accepted → the bad-host case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobly_hu", os.path.join(SCRIPTS, "jobly.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, nid, path, title, org, date="14.09.2026", loc="Budapest"):
+        return (f'<div class="views-row"><article id="node-{nid}"  about="{path}" class="node node-job"><div class="job__content"><h2 class="node__title"><a href="https://www.cvonline.hu{path}" class="recruiter-job-link" title="{title}">\n {title} </a></h2>'
+                f'<div class="description"><span class="date">\n {date}, </span><span class="recruiter-company-profile-job-organization"><a href="https://www.cvonline.hu/hu/ceg/x">{org}</a></span></div><div class="location"><span>{loc}</span></div><div class="terms">Szakmunka</div></div></article></div>')
+
+    def _page(self, cards, pages=2):
+        pager = "".join(f'<li class="pager__item"><a href="/hu/allashirdetesek?page={i}">{i + 1}</a></li>' for i in range(1, pages))
+        return (f'<html><body><div class="view-header"><div class="recruiter-seo-search-content-header"><h1 class="search-result-header">5 681 ÁLLÁS VÁR, JELENTKEZZ MÉG MA!</h1></div></div>'
+                f'<div class="view-content">{"".join(cards)}</div><ul class="pager"><li class="pager__item pager__item--current">1</li>{pager}</ul></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = {"list": argparse.Namespace(host=None, pages=5, limit=None), "sitemap": argparse.Namespace(host=None, limit=None), "ad": argparse.Namespace()}[cmd]
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_listing_and_the_sitemap_are_asked_on_the_named_host_and_carry_its_key(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card(1965816, "/hu/allas/metro-muszaki-ugyeletes-1965816", "Metró műszaki ügyeletes", "BKV Zrt."),
+                         self._card(1959638, "/hu/premium/allas/elado-penztaros-herceghalom-1959638", "Eladó-pénztáros - Herceghalom", "Budavidék Zrt.", loc="Herceghalom"),
+                         self._card(77, "/hu/ceg/bkv-zrt-0", "BKV Zrt. (a company page in a card's clothes)", "BKV Zrt.")])
+        p2 = self._page([self._card(1960000, "/hu/allas/raktaros-1960000", "Raktáros", "Work Force Kft.", loc="Győr")])
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2)], host="cvonline-hu")
+        self.assertEqual(asked, ["https://www.cvonline.hu/hu/allashirdetesek", "https://www.cvonline.hu/hu/allashirdetesek?page=1"])
+        self.assertEqual([r["id"] for r in rows], ["1965816", "1959638", "1960000"])   # the company page is not a card
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["posted"], a["location"], a["language"]),
+                         ("cvonline-hu", "HU", "cvonline-hu:1965816", "https://www.cvonline.hu/hu/allas/metro-muszaki-ugyeletes-1965816", "Metró műszaki ügyeletes", "BKV Zrt.", "2026-09-14", "Budapest", "hu"))
+        self.assertEqual(rows[1]["url"], "https://www.cvonline.hu/hu/premium/allas/elado-penztaros-herceghalom-1959638")
+        self.assertIn("3 emitted over 2 page(s) of 20, the listing states 5 681 — walked by request", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], host="www.cvonline.hu", pages=1)
+        self.assertEqual((asked, rows[0]["source"]), (["https://www.cvonline.hu/hu/allashirdetesek"], "cvonline-hu"))
+        index = '<?xml version="1.0"?><sitemapindex><sitemap><loc>https://www.cvonline.hu/hu/sitemap.xml?page=1</loc></sitemap></sitemapindex>'
+        f1 = ('<?xml version="1.0"?><urlset><url><loc>https://www.cvonline.hu/hu/allas/contact-center-tanacsado-budapest-1038633</loc><lastmod>2026-09-13T21:20Z</lastmod></url>'
+              '<url><loc>https://www.cvonline.hu/hu/lite/allas/minosegvizsgalo-operator-1080362</loc><lastmod>2024-01-01T00:00Z</lastmod></url>'
+              '<url><loc>https://www.cvonline.hu/hu/ceg/bkv-zrt-0</loc></url><url><loc>https://www.cvonline.hu/hu/tudastar/cikk-1</loc></url></urlset>')
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, index), (200, f1)], cmd="sitemap", host="cvonline-hu")
+        self.assertEqual(asked, ["https://www.cvonline.hu/hu/allashirdetesek", "https://www.cvonline.hu/hu/sitemap.xml", "https://www.cvonline.hu/hu/sitemap.xml?page=1"])
+        self.assertEqual([(r["id"], r["source"], r["ledger_id"]) for r in rows], [("1038633", "cvonline-hu", "cvonline-hu:1038633"), ("1080362", "cvonline-hu", "cvonline-hu:1080362")])
+        self.assertIn("2 advertisement id(s) in 1 file(s) (lastmod 2024-01-01 … 2026-09-13; 2 other rows set aside), the listing states 5 681 — 5 679 short.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], host="www.cvonline.example")
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_the_ad_reads_the_board_off_the_address_and_the_employers_template_body(self):
+        import contextlib
+        mod = self._mod()
+        ld = ('{"@context": "http://schema.org", "@type": "JobPosting", "title": "Metró műszaki ügyeletes", "datePosted": "2026-09-14", "validThrough": "2026-11-13", "hiringOrganization": {"@type": "Organization", "name": "BKV Zrt."}, "employmentType": ["FULL_TIME"],'
+              ' "jobLocation": [{"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "HU", "addressLocality": "Budapest"}}], "directApply": false, "description": "x", "occupationalCategory": "Szakmunka / fizikai munka",'
+              ' "baseSalary": {"@type": "MonetaryAmount", "currency": "HUF", "value": {"@type": "QuantitativeValue", "minValue": "", "maxValue": "", "unitText": ""}}}')
+        page = ('<html><body><script type="application/ld+json">' + ld + '</script><h1>Metró műszaki ügyeletes</h1>'
+                '<div class="panel-pane pane-recruiter-job-template"><div class="recruiter_job_template"><div class="markup"><p><img src="x.jpg" /></p><div class="unique_template"><p><strong>BUDAPESTI KÖZLEKEDÉSI ZÁRTKÖRŰEN MŰKÖDŐ RÉSZVÉNYTÁRSASÁG</strong></p><p>munkakörbe felvételt hirdet</p>'
+                '<p>Jelentkezés: Kovács Anna, +36 1 808 8376, toborzas@bkv.example</p></div></div></div></div>'
+                '<div class="field field--name-field-job-region field--type-taxonomy-term-reference field--label-hidden"><div class="field__items"><div class="field__item even">Budapest</div></div></div>'
+                '<div class="field field--name-field-job-employment-type-term field--type-taxonomy-term-reference field--label-hidden"><div class="field__items"><div class="field__item even">Teljes munkaidős</div></div></div>'
+                '<div class="panel-pane pane-custom pane-1 job-published-date"><p>Frissítés dátuma: 14.09.2026</p></div>'
+                '<ul class="links"><li class="recruiter_job_application"><a href="/hu/node/1965816/apply-external" title="Jelentkezem" rel="nofollow"><span>Jelentkezem</span></a></li></ul></body></html>')
+        rows, err, asked, raw = self._run(mod, [(200, page)], cmd="ad", url="https://www.cvonline.hu/hu/allas/metro-muszaki-ugyeletes-1965816")
+        self.assertEqual(asked, ["https://www.cvonline.hu/hu/allas/metro-muszaki-ugyeletes-1965816"])
+        r = rows[0]
+        self.assertEqual((r["source"], r["country"], r["ledger_id"], r["id"], r["title"], r["employer"], r["employment_type"], r["employment_type_term"], r["locations"], r["category"], r["posted"], r["valid_through"], r["language"]),
+                         ("cvonline-hu", "HU", "cvonline-hu:1965816", "1965816", "Metró műszaki ügyeletes", "BKV Zrt.", ["FULL_TIME"], "Teljes munkaidős", ["Budapest"], "Szakmunka / fizikai munka", "2026-09-14", "2026-11-13", "hu"))
+        self.assertEqual(r["description"], "BUDAPESTI KÖZLEKEDÉSI ZÁRTKÖRŰEN MŰKÖDŐ RÉSZVÉNYTÁRSASÁG\nmunkakörbe felvételt hirdet\nJelentkezés: Kovács Anna, [telephone withheld], [e-mail withheld]")
+        for secret in ("808 8376", "bkv.example", "apply-external"):
+            self.assertNotIn(secret, raw)
+        # the date from the page when the JSON-LD has none — the board's own label
+        rows, err, asked, raw = self._run(mod, [(200, page.replace('"datePosted": "2026-09-14", ', ""))], cmd="ad", url="https://www.cvonline.hu/hu/premium/allas/metro-muszaki-ugyeletes-1965816")
+        self.assertEqual((rows[0]["posted"], rows[0]["url"]), ("2026-09-14", "https://www.cvonline.hu/hu/premium/allas/metro-muszaki-ugyeletes-1965816"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.cvonline.hu/hu/ceg/bkv-zrt-0")
+        self.assertEqual(cm.exception.code, 2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.cvonline.example/hu/allas/x-1")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

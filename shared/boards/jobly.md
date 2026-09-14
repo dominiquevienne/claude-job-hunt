@@ -4,6 +4,7 @@
 
 <!-- hosts: www.jobly.fi, jobly.fi -->
 <!-- script: jobly.py -->
+<!-- 2026-09-14: the same template on a second board — CVOnline Hungary by `--host cvonline-hu` (`cvonline-hu.md`, #362); `jobly` stays the default host -->
 <!-- host-forms: www.jobly.fi -->
 <!-- host-forms-basis: read — the sitemap's rows and the cards' links are absolute on `www.jobly.fi`; `jobly.py` names that host as a literal and refuses an ad address on any other · 2026-09-14 -->
 <!-- countries: FI -->
@@ -120,3 +121,10 @@ in the output. Three tests; six mutations on a detached worktree
 guard dropped, a repeated id counted twice, the article rows not set
 aside, the placeholder not scrubbed, the salary period taken as stated
 without a value.
+
+## 2026-09-14 — a second board by `--host`
+
+CVOnline Hungary (`www.cvonline.hu`, Alma Career) is the same Jobiqo/Drupal
+recruiter template: `jobly.py --host cvonline-hu` (`cvonline-hu.md`, #362)
+— the listing, the count, the ad's address, the sitemap and the body pane
+named per board, everything else one code path. `jobly` stays the default.

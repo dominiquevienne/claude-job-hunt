@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 """Jobly (`www.jobly.fi`, Alma Media, Finland) — the private generalist left beside Duunitori now that Oikotie Työpaikat has closed; a Drupal site whose rules ask `Crawl-delay: 10` — honoured as written; the listing's own «12 737 avointa työpaikkaa» printed beside every walk; the sitemap's two files as the whole inventory; the ad's JobPosting and body read, the body scrubbed of the recruiters' addresses and numbers it carries. Issue #376.
 
-  jobly.py sitemap [--limit N]                  the two sitemap files — every /tyopaikka/<slug>-<id>, with lastmod; 3 requests + 1 for the stated count
-  jobly.py list [--pages N] [--limit N]         the listing walked, 20 a page, 10 s a page
-  jobly.py ad --url <https://www.jobly.fi/tyopaikka/<slug>-<id>>
+  jobly.py sitemap [--host jobly|cvonline-hu] [--limit N]           the sitemap files — every advertisement, with lastmod; 3 requests + 1 for the stated count
+  jobly.py list [--host jobly|cvonline-hu] [--pages N] [--limit N]  the listing walked, 20 a page, 10 s a page
+  jobly.py ad --url <https://www.jobly.fi/tyopaikka/<slug>-<id> | https://www.cvonline.hu/hu/allas/<slug>-<id>>
+
+THE SAME TEMPLATE ON A SECOND BOARD — `--host cvonline-hu` (#362). CVOnline Hungary
+(`www.cvonline.hu`, Alma Career) is the same Jobiqo/Drupal recruiter template: the same
+rules file (Drupal's default, `Crawl-delay: 10`), the same `<article id="node-<id>">` card,
+the same panes, the same sitemap index in two files; what differs is named per board — the
+listing `/hu/allashirdetesek` («5 681 ÁLLÁS VÁR, JELENTKEZZ MÉG MA!» in its `<h1>`), the ad
+`/hu/allas/<slug>-<id>` (and `/hu/<tier>/allas/…` — premium, lite, freemium …), the sitemap
+`/hu/sitemap.xml`, the body in `recruiter_job_template` rather than `field--name-body`,
+«Frissítés dátuma:» for the date. `source` and `ledger_id` carry the board's key; `ad --url`
+reads the board off the address; an unknown host is refused before any request.
 
 THE RULES (2 281 B, Drupal's default under `*`) ask `Crawl-delay: 10` and refuse `/search/`,
 the account pages, and **`/node/*/apply-external` — the «Hae paikkaa» link — never followed**;
@@ -54,30 +64,36 @@ from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
-HOST = "www.jobly.fi"
-LIST = f"https://{HOST}/tyopaikat"
-SITEMAP = f"https://{HOST}/sitemap.xml"
+BOARDS = {
+    "jobly": {"host": "www.jobly.fi", "country": "FI", "lang": "fi", "list": "/tyopaikat", "sitemap": "/sitemap.xml",
+              "ad": re.compile(r"^/tyopaikka/[^/]+-(\d+)/?$"),
+              "count": re.compile(r"meillä on\s*(\d[\d\s  ]*)\s*avointa työpaikkaa"),
+              "published": re.compile(r"Julkaistu\s+(\d{2}\.\d{2}\.\d{4})")},
+    "cvonline-hu": {"host": "www.cvonline.hu", "country": "HU", "lang": "hu", "list": "/hu/allashirdetesek", "sitemap": "/hu/sitemap.xml",
+                    "ad": re.compile(r"^/hu/(?:[a-z]+/)?allas/[^/]+-(\d+)/?$"),
+                    "count": re.compile(r"(\d[\d\s  ]*)\s*ÁLLÁS VÁR"),
+                    "published": re.compile(r"Frissítés dátuma:\s*(\d{2}\.\d{2}\.\d{4})")},
+}
+DEFAULT = "jobly"
 PAGE_SIZE = 20
 
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
 EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\[email(?:\s| |&#160;)*protected\]")
-# 044-7866005 · 040 123 4567 · +358 40 123 4567 · (09) 123 456 · 09-1234567
-PHONE_RE = re.compile(r"(?<![\d+])(?:\+358[\s ]?\(?0?\)?[\s ]?|0)\d{1,3}[\s -]?\)?\d{2,4}[\s -]?\d{2,4}(?:[\s -]?\d{1,3})?(?!\d)")
-COUNT_RE = re.compile(r"meillä on\s*(\d[\d\s  ]*)\s*avointa työpaikkaa")
-CARD_RE = re.compile(r'<article id="node-(\d+)"\s+about="(/tyopaikka/[^"]+)"(.*?)</article>', re.S)
+# Finnish 044-7866005 · 040 123 4567 · +358 40 123 4567 — and Hungarian +36 1 808 8376 · 06 30 123 4567 · 06-30-123-4567 · 0630/1234567
+PHONE_RE = re.compile(r"(?<![\d+])(?:(?:\+36|06)[\s /-]?\(?\d{1,2}\)?[\s /-]?\d{3}[\s /-]?\d{3,4}|(?:\+358[\s ]?\(?0?\)?[\s ]?|0)\d{1,3}[\s -]?\)?\d{2,4}[\s -]?\d{2,4}(?:[\s -]?\d{1,3})?)(?!\d)")
+CARD_RE = re.compile(r'<article id="node-(\d+)"\s+about="(/[^"]+)"(.*?)</article>', re.S)
 TITLE_RE = re.compile(r'<h2 class="node__title">\s*<a[^>]*>(.*?)</a>', re.S)
 DATE_RE = re.compile(r'<span class="date">\s*(\d{2}\.\d{2}\.\d{4})')
 ORG_RE = re.compile(r'<span class="recruiter-company-profile-job-organization">(.*?)</span>', re.S)
 LOC_RE = re.compile(r'<div class="location">\s*<span>(.*?)</span>', re.S)
-PAGER_RE = re.compile(r'href="/tyopaikat\?page=(\d+)"')
-ID_RE = re.compile(r"-(\d+)/?$")
+PAGER_RE = re.compile(r'href="[^"?]*\?page=(\d+)"')
 LOC_XML_RE = re.compile(r"<url>\s*<loc>([^<]+)</loc>(?:\s*<lastmod>([^<]+)</lastmod>)?", re.S)
-BODY_RE = re.compile(r'<div class="field field--name-body[^"]*">(.*?)</div>\s*</div>\s*</div>', re.S)
+BODY_RES = (re.compile(r'<div class="field field--name-body[^"]*">(.*?)</div>\s*</div>\s*</div>', re.S),           # Jobly: the node's body field
+            re.compile(r'<div class="recruiter_job_template">\s*<div class="markup">(.*?)</div>\s*</div>\s*</div>', re.S))   # CVOnline: the employer's template
 PANE_RE = re.compile(r'<div class="field field--name-field-job-(region|employment-type-term)[^"]*">(.*?)</div>\s*</div>\s*</div>', re.S)
 ITEM_RE = re.compile(r'<div class="field__item [^"]*">([^<]*)')   # the items are plain text (`field__items` is the wrapper); the pane's last closing tag is eaten by PANE_RE
-PUBLISHED_RE = re.compile(r"Julkaistu\s+(\d{2}\.\d{2}\.\d{4})")
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -99,13 +115,33 @@ def gate(url):
     return a
 
 
-_PACE = Pace(HOST, own=2.0)   # the host writes Crawl-delay: 10 — the longer wins, and it is the host's
+_PACES = {}
+
+
+def pace_for(host):
+    if host not in _PACES:
+        _PACES[host] = Pace(host, own=2.0)   # both hosts write Crawl-delay: 10 — the longer wins, and it is the host's
+    return _PACES[host]
+
+
+def board_of(host):
+    """`--host jobly` / `cvonline-hu` or a hostname → the board; an unknown one is refused before any request."""
+    if host is None:
+        return dict(BOARDS[DEFAULT], key=DEFAULT)
+    h = host.strip().lower()
+    for k, b in BOARDS.items():
+        if h == k or h == b["host"] or h == b["host"].replace("www.", ""):
+            return dict(b, key=k)
+    known = ", ".join(f"{k} ({b['host']})" for k, b in BOARDS.items())
+    die(f"--host {host!r}: not a board of this template — {known}")
 
 
 def request(url):
     gate(url)
-    _PACE.wait()
-    req = urllib.request.Request(wire_url(url), headers={"User-Agent": UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9", "Accept-Language": "fi"})
+    host = urllib.parse.urlsplit(url).netloc
+    pace_for(host).wait()
+    lang = next((b["lang"] for b in BOARDS.values() if b["host"] == host), "en")
+    req = urllib.request.Request(wire_url(url), headers={"User-Agent": UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9", "Accept-Language": lang})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.getcode(), decode_body(r.read(), r.headers)[0]
@@ -144,30 +180,34 @@ def iso(d):
     return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else None
 
 
-def stated(body):
-    m = COUNT_RE.search(text(body))
+def stated(body, b):
+    m = b["count"].search(text(body))
     return num(m.group(1)) if m else None
 
 
-def cards(body):
+def cards(body, b):
     out = []
     for nid, path, block in CARD_RE.findall(body):
+        if not b["ad"].match(path):
+            continue   # a card of another shape is not this board's advertisement
         t = TITLE_RE.search(block)
         d = DATE_RE.search(block)
         o = ORG_RE.search(block)
         loc = LOC_RE.search(block)
         out.append({
-            "source": "jobly", "country": "FI", "ledger_id": f"jobly:{nid}", "id": nid,
-            "url": f"https://{HOST}{path}", "title": text(t.group(1)) if t else None,
+            "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{nid}", "id": nid,
+            "url": f"https://{b['host']}{path}", "title": text(t.group(1)) if t else None,
             "employer": text(o.group(1)) if o else None,
             "posted": iso(d.group(1)) if d else None,
             "location": text(loc.group(1)) if loc else None,   # «95900 Kolari, Lappi» — the towns, then the region
-            "contacts_withheld": True, "language": "fi",
+            "contacts_withheld": True, "language": b["lang"],
         })
     return out
 
 
 def cmd_list(a):
+    b = board_of(getattr(a, "host", None))
+    LIST = f"https://{b['host']}{b['list']}"
     rows, seen, pageno, total, first = [], set(), 0, None, None
     while True:
         url = LIST + (f"?page={pageno}" if pageno else "")   # the site counts its pages from zero
@@ -175,8 +215,8 @@ def cmd_list(a):
         if code != 200:
             die(f"{url}: HTTP {code}", EXIT_GONE if code == 404 and pageno == 0 else EXIT_PARTIAL)
         if total is None:
-            total = stated(body)
-        page = cards(body)
+            total = stated(body, b)
+        page = cards(body, b)
         if not page:
             die(f"{url}: 200 and not one card — the template changed; not an empty market", EXIT_PARTIAL)
         if first is None:
@@ -212,8 +252,10 @@ def cmd_list(a):
 
 
 def cmd_sitemap(a):
+    b = board_of(getattr(a, "host", None))
+    LIST, SITEMAP = f"https://{b['host']}{b['list']}", f"https://{b['host']}{b['sitemap']}"
     code, body = request(LIST)
-    total = stated(body) if code == 200 else None
+    total = stated(body, b) if code == 200 else None
     code, body = request(SITEMAP)
     if code != 200:
         die(f"{SITEMAP}: HTTP {code}", EXIT_GONE if code == 404 else EXIT_PARTIAL)
@@ -226,14 +268,14 @@ def cmd_sitemap(a):
         if code != 200:
             die(f"{f}: HTTP {code}", EXIT_PARTIAL)
         for loc, lastmod in LOC_XML_RE.findall(body):
-            m = ID_RE.search(urllib.parse.urlsplit(loc).path)
-            if "/tyopaikka/" not in loc or not m:
+            m = b["ad"].match(urllib.parse.urlsplit(loc).path)
+            if not m:
                 other += 1
                 continue
             if m.group(1) in seen:
                 continue
             seen.add(m.group(1))
-            rows.append({"source": "jobly", "country": "FI", "ledger_id": f"jobly:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None, "contacts_withheld": True, "language": "fi"})
+            rows.append({"source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None, "contacts_withheld": True, "language": b["lang"]})
     emitted = rows[:a.limit] if a.limit else rows
     for r in emitted:
         print(json.dumps(r, ensure_ascii=False))
@@ -274,17 +316,18 @@ def place(p):
 
 def cmd_ad(a):
     parts = urllib.parse.urlsplit(a.url)
-    m = ID_RE.search(parts.path)
-    if parts.netloc != HOST or not parts.path.startswith("/tyopaikka/") or not m:
-        die(f"{a.url}: not an advertisement address (https://{HOST}/tyopaikka/<slug>-<id>)")
-    url = f"https://{HOST}{parts.path.rstrip('/')}"
+    b = next((dict(v, key=k) for k, v in BOARDS.items() if v["host"] == parts.netloc), None)   # the board is read off the address
+    m = b["ad"].match(parts.path) if b else None
+    if not b or not m:
+        die(f"{a.url}: not an advertisement address on one of the boards — " + ", ".join(f"https://{v['host']}{v['list']}" for v in BOARDS.values()))
+    url = f"https://{b['host']}{parts.path.rstrip('/')}"
     code, body = request(url)
     if code == 404:
         die(f"{url}: HTTP 404 — gone", EXIT_GONE)
     if code != 200:
         die(f"{url}: HTTP {code}", EXIT_PARTIAL)
     ld = ldjson(body)
-    bd = BODY_RE.search(body)
+    bd = next((x for x in (r.search(body) for r in BODY_RES) if x), None)
     if not ld and not bd:
         die(f"{url}: 200 without a JobPosting or a body — the template changed", EXIT_PARTIAL)
     ld = ld or {}
@@ -295,10 +338,10 @@ def cmd_ad(a):
     smin = num(str(sal.get("minValue"))) if str(sal.get("minValue") or "").strip().isdigit() else None
     smax = num(str(sal.get("maxValue"))) if str(sal.get("maxValue") or "").strip().isdigit() else None
     unit = (sal.get("unitText") or "").strip().lower() or None
-    pub = PUBLISHED_RE.search(text(body))
+    pub = b["published"].search(text(body))
     et = ld.get("employmentType")
     print(json.dumps({
-        "source": "jobly", "country": "FI", "ledger_id": f"jobly:{m.group(1)}", "id": m.group(1), "url": url,
+        "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": url,
         "title": htmlmod.unescape(ld.get("title") or "").strip() or None,
         "employer": htmlmod.unescape(((ld.get("hiringOrganization") or {}).get("name")) or "").strip() or None,
         "employment_type": et if isinstance(et, list) else ([et] if et else None),
@@ -313,7 +356,7 @@ def cmd_ad(a):
         "direct_apply": ld.get("directApply"),
         "description": scrub(text(bd.group(1))) if bd else scrub(text(htmlmod.unescape(ld.get("description") or ""))),
         # the «Hae paikkaa» link is /node/<id>/apply-external — refused in writing, never followed; the recruiters' addresses and numbers in the text are scrubbed
-        "contacts_withheld": True, "language": "fi",
+        "contacts_withheld": True, "language": b["lang"],
     }, ensure_ascii=False))
     note(f"{url}: read; the text is scrubbed of e-mail addresses and telephone numbers; the apply link is never followed.")
 
@@ -322,9 +365,11 @@ def main():
     p = argparse.ArgumentParser(description="Jobly — Finland's private generalist beside Duunitori; Crawl-delay 10 honoured; the listing's own count beside every walk; the sitemap as the inventory; the ad scrubbed of the recruiters' contacts. Issue #376.")
     sub = p.add_subparsers(dest="cmd", required=True)
     s_ = sub.add_parser("sitemap", help="every advertisement id the two sitemap files carry, against the listing's count")
+    s_.add_argument("--host", help="jobly (default) · cvonline-hu — or the hostname")
     s_.add_argument("--limit", type=int)
     s_.set_defaults(fn=cmd_sitemap)
     l_ = sub.add_parser("list", help="the listing, 20 a page, 10 s a page, 5 pages unless told")
+    l_.add_argument("--host", help="jobly (default) · cvonline-hu — or the hostname")
     l_.add_argument("--pages", type=int, default=5)
     l_.add_argument("--limit", type=int)
     l_.set_defaults(fn=cmd_list)
