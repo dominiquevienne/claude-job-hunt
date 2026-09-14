@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
-"""Nationale Vacaturebank (`www.nationalevacaturebank.nl`) — the Netherlands' largest general board (DPG Media), through the advertisement sitemap its rules declare; the search it refuses in writing is never taken.
+"""Nationale Vacaturebank (`www.nationalevacaturebank.nl`) — the Netherlands' largest general board (DPG Media), through the advertisement sitemap its rules declare; the search it refuses in writing is never taken. **And Intermediair (`www.intermediair.nl`), DPG's second board on the same template, by `--host intermediair` (#295).**
 
-  nationalevacaturebank.py sitemap [--limit N] [--sample K]
-  nationalevacaturebank.py ad --url <advertisement URL>
+  nationalevacaturebank.py sitemap [--host intermediair] [--limit N] [--sample K]
+  nationalevacaturebank.py ad --url <advertisement URL>            (the host is read off the address)
+
+TWO HOSTS, ONE TEMPLATE. `--host` names the board — `nationalevacaturebank` (the default) or
+`intermediair` — and everything below (the rules to the line, the sitemap layout with its file on
+the apex host, the JobPosting on every page) was read the same on both: Intermediair measured
+2026-09-13 16:15–16:17 UTC (2 495 distinct uuids in one file, 19 of 20 sampled served open, the
+tab's «2.361 banen» not readable by HTTP) — `intermediair.md`. The record's `source` and
+`ledger_id` carry the board's key, and `ad --url` reads the board off the address.
 
 THE ROUTE IS THE SITEMAP, BECAUSE THE SEARCH IS REFUSED IN WRITING
 
@@ -55,11 +62,13 @@ from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
+BOARDS = {"nationalevacaturebank": "www.nationalevacaturebank.nl", "intermediair": "www.intermediair.nl"}   # DPG Media's two boards on one template — each measured before it was listed
 BASE = "https://www.nationalevacaturebank.nl"
 INDEX = f"{BASE}/cdn/sitemaps/vacature.xml"
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-AD_RE = re.compile(r"^https://(?:www\.)?nationalevacaturebank\.nl/vacature/(" + UUID + r")/([^/?#]+)/?$")
+AD_RE = re.compile(r"^https://(?:www\.)?(nationalevacaturebank|intermediair)\.nl/vacature/(" + UUID + r")/([^/?#]+)/?$")
 # the search and every paginated listing are refused in writing to `*` — never requested, whatever the caller asks
+MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 REFUSED_RE = re.compile(r"/vacature/zoeken\?|/vacatures/[^?]*\?.*page=|/vacature/bladeren/|/archief/")
 
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -87,12 +96,26 @@ def gate(url):
     return a
 
 
-_PACE = Pace("www.nationalevacaturebank.nl", own=1.5)   # no Crawl-delay in the rules; 1.5 s is ours
+_PACES = {}
+
+
+def pace_for(host):
+    if host not in _PACES:
+        _PACES[host] = Pace(host, own=1.5)   # no Crawl-delay in either rules file; 1.5 s is ours
+    return _PACES[host]
+
+
+def board_of(name):
+    """The board key → its host, or a clean exit naming the two the script knows."""
+    key = (name or "nationalevacaturebank").strip().lower()
+    if key not in BOARDS:
+        die(f"--host {name!r}: the boards this script reads are {', '.join(BOARDS)} — each measured before it was listed")
+    return key, BOARDS[key]
 
 
 def get(url):
     gate(url)
-    _PACE.wait()
+    pace_for(urllib.parse.urlsplit(url).netloc).wait()
     req = urllib.request.Request(wire_url(url), headers={
         "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
         "Accept-Language": "nl"})
@@ -134,12 +157,14 @@ def today():
 
 
 def cmd_sitemap(a):
-    code, body = get(INDEX)
+    key, host = board_of(getattr(a, "host", None))
+    index = f"https://{host}/cdn/sitemaps/vacature.xml"
+    code, body = get(index)
     if code != 200:
-        die(f"{INDEX}: HTTP {code}", EXIT_PARTIAL)
+        die(f"{index}: HTTP {code}", EXIT_PARTIAL)
     files = [u for u in locs(body) if u.endswith(".xml")]
     if not files:
-        die(f"{INDEX}: no sitemap file in the index ({len(body)} characters) — the shape changed or the body is not the index.", EXIT_PARTIAL)
+        die(f"{index}: no sitemap file in the index ({len(body)} characters) — the shape changed or the body is not the index.", EXIT_PARTIAL)
     lastmod = re.search(r"<lastmod>\s*([^<]+?)\s*</lastmod>", body)
     rows, seen, per_file = [], set(), []
     for f in files:
@@ -149,11 +174,11 @@ def cmd_sitemap(a):
         n_here = 0
         for u in locs(xml):
             m = AD_RE.match(u)
-            if not m or m.group(1) in seen:
+            if not m or m.group(1) != key or m.group(2) in seen:   # a file that named the other board's host would be a fault, not a row
                 continue
-            seen.add(m.group(1))
-            rows.append({"source": "nationalevacaturebank", "country": "NL", "ledger_id": f"nationalevacaturebank:{m.group(1)}",
-                         "id": m.group(1), "url": u, "slug": m.group(2)})
+            seen.add(m.group(2))
+            rows.append({"source": key, "country": "NL", "ledger_id": f"{key}:{m.group(2)}",
+                         "id": m.group(2), "url": u, "slug": m.group(3)})
             n_here += 1
         per_file.append((f.rsplit("/", 1)[-1], n_here))
     if not rows:
@@ -162,7 +187,7 @@ def cmd_sitemap(a):
     for r in emitted:
         print(json.dumps(r, ensure_ascii=False))
     n = len(rows)
-    note(f"**{th(n)} distinct advertisement uuid(s)** in {len(files)} file(s) ({', '.join(f'{f} {th(c)}' for f, c in per_file)}); "
+    note(f"**{th(n)} distinct advertisement uuid(s)** on {host} in {len(files)} file(s) ({', '.join(f'{f} {th(c)}' for f, c in per_file)}); "
          f"{th(len(emitted))} emitted" + (f" (--limit {a.limit})" if a.limit else "") + f"; the index's own lastmod {lastmod.group(1) if lastmod else 'absent'}.")
     note("The site states no figure by HTTP — its «N banen» is rendered in a browser from the API behind the search the rules refuse; no second figure is compared here.")
     if a.sample:
@@ -195,8 +220,8 @@ def cmd_sitemap(a):
 def cmd_ad(a):
     m = AD_RE.match(a.url.strip())
     if not m:
-        die(f"{a.url}: not an advertisement address — expected {BASE}/vacature/<uuid>/<slug>")
-    ident = m.group(1)
+        die(f"{a.url}: not an advertisement address — expected https://www.<nationalevacaturebank|intermediair>.nl/vacature/<uuid>/<slug>")
+    key, ident = m.group(1), m.group(2)
     code, body = get(a.url)
     if code in (404, 410):
         die(f"{a.url}: HTTP {code}", EXIT_GONE)
@@ -226,9 +251,11 @@ def cmd_ad(a):
         except (TypeError, ValueError):
             return None
     print(json.dumps({
-        "source": "nationalevacaturebank", "country": "NL", "ledger_id": f"nationalevacaturebank:{ident}", "id": ident, "url": a.url,
+        "source": key, "country": "NL", "ledger_id": f"{key}:{ident}", "id": ident, "url": a.url,
         "title": text(d.get("title")), "alternate_name": d.get("alternateName"),
-        "employer": org.get("name"), "employer_email": org.get("email"),
+        "employer": org.get("name"),
+        # `hiringOrganization.email` is a recruiter's own address on this template (a first name at the employer's domain) — a contact, never emitted (#295 fixed what #287 let through)
+        "contacts_withheld": True,
         "employment_type": et if isinstance(et, list) else ([et] if et else []),
         "work_hours": d.get("workHours"),
         "city": addr.get("addressLocality"), "region": addr.get("addressRegion"), "postal_code": addr.get("postalCode"),
@@ -239,7 +266,7 @@ def cmd_ad(a):
         "salary_unit": (val.get("unitText") or "").strip() or None,
         "months_of_experience": money(exp.get("monthsOfExperience")), "education": edu.get("credentialCategory"),
         "direct_apply": d.get("directApply"),
-        "description": text(d.get("description"))[:20000], "language": "nl",
+        "description": MAIL_RE.sub("[e-mail withheld]", text(d.get("description")))[:20000], "language": "nl",
     }, ensure_ascii=False))
 
 
@@ -247,6 +274,7 @@ def main():
     p = argparse.ArgumentParser(description="Nationale Vacaturebank — the advertisement sitemap the rules declare (the search is refused in writing and never taken), a sample of pages as the freshness witness, and the JobPosting every advertisement carries.")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("sitemap", help="every advertisement uuid in the declared sitemap files — two files, ~16 MB of XML; --sample K opens K pages as a freshness witness")
+    s.add_argument("--host", default="nationalevacaturebank", help="the board: nationalevacaturebank (default) or intermediair — DPG Media's two boards on one template")
     s.add_argument("--limit", type=int)
     s.add_argument("--sample", type=int, help="open K advertisements spread over the files and count those still open")
     s.set_defaults(fn=cmd_sitemap)

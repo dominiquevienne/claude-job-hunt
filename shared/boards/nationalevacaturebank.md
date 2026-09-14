@@ -130,3 +130,15 @@ element, the uuid dedup dropped, 410 folded into 404, the date test
 inverted (inert on the first draw of the sample case, which was symmetric
 — one open, one expired — and red once the draw was made 2 + 1 + 1), 410
 dropped from `ad`'s gone codes.
+
+## 2026-09-14 — #295: `--host intermediair`, and the recruiter's address is no longer a field
+
+The sister board (`intermediair.md`) is read by this script with `--host
+intermediair`. **And a correction**: the JobPosting's
+`hiringOrganization.email` — «careers@…» on the ad read on the 13th, a
+first name at the employer's domain on the sister's — is a recruiter's
+address; #287 emitted it as `employer_email`, and since #295 it is not a
+field on either board (`contacts_withheld: true`), the description scrubbed
+of e-mail addresses. The «email careers@…» in the record shape above is
+what the page carries, not what the adapter emits.
+
