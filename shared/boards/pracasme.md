@@ -7,6 +7,7 @@
 <!-- countries: SK -->
 <!-- content: measured · **`/robots.txt` answers HTTP 403 with 22 955 B titled «Security Verification | SME» (captcha/challenge words in the body, md5 moving between two reads: 1e18b5674616 / 4b15655603a4) — no rules readable, an absence of rules under #283; `/` and `/ponuky` answer HTTP 402, 55 B, `{"message":"Please contact the site owner for access."}`, md5 48817d6864f7 identical on three reads (02:41–02:42 UTC), the same body the country search read on 2026-09-13 16:59; `www.praca.sk` redirects here and meets the same 402** · 2026-09-14 -->
 <!-- witness: none — no page was served to the declared client, so no count of the site's own was read · 2026-09-14 -->
+<!-- route: none · a browser is not refused — it is sent away: `praca.sme.sk/`, `praca.sme.sk/ponuky` and `www.praca.sk/` all land on `www.sme.sk/`, the daily's front page (three navigations from a connected tab, the root twice, 09:12–09:13 UTC); no list, no count, no ad under this host today — «is no longer a board» is the reading, the owner's word to validate (§2 sexies) · 2026-09-14 -->
 
 **Two refusals of two kinds, and the one that matters for the browser
 branch is the static one.** Issue #346 (Slovakia; #291 bloc C) named a
@@ -49,3 +50,20 @@ card, no ad page. Slovakia's read boards on this day: Profesia
 (`profesia.md`), the public employment service (`sluzbyzamestnanosti.md`,
 which republishes Profesia, Kariéra and four others, not this one) and
 Kariéra (`kariera.md`).
+
+## Browser reading, 2026-09-14 09:12–09:13 UTC (#346)
+
+The extension answered this session, so the browser candidate above was
+measured from a connected tab: `https://praca.sme.sk/` → **redirected to
+`https://www.sme.sk/`**, the newspaper's front page (news, sport, weather —
+no job listing on it); `https://praca.sme.sk/ponuky` → the same
+`www.sme.sk/`; `https://www.praca.sk/` → the same; the root again a minute
+later → the same. **The 402 is what the declared client gets; a browser is
+not challenged and not refused — it is sent to the daily's home.** Nothing
+under this host served a list, a count or an advertisement to a browser
+either. So: `route: none`, with the reason and the date; the reading is
+«the board no longer lives here» (the `bestzambiajobs` form: a hostname
+that survives its board), and the word «closed» stays the owner's
+(§2 sexies). Slovakia's boards read on this day are Profesia, the public
+employment service, Kariéra, Práca za rohom, Worki and Trenkwalder.
+
