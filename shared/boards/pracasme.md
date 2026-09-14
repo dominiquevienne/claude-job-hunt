@@ -7,7 +7,7 @@
 <!-- countries: SK -->
 <!-- content: measured · **`/robots.txt` answers HTTP 403 with 22 955 B titled «Security Verification | SME» (captcha/challenge words in the body, md5 moving between two reads: 1e18b5674616 / 4b15655603a4) — no rules readable, an absence of rules under #283; `/` and `/ponuky` answer HTTP 402, 55 B, `{"message":"Please contact the site owner for access."}`, md5 48817d6864f7 identical on three reads (02:41–02:42 UTC), the same body the country search read on 2026-09-13 16:59; `www.praca.sk` redirects here and meets the same 402** · 2026-09-14 -->
 <!-- witness: none — no page was served to the declared client, so no count of the site's own was read · 2026-09-14 -->
-<!-- route: none · a browser is not refused — it is sent away: `praca.sme.sk/`, `praca.sme.sk/ponuky` and `www.praca.sk/` all land on `www.sme.sk/`, the daily's front page (three navigations from a connected tab, the root twice, 09:12–09:13 UTC); no list, no count, no ad under this host today — «is no longer a board» is the reading, the owner's word to validate (§2 sexies) · 2026-09-14 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue ») — measured: the host sends a real browser to www.sme.sk, the daily's front page — the board no longer lives here (2026-09-14); the declared client gets a 402 · 2026-09-14 -->
 
 **Two refusals of two kinds, and the one that matters for the browser
 branch is the static one.** Issue #346 (Slovakia; #291 bloc C) named a
@@ -66,4 +66,8 @@ either. So: `route: none`, with the reason and the date; the reading is
 that survives its board), and the word «closed» stays the owner's
 (§2 sexies). Slovakia's boards read on this day are Profesia, the public
 employment service, Kariéra, Práca za rohom, Worki and Trenkwalder.
+
+## 2026-09-14 11:0x UTC — non faisable, validé par le propriétaire
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3, 4, 5 => exclue »)** — relayed verbatim by the pilot (#346). What was measured above is the measurement; the word «closed» is the owner's, and he has given it: the host sends a real browser to www.sme.sk, the daily's front page — the board no longer lives here (2026-09-14); the declared client gets a 402. The card stays as the record of the measurements; `route: none` is dated and motivated by this line, and the Atlas excludes the entry from the feasible denominator (#404). What would reopen it is written in the sections above; nothing is scheduled.
 
