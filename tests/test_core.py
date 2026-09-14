@@ -20840,5 +20840,118 @@ class AnIndexThePageQueriesItselfWhereTheAppointedNameAndTheRefusingHostNeverLea
         self.assertIn("index states 1", err)
 
 
+class AListingWhosePlaceAndDateAreTheIconsSpansAndWhoseHostIsOneOfTwentyOne(unittest.TestCase):
+    """**`jobslin.py`, 2026-09-14 (#299).** One operator, one sub-host per
+    country (`ph.` by default, `--host my` …): the listing states «a - b of
+    N Job Vacancies» and turns by `?page=N`; the card's place and date are
+    the spans its own icons label (a guess from the text once took a
+    summary for a place); the salary is read with its sign and its period,
+    and the period is stated only when printed; «Premium» is the operator's
+    paid placement, kept and flagged. The ad is a JobPosting. Mutated (`-B`,
+    detached copy): the place read from the first comma line → the place
+    case reddens; the heading check dropped → the turn case reddens; the
+    period stated without a printed one → the salary case reddens; the sign
+    not mapped → the salary case reddens; `--host` ignored → the host case
+    reddens; the premium flag dropped → the walk case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobslin", os.path.join(SCRIPTS, "jobslin.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _card(self, ident, title, emp="Cyberbacker", premium=False, place="Manila, National Capital Region", date="11/09/2026", sal="₱17,000.00", period="Monthly", tag="Full Time"):
+        summ = "At Cyberbacker, we believe every career should have purpose, direction and a place in Makati, Metro Manila..."
+        badge = '<span class="badge badge_premium mb-2 text-white font_4 px-3 rounded-2 py-1 fw-bold"><svg class="bi bi-award-fill"></svg>Premium</span>' if premium else ""
+        salary = (f'<div class="col-12 col-md"><span class="font_1 fw-bold texto_celeste">{sal}</span>&nbsp; / {period}</div>' if period else
+                  f'<div class="col-12 col-md"><span class="font_1 fw-bold texto_celeste">{sal}</span></div>') if sal else ""
+        return (f'<div class="card"><div class="card-body"><a href="/job/{ident}/{title.lower().replace(" ", "-")}-in-ncr" data-enlace-oferta="1" class="text-decoration-none text-dark">{badge}'
+                f'<div class="d-flex"><h5 class="fw-bold text-primary mb-0 font_2">{title}</h5><p class="text-secondary opacity-75 mb-0 small">{emp}</p></div>'
+                f'<p class="pt-1 pb-xl-0 mb-0 mb-xl-1 text-dark fw-lighter font_4">{summ}</p>'
+                f'<div class="d-flex gap-2 mb-2 mt-0"><span class="badge">{tag}</span><span class="badge">No Experience</span></div>'
+                f'<div class="row"><div class="col"><svg class="bi bi-geo-alt me-2" viewBox="0 0 16 16"><path d="M8"/></svg><span class="text-dark">{place}</span></div><p>•</p>'
+                f'<div class="col"><svg class="bi bi-calendar me-2" viewBox="0 0 16 16"><path d="M3"/></svg><span class="text-dark"> {date} </span></div>{salary}</div></a></div></div>')
+
+    def _page(self, first, total, cards):
+        last = min(first + 11, total)
+        return (f'<html><body><h1>{first:,} - {last:,} of {total:,} Job Vacancies</h1>' + "".join(cards)
+                + f'<nav><a href="/job-offers?t={total}&amp;page=2" rel="next">Next</a></nav></body></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        it = iter(served)
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return next(it)
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        ns = argparse.Namespace(host="ph", pages=10, limit=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), sent
+
+    def test_the_walk_reads_the_cards_by_their_icons_and_prints_the_stated_total(self):
+        mod = self._mod()
+        p1 = self._page(1, 25, [self._card(525944, "Financial Advisor", emp="Pru Life UK", premium=True, place="Quezon City, National Capital Region", date="12/09/2026", sal="₱10,000.00", period="Weekly", tag="Remote")]
+                        + [self._card(528000 + i, f"Agent {i}") for i in range(11)])
+        p2 = self._page(13, 25, [self._card(529000 + i, f"Clerk {i}", sal="", period="") for i in range(12)])
+        p3 = self._page(25, 25, [self._card(530000, "Nurse", sal="₱30,000.00", period="")])
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2), (200, p3)])
+        self.assertEqual(len(rows), 25)
+        r = rows[0]
+        self.assertEqual((r["id"], r["url"], r["title"], r["employer"], r["premium"], r["workplace"], r["posted"], r["tags"], r["salary"], r["salary_currency"], r["salary_period"], r["salary_unit_stated"]),
+                         ("525944", "https://ph.jobslin.com/job/525944/financial-advisor-in-ncr", "Financial Advisor", "Pru Life UK", True, "Quezon City, National Capital Region", "12/09/2026", ["Remote", "No Experience"], 10000.0, "PHP", "WEEK", True))
+        self.assertEqual((rows[1]["premium"], rows[1]["workplace"], rows[1]["salary_period"]), (False, "Manila, National Capital Region", "MONTH"))   # not the summary's «Makati, Metro Manila»
+        self.assertEqual((rows[12]["salary"], rows[12]["salary_currency"], rows[12]["salary_unit_stated"]), (None, None, False))
+        self.assertEqual((rows[24]["salary"], rows[24]["salary_period"], rows[24]["salary_unit_stated"]), (30000.0, None, False))   # an amount without a printed period
+        self.assertEqual(sent, ["https://ph.jobslin.com/job-offers", "https://ph.jobslin.com/job-offers?page=2", "https://ph.jobslin.com/job-offers?page=3"])
+        self.assertIn("25 emitted over 3 page(s), ph.jobslin.com states 25 — equal.", err)
+        rows, err, sent = self._run(mod, [(200, p1), (200, p2)], pages=2)
+        self.assertEqual(len(rows), 24)
+        self.assertIn("24 emitted of the 25 ph.jobslin.com states — 2 page(s) of 12 walked by request", err)
+
+    def test_the_host_is_the_operators_country_code_and_a_page_that_did_not_turn_is_a_fault(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page(1, 1, [self._card(1, "Cook", sal="RM2,500.00")])
+        rows, err, sent = self._run(mod, [(200, p1)], host="my")
+        self.assertEqual(sent, ["https://my.jobslin.com/job-offers"])
+        self.assertEqual((rows[0]["country"], rows[0]["ledger_id"], rows[0]["url"], rows[0]["salary_currency"]), ("MY", "jobslin:my:1", "https://my.jobslin.com/job/1/cook-in-ncr", "MYR"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_search(argparse.Namespace(host="www", pages=1, limit=None))
+        self.assertEqual(cm.exception.code, 2)
+        p1 = self._page(1, 30, [self._card(100 + i, f"A {i}") for i in range(12)])
+        same = self._page(1, 30, [self._card(200 + i, f"B {i}") for i in range(12)])
+        it = iter([(200, p1), (200, same)])
+        mod.request = lambda url: next(it)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as e2:
+            mod.cmd_search(argparse.Namespace(host="ph", pages=10, limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("the page did not turn", e2.getvalue())
+
+    def test_the_ad_is_its_job_posting(self):
+        import contextlib
+        mod = self._mod()
+        ld = {"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "name": "x"}, {"@type": "JobPosting", "title": "Technical Engineer", "description": "<p>Provides technical support. Write to hr@oceangoing.example for details.</p>", "datePosted": "2026-07-18", "validThrough": "2026-09-16", "employmentType": "FULL_TIME",
+                                                          "hiringOrganization": {"@type": "Organization", "name": "Oceangoing"}, "totalJobOpenings": 1, "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Cagayan de Oro", "addressRegion": "Misamis Oriental", "addressCountry": "PH"}}}]}
+        mod.request = lambda url: (200, '<html><head><script type="application/ld+json">' + json.dumps(ld) + '</script></head><body>x</body></html>')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://ph.jobslin.com/job/508626/technical-engineer-in-misamis-oriental"))
+        d = json.loads(out.getvalue())
+        self.assertEqual((d["id"], d["country"], d["title"], d["employer"], d["workplace"], d["posted"], d["application_deadline"], d["employment_type"], d["openings"]),
+                         ("508626", "PH", "Technical Engineer", "Oceangoing", "Cagayan de Oro, Misamis Oriental", "2026-07-18", "2026-09-16", "FULL_TIME", 1))
+        self.assertIn("[e-mail withheld]", d["description"])
+        self.assertNotIn("oceangoing.example", out.getvalue())
+        mod.request = lambda url: (200, "<html><body>gone</body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://ph.jobslin.com/job/1/x"))
+        self.assertEqual(cm.exception.code, 6)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
