@@ -24111,5 +24111,87 @@ class TwoNeighbourhoodBoardsOnOneNextStackWhoseAdCarriesTheRecruiterAndNeverEmit
         self.assertEqual(cm.exception.code, 2)
 
 
+class TheNordicFrontsAreTheFrenchPlatformsCountryFilesAndAHostWhoseConsultantIsWithheld(unittest.TestCase):
+    """**`adecco.py --host no|fi`, 2026-09-14 (#369, #380).** Adecco Norway and
+    Finland are the platform `adecco.py` already reads for France:
+    `www.adecco.no` and `.fi` answer 301 to `www.adecco.com/nb-no` and
+    `/fi-fi`, and each country is one file of `jobsindex.xml` —
+    `sitemap-jobs-norway-nb.xml`, `sitemap-jobs-finland-fi.xml`. `--host`
+    (a code, a country, or the hostname) rewires the sitemap and the
+    language asked for; `source` and `ledger_id` carry the board's key;
+    the description names the consultant with e-mail and telephone and is
+    scrubbed (a correction for the French front too); `--region`, the
+    French department, is refused elsewhere; an unknown host is refused
+    before any request. Mutated (`-B`, detached copy): the sitemap not
+    rewired per board → the host case reddens; the key not on the record
+    → the host case reddens; the scrub dropped → the host case reddens; the
+    hostname form not accepted → the host case reddens; the unknown host
+    accepted → the bad-host case reddens; `--region` allowed on the
+    Norwegian front → the bad-host case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_adecco_hosts", os.path.join(SCRIPTS, "adecco.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><lastmod>2026-09-11T00:00:00Z</lastmod><loc>https://www.adecco.com/nb-no/ledige-stillinger/biloppretter-agder-bilskade-kristiansand/ts-f7697975</loc></url>'
+               '<url><lastmod>2026-09-10T00:00:00Z</lastmod><loc>https://www.adecco.com/nb-no/ledige-stillinger/barnehagelaerere-tromso/tk-100e5601</loc></url></urlset>')
+
+    def _ad(self, title, loc, desc, jid="TS-F7697975"):
+        ld = json.dumps({"@context": "https://schema.org", "@type": "JobPosting", "title": title, "description": desc, "industryTypeTitle": "null", "datePosted": "2026-09-11T12:08:22Z", "validThrough": "null ", "isRemote": "false",
+                         "employmentType": "Fast stilling", "jobId": jid, "hiringOrganization": {"@type": "Organization", "name": "adeccocms", "logo": ""}, "country": "NO",
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": loc, "addressRegion": "", "postalCode": "", "addressCountry": "NO", "location": loc}},
+                         "baseSalary": {"@type": "MonetaryAmount", "currency": "null ", "CurrencySymbol": "null", "value": {"@type": "QuantitativeValue", "minValue": "0 ", "maxValue": "0 ", "unitText": "null "}}}, ensure_ascii=False)
+        return '<html><body><script type="application/ld+json">' + ld + '</script><h1>' + title + '</h1></body></html>'
+
+    def _run(self, mod, served, cmd="search", host="no", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def get(url, retries=2, gone_is_ok=False):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        mod.time.sleep = lambda s: None
+        mod.use_board(host)
+        ns = argparse.Namespace(cmd=cmd, host=host, region=None, ville=None, all=True, since=None, pages=3, limit=None, delay=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_search if cmd == "search" else mod.cmd_discover)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_norwegian_front_is_its_country_file_and_the_consultant_is_withheld(self):
+        import contextlib
+        mod = self._mod()
+        ad1 = self._ad("Biloppretter - Agder Bilskade", "KRISTIANSAND", "<p>Vi søker biloppretter. Spørsmål til Anette på anette.straedet@adecco.example eller 991 29 992.</p>")
+        ad2 = self._ad("Barnehagelærere", "TROMSØ", "<p>Ring +47 22 33 44 55.</p>", jid="TK-100E5601")
+        rows, err, asked, raw = self._run(mod, [self.SITEMAP, ad1, ad2], host="www.adecco.no", limit=2)
+        self.assertEqual(asked, ["https://www.adecco.com/sitemap-jobs-norway-nb.xml", "https://www.adecco.com/nb-no/ledige-stillinger/biloppretter-agder-bilskade-kristiansand/ts-f7697975", "https://www.adecco.com/nb-no/ledige-stillinger/barnehagelaerere-tromso/tk-100e5601"])
+        self.assertIn("[adecco-no] 2 ads in the Norway sitemap", err)
+        self.assertEqual([(r["source"], r["ledger_id"], r["title"], r["locality"], r["country"], r["contract_text"], r["employer_is_the_agency"], r["contacts_withheld"]) for r in rows],
+                         [("adecco-no", "adecco-no:ts-f7697975", "Biloppretter - Agder Bilskade", "KRISTIANSAND", "NO", "Fast stilling", True, True), ("adecco-no", "adecco-no:tk-100e5601", "Barnehagelærere", "TROMSØ", "NO", "Fast stilling", True, True)])
+        self.assertEqual(rows[0]["description"], "Vi søker biloppretter. Spørsmål til Anette på [e-mail withheld] eller [telephone withheld].")
+        self.assertEqual(rows[1]["description"], "Ring [telephone withheld].")
+        for secret in ("adecco.example", "991 29 992", "22 33 44 55"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [self.SITEMAP], cmd="discover", host="fi", limit=1)
+        self.assertEqual((asked, rows[0]["source"], rows[0]["ledger_id"][:10]), (["https://www.adecco.com/sitemap-jobs-finland-fi.xml"], "adecco-fi", "adecco-fi:"))
+        self.assertIn("[adecco-fi] 1 of 2 ads in the Finland sitemap", err)
+        b = mod.use_board(None)
+        self.assertEqual((b["code"], b["key"], mod.SITEMAP), ("fr", "adecco", "https://www.adecco.com/sitemap-jobs-france-fr.xml"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.use_board("www.adecco.example")
+        self.assertEqual(cm.exception.code, 2)
+        # --region is the French department spelled out: refused on the Norwegian front, in main's own check
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.sys.argv = ["adecco.py", "search", "--host", "no", "--region", "Morbihan", "--limit", "1"]
+            mod.main()
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

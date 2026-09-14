@@ -2,6 +2,7 @@
 
 <!-- hosts: www.adecco.com -->
 <!-- script: adecco.py -->
+<!-- 2026-09-14: the same platform for two more countries — Norway and Finland by `--host no|fi` (`adecco-no.md`, `adecco-fi.md`, #369, #380); and a correction: the description is now scrubbed of the consultant's e-mail and telephone it names (`contacts_withheld`), on this front too -->
 <!-- countries: FR -->
 
 **13 293 French ads** — not the 20 000 the home page advertises. That number is
@@ -156,3 +157,13 @@ One request for the sitemap, then one page load per ad read — `--ville` and
 `--since` decide how many that is. `--delay` defaults to 0.6s. Nothing here is
 disallowed: the sitemap is the one `robots.txt` advertises, and the ad path is
 open.
+
+## 2026-09-14 — two more countries by `--host`, and a correction
+
+Adecco Norway and Finland are country files of the same `jobsindex.xml`:
+`adecco.py --host no|fi` (`adecco-no.md`, `adecco-fi.md`, #369, #380) — the
+file, the language asked for, the ledger key and the country named per
+board, everything else one code path; `fr` stays the default. **And a
+correction on this front: the description names the consultant with e-mail
+and telephone on some ads — it is now scrubbed, `contacts_withheld` on every
+record.**
