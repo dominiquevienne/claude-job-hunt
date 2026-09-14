@@ -23631,5 +23631,107 @@ class ATechBoardWhoseApiHostRefusesEverythingAndWhoseOfferPageCarriesItsOwnState
         self.assertEqual(cm.exception.code, 2)
 
 
+class TheCzechAndHungarianFrontsAreTheFrenchPlatformAndAHostWhoseOtherLanguageIsSetAside(unittest.TestCase):
+    """**`randstadfr.py --host cz|hu`, 2026-09-14 (#357, #363).** Randstad's
+    Czech and Hungarian fronts are the platform `randstadfr.py` already
+    reads: `--host` rewires the index and the language asked for; only the
+    board's own-language job-detail files are read — the `/en/` copies of
+    the same ads are set aside and said; the `-internal` file's rows are
+    Randstad's own vacancies, read and flagged; `source` and `ledger_id`
+    carry the board's key; the description's «Kapcsolattartó» block — the
+    consultant with e-mail and telephone — is scrubbed (on the French front
+    too, a correction); `--departement` is French and refused elsewhere; an
+    unknown host is refused before any request. Mutated (`-B`, detached
+    copy): the other-language files read too → the host case reddens (the
+    ads twice); the key not on the record → the host case reddens; the
+    internal flag not carried → the host case reddens; the scrub dropped →
+    the ad case reddens; the unknown host accepted → the bad-host case
+    reddens; `--departement` allowed on the Czech front → the bad-host case
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_randstadfr_hosts", os.path.join(SCRIPTS, "randstadfr.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    INDEX = ('<?xml version="1.0"?><sitemapindex>' + "".join(f"<sitemap><loc>https://www.randstad.cz/sitemaps/jobs/{f}</loc></sitemap>" for f in (
+        "en/sitemap-jobdetails-internal.xml", "en/sitemap-jobdetails.xml", "en/sitemap-joblistings.xml", "sitemap-jobdetails-internal.xml", "sitemap-jobdetails.xml", "sitemap-joblistings-administrativa.xml")) + "</sitemapindex>")
+    DETAILS = ('<?xml version="1.0"?><urlset><url><loc>https://www.randstad.cz/jobs/ridicka-vzv_mosnov_t-10682/</loc><lastmod>2026-09-11T19:09:25+00:00</lastmod></url>'
+               '<url><loc>https://www.randstad.cz/jobs/operator-vyroby_brno_t-10700/</loc><lastmod>2026-09-10T08:00:00+00:00</lastmod></url></urlset>')
+    INTERNAL = '<?xml version="1.0"?><urlset><url><loc>https://www.randstad.cz/pridejte-se-k-nam/volna-mista/hr-consultant-tech-team-mz_ostrava_t-11465/</loc><lastmod>2026-09-09T10:11:07+00:00</lastmod></url></urlset>'
+
+    def _ad(self, ref, title, loc, desc):
+        ld = json.dumps({"@context": "http://schema.org", "@type": "JobPosting", "directApply": False, "baseSalary": {"@type": "MonetaryAmount", "currency": "CZK", "value": {"@type": "QuantitativeValue", "maxValue": "45000", "minValue": "40000", "unitText": "MONTH"}},
+                         "datePosted": "2026-09-11T19:09:25+0000", "description": desc, "employmentType": "FULL_TIME", "hiringOrganization": {"@type": "Organization", "name": "Randstad", "url": "https://www.randstad.cz"},
+                         "identifier": {"@type": "PropertyValue", "name": "Randstad", "value": ref}, "industry": "Doprava, logistika a zásobování",
+                         "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "CZ", "addressLocality": loc, "addressRegion": "Moravskoslezský kraj"}}, "title": title, "validThrough": "2026-11-30T00:00:00+0000"}, ensure_ascii=False)
+        return "<html><body><script type='application/ld+json'>" + ld + "</script><h1>" + title + "</h1></body></html>"
+
+    def _run(self, mod, served, cmd="search", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def get(url, gone_is_ok=False, retries=2):
+            asked.append(url)
+            return next(it)
+        mod.get = get
+        mod.time.sleep = lambda s: None
+        ns = argparse.Namespace(cmd=cmd, host=kw.pop("host", "cz"), ville=None, since=None, limit=None, departement=None, max_read=120, delay=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        mod.use_board(ns.host)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            (mod.cmd_search if cmd == "search" else mod.cmd_discover)(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_czech_front_reads_its_own_language_once_and_flags_the_internal_rows(self):
+        import contextlib
+        mod = self._mod()
+        ad1 = self._ad("t-11465", "HR Consultant Tech Team (m/ž)", "Ostrava", "<p>Nábor pro tým. Kontakt: katerina.vejlupkova@randstad.example, +420 778 532 370.</p>")
+        ad2 = self._ad("t-10682", "Řidič/ka VZV", "Mošnov", "<p>Jedinečná šance.</p>")
+        ad3 = self._ad("t-10700", "Operátor výroby", "Brno", "<p>Volejte 778 532 370.</p>")
+        rows, err, asked, raw = self._run(mod, [self.INDEX, self.INTERNAL, self.DETAILS, ad1, ad2, ad3], limit=3)
+        self.assertEqual(asked, ["https://www.randstad.cz/sitemaps/sitemap.xml", "https://www.randstad.cz/sitemaps/jobs/sitemap-jobdetails-internal.xml", "https://www.randstad.cz/sitemaps/jobs/sitemap-jobdetails.xml",
+                                 "https://www.randstad.cz/pridejte-se-k-nam/volna-mista/hr-consultant-tech-team-mz_ostrava_t-11465/", "https://www.randstad.cz/jobs/ridicka-vzv_mosnov_t-10682/", "https://www.randstad.cz/jobs/operator-vyroby_brno_t-10700/"])
+        self.assertIn("2 job-detail file(s) in another language set aside — the same ads twice: en/sitemap-jobdetails-internal.xml, en/sitemap-jobdetails.xml", err)
+        self.assertIn("[randstad-cz] 3 ads in the sitemaps", err)
+        self.assertEqual([(r["reference"], r["source"], r["internal"]) for r in rows], [("t-11465", "randstad-cz", True), ("t-10682", "randstad-cz", False), ("t-10700", "randstad-cz", False)])
+        a = rows[0]
+        self.assertEqual((a["ledger_id"], a["title"], a["company"], a["employer_is_the_agency"], a["locality"], a["region"], a["country"], a["salary_min"], a["salary_max"], a["salary_unit"], a["salary_currency"], a["contacts_withheld"]),
+                         ("randstad-cz:hr-consultant-tech-team-mz_ostrava_t-11465", "HR Consultant Tech Team (m/ž)", "Randstad", True, "Ostrava", "Moravskoslezský kraj", "CZ", "40000", "45000", "MONTH", "CZK", True))
+        self.assertEqual(a["description"], "Nábor pro tým. Kontakt: [e-mail withheld], [telephone withheld].")
+        self.assertEqual(rows[2]["description"], "Volejte [telephone withheld].")
+        for secret in ("randstad.example", "778 532 370"):
+            self.assertNotIn(secret, raw)
+        rows, err, asked, raw = self._run(mod, [self.INDEX, self.INTERNAL, self.DETAILS], cmd="discover", limit=2)
+        self.assertEqual([(r["id"][-7:], r["internal"], r["source"]) for r in rows], [("t-11465", True, "randstad-cz"), ("t-10682", False, "randstad-cz")])
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.use_board("www.randstad.example")
+        self.assertEqual(cm.exception.code, 2)
+        # --departement is the French postcode's first two characters: refused on the Czech front, in main's own check
+        mod.use_board("cz")
+        self.assertEqual((mod.BOARD["code"], mod.BASE), ("cz", "https://www.randstad.cz"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.sys.argv = ["randstadfr.py", "search", "--host", "cz", "--departement", "69", "--limit", "1"]
+            mod.main()
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_the_hungarian_front_reads_the_hu_files_and_the_french_default_stays(self):
+        mod = self._mod()
+        index = ('<?xml version="1.0"?><sitemapindex>' + "".join(f"<sitemap><loc>https://www.randstad.hu/sitemaps/jobs/{f}</loc></sitemap>" for f in (
+            "en/sitemap-jobdetails-internal.xml", "en/sitemap-jobdetails.xml", "hu/sitemap-jobdetails-internal.xml", "hu/sitemap-jobdetails.xml", "hu/sitemap-joblistings.xml")) + "</sitemapindex>")
+        details = '<?xml version="1.0"?><urlset><url><loc>https://www.randstad.hu/allasok/targoncavezeto_csongrad_38580/</loc><lastmod>2026-09-11T14:50:21+00:00</lastmod></url></urlset>'
+        internal = '<?xml version="1.0"?><urlset><url><loc>https://www.randstad.hu/allasok/karrier-a-randstadnal/recruitment-gyakornok_budapest_38579/</loc></url></urlset>'
+        rows, err, asked, raw = self._run(mod, [index, internal, details], cmd="discover", host="hu")
+        self.assertEqual(asked, ["https://www.randstad.hu/sitemaps/sitemap.xml", "https://www.randstad.hu/sitemaps/jobs/hu/sitemap-jobdetails-internal.xml", "https://www.randstad.hu/sitemaps/jobs/hu/sitemap-jobdetails.xml"])
+        self.assertEqual([(r["id"][-5:], r["internal"], r["ledger_id"][:11]) for r in rows], [("38579", True, "randstad-hu"), ("38580", False, "randstad-hu")])
+        self.assertIn("[randstad-hu] 2 ad URLs", err)
+        b = mod.use_board(None)
+        self.assertEqual((b["code"], b["key"], mod.INDEX), ("fr", "randstad-fr", "https://www.randstad.fr/sitemaps/sitemap.xml"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -2,6 +2,7 @@
 
 <!-- hosts: www.randstad.fr -->
 <!-- script: randstadfr.py -->
+<!-- 2026-09-14: the same platform on two more fronts — Czechia and Hungary by `--host cz|hu` (`randstad-cz.md`, `randstad-hu.md`, #357, #363); and a correction: the description is now scrubbed of the consultant's e-mail and telephone it names (`contacts_withheld`), on this front too -->
 <!-- countries: FR -->
 
 **6 755 ads** — the second French interim network here, after `adecco.md`. Half
@@ -149,3 +150,13 @@ Three sitemap requests, then one page load per ad read. `--ville` decides how
 many that is; `--delay` defaults to 0.6s and `--max-read` to 120. Everything is
 fetched from paths the `robots.txt` leaves open, and the sitemaps are the ones
 it advertises.
+
+## 2026-09-14 — two more fronts by `--host`, and a correction
+
+Randstad Czechia and Hungary run on this platform: `randstadfr.py --host cz|hu`
+(`randstad-cz.md`, `randstad-hu.md`, #357, #363) — the host, the country, the
+language asked for, the ledger key and the own-language job-detail files named
+per board, everything else one code path; `fr` stays the default. **And a
+correction on this front: the description names the consultant with e-mail and
+telephone on some ads — it is now scrubbed, `contacts_withheld` on every
+record.**
