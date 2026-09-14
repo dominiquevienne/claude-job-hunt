@@ -1,12 +1,12 @@
 # Board measurement — Bikroy (`bikroy.com`, Bangladesh): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: bikroy.com -->
 <!-- script: none -->
 <!-- countries: BD -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- witness: the site's own «1860 results for Jobs in Bangladesh» on `/jobs`, read from a connected tab (no challenge shown, 2026-09-14 10:33–10:35 UTC), with the type facets beside it («Full-Time • 1 441 ads», «Contract • 200 ads», «Freelance • 32 ads»); the pager is client-side — `?page=N` is rewritten to `/jobs` — so a walk is the list scrolled, not addressed; nothing is served to the declared client (the Cloudflare challenge, never defeated) · 2026-09-14 -->
+<!-- route: browser · 1860 · 2026-09-14 -->
 **In the #222 candidate list from the Bangladesh country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -63,3 +63,17 @@ GET https://bikroy.com/jobs                              403, 5 648 B, md5 d5814
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:33–10:35 UTC — the challenge does not show to a connected tab
+
+```
+tab, /en/ads/bangladesh/jobs        served — rewritten to /jobs: «1860 results for Jobs in Bangladesh», the type facets (Full-Time 1 441, Contract 200, Freelance 32 …), cards (title, employer, place)
+tab, /en/ads/bangladesh/jobs?page=2 served — rewritten to /jobs: the pager is client-side, the address carries no page
+tab, /jobs?page=75                  404
+```
+
+**`route: browser · 1860 · 2026-09-14`** — the site's own count for the
+«Jobs» category of the classifieds site. What a session does from a tab:
+`/jobs`, the pager clicked (its state is not an address), the ad's
+`/ad/<slug>` as the key, the card, the ad page for the text — telephone
+numbers withheld. No script: the declared client is challenged (#404).

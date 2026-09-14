@@ -1,12 +1,12 @@
 # Board measurement — Expat-Dakar (`www.expat-dakar.com`, Senegal): the rules file itself answers 403 — no path open, nothing read, no browser
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.expat-dakar.com, expat-dakar.com -->
 <!-- script: none -->
 <!-- countries: SN -->
-<!-- witness: none — nothing past the rules file was requested; the guard's verdict (`allowed False, certain True, rule_kind host-closed`) is the only body this card holds, taken twice two seconds apart · 2026-09-13 -->
-<!-- route: none · the rules file answers 403 — an absence of rules since #283 (2026-09-13) — and the transport answers a Cloudflare challenge, twice (borne 2): no route by script, a browser not measured · 2026-09-13 -->
+<!-- witness: the site's own «327 résultats trouvés» on `/emploi`, read from a connected tab on page 1 and page 32 (no challenge shown, 2026-09-14 10:31–10:33 UTC) — ten cards a page, `?page=2 … 32` and a «Suivant »» to 33: 327 in 33 pages; the «14 Offres d'emploi» beside it is the category's sub-filter; nothing is served to the declared client (the Cloudflare challenge, never defeated) · 2026-09-14 -->
+<!-- route: browser · 327 · 2026-09-14 -->
 **In the #222 candidate list from the Senegal country page as a «403
 to the plain client, browser not measured».** *A measurement and not an
 adapter, and a short one: the guard closed the question at the rules
@@ -63,3 +63,18 @@ GET https://www.expat-dakar.com/emploi                   403, 5 692 B, md5 aee74
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-14 10:31–10:33 UTC — the challenge does not show to a connected tab
+
+```
+tab, /emploi                 served — «327 résultats trouvés», ten cards a page (/annonce/<slug>), the city facets (/emploi/dakar …), pager ?page=2 … 32 «Suivant »»
+tab, /emploi?page=32         served — «327 résultats trouvés», «Suivant »» to page 33: 33 pages of ten
+cards                        /annonce/<slug>; the ad page not read; the page's JSON-LD is the site's graph (Organization, WebSite, WebPage, BreadcrumbList), no JobPosting on the list
+```
+
+**`route: browser · 327 · 2026-09-14`** — the site's own count for the
+«Emploi» section of the classifieds site. What a session does from a tab:
+`/emploi?page=N` to the last, the slug of `/annonce/<slug>` as the key, the
+card, the ad page for the text — telephone numbers (the way to apply on a
+classifieds site) withheld. No script: the declared client is challenged
+(#404).
