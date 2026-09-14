@@ -25206,5 +25206,155 @@ class AStaffingBoardWhoseListIsThePagesOwnGraphQLQueryReplayedAndWhoseClientIsHi
         self.assertEqual(cm.exception.code, 2)
 
 
+class ASlovakBoardWhoseListingStatesItsCountAndPagesByPathAndWhoseAdIsCutBeforeItsContactPerson(unittest.TestCase):
+    """**`worki.py`, 2026-09-14 (#344).** Worki's listing is server-rendered:
+    the filter button states the count («Zobraziť 623 pracovných ponúk»),
+    twenty cards a page, the pager at `/ponuka-prace/<n>`; the ad is a
+    labelled page whose last section is «Kontaktná osoba» — a name and a
+    telephone — **cut before reading**; the texts scrubbed; the CV form
+    (refused in writing) never sent. The salary line is read as printed —
+    a floor, a ceiling, one figure, a currency, a period. Mutated (`-B`,
+    detached copy): the stated count not read → the walk case reddens; the
+    walk stopped after page 1 → the walk case reddens; the same-cards guard
+    dropped → the walk case reddens; the contact section not cut → the ad
+    case reddens; the text not scrubbed → the ad case reddens; the CV-form
+    guard dropped → the guard case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_worki", os.path.join(SCRIPTS, "worki.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(jid, title, employer=("57023", "Rastislav Beran"), place="Prešov, Home office", contract="Práca na živnosť", salary="od&nbsp;150 €\n do&nbsp;2 000 €  za mesiac", fresh="Aktualizované dnes", top=True):
+        badge = '<span class="badge text-bg-primary-alt-2 me-2 fs-xs align-middle mb-1">TOP</span>' if top else ""
+        return ('<div class="bg-white shadow shadow-lg-hover transition-all rounded border border-white p-4 "><div class="d-flex position-relative">'
+                f'<h2 class="h5 fs-6 fw-semibold mt-2 mb-0"><a href="https://www.worki.sk/ponuka-prace/{employer[1].lower().replace(" ", "-")}/{jid}-{title.lower().replace(" ", "-")[:20]}?useFilter=1" class="link-dark-to-primary">{badge}{title}</a></h2>'
+                f'<h3 class="fs-sm lh-md fw-medium mb-0 pe-lg-7"><a href="https://www.worki.sk/zoznam-zamestnavatelov/{employer[0]}-x" class="link-primary"><i class="fal fa-buildings fa-lg me-2"></i>{employer[1]}</a></h3>'
+                f'<div><i class="fal fa-location-dot w-1.5rem"></i></div><div class="flex-grow-1 line-clamp-2">\n {place}\n</div>'
+                f'<div><i class="fal fa-file-contract w-1.5rem"></i></div><div class="flex-grow-1 line-clamp-2">{contract}</div>'
+                f'<div><i class="fal fa-coins w-1.5rem"></i></div><div class="flex-grow-1">{salary}</div>'
+                f'<div><i class="fal fa-calendar-days w-1.5rem"></i></div><div class="flex-grow-1">{fresh}</div>'
+                '<div class="col-lg-auto"><a href="/akcie/topky">x</a></div></div></div>')
+
+    def _listing(self, cards, total, page=1, pages=2):
+        pager = "".join(f'<li class="page-item"><a class="page-link" href="/ponuka-prace/{n}">{n}</a></li>' for n in range(1, pages + 1))
+        return (f'<html><body><button><span data-job-listing--list-target="filterModalSubmitButtonText">Zobraziť {total} pracovných ponúk</span></button>'
+                f'<div id="offers" class="row">{"".join(cards)}</div><nav aria-label="Stránky s pracovnými ponukami"><ul class="pagination">{pager}</ul></nav></body></html>')
+
+    AD = ('<html><body><header><a href="https://www.worki.sk/zoznam-zamestnavatelov/57023-rastislav-beran" class="link-primary fw-medium"><i class="fal fa-buildings me-2"></i>Rastislav Beran</a>'
+          '<h1 class="h2 fw-semibold d-none d-sm-block m-0">Vzťahový pracovník - región Prešov (M/Ž)</h1></header>'
+          '<section><div class="col"><div class="fw-light">Miesto výkonu práce</div><div class="fw-semibold"><div><div>Tomášikova 6810/58, 080 01 Prešov, Slovensko</div><div>Home office</div></div></div></div></div></div>'
+          '<div class="col"><div class="fw-light">Dátum nástupu</div><div class="fw-semibold">Ihneď</div></div></div></div>'
+          '<div class="col"><div class="fw-light">Dátum pridania ponuky</div><div class="fw-semibold">11. 6. 2026 (aktualizácia 14. 9. 2026)</div></div></div></div>'
+          '<div class="col"><div class="fw-light">Druh pracovného pomeru</div><div class="fw-semibold"><div>Práca na živnosť</div></div></div></div></div>'
+          '<div class="col"><div class="fw-light">Mzda (v hrubom)</div><div class="fw-semibold"><div>od&nbsp;150 € do&nbsp;2 000 € za mesiac</div><div>Príjem je pravidelný vo forme provízií</div></div></div></div></div>'
+          '<div class="col"><div class="fw-light">Počet voľných pracovných miest</div><div class="fw-semibold">3</div></div></div></div></section>'
+          '<section class="mb-8"><h2 class="h5 fw-normal text-primary mb-3.5">Údaje o pracovnom mieste</h2>'
+          '<div class="mb-6"><h4 class="h6">Náplň práce</h4><div class="ql-text"><ul><li>Rozširovanie klientskej databázy.</li><li>Servis klientov.</li></ul></div></div>'
+          '<div class="mb-6"><h4 class="h6">Informácie o výberovom procese</h4><div class="ql-text"><p>Zašlite životopis na rastoberan1&#64;gmail.example alebo volajte 0908 486 840.</p></div></div>'
+          '<div class="mb-6"><h4 class="h6">Ponúkané výhody</h4><ul><li>flexibilný pracovný čas</li></ul></div></section>'
+          '<section class="mb-8"><h2 class="h5 fw-normal text-primary mb-3.5">Požiadavky na zamestnanca</h2>'
+          '<div class="mb-6"><h4 class="h6">Dĺžka praxe</h4><div>Bez požiadavky na prax</div></div>'
+          '<div class="mb-6"><h4 class="h6">Vodičské oprávnenie</h4><ul><li>Skupina B</li></ul></div></section>'
+          '<section><h2 class="h5 fw-normal text-primary mb-3.5">Údaje o zamestnávateľovi</h2>'
+          '<div><h4 class="h6 mb-2">Obchodné meno</h4><div class="lh-md">Rastislav Beran</div></div>'
+          '<div><h4 class="h6 mb-2">IČO</h4><div class="lh-md">53651421</div></div>'
+          '<div><h4 class="h6">Adresa</h4><div class="lh-md">A. Sládkoviča 802/3, 08221, Veľký Šariš, Slovensko</div></div>'
+          '<div><h4 class="h6">Internetová stránka</h4><div class="lh-md"><a href="http://www.ovb.sk">http://www.ovb.sk</a></div></div>'
+          '<div><h4 class="h6">Charakteristika spoločnosti</h4><div class="lh-md">Sme skúsená obchodná spoločnosť.</div></div>'
+          '<div><h4 class="h6">Kontaktná osoba</h4><div class="lh-md">Rastislav Beran-Secret</div><div>Telefón: +421 908 486 840 <a href="tel:+421908486840">zavolať</a></div></div></section>'
+          '<section><h2 class="h5">Podobné pracovné ponuky</h2><h4 class="h6">Iná ponuka</h4><div>Kontakt: 0905 111 222</div></section></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None, pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_listing_walked_by_path_against_its_stated_count(self):
+        import contextlib
+        mod = self._mod()
+        mod.PER_PAGE = 2
+        c1 = self._card("2061450", "Vzťahový pracovník")
+        c2 = self._card("2059567", "Klientsky pracovník", employer=("47872", "Havko Milan, s. r. o."), place="Ružomberok", contract="Pracovný pomer na dobu neurčitú", salary="1&nbsp;800 € za mesiac", fresh="Aktualizované včera", top=False)
+        c3 = self._card("2062058", "Zámočník", salary="od 50 000 CZK do 60 000 CZK za mesiac")
+        c4 = self._card("2062059", "Kuchár", salary="Neuvedená mzda")
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([c1, c2], 3, pages=2)), (200, self._listing([c3], 3, page=2, pages=2))])
+        self.assertEqual(asked, ["https://www.worki.sk/ponuka-prace", "https://www.worki.sk/ponuka-prace/2"])
+        self.assertEqual([r["id"] for r in rows], ["2061450", "2059567", "2062058"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["top"], a["company"], a["company_id"], a["place"], a["contract"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["salary_text"], a["updated_text"], a["language"], a["contacts_withheld"]),
+                         ("worki", "SK", "worki:2061450", "https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vzťahový-pracovník", "Vzťahový pracovník", True, "Rastislav Beran", "57023", "Prešov, Home office", "Práca na živnosť", 150, 2000, "EUR", "mesiac", True, "od 150 € do 2 000 € za mesiac", "Aktualizované dnes", "sk", True))
+        self.assertEqual((rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_currency"], rows[1]["top"], rows[1]["company"]), (1800, 1800, "EUR", False, "Havko Milan, s. r. o."))   # one figure printed: the amount itself
+        self.assertEqual((rows[2]["salary_min"], rows[2]["salary_max"], rows[2]["salary_currency"]), (50000, 60000, "CZK"))
+        self.assertIn("3 emitted in 2 page(s), the site states 3 — equal.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([c1, c2], 5, pages=3)), (200, self._listing([c3, c4], 5, page=2, pages=3)), (404, "")])
+        self.assertEqual(len(rows), 4)   # page 3 gone: the walk ends, the shortfall is printed
+        self.assertEqual((rows[3]["salary_min"], rows[3]["salary_unit_stated"], rows[3]["salary_text"]), (None, False, "Neuvedená mzda"))
+        self.assertIn("4 emitted in 3 page(s), the site states 5 — 1 short.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._listing([c1, c2], 5, pages=3)), (200, self._listing([c3, c4], 5, page=2, pages=3)), (200, self._listing([c1, c2], 5, page=3, pages=3))])
+        self.assertEqual(cm.exception.code, 6)   # page 3 serves page 1's cards again: the pager changed, stopped rather than doubled
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([c1, c2], 5, pages=3)), (200, self._listing([c3, c4], 5, page=2, pages=3))], pages=2)
+        self.assertEqual((len(asked), len(rows)), (2, 4))
+        self.assertIn("4 emitted of the 5 the site states", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._listing([c1, c2], 5, pages=3))], limit=1)
+        self.assertEqual((len(asked), len(rows)), (1, 1))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '<html><body><div id="offers">' + c1 + "</div></body></html>")])
+        self.assertEqual(cm.exception.code, 6)   # no stated count: a changed template, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._listing([c1, c2], 4, pages=2)), (200, self._listing([c1, c2], 4, page=2, pages=2))])
+        self.assertEqual(cm.exception.code, 6)   # page 2 serves page 1's cards, and nothing new was seen before: the pager changed
+        sm = ('<?xml version="1.0"?><sitemapindex><sitemap><loc>https://www.worki.sk/sitemap.worki.xml</loc></sitemap><sitemap><loc>https://www.worki.sk/sitemap.jobs.xml</loc></sitemap></sitemapindex>',
+              '<?xml version="1.0"?><urlset><url><loc>https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vztahovy-pracovnik</loc><lastmod>2026-09-14T06:00:03+02:00</lastmod></url><url><loc>https://www.worki.sk/ponuka-prace/zoznam-lokalit</loc></url><url><loc>https://www.worki.sk/ponuka-prace/havko-milan/2059567-klientsky</loc><lastmod>2026-09-14T06:00:03+02:00</lastmod></url></urlset>')
+        rows, err, asked, raw = self._run(mod, [(200, sm[0]), (200, sm[1])], cmd="sitemap")
+        self.assertEqual(([r["id"] for r in rows], rows[0]["file_generated"], rows[0]["employer_slug"]), (["2061450", "2059567"], "2026-09-14", "rastislav-beran"))
+        self.assertNotIn("lastmod", raw)   # the file's generation time is never emitted as a date of the ad
+        self.assertIn("2 ad row(s) in sitemap.jobs.xml (1 other)", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://www.worki.sk/pracovna-ponuka/x/1-y/poslat-zivotopis", "https://www.worki.sk/organization/1", "https://www.worki.sk/admin"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_cut_before_its_contact_person_and_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vztahovy-pracovnik-region-presov-m-z")
+        self.assertEqual(asked, ["https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vztahovy-pracovnik-region-presov-m-z"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["ledger_id"], a["title"], a["company"], a["company_id"], a["company_reg_no"], a["company_address"], a["company_site"], a["company_text"], a["place"], a["place_notes"], a["start_date"], a["posted"], a["updated"], a["contract"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["positions"]),
+                         ("2061450", "worki:2061450", "Vzťahový pracovník - región Prešov (M/Ž)", "Rastislav Beran", "57023", "53651421", "A. Sládkoviča 802/3, 08221, Veľký Šariš, Slovensko", "http://www.ovb.sk", "Sme skúsená obchodná spoločnosť.", "Tomášikova 6810/58, 080 01 Prešov, Slovensko", ["Home office"], "Ihneď", "2026-06-11", "2026-09-14", "Práca na živnosť", 150, 2000, "EUR", "mesiac", True, 3))
+        self.assertEqual((a["description"], a["benefits"], a["experience"], a["driving_licence"]), ("Rozširovanie klientskej databázy.\nServis klientov.", "flexibilný pracovný čas", "Bez požiadavky na prax", "Skupina B"))
+        self.assertEqual(a["selection_process"], "Zašlite životopis na [e-mail withheld] alebo volajte [telephone withheld].")
+        self.assertEqual(a["salary_text"], "od 150 € do 2 000 € za mesiac\nPríjem je pravidelný vo forme provízií")
+        for secret in ("Beran-Secret", "908 486", "908486840", "Kontaktná", "gmail.example", "0905 111 222", "Iná ponuka"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>nothing</body></html>")], cmd="ad", url="https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-x")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.worki.sk/zoznam-zamestnavatelov/57023-rastislav-beran")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
