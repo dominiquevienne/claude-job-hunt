@@ -7,7 +7,7 @@
 <!-- countries: FI -->
 <!-- content: measured · **the board is closed, and the page says so**: `https://tyopaikat.oikotie.fi/` answers 200, 17 499 B, `md5 c48048a9e001` twice (02:01:0x UTC, the same to the byte as the country page's read of 2026-09-13 17:01) — a Vite SPA shell saved from `localhost:5173` whose rendered body reads «Oikotie Työpaikat on sulkeutunut. Suuret kiitokset kaikille työnhakijoille, yrityksille ja kumppaneille näistä upeista vuosista.» («Oikotie Työpaikat has closed. Many thanks to all job-seekers, companies and partners for these wonderful years»), then the group's property links (asunnot, toimitilat, Tori, Qasa …); the client bundle (175 107 B) names no data route; `/robots.txt` is a 301 to the same shell (an absence of rules since #283); `www.oikotie.fi/tyopaikat` is a 301 to `/404`; `www.oikotie.fi/` a 301 to `asunnot.oikotie.fi` — read by the declared client · 2026-09-14 -->
 <!-- witness: none — there is no list and no count; the measurement is the closure notice itself, read twice at the same fingerprint · 2026-09-14 -->
-<!-- route: none · the board no longer exists — its only page is a closure notice; there is nothing for a script or a browser to render (#404: a script that yields nothing does not count) · 2026-09-14 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible ») — measured: the board no longer exists — its only page is a closure notice; there is nothing for a script or a browser to render (#404: a script that yields nothing does not count) · 2026-09-14 -->
 
 **Sanoma's Oikotie Työpaikat — for years Finland's second private
 generalist — has closed, and its host says so on its only page.** Issue
@@ -58,3 +58,13 @@ Työpaikat's inventory is served anywhere on the host.
 Route none: the board is closed and says so. No script (#404), no
 browser route — there is nothing to render. The card names the one
 observation that would reopen it.
+
+## 2026-09-14 04:4x UTC — the owner's decision, and this card's verdict is his
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible »)** — relayed verbatim by the pilot (#375). What was measured above is
+unchanged; what changes is who says «closed»: until this line the card
+could only say what it had read and that the verdict was the owner's to
+give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+leads with it, dated, so the Atlas and the country page (#404: a card
+declaring `route: none` is «non faisable», excluded from the feasible
+denominator) read a decision and not a measurement. A re-measure stays possible — the host, the date and the two md5 are above — but it is not owed: the owner has excluded the board.

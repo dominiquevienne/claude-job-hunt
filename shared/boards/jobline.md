@@ -7,7 +7,7 @@
 <!-- countries: HU -->
 <!-- content: measured · **the root answers 200 with 11 623 B (md5 692f6b493000, the same the country search read on 2026-09-13 17:00) whose whole text is a notice in Hungarian: «Tájékoztatunk, hogy a Jobline.hu álláskereső portál üzemeltetését 2026. január 31-től szüneteltetjük, az oldal a továbbiakban nem érhető el» — the operator (HVG) suspended the portal from 2026-01-31 and points readers to hvg.hu; the page is a saved-page artifact (`./Jobline.hu_files/…`, a maintenance favicon on cdn.hvg.hu) with no data route; `/allasok`, `/allas`, `/kereses` answer 404 with 0 bytes (02:47 UTC)** · 2026-09-14 -->
 <!-- witness: none — there is no list, no count and no ad page: the site states, in its own words, that it is suspended · 2026-09-14 -->
-<!-- route: none · the operator's own notice: «Jobline.hu … üzemeltetését 2026. január 31-től szüneteltetjük, az oldal a továbbiakban nem érhető el» on the root, 404 on every other path — a route to nothing, by the site's own statement; the verdict of closure is the owner's (§2 sexies) · 2026-09-14 -->
+<!-- route: none · non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible ») — measured: the operator's own notice: «Jobline.hu … üzemeltetését 2026. január 31-től szüneteltetjük, az oldal a továbbiakban nem érhető el» on the root, 404 on every other path — a route to nothing, by the site's own statement; the verdict of closure is the owner's (§2 sexies) · 2026-09-14 -->
 
 **What #291 bloc C read as «a shell rendered client-side» is the
 operator's farewell.** The root's 11 623 bytes are thirteen tracking
@@ -43,3 +43,13 @@ Profession.hu (`profession.md`) and the public Virtuális Munkaerőpiac
 The day `/` serves something other than the notice — a list, a search
 form, a count — the measurement starts again from the rules and the root;
 nothing here presumes what the board's routes were.
+
+## 2026-09-14 04:4x UTC — the owner's decision, and this card's verdict is his
+
+**non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible »)** — relayed verbatim by the pilot (#361). What was measured above is
+unchanged; what changes is who says «closed»: until this line the card
+could only say what it had read and that the verdict was the owner's to
+give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+leads with it, dated, so the Atlas and the country page (#404: a card
+declaring `route: none` is «non faisable», excluded from the feasible
+denominator) read a decision and not a measurement. A re-measure stays possible — the operator's notice is dated and quoted above — but it is not owed: the owner has excluded the board.
