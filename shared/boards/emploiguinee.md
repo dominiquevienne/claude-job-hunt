@@ -1,12 +1,13 @@
 # Board adapter — EmploiGuinée (Guinea): reopened by the 2026-09-07 doctrine, and the transport answers a challenge
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.emploiguinee.com, emploiguinee.com -->
 <!-- script: none -->
 <!-- countries: GN -->
 <!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 5515 bytes titled «Attention Required! | Cloudflare», md5 `e5ec40ec9ab5` then `546f651c48d4` at constant size — a challenge, nothing of the site was read · 2026-09-12 10:55 UTC -->
-<!-- witness: none — nothing was served -->
+<!-- witness: the site's own «57 Offres d'emploi trouvées» on `/recherche-jobs-guinee`, read from a connected tab (no challenge, 2026-09-14 10:04 UTC) — 25 a page, a zero-based pager whose last page `?page=2` carries 7: 25 + 25 + 7 = 57, equal; nothing is served to the declared client (403, the moving «Attention Required!») · 2026-09-14 -->
+<!-- route: browser · 57 · 2026-09-14 -->
 
 **Measured 2026-09-12 at 10:55:03Z UTC for #233, lot 2 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -62,3 +63,17 @@ it without a person is not measured, and this card claims nothing either way.
   verdict copied from a sibling**: two members of this very lot answer a
   challenge where the other five answer the static default, under one and the
   same rules file.
+
+## 2026-09-14 10:04–10:06 UTC — no challenge to a connected tab
+
+```
+tab, /recherche-jobs-guinee          served — «57 Offres d'emploi trouvées», 25 cards /offre-emploi-guinee/<slug>-<id>, pager ?page=1, 2 (zero-based)
+tab, /recherche-jobs-guinee?page=2   served — 7 cards, the last: 25 + 25 + 7 = 57, equal to the statement
+```
+
+**`route: browser · 57 · 2026-09-14`** — the AfricaWork procedure from a
+tab (`africawork.py`'s walk driven from the tab: the zero-based pager, the
+id from the address tail, the page's count beside the walk, the repaired
+JobPosting). The declared client still gets the moving «Attention
+Required!» (2026-09-12) — never defeated; the tab was not challenged.
+
