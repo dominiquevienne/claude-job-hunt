@@ -1,4 +1,4 @@
-# Board adapter — Trabajópolis (`www.trabajopolis.bo`, Bolivia): the root is served, every list route and the sitemap answer a robot challenge, and the terms of use forbid automated access in writing — measured 2026-09-14; the owner's decision: a browser route with a disclaimer said to the user when the board is enabled (#428)
+# Board adapter — Trabajópolis (`www.trabajopolis.bo`, Bolivia): the root is served, every list route and the sitemap answer a robot challenge, and the terms of use forbid automated access in writing — measured 2026-09-14 from a tab: 1 141 advertisements stated and paged, a JobPosting per ad; the owner's decision: a browser route with a disclaimer said to the user when the board is enabled (#428)
 
 <!-- verified: 2026-09-14 -->
 
@@ -6,8 +6,8 @@
 <!-- script: none -->
 <!-- countries: BO -->
 <!-- content: measured · **the root answers 200 (418 KB, «Más de 115.000 ofertas de empleo gestionadas» — a lifetime claim, not a list count); every list route answers HTTP 403 with a 642 KB page titled «Trabajópolis - Trabajos en Bolivia» that says «debemos verificar que usted no es un robot … Enable JavaScript and cookies to continue», md5 moving between two reads of the same address (e33bc678400a / 57788834d653), and the page cites the terms of use: clause V.2 forbids access «mediante bots, arañas o cualquier medio automático»; `/buscar-trabajos`, `/empleos/la-paz`, `/categorias/informatica` and `/sitemap.xml` all answer that page (00:49–00:50 UTC)** · 2026-09-14 -->
-<!-- witness: none — no list was ever served to the declared client, so no count of the site's own was read; the root's «115.000» is «ofertas … gestionadas» over fifteen years, not a count of live ads · 2026-09-14 -->
-<!-- route: none · a browser route is the owner's decision of 2026-09-14 04:4x UTC («navigateur avec disclaimer à l'utilisateur lors de la souscription») and is not measured yet — a tab on the list, once the extension answers, gives `route: browser · N · date`; until then every list route answers a robot challenge to the declared client (borne 2, not defeated, nobody asked to defeat it) and nothing is rendered · 2026-09-14 -->
+<!-- witness: the list's own «Página N | 1141 ofertas de trabajo (1104 Abiertas, 37 Cerradas)» on `/recientes`, printed on every page and read on page 1 twice and on page 104 — 103 pages of 11 and a last of 8 = 1 141, equal to the statement; read from a connected tab (the declared client is challenged); the root's «115.000» is a lifetime claim, not this count · 2026-09-14 -->
+<!-- route: browser · 1141 · 2026-09-14 -->
 <!-- terms: forbids-automation · clause V.2 · 2026-09-14 -->
 
 **What was measured, and what was not tried.** Issue #428 was opened
@@ -78,7 +78,32 @@ waiting:
    stays off, and the skip says why. The guard
    `ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling` keeps the
    card and the flow together in both directions.
-2. **The measurement waits for the extension**: a tab on `/buscar-trabajos`,
-   the count the list states, a stable key, a JobPosting or not — then
-   `route: browser · N · date` replaces the `route: none` line above. Not done
-   here: the extension did not answer this session.
+2. **The measurement, 2026-09-14 09:2x UTC, from a connected tab** — the
+   extension answered later the same day: `route: browser · 1141 · 2026-09-14`
+   (the section below).
+
+## Browser reading, 2026-09-14 09:24–09:28 UTC (#428)
+
+No challenge to a tab on any of these; the declared client gets the
+642 KB «debemos verificar que usted no es un robot» page on the same
+addresses (05:5x UTC of the day before, unchanged).
+
+```
+/buscar-trabajos           served — the search form; «1141 Empleos» printed beside it; the category and city facets link /categorias/<x> and /empleos/<city>
+/empleos/cochabamba        served — «Página 1 | 110 ofertas de trabajo (107 Abiertas, 3 Cerradas)», ?page=N, cards /trabajo/<id>/<slug>
+/recientes                 served — «Página 1 | 1141 ofertas de trabajo (1104 Abiertas, 37 Cerradas)», 11 cards a page, ?page=2 … ?page=104
+/recientes?page=104        served — «Página 104 | 1141 …», 8 cards, no page 105: 103 × 11 + 8 = 1 141, equal to the statement
+/trabajo/1238084/asesor-de-servicios   served — a JobPosting JSON-LD: title, description, datePosted / validThrough (30 days), employmentType, hiringOrganization («Toyosa S.A. - Sucursal Cochabamba»), identifier, jobLocation with region, directApply
+```
+
+**`route: browser · 1141 · 2026-09-14`.** The routes read — `/recientes`,
+`/empleos/<city>`, `/trabajo/<id>/` — are not among the paths the rules
+refuse (`/find-jobs`, `/search-results-jobs`, `/resultados`,
+`/display-job`, `/*searchId=*`), so nothing written in `robots.txt` is
+crossed; what the conditions of use forbid (clause V.2) is why this is a
+browser route with the disclaimer of `setup.md` §5j and not a script.
+What a session does from a tab: `/recientes?page=N` from 1 until the pager
+ends, the id from `/trabajo/<id>/`, the count the page prints beside the
+walk, the ad's JobPosting; closed ads («Cerradas», 37) are in the count
+and marked on the card.
+
