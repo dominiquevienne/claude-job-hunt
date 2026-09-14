@@ -1,13 +1,14 @@
 # Board adapter — Emplois Burkina (Burkina Faso)
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: emploisburkina.bf -->
 <!-- hosts-source: named by the Burkina Faso country page, rank consigned, 2026-09-04; its sitemap is declared on the third-party host `afriqueemplois.com` and the guard was taken there separately · 2026-09-07 -->
 <!-- script: none -->
 <!-- countries: BF -->
 <!-- content: indeterminate · remeasured 2026-09-08 09:01-09:07 UTC at 10 s spacing: of the 24 URLs the network attributes to this host, **4 serve a real `JobPosting`**, **7 redirect to the site root** (271 550 bytes each, identical), and **13 could not be read at all** — the host stopped accepting connections after the 11th request and never resumed. So the live count is **between 4 and 17**, and no single number describes it · 2026-09-08 -->
-<!-- witness: 4 advertisements confirmed live, which is a floor and not a total — 13 of the 24 are unknown, not absent · 2026-09-08 -->
+<!-- witness: the site's own «2305 offres» on the root and `numberOfItems: 2305` in its CollectionPage JSON-LD (a category page: «165 offres d'emploi dans la catégorie», `numberOfItems: 165`), read by the declared client on 2026-09-14 10:47–10:53 UTC at 3 s spacing, 200 on every page asked (7 requests, no connection refused today); the pages carry 3–4 cards each, the rest of the list behind `/api/load-more?page=N&category=…` — `/api/` is refused in writing — and the «EXCLUSIF» cards behind a subscription modal; the network's job sitemaps on `afriqueemplois.com` (`sitemap-jobs.xml`, `sitemap-jobs-BF.xml`) answer 500, twice · 2026-09-14 -->
+<!-- route: none · served, and the list is locked: 3–4 cards a page in the HTML, the rest by `/api/load-more` (refused in writing, honoured by every route), the «EXCLUSIF» ads behind a paid subscription, the network's sitemaps 500 today, no JobPosting on the post page any more (there was one on 2026-09-08); a script would render a score of advertisements against a stated 2 305 — the pilot to say whether that counts; next control of the sitemaps 2026-09-21 · 2026-09-14 -->
 
 **Burkina Faso had no card in this repository.** This one records a
 measurement that **stopped**, and why.
@@ -159,3 +160,33 @@ first transport request waiting 10 s. On 2026-09-13 it does not even come to tha
 answers **200, 309 107 B, twice** (15:28:52Z, 15:28:55Z, the host's
 `Crawl-delay: 1` honoured). *The measurement above stands as dated; the
 host is served today.*
+
+## 2026-09-14 10:47–10:53 UTC — the host answers, the site has changed, and the list is locked
+
+The host that refused connections after the eleventh request on
+2026-09-08 answered every request today (7, at 3 s; `Crawl-delay: 1` in
+the rules). The site is a new build — a WordPress-less app of the
+Afrique Emplois network (`afriqueemplois.com`, with `/ci`, `/sn` … fronts
+and per-country job sitemaps declared there):
+
+```
+GET /robots.txt               200 — * Allow /, Disallow /api/, /login, /register, /forgot-password, /profile, /subscription, /talents/create; Sitemap https://afriqueemplois.com/sitemap.xml; Crawl-delay 1
+GET /                         200, 298 610 B — «Offres d'emploi 2305 offres», CollectionPage numberOfItems 2305, #posts-container with 3 /post/<id> cards and «EXCLUSIF» cards that open a subscription modal; the rest by fetch(`/api/load-more?page=…`)
+GET /category/12              200, 254 779 B — «165 offres d'emploi dans la catégorie», numberOfItems 165, 4 cards, the rest by /api/load-more?page=N&category=12
+GET /post/38265               200, 92 649 B — «Caritas Suisse recrute 03 experts», «Date limite: 14 sept. 2026», the body (an e-mail in it), «Postuler»; WebSite / Organization / BreadcrumbList JSON-LD, no JobPosting
+GET afriqueemplois.com/sitemap.xml            200 — 22 files: sitemap-jobs.xml and 17 sitemap-jobs-<CC>.xml
+GET afriqueemplois.com/sitemap-jobs-BF.xml    500, 6 615 B — twice (10:52, 10:53); sitemap-jobs.xml 500 as well
+```
+
+**What this leaves.** The count is stated and read; the list is locked
+three ways — the pager is an `/api/` route the rules refuse in writing
+(honoured by every route, a tab included: the plugin does not scroll a
+page into a refused call), the «EXCLUSIF» advertisements are behind a paid
+subscription, and the network's sitemap that would name every post
+answers 500 today. A script would emit the three or four cards of the
+root and of each category page — a score of advertisements against a
+stated 2 305, «short» by design — which is something rendered and next to
+nothing covered; the pilot decides whether that counts (#404). **Next
+control 2026-09-21**: the BF sitemap of `afriqueemplois.com`; if it
+answers, it is the inventory and a script follows.
+
