@@ -1,12 +1,14 @@
-# Board measurement — Jobslin (`ph.jobslin.com`, Philippines and 20 other countries): the hub is a country chooser, the Philippine board is served by HTTP — «16,072 Job Vacancies», 12 a page, an ItemList on every page
+# Board adapter — Jobslin (`ph.jobslin.com`, Philippines — and 20 sibling sub-hosts by `--host`): the hub is a country chooser, the Philippine board is served by HTTP — «16,072 Job Vacancies» stated, 12 a page at the host's 2 s, the card's place and date read from its own icons
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
-<!-- hosts: www.jobslin.com, jobslin.com -->
-<!-- script: none -->
+<!-- hosts: ph.jobslin.com, www.jobslin.com, jobslin.com -->
+<!-- script: jobslin.py -->
+<!-- host-forms: ph.jobslin.com -->
+<!-- host-forms-basis: read — `jobslin.py` builds `<cc>.jobslin.com` from `--host` (ph by default); every link the listing writes is root-relative on the sub-host, and only `ph` was exercised on the day · 2026-09-14 -->
 <!-- countries: PH -->
-<!-- content: measured · **`ph.jobslin.com/job-offers` states «1 - 12 of 16,072 Job Vacancies» and is served to the declared client** (200, 324 503 B; page 2 «13 - 24 of 16,072», 12 new `/job/<id>/<slug>` links, none shared with page 1; the pager is `?t=16072&page=N`, `rel="next"`); a JSON-LD ItemList per page; `Crawl-delay: 2` on the sub-host, honoured; the hub `www.jobslin.com` is a country chooser with 0 advertisements (21 sub-hosts); `bin/fetch-body.py` 16:58–16:59 UTC; the rules as on the 13th — the managed block naming `ClaudeBot`, `*` open with `Content-Signal: search=yes,ai-train=no,use=reference`, reopened by the doctrine of 2026-09-07, and 10 posts on the front page behind them · 2026-09-13 -->
-<!-- witness: the page's own «of 16,072 Job Vacancies», printed on every listing page; a walk was not made (1 340 pages of 12 at 2 s) — the count is the site's, read on two pages, and the adapter that ships prints it beside its own · 2026-09-13 -->
+<!-- content: measured · **«1 - 12 of 16,072 Job Vacancies» stated by `ph.jobslin.com/job-offers`, 36 emitted over 3 of 1 340 pages of 12 — bounded by request, at the `Crawl-delay: 2` the host writes** — read by the declared client through plain GETs, 00:10 UTC; page 2 «13 - 24 of 16,072», page 3 «25 - 36», every heading checked; 13 of the 36 are the operator's «Premium» placements, kept and flagged; 28 of the 36 print a monthly salary in ₱, one weekly, 7 none; the hub `www.jobslin.com` is a country chooser with 0 advertisements (21 sub-hosts — `my`, `sg`, `au`, `ke`, `gh` … — the same template by the operator's word, each to be measured before its card claims it); the rules — the Cloudflare managed block naming `ClaudeBot`, `*` open with a Content-Signal, reopened by the doctrine of 2026-09-07; **the ad is a JobPosting, no contact on either page on the day, the description scrubbed of e-mails all the same** · 2026-09-14 -->
+<!-- witness: the listing's own «a - b of N Job Vacancies», read on every page of every walk and printed beside the emitted count; a page whose heading does not start where asked is a fault, not a page; a bounded walk says so and is never «short» · 2026-09-14 -->
 
 **Measured 2026-09-13 for #233, lot 8 — a measurement of the transport, not a
 decision about the host.** Every fetch under the declared identity, the
@@ -62,3 +64,67 @@ first line); what it would print is «n emitted, site states 16 072» over
 `?page=N` at 2 s, and the same shape on `my.`, `sg.` and the other
 sub-hosts if they are the same template — not read here. The `t=16072`
 in the pager is the count carried along, not a token.
+
+## 2026-09-14 — shipped (#299)
+
+`jobslin.py search [--host ph] [--pages N] [--limit N]` and `ad --url`. The
+listing is one GET a page (`/job-offers`, then `?page=N`), the heading
+«a - b of N Job Vacancies» read on every page and checked to start where
+the page was asked; the card's title, employer and summary are read by
+their classes, **the place and the date by the spans the card's own
+icons label (`bi-geo-alt`, `bi-calendar`) — the first draft guessed the
+place from the first line with a comma and took a summary for it**; the
+salary as the card prints it («₱17,000.00 / Monthly» → 17 000 PHP a
+month, `salary_unit_stated` true only when a period is printed; the sign
+mapped to a code, `RM` → MYR for the Malaysian host); «Premium» — the
+operator's paid placement — kept and flagged. `_pace` applies the host's
+`Crawl-delay: 2`. **`--pages` defaults to 10** (120 rows); 1 340 pages is
+a choice.
+
+```
+jobslin.py search --pages 3
+[jobslin] 36 emitted of the 16 072 ph.jobslin.com states — 3 page(s) of 12 walked by request (--pages/--limit) at the host's 2 s, not a shortfall.
+```
+
+`ad` reads the JobPosting the posting page carries (title, employer,
+locality and region, `datePosted`, `validThrough`, `employmentType`,
+`totalJobOpenings`, the description scrubbed of e-mail addresses); no
+contact was on either page on the day, and the «Apply» is the site's own
+form, never touched.
+
+**The 20 sibling sub-hosts are `--host <cc>` and nothing more until each
+is read**: the operator says «same template», this card says `ph` — a
+sibling's card names its own count, its own rules and its own currency
+sign on the day it is measured.
+
+### Configuration
+
+```yaml
+boards:
+  jobslin:
+    enabled: true
+    host: ph               # the operator's country code — ph by default; my, sg, au, ke, gh … once measured
+```
+
+| Key | Required | Notes |
+| :-- | :-- | :-- |
+| `enabled` | yes | False or absent → not scanned |
+| `host` | no | `ph` by default |
+
+No credentials, no browser, no login. `search` is one request a page at
+2 s; `ad` is one.
+
+### What is not established
+
+- **The siblings** — `my.`, `sg.` and the others: not read; the adapter
+  takes them and every claim waits for its measurement.
+- **The count against a full walk** — 16 072 stated, 1 340 pages of 12
+  at 2 s (45 minutes) not walked on the day.
+- **The tags beyond the six seen** — Full Time, Remote, Part Time, No
+  Experience …; unknown badges are dropped from `tags`, never invented.
+
+Three tests; six mutations on a detached worktree (`python3 -B`), six red
+— the place read from the first comma line, the heading check dropped,
+the period stated without a printed one, the sign not mapped, `--host`
+ignored, the premium flag dropped.
+
