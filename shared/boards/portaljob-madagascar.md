@@ -1,12 +1,13 @@
 # Board adapter — PortalJob Madagascar (open, readable, and not enumerable)
 
-<!-- verified: 2026-09-08 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: www.portaljob-madagascar.com -->
 <!-- script: none -->
 <!-- countries: MG -->
 <!-- content: indeterminate · the root serves 8 593 o carrying an Inertia.js `data-page` payload of 3 783 o — 32 sectors and 6 contract types, and zero advertisements, because the component is `Home`; `/sitemap.xml` is HTTP 404 and no route to a listing is declared anywhere read · 2026-09-07 -->
-<!-- witness: none — the site publishes no total, and what the root serves is a menu rather than an inventory -->
+<!-- witness: the list's own «6414 Offres d'emplois trouvées» on `/emploi/liste`, read from a connected tab (2026-09-14 11:04 UTC); the declared client gets the Inertia shell on every route — `/emploi/liste` (component `emploi/Index`, `search: []`) and `/emploi/view/<slug><id>` (component `emploi/Show`) — because the list and the ad come from `/api/emploi/annonces`, which answers 403 «Access not allowed» to the declared client (one request, 11:08 UTC; the rules open `*` to it, `ClaudeBot` named and refused does not bind `Claude-User`); the home's «+10 000 annonces par mois» is marketing · 2026-09-14 -->
+<!-- route: browser · 6414 · 2026-09-14 -->
 
 **Madagascar stays at zero coverage — but not for the reason this card gave
 when it was written earlier on 2026-09-07.**
@@ -219,3 +220,22 @@ answers the site's own 404 (8 600 B). *The rules are the managed block
 naming `ClaudeBot` with `*` open (1 934 B), `identity()` answers
 `claude-user`. Nothing in this card changes: a served shell that renders
 its list by script is what it was on 2026-09-08.*
+
+## 2026-09-14 11:03–11:10 UTC — the list route found, and it is a browser route
+
+```
+tab, /                                served — the home: «+10 000 annonces par mois» (marketing), the menu of contracts and sectors, /emploi/liste and its filters (?contrats=N, ?international=1)
+tab, /emploi/liste                    served — «6414 Offres d'emplois trouvées», cards /emploi/view/<employer-slug>-<title-slug>-ref-…<id>; the cards come from the page's own XHR /api/emploi/annonces (with /api/emploi/last-chance, /permanent, /campagnes)
+client, /emploi/liste                 200, 8 611 B — the Inertia shell: component emploi/Index, search [] — no card, no count
+client, /api/emploi/annonces          403, {"message":"Access not allowed"} — the page's own call, refused to a client without the page's session; not pursued
+client, /emploi/view/<slug><id>       200, 8 823 B — the shell again (component emploi/Show, annonce_url), the ad fetched by the same API
+```
+
+**`route: browser · 6414 · 2026-09-14`** — the list's own count, read
+from a tab. What a session does from a tab: `/emploi/liste` and its
+pager (client-side), the id from the `/emploi/view/…<id>` tail, the card,
+the ad page for the text. No script: the declared client is served a
+shell on every route and the API behind it refuses the client (#404).
+Madagascar's other board, Asako.mg, is a script since the same day
+(`asako.md`, 253).
+
