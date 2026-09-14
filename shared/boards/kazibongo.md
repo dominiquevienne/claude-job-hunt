@@ -1,6 +1,6 @@
 # Board measurement — Kazibongo (`kazibongo.com`, Tanzania): 403 to the declared client and to a real browser alike — a refusal to everyone, nothing read
 
-<!-- verified: 2026-09-13 -->
+<!-- verified: 2026-09-14 -->
 
 <!-- hosts: kazibongo.com, www.kazibongo.com -->
 <!-- script: none -->
@@ -89,3 +89,11 @@ operator's refusal, not an infrastructure that cannot tell who we are
 (borne 0 of the 2026-09-07 doctrine). Nothing of the board was read by any
 route. **Not a verdict that the host is closed for good** — the owner's, on
 his express validation; recorded: two clients, one day, nine bytes.
+
+## 2026-09-14 10:03 UTC — the same «Forbidden» to a connected tab
+
+`https://kazibongo.com/` and `https://www.kazibongo.com/jobs`: a page whose
+only text is «Forbidden» — the 9-byte body of 2026-09-13, to a real
+browser, a day later. Borne 0 again: the operator refuses everyone from
+here. `route: none` stands; the word «closed» is the owner's (§2 sexies).
+
