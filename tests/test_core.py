@@ -19841,6 +19841,178 @@ class AnAvaturePortalFollowedNextAfterNextWhereTheCountIsStatedOrSaidMissing(uni
         self.assertEqual(cm.exception.code, 3)
 
 
+class ATaleoCareerSectionIsReadByItsOwnPagerAndItsDeclaredSlotNames(unittest.TestCase):
+    """**`taleo.py`, 2026-09-14 (#453).** `list --host --section` reads the
+    list page for its declared slot names (`listRequisition._hlid`) and
+    `ftlpageid`/`ftlhistory`, then reads EVERY page — the first included —
+    by `POST joblist.ajax` (the page's island sorts differently from the
+    ajax pages), zips each row with the slot names, dedups on the contest
+    number, and compares with `listRequisition.nbElements` (exit 6 on a
+    gap; «the portal states no count» when absent). The POST encodes a
+    space as `%20` — `+` is answered HTTP 500 by the tenant read. `ad`
+    reads the `descRequisition` island: title, contest number, location,
+    job field, description (HTML under `!*!` cleaned, `\\:` a colon,
+    `%26` an ampersand), withholds contacts, exits 3 on a 404 or an island
+    without a job. Mutated (`-B`, detached copy): the dedup dropped → the
+    walk case reddens (page 2 repeats one id); the gap exit removed → the
+    short case reddens; `quote_via` dropped → the encoding case reddens;
+    the `!*!` branch dropped → the ad case reddens (tags in the text);
+    EMAIL_RE neutralised → the ad case reddens; the `\\:` replacement
+    dropped → the ad case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_taleo", os.path.join(SCRIPTS, "taleo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    H, S = "acme.taleo.net", "ex_cs"
+    KEYS = ["reqlistitem.no", "reqlistitem.title", "reqlistitem.no", "reqlistitem.contestnumber", "reqlistitem.basiclocations", "reqlistitem.postingdate", "reqlistitem.organization"]
+    DKEYS = ["reqlistitem.no", "reqlistitem.title", "reqlistitem.contestnumber", "reqlistitem.description", "reqlistitem.description", "reqlistitem.qualification", "reqlistitem.primarylocation", "reqlistitem.jobfield", "reqlistitem.organization", "reqlistitem.postingdate"]
+
+    @classmethod
+    def _page(cls, found="(3 jobs found)"):
+        keys = ", ".join("'%s'" % k for k in cls.KEYS)
+        return ('<html><body><script>var _ftl = { requisitionListInterface: { listRequisition: {\n   _size: 2,\n   _hles: [],\n   _hlid: [%s],\n   _pars: [] } } };</script>'
+                '<form name="ftlform" id="ftlform" method="post" action="joblist.ftl"><input type="hidden" name="ftlpageid" id="ftlpageid" value="reqListAllJobsPage" />'
+                '<input type="hidden" name="ftlhistory" id="ftlhistory" value="1789359113089|3.0" /><span>Job Openings %s</span></form></body></html>' % (keys, found))
+
+    @staticmethod
+    def _row(i, title=None):
+        return ["9%d" % i, title or "Puesto %d" % i, "9%d" % i, "26000%03d" % i, "Bahrain-Manama", "Sep 10, 2026", "Acme Region [Main]"]
+
+    @staticmethod
+    def _ajax(rows, fields):
+        vals = "!|!".join(v for r in rows for v in r)
+        return "ftlx1!|!ftlPager_processResponse!$!requisitionListInterface!|!rlPager!|!listRequisition!|!1!$!" + vals + "!$!" + "!|!".join(fields)
+
+    def _run(self, mod, ajax, page=None, **kw):
+        import contextlib
+        asked = []
+
+        def fake(url, data=None):
+            asked.append((url, data))
+            if url.endswith("joblist.ftl?lang=en"):
+                return (200, page if page is not None else self._page())
+            if url.endswith("joblist.ajax"):
+                n = int(dict(data)["rlPager.currentPage"])
+                return (200, ajax[n - 1]) if n <= len(ajax) else (200, self._ajax([], ["ftlerrors", ""]))
+            raise KeyError(url)
+        mod.request = fake
+        a = argparse.Namespace(host=self.H, section=self.S, lang="en", pages=None, all=False, limit=0)
+        for k, v in kw.items():
+            setattr(a, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.cmd_list(a)
+            except SystemExit as e:
+                code = e.code
+        return code, [json.loads(l) for l in out.getvalue().splitlines()], err.getvalue(), asked
+
+    F3 = ["ftlerrors", "", "listRequisition.size", "2", "listRequisition.nbElements", "3"]
+
+    def test_every_page_comes_from_the_ajax_pager_the_rows_are_keyed_by_the_declared_slots_and_a_repeated_id_is_not_counted_twice(self):
+        mod = self._mod()
+        pages = [self._ajax([self._row(1, "Sales %26 Marketing Manager"), self._row(2)], self.F3), self._ajax([self._row(2), self._row(3)], self.F3)]
+        code, rows, err, asked = self._run(mod, pages, all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["id"] for r in rows], ["26000001", "26000002", "26000003"])
+        self.assertIn("3 emitted over 2 page(s), portal states 3 (acme.taleo.net/careersection/ex_cs) — equal", err)
+        self.assertEqual(asked[0][0], f"https://{self.H}/careersection/{self.S}/joblist.ftl?lang=en")
+        self.assertEqual([u for u, d in asked[1:]], [f"https://{self.H}/careersection/{self.S}/joblist.ajax"] * 2)
+        d1 = dict(asked[1][1])
+        self.assertEqual((d1["rlPager.currentPage"], d1["ftlpageid"], d1["ftlcompclass"], d1["ftlhistory"]), ("1", "reqListAllJobsPage", "PagerComponent", "1789359113089|3.0"))
+        self.assertEqual(rows[0]["title"], "Sales & Marketing Manager")
+        self.assertEqual(rows[0]["location"], "Bahrain-Manama")
+        self.assertEqual(rows[0]["company"], "Acme Region [Main]")
+        self.assertEqual(rows[0]["posted"], "Sep 10, 2026")
+        self.assertEqual(rows[0]["url"], f"https://{self.H}/careersection/{self.S}/jobdetail.ftl?job=26000001&lang=en")
+        self.assertEqual(rows[0]["ledger_id"], "taleo:acme.taleo.net:26000001")
+
+    def test_a_walk_short_of_the_stated_count_exits_partial_and_says_how_short(self):
+        mod = self._mod()
+        pages = [self._ajax([self._row(1), self._row(2)], ["ftlerrors", "", "listRequisition.size", "2", "listRequisition.nbElements", "30"])]
+        code, rows, err, asked = self._run(mod, pages, all=True)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted over 2 page(s), portal states 30, the page prints 3 (acme.taleo.net/careersection/ex_cs) — 28 short", err)
+
+    def test_a_portal_that_states_no_count_is_said_so_and_a_bounded_walk_says_so(self):
+        mod = self._mod()
+        pages = [self._ajax([self._row(1), self._row(2)], ["ftlerrors", ""]), self._ajax([self._row(3)], ["ftlerrors", ""])]
+        code, rows, err, asked = self._run(mod, pages, page=self._page(found=""), all=True)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 3)
+        self.assertIn("the portal states no count", err)
+        self.assertIn("not compared", err)
+        pages = [self._ajax([self._row(1), self._row(2)], self.F3), self._ajax([self._row(3)], self.F3)]
+        code, rows, err, asked = self._run(mod, pages, pages=1)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(asked), 2)
+        self.assertIn("walk bounded by request (--pages 1", err)
+
+    def test_the_post_body_encodes_a_space_as_percent_twenty_never_as_plus(self):
+        mod = self._mod()
+        captured = {}
+
+        class R:
+            def __init__(self, data):
+                captured["data"] = data
+                self.headers = {}
+
+            def getcode(self):
+                return 200
+
+            def read(self):
+                return b"ftlx1!|!x!$!h!$!!$!ftlerrors!|!"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        mod._OPENER = type("O", (), {"open": staticmethod(lambda req, timeout=60: R(req.data))})()
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES = {"x": type("P", (), {"wait": lambda self: None})()}
+        mod.request(f"https://x/careersection/{self.S}/joblist.ajax", [("ftlhistory", "a b|c"), ("rlPager.currentPage", "2")])
+        self.assertEqual(captured["data"], b"ftlhistory=a%20b%7Cc&rlPager.currentPage=2")
+
+    def test_the_ad_reads_the_island_by_its_declared_slots_cleans_the_html_and_withholds_contacts(self):
+        mod = self._mod()
+        keys = ", ".join("'%s'" % k for k in self.DKEYS)
+        desc = "!*!%3Cp%3EAbout%20Acme%3C/p%3E%3Cp%3EWrite%20to%20jobs@acme.example%20or%20call%20%2B973%2012%20345%206789.%3C/p%3E%3Cp%3ESalary%5C:%2015%2C000%20AED.%3C/p%3E"
+        vals = ["91", "Chef%20de%20Partie%20-%20F%26B%20Service%5C:%20Bahrain", "26000001", desc, desc, "", "Bahrain", "Food%20%26%20Beverage", "Acme Region", "Jun 3, 2026, 7%5C:36%5C:01 AM"]
+        isl = "ftlx0!|!ftlUtil_resetPage!%24!requisitionDescriptionInterface!|!descRequisition!|!rdPager!%24!" + "!|!".join(vals) + "!%24!ftlerrors!|!"
+        page = ('<html><body><script>var _ftl = { requisitionDescriptionInterface: { descRequisition: {\n   _size: 1,\n   _hlid: [%s],\n   _pars: [] } } };</script>'
+                '<form name="ftlform"><input type="hidden" name="initialHistory" id="initialHistory" value="%s" /></form></body></html>' % (keys, isl))
+        url = f"https://{self.H}/careersection/{self.S}/jobdetail.ftl?job=26000001&lang=en"
+        mod.request = lambda u, data=None: (200, page)
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(url=url))
+        r = json.loads(out.getvalue())
+        self.assertEqual(r["id"], "26000001")
+        self.assertEqual(r["title"], "Chef de Partie - F&B Service: Bahrain")
+        self.assertEqual(r["location"], "Bahrain")
+        self.assertEqual(r["job_field"], "Food & Beverage")
+        self.assertEqual(r["posted"], "Jun 3, 2026, 7:36:01 AM")
+        self.assertEqual(r["description"], "About Acme\nWrite to [e-mail withheld] or call [phone withheld].\nSalary: 15,000 AED.")
+        self.assertNotIn("<", r["description"])
+        mod.request = lambda u, data=None: (404, "")
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            mod.cmd_ad(argparse.Namespace(url=url))
+        self.assertEqual(cm.exception.code, 3)
+        empty = page.replace("!|!".join(vals), "!|!".join([""] * len(vals)))
+        mod.request = lambda u, data=None: (200, empty)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            mod.cmd_ad(argparse.Namespace(url=url))
+        self.assertEqual(cm.exception.code, 3)
+
+
 class ARefusedPathIsNotReadByAnyRouteAndTheKeyComesFromTheSlug(unittest.TestCase):
     """**`suli.py`, 2026-09-12.** `robots.txt` refuses `/api/`, and every
     listing and advertisement body on `suli.gl` is drawn from `/api/…` — so
