@@ -272,6 +272,10 @@ def access_of(card):
     return "non déclaré", "aucune ligne de refus, aucun script"
 
 
+EMPTY = {"cards": 0, "fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0,
+         "ecarte": 0, "infaisable": 0, "out_of_domain": 0}
+
+
 def classify(card):
     """One of: fait · faisable · indetermine · reverifier · ecarte · infaisable.
 
@@ -306,6 +310,20 @@ def classify(card):
     if measured:
         return "faisable", measured
     return "reverifier", None
+
+
+def out_of_domain_of(card):
+    """`content: out-of-domain · <why> · <date>` — the card says the host is
+    NOT a board (a resold domain, a ministry site, a directory). Returns the
+    line's date, or "" when undated; None when the card is a board. Since
+    2026-09-16 (the pilot's point, on `bestzambiajobs`): such a card leaves
+    the table and both denominators — it is a dated note «n'est plus un
+    board» under the table, never a row. Counting it in «faisable» made ZMB
+    owe an adapter to a Turkish streaming page."""
+    c = card["h"].get("content", "").strip()
+    if not c.lower().startswith("out-of-domain"):
+        return None
+    return date_of(c) or ""
 
 
 def covers(card):
@@ -362,6 +380,10 @@ def covers_text(card):
 
 def table(cards, iso2):
     own, world, undeclared = rows_for(cards, iso2)
+    # `content: out-of-domain` is not a board: out of the table, out of both
+    # denominators, named under the table with its date (2026-09-16)
+    named_ood = [(c["name"], out_of_domain_of(c)) for c in own if out_of_domain_of(c) is not None]
+    own = [c for c in own if out_of_domain_of(c) is None]
     n = {"fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0}
     lines = ["| Board | Ce qu'il couvre | Accès | Statut | Mesuré |",
              "| :-- | :-- | :-- | :-- | :-- |"]
@@ -389,7 +411,14 @@ def table(cards, iso2):
     return {"lines": lines, "n": n, "total": total, "faisable": faisable,
             "world": world, "undeclared": undeclared,
             "named_ind": named_ind, "named_rev": named_rev,
-            "named_exc": named_exc, "named_inf": named_inf}
+            "named_exc": named_exc, "named_inf": named_inf, "named_ood": named_ood}
+
+
+def ood_note_md(named_ood):
+    """The dated note that replaces a row: «n'est plus un board»."""
+    items = ", ".join(f"`{name}` ({date or 'non daté'})" for name, date in named_ood)
+    return (f"*N'est plus un board — `content: out-of-domain`, hors du tableau et des "
+            f"deux ratios : {items}.*")
 
 
 def render_md(iso2, t, all_cards):
@@ -399,6 +428,8 @@ def render_md(iso2, t, all_cards):
         out.append(f"*Aucune fiche de `shared/boards/` ne déclare `{iso2}` dans sa "
                    f"ligne `countries:`.*")
         out.append("")
+    if t["named_ood"]:
+        out += [ood_note_md(t["named_ood"]), ""]
     out += [
         "### Les cinq nombres, et les deux ratios",
         "",
@@ -414,7 +445,8 @@ def render_md(iso2, t, all_cards):
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"NON FAISABLES     {n['infaisable']}     `route: none` daté et motivé — prime sur `script:` (#404, 13.09.2026 : un script qui ne rend rien ne compte pas)"
         + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else ""),
-        f"total             {t['total']}",
+        f"total             {t['total']}"
+        + (f"     (hors tableau : {len(t['named_ood'])} n'est plus un board — `content: out-of-domain`)" if t["named_ood"] else ""),
         "",
         f"fait / faisable   {n['fait']} / {t['faisable']}    (faisable = total - écartés datés et motivés - non faisables ; dont {n['indetermine']} indéterminé(s) et {n['reverifier']} à revérifier, qui COMPTENT)",
         f"fait / total      {n['fait']} / {t['total']}    (total = toutes les fiches déclarant {iso2}, indéterminés, à revérifier et écartés compris)",
@@ -448,6 +480,8 @@ def render_html(iso2, t, all_cards):
         cells = [c.strip() for c in line.strip().strip("|").split(" | ")]
         out.append("<tr>" + "".join(f"<td>{md_cell(c)}</td>" for c in cells) + "</tr>")
     out.append("</tbody></table>")
+    if t["named_ood"]:
+        out.append(f"<p><em>{md_cell(ood_note_md(t['named_ood']).strip('*'))}</em></p>")
     out.append("<h3>Les cinq nombres, et les deux ratios</h3><pre>")
     out.append(e(
         f"fait              {n['fait']}\nmesuré sans refus {n['faisable']}\n"
@@ -485,10 +519,13 @@ def cmd_all(cards, members_path):
             continue
         if cs == ["*"]:
             continue
+        if out_of_domain_of(c) is not None:
+            for iso2 in cs:
+                per.setdefault(iso2, dict(EMPTY))["out_of_domain"] += 1
+            continue
         cls, _m = classify(c)
         for iso2 in cs:
-            d = per.setdefault(iso2, {"cards": 0, "fait": 0, "faisable": 0,
-                                      "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0})
+            d = per.setdefault(iso2, dict(EMPTY))
             d["cards"] += 1
             d[cls] += 1
     if not members_path:
@@ -497,10 +534,10 @@ def cmd_all(cards, members_path):
               "needs the members file (atlas-pages.txt shape: ISO3<TAB>name…).",
               file=sys.stderr)
         keys = sorted(per)
-        print("iso2\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible")
+        print("iso2\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible\tout_of_domain")
         for k in keys:
             d = per[k]
-            print(f"{k}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}")
+            print(f"{k}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}\t{d['out_of_domain']}")
         print(f"# {len(keys)} ISO2 declared · {undeclared} card(s) without countries: are invisible here",
               file=sys.stderr)
         return 0
@@ -511,20 +548,20 @@ def cmd_all(cards, members_path):
                 continue
             parts = line.rstrip("\n").split("\t")
             members.append((parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""))
-    print("iso3\tiso2\tname\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible")
+    print("iso3\tiso2\tname\tcards\tadapters\tnone\tindeterminate\tto_reverify\texcluded_unvalidated\tnot_feasible\tout_of_domain")
     with_cards = with_adapter = unmapped = 0
     seen2 = set()
     for iso3, name in members:
         iso2 = ISO3_TO_2.get(iso3)
         if iso2 is None:
             unmapped += 1
-            print(f"{iso3}\tUNMAPPED\t{name}\t?\t?\t?\t?\t?\t?\t?")
+            print(f"{iso3}\tUNMAPPED\t{name}\t?\t?\t?\t?\t?\t?\t?\t?")
             continue
         seen2.add(iso2)
-        d = per.get(iso2, {"cards": 0, "fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0, "ecarte": 0, "infaisable": 0})
+        d = per.get(iso2, dict(EMPTY))
         with_cards += d["cards"] > 0
         with_adapter += d["fait"] > 0
-        print(f"{iso3}\t{iso2}\t{name}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}")
+        print(f"{iso3}\t{iso2}\t{name}\t{d['cards']}\t{d['fait']}\t{d['faisable']}\t{d['indetermine']}\t{d['reverifier']}\t{d['ecarte']}\t{d['infaisable']}\t{d['out_of_domain']}")
     orphans = sorted(set(per) - seen2)
     print(f"# {len(members)} members · {with_cards} with at least one card · "
           f"{with_adapter} with at least one adapter · {unmapped} UNMAPPED (not zero: unknown) · "
