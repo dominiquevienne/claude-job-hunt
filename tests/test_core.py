@@ -26433,5 +26433,126 @@ class AUruguayanBloggerBlogWhoseFeedStatesItsTotalAndPagesByStartIndexAndWhosePo
             self._run(mod, [], cmd="ad", url="https://www.empleosenuruguay.com/search/label/Montevideo")
         self.assertEqual(cm.exception.code, 2)
 
+
+class ASurinameseFreePostingBoardWhoseListStatesItsCountAndWhoseEmployerFieldIsScrubbedLikeAText(unittest.TestCase):
+    """**`werkstraat.py`, 2026-09-16 (#445).** Werkstraat is a WordPress
+    job board (a Noo JobMonster theme): `/jobs/page/N/` serves ten
+    `noo_job` articles on the server with «Showing 1–10 of 341 jobs» and
+    a pager whose largest number is the last page; the ad shares the meta
+    block (company, locations, categories, type, date «- expiry») and a
+    «Functieomschrijving» body, no JobPosting. A free-posting board is
+    polluted: the employer's name is scrubbed like a text (an e-mail
+    address as a name becomes «[e-mail withheld]»), the body of e-mails and
+    Surinamese phones. `/wp-admin/`, `/wp-json/`, `/member/` never sent.
+    Mutated (`-B`, detached copy): the stated count not read → the walk
+    reddens (exit 6); the last page not read → the walk stops at page 1
+    (reddens); the dedup dropped → 4 rows for 3 cards; the employer not
+    scrubbed → the e-mail-as-name case reddens; the expiry not read → the
+    ad's valid_through reddens; the description not scrubbed → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_werkstraat", os.path.join(SCRIPTS, "werkstraat.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _meta(company, cslug, locs, cats=None, jtype="Freelance", posted="2026-09-15T22:40:27+00:00", expiry=None):
+        loc = ", ".join(f'<a href="https://werkstraat.com/job-location/{l.lower().replace(" ", "-").replace(",", "")}/"><span >{l}</span></a>' for l in locs)
+        cat = (' <span class="job-category"> <i class=""></i> ' + " - ".join(f'<a href="https://werkstraat.com/job-category/x/" title="View all jobs in: &ldquo;{c}&rdquo;"> {c}</a>' for c in cats) + ' </span>') if cats else ""
+        exp = f' <span > - {expiry} </span>' if expiry else ""
+        return (f'<p class="content-meta"> <span itemprop="hiringOrganization" itemscope itemtype="http://schema.org/Organization" style="display: none;"> <meta content="{company}" itemprop="name"> <meta content="https://werkstraat.com/companies/{cslug}/" itemprop="url"> </span>'
+                f' <span class="job-type"><a href="https://werkstraat.com/job-type/x/" style="color: #38b6ff"><i class="fa fa-bookmark"></i><span>{jtype}</span></a></span>'
+                f' <span class="job-location" > <i class=""></i> {loc} </span>{cat} <span class="job-date"> <time class="entry-date" datetime="{posted}"> <i class="fa fa-calendar"></i> <span> september 15, 2026 </span>{exp} </time> </span>'
+                f' <div class="job-tools show_job_action"> tools </div> </p>')
+
+    def _card(self, nid, slug, title, company, cslug, locs, **kw):
+        return (f'<article class="loadmore-item noo_job style-1 post-{nid} type-noo_job" id="post-{nid}"> <div class="loop-item-wrap"> <a class="job-details-link" href="https://werkstraat.com/jobs/{slug}/"></a>'
+                f'<h5 class="loop-item-title mt0 loop-job-title mr15"> <a href="https://werkstraat.com/jobs/{slug}/" title="x">{title}</a> </h5> <span class="job-company loop-job-company"> <a href="https://werkstraat.com/companies/{cslug}/" ><span class="company-name">{company}</span></a> </span>'
+                + self._meta(company, cslug, locs, **kw) + '</div></article>')
+
+    def _page(self, cards, first=1, total=341, last=35, count=True):
+        head = f'<div class="pull-right noo-job-list-count"> <span> Showing {first}&ndash;{first + 9} of {total} jobs </span> </div>' if count else '<div>Jobs</div>'
+        pager = f'<div class="pagination"><a href="https://werkstraat.com/jobs/page/2/">2</a><a href="https://werkstraat.com/jobs/page/{last}/">{last}</a></div>'
+        return "<html><body>" + head + "".join(cards) + pager + "</body></html>"
+
+    def _ad(self):
+        return ('<html><body><h1 class="job-title page-title" > Chat Moderator (Remote) </h1> <div class="box-job-info"><div class="logo-company"><a href="https://werkstraat.com/companies/rdplasabasgmail-com/"><img src="x"></a></div>'
+                + self._meta("Content Services", "rdplasabasgmail-com", ["Paramaribo, Suriname", "Remote, vanuit Suriname"], cats=["Communicatie", "Klantenservice/Callcenter", "Media"], expiry="oktober 5, 2026")
+                + '</div><div class="job-desc" > <h2>Functieomschrijving</h2> <p>Als <strong>Chat Operator</strong> communiceer je met abonnees.</p><p>Stuur je cv naar hr@example.sr of bel 8812345 / +597 472 123.</p> </div> <div class="job-tools mt0">x</div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_its_meta_block_the_scrubbed_employer_and_the_guards(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card(74389, "chat-moderator", "Chat Moderator (Remote)", "Content Services", "rdplasabasgmail-com", ["Paramaribo, Suriname", "Remote, vanuit Suriname"]),
+                         self._card(74351, "nurs-fpx-4055", "NURS FPX 4055 Assessment 3", "ditak19611@blobapps.com", "ditak19611blobapps-com", ["110 Central Ave, Jersey City"], jtype="Full-time"),
+                         self._card(74300, "kassier", "Kassier", "Horeca Gemak", "horeca-gemak", ["Paramaribo, Suriname"], jtype="Full-time")], last=2)
+        p2 = self._page([self._card(74300, "kassier", "Kassier", "Horeca Gemak", "horeca-gemak", ["Paramaribo, Suriname"]), self._card(74200, "chauffeur", "Chauffeur", "Fernandes", "fernandes", ["Wanica"])], first=11, last=2)
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2)])
+        self.assertEqual(asked, ["https://werkstraat.com/jobs/", "https://werkstraat.com/jobs/page/2/"])
+        self.assertEqual([r["id"] for r in rows], ["74389", "74351", "74300", "74200"])   # the repeated card read once; the walk ended at the pager's last page
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["company"], a["company_profile"], a["locations"], a["categories"], a["job_type"], a["posted"], a["valid_through"], a["contacts_withheld"], a["language"]),
+                         ("werkstraat", "SR", "werkstraat:74389", "https://werkstraat.com/jobs/chat-moderator/", "chat-moderator", "Chat Moderator (Remote)", "Content Services", "https://werkstraat.com/companies/rdplasabasgmail-com/", ["Paramaribo, Suriname", "Remote, vanuit Suriname"], None, "Freelance", "2026-09-15", None, True, "nl"))
+        self.assertEqual((rows[1]["company"], rows[1]["job_type"]), ("[e-mail withheld]", "Full-time"))
+        self.assertNotIn("blobapps.com", raw)
+        self.assertIn("4 emitted from 2 page(s), the site states 341 — 337 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 3))
+        self.assertIn("3 emitted from 1 page(s) of the 2 the pager names; the site states 341 — walked by request (--pages), not a shortfall.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([], last=1))])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([self._card(1, "x", "X", "Y", "y", ["Z"])], count=False))])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://werkstraat.com/wp-admin/admin-ajax.php", "https://werkstraat.com/wp-json/wp/v2/noo_job", "https://werkstraat.com/member/?action=login", "https://werkstraat.com/xmlrpc.php"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_ad_shares_the_meta_block_reads_the_expiry_and_scrubs_the_body(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad())], cmd="ad", url="https://www.werkstraat.com/jobs/chat-moderator")
+        self.assertEqual(asked, ["https://werkstraat.com/jobs/chat-moderator/"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["company_profile"], a["locations"], a["categories"], a["job_type"], a["posted"], a["valid_through"], a["contacts_withheld"]),
+                         ("chat-moderator", "Chat Moderator (Remote)", "Content Services", "https://werkstraat.com/companies/rdplasabasgmail-com/", ["Paramaribo, Suriname", "Remote, vanuit Suriname"], ["Communicatie", "Klantenservice/Callcenter", "Media"], "Freelance", "2026-09-15", "2026-10-05", True))
+        self.assertEqual(a["description"], "Als Chat Operator communiceer je met abonnees.\nStuur je cv naar [e-mail withheld] of bel [telephone withheld] / [telephone withheld].")
+        for secret in ("hr@example", "8812345", "472 123", "Functieomschrijving"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://werkstraat.com/jobs/chat-moderator/")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1 class=\"job-title\">x</h1>no desc</body></html>")], cmd="ad", url="https://werkstraat.com/jobs/chat-moderator/")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://werkstraat.com/companies/horeca-gemak/")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
