@@ -26209,5 +26209,124 @@ class ABolivianBoardOnAJobBoardEngineWhoseListIsTenCardsAPageWithItsCountAndWhos
             self._run(mod, [], cmd="ad", url="https://tumomopegas.com/company/68828/Edutin-Academy/")
         self.assertEqual(cm.exception.code, 2)
 
+
+class AHonduranDrupalBoardWhoseSearchPagesToItsLastPageWithoutATotalAndWhoseAdCarriesTheApplicationAddressThatIsNeverEmitted(unittest.TestCase):
+    """**`empleos_hn.py`, 2026-09-16 (#439).** Empleos.hn serves
+    `/busqueda-avanzada?page=N` (0-based) on the server — `tarjeta` cards
+    whose class names are swapped (`nombre-empresa` holds the title,
+    `nombre-posicion` the employer), a department, a «Fecha Max.
+    Postulación» `<time>`, a «Ver Más» link — with a Drupal pager whose
+    largest number is the last page; the site prints no total, so the
+    walk prints the pager's reach as the bound. The ad is a JobPosting
+    beside Drupal `field__label` / `field__item` pairs; «Correo para
+    aplicar:» (the employer's application address, Cloudflare-obfuscated)
+    is never emitted, the description is scrubbed of Honduran phones.
+    `/search/`, `/user/`, `/register_*`, `/cdn-cgi/` never sent (exit 7).
+    Mutated (`-B`, detached copy): the pager's last page not read → the
+    walk stops at page 0 (reddens); the same-cards guard dropped → the
+    repeat case reddens; the dedup dropped → 4 rows for 3 cards; the
+    swapped classes «corrected» → title and employer swap (reddens); the
+    description not scrubbed → the ad reddens; the application field
+    emitted → the ad reddens (the address appears in the output)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_empleos_hn", os.path.join(SCRIPTS, "empleos_hn.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(slug, title, employer, dept="Francisco Morazán", vt="2026-09-30T12:00:00Z"):
+        return (f'<div class="tarjeta"> <div class="logo"><img src="/x.jpg" /></div> <div class="nombre-empresa">{title}</div> <div class="nombre-posicion">{employer} <br><div class="ubicacion"><span class="info-icon">&#128205;</span>{dept}</div></div> <hr>'
+                f'<div class="fecha"><span class="info-icon">&#128197;</span><strong>Fecha Max. Postulación:</strong> &nbsp; <time datetime="{vt}" class="datetime">30 Septiembre, 2026</time> <a href="https://empleos.hn/jobs/{slug}" class="boton-ver-mas">Ver Más</a> </div> </div>')
+
+    def _page(self, cards, last=1):
+        pager = '<nav class="pager"><ul class="pagination">' + "".join(f'<li class="page-item"><a href="?page={i}" class="page-link">{i + 1}</a></li>' for i in range(last + 1)) + '</ul></nav>'
+        return '<html><body><div class="views-view-responsive-grid">' + "".join(cards) + '</div>' + pager + '</body></html>'
+
+    @staticmethod
+    def _field(label, item):
+        return f'<div class="block"><div class="field field--label-above"> <div class="field__label">{label}</div> <div class="field__item">{item}</div> </div> </div>'
+
+    def _ad(self):
+        jp = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Director Casa Hogar", "datePosted": "2026-09-15", "employmentType": "Indefinido", "validThrough": "2026-09-30", "@id": "https://empleos.hn/jobs/director-casa-hogar",
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "HNL", "value": {"@type": "QuantitativeValue", "unitText": "MONTH"}},
+              "hiringOrganization": {"@type": "Organization", "@id": "7036", "name": "Asociacion para el Servicio Mundial"},
+              "jobLocation": {"@type": "Place", "name": "Honduras", "address": {"@type": "PostalAddress", "addressLocality": "Francisco Morazán", "addressRegion": "HN", "addressCountry": "HN"}}, "description": "Director Casa Hogar"}
+        body = (self._field("Nivel de experiencia ", "+2 años") + self._field("Número de Vacantes", "1") + self._field("Modalidad", "Oficina") + self._field("Género", "Indiferente") + self._field("Vehículo o Licencia", "Indiferente")
+                + self._field("Categoría", '<a href="/desarrollo-social" hreflang="es">Desarrollo Social y Comunitario</a>') + self._field("Departamento", "Francisco Morazán") + self._field("Tipo de Contrato", "Indefinido")
+                + self._field("Fecha max. de Postulación", '<time datetime="2026-09-30T12:00:00Z">Mié, 30/09/2026 - 12:00</time> ')
+                + self._field("Correo para aplicar:", '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97e5ffe1f6f4f6f9e3f2">[email&#160;protected]</a>')
+                + self._field("Descripción", "<p><strong>EDUCACION:&nbsp;</strong></p><p>• Licenciatura en Trabajo Social.</p><p>Interesados escribir a rrhh@example.hn o llamar al 9876-5432 / +504 2234 5678.</p>"))
+        return '<html><head><script type="application/ld+json">' + json.dumps(jp, ensure_ascii=False) + '</script></head><body>' + body + '</body></html>'
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_to_the_pagers_last_page_the_swapped_classes_and_the_guards(self):
+        import contextlib
+        mod = self._mod()
+        p0 = self._page([self._card("director-casa-hogar", "Director Casa Hogar", "Asociacion para el Servicio Mundial"),
+                         self._card("tecnicoa-de-campo", "Técnico/a de Campo – Proyecto RECOVER", "OCP/Secretaria de Recursos Naturales", dept="Atlántida", vt="2026-09-22T12:00:00Z"),
+                         self._card("auxiliar-1", "Auxiliar", "C807 XPRESS")], last=1)
+        p1 = self._page([self._card("auxiliar-1", "Auxiliar", "C807 XPRESS"), self._card("conductoras-2", "Conductoras", "Empresa X", dept="Cortés")], last=1)
+        rows, err, asked, raw = self._run(mod, [(200, p0), (200, p1)])
+        self.assertEqual(asked, ["https://empleos.hn/busqueda-avanzada", "https://empleos.hn/busqueda-avanzada?page=1"])
+        self.assertEqual([r["id"] for r in rows], ["director-casa-hogar", "tecnicoa-de-campo", "auxiliar-1", "conductoras-2"])   # the repeated slug read once; the walk ended at the pager's last page
+        a = rows[1]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["department"], a["valid_through"], a["contacts_withheld"], a["language"]),
+                         ("empleos_hn", "HN", "empleos_hn:tecnicoa-de-campo", "https://empleos.hn/jobs/tecnicoa-de-campo", "Técnico/a de Campo – Proyecto RECOVER", "OCP/Secretaria de Recursos Naturales", "Atlántida", "2026-09-22", True, "es"))
+        self.assertIn("4 emitted from 2 page(s), the pager's 2 walked to the last; the site prints no total — the walk is the count, 32 its bound.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p0)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 3))
+        self.assertIn("3 emitted from 1 page(s) of the 2 the pager names (the site prints no total; 2 × 16 = 32 is the bound) — walked by request (--pages), not a shortfall.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p0), (200, p0)])
+        self.assertEqual(cm.exception.code, 6)   # page 0 served again: the pager is not honoured
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([], last=0))])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://empleos.hn/search/node?keys=x", "https://empleos.hn/user/login", "https://empleos.hn/register_asp", "https://empleos.hn/cdn-cgi/l/email-protection"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_ad_is_its_jobposting_and_fields_and_the_application_address_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad())], cmd="ad", url="https://www.empleos.hn/jobs/director-casa-hogar/")
+        self.assertEqual(asked, ["https://empleos.hn/jobs/director-casa-hogar"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["company_id"], a["employment_type"], a["department"], a["address_country"], a["salary_currency"], a["salary_unit"], a["salary"], a["posted"], a["valid_through"], a["experience"], a["openings"], a["modality"], a["gender"], a["vehicle"], a["category"], a["contacts_withheld"]),
+                         ("director-casa-hogar", "Director Casa Hogar", "Asociacion para el Servicio Mundial", "7036", "Indefinido", "Francisco Morazán", "HN", "HNL", "MONTH", None, "2026-09-15", "2026-09-30", "+2 años", "1", "Oficina", "Indiferente", "Indiferente", "Desarrollo Social y Comunitario", True))
+        self.assertEqual(a["description"], "EDUCACION:\n• Licenciatura en Trabajo Social.\nInteresados escribir a [e-mail withheld] o llamar al [telephone withheld] / [telephone withheld].")
+        for secret in ("rrhh@", "9876-5432", "2234 5678", "cfemail", "protected", "Correo para aplicar", "97e5ffe1"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://empleos.hn/jobs/director-casa-hogar")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>nothing</body></html>")], cmd="ad", url="https://empleos.hn/jobs/director-casa-hogar")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://empleos.hn/busqueda-avanzada")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
