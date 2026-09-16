@@ -25969,5 +25969,128 @@ class ABolivianBoardWhoseCountIsInTheDepartmentPagesMetaAndWhoseListIsARefusedCl
             self._run(mod, [], cmd="ad", url="https://www.trabajito.com.bo/empleos/la-paz")
         self.assertEqual(cm.exception.code, 2)
 
+
+class ABolivianDrupalBoardWhoseListIsServedWithItsCountInProseAndWhoseSearchSortAndFacetsAreRefusedInWriting(unittest.TestCase):
+    """**`trabajando_bo.py`, 2026-09-16 (#430).** Trabajando Bolivia serves
+    `/trabajo?page=N` (0-based) on the server — `<article data-nid>` cards
+    with the employer in one of three forms (a profile link, a plain name,
+    «Empresa confidencial»), the hours, the city, a `<time>` — and states
+    its count in prose («encontrarás 344 trabajos y ofertas de empleo»);
+    the walk dedups by nid (page 0 repeats featured cards), stops when a
+    page brings nothing new or the pager ends, dies (exit 6) on a page
+    without cards or on page 0 served again; the ad is a JobPosting in an
+    `@graph`, its HTML description flattened and scrubbed of Bolivian
+    phones. `?buscar=`, `?sort=`, `f[` and `/user/` are refused in writing
+    and never sent (exit 7 before the gate). Mutated (`-B`, detached copy):
+    the stated count not read → the walk reddens (exit 6); the same-cards
+    guard dropped → the repeat case reddens; the dedup dropped → 4 rows for
+    3 cards; the plain-name employer form dropped → the walk reddens; the
+    description not scrubbed → the ad reddens; the query guard dropped →
+    the refused case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_trabajando_bo", os.path.join(SCRIPTS, "trabajando_bo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(nid, path, title, employer, city="La Paz", hours="Jornada completa", featured=False):
+        emp = {"link": '<a href="/empresa/dm-blackmining-srl" class="relative z-10">DM Blackmining S.R.L.</a>',
+               "plain": '<span class="min-w-0 truncate font-semibold text-ink">\n Laboratorios IFA S.A.\n </span>',
+               "conf": '<span class="min-w-0 truncate italic text-muted">\n          Empresa confidencial\n        </span>'}[employer]
+        return (f'<article class="group" data-nid="{nid}"><div><h2 class="min-w-0"> <a href="{path}" class="after:absolute">{title} </a> </h2><button data-login-required="login"><svg></svg></button></div>'
+                f'<div class="mt-0.5 flex items-center gap-2 text-sm">\n {emp}\n' + (' <span class="shrink-0 rounded-full">Destacado</span>' if featured else '') + '</div>'
+                f'<p class="mt-2 line-clamp-2">excerpt…</p><div class="mt-3"><span class="inline-flex items-center gap-1.5"> <svg></svg> {hours} </span> <span class="inline-flex items-center gap-1.5"> {city} </span>'
+                f'<time datetime="2026-09-15T15:48:59+00:00" data-posted-ago>hace 6 horas</time></div></article>')
+
+    def _page(self, cards, last=1, count=True):
+        head = '<p>En Trabajando.com.bo encontrarás 344 trabajos y ofertas de empleo en toda Bolivia.</p>' if count else '<p>Trabajo en Bolivia</p>'
+        pager = "".join(f'<a href="?page={i}">{i + 1}</a>' for i in range(last + 1))
+        return "<html><body>" + head + "".join(cards) + '<nav>' + pager + "</nav></body></html>"
+
+    def _ad(self, desc='<p>📢 <strong>BUSCAMOS</strong> administrador.</p><p>📩 Postulación: Enviar CV al 76469326 o a rrhh@example.bo, fijo +591 2 2345678.</p>'):
+        g = {"@context": "https://schema.org", "@graph": [
+            {"@type": "JobPosting", "title": "ADMINISTRADOR GENERAL", "employmentType": "FULL_TIME", "validThrough": "2026-09-30T08:00:00-0400",
+             "identifier": {"@type": "PropertyValue", "name": "Trabajando.com.bo", "value": "71787"}, "datePosted": "2026-09-14T07:59:14-0400",
+             "hiringOrganization": {"@type": "Organization", "name": "Importante Empresa", "sameAs": "https://trabajando.com.bo/", "logo": {"url": "x"}},
+             "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Cochabamba", "addressRegion": "Cochabamba", "addressCountry": "BO"}},
+             "description": desc, "industry": "Administración y Oficina"}]}
+        return '<html><head><script type="application/ld+json">' + json.dumps(g, ensure_ascii=False) + '</script></head><body></body></html>'
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_its_three_employer_forms_its_dedup_and_its_guards(self):
+        import contextlib
+        mod = self._mod()
+        p0 = self._page([self._card(1, "/trabajo/la-paz/administracion-y-oficina/administrador-1", "ADMINISTRADOR", "link", featured=True),
+                         self._card(2, "/trabajo/santa-cruz/salud-y-farmacia/visitador-medico-2", "VISITADOR MEDICO", "plain", city="Santa Cruz", hours="Contrato"),
+                         self._card(3, "/trabajo/cochabamba/ingenierias/pasante-3", "PASANTE", "conf", city="Cochabamba", hours="Pasantía")], last=1)
+        p1 = self._page([self._card(3, "/trabajo/cochabamba/ingenierias/pasante-3", "PASANTE", "conf"),
+                         self._card(4, "/trabajo/oruro/comercial-y-ventas/vendedor-4", "VENDEDOR", "plain", city="Oruro")], last=1)
+        rows, err, asked, raw = self._run(mod, [(200, p0), (200, p1)])
+        self.assertEqual(asked, ["https://trabajando.com.bo/trabajo", "https://trabajando.com.bo/trabajo?page=1"])
+        self.assertEqual([r["id"] for r in rows], ["1", "2", "3", "4"])   # the repeated nid 3 read once
+        self.assertEqual([r["company"] for r in rows], ["DM Blackmining S.R.L.", "Laboratorios IFA S.A.", "Empresa confidencial", "Laboratorios IFA S.A."])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company_profile"], a["city"], a["category"], a["hours"], a["place"], a["posted"], a["featured"], a["contacts_withheld"], a["language"]),
+                         ("trabajando_bo", "BO", "trabajando_bo:1", "https://trabajando.com.bo/trabajo/la-paz/administracion-y-oficina/administrador-1", "ADMINISTRADOR", "https://trabajando.com.bo/empresa/dm-blackmining-srl", "la-paz", "administracion-y-oficina", "Jornada completa", "La Paz", "2026-09-15", True, True, "es"))
+        self.assertEqual((rows[1]["hours"], rows[1]["place"], rows[1]["featured"], rows[1]["company_profile"]), ("Contrato", "Santa Cruz", False, None))
+        self.assertIn("4 emitted from 2 page(s), the site states 344 — 340 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p0)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 3))
+        self.assertIn("3 emitted from 1 page(s) of the 2 the pager names; the site states 344 — walked by request (--pages), not a shortfall.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p0), (200, p0)])
+        self.assertEqual(cm.exception.code, 6)   # page 0 served again: the pager is not honoured
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([], last=0))])
+        self.assertEqual(cm.exception.code, 6)   # a page without a card is a changed template, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([self._card(1, "/trabajo/la-paz/x/y-1", "X", "conf")], last=0, count=False))])
+        self.assertEqual(cm.exception.code, 6)   # no stated count
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://trabajando.com.bo/trabajo?buscar=ingeniero", "https://trabajando.com.bo/trabajo?page=1&sort=fecha", "https://trabajando.com.bo/trabajo?f%5B0%5D=ciudad", "https://trabajando.com.bo/trabajo?f[0]=x", "https://trabajando.com.bo/user/login", "https://trabajando.com.bo/search/node"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_ad_is_its_graph_jobposting_flattened_and_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad())], cmd="ad", url="https://www.trabajando.com.bo/trabajo/cochabamba/administracion-y-oficina/administrador-general-71787/")
+        self.assertEqual(asked, ["https://trabajando.com.bo/trabajo/cochabamba/administracion-y-oficina/administrador-general-71787"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["nid"], a["title"], a["company"], a["company_site"], a["employment_type"], a["industry"], a["city"], a["category"], a["place"], a["region"], a["address_country"], a["posted"], a["valid_through"], a["contacts_withheld"]),
+                         ("71787", "71787", "ADMINISTRADOR GENERAL", "Importante Empresa", None, "FULL_TIME", "Administración y Oficina", "cochabamba", "administracion-y-oficina", "Cochabamba", "Cochabamba", "BO", "2026-09-14", "2026-09-30", True))
+        self.assertEqual(a["description"], "📢 BUSCAMOS administrador.\n📩 Postulación: Enviar CV al [telephone withheld] o a [e-mail withheld], fijo [telephone withheld].")
+        for secret in ("76469326", "rrhh@", "2345678"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://trabajando.com.bo/trabajo/cochabamba/administracion-y-oficina/administrador-general-71787")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no JobPosting</body></html>")], cmd="ad", url="https://trabajando.com.bo/trabajo/cochabamba/administracion-y-oficina/administrador-general-71787")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://trabajando.com.bo/empresa/dm-blackmining-srl")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
