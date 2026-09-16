@@ -26092,5 +26092,122 @@ class ABolivianDrupalBoardWhoseListIsServedWithItsCountInProseAndWhoseSearchSort
             self._run(mod, [], cmd="ad", url="https://trabajando.com.bo/empresa/dm-blackmining-srl")
         self.assertEqual(cm.exception.code, 2)
 
+
+class ABolivianBoardOnAJobBoardEngineWhoseListIsTenCardsAPageWithItsCountAndWhoseAdIsLabelledFieldsWithoutAJobPosting(unittest.TestCase):
+    """**`tumomopegas.py`, 2026-09-16 (#432).** TumomoPegas serves
+    `/todos-los-empleos/?page=N` on the server — «37 Empleos», ten
+    `title-job-list` cards with the employer as a `/company/<id>/` link
+    (sometimes an empty name), «dd.mm.yyyy», «City, DPT» — and the ad as
+    `<h3>Label:</h3><div class="displayField">` blocks with no JobPosting.
+    The walk dedups by id, stops when a page brings nothing new or the
+    stated count is reached, dies (exit 6) on a page without cards, on
+    page 1 served again, on a missing count; the ad's description is
+    flattened and scrubbed of Bolivian phones, «Salario Negociable» becomes
+    a flag, «Vistas» is not emitted; the accounts and the banner redirects
+    are never sent (exit 7). Mutated (`-B`, detached copy): the stated
+    count not read → the walk reddens (exit 6); the same-cards guard
+    dropped → the repeat case reddens; the dedup dropped → 4 rows for 3
+    cards; the date not turned ISO → the card case reddens; the description
+    not scrubbed → the ad reddens; the negotiable-salary flag inverted → the
+    ad reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_tumomopegas", os.path.join(SCRIPTS, "tumomopegas.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(jid, slug, title, company=("68828", "Edutin Academy"), date="04.09.2026", place="La Paz, LPZ"):
+        return (f'<div class="media-body"><div class="position"><h3 class="title-job-list"><a id="listing_{jid}" href="https://tumomopegas.com/display-job/{jid}/{slug}.html?searchId=1789539367.6024&amp;page=1">{title}</a></h3>'
+                f'<div class="company"> <a href="https://tumomopegas.com/company/{company[0]}/{company[1].replace(" ", "-")}/" title="{company[1]}"><strong>{company[1]}</strong></a> </div></div>'
+                f'<div class="job-metas"> <div class="job-date"> <i class="fa fa-calendar"></i>&nbsp;{date}</div> <div class="location"> <i class="fa fa-map-marker"></i>&nbsp;{place}</div> </div></div>')
+
+    def _page(self, cards, count=True):
+        head = '<div class="jobs-count">37 Empleos</div>' if count else '<div>Empleos en Bolivia</div>'
+        return "<html><body>" + head + '<ul class="list">' + "".join(cards) + '</ul><div class="pagination"><a href="?searchId=1&amp;action=search&amp;page=2&amp;view=list">2</a></div></body></html>'
+
+    AD = ('<html><body><h1>Afiliado(a) Comercial Freelance</h1><div class="job_title block1" ><a style="x" target="_blank" href="https://tumomopegas.com/company/68828/Edutin-Academy/">Edutin Academy</a></div>'
+          '<div class="displayFieldBlock"><h3>ID Oferta:</h3><div class="displayField">38186</div></div><div class="displayFieldBlock"><h3>Ciudad:</h3><div class="displayField"> La Paz, LPZ&nbsp; </div></div>'
+          '<div class="displayFieldBlock"><h3>Rango Salarial:</h3><div class="displayField">Salario Negociable</div></div><div class="displayFieldBlock"><h3>Vistas:</h3><div class="displayField">11</div></div>'
+          '<div class="displayFieldBlock"><h3>Tipo de contrato:</h3><div class="displayField">Por Temporada</div></div><div class="displayFieldBlock"><h3>Publicado:</h3><div class="displayField">04.09.2026</div></div>'
+          '<div class="displayFieldBlock"><h3>Categorías:</h3><div class="displayField"><b>Marketing y Publicidad</b>: Telemarketing<br /> <b>Ventas</b>: Promotores</div></div>'
+          '<div class="displayFieldBlock"><h3>Descripción del puesto:</h3><div class="displayField">Edutin busca afiliados.<br />Escribir a ventas@example.bo o al 76469326, fijo +591 2 2345678.</div></div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_its_cards_its_dedup_and_its_guards(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card(38186, "Afiliado(a)-Comercial-Freelance", "Afiliado(a) Comercial Freelance"),
+                         self._card(38185, "Pasante", "Pasante para el Área Comercial", company=("68820", ""), date="03.09.2026", place="Santa Cruz, SCZ"),
+                         self._card(38183, "Asistente", "Administrative and Technical Assistant", date="02.09.2026")])
+        p2 = self._page([self._card(38183, "Asistente", "Administrative and Technical Assistant", date="02.09.2026"),
+                         self._card(38171, "Cocinero", "Necesito Cocinero", company=("31506", "Restaurant"), date="26.07.2024", place="Santa Cruz de la Sierra, SCZ")])
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p2)])
+        self.assertEqual(asked, ["https://tumomopegas.com/todos-los-empleos/", "https://tumomopegas.com/todos-los-empleos/?page=2", "https://tumomopegas.com/todos-los-empleos/?page=3"])
+        self.assertEqual([r["id"] for r in rows], ["38186", "38185", "38183", "38171"])   # 38183 read once; page 3 brought nothing new and ended the walk
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_id"], a["posted"], a["place"], a["contacts_withheld"], a["language"]),
+                         ("tumomopegas", "BO", "tumomopegas:38186", "https://tumomopegas.com/display-job/38186/Afiliado(a)-Comercial-Freelance.html", "Afiliado(a) Comercial Freelance", "Edutin Academy", "68828", "2026-09-04", "La Paz, LPZ", True, "es"))
+        self.assertEqual((rows[1]["company"], rows[1]["company_id"], rows[3]["posted"], rows[3]["place"]), (None, "68820", "2024-07-26", "Santa Cruz de la Sierra, SCZ"))
+        self.assertNotIn("searchId", raw)
+        self.assertIn("4 emitted from 3 page(s), the site states 37 — 33 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], pages=1)
+        self.assertEqual((len(asked), len(rows)), (1, 3))
+        self.assertIn("3 emitted from 1 page(s); the site states 37 — walked by request (--pages), not a shortfall.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)])
+        self.assertEqual(cm.exception.code, 6)   # page 1 served again: the pager is not honoured
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([]))])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([self._card(1, "x", "X")], count=False))])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://tumomopegas.com/ingresar/", "https://tumomopegas.com/registrarse/?user_group_id=JobSeeker", "https://tumomopegas.com/add-listing/?listing_type_id=Resume", "https://tumomopegas.com/go-link/?bannerId=3", "https://tumomopegas.com/files/files/x.pdf"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_ad_is_its_labelled_fields_flattened_and_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://www.tumomopegas.com/display-job/38186/Afiliado(a)-Comercial-Freelance.html?searchId=1&page=1")
+        self.assertEqual(asked, ["https://tumomopegas.com/display-job/38186/Afiliado(a)-Comercial-Freelance.html"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["company_id"], a["place"], a["salary"], a["salary_negotiable"], a["contract"], a["posted"], a["categories"], a["contacts_withheld"]),
+                         ("38186", "Afiliado(a) Comercial Freelance", "Edutin Academy", "68828", "La Paz, LPZ", None, True, "Por Temporada", "2026-09-04", ["Marketing y Publicidad : Telemarketing", "Ventas : Promotores"], True))
+        self.assertEqual(a["description"], "Edutin busca afiliados.\nEscribir a [e-mail withheld] o al [telephone withheld], fijo [telephone withheld].")
+        self.assertNotIn("Vistas", raw)
+        for secret in ("76469326", "ventas@", "2345678"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://tumomopegas.com/display-job/38186/x.html")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>x</h1>no fields</body></html>")], cmd="ad", url="https://tumomopegas.com/display-job/38186/x.html")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://tumomopegas.com/company/68828/Edutin-Academy/")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
