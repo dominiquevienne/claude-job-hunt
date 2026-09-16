@@ -26554,5 +26554,109 @@ class ASurinameseFreePostingBoardWhoseListStatesItsCountAndWhoseEmployerFieldIsS
             self._run(mod, [], cmd="ad", url="https://werkstraat.com/companies/horeca-gemak/")
         self.assertEqual(cm.exception.code, 2)
 
+
+class ASmallSurinameseBoardWhoseTwoListsAreServedWholeWithoutACountAndWhoseAdIsACFFieldsAndTitledSections(unittest.TestCase):
+    """**`surinamevacatures.py`, 2026-09-16 (#446).** Suriname Vacatures
+    serves its two lists whole (`/vacatures-suriname`,
+    `/stageplekken-suriname`): `vacatures-item-wrapper` cards with an
+    `item="title"`, `acf:text` place and hours, an `inline-text` level,
+    `categ` labels and a `/vacatures/<slug>/` link — no pager, no count
+    printed, so the lists are the count and `list` says so; the ad is
+    `acf:text` fields (employer, place then level under the same
+    attribute, hours, pay) and `acf:richtext` sections under
+    `*_titel` headings, scrubbed. `/wp-admin/`, `/wp-json/`,
+    `/xmlrpc.php` never sent. Mutated (`-B`, detached copy): the third
+    category lost (the tail cut early) → reddens; the level not read → the
+    card reddens; the sections not scrubbed → the ad reddens; the second
+    `plaatsnaam` not read as the level → the ad reddens; the dedup across
+    lists dropped → 5 rows for 4 ads; the kind not set → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_surinamevacatures", os.path.join(SCRIPTS, "surinamevacatures.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(slug, title, place="Paramaribo", hours="40 uur", level="MBO", cats=("Administratie", "Dementie zorg", "Zorg")):
+        h = f'<div class="vacatures-info-item"><img src="x"> <div acf:text="uren">{hours}</div> </div>' if hours else ""
+        c = "".join(f'<div role="listitem" class="w-dyn-item"> <div class="categ">{x}</div> </div>' for x in cats)
+        return (f'<div role="listitem" class="vacatures-item-wrapper mix w-dyn-item"> <div item="permalink" class="vacatures-item"> <h2 item="title" class="h5">{title}</h2> <div class="vacatures-item-info-wrapper">'
+                f'<div class="vacatures-info-item"><img src="x"> <div acf:text="plaatsnaam">{place}</div> </div> {h} <div class="vacatures-info-item"><img src="x"> <div class="inline-text">{level}</div> </div> </div>'
+                f'<a href="https://surinamevacatures.com/vacatures/{slug}/" class="vacatures-link w-inline-block"></a> </div> <div class="categ-listwrapper w-dyn-list"> <div role="list" class="w-dyn-items"> {c} </div> </div> </div>')
+
+    def _page(self, cards):
+        return '<html><body><div class="w-dyn-list"><div role="list" class="w-dyn-items">' + "".join(cards) + '</div></div><footer>x</footer></body></html>'
+
+    AD = ('<html><body><div class="vacature-header-wrapper"> <h2 item="title" class="h2 no-margin">Admin Officer</h2> <div acf:text="bedrijfsnaam" class="paragraph">Stichting Wiesje</div> </div>'
+          '<div class="vacature-page-info-flex"> <div class="vacatures-info-item info-in-flex"> <div acf:text="plaatsnaam">Paramaribo</div> </div> <div class="vacatures-info-item info-in-flex"> <div acf:text="plaatsnaam">MBO</div> </div>'
+          '<div class="vacatures-info-item info-in-flex"> <div acf:text="uren">40 uur</div> </div> <div class="vacatures-info-item info-in-flex"> <div acf:text="loon" class="w-embed">€ Uurloon vanaf 25,- srd per maand</div> </div> </div> <p acf:textarea="periode" class="paragraph large-bold-p">september – december</p>'
+          '<div class="small-subsection"> <h3 acf:text="bedrijfsprofiel_titel" class="h3">Bedrijfsprofiel</h3> <div class="bedrijfsprofiel-flex"> <div acf:richtext="bedrijfsprofiel_tekst" class="paragraph w-richtext"> <p>Stichting Wiesje is een zorgorganisatie.</p> </div> <img src="x"> </div> </div>'
+          '<div class="small-subsection"> <h3 acf:text="wie_ben_jij_titel" class="h3">Wie ben jij?</h3> <div acf:richtext="wie_ben_jij_tekst" class="paragraph w-richtext"><ul> <li>De telefoon kunnen bemannen;</li> <li>Bel 8812345 of mail hr@example.sr</li> </ul></div> </div>'
+          '<div class="small-subsection"> <h3 acf:text="interesse_titel" class="h3">Geïnteresseerd in deze functie?</h3> <div acf:richtext="interesse_tekst" class="paragraph w-richtext"><p>Neem contact op via info@surinamevacatures.com</p></div> </div></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(kind="all") if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_two_lists_their_cards_and_the_count_that_is_the_lists(self):
+        import contextlib
+        mod = self._mod()
+        vac = self._page([self._card("admin-officer", "Admin Officer"), self._card("ziekenverzorgende", "Ziekenverzorgende", hours="36 uur", level="HBO", cats=("Zorg",)), self._card("stage-shared", "Stage Shared", hours=None, level="MBO, HBO, WO", cats=())])
+        stg = self._page([self._card("stage-shared", "Stage Shared", hours=None, level="MBO, HBO, WO", cats=()), self._card("stage-hospitality", "Stage Hospitality", cats=("Hostel", "Tourisme"))])
+        rows, err, asked, raw = self._run(mod, [(200, vac), (200, stg)])
+        self.assertEqual(asked, ["https://surinamevacatures.com/vacatures-suriname", "https://surinamevacatures.com/stageplekken-suriname"])
+        self.assertEqual([(r["id"], r["kind"]) for r in rows], [("admin-officer", "vacatures"), ("ziekenverzorgende", "vacatures"), ("stage-shared", "vacatures"), ("stage-hospitality", "stages")])   # the card on both lists read once
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["place"], a["hours"], a["level"], a["categories"], a["contacts_withheld"], a["language"]),
+                         ("surinamevacatures", "SR", "surinamevacatures:admin-officer", "https://surinamevacatures.com/vacatures/admin-officer/", "Admin Officer", "Paramaribo", "40 uur", "MBO", ["Administratie", "Dementie zorg", "Zorg"], True, "nl"))
+        self.assertEqual((rows[2]["hours"], rows[2]["level"], rows[2]["categories"]), (None, "MBO, HBO, WO", None))
+        self.assertIn("4 emitted — 3 vacatures and 2 stages on the list(s), the site prints no total: the lists are the count (1 on both lists, read once).", err)
+        rows, err, asked, raw = self._run(mod, [(200, stg)], kind="stages")
+        self.assertEqual((asked, len(rows)), (["https://surinamevacatures.com/stageplekken-suriname"], 2))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([]))], kind="vacatures")
+        self.assertEqual(cm.exception.code, 6)   # a list without a card is a changed template, never an empty market
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://surinamevacatures.com/wp-admin/admin-ajax.php", "https://surinamevacatures.com/wp-json/wp/v2/vacatures", "https://surinamevacatures.com/xmlrpc.php?rsd"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_ad_is_its_fields_and_sections_scrubbed(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://www.surinamevacatures.com/vacatures/admin-officer")
+        self.assertEqual(asked, ["https://surinamevacatures.com/vacatures/admin-officer/"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["place"], a["level"], a["hours"], a["pay"], a["period"], a["contacts_withheld"]),
+                         ("admin-officer", "Admin Officer", "Stichting Wiesje", "Paramaribo", "MBO", "40 uur", "€ Uurloon vanaf 25,- srd per maand", "september – december", True))
+        self.assertEqual(a["sections"], {"Bedrijfsprofiel": "Stichting Wiesje is een zorgorganisatie.", "Wie ben jij?": "De telefoon kunnen bemannen;\nBel [telephone withheld] of mail [e-mail withheld]", "Geïnteresseerd in deze functie?": "Neem contact op via [e-mail withheld]"})
+        for secret in ("8812345", "hr@example", "info@surinamevacatures"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://surinamevacatures.com/vacatures/admin-officer/")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h2 item=\"title\">x</h2>no fields</body></html>")], cmd="ad", url="https://surinamevacatures.com/vacatures/admin-officer/")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://surinamevacatures.com/bedrijven/zus-zo/")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
