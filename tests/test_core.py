@@ -25782,5 +25782,78 @@ class ABurkinabeBoardThatServesFifteenCardsAPageAndKeepsTheRestBehindARefusedRou
         self.assertEqual(cm.exception.code, 2)
 
 
+class ACardThatIsNotABoardLeavesTheTableAndBothDenominators(unittest.TestCase):
+    """**`bin/country-boards.py`, 2026-09-16 — the pilot's point on ZMB.**
+    `bestzambiajobs.md` declares `content: out-of-domain` (a resold domain
+    serving a Turkish streaming page) and the tool counted it «mesuré sans
+    adaptateur — faisable établi»: Zambia's page owed an adapter to a host
+    that publishes nothing. Since today an `out-of-domain` card is not a row:
+    it leaves `total` and `faisable`, and is named under the table as a
+    dated note «n'est plus un board». Both ways: the out-of-domain card
+    leaves (its name is not a row, both denominators drop by one), the
+    measured card stays (a row, counted). Population asserted: at least 4
+    cards declare `out-of-domain` on 2026-09-16 (`bestzambiajobs`, `infotep`,
+    `melr-gh`, `yellocu`). Mutated (`-B`, detached copy): `out_of_domain_of`
+    returning None → the card is a row again and `total` is 3 (reddens);
+    the note builder emptied → the note assertion reddens; the
+    per-country skip removed → `out_of_domain` column 0 and `cards` 3
+    (reddens); the `startswith` loosened to `in` → a measured card whose
+    prose mentions the phrase leaves (the negative reddens)."""
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cards(self, mod):
+        import tempfile
+        d = tempfile.mkdtemp()
+        def card(name, body):
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        card("resold", "# R\n\n<!-- script: none -->\n<!-- countries: XX -->\n<!-- content: out-of-domain · HTTP 200 serving a streaming page, 0 occurrences of job · 2026-09-05 -->\n")
+        card("stays", "# S\n\n<!-- script: stays.py -->\n<!-- countries: XX -->\n<!-- content: measured · 45 advertisements, not out-of-domain at all · 2026-09-05 -->\n")
+        return d, mod.read_cards(d)
+
+    def test_the_out_of_domain_card_leaves_and_the_measured_card_stays(self):
+        mod = self._tool()
+        d, cards = self._cards(mod)
+        by = {c["name"]: c for c in cards}
+        self.assertEqual(mod.out_of_domain_of(by["resold"]), "2026-09-05")
+        self.assertIsNone(mod.out_of_domain_of(by["stays"]))          # the phrase in prose is not the declaration
+        t = mod.table(cards, "XX")
+        rows = "\n".join(t["lines"])
+        self.assertNotIn("`resold`", rows)
+        self.assertIn("`stays`", rows)
+        self.assertEqual((t["total"], t["faisable"], t["n"]["fait"]), (1, 1, 1))
+        self.assertEqual(t["named_ood"], [("resold", "2026-09-05")])
+        md = mod.render_md("XX", t, cards)
+        self.assertIn("N'est plus un board", md)
+        self.assertIn("`resold` (2026-09-05)", md)
+        self.assertIn("hors tableau : 1", md)
+        html_out = mod.render_html("XX", t, cards)
+        self.assertIn("est plus un board", html_out)
+        self.assertEqual(html_out.split("<tbody>")[1].count("<tr>"), 1)   # the header row is in <thead>
+
+    def test_the_per_country_tally_skips_it_and_counts_it_apart(self):
+        import io as _io
+        import contextlib
+        mod = self._tool()
+        d, cards = self._cards(mod)
+        out = _io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(_io.StringIO()):
+            mod.cmd_all(cards, None)
+        line = [l for l in out.getvalue().splitlines() if l.startswith("XX\t")][0]
+        self.assertEqual(line.split("\t"), ["XX", "1", "1", "0", "0", "0", "0", "0", "1"])
+
+    def test_the_population_has_the_declaration(self):
+        mod = self._tool()
+        cards = mod.read_cards(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared", "boards"))
+        ood = sorted(c["name"] for c in cards if mod.out_of_domain_of(c) is not None)
+        self.assertGreaterEqual(len(ood), 4, ood)
+        self.assertIn("bestzambiajobs", ood)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
