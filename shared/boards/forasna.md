@@ -1,12 +1,13 @@
-# Board adapter — Forasna (Egypt): rules open to `Claude-User`, a challenge on every path, sitemap included
+# Board adapter — Forasna (Egypt): a challenge to the declared client on every path, and a connected tab served the whole board — «2,974 وظائف خالية», `?start=N` by 20; `route: browser`, no script
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-16 -->
 
 <!-- hosts: forasna.com -->
 <!-- script: none -->
 <!-- countries: EG -->
-<!-- content: indeterminate · 1 host, 4 paths tried under the permitted token (`/`, `/sitemap.xml`, `/sitemap_index.xml`, plus the rules) and every one of the 3 content paths answers HTTP 403 with a 5 645–5 717-byte Cloudflare interstitial titled `Just a moment...`, md5 different on two fetches of the root at constant size — a challenge; unlike its Egyptian sibling `wuzzuf.net`, the XML is behind it too, so nothing of the site was read · 2026-09-11 13:54 UTC -->
-<!-- witness: none — nothing was served, and the rules declare no Sitemap line -->
+<!-- content: measured · **the declared client gets a 403 challenge on the root and the two guessed sitemap paths (5 645–5 717-byte «Just a moment...», md5 moving at constant size, 2026-09-11); a connected tab was served everything without any click on 2026-09-16 05:3x UTC: the root («2833 وظائف خالية» in its header block), the list `/وظائف-خالية` stating «2,974 وظائف خالية» — 30 cards on page 1, then `?&start=N` in steps of 20 (`start=20` opens on the 21st card of page 1; `start=2960` lists 14 = 2 974 − 2 960, the last), each card the title, employer, governorate/district, experience, openings, gender, hours, area / speciality, base salary in EGP or «غير معلن», benefits; the ad `/job/p/<slug>-<id>` prints employer, workplace, posting age, headcount, requirements (experience, licence, gender, English, age, degree), salary, hours, area, speciality, the description — and the employer's applicant counters; no JobPosting JSON-LD looked for from the tab** · 2026-09-16 -->
+<!-- witness: none — the list's own «2,974» is the count beside the walk; the rules declare no Sitemap line -->
+<!-- route: browser · 2974 · 2026-09-16 -->
 
 **Egypt's second board on a card with `wuzzuf.net`, and the same family of
 «no» — with one difference that decides the route.** Measured 2026-09-11,
@@ -61,3 +62,40 @@ nothing either way.
   established here.
 - **What would change it:** a `Sitemap:` line, or XML served from behind the
   interstitial as `wuzzuf.net` does — one request to check, dated.
+
+## 2026-09-16 — the tab is served, without a click: `route: browser · 2974`
+
+**Point 2 of the pilot's assignment of 2026-09-15 — the owner had said of the
+«domain permission» refusals of 2026-09-14 that «le plugin brave valide
+l'ensemble des sites. ce doit être autre chose».** Two readings from a
+connected tab, 05:3x UTC, no click anywhere, no challenge shown:
+
+```
+tab, https://forasna.com/                                    served — the front page, «2833 وظائف خالية» in the header block, today's ads
+tab, /وظائف-خالية                                            served — «2,974 وظائف خالية», 30 cards, pager 1 … 6 التالى
+tab, /وظائف-خالية?&start=20                                  served — opens on the 21st card of page 1 (the step is 20)
+tab, /وظائف-خالية?&start=2960                                served — 14 cards, 2 974 − 2 960 = 14: the last page
+tab, /job/p/…-440483                                          served — the ad: employer, workplace, age, headcount, requirements, salary, description
+```
+
+**Two counts on the same site, two questions:** the header block says
+«2833», the list says «2,974» — the list's figure is the one beside the walk,
+the header's is not explained by this card (a cached badge, a different
+filter: not established). **What a session does from a tab:**
+`/وظائف-خالية?&start=N` for N = 0, 20, 40 … until a page lists fewer than
+20, the id from the tail of `/job/p/<slug>-<id>`, «2,974» read from the
+list beside the emitted count. No script: the declared client is still
+answered by the challenge (#404), and the challenge is not defeated — the
+tab was simply served.
+
+**The refusal of 2026-09-14 was named, wrongly, «the extension's domain
+permission».** Measured today on the same tool: the text «Navigation to this
+domain is not allowed» is rendered by the `navigate` tool when it runs as a
+NON-FIRST item of a `browser_batch` toward a domain the session has not yet
+visited — the same URL as the first item of a batch, or standalone, is
+navigated (4 refusals / 4 passes on `tecoloco.md`, this host served at the
+first try today). It is not the site, not the browser, not an allowlist.
+
+**What is withheld:** the ad prints the employer's applicant counters and
+nothing of a recruiter; the application is a login (`/login`,
+`/jobseeker/register`), never touched.
