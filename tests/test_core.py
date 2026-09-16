@@ -25855,5 +25855,119 @@ class ACardThatIsNotABoardLeavesTheTableAndBothDenominators(unittest.TestCase):
         self.assertGreaterEqual(len(ood), 4, ood)
         self.assertIn("bestzambiajobs", ood)
 
+
+class ABolivianBoardWhoseCountIsInTheDepartmentPagesMetaAndWhoseListIsARefusedClientRouteSoTheSitemapIsTheInventory(unittest.TestCase):
+    """**`trabajito.py`, 2026-09-16 (#429).** Trabajito's `/trabajo` names no
+    advertisement — the list is a client fetch to `/api/`, refused in
+    writing — while `/empleos/bolivia` (or `/empleos/<departamento>`)
+    carries «736 ofertas de empleo en Bolivia» in its meta; so the count is
+    read there and the inventory is the sitemap's
+    `/trabajo/<dept>/<slug>-<CODE>` rows, each ad read for its JobPosting
+    (title, employer, locality, region, dates, employmentType, a scrubbed
+    description). `--dept` narrows the sitemap and reads the department's
+    count. The count printed beside every walk; `/api/` and the accounts
+    never sent. Mutated (`-B`, detached copy): the stated count not read
+    → the walk case reddens (exit 6); the department filter dropped →
+    the dept case reddens; the description not scrubbed → the ad case
+    reddens; the refused-path guard dropped → the guard case reddens; the
+    sitemap's non-ad rows counted as ads → the sitemap case reddens; the
+    dedup on CODE dropped → the sitemap case reddens (3 rows for 2 ads)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_trabajito", os.path.join(SCRIPTS, "trabajito.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    DEPT = '<html><head><meta name="description" content="736 ofertas de empleo en Bolivia. Postula hoy."/></head><body><script>self.__next_f.push([1,"x"])</script></body></html>'
+    DEPT_LP = '<html><head><meta name="description" content="99 ofertas de empleo en La Paz. Postula hoy."/></head><body></body></html>'
+    SITEMAP = ('<?xml version="1.0"?><urlset><url><loc>https://www.trabajito.com.bo/</loc><changefreq>daily</changefreq></url>'
+               '<url><loc>https://trabajito.com.bo/trabajo/santa-cruz/reponedor-mercados-grupo-lucky-KBN9</loc><lastmod>2026-09-15</lastmod></url>'
+               '<url><loc>https://www.trabajito.com.bo/empleos/la-paz</loc></url>'
+               '<url><loc>https://trabajito.com.bo/trabajo/la-paz/ejecutivo-de-ventas-laboratorios-terbol-CV7G</loc><lastmod>2026-09-10</lastmod></url>'
+               '<url><loc>https://trabajito.com.bo/trabajo/la-paz/ejecutivo-de-ventas-laboratorios-terbol-CV7G</loc><lastmod>2026-09-10</lastmod></url></urlset>')
+
+    @staticmethod
+    def _ad(desc="Reponedor con experiencia. Enviar CV a rrhh@example.bo o al 77530889 / +591 2 2345678."):
+        jp = {"@context": "https://schema.org/", "@type": "JobPosting", "title": "Reponedor Mercados C/Experiencia-Santa Cruz", "description": desc,
+              "identifier": {"@type": "PropertyValue", "name": "GRUPO LUCKY", "value": "KBN9"}, "employmentType": "FULL_TIME",
+              "hiringOrganization": {"@type": "Organization", "name": "GRUPO LUCKY", "sameAs": "https://www.grupolucky.com/", "logo": "https://api.trabajito.com.bo/uploads/x.jpg"},
+              "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressLocality": "Santa Cruz", "addressRegion": "Santa Cruz", "addressCountry": "BO"}},
+              "datePosted": "2026-03-09T17:31:38-04:00", "validThrough": "2026-11-30T00:00:00-04:00"}
+        faq = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": []}
+        return ('<html><head><script type="application/ld+json">' + json.dumps(faq) + '</script><script type="application/ld+json">' + json.dumps(jp, ensure_ascii=False) + '</script></head><body><h1>x</h1></body></html>')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(limit=None, dept=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "sitemap": mod.cmd_sitemap, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_stated_count_the_sitemaps_ads_and_the_department_filter(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.DEPT), (200, self.SITEMAP), (200, self._ad()), (200, self._ad())])
+        self.assertEqual(asked, ["https://www.trabajito.com.bo/empleos/bolivia", "https://www.trabajito.com.bo/sitemap.xml", "https://trabajito.com.bo/trabajo/santa-cruz/reponedor-mercados-grupo-lucky-KBN9", "https://trabajito.com.bo/trabajo/la-paz/ejecutivo-de-ventas-laboratorios-terbol-CV7G"])
+        self.assertEqual([r["id"] for r in rows], ["KBN9", "CV7G"])   # the duplicate CV7G row read once
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["code"], a["title"], a["company"], a["company_site"], a["employment_type"], a["department"], a["place"], a["region"], a["address_country"], a["posted"], a["valid_through"], a["lastmod"], a["contacts_withheld"], a["language"]),
+                         ("trabajito", "BO", "trabajito:KBN9", "KBN9", "Reponedor Mercados C/Experiencia-Santa Cruz", "GRUPO LUCKY", "https://www.grupolucky.com/", "FULL_TIME", "santa-cruz", "Santa Cruz", "Santa Cruz", "BO", "2026-03-09", "2026-11-30", "2026-09-15", True, "es"))
+        self.assertEqual(a["description"], "Reponedor con experiencia. Enviar CV a [e-mail withheld] o al [telephone withheld] / [telephone withheld].")
+        self.assertEqual(rows[1]["department"], "la-paz")
+        for secret in ("rrhh@", "77530889", "2345678"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("2 emitted (2 in the sitemap, 0 gone), the site states 736 — 734 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.DEPT_LP), (200, self.SITEMAP), (200, self._ad())], dept="la-paz")
+        self.assertEqual(asked[0], "https://www.trabajito.com.bo/empleos/la-paz")
+        self.assertEqual(([r["id"] for r in rows], len(asked)), (["CV7G"], 3))
+        self.assertIn("1 emitted (1 in the sitemap, 0 gone), the site states 99 — 98 short.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.DEPT), (200, self.SITEMAP), (200, self._ad())], limit=1)
+        self.assertEqual((len(asked), len(rows)), (3, 1))
+        self.assertIn("1 emitted of the 736 the site states", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><head><meta name=\"description\" content=\"Empleos en Bolivia\"/></head></html>")])
+        self.assertEqual(cm.exception.code, 6)   # no stated count: a changed template, never an empty market
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.DEPT), (200, self.SITEMAP), (200, "<html><body>no JobPosting</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], cmd="sitemap")
+        self.assertEqual(([r["id"] for r in rows], [r["department"] for r in rows], rows[0]["lastmod"], rows[1]["slug"]), (["KBN9", "CV7G"], ["santa-cruz", "la-paz"], "2026-09-15", "ejecutivo-de-ventas-laboratorios-terbol"))
+        self.assertIn("2 ad row(s) in the sitemap (2 other rows set aside", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], cmd="sitemap", dept="santa-cruz")
+        self.assertEqual([r["id"] for r in rows], ["KBN9"])
+        self.assertIn("1 ad row(s) in the sitemap for santa-cruz (2 in other departments)", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://www.trabajito.com.bo/api/jobs", "https://www.trabajito.com.bo/candidato/cv", "https://www.trabajito.com.bo/manage-jobs", "https://www.trabajito.com.bo/employer-login"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_its_jobposting_scrubbed_on_either_host(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._ad())], cmd="ad", url="https://www.trabajito.com.bo/trabajo/santa-cruz/reponedor-mercados-grupo-lucky-KBN9/")
+        self.assertEqual(asked, ["https://trabajito.com.bo/trabajo/santa-cruz/reponedor-mercados-grupo-lucky-KBN9"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["department"], a["place"], a["company"], a["posted"]), ("KBN9", "santa-cruz", "Santa Cruz", "GRUPO LUCKY", "2026-03-09"))
+        self.assertNotIn("77530889", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://trabajito.com.bo/trabajo/santa-cruz/reponedor-mercados-grupo-lucky-KBN9")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.trabajito.com.bo/empleos/la-paz")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
