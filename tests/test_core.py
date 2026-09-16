@@ -26328,5 +26328,110 @@ class AHonduranDrupalBoardWhoseSearchPagesToItsLastPageWithoutATotalAndWhoseAdCa
             self._run(mod, [], cmd="ad", url="https://empleos.hn/busqueda-avanzada")
         self.assertEqual(cm.exception.code, 2)
 
+
+class AUruguayanBloggerBlogWhoseFeedStatesItsTotalAndPagesByStartIndexAndWhosePostsSometimesEmbedAJobPosting(unittest.TestCase):
+    """**`empleosenuruguay.py`, 2026-09-16 (#437).** EmpleosEnUruguay is a
+    Blogger blog: its JSON feed on the blog's own host states
+    `openSearch$totalResults`, pages by `start-index` fifty at a time, and
+    each entry carries the post's title, dates, labels and HTML body — an
+    AdSense stub in the prose, and on some posts a JobPosting JSON-LD
+    embedded in the body (read apart: validThrough, employmentType,
+    locality, region, industry; never kept as prose). «N Vacantes» and
+    «$60.610» come from the title or a label. The walk is bounded (an
+    archive back to 2023), prints the stated total beside the emitted;
+    `ad --url` asks the feed by `path=`. `/search` is refused in writing
+    and never sent. Mutated (`-B`, detached copy): the total not read →
+    the walk reddens (exit 6); the labels not searched for «N Vacantes» →
+    openings None (reddens); the embedded JSON-LD kept in the prose → the
+    text assertion reddens; the body not scrubbed → reddens; the `path=`
+    lookup replaced by the plain feed → the ad's asked URL reddens; the
+    dedup dropped → 3 rows for 2 posts."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_empleosenuruguay", os.path.join(SCRIPTS, "empleosenuruguay.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _entry(pid, slug, title, labels, content, published="2026-09-15T15:52:38.068-07:00"):
+        return {"id": {"$t": f"tag:blogger.com,1999:blog-7676846537149153186.post-{pid}"}, "published": {"$t": published}, "updated": {"$t": published},
+                "category": [{"scheme": "http://www.blogger.com/atom/ns#", "term": t} for t in labels], "title": {"type": "text", "$t": title},
+                "content": {"type": "html", "$t": content}, "link": [{"rel": "self", "href": "x"}, {"rel": "alternate", "type": "text/html", "href": f"https://www.empleosenuruguay.com/2026/09/{slug}.html", "title": title}],
+                "author": [{"name": {"$t": "empleos en uruguay"}}]}
+
+    JP = '<script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Operario/a de Embalaje","datePosted":"2026-09-15","validThrough":"2026-09-25T23:59:59-03:00","employmentType":"FULL_TIME","hiringOrganization":{"@type":"Organization","name":"Empresa empleadora"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"Manga","addressRegion":"Montevideo","addressCountry":"UY"}},"industry":"Industria / Producción / Embalaje"}</script>'
+
+    def _feed(self, entries, total=3777, start=1):
+        return json.dumps({"feed": {"openSearch$totalResults": {"$t": str(total)}, "openSearch$startIndex": {"$t": str(start)}, "openSearch$itemsPerPage": {"$t": "50"}, "entry": entries, "link": []}})
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_feed_walk_its_fields_and_the_embedded_jobposting(self):
+        import contextlib
+        mod = self._mod()
+        e1 = self._entry("962509", "operario-limpieza", "Operario de Limpieza en Montevideo – Buscan Personal", ["Limpieza", "Montevideo", "Jornada completa"],
+                         '<p>&nbsp;Buscan Operario de Limpieza.</p><script>(adsbygoogle = window.adsbygoogle || []).push({});</script><p>Enviar CV a rrhh@example.uy o llamar al 099 123 456 / +598 2915 1234.</p><p>Postularse</p>')
+        e2 = self._entry("843134", "operario-embalaje", "Aduanas Abre Llamado para 7 Administrativos – Bachillerato | $60.610", ["$60.610", "7 Vacantes", "Aduanas", "Montevideo"], self.JP + "<p>Operario/a de Embalaje para Trabajar en Zona Manga.</p>")
+        e3 = self._entry("111111", "cajeros", "Cajeros/as para Aventura Shopping – 15 Vacantes", ["Cajero/a"], "<p>Se buscan cajeros.</p>")
+        mod.PER_PAGE = 2
+        rows, err, asked, raw = self._run(mod, [(200, self._feed([e1, e2])), (200, self._feed([e2, e3], start=3))], pages=2)
+        self.assertEqual(asked, ["https://www.empleosenuruguay.com/feeds/posts/default?alt=json&start-index=1&max-results=2", "https://www.empleosenuruguay.com/feeds/posts/default?alt=json&start-index=3&max-results=2"])
+        self.assertEqual([r["id"] for r in rows], ["962509", "843134", "111111"])   # the repeated post read once
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["labels"], a["openings"], a["salary_uyu"], a["published"], a["jobposting"], a["valid_through"], a["contacts_withheld"], a["language"]),
+                         ("empleosenuruguay", "UY", "empleosenuruguay:962509", "https://www.empleosenuruguay.com/2026/09/operario-limpieza.html", "Operario de Limpieza en Montevideo – Buscan Personal", ["Limpieza", "Montevideo", "Jornada completa"], None, None, "2026-09-15", False, None, True, "es"))
+        self.assertEqual(a["text"], "Buscan Operario de Limpieza.\nEnviar CV a [e-mail withheld] o llamar al [telephone withheld] / [telephone withheld].\nPostularse")
+        b = rows[1]
+        self.assertEqual((b["openings"], b["salary_uyu"], b["jobposting"], b["valid_through"], b["employment_type"], b["place"], b["region"], b["industry"]), (7, 60610, True, "2026-09-25", "FULL_TIME", "Manga", "Montevideo", "Industria / Producción / Embalaje"))
+        self.assertEqual(b["text"], "Operario/a de Embalaje para Trabajar en Zona Manga.")
+        self.assertEqual(rows[2]["openings"], 15)
+        for secret in ("rrhh@", "099 123 456", "2915 1234", "adsbygoogle", "@context", "Empresa empleadora"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("3 emitted from 2 page(s) of 2, the feed states 3 777 — walked by request (2 page(s); the feed is an archive back to 2023), not a shortfall.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._feed([e1, e2], total=2))], pages=1)
+        self.assertIn("2 emitted from 1 page(s), the feed states 2 — equal.", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, json.dumps({"feed": {"entry": [e1]}}))])
+        self.assertEqual(cm.exception.code, 6)   # no stated total: a changed shape, never an empty blog
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html>not a feed</html>")])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for bad in ("https://www.empleosenuruguay.com/search?q=cajero", "https://www.empleosenuruguay.com/search/label/Montevideo"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+
+    def test_the_post_is_asked_from_the_feed_by_its_path(self):
+        import contextlib
+        mod = self._mod()
+        e = self._entry("962509", "operario-limpieza", "Operario de Limpieza – 3 Vacantes", ["Limpieza"], "<p>Texto.</p>")
+        rows, err, asked, raw = self._run(mod, [(200, self._feed([e]))], cmd="ad", url="https://www.empleosenuruguay.com/2026/09/operario-limpieza.html")
+        self.assertEqual(asked, ["https://www.empleosenuruguay.com/feeds/posts/default?alt=json&path=/2026/09/operario-limpieza.html"])
+        self.assertEqual((rows[0]["id"], rows[0]["openings"], rows[0]["text"]), ("962509", 3, "Texto."))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, json.dumps({"feed": {"entry": []}}))], cmd="ad", url="https://www.empleosenuruguay.com/2026/09/gone.html")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.empleosenuruguay.com/search/label/Montevideo")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
