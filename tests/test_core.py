@@ -26658,5 +26658,111 @@ class ASmallSurinameseBoardWhoseTwoListsAreServedWholeWithoutACountAndWhoseAdIsA
             self._run(mod, [], cmd="ad", url="https://surinamevacatures.com/bedrijven/zus-zo/")
         self.assertEqual(cm.exception.code, 2)
 
+
+class AnATSWhoseTenantPageCarriesItsOwnCareersTokenAndWhoseAPIListsThePositionsWithTheirApplicationAddress(unittest.TestCase):
+    """**`sparkhire.py`, 2026-09-16 (#452).** SparkHire Recruit (ex-Comeet):
+    the tenant's page on `www.comeet.com/jobs/<slug>/<uid>` holds
+    `COMPANY_DATA` (`company_uid`, the public careers `token`), and the
+    page fills its list by `www.comeet.co/careers-api/2.0/company/<uid>/
+    positions?token=…` — replayed with the page's own parameters. Each
+    position carries `email` / `email_alias` (the application address on
+    applynow.io), a referral reward and a LinkedIn id — never emitted; the
+    details are scrubbed. A tenant with no position answers `[]` — printed
+    as «0 positions», not an error; `--country-code` filters on
+    `location.country`; a page whose uid is not the address's dies (6);
+    any other host is refused (7). Mutated (`-B`, detached copy): the
+    token not read (the regex broken) → the walk reddens (exit 6); the
+    application address emitted → reddens; the details not scrubbed →
+    reddens; the country filter dropped → reddens; the uid check dropped →
+    the mismatched fixture passes (reddens); the empty-list branch turned
+    into a die → the empty case reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_sparkhire", os.path.join(SCRIPTS, "sparkhire.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    PAGE = '<html><head><script>var COMPANY_DATA = {"sort_positions_by": 2, "company_uid": "D6.000", "token": "6D028E0DA022106D", "slug": "quantummachines", "is_customs_terms": false};</script></head><body ng-app="careers"><div class="positionsList"></div></body></html>'
+
+    @staticmethod
+    def _pos(uid, name, country="IL", city="Tel Aviv-Yafo", details=True):
+        return {"uid": uid, "name": name, "department": "R&D", "email": f"quantummachines.{uid}@applynow.io", "email_alias": None, "company_name": "Quantum Machines",
+                "url_comeet_hosted_page": f"https://www.comeet.com/jobs/quantummachines/D6.000/x/{uid}", "url_active_page": f"https://www.quantum-machines.co/careers/{uid.lower()}/",
+                "employment_type": "Full-time", "experience_level": "Senior", "workplace_type": "Hybrid", "time_updated": "2026-09-09T05:59:29Z",
+                "location": {"name": f"{country}, {city} Office", "country": country, "city": city, "state": "Tel Aviv District"},
+                "referrals_reward": "4,000$", "is_company_reward": True, "linkedin_job_posting_id": "MTVfMTc0",
+                "details": [{"name": "Description", "value": "<p>Quantum Machines builds <b>control systems</b>.</p><p>Write to jobs@example.com or call +972 3 123 4567.</p>"}, {"name": "Requirements", "value": "<ul><li>8+ years</li></ul>"}, {"name": "Preferred Skills", "value": None}] if details else []}
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_page_gives_the_token_the_api_gives_the_board_and_the_address_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        api = json.dumps([self._pos("13.05B", "Backend Tech Lead"), self._pos("7B.F6D", "Product Manager", country="DK", city="Ballerup", details=False)])
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, api)], tenant="quantummachines/D6.000")
+        self.assertEqual(asked, ["https://www.comeet.com/jobs/quantummachines/D6.000", "https://www.comeet.co/careers-api/2.0/company/D6.000/positions?token=6D028E0DA022106D&details=true"])
+        self.assertEqual([r["id"] for r in rows], ["13.05B", "7B.F6D"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["hosted_url"], a["title"], a["company"], a["department"], a["place"], a["region"], a["location"], a["employment_type"], a["experience_level"], a["workplace_type"], a["updated"], a["contacts_withheld"]),
+                         ("sparkhire", "quantummachines/D6.000", "IL", "sparkhire:D6.000:13.05B", "https://www.quantum-machines.co/careers/13.05b/", "https://www.comeet.com/jobs/quantummachines/D6.000/x/13.05B", "Backend Tech Lead", "Quantum Machines", "R&D", "Tel Aviv-Yafo", "Tel Aviv District", "IL, Tel Aviv-Yafo Office", "Full-time", "Senior", "Hybrid", "2026-09-09", True))
+        self.assertEqual(a["details"], {"Description": "Quantum Machines builds control systems.\nWrite to [e-mail withheld] or call [telephone withheld].", "Requirements": "8+ years"})
+        self.assertIsNone(rows[1]["details"])
+        for secret in ("applynow", "jobs@example", "123 4567", "4,000$", "MTVfMTc0", '"email"', "email_alias"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("2 emitted, the 2 positions the API lists for quantummachines/D6.000 — no count is stated anywhere, the list is the board.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, api)], tenant="https://www.comeet.com/jobs/quantummachines/D6.000", country_code="dk")
+        self.assertEqual(([r["id"] for r in rows], asked[0]), (["7B.F6D"], "https://www.comeet.com/jobs/quantummachines/D6.000"))
+        self.assertIn("1 emitted for DK of the 2 positions", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, "[]")], tenant="quantummachines/D6.000")
+        self.assertEqual(rows, [])
+        self.assertIn("0 positions — the tenant publishes none today", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html>no company data</html>")], tenant="quantummachines/D6.000")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE)], tenant="otherco/AA.111")
+        self.assertEqual(cm.exception.code, 6)   # the page's uid is not the address's
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="nosuch/AA.111")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="quantummachines")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://app.comeet.co/anything")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_one_position_from_the_api(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, json.dumps(self._pos("13.05B", "Backend Tech Lead")))], cmd="ad", url="https://www.comeet.com/jobs/quantummachines/D6.000/backend-tech-lead/13.05B")
+        self.assertEqual(asked, ["https://www.comeet.com/jobs/quantummachines/D6.000", "https://www.comeet.co/careers-api/2.0/company/D6.000/positions/13.05B?token=6D028E0DA022106D"])
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["place"]), ("13.05B", "Backend Tech Lead", "Tel Aviv-Yafo"))
+        self.assertNotIn("applynow", raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.PAGE), (404, "")], cmd="ad", url="https://www.comeet.com/jobs/quantummachines/D6.000/x/AA.111")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.comeet.com/jobs/quantummachines/D6.000")
+        self.assertEqual(cm.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
