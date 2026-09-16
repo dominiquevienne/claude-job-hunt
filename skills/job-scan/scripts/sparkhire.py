@@ -175,7 +175,7 @@ def record(p, slug, uid):
     return {
         "source": "sparkhire", "tenant": f"{slug}/{uid}", "country": loc.get("country") or None,
         "ledger_id": f"sparkhire:{uid}:{p.get('uid')}", "id": p.get("uid"),
-        "url": p.get("url_active_page") or p.get("url_comeet_hosted_page") or None, "hosted_url": p.get("url_comeet_hosted_page") or None,
+        "url": p.get("url_comeet_hosted_page") or p.get("url_active_page") or None, "employer_url": p.get("url_active_page") or None,   # the hosted page is per position; the employer's page may be one careers URL for all (CommIT)
         "title": (p.get("name") or "").strip() or None, "company": p.get("company_name") or None, "department": p.get("department") or None,
         "place": loc.get("city") or None, "region": loc.get("state") or None, "location": loc.get("name") or None,
         "employment_type": p.get("employment_type") or None, "experience_level": p.get("experience_level") or None, "workplace_type": p.get("workplace_type") or None,

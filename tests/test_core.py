@@ -26719,8 +26719,8 @@ class AnATSWhoseTenantPageCarriesItsOwnCareersTokenAndWhoseAPIListsThePositionsW
         self.assertEqual(asked, ["https://www.comeet.com/jobs/quantummachines/D6.000", "https://www.comeet.co/careers-api/2.0/company/D6.000/positions?token=6D028E0DA022106D&details=true"])
         self.assertEqual([r["id"] for r in rows], ["13.05B", "7B.F6D"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["hosted_url"], a["title"], a["company"], a["department"], a["place"], a["region"], a["location"], a["employment_type"], a["experience_level"], a["workplace_type"], a["updated"], a["contacts_withheld"]),
-                         ("sparkhire", "quantummachines/D6.000", "IL", "sparkhire:D6.000:13.05B", "https://www.quantum-machines.co/careers/13.05b/", "https://www.comeet.com/jobs/quantummachines/D6.000/x/13.05B", "Backend Tech Lead", "Quantum Machines", "R&D", "Tel Aviv-Yafo", "Tel Aviv District", "IL, Tel Aviv-Yafo Office", "Full-time", "Senior", "Hybrid", "2026-09-09", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["employer_url"], a["title"], a["company"], a["department"], a["place"], a["region"], a["location"], a["employment_type"], a["experience_level"], a["workplace_type"], a["updated"], a["contacts_withheld"]),
+                         ("sparkhire", "quantummachines/D6.000", "IL", "sparkhire:D6.000:13.05B", "https://www.comeet.com/jobs/quantummachines/D6.000/x/13.05B", "https://www.quantum-machines.co/careers/13.05b/", "Backend Tech Lead", "Quantum Machines", "R&D", "Tel Aviv-Yafo", "Tel Aviv District", "IL, Tel Aviv-Yafo Office", "Full-time", "Senior", "Hybrid", "2026-09-09", True))
         self.assertEqual(a["details"], {"Description": "Quantum Machines builds control systems.\nWrite to [e-mail withheld] or call [telephone withheld].", "Requirements": "8+ years"})
         self.assertIsNone(rows[1]["details"])
         for secret in ("applynow", "jobs@example", "123 4567", "4,000$", "MTVfMTc0", '"email"', "email_alias"):
