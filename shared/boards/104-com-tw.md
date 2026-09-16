@@ -1,11 +1,13 @@
-# Board measurement — 104.com.tw (Taiwan): a challenge page to our client, and a challenge is not crossed
+# Board measurement — 104.com.tw (Taiwan): a challenge page to our client, and a connected tab served the search without a click — «共 1000+ 筆», 150 pages of 20; `route: browser`, no script
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-16 -->
 
 <!-- hosts: 104.com.tw, www.104.com.tw -->
 <!-- script: none -->
 <!-- countries: TW -->
-<!-- witness: none — nothing was read past the refusal; the only figure this card holds is the refusal's own size, 5 648 bytes, and its fingerprint moves on every request · 2026-09-11 -->
+<!-- witness: none — the search's own «共 1000+ 筆» is a floor, its pager «第 1 / 150 頁» the reachable bound; nothing past the challenge was read by a client · 2026-09-16 -->
+<!-- content: measured · **the declared client gets a moving-md5 challenge on `/robots.txt`, `/` and `/jobs/search/` (2026-09-11, 2026-09-13); a connected tab on 2026-09-16 05:3x UTC was served, without any click, the unfiltered search `/jobs/search/?keyword=` — «共 1000+ 筆», a page selector «第 1 / 150 頁», `&page=150` served with 17+ titles, so 150 × 20 ≈ 3 000 ads reachable through the pager and the site's display capped at «1000+» (the Taipei filter `area=6001001000` alone shows «1000+» too); `/jobs/main/` states «96,000+ foreigner-friendly job openings»; the ad `/job/<code>` prints the title, the employer (a link), «2026/09/10更新», «上班地點» with a street address, «月薪45,500~62,500元», and a contact person (a name) — never emitted** · 2026-09-16 -->
+<!-- route: browser · 3000 · 2026-09-16 -->
 
 **This card is a measurement and not an adapter.** *No card declared `TW`
 before it; the host was known to the repository as a line in
@@ -86,3 +88,32 @@ GET https://www.104.com.tw/jobs/search/                  403, 5 654 B, md5 921f8
 **The transport answers a **challenge** — «Attention Required!» / «Just a moment...», the md5 moving at constant size: borne 2 of the 2026-09-07 decision, the plugin neither defeats it nor asks anyone to; a real browser is not measured here.** *A verdict of closure was never
 this card's to give (§2 sexies); what it gives now is a dated transport
 reading, and the class it falls in.*
+
+## 2026-09-16 — the observation this card asked for: the search loads, no click
+
+**The card wrote on 2026-09-11: «If a session with the extension connected
+loads a search page here without any click, that observation reopens this
+card as a browser candidate».** Measured 2026-09-16 05:3x UTC, two readings
+from a connected tab, no click, no interstitial shown:
+
+```
+tab, /jobs/search/?keyword=&area=6001001000     served — Taipei: «共 1000+ 筆», titles
+tab, /jobs/search/?keyword=                      served — all Taiwan: «共 1000+ 筆», page selector «第 1 / 150 頁»
+tab, /jobs/search/?keyword=&page=150             served — «第 150 / 150 頁», 17+ titles on the page
+tab, /jobs/main/                                 served — «96,000+ foreigner-friendly job openings»
+tab, /job/95gel                                  served — title, employer link, «2026/09/10更新», address, «月薪45,500~62,500元», a contact person's name
+```
+
+**`route: browser · 3000 · 2026-09-16`** — the count is the pager's reach
+on the unfiltered search (150 pages of 20), not the board's size: the site
+caps its display at «1000+» and states «96,000+» for the foreigner-friendly
+subset alone. **What a session does from a tab:** `/jobs/search/?keyword=&page=N`
+to 150, the id from `/job/<code>`, and a filter (area, category) to unfold
+what the cap hides; the ad's contact person is a name and is never emitted.
+No script: the declared client is still answered by the challenge (#404).
+
+**The 2026-09-14 refusal named «domain permission» was the tool, not the
+site**: «Navigation to this domain is not allowed» is what `navigate` prints
+as a non-first item of a `browser_batch` toward a domain not yet visited in
+the session — measured 4/4 on `tecoloco.md` today; this host was served at
+the first try.
