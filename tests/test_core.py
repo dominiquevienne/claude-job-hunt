@@ -4116,7 +4116,16 @@ class EveryCardDeclaresItsCountries(unittest.TestCase):
     # **This set does not soften the guard.** `ZZ`, `XX` and a typo like `XZ`
     # are still refused; the exception is one code, written down, with the
     # body that assigns it named.
-    NON_ISO = frozenset({"XK"})
+    #
+    # `CYN` — Northern Cyprus, added 2026-09-18 (#606) with its first nine
+    # cards. ISO folds the north into `CY`; the Atlas carries it as its own
+    # recruitment jurisdiction under `CYN` (the alpha-3 it uses on the map),
+    # and `bin/country-boards.py` maps `CYN` to itself for exactly this —
+    # «a card that one day declares `CYN` or `SOL` is found». So the card's
+    # code is the Atlas's, three letters, not a two-letter convention nobody
+    # assigns. `SOL` (Somaliland) is the same shape and is declared with it,
+    # for the day a card carries it; today Shaqo declares `SO`.
+    NON_ISO = frozenset({"XK", "CYN", "SOL"})
 
     def _cards(self):
         import glob
