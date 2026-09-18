@@ -26773,5 +26773,48 @@ class AnATSWhoseTenantPageCarriesItsOwnCareersTokenAndWhoseAPIListsThePositionsW
             self._run(mod, [], cmd="ad", url="https://www.comeet.com/jobs/quantummachines/D6.000")
         self.assertEqual(cm.exception.code, 2)
 
+
+
+class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
+    """2026-09-18 — `bin/country-boards.py` read «56 429 B» on a served page
+    (`gov-vc`, HTTP 200 ×2) as an HTTP 429 and made the card an indeterminate,
+    then «not NXDOMAIN» as a missing delegation the same morning. The reader's
+    REFUSAL must not fire on the thousands group of a number nor on a number
+    followed by a byte unit, and must still fire on «HTTP 429» and on a bare
+    dated «429». Both ways on the regex, then the whole `refusal_of` on a card."""
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_a_size_is_not_a_status_and_a_status_is_still_one(self):
+        mod = self._tool()
+        for quiet in ("(200, 56 429 B, md5 0203503ef43f identical on two reads)",
+                      "(200, 56\u202f429 B)", "(200, 56\u00a0429 B)", "(200, 56429 B)",
+                      "429 bytes on the root", "1 403 octets", "451 o",
+                      "| 200 ×2 | 56 429 | 0203503ef43f ×2 |", "(200, 12 451, md5 …)",
+                      "(200, 56\u202f429, md5 …)", "| 200 | 1\u00a0403 | md5 |"):
+            self.assertIsNone(mod.REFUSAL.search(quiet), quiet)
+        for loud in ("HTTP 429 on the root, 2026-09-18", "answers 403 on two reads",
+                     "429, 2026-09-18, by fetch-body.py", "a 451 to the client"):
+            self.assertIsNotNone(mod.REFUSAL.search(loud), loud)
+
+    def test_the_whole_reader_leaves_a_served_page_with_such_a_size_alone(self):
+        import tempfile
+        mod = self._tool()
+        d = tempfile.mkdtemp()
+        head = "<!-- verified: 2026-09-18 -->\n<!-- script: none -->\n<!-- countries: XX -->\n<!-- witness: none · 2026-09-18 -->\n"
+        with open(os.path.join(d, "served.md"), "w", encoding="utf-8") as fh:
+            fh.write("# S\n\n" + head + "<!-- content: measured · **`/x` (200, 56 429 B, md5 0203503ef43f identical on two reads) is a page · 2026-09-18 -->\n")
+        with open(os.path.join(d, "refused.md"), "w", encoding="utf-8") as fh:
+            fh.write("# R\n\n" + head + "<!-- content: measured · **`/x` answers HTTP 429 to the client, 2026-09-18, by fetch-body.py · 2026-09-18 -->\n")
+        by = {c["name"]: c for c in mod.read_cards(d)}
+        self.assertIsNone(mod.refusal_of(by["served"]))
+        r = mod.refusal_of(by["refused"])
+        self.assertEqual((r["status"], r["date"]), ("429", "2026-09-18"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
