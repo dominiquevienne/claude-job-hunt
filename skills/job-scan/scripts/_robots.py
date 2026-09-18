@@ -532,7 +532,12 @@ def _read_once(url, host, timeout, seen):
             seen["vendor"] = vendor_headers(r.headers)
             raw = r.read()
             nbytes = len(raw)
-            body = raw.decode("utf-8", "replace")
+            # **`utf-8-sig`, not `utf-8` (#738, 2026-09-18).** `henkel.csod.com`
+            # opens its file with a byte-order mark; decoded as plain UTF-8 the
+            # first line's key is `\ufeffuser-agent`, no group opens, and every
+            # directive under it — a `Disallow: /` included — is an orphan the
+            # guard ignores while answering `certain: True`.
+            body = raw.decode("utf-8-sig", "replace")
             status = r.getcode()
             # **A 2xx that is not 200 is not the document.** `202 Accepted`
             # means the request was taken and processing is not finished — it
@@ -1271,7 +1276,8 @@ def _groups(body):
     `User-agent` that follows a directive.
     """
     out, agents, rules = [], set(), []
-    for line in (body or "").splitlines():
+    # a body handed in already decoded may still carry the mark (#738)
+    for line in (body or "").lstrip("\ufeff").splitlines():
         line = line.split("#", 1)[0].strip()
         if not line:
             continue

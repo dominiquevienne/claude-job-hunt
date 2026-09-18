@@ -26816,5 +26816,101 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
         r = mod.refusal_of(by["refused"])
         self.assertEqual((r["status"], r["date"]), ("429", "2026-09-18"))
 
+
+
+class AByteOrderMarkBeforeTheFirstUserAgentDoesNotOrphanItsRules(unittest.TestCase):
+    """#738, 2026-09-18 — `henkel.csod.com/robots.txt` opens with a UTF-8
+    byte-order mark. Decoded as plain UTF-8, the first line's key was
+    `\ufeffuser-agent`: no group opened, every directive under it became an
+    orphan, and the guard answered `allowed=True, certain=True` — a written
+    `Disallow: /` at `*` ignored in silence, the `Crawl-delay: 10` unread.
+    Both ways, at the parser and through the transport: with the mark the
+    refusal refuses and the delay reads; without it nothing changes."""
+
+    class _Resp:
+        def __init__(self, raw):
+            self._raw = raw
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def getcode(self):
+            return 200
+
+        def geturl(self):
+            return "https://bom.example/robots.txt"
+
+        def read(self):
+            return self._raw
+
+        @property
+        def headers(self):
+            return {"Content-Type": "text/plain"}
+
+    def _allowed(self, raw, path):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (lambda r, timeout=None, **k: self._Resp(raw))
+        try:
+            return _robots.allowed("bom.example", path)
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
+    def test_the_parser_reads_the_marked_file_like_the_bare_one(self):
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        bare = "User-agent: *\nCrawl-delay: 10\nDisallow: /private\n"
+        marked = "\ufeff" + bare
+        self.assertEqual(_robots.delay_for(marked), 10.0)
+        self.assertEqual(_robots.group_for(marked), _robots.group_for(bare))
+        self.assertEqual(_robots.orphan_rules(marked), [])
+        self.assertEqual(_robots._groups(marked), _robots._groups(bare))
+
+    def test_a_written_refusal_under_the_mark_refuses_through_the_transport(self):
+        raw = "\ufeffUser-agent: *\nDisallow: /\n".encode("utf-8")
+        a = self._allowed(raw, "/jobs")
+        self.assertIs(a["allowed"], False, a)
+        self.assertIs(a["certain"], True, a)
+        # and the bare file is the control: the same verdict, so the mark
+        # changed nothing once stripped
+        b = self._allowed("User-agent: *\nDisallow: /\n".encode("utf-8"), "/jobs")
+        self.assertEqual((a["allowed"], a["certain"]), (b["allowed"], b["certain"]))
+        # the delay, the other thing the mark hid
+        c = self._allowed("\ufeffUser-agent: *\nCrawl-delay: 10\n".encode("utf-8"), "/jobs")
+        self.assertIs(c["allowed"], True, c)
+        self.assertEqual(c.get("crawl_delay"), 10.0, c)
+
+    def test_the_read_body_is_stored_without_the_mark(self):
+        """The parser strips the mark as a belt; the transport decodes with
+        `utf-8-sig` as the braces — the fetched body is what every other
+        reader (sitemaps, the fingerprint, a card's quote) gets, so it must
+        not carry the mark either. Asserted on the fetch memo `verdict()`
+        stores."""
+        sys.path.insert(0, SCRIPTS)
+        import _robots
+        self._allowed("\ufeffUser-agent: *\nDisallow: /\n".encode("utf-8"), "/jobs")
+        # `_allowed` clears the memo on the way out, so read it in the call
+        real = _robots.urllib.request.urlopen
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        _robots.urllib.request.urlopen = (lambda r, timeout=None, **k: self._Resp(
+            "\ufeffUser-agent: *\nDisallow: /\n".encode("utf-8")))
+        try:
+            _robots.verdict("bom.example")
+            memo = _robots._CACHE[("bom.example", _robots._FETCH)]
+            self.assertEqual(memo["body"][:1], "U", repr(memo["body"][:12]))
+        finally:
+            _robots.urllib.request.urlopen = real
+            _robots._CACHE.clear()
+            _robots._ALIAS.clear()
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
