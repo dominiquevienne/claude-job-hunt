@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: measured · **the root (200, 350 027 B, md5 2508bfc96069 identical on two reads) is WordPress 7.1.1: the front is a feed of vacancy flyers (one `<article>` block on the front, `/page/N/` up to 8), a job-listing plugin's pages `/job-listing/`, `/employer-submit-job/`, `/employer-job-dashboard/`; the JobPosting on the root carries the site's own title («Find your Next Job in Guyana - guyanajobs.net»), not an ad; no count stated; `_robots.allowed('guyanajobs.net','/')` → open, certain** · 2026-09-18 -->
 <!-- witness: none — the root states no count · 2026-09-18 -->
-<!-- route: none · no route measured — the list and the ad are the adapter's first line · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:

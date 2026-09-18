@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: measured · **the root (200, 99 244 B, md5 c62ea5f8784b identical on two reads) is an Angular application shell — `<app-root>`, hashed bundles, `accounts.google.com/gsi/client` — with no job card, no count, no link and no JobPosting in its markup; the list is fetched by the app; `_robots.allowed('careers.gy','/')` → open, `certain: False` (the rules file did not answer as one)** · 2026-09-18 -->
 <!-- witness: none — the shell states nothing · 2026-09-18 -->
-<!-- route: none · no route measured — the list and the ad are the adapter's first line · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:

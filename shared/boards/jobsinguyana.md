@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: indeterminate · **TLS failure on two reads by the declared client at 06:54:32 and 06:54:39 UTC (`URLError: [SSL] unknown error (0xa0003e8)`), the same by curl (`LibreSSL SSL_connect: SSL_ERROR_ZERO_RETURN`, exit 35), `www.` the same, and `http://jobsinguyana.com/` answers 403; no body read, no rules read (`_robots.allowed` → open, `certain: False`); the search engine's snippet (Guyana's number 1 jobs website) is the only text known — reported, not measured** · 2026-09-18 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
-<!-- route: none · nothing was served — a control read is due 2026-09-21 · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:
