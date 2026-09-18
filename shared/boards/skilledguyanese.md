@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: measured · **the root (200, 573 310 B, md5 ff368ec36569 / 11ff8f6cf187 — a rendered element moves) is a Nuxt app rendered on the server: 50 distinct `/job/<opaque id>` links in `job-list__item` cards (titles «Human Development Officer», «Terminal Clerk»; places Berbice, Georgetown), a «Next» control, `?page=2` in the search results' second page; no count stated, no JobPosting; `_robots.allowed('skilledguyanese.com','/')` → open, certain** · 2026-09-18 -->
 <!-- witness: none — the root states no count · 2026-09-18 -->
-<!-- route: none · no route measured — the list and the ad are the adapter's first line · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:

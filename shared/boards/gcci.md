@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: measured · **`/category/career-opportunities/` (200, 233 330 B, md5 40c0eb36a988 / 7df3750b57de — a rendered element moves) is a WordPress 7.1.1 category: 6 distinct `/vacancy-<slug>/` posts on page 1 («Finance Clerk», «Trade and Investment Officer», «Office Assistant», «Electrician — Guyana Electric»), a pager `/category/career-opportunities/page/2/` … `/page/5/`, dates September 14, 2026 then November 21, 2025 — a thin, irregular flow; no count stated, no JobPosting; `_robots.allowed('gcci.gy','/category/career-opportunities/')` → open, certain** · 2026-09-18 -->
 <!-- witness: none — the category states no count · 2026-09-18 -->
-<!-- route: none · no route measured — the list and the ad are the adapter's first line · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:

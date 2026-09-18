@@ -7,8 +7,6 @@
 <!-- countries: GY -->
 <!-- content: measured · **`/category/government-adverts/vacancies/` (200, 311 736 B, md5 b13c4ce89263 / 8a482da3cf7f — a rendered element moves) is a WordPress 7.0.5 category of government vacancy notices: 7 distinct posts on the first page («Guyana Sugar Corporation Inc vacancy N», «Bureau of Statistics vacancy — Human Resources Clerk», «Guyana Defence Force vacancies»), the newest dated September 15, 2026; no pager link on page 1, no count stated, no JobPosting; `_robots.allowed('dpi.gov.gy', '/category/government-adverts/vacancies/')` → open, certain** · 2026-09-18 -->
 <!-- witness: none — the category states no count · 2026-09-18 -->
-<!-- route: none · no route measured — the list and the ad are the adapter's first line · 2026-09-18 -->
-
 **Found by the Guyana search of #621 (a country never searched), measured
 2026-09-18 06:54–06:56 UTC by the declared client, the guard on the exact path
 first, `bin/fetch-body.py`, two reads.** The method is written on #621:
