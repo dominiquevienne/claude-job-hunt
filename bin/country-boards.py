@@ -71,8 +71,15 @@ BOARDS = os.path.join(ROOT, "shared", "boards")
 HEADER = re.compile(r"^<!--\s*([a-z-]+):\s*(.*?)\s*-->\s*$", re.M)
 DATE = re.compile(r"(20\d\d-\d\d-\d\d)")
 # a refusal the card records: an HTTP 403/401/429/451 with its date on the same
-# line or in the same paragraph, and the tool when it is named
-REFUSAL = re.compile(r"(?:HTTP\s*)?\b(403|429|451)\b")
+# line or in the same paragraph, and the tool when it is named.
+# **A size is not a status** (2026-09-18, `gov-vc`): «56 429 B» read as an HTTP
+# 429 and made a served page an indeterminate. So the three digits must not be
+# the thousands group of a number — no digit-and-space or digit before them —
+# and must not be followed by a byte unit. A card's «HTTP 429» and a bare
+# «429, 2026-09-18» still count. (The negation case — «not NXDOMAIN» read by
+# NO_DELEGATION as a missing delegation, `dominica-gov-dm` the same day — has
+# no mechanical shape; the card is worded without the token instead.)
+REFUSAL = re.compile(r"(?:HTTP\s*)?(?<!\d )(?<!\d\u202f)(?<!\d\u00a0)\b(403|429|451)\b(?!\s?(?:B|o|octets|bytes)\b)")
 TOOL = re.compile(r"(fetch-body\.py|_robots\.allowed|curl|browser|navigateur|a real browser)")
 
 NOTICE = ("Le dénominateur est la liste de boards que ce relevé a établie, à sa "
