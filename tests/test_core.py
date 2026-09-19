@@ -26912,5 +26912,151 @@ class AByteOrderMarkBeforeTheFirstUserAgentDoesNotOrphanItsRules(unittest.TestCa
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
 
+
+
+class AnATSWhoseTenantPageIssuesAnAnonymousTokenAndWhoseSearchAPIPagesTheRequisitionsWithTheirStatedCount(unittest.TestCase):
+    """**`cornerstone.py`, 2026-09-19 (#456).** Cornerstone OnDemand: the
+    tenant's career site `<slug>.csod.com/ux/ats/careersite/<site>/home` is
+    a shell whose `csod.context` carries an anonymous per-visitor token and
+    the search API's host (`endpoints.cloud`); the page fills its list by
+    `POST <cloud>/rec-job-search/external/jobs` (`data.totalCount`,
+    `data.requisitions[]`), paged 25 a page — replayed with the page's own
+    parameters. The requisition's `jobDetails` carries `hiringManagerId`,
+    `owners`, `reviewers` (people's ids) — never emitted; descriptions
+    scrubbed; `--country-code` goes into the request's `countryCodes`; a page
+    whose `corp` is not the address's dies (6); a page that repeats page 1
+    dies (6); an API stating 0 prints «0 requisitions», not an error; any
+    other host is refused (7); the token is never printed."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_cornerstone", os.path.join(SCRIPTS, "cornerstone.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOi0xMDAsImNvcnAiOiJoZW5rZWwifQ.sig"
+
+    def _page(self, corp="henkel", cloud="https://eu-fra.api.csod.com/"):
+        ctx = {"corp": corp, "user": -100, "cultureID": 2, "cultureName": "en-GB", "endpoints": {"cloud": cloud, "api": "/"}, "token": self.TOKEN}
+        return '<html><body><div id="cs-root"></div><script type="text/javascript">if(!csod.context  || !csod.context.token)  csod.context=' + json.dumps(ctx) + ';</script><script>csod.player.initialize(csod.context);</script></body></html>'
+
+    @staticmethod
+    def _req(rid, title, country="PL", city="Warszawa", desc="Contact recruiter@henkel.com or +48 22 123 45 67 for details."):
+        return {"requisitionId": rid, "postingEffectiveDate": "18/09/2026", "postingExpirationDate": "-", "displayJobTitle": title,
+                "locations": [{"city": city, "country": country}], "externalDescription": desc}
+
+    def _run(self, mod, argv, pages, detail=None, page_html=None):
+        """`pages`: list of (totalCount, [requisitions]) answered in order to the search API; records what was sent."""
+        sent = []
+        calls = {"n": 0}
+
+        def request(url, accept="text/html", headers=None, data=None):
+            sent.append((url, headers or {}, data))
+            host = url.split("/")[2]
+            if host.endswith(".api.csod.com"):
+                i = min(calls["n"], len(pages) - 1)
+                calls["n"] += 1
+                total, reqs = pages[i]
+                return 200, json.dumps({"status": "Success", "data": {"totalCount": total, "requisitions": reqs, "filters": []}})
+            if "/services/x/job-requisition/" in url:
+                return 200, json.dumps({"status": 0, "data": detail})
+            return 200, page_html if page_html is not None else self._page()
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_replays_the_pages_call_with_its_token_and_pages_to_the_stated_count(self):
+        mod = self._mod()
+        p1 = [self._req(100 + i, f"Job {i}") for i in range(25)]
+        p2 = [self._req(200 + i, f"Job {25 + i}") for i in range(5)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "henkel/1"], [(30, p1), (30, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 30)
+        self.assertIn("30 emitted — the API states 30: equal", err)
+        api = [s for s in sent if "rec-job-search/external/jobs" in s[0]]
+        self.assertEqual(len(api), 2)
+        self.assertEqual(api[0][1]["Authorization"], "Bearer " + self.TOKEN)
+        body = json.loads(api[0][2])
+        self.assertEqual((body["careerSiteId"], body["pageNumber"], body["pageSize"], body["cultureId"], body["countryCodes"]), (1, 1, 25, 2, []))
+        self.assertEqual(json.loads(api[1][2])["pageNumber"], 2)
+        r = rows[0]
+        self.assertEqual((r["id"], r["country"], r["place"], r["url"]), (100, "PL", "Warszawa", "https://henkel.csod.com/ux/ats/careersite/1/home/requisition/100?c=henkel"))
+        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("recruiter@henkel.com", r["description"])
+        self.assertNotIn("22 123 45 67", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        # the token is used and never printed
+        self.assertNotIn(self.TOKEN, json.dumps(rows) + err)
+
+    def test_the_country_filter_is_the_request_s_and_the_stated_count_is_the_filtered_one(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://henkel.csod.com/ux/ats/careersite/1/home?c=henkel", "--country-code", "pl"], [(12, [self._req(1, "A")] * 1 + [self._req(2, "B")])])
+        self.assertEqual(code, 0, err)
+        body = json.loads([s for s in sent if "external/jobs" in s[0]][0][2])
+        self.assertEqual(body["countryCodes"], ["PL"])
+        self.assertIn("for PL", err)
+        self.assertIn("the API states 12", err)
+
+    def test_an_empty_tenant_a_short_walk_a_repeating_pager_and_a_foreign_page_each_say_what_they_are(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "spark/3"], [(0, [])], page_html=self._page(corp="spark"))
+        self.assertEqual((code, rows), (0, []))
+        self.assertIn("0 requisitions", err)
+        self.assertIn("not an error", err)
+        p1 = [self._req(100 + i, f"J{i}") for i in range(25)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "henkel/1", "--max-pages", "1"], [(1083, p1)])
+        self.assertEqual((code, len(rows)), (0, 25))
+        self.assertIn("of the 1 083 the API states — walked 1 page(s) by request, not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "henkel/1"], [(1083, p1), (1083, p1)])
+        self.assertEqual(code, 6, err)
+        self.assertIn("repeats page 1", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "henkel/1"], [(1, [self._req(1, "A")])], page_html=self._page(corp="laerdal"))
+        self.assertEqual(code, 6, err)
+        self.assertIn("corp", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "henkel/1"], [(1, [])], page_html=self._page(cloud="https://evil.example/"))
+        self.assertEqual(code, 6, err)
+
+    def test_the_ad_reads_job_details_with_the_page_s_token_and_never_emits_a_person_s_id(self):
+        mod = self._mod()
+        detail = {"displayTitle": "Junior Category & Channel Manager (m/f)", "externalDescription": "<h4>About</h4><p>Write to jobs@henkel.com</p>", "ref": "26101681",
+                  "hiringManagerId": "327428", "allowApply": "True", "openDate": "2026-09-18T00:00:00",
+                  "primaryLocation": {"title": "HPL, Warszawa", "city": "Warszawa", "state": None, "country": "PL"},
+                  "additionalLocations": [{"title": "Warsaw", "city": "Warsaw", "state": "MAZOWIECKIE", "country": "PL"}],
+                  "owners": [{"ownerId": 3110228, "isPrimary": True}], "reviewers": [], "positionOUId": "33729",
+                  "companyApplyUrl": "https://henkel.csod.com/ux/ats/careersite/1/home/requisition/88785?c=henkel"}
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://henkel.csod.com/ux/ats/careersite/1/home/requisition/88785?c=henkel"], [], detail=detail)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        self.assertEqual((r["id"], r["ref"], r["title"], r["country"], r["place"], r["posted"], r["apply_open"]), (88785, "26101681", "Junior Category & Channel Manager (m/f)", "PL", "Warszawa", "2026-09-18", True))
+        self.assertIn("[e-mail withheld]", r["description"])
+        dumped = json.dumps(r)
+        for secret in ("327428", "3110228", "hiringManager", "ownerId", "33729", self.TOKEN):
+            self.assertNotIn(secret, dumped, secret)
+        jd = [s for s in sent if "/jobDetails" in s[0]][0]
+        self.assertTrue(jd[0].startswith("https://henkel.csod.com/services/x/job-requisition/v2/requisitions/88785/jobDetails?cultureId=2"))
+        self.assertEqual(jd[1]["Authorization"], "Bearer " + self.TOKEN)
+
+    def test_a_host_that_is_not_cornerstone_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "csod.com.evil.example", "www.cornerstoneondemand.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("henkel", "henkel/x", "https://henkel.csod.com/careers", "https://example.com/ux/ats/careersite/1/home"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("https://laerdal.csod.com/ux/ats/careersite/4/home?c=laerdal"), ("laerdal", "4"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
