@@ -249,6 +249,8 @@ def cmd_jobs(a):
         if a.max_pages and page >= a.max_pages:
             note(f"stopped at page {page} by request")
             break
+        if isinstance(stated, int) and page >= -(-stated // PAGE_SIZE):
+            break   # the stated count's last page — a pager that keeps answering past it is not walked
         page += 1
     for r in rows:
         print(json.dumps(r, ensure_ascii=False))
