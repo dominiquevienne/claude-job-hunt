@@ -4,7 +4,10 @@
 
 <!-- hosts: www.cadremploi.fr -->
 <!-- countries: FR -->
+<!-- route: browser · 25046 · 2026-09-19 -->
 **Re-tested 2026-09-02: the constraint holds.** `cadremploi.fr/robots.txt` still answers **HTTP 403** with 4 574 bytes of `text/html` to a scripted request — the rules file answers 403 to a scripted request — an absence of rules since #283 (2026-09-13), not a closure — and the transport answers a Cloudflare challenge on the root (5 512 B, moving md5, twice on 2026-09-13: borne 2, nothing is defeated). The line of 2026-09-02 that followed here («unreadable to anything but a browser») is withdrawn as a scope: it described the rules file, and the board's door is the transport.
+
+**Route measured 2026-09-19 14:1x UTC (the clock read 14:17 after the second tab) in the user's own Chrome (a connected tab, the plugin's route):** the list page served to a connected tab without any challenge, its own heading «25 046 offres d'emploi» — `https://www.cadremploi.fr/emploi/liste_offres`. The client's 403 on the rules file and the challenge on the root are unchanged (2026-09-13); the route is the tab, and it is served.
 
 The reference board for French **cadres** alongside the APEC — one of the oldest,
 now part of the HelloWork group.

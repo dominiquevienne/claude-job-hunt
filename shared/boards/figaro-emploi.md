@@ -4,8 +4,11 @@
 
 <!-- hosts: emploi.lefigaro.fr -->
 <!-- countries: FR -->
+<!-- route: browser · 264617 · 2026-09-19 -->
 <!-- witness: none possible by script today — the host answers 403 on its own `robots.txt` (an absence of rules since #283, 2026-09-13) and a Cloudflare challenge on the root (5 517 B, moving md5, twice on 2026-09-13: borne 2); the 244 815 figure was taken when it replied (2026-09-05) and is not reproducible by this client — a fact about the number's future, not about the board -->
 **Re-tested 2026-09-02: the constraint holds.** `emploi.lefigaro.fr/robots.txt` still answers **HTTP 403** with 4 579 bytes of `text/html` to a scripted request.
+
+**Route measured 2026-09-19 14:1x UTC (the clock read 14:17 after the second tab) in the user's own Chrome (a connected tab, the plugin's route):** the list page served to a connected tab without any challenge, its own heading «264 617 offres d'emploi» (against 244 815 in its sitemap on 2026-09-05) — `https://emploi.lefigaro.fr/recherche/offres-emploi`. The client's 403 on the rules file and the challenge on the root are unchanged (2026-09-13); the route is the tab, and it is served.
 
 A large French generalist board — **244 815 ads in its own sitemap** — run by
 Figaro Classifieds, the group that also owns `cadremploi.md`.
