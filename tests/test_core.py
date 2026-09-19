@@ -27439,5 +27439,123 @@ class ASmallBusinessATSWhoseHostedCareersPageRendersEveryPositionAsACardAndWhose
             self.assertEqual(cm.exception.code, 2, bad)
         self.assertEqual(mod.tenant_of("https://careers.betterteam.com/"), "careers")
 
+
+
+class AnATSWhoseCareersPageCarriesEveryJobInItsOwnPageDataAndWritesCountriesInThreeLetters(unittest.TestCase):
+    """**`paylocity.py`, 2026-09-20 (#460).** Paylocity: the module's page
+    `recruiting.paylocity.com/recruiting/jobs/All/<guid>` carries the whole
+    list in `window.pageData.Jobs` (no API, no page); `JobLocation.Country`
+    is alpha-3 («PHL») and `_iso3.alpha2` turns it into ISO2 without guessing
+    from a prefix; the job page is server-rendered. Both ways: the list read
+    with company, location, remote, posted and a scrubbed summary; internal
+    jobs skipped; the street never emitted; the country filter by ISO2 on an
+    alpha-3 board; the empty module; a 404 module (3); a page without
+    pageData (6); the ad's description from `job-preview-details`; the
+    numbered twin host admitted; other hosts refused (7); bad tenants
+    refused before a request; and `_iso3.alpha2` itself on a prefix trap."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_paylocity", os.path.join(SCRIPTS, "paylocity.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    GUID = "67c76e24-da8b-4733-a8b3-9c1fe859c5b9"
+
+    def _page(self, jobs, title="Peak Support LLC"):
+        d = {"Departments": ["All Departments"], "Jobs": jobs, "Locations": ["All Locations"], "ModuleId": 26108, "ModuleTitle": title, "TrackingPixels": [], "LogoUrl": "/Recruiting/Jobs/GetLogoFileById?logoFileStoreId=1"}
+        return "<html><head><title>" + title + " - Job Opportunities</title></head><body><script>\n    window.pageData = " + json.dumps(d) + ";\n  </script></body></html>"
+
+    @staticmethod
+    def _job(i, title, country="PHL", city=None, state=None, remote=True, internal=False, desc="Write to jobs@peaksupport.io or call +63 2 8123 4567 today"):
+        return {"JobId": i, "JobTitle": title, "LocationName": "Remote - Philippines" if remote else city, "ShouldDisplayLocation": True, "PublishedDate": "2026-09-19T12:16:42-05:00",
+                "Description": desc, "IsInternal": internal, "HiringDepartment": None, "IsRemote": remote, "IndeedRemoteType": 2,
+                "JobLocation": {"LocationId": 1, "ModuleId": 26108, "Name": "Remote - Philippines", "Address": "111 Boone St, Suite 2", "Address2": None, "City": city, "State": state, "Zip": "71446", "Country": country, "County": None, "SmartyAddressId": "abc"}}
+
+    def _run(self, mod, argv, code=200, body=""):
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return code, body
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        rc = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                rc = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, rows, err.getvalue(), sent
+
+    def test_the_list_is_read_from_page_data_with_iso2_countries_and_no_street(self):
+        mod = self._mod()
+        jobs = [self._job(1, "Content Moderator"), self._job(2, "Store Manager", country="USA", city="Leesville", state="LA", remote=False), self._job(3, "Internal only", internal=True)]
+        rc, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.GUID], body=self._page(jobs))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(sent, [f"https://recruiting.paylocity.com/recruiting/jobs/All/{self.GUID}"])
+        self.assertEqual([r["id"] for r in rows], [1, 2])   # the internal job is skipped
+        self.assertIn("2 emitted of the 2 jobs pageData carries for Peak Support LLC", err)
+        self.assertIn("no count is stated anywhere", err)
+        r = rows[0]
+        self.assertEqual((r["country"], r["country_alpha3"], r["remote"], r["company"], r["posted"], r["url"]), ("PH", "PHL", True, "Peak Support LLC", "2026-09-19", "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1"))
+        self.assertEqual((rows[1]["country"], rows[1]["place"], rows[1]["region"], rows[1]["remote"]), ("US", "Leesville", "LA", None))
+        self.assertIn("[e-mail withheld]", r["summary"])
+        self.assertIn("[telephone withheld]", r["summary"])
+        dumped = json.dumps(rows)
+        for secret in ("Boone St", "71446", "SmartyAddressId", "peaksupport.io"):
+            self.assertNotIn(secret, dumped, secret)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_country_filter_the_empty_module_the_gone_module_and_the_changed_page_each_say_what_they_are(self):
+        mod = self._mod()
+        jobs = [self._job(1, "A"), self._job(2, "B", country="USA", city="X", state="LA", remote=False), self._job(3, "C", country="CAN", city="Y", state="ON", remote=False)]
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://recruiting.paylocity.com/recruiting/jobs/All/{self.GUID}/Peak-Support-LLC", "--country-code", "us"], body=self._page(jobs))
+        self.assertEqual((rc, [r["id"] for r in rows]), (0, [2]), err)
+        self.assertIn("1 emitted for US of the 3 jobs", err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.GUID], body=self._page([]))
+        self.assertEqual((rc, rows), (0, []))
+        self.assertIn("0 jobs", err)
+        self.assertIn("not an error", err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.GUID], code=404, body="")
+        self.assertEqual(rc, 3, err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.GUID], body="<html><body><h1>Job Opportunities</h1></body></html>")
+        self.assertEqual(rc, 6, err)
+        self.assertIn("pageData", err)
+
+    def test_the_ad_reads_the_server_rendered_description_and_the_header_line(self):
+        mod = self._mod()
+        page = ('<html><head><title>Peak Support LLC - Seasonal Content Moderator</title></head><body><script>window.pageData = {"jobTitle":"Seasonal Content Moderator | Philippines","moduleName":"Peak Support LLC","showSocialWidget":true};\n</script>'
+                '<div class="job-preview-header"><h1>Seasonal Content Moderator | Philippines</h1><div>Fully Remote<span> • </span>Remote - Philippines, PHL</div></div>'
+                '<div class="job-preview-details"><div class="mobile-apply-btn"><a href="/Recruiting/Jobs/Apply/4517495">Apply</a></div><div class="job-listing-header">Description</div>'
+                '<div><p><strong>Job Description</strong></p><p>We are looking for moderators. Contact hr@peaksupport.io.</p></div></div><div class="job-preview-footer"></div></body></html>')
+        rc, rows, err, sent = self._run(mod, ["ad", "--url", "https://recruiting.paylocity.com/Recruiting/Jobs/Details/4517495"], body=page)
+        self.assertEqual(rc, 0, err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["location"]), (4517495, "Seasonal Content Moderator | Philippines", "Peak Support LLC", "Fully Remote • Remote - Philippines, PHL"))
+        self.assertTrue(r["description"].startswith("Job Description"), r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertNotIn("Apply", r["description"])
+
+    def test_hosts_tenants_and_the_alpha3_helper_refuse_what_they_should(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "www.paylocity.com", "recruiting.paylocity.com.evil.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        self.assertEqual(mod.tenant_of(f"https://2000recruiting.paylocity.com/Recruiting/Jobs/All/{self.GUID.upper()}"), ("2000recruiting.paylocity.com", self.GUID))
+        for bad in ("peak-support", "12345", f"https://example.com/recruiting/jobs/All/{self.GUID}", "https://recruiting.paylocity.com/Recruiting/Jobs/Details/1", ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        spec = importlib.util.spec_from_file_location("_iso3", os.path.join(SCRIPTS, "_iso3.py"))
+        iso = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(iso)
+        self.assertEqual([iso.alpha2(x) for x in ("PHL", "usa", "MEX", "IRL", "CHN", "US", "XYZ", None)], ["PH", "US", "MX", "IE", "CN", "US", "XYZ", None])
+        self.assertGreater(len(iso.ALPHA3_TO_2), 240)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
