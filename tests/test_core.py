@@ -27327,5 +27327,117 @@ class AnATSWhosePortalPostsItsSearchWithNextAuthsCSRFTokenAndDehydratesTheRequis
             self.assertEqual(cm.exception.code, 2, bad)
         self.assertEqual(mod.tenant_of("https://jobs.dayforcehcm.com/fr-CA/car/CANDIDATEPORTAL", "X", "en-US"), ("fr-CA", "car", "CANDIDATEPORTAL"))
 
+
+
+class ASmallBusinessATSWhoseHostedCareersPageRendersEveryPositionAsACardAndWhosePositionPageCarriesAJobPosting(unittest.TestCase):
+    """**`betterteam.py`, 2026-09-20 (#459).** Betterteam: `<slug>.betterteam.com`
+    is server-rendered — one card per position («Current Positions»: a title
+    link, then Remote / place with an address tooltip / country / type joined
+    by «•»); a tenant with none says so in prose; the position page carries a
+    JobPosting. Both ways: the cards read with their place, region, country
+    and type; the remote card's country; the empty tenant; a 404 tenant (3);
+    a page without the section (6); the country filter by code or name; the
+    ad scrubbed; other hosts refused (7); bad tenants refused before a
+    request."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_betterteam", os.path.join(SCRIPTS, "betterteam.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    PANDA = ('<html><head><title>Panda Restaurant Group Careers</title></head><body><section><h2>Current Positions</h2>'
+             '<div><a class="font-semibold text-lg block mb-2 transition-colors" href="/service-kitchen-team-%28starting-16-17%29-3" data-discover="true">Service / Kitchen Team Member</a>'
+             '<div class="text-sm"><div><span class="underline decoration-dotted" aria-label="4475 Ellis Cir NW\nCleveland\nTennessee 37312\nUnited States" role="tooltip">Cleveland, Tennessee</span><span class="mx-2">•</span>Part-time</div></div></div>'
+             '<div class="border-b"><a class="font-semibold text-lg block mb-2 transition-colors" href="/assistant-manager-general-manager" data-discover="true">Restaurant General Manager</a>'
+             '<div class="text-sm"><div><span class="underline decoration-dotted" aria-label="1808 Gunbarrel Rd\nChattanooga\nTennessee 37421\nUnited States" role="tooltip">Chattanooga, Tennessee</span><span class="mx-2">•</span>Full-time</div></div></div>'
+             '<div class="border-b"><a class="font-semibold text-lg block mb-2 transition-colors" href="/senior-full-stack-engineer-2" data-discover="true">Senior Full Stack Engineer</a>'
+             '<div class="text-sm"><div><span>Remote</span><span class="mx-2">•</span>Australia<span class="mx-2">•</span>Full-time</div></div></div>'
+             '</section><h2>About Panda</h2><p>Write to jobs@pandarg.com</p></body></html>')
+    EMPTY = '<html><head><title>Carilion Clinic Careers</title></head><body><section><h2>Current Positions</h2><p>Carilion Clinic doesn&#x27;t have any openings right now. Please check again later.</p></section></body></html>'
+
+    def _run(self, mod, argv, code=200, body=""):
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            return code, body
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        rc = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                rc = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, rows, err.getvalue(), sent
+
+    def test_the_cards_are_read_with_their_place_region_country_and_type(self):
+        mod = self._mod()
+        rc, rows, err, sent = self._run(mod, ["jobs", "--tenant", "pandarg-117"], body=self.PANDA)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(sent, ["https://pandarg-117.betterteam.com/"])
+        self.assertEqual(len(rows), 3)
+        self.assertIn("3 emitted of the 3 cards", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["employment_type"], r["remote"]),
+                         ("service-kitchen-team-(starting-16-17)-3", "Service / Kitchen Team Member", "Panda Restaurant Group", "Cleveland", "Tennessee", "United States", "Part-time", None))
+        self.assertEqual(r["url"], "https://pandarg-117.betterteam.com/service-kitchen-team-%28starting-16-17%29-3")
+        self.assertTrue(r["contacts_withheld"])
+        rem = rows[2]
+        self.assertEqual((rem["remote"], rem["country"], rem["place"], rem["employment_type"]), (True, "Australia", None, "Full-time"))
+        self.assertNotIn("4475 Ellis", json.dumps(rows))   # the street line of the tooltip stays out
+        self.assertNotIn("pandarg.com", json.dumps(rows))
+
+    def test_the_country_filter_the_empty_tenant_the_gone_tenant_and_the_changed_page_each_say_what_they_are(self):
+        mod = self._mod()
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", "https://pandarg-117.betterteam.com/", "--country-code", "au"], body=self.PANDA)
+        self.assertEqual((rc, [r["id"] for r in rows]), (0, ["senior-full-stack-engineer-2"]), err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", "pandarg-117", "--country-code", "US"], body=self.PANDA)
+        self.assertEqual((rc, len(rows)), (0, 2), err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", "carilionclinic"], body=self.EMPTY)
+        self.assertEqual((rc, rows), (0, []))
+        self.assertIn("0 positions", err)
+        self.assertIn("not an error", err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nowhospitality"], code=404, body="<title>Page Not Found</title>")
+        self.assertEqual(rc, 3, err)
+        rc, rows, err, _ = self._run(mod, ["jobs", "--tenant", "pandarg-117"], body="<html><body><h1>Careers</h1><p>nothing here</p></body></html>")
+        self.assertEqual(rc, 6, err)
+        self.assertIn("Current Positions", err)
+
+    def test_the_ad_is_the_page_s_job_posting_scrubbed(self):
+        mod = self._mod()
+        page = ('<html><head><script type="application/ld+json">{"@context": "https://schema.org/", "@type": "JobPosting", "title": "Restaurant General Manager", "directApply": true, '
+                '"identifier": {"@type": "PropertyValue", "name": "Panda Restaurant Group", "value": "assistant-manager-general-manager"}, "datePosted": "2024-04-13T21:54:44.673903Z", "employmentType": "FULL_TIME", '
+                '"description": "<div>Manager ($72-$100k!)<br />Write to hr@pandarg.com or call (423) 555-0100.</div>", '
+                '"hiringOrganization": {"@type": "Organization", "name": "Panda Restaurant Group", "sameAs": "https://www.pandarg.com"}, '
+                '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "US", "streetAddress": "1808 Gunbarrel Rd", "addressLocality": "Chattanooga", "addressRegion": "Tennessee"}}, '
+                '"baseSalary": {"@type": "MonetaryAmount", "currency": "USD", "value": {"@type": "QuantitativeValue", "unitText": "YEAR", "minValue": 72000, "maxValue": 100000}}}</script></head><body></body></html>')
+        rc, rows, err, sent = self._run(mod, ["ad", "--url", "https://pandarg-117.betterteam.com/assistant-manager-general-manager"], body=page)
+        self.assertEqual(rc, 0, err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["employer_url"], r["place"], r["region"], r["country"], r["posted"], r["employment_type"]),
+                         ("assistant-manager-general-manager", "Restaurant General Manager", "Panda Restaurant Group", "https://www.pandarg.com", "Chattanooga", "Tennessee", "US", "2024-04-13", "FULL_TIME"))
+        self.assertEqual(r["salary"], {"currency": "USD", "min": 72000, "max": 100000, "unit": "YEAR"})
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("pandarg.com", r["description"])
+        self.assertNotIn("Gunbarrel", json.dumps(r))
+
+    def test_a_host_that_is_not_a_tenant_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "betterteam.com.evil.example", "www.betterteam.com", "app.betterteam.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("a/b", "www", "https://www.betterteam.com/", "https://example.com/", ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("https://careers.betterteam.com/"), "careers")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
