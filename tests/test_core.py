@@ -27187,5 +27187,145 @@ class AHospitalityATSWhosePortalAsksTheGatewayForItsBrandThenItsJobsAndStatesThe
             self.assertEqual(cm.exception.code, 2, bad)
         self.assertEqual(mod.tenant_of("https://harri.com/HHospitality"), "HHospitality")
 
+
+
+class AnATSWhosePortalPostsItsSearchWithNextAuthsCSRFTokenAndDehydratesTheRequisitionInItsPage(unittest.TestCase):
+    """**`dayforce.py`, 2026-09-20 (#458).** Dayforce: the portal on
+    `jobs.dayforcehcm.com/<lang>/<slug>/<board>` is Next.js; its app fetches
+    `/api/auth/csrf` and posts `/api/geo/<slug>/jobposting/search` with
+    `X-CSRF-TOKEN` and the portal's cookies (`maxCount` stated, 25 a page by
+    `paginationStart`); the requisition page dehydrates the `jobs` query in
+    `__NEXT_DATA__`. Both ways: the token in the header, the pager to the
+    stated count, a repeating pager (6), a foreign namespace (6), the empty
+    tenant, the country filter, the ad from `__NEXT_DATA__`, the client's
+    correspondence address never emitted, other hosts refused (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_dayforce", os.path.join(SCRIPTS, "dayforce.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _portal(self, ns="car", job=None):
+        qs = [{"queryKey": ["site-info", {"clientNamespace": ns}], "state": {"data": {"clientNamespace": ns, "jobBoardId": 1, "candidateCorrespondenceClientName": "Carnegie Museums of Pittsburgh", "clientCorrespondanceEmailAddress": "hr@carnegiemuseums.org", "isDisabled": False}}}]
+        if job:
+            qs.append({"queryKey": ["jobs", {"clientNamespace": ns, "jobBoardId": 1, "language": "en-US"}, {"id": str(job["jobPostingId"]), "external": False}], "state": {"data": job}})
+        nd = {"props": {"pageProps": {"dehydratedState": {"queries": qs}}}, "page": "/[clientNamespace]/[careerSiteXRefCode]"}
+        return '<html><head></head><body><div id="__next"></div><script id="__NEXT_DATA__" type="application/json">' + json.dumps(nd) + '</script></body></html>'
+
+    @staticmethod
+    def _post(i, title="Gallery Associate", country="US", desc="Apply to hr@carnegiemuseums.org or call 412 555 0100."):
+        return {"clientNamespace": "car", "jobBoardId": 1, "jobPostingId": i, "jobReqId": 1700 + i, "jobTitle": title, "jobDescription": desc, "hasVirtualLocation": False,
+                "postingStartTimestampUTC": "2026-09-16T04:00:00+00:00", "postingExpiryTimestampUTC": "2026-10-17T03:59:00+00:00", "isEvergreen": False,
+                "postingLocations": [{"formattedAddress": "117 Sandusky Street, Pittsburgh", "cityName": "Pittsburgh", "stateCode": "PA", "isoCountryCode": country}],
+                "postingAppliedStatus": {"jobPostingId": i, "hasApplied": False}, "searchScore": 0}
+
+    def _run(self, mod, argv, pages, portal_html=None):
+        sent = []
+        calls = {"n": 0}
+
+        def request(url, accept="text/html", headers=None, data=None):
+            sent.append((url, headers or {}, data))
+            if "/api/auth/csrf" in url:
+                return 200, json.dumps({"csrfToken": "TOK123"})
+            if "/jobposting/search" in url:
+                if (headers or {}).get("X-CSRF-TOKEN") != "TOK123":
+                    return 403, ""
+                i = min(calls["n"], len(pages) - 1)
+                calls["n"] += 1
+                total, posts = pages[i]
+                return 200, json.dumps({"jobPostings": posts, "maxCount": total, "offset": 0, "count": len(posts)})
+            return 200, portal_html if portal_html is not None else self._portal()
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_posts_the_page_s_body_with_the_token_and_pages_by_pagination_start_to_the_stated_count(self):
+        mod = self._mod()
+        p1 = [self._post(100 + i) for i in range(25)]
+        p2 = [self._post(200 + i) for i in range(11)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "car"], [(36, p1), (36, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 36)
+        self.assertIn("36 emitted — the search states 36: equal", err)
+        self.assertTrue(sent[0][0].endswith("/en-US/car/CANDIDATEPORTAL"), sent[0][0])
+        self.assertTrue(sent[1][0].endswith("/api/auth/csrf"))
+        srch = [s for s in sent if "/jobposting/search" in s[0]]
+        self.assertEqual(len(srch), 2)
+        self.assertTrue(srch[0][0].endswith("/api/geo/car/jobposting/search"))
+        b1, b2 = json.loads(srch[0][2]), json.loads(srch[1][2])
+        self.assertEqual((b1["clientNamespace"], b1["jobBoardCode"], b1["cultureCode"], b1["paginationStart"]), ("car", "CANDIDATEPORTAL", "en-US", 0))
+        self.assertEqual(b2["paginationStart"], 25)
+        self.assertEqual(srch[0][1]["X-CSRF-TOKEN"], "TOK123")
+        r = rows[0]
+        self.assertEqual((r["id"], r["ref"], r["company"], r["country"], r["place"], r["region"], r["posted"], r["expires"]), (100, 1800, "Carnegie Museums of Pittsburgh", "US", "Pittsburgh", "PA", "2026-09-16", "2026-10-17"))
+        self.assertEqual(r["url"], "https://jobs.dayforcehcm.com/en-US/car/CANDIDATEPORTAL/jobs/100")
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dumped = json.dumps(rows) + err
+        for secret in ("carnegiemuseums.org", "postingAppliedStatus", "searchScore", "TOK123"):
+            self.assertNotIn(secret, dumped, secret)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_empty_tenant_the_country_filter_the_bounded_walk_the_repeating_pager_and_the_foreign_page_each_say_what_they_are(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "car"], [(0, [])])
+        self.assertEqual((code, rows), (0, []))
+        self.assertIn("0 postings", err)
+        self.assertIn("not an error", err)
+        mixed = [self._post(1, country="US"), self._post(2, country="CA"), self._post(3, country="CA")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "car", "--country-code", "ca"], [(3, mixed)])
+        self.assertEqual((code, [r["id"] for r in rows]), (0, [2, 3]), err)
+        self.assertIn("2 emitted for CA of the 3 walked", err)
+        p1 = [self._post(100 + i) for i in range(25)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "https://jobs.dayforcehcm.com/en-US/car/CANDIDATEPORTAL", "--max-pages", "1"], [(60, p1)])
+        self.assertEqual((code, len(rows)), (0, 25), err)
+        self.assertIn("walked 1 page(s) by request, not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "car"], [(60, p1), (60, p1)])
+        self.assertEqual(code, 6, err)
+        self.assertIn("repeats page 1", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "car"], [(1, [self._post(1)])], portal_html=self._portal(ns="woodmenlife"))
+        self.assertEqual(code, 6, err)
+        self.assertIn("clientNamespace", err)
+
+    def test_the_ad_is_read_from_the_page_s_next_data_without_a_call(self):
+        mod = self._mod()
+        job = {"jobPostingId": 12216, "jobReqId": 1764, "jobTitle": "Museum Educator I", "postingStartTimestampUTC": "2026-08-28T04:00:00+00:00", "postingExpiryTimestampUTC": "2026-09-29T03:59:00+00:00",
+               "isoCurrencyRegion": "USD", "hasVirtualLocation": False, "jobPostingContent": {"jobDescriptionHeader": "<p>About us</p>", "jobDescription": "<p>Teach. Write to hr@carnegiemuseums.org</p>", "jobDescriptionFooter": None},
+               "postingLocations": [{"formattedAddress": "4400 Forbes Avenue, Pittsburgh", "cityName": "Pittsburgh", "stateCode": "PA", "isoCountryCode": "US"}],
+               "jobPostingAttributes": [{"name": "JobFamily", "value": "Vacation Category I", "type": "string"}, {"name": "PayType", "value": "Hourly", "type": "string"}],
+               "jobApplicationTemplateId": 14, "assessmentId": None}
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://jobs.dayforcehcm.com/en-US/car/CANDIDATEPORTAL/jobs/12216"], [], portal_html=self._portal(job=job))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(sent), 1)
+        r = rows[0]
+        self.assertEqual((r["id"], r["ref"], r["title"], r["company"], r["place"], r["country"], r["posted"], r["expires"], r["currency"], r["pay_type"], r["job_family"]),
+                         (12216, 1764, "Museum Educator I", "Carnegie Museums of Pittsburgh", "Pittsburgh", "US", "2026-08-28", "2026-09-29", "USD", "Hourly", "Vacation Category I"))
+        self.assertTrue(r["description"].startswith("About us"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertNotIn("carnegiemuseums.org", json.dumps(r))
+        self.assertNotIn("jobApplicationTemplateId", json.dumps(r))
+
+    def test_a_host_that_is_not_dayforce_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "us252.dayforcehcm.com", "www.dayforce.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("a/b", "https://jobs.dayforcehcm.com/car", "https://example.com/en-US/car/CANDIDATEPORTAL", ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad, "CANDIDATEPORTAL", "en-US")
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("https://jobs.dayforcehcm.com/fr-CA/car/CANDIDATEPORTAL", "X", "en-US"), ("fr-CA", "car", "CANDIDATEPORTAL"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
