@@ -7,6 +7,7 @@
 <!-- countries: YE -->
 <!-- content: indeterminate · **`yemenjobsorg.arthajobboard.com`: the declared client's TLS handshake fails (`CERTIFICATE_VERIFY_FAILED` ×2); with verification disabled — a control, not a route — the host answers 307 to `https://www.yemenfunds.com/` (27 B): the tenant on the Artha job-board platform redirects elsewhere; `yemenjobs.org` and `www.yemenjobs.org` are NXDOMAIN on 1.1.1.1 and 8.8.8.8; no rules file could be read on the first (absence of rules, `certain: False`); nothing of a board was read** · 2026-09-17 -->
 <!-- witness: none — nothing was served · 2026-09-17 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #744 · 2026-09-19 -->
 
 **Found by the Yemen search of #607 (a country never searched), measured
 2026-09-17 13:42–13:44 UTC by the declared client, the guard on the exact path

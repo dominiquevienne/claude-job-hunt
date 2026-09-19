@@ -7,6 +7,7 @@
 <!-- countries: IR -->
 <!-- content: indeterminate · **`shoghl.mcls.gov.ir` — the Ministry of Cooperatives, Labour and Social Welfare's «سامانه جستجوی شغل» (job search system, named by the Ministry's own news pages and by three third-party guides found by the search of #600) — resolves on 1.1.1.1 and 8.8.8.8 (NOERROR) and the connection to `/` times out twice under the declared client (`URLError: timed out`, 2026-09-17 09:23–09:25 UTC); `karyabi.mcls.gov.ir` (the older «کاریابی» portal, still linked by the Ministry's pages) answers NXDOMAIN on both resolvers — a name with no delegation; no rules file could be read on either (absence of rules, `certain: False`, #283); nothing of the service was read** · 2026-09-17 -->
 <!-- witness: none — nothing was served -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #740 · 2026-09-19 -->
 
 **Found by the Iran search of #600 as the public employment service —
 the entry a country page lists first.** Measured 2026-09-17 09:23–09:26 UTC:

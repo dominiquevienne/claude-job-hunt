@@ -7,6 +7,7 @@
 <!-- countries: MM -->
 <!-- content: indeterminate · **`www.jobsinyangon.com` and `jobsinyangon.com` answer `SERVFAIL` on 1.1.1.1 and on 8.8.8.8 (09:37 UTC) — the zone's servers fail, the name is not declared absent (that would be NXDOMAIN); the declared client gets `nodename nor servname provided` twice; nothing was read, no rules file** · 2026-09-17 -->
 <!-- witness: none — nothing was served · 2026-09-17 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #741 · 2026-09-19 -->
 
 **Found by the Myanmar search of #601 (a country never searched), measured
 2026-09-17 09:35–09:39 UTC by the declared client, the guard on the exact path
