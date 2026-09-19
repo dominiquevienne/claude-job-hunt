@@ -7,6 +7,7 @@
 <!-- countries: LB -->
 <!-- content: indeterminate · **`www.neo.gov.lb` and `neo.gov.lb` answer NXDOMAIN on 1.1.1.1 and 8.8.8.8 (13:54 UTC); the declared client gets `nodename nor servname provided` on https and on http; nothing was read, no rules file; the office itself (Beirut, Sidon, Tripoli, free of charge per the ILO) is not in question — its domain is** · 2026-09-17 -->
 <!-- witness: none — no address · 2026-09-17 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #743 · 2026-09-19 -->
 
 **Found by the Lebanon search of #609 (a country never searched), measured
 2026-09-17 13:53–13:55 UTC by the declared client, the guard on the exact path

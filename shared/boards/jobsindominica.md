@@ -7,6 +7,7 @@
 <!-- countries: DM -->
 <!-- content: indeterminate · **the root answers 522 on two reads by the declared client (08:07:26→08:08:49 and →08:10:12 UTC; 16 B `error code: 522`, md5 2c2dae9e9cdd), the same 522 to curl — Cloudflare could not reach the origin; nothing read, rules not read (`_robots.allowed` → open, `certain: False`)** · 2026-09-18 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #754 · 2026-09-19 -->
 
 **Found by the Dominica search of #615 (a country never searched),
 measured 2026-09-18 08:06–08:11 UTC by the declared client, the guard on the

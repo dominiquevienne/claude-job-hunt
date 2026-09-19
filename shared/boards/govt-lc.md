@@ -7,6 +7,7 @@
 <!-- countries: LC -->
 <!-- content: indeterminate · **`/vacancies` and `/jobs` answer 500 on two reads each (07:01:24–07:01:50 UTC; 11 182 B, md5 1482eca8b4d2 all four times — an ASP.NET error page «ExecuteReader requires an open and available Connection. The connection's current state is closed.»), the same 500 to curl; the root `/` answers 200 to curl (42 711 B) — the portal is up, its vacancy pages' database is not; nothing of the lists was read; `_robots.allowed('www.govt.lc', '/vacancies')` → open, `certain: False` (the rules file did not answer as one)** · 2026-09-18 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #746 · 2026-09-19 -->
 
 **Found by the Saint Lucia search of #619 (a country never searched),
 measured 2026-09-18 07:01–07:06 UTC by the declared client, the guard on the

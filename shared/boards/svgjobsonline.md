@@ -7,6 +7,7 @@
 <!-- countries: VC -->
 <!-- content: indeterminate · **the root answers 503 on two reads by the declared client (07:56:00–07:56:22 UTC; 4 278 B, md5 29f18927cac9 identical) and to curl — the site's own holding page, «Our website will be live again soon», not a provider's error; nothing read, rules not read (`_robots.allowed` → open, `certain: False`)** · 2026-09-18 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #751 · 2026-09-19 -->
 
 **Found by the Saint Vincent and the Grenadines search of #616 (a country
 never searched), measured 2026-09-18 07:55–08:01 UTC by the declared client, the

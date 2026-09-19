@@ -7,6 +7,7 @@
 <!-- countries: DM -->
 <!-- content: indeterminate · **`/vacancies` — the client fails to resolve the name on two reads (08:06:06–08:06:12 UTC, `nodename nor servname provided, or not known`); `dig @1.1.1.1` and `dig @8.8.8.8` both answer `status: SERVFAIL` for `dominica.gov.dm` and `www.dominica.gov.dm` — two public resolvers, the same failure, and it is a server failure, not a name error: the zone exists and its servers do not answer; nothing read, rules not read (`_robots.allowed` → open, `certain: False`)** · 2026-09-18 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
+<!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #753 · 2026-09-19 -->
 
 **Found by the Dominica search of #615 (a country never searched),
 measured 2026-09-18 08:06–08:11 UTC by the declared client, the guard on the
