@@ -27058,5 +27058,134 @@ class AnATSWhoseTenantPageIssuesAnAnonymousTokenAndWhoseSearchAPIPagesTheRequisi
             self.assertEqual(cm.exception.code, 2, bad)
         self.assertEqual(mod.tenant_of("https://laerdal.csod.com/ux/ats/careersite/4/home?c=laerdal"), ("laerdal", "4"))
 
+
+
+class AHospitalityATSWhosePortalAsksTheGatewayForItsBrandThenItsJobsAndStatesTheCountTwice(unittest.TestCase):
+    """**`harri.py`, 2026-09-19 (#457).** Harri: `harri.com/<slug>` is a shell;
+    the app asks `gateway.harri.com` for the brand behind the slug
+    (`profile/slug`), its `basic_info` (`active_jobs_count`, the stated count)
+    and its jobs (`POST harri_search/search_jobs` with the page's body and
+    headers, `data.hits` and `data.results`). No offset parameter moves the
+    page; `size` is honoured to 500, so a list longer than 30 is asked again
+    with `size = hits`, and the cap is printed when it bites. A tenant with
+    `hits: 0` prints «0 jobs», not an error; `--country-code` filters on
+    `country_code`; descriptions scrubbed; the ad is the page's JobPosting;
+    any other host is refused (7); a bad tenant is refused before a request."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_harri", os.path.join(SCRIPTS, "harri.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(i, title="Server Assistant (Earn up to $1,000/wk)", country="US"):
+        return {"id": i, "brand": {"id": 7747045, "name": "Trivoli Tavern", "slug": "HHILTT"}, "position": {"name": "Server Assistant"}, "aliasPosition": title,
+                "locations": [{"city": "Chicago", "state": "Illinois", "country": "United States", "country_code": country, "formatted_address": "114 N. Green Street, Chicago"}],
+                "publishTime": "2026-08-27T15:03:57Z", "compensation": {"name": "Minimum Wage", "plus_tips": True}, "brand_media": {"profile_image_href": "x"}}
+
+    def _run(self, mod, argv, hits, jobs, stated=None, portal=True, page_html=None):
+        sent = []
+
+        def request(url, accept="text/html", headers=None, data=None):
+            sent.append((url, headers or {}, data))
+            if "/profile/slug/" in url:
+                return 200, json.dumps({"data": {"id": 7746910, "type": "brand", "career_portal_enabled": portal, "is_archived": False}, "status": "SUCCESS"})
+            if "/basic_info" in url:
+                return 200, json.dumps({"data": {"id": 7746910, "name": "Hogsalt", "slug": "HHospitality", "type": "GP-1", "location_count": 29, "active_jobs_count": stated}})
+            if "/search_jobs" in url:
+                size = json.loads(data)["size"]
+                return 200, json.dumps({"data": {"hits": hits, "results": jobs[:size]}, "status": "SUCCESS"})
+            return 200, page_html or ""
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_three_calls_are_the_page_s_and_the_two_stated_counts_are_printed_beside_the_emitted(self):
+        mod = self._mod()
+        jobs = [self._job(100 + i) for i in range(6)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "HHospitality"], 6, jobs, stated=6)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 6)
+        self.assertIn("6 emitted — the search states 6 hits — basic_info states 6: equal", err)
+        urls = [s[0] for s in sent]
+        self.assertTrue(urls[0].endswith("/core/api/v1/profile/slug/HHospitality"), urls)
+        self.assertIn("/career_portal/brands/7746910/basic_info", urls[1])
+        srch = [s for s in sent if "/search_jobs" in s[0]]
+        self.assertEqual(len(srch), 1)
+        body = json.loads(srch[0][2])
+        self.assertEqual((body["size"], body["brand_level_ids"], body["flow"], body["sort"]), (30, [7746910], "CAREER_PORTAL", ["publish_date"]))
+        self.assertEqual(srch[0][1]["FORCE-CSRF"], "true")
+        self.assertEqual(srch[0][1]["X-REFERRER-PAGE"], "https://harri.com/HHospitality")
+        r = rows[0]
+        self.assertEqual((r["id"], r["company"], r["country"], r["place"], r["posted"], r["compensation"], r["plus_tips"]), (100, "Trivoli Tavern", "US", "Chicago", "2026-08-27", "Minimum Wage", True))
+        self.assertEqual(r["url"], "https://harri.com/HHILTT/job/100-server-assistant-earn-up-to-1-000-wk")
+        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("profile_image_href", json.dumps(r))
+
+    def test_a_longer_list_is_asked_again_with_size_hits_and_the_cap_is_printed_when_it_bites(self):
+        mod = self._mod()
+        jobs = [self._job(i) for i in range(45)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://harri.com/HHospitality"], 45, jobs, stated=45)
+        self.assertEqual((code, len(rows)), (0, 45), err)
+        sizes = [json.loads(s[2])["size"] for s in sent if "/search_jobs" in s[0]]
+        self.assertEqual(sizes, [30, 45])
+        big = [self._job(i) for i in range(500)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "HHospitality"], 620, big, stated=620)
+        self.assertEqual((code, len(rows)), (0, 500), err)
+        self.assertEqual([json.loads(s[2])["size"] for s in sent if "/search_jobs" in s[0]], [30, 500])
+        self.assertIn("page cap is 500", err)
+        self.assertIn("120 beyond it", err)
+
+    def test_an_empty_tenant_a_country_filter_and_a_short_walk_say_what_they_are(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "Harri-Restaurant"], 0, [], stated=0)
+        self.assertEqual((code, rows), (0, []))
+        self.assertIn("0 jobs", err)
+        self.assertIn("not an error", err)
+        jobs = [self._job(1, country="US"), self._job(2, country="GB"), self._job(3, country="GB")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "HHospitality", "--country-code", "gb"], 3, jobs, stated=3)
+        self.assertEqual((code, [r["id"] for r in rows]), (0, [2, 3]), err)
+        self.assertIn("2 emitted for GB of the 3", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "HHospitality"], 3, jobs[:2], stated=3)
+        self.assertEqual(code, 0, err)
+        self.assertIn("1 short", err)
+
+    def test_the_ad_is_the_page_s_job_posting_scrubbed(self):
+        mod = self._mod()
+        page = ('<html><head><script type="application/ld+json">{"@context": "http://schema.org/", "@type": "JobPosting", "title": "Server Assistant", '
+                '"datePosted": "Tue, 30 Jun 2026 20:48:01 GMT", "description": "<p>Write to jobs@hogsalt.com or call +1 312 555 0100.</p>", '
+                '"hiringOrganization": {"@type": "Organization", "name": "Trivoli Tavern"}, "employmentType": ["FULL_TIME"], '
+                '"jobLocation": {"@type": "Place", "address": {"addressLocality": "Chicago", "addressRegion": "IL", "addressCountry": "US"}}}</script></head><body></body></html>')
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://harri.com/HHILTT/job/2757301-server-assistant"], 0, [], page_html=page)
+        self.assertEqual(code, 0, err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["employment_type"]), (2757301, "Server Assistant", "Trivoli Tavern", "Chicago", "IL", "US", ["FULL_TIME"]))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("hogsalt.com", r["description"])
+        self.assertEqual(sent[0][0], "https://harri.com/HHILTT/job/2757301-server-assistant")
+
+    def test_a_host_that_is_not_harri_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "harri.com.evil.example", "media-cdn.harri.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("a/b", "jobs", "https://harri.com/jobs", "https://example.com/HHospitality", ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("https://harri.com/HHospitality"), "HHospitality")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
