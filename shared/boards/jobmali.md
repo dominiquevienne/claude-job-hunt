@@ -7,6 +7,7 @@
 <!-- countries: ML -->
 <!-- content: indeterminate · the rules file timed out on every one of 12 attempts across 4 reads (apex and www, 14:00–14:17 UTC); no byte received, no status, no rule · 2026-09-11 -->
 <!-- witness: none — no body was ever received: four reads of the rules file, twelve attempts, every one a timeout · 2026-09-11 -->
+<!-- route: none · non faisable — muet, 12 dépassements de délai sur 4 lectures le 11.09.2026, #773 (décision du propriétaire du 18.09 : hôte muet = ticket adapter+blocked) · 2026-09-20 -->
 
 **This card is a measurement and not an adapter, and the measurement is an
 absence of answer, dated.** *`jobmali.com` was named in the Atlas's «twenty
