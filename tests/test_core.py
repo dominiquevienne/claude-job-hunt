@@ -29499,5 +29499,134 @@ class AnATSWhoseEmployersShareOneServerRenderedBoardThatStatesItsCountAndPageInA
                 mod.request(f"https://{host}/jobs")
             self.assertEqual(cm.exception.code, 7, host)
 
+class ABoardWhoseListingIsWalkedToItsEmptyPageAndCheckedAgainstItsJobSitemapAndWhoseAdvertCarriesAJobPosting(unittest.TestCase):
+    """**`youthall.py`, 2026-09-20 (#387).** Youthall (Turkey): `/tr/is-ilanlari/?page=N`
+    carries a featured block, the «Tüm İlanlar» block of `div.jobs` cards
+    (employer logo alt, h5, three tags: type, closing date, city) and a
+    programmes block; page 3 was empty on 2026-09-20; the page states no
+    count and `sitemap.tr-jobs.xml` is the second enumeration (28 = 28). The
+    advert's `JobPosting` has the fields. Both ways: only the list block is
+    read, the walk ends on the empty page and on a page of repeats, the key
+    is the address (`company:n`), the sitemap compared and its differences
+    named, `--no-sitemap`, a page without the block (6), the ad's fields and
+    the scrubbed description, a page without JobPosting (6), a bad address
+    refused before a request, another host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_youthall", os.path.join(SCRIPTS, "youthall.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(company, slug, n, title, employer, kind="Stajyer", closes="27.09.2026", city="İstanbul"):
+        return (f'<div class="l-grid__col"><div class="jobs"><a href="https://www.youthall.com/tr/{company}/{slug}_{n}/"><div class="jobs-cover"><img src="x" alt="{employer} - {title}" /></div>'
+                f'<div class="jobs-body"><div class="jobs-content"><div class="jobs-content-header"><img loading="lazy" src="x" class="jobs-content-logo" alt="{employer} logo" /><div class="jobs-content-title"><h5>{title}</h5></div></div>'
+                f'<div class="jobs-content-desc">…</div><div class="jobs-content-bottom"><div class="jobs-tag"><i class="fas fa-briefcase"></i> {kind} </div><div class="jobs-tag"><i class="far fa-clock"></i> {closes} </div><div class="jobs-tag"><i class="fas fa-map-marker-alt"></i> {city} </div></div></div></div></a></div></div>')
+
+    def _page(self, cards, featured=(), programmes=1):
+        f = "".join(featured)
+        prog = '<div class="jobs"><a href="https://www.youthall.com/tr/yetenek-programlari/x"><h5>Prog</h5></a></div>' * programmes
+        return (f'<html><body><h2 class="h4">Öne Çıkan İlanlar</h2><div>{f}</div><h2 class="h4">Tüm İlanlar</h2><div class="l-grid">{"".join(cards)}</div>'
+                f'<h2 class="h4">Yetenek Programları</h2><div>{prog}</div><h2>Sıkça Sorulan Sorular</h2></body></html>')
+
+    @staticmethod
+    def _sitemap(urls):
+        return '<?xml version="1.0"?><urlset>' + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-04T17:24:25+03:00</lastmod></url>" for u in urls) + "</urlset>"
+
+    AD = ('<html><head><title>Toyota Türkiye Gelecek - Son Başvuru: 27.09.2026 - Youthall</title><script type="application/ld+json">{"@context":"https://schema.org/","@type":"JobPosting","title":"Gelecek Toyota’da Uzun Dönem Staj Programı",'
+          '"description":"<p>Otomotiv sektörünün en dinamik ekibi.</p><p>Sorular için ik@toyota.example veya 0212 555 12 34.</p>","datePosted":"2026-09-04","validThrough":"2026-09-27T23:59:59+03:00","employmentType":"INTERN",'
+          '"hiringOrganization":{"@type":"Organization","name":"Toyota Türkiye","sameAs":"https://www.youthall.com/tr/toyotaturkiye","logo":"https://s3.example/logo.jpg"},"directApply":true,'
+          '"identifier":{"@type":"PropertyValue","name":"Youthall","value":"8262"},"jobLocation":[{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"İstanbul","addressRegion":"İstanbul","addressCountry":"TR"}}]}</script></head><body></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_block_alone_is_read_page_after_page_until_the_empty_page_and_compared_to_the_sitemap(self):
+        mod = self._mod()
+        c1 = [self._card("toyotaturkiye", "gelecek-toyotada", 4, "Gelecek Toyota’da Uzun Dönem Staj Programı", "Toyota Türkiye"),
+              self._card("Akcansa", "long-term-intern", 56, "Long-Term Intern &amp; Maintenance", "Akçansa", closes="18.10.2026", city="Samsun")]
+        c2 = [self._card("bim", "magaza-yoneticisi-programi", 1, "Mağaza Yöneticisi Programı", "BİM", kind="Tam Zamanlı")]
+        featured = [self._card("bim", "magaza-yoneticisi-programi", 1, "Mağaza Yöneticisi Programı", "BİM", kind="Tam Zamanlı"),
+                    self._card("featured-only", "x", 9, "Never listed", "Nobody")]
+        pages = {"1": self._page(c1, featured), "2": self._page(c2), "3": self._page([])}
+        urls = ["https://www.youthall.com/tr/toyotaturkiye/gelecek-toyotada_4/", "https://www.youthall.com/tr/Akcansa/long-term-intern_56/", "https://www.youthall.com/tr/bim/magaza-yoneticisi-programi_1/"]
+
+        def answers(url):
+            if url.endswith("sitemap.tr-jobs.xml"):
+                return 200, self._sitemap(urls)
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            return 200, pages[q.get("page", ["1"])[0]]
+        code, rows, err, sent = self._run(mod, ["jobs"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["id"] for r in rows], ["toyotaturkiye:4", "Akcansa:56", "bim:1"])
+        self.assertEqual(sent, ["https://www.youthall.com/tr/is-ilanlari/", "https://www.youthall.com/tr/is-ilanlari/?page=2", "https://www.youthall.com/tr/is-ilanlari/?page=3", "https://www.youthall.com/sitemap.tr-jobs.xml"])
+        self.assertIn("3 emitted, the sitemap lists 3 — equal", err)
+        r = rows[1]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["kind"], r["closes"], r["place"], r["country"], r["contacts_withheld"]),
+                         ("youthall:Akcansa:56", "https://www.youthall.com/tr/Akcansa/long-term-intern_56/", "Long-Term Intern & Maintenance", "Akçansa", "Stajyer", "18.10.2026", "Samsun", "TR", True))
+        self.assertNotIn("featured-only", json.dumps(rows))
+        self.assertNotIn("yetenek-programlari", json.dumps(rows))
+        # a page of repeats ends the walk too; the sitemap's differences are named
+        pages["2"] = self._page(c1)
+        urls.append("https://www.youthall.com/tr/gone/gone_7/")
+        code, rows, err, sent = self._run(mod, ["jobs"], answers)
+        self.assertEqual((code, [r["id"] for r in rows]), (0, ["toyotaturkiye:4", "Akcansa:56"]), err)
+        self.assertEqual(len(sent), 3)
+        self.assertIn("2 emitted, the sitemap lists 4 — 2 in the sitemap not on the pages, 0 on the pages not in the sitemap", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--no-sitemap"], answers)
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 2), err)
+        self.assertIn("the sitemap not read", err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, "<html><body><h2>Sıkça Sorulan Sorular</h2></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("no «Tüm İlanlar» block", err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (403, ""))
+        self.assertEqual((code, rows), (7, []), err)
+
+    def test_the_advert_reads_its_jobposting_scrubs_the_contact_and_refuses_what_is_not_an_advert(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://www.youthall.com/tr/toyotaturkiye/gelecek-toyotada-uzun-donem-staj-programi_4"], lambda url: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://www.youthall.com/tr/toyotaturkiye/gelecek-toyotada-uzun-donem-staj-programi_4/"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["site_id"], r["title"], r["company"], r["company_url"], r["posted"], r["closes"], r["employment_type"], r["place"], r["region"]),
+                         ("toyotaturkiye:4", "8262", "Gelecek Toyota’da Uzun Dönem Staj Programı", "Toyota Türkiye", "https://www.youthall.com/tr/toyotaturkiye", "2026-09-04", "2026-09-27T23:59:59+03:00", "INTERN", "İstanbul", "İstanbul"))
+        self.assertTrue(r["description"].startswith("Otomotiv sektörünün en dinamik ekibi."))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("ik@toyota", "0212 555 12 34", "logo.jpg"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.youthall.com/tr/toyotaturkiye/x_4/"], lambda url: (200, "<html><body><h1>Toyota Türkiye</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.youthall.com/tr/toyotaturkiye/x_4/"], lambda url: (404, ""))
+        self.assertEqual(code, 3, err)
+        for bad in ("https://www.youthall.com/tr/toyotaturkiye", "https://www.youthall.com/tr/yetenek-programlari/kale-kalegends", "https://youthall.com/tr/a/b_1/", "https://evil.example/tr/a/b_1/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+        fresh.gate = lambda url: {"allowed": True}
+        import contextlib
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fresh.request("https://evil.example/tr/is-ilanlari/")
+        self.assertEqual(cm.exception.code, 7)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
