@@ -28319,8 +28319,8 @@ class AnATSWhoseJobPortalAPIPagesByTakeAndSkipStatesTheCustomersTotalAndNamesThe
         self.assertIn("7 sektioner", r["description"], "a nested div is not the end of the advert")
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
-        dump = json.dumps(r)
-        for hidden in ("Rikke.Beese", "3062 8065", "Cheflæge", "SkipAdvertisement"):
+        dump = json.dumps(r, ensure_ascii=False)          # `Cheflæge` escaped to \u00e6 would hide from a plain dump — the first bench was green for that
+        for hidden in ("Rikke.Beese", "3062 8065", "Cheflæge", "SkipAdvertisement", "Søg stillingen"):
             self.assertNotIn(hidden, dump, hidden)
         code, rows, err, _ = self._run(mod, ["ad", "--url", "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=1"], ad=None)
         self.assertEqual(code, 3, err)
