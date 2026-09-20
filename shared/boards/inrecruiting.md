@@ -12,7 +12,7 @@
 <!-- route: http · 6 · 2026-09-20 -->
 
 **Issue #476 (opened under #406, the ATS families). The premise of 13.09
-(`www.in-recruiting.com` 403) concerns the vendor's site; the tenants live
+(`www.in-recruiting.com` refusing the client) concerns the vendor's site; the tenants live
 on `intervieweb.it` — Inrecruiting's former name — and were found by the
 signature `…intervieweb.it/<lang>/career` in a search engine on 2026-09-20
 (Julia Service, ORBYTA, Berner, Tecnica Group, Begear, Compagnia di San
