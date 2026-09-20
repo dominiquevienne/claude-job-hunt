@@ -81,7 +81,7 @@ DATE = re.compile(r"(20\d\d-\d\d-\d\d)")
 # three more digits. (The negation case — «not NXDOMAIN» read by
 # NO_DELEGATION as a missing delegation, `dominica-gov-dm` the same day — has
 # no mechanical shape; the card is worded without the token instead.)
-REFUSAL = re.compile(r"(?:HTTP\s*)?(?<!\d )(?<!\d\u202f)(?<!\d\u00a0)\b(403|429|451)\b(?!\s?(?:B|o|octets|bytes)\b)(?![ \u202f\u00a0]\d{3}\b)")
+REFUSAL = re.compile(r"(?:HTTP\s*)?(?<!\d )(?<!\d\u202f)(?<!\d\u00a0)(?<!#)\b(403|429|451)\b(?!\s?(?:B|o|octets|bytes)\b)(?![ \u202f\u00a0]\d{3}\b)")
 TOOL = re.compile(r"(fetch-body\.py|_robots\.allowed|curl|browser|navigateur|a real browser)")
 
 NOTICE = ("Le dénominateur est la liste de boards que ce relevé a établie, à sa "

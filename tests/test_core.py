@@ -26780,8 +26780,10 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
     (`gov-vc`, HTTP 200 ×2) as an HTTP 429 and made the card an indeterminate,
     then «not NXDOMAIN» as a missing delegation the same morning. The reader's
     REFUSAL must not fire on the thousands group of a number nor on a number
-    followed by a byte unit, and must still fire on «HTTP 429» and on a bare
-    dated «429». Both ways on the regex, then the whole `refusal_of` on a card."""
+    followed by a byte unit, nor on an issue number («#403», 2026-09-20 — the
+    override cards cite #403 and read as a consigned 403), and must still fire
+    on «HTTP 429» and on a bare dated «429». Both ways on the regex, then the
+    whole `refusal_of` on a card."""
 
     def _tool(self):
         spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
@@ -26797,7 +26799,8 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
                       "429 bytes on the root", "1 403 octets", "451 o",
                       "| 200 ×2 | 56 429 | 0203503ef43f ×2 |", "(200, 12 451, md5 …)",
                       "(200, 56\u202f429, md5 …)", "| 200 | 1\u00a0403 | md5 |",
-                      "(200, 403 954 B ×2)", "| 200 ×2 | 451 020 | md5 |", "(200, 429\u202f117 B)"):
+                      "(200, 403 954 B ×2)", "| 200 ×2 | 451 020 | md5 |", "(200, 429\u202f117 B)",
+                      "the user's own key (#792, on #403)", "issue #429 opened", "see #451."):   # an issue number is not a status (2026-09-20, ukgpro/tyomarkkinatori read as 403)
             self.assertIsNone(mod.REFUSAL.search(quiet), quiet)
         for loud in ("HTTP 429 on the root, 2026-09-18", "answers 403 on two reads",
                      "429, 2026-09-18, by fetch-body.py", "a 451 to the client"):
@@ -27682,6 +27685,189 @@ class AnATSWhoseCareerCenterListsRequisitionsByAOneBasedSkipCappedAtTwentyAndSta
             mod.tenant_of(self.CID, "nope", "en_US")
         self.assertEqual(cm.exception.code, 2)
         self.assertEqual(mod.tenant_of(f"https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid={self.CID.upper()}&ccId=19000101_000002&lang=en_CA", "19000101_000001", "en_US"), (self.CID, "19000101_000002", "en_CA"))
+
+class AnATSWhoseBoardPageIsPermittedButWhoseListRouteIsRefusedInWritingAndTakenOnlyUnderTheUsersOwnKey(unittest.TestCase):
+    """**`ukgpro.py`, 2026-09-20 (#463, the decision on #792).** UKG Pro: the
+    tenant's board page `/<code>/JobBoard/<guid>` is permitted (`Allow:
+    */JobBoard/`) and carries the anti-forgery token, `pageSize`, `loadUrl`
+    and the featured opportunities; the list it loads — `POST
+    …/JobBoardView/LoadSearchResults` — is refused in writing (`Disallow:
+    */JobBoardView`) and requested only under the user's own
+    `boards.ukgpro.override_robots: true` (#403). Both ways: without the key
+    nothing is requested, not even the page, exit 7 naming the key; with it
+    the page's own request (`opportunitySearch` Top/Skip, `matchCriteria`,
+    the token header) walks to `totalCount`; alpha-3 countries to alpha-2;
+    the street, postal code and coordinates absent; the country filter; a
+    repeating pager (6); a page whose `loadUrl` is another tenant's (6); the
+    opportunity page read with no key, its `SupervisorName` withheld and its
+    description scrubbed; other hosts refused (7) before the gate."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_ukgpro", os.path.join(SCRIPTS, "ukgpro.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    CODE, GUID = "HOL1002HPHM", "be27b89b-3cb9-491f-a1b0-42f8b077a9dd"
+    LIST = "/HOL1002HPHM/JobBoard/be27b89b-3cb9-491f-a1b0-42f8b077a9dd/JobBoardView/LoadSearchResults"
+
+    @staticmethod
+    def _opp(i, title, city="Gordonsville", state=("VA", "Virginia"), country=("USA", "United States"), featured=False, supervisor=None, desc=None):
+        o = {"Id": f"ea9c0150-feae-49cc-b6c5-6180000000{i:02d}", "Featured": featured, "Title": title, "RequisitionNumber": f"REQ{i:05d}",
+             "FullTime": True, "JobCategoryName": "Shared Services", "PostedDate": "2026-09-04T17:04:20.542Z", "BriefDescription": f"Brief {i}",
+             "Locations": [{"Id": "3d704761-eb4e-5468-990b-b5733c11c91b", "LocalizedDescription": "VA Distribution Center",
+                            "Address": {"Line1": "16365 James Madison Hwy.", "Line2": None, "City": city, "PostalCode": "229428501",
+                                        "State": {"Code": state[0], "Name": state[1]}, "Country": {"Code": country[0], "Name": country[1]}},
+                            "Coordinates": {"Latitude": 38.1795, "Longitude": -78.1478}}],
+             "MatchScore": 1.0, "OpportunityType": 0}
+        if supervisor is not None:
+            o["SupervisorName"] = supervisor
+        if desc is not None:
+            o.update({"Description": desc, "UpdatedDate": "2026-09-04T17:03:50.316Z", "HoursPerWeek": 40.0, "Salaried": False, "OpportunityIsClosed": False,
+                      "PayRangeVisible": True, "PayRange": {"PayRangeMinimum": 20.0, "PayRangeMaximum": 24.0}, "PayRangeCurrencyCode": "USD",
+                      "EducationCriteria": [{"Required": True, "DegreeName": "High School", "MajorName": None}], "SkillCriteria": [], "WorkExperienceCriteria": [],
+                      "EqualOpportunityEmployerDescription": "Equal Opportunity Employer<br>"})
+        return o
+
+    def _page(self, featured=(), page_size=2, load_url=None):
+        return ('<html><head><script>$(function() { $(\'<input name="__RequestVerificationToken" type="hidden" value="CfDJ8TOKEN" />\').appendTo("body"); });</script></head>'
+                '<body><script>$(document).ready(function () { var x = new US.Opportunity.Opportunities({ initialFeaturedOpportunities: ' + json.dumps(list(featured)) + ',\n'
+                f'            pageSize: {page_size},\n            loadUrl: "{load_url or self.LIST}",\n'
+                f'            opportunityLinkUrl: "/{self.CODE}/JobBoard/{self.GUID}/OpportunityDetail?opportunityId=00000000-0000-0000-0000-000000000000",\n'
+                '            featureConfigurationGroups: [] }); });</script></body></html>')
+
+    def _detail(self, o):
+        return '<html><body><script>$(function () { var opportunity = new US.Opportunity.CandidateOpportunityDetail(' + json.dumps(o) + ');  var applicantSourceId = null; });</script></body></html>'
+
+    def _run(self, mod, argv, page=None, pages=(), detail=None, key=True):
+        sent = []
+
+        def robots_allowed(host, path, agents=None, board=None):
+            if path.endswith("/JobBoardView/LoadSearchResults"):
+                if key:
+                    return {"allowed": True, "kind": "override", "overrode": "*/JobBoardView", "host": host, "rule": "*/JobBoardView", "reason": "crossed"}
+                return {"allowed": False, "kind": "disallow", "host": host, "rule": "*/JobBoardView", "reason": "refused in writing",
+                        "override_available": f"boards.{board}.override_robots — absent (no boards.{board}.override_robots: true in /w/config.yml); the user may set it, in their own name"}
+            return {"allowed": True, "kind": "allow", "host": host, "rule": "*/JobBoard/", "reason": "permitted"}
+        mod.robots_allowed = robots_allowed
+
+        def request(url, headers=None, data=None):
+            sent.append((url, headers or {}, json.loads(data) if data else None))
+            path = urllib.parse.urlsplit(url).path
+            if path.endswith("/JobBoardView/LoadSearchResults"):
+                skip = json.loads(data)["opportunitySearch"]["Skip"]
+                top = json.loads(data)["opportunitySearch"]["Top"]
+                total, opps = pages[min(skip // top, len(pages) - 1)] if pages else (0, [])
+                return 200, json.dumps({"opportunities": opps, "locations": [], "totalCount": total, "initialTotalOpportunitiesCount": total})
+            if "/OpportunityDetail" in path:
+                return (200, self._detail(detail)) if detail else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_without_the_key_nothing_is_requested_not_even_the_permitted_page_and_the_refusal_names_the_key(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}"], page=self._page(), pages=[(1, [self._opp(1, "A")])], key=False)
+        self.assertEqual((code, rows, sent), (7, [], []), err)
+        self.assertIn("Disallow: */JobBoardView", err)
+        self.assertIn("no boards.ukgpro.override_robots: true in /w/config.yml", err)
+        self.assertIn("requests nothing", err)
+
+    def test_with_the_key_the_pages_own_request_walks_to_the_stated_total_with_the_token_and_alpha2_countries(self):
+        mod = self._mod()
+        opps = [self._opp(1, "A"), self._opp(2, "B", city="Toronto", state=("ON", "Ontario"), country=("CAN", "Canada")), self._opp(3, "C")]
+        page = self._page(featured=[opps[0]])
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://recruiting.ultipro.com/{self.CODE}/JobBoard/{self.GUID}"], page=page, pages=[(3, opps[:2]), (3, opps[2:])])
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["title"] for r in rows], ["A", "B", "C"])
+        self.assertEqual([r["country"] for r in rows], ["US", "CA", "US"])
+        self.assertIn("3 emitted over 2 page(s) — the board states 3 (no filter): equal; 1 featured", err)
+        self.assertEqual(urllib.parse.urlsplit(sent[0][0]).path, f"/{self.CODE}/JobBoard/{self.GUID}")
+        posts = [s for s in sent if s[2]]
+        self.assertEqual([s[2]["opportunitySearch"]["Skip"] for s in posts], [0, 2])
+        self.assertEqual({s[2]["opportunitySearch"]["Top"] for s in posts}, {2})
+        self.assertEqual(posts[0][2]["opportunitySearch"]["OrderBy"][0]["PropertyName"], "PostedDate")
+        self.assertEqual(posts[0][2]["matchCriteria"]["PreferredJobs"], [])
+        self.assertEqual({s[1].get("X-RequestVerificationToken") for s in posts}, {"CfDJ8TOKEN"})
+        self.assertEqual(urllib.parse.urlsplit(posts[0][0]).path, self.LIST)
+        r = rows[0]
+        self.assertEqual((r["place"], r["region"], r["requisition"], r["ledger_id"]), ("Gordonsville", "Virginia", "REQ00001", f"ukgpro:{self.CODE}:{r['id']}"))
+        self.assertTrue(r["url"].endswith(f"/OpportunityDetail?opportunityId={r['id']}"))
+        dump = json.dumps(rows)
+        for hidden in ("16365", "229428501", "38.1795", "Latitude"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_country_filter_the_bounded_walk_the_repeating_pager_and_a_page_that_loads_another_tenants_list(self):
+        mod = self._mod()
+        opps = [self._opp(1, "A"), self._opp(2, "B", city="Toronto", state=("ON", "Ontario"), country=("CAN", "Canada"))]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}", "--country-code", "ca"], page=self._page(), pages=[(2, opps)])
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["B"]), err)
+        self.assertIn("1 emitted for CA of the 2 read", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}", "--max-pages", "1"], page=self._page(), pages=[(5, opps), (5, opps)])
+        self.assertEqual((code, len(rows)), (0, 2), err)
+        self.assertIn("1 page(s) of 2 walked by request (--max-pages), not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}"], page=self._page(), pages=[(5, opps), (5, opps)])
+        self.assertEqual(code, 6, err)
+        self.assertIn("not advancing", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}"], page=self._page(), pages=[(0, [])])
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted over 1 page(s) — the board states 0", err)
+        other = self._page(load_url="/OTHER/JobBoard/00000000-0000-0000-0000-000000000000/JobBoardView/LoadSearchResults")
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}"], page=other, pages=[(2, opps)])
+        self.assertEqual(code, 6, err)
+        self.assertIn("not this tenant's board", err)
+        self.assertEqual(len(sent), 1, "the list was not requested after the mismatch")
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"{self.CODE}/{self.GUID}"], page=None, pages=[])
+        self.assertEqual(code, 3, err)
+
+    def test_the_opportunity_page_is_read_with_no_key_its_supervisor_withheld_and_its_description_scrubbed(self):
+        mod = self._mod()
+        det = self._opp(7, "Material Handler", supervisor="Jane Q. Manager", desc="<p><strong>Come join!</strong></p><p>Write to jobs@example.com or call (804) 555-0100.</p>")
+        url = f"https://recruiting.ultipro.com/{self.CODE}/JobBoard/{self.GUID}/OpportunityDetail?opportunityId={det['Id']}"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url], detail=det, key=False)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(sent), 1)
+        r = rows[0]
+        self.assertEqual((r["title"], r["country"], r["place"], r["hours_per_week"], r["pay_range"]), ("Material Handler", "US", "Gordonsville", 40.0, {"min": 20.0, "max": 24.0, "currency": "USD"}))
+        self.assertTrue(r["description"].startswith("Come join!"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertEqual(r["education"], [{"degree": "High School", "major": None, "required": True}])
+        dump = json.dumps(r)
+        for hidden in ("Jane", "Manager\"", "SupervisorName", "example.com", "555-0100", "16365", "229428501"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], detail=None, key=False)
+        self.assertEqual(code, 3, err)
+        for bad in ("https://recruiting.ultipro.com/X/JobBoard/nope/OpportunityDetail?opportunityId=1", f"https://evil.example/{self.CODE}/JobBoard/{self.GUID}/OpportunityDetail?opportunityId={det['Id']}"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], detail=det, key=False)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_a_host_that_is_not_ukg_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "www.ultipro.com", "recruiting.ultipro.com.evil.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("HOL1002HPHM", "HOL1002HPHM/notaguid", f"https://example.com/{self.CODE}/JobBoard/{self.GUID}", ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad, "recruiting.ultipro.com")
+            self.assertEqual(cm.exception.code, 2, bad)
+        with self.assertRaises(SystemExit) as cm:
+            mod.tenant_of(f"{self.CODE}/{self.GUID}", "recruiting3.ultipro.com")
+        self.assertEqual(cm.exception.code, 2)
+        self.assertEqual(mod.tenant_of(f"https://recruiting2.ultipro.com/{self.CODE}/JobBoard/{self.GUID.upper()}", "recruiting.ultipro.com"), ("recruiting2.ultipro.com", self.CODE, self.GUID))
+        self.assertEqual(mod.tenant_of(f"{self.CODE}/{self.GUID}", "recruiting2.ultipro.com"), ("recruiting2.ultipro.com", self.CODE, self.GUID))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
