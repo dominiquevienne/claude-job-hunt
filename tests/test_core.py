@@ -29628,5 +29628,154 @@ class ABoardWhoseListingIsWalkedToItsEmptyPageAndCheckedAgainstItsJobSitemapAndW
             fresh.request("https://evil.example/tr/is-ilanlari/")
         self.assertEqual(cm.exception.code, 7)
 
+class AnATSWhoseCareerPageCarriesItsOwnListCallURLWithACSRFPairAndAnswersHTMLInsideJSONWithNoCount(unittest.TestCase):
+    """**`inrecruiting.py`, 2026-09-20 (#476).** Inrecruiting: the career page
+    holds `#url-for-announces` (`app.php?…&IdAzienda=&CSRFToken=&CSRFHash=`)
+    and a `section` id; the list is POSTed there page by page and answers
+    `{success, data: <html>}` — cards, or «Nessun annuncio disponibile»; no
+    count, no pager seen. Both ways: the page's own URL, section and
+    session replayed; the walk until a page brings nothing new; the cards'
+    title, place and function; the empty tenant; the bounded walk; a list
+    URL on another host refused; a page without the URL (6); a non-JSON
+    answer (6); the ad's JobPosting with the street withheld; bad
+    addresses; other hosts refused; composed tenants refused."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_inrecruiting", os.path.join(SCRIPTS, "inrecruiting.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "inrecruiting.intervieweb.it"
+    CAREER = "https://inrecruiting.intervieweb.it/juliaservice/it/career"
+    LIST = "https://inrecruiting.intervieweb.it/app.php?opmode=guest&module=newcareer&ajax=1&IdAzienda=2957&CSRFToken=abc&CSRFHash=def"
+
+    def _page(self, list_url=None, section=True):
+        import html as htmlmod
+        return ('<html><body><div id="vacancyList"><input type="hidden" id="url-for-announces" value="' + htmlmod.escape(list_url or self.LIST) + '"></div>'
+                + ("<script>$.ajax({ url: url, type: \"POST\", data: { 'act1': 'vacancyListCareer', 'section': 'AXg2D9', 'order': order, 'page': pageNumber } });</script>" if section else "")
+                + "</body></html>")
+
+    def _card(self, i, title, place="Ascoli Piceno Italia", fn="Addetta pulizie"):
+        u = f"https://{self.HOST}/juliaservice/jobs/{title.lower().replace(' ', '-')}-{553880 + i}/it/"
+        return (f'<div class="row vacancy__render"><div class="col-md col-12"><div class="vacancy__header"><div class="vacancy__title"><section ><a href="{u}"><h3> {title} </h3></a></section></div>'
+                f'<div class="vacancy__subtitle"><span class="subtitle__informations" title="Sede"><i class="mi"> </i><span class="sr-only">Sede </span>{place} </span>'
+                f'<span class="subtitle__informations" title="Professione/Funzione"><i class="mi"></i><span class="sr-only">Professione/Funzione </span>{fn} </span></div></div>'
+                f'<div class="vacancy__description text-max-2-rows"> La risorsa dovrà occuparsi di pulizie. Info: hr@julia.example, 0736 123456. </div></div>'
+                f'<div class="col-md-auto"><section ><a href="{u}" class="btn btn-primary"> Invia candidatura </a></section></div></div><div class="vacancies__separator collapse "></div>')
+
+    @staticmethod
+    def _answer(cards):
+        html_ = "".join(cards) if cards else '<div class="row list-wrapper"><div style="width:100%"><p>Nessun annuncio disponibile</p></div></div>'
+        return json.dumps({"success": True, "data": html_}, ensure_ascii=False)
+
+    AD = ('<html><head><script type="application/ld+json">{"@context":"http://schema.org","@type":"JobPosting","datePosted":"2026-09-04","validThrough":"2026-11-30","title":"ADDETTA/O ALLE PULIZIE","hiringOrganization":{"@type":"Organization","name":"JULIA SERVICE SRL"},'
+          '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","streetAddress":"Via L. Luciani","addressLocality":"Ascoli Piceno","addressRegion":"AP","postalCode":"63100","addressCountry":"IT"}},"description":"<p>La risorsa dovrà occuparsi di pulizie. Scrivi a hr@julia.example o chiama 0736 123456.</p>"}</script></head><body></body></html>')
+
+    def _run(self, mod, argv, page=None, pages=None, raw=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url, data=None, headers=None):
+            sent.append((url, urllib.parse.parse_qs(data.decode()) if data else None, headers or {}))
+            parts = urllib.parse.urlsplit(url)
+            if parts.path == "/app.php":
+                if raw is not None:
+                    return 200, raw
+                n = int(urllib.parse.parse_qs(data.decode())["page"][0])
+                return 200, self._answer((pages or [[]])[min(n, len(pages or [[]])) - 1])
+            if "/jobs/" in parts.path:
+                return (200, ad) if ad is not None else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_pages_own_list_call_is_replayed_page_by_page_until_a_page_brings_nothing_new(self):
+        mod = self._mod()
+        p1 = [self._card(i, f"Job {i}") for i in range(6)]
+        p2 = [self._card(6 + i, f"Job {6 + i}", place="Fermo Italia") for i in range(2)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.CAREER, "--country-code", "it"], page=self._page(), pages=[p1, p2, p2])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 8)
+        self.assertIn("8 emitted over 2 page(s) — no count is stated by the site: the walk stopped when a page brought nothing new; country IT stamped from --country-code", err)
+        self.assertEqual([u for u, _d, _h in sent], [self.CAREER + "/", self.LIST, self.LIST, self.LIST])
+        forms = [d for _u, d, _h in sent if d]
+        self.assertEqual([f["page"][0] for f in forms], ["1", "2", "3"])
+        self.assertEqual((forms[0]["act1"][0], forms[0]["section"][0], forms[0]["order"][0]), ("vacancyListCareer", "AXg2D9", "date"))
+        self.assertEqual(sent[1][2].get("X-Requested-With"), "XMLHttpRequest")
+        self.assertEqual(sent[1][2].get("Referer"), self.CAREER + "/")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["place"], r["function"], r["country"]), ("job-0-553880", "Job 0", "Ascoli Piceno Italia", "Addetta pulizie", "IT"))
+        self.assertEqual(r["fields"], {"Sede": "Ascoli Piceno Italia", "Professione/Funzione": "Addetta pulizie"})
+        self.assertIn("[e-mail withheld]", r["summary"])
+        self.assertIn("[telephone withheld]", r["summary"])
+        self.assertNotIn("sr-only", json.dumps(rows))
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_empty_tenant_the_bounded_walk_a_list_url_on_another_host_a_page_without_the_url_and_a_non_json_answer(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://berner.intervieweb.it/it/career/"], page=self._page(list_url="https://berner.intervieweb.it/app.php?opmode=guest&module=newcareer&ajax=1&IdAzienda=39698&CSRFToken=a&CSRFHash=b"), pages=[[]])
+        self.assertEqual((code, rows, len(sent)), (0, [], 2), err)
+        self.assertIn("«Nessun annuncio disponibile»: no vacancy today, not an error", err)
+        p1 = [self._card(i, f"J{i}") for i in range(6)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.CAREER, "--max-pages", "1"], page=self._page(), pages=[p1, p1])
+        self.assertEqual((code, len(rows), len(sent)), (0, 6, 2), err)
+        self.assertIn("6 emitted over 1 page(s) by request (--max-pages) — no count is stated by the site; there may be more", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.CAREER], page=self._page(list_url="https://evil.example/app.php?ajax=1"), pages=[p1])
+        self.assertEqual((code, len(sent)), (7, 1), err)
+        self.assertIn("another host", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CAREER], page="<html><body>not a career page</body></html>", pages=[p1])
+        self.assertEqual(code, 6, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CAREER], page=self._page(section=False), pages=[p1])
+        self.assertEqual(code, 6, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CAREER], page=self._page(), raw="<html>login</html>")
+        self.assertEqual(code, 6, err)
+        self.assertIn("not JSON", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CAREER], page=None)
+        self.assertEqual(code, 3, err)
+
+    def test_the_ad_reads_the_jobposting_and_withholds_the_street_and_other_hosts_and_composed_tenants_are_refused(self):
+        mod = self._mod()
+        url = f"https://{self.HOST}/juliaservice/jobs/addettao-alle-pulizie-553887/it/"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _d, _h in sent], [url])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["posted"], r["closes"]), ("addettao-alle-pulizie-553887", "ADDETTA/O ALLE PULIZIE", "JULIA SERVICE SRL", "Ascoli Piceno", "AP", "IT", "2026-09-04", "2026-11-30"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("Luciani", "63100", "hr@julia", "0736 123456"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad="<html><body>gone</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in (self.CAREER, "https://www.intervieweb.it/x/jobs/y/it/", "https://in-recruiting.com/juliaservice/jobs/x/it/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "berner.intervieweb.it", "inrecruiting.intervieweb.it.evil.example", "www.in-recruiting.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/app.php")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "juliaservice", "https://www.intervieweb.it/it/career", "https://inrecruiting.intervieweb.it/juliaservice/jobs/x/it/", "https://in-recruiting.com/it/career"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of(self.CAREER), (self.HOST, "/juliaservice", "it"))
+        self.assertEqual(mod.tenant_of("berner.intervieweb.it/it/career/"), ("berner.intervieweb.it", "", "it"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
