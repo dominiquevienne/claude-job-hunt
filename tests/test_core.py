@@ -28347,5 +28347,172 @@ class AnATSWhoseJobPortalAPIPagesByTakeAndSkipStatesTheCustomersTotalAndNamesThe
         self.assertEqual(mod.when("/Date(1790200799000)/"), "2026-09-23T21:59+00:00")
         self.assertIsNone(mod.when(""))
 
+class AnATSWhoseCareerSitePostsItsOwnSectionConfigToGetPageAndWhoseVacancyCarriesTheWholeAdvertAndTheContactInItsFacts(unittest.TestCase):
+    """**`emply.py`, 2026-09-20 (#468).** Emply: `<tenant>.career.emply.com`'s
+    page declares `var config = { count, …, sectionId: '<guid>', … }` and
+    POSTs it to `/api/integration/vacancy/get-page` → `{count, vacancies[]}`;
+    `offset` advances by the vacancies received. The vacancy's `location`
+    is a street address, its `factDatas` repeat it and name the contact
+    («1. Kontaktperson»), its `translations[].content` is the whole advert
+    with the contact's e-mail and telephone. Both ways: the config replayed
+    (the page's section, size, sort and language), the walk to the stated
+    count, the root without a section falling to /ledige-stillinger, the
+    address trimmed in the row and the fact, the contact fact dropped, the
+    description scrubbed, the country from the location and the stamp, a
+    repeating call (6), the challenge (7), the ad page balanced across
+    nested divs, other hosts refused, bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_emply", os.path.join(SCRIPTS, "emply.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "aarhus.career.emply.com"
+    SID = "687f3e3c-060e-4fd7-8fcc-14ca2e74da98"
+
+    @staticmethod
+    def _vac(i, title, location="Kingosvej 1-7, 8230, Åbyhøj, Denmark", dept="Flyverkorps"):
+        sid = f"s{i:05d}"
+        return {"id": f"09ebb094-8c64-4bac-9faa-4dbe80fb{i:04d}", "shortId": sid, "titleAsUrl": f"job-{i}", "number": 31600 + i, "title": title,
+                "created": "2026-07-06T12:12:54Z", "published": "2026-07-06T12:14:05Z", "deadline": "2026-09-20T21:59:00Z", "department": dept, "location": location,
+                "talentPool": False, "externalCseAdLink": None,
+                "translations": [{"title": title, "languageKey": "da-DK", "languageTitle": "Dansk",
+                                  "content": "<p>Vil du have et job?</p><p>Yderligere oplysninger hos lederen på tlf. 23648237 eller mail ankjm@aarhus.dk.</p>",
+                                  "factDatas": [{"factId": "job_title", "title": "Titel", "type": 0, "text": title}, {"factId": "deadline", "title": "Frist", "type": 0, "text": "2026-09-20T21:59:00.000Z"},
+                                                {"factId": "loc", "title": "Lokation", "type": 0, "text": location}, {"factId": "c1", "title": "1. Kontaktperson", "type": 0, "text": "Anne Markvardsen"},
+                                                {"factId": "wt", "title": "Arbejdstid", "type": 0, "text": "Deltid"}]}]}
+
+    def _page(self, count=30, section=True, lang="da-DK"):
+        cfg = (f"var config = {{ count: {count}, filters: [], langCode: languageKey, offset: 0, searchText: '', sectionId: '{self.SID}', sortByProjectDataId: 'deadline', sortAscending: true, light: false, isJobAgent: false, siteId: null }};"
+               " loadingAjax = $.ajax({ type: 'POST', contentType: 'application/json', url: '/api/integration/vacancy/get-page', data: JSON.stringify(config) });") if section else ""
+        return f"<html><head><title>Ledige stillinger - Aarhus Kommune</title></head><body><script>var languageKey = '{lang}'; {cfg}</script><div class='csl_body'>Emply career site</div></body></html>"
+
+    AD = ('<html><body><div class="css_section csa_area csa_jobad"><div class="css_holder"><div class="csa_jobadLeft"><h1 class="css_headline">Social- og sundhedshj&#230;lper</h1><div class="clear"></div>'
+          '<div class="csa_jobadText"><p>Vil du have et job?</p><div class="box"><div><p>Om Flyverkorpset</p></div></div><p>Afdelingen dækker vagter døgnet rundt.</p><p>Ring 23648237 eller skriv ankjm@aarhus.dk.</p></div>'
+          '<div class="csa_jobadApply"><a href="/apply/job/wt7hyj">Søg jobbet</a></div></div></div></div></body></html>')
+
+    def _run(self, mod, argv, pages=None, vacs=None, total=None, challenge=False, stuck=False, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        served = pages or {}
+
+        def request(url, data=None, headers=None):
+            sent.append((url, json.loads(data) if data else None, headers or {}))
+            parts = urllib.parse.urlsplit(url)
+            if parts.path == "/api/integration/vacancy/get-page":
+                cfg = json.loads(data)
+                off = 0 if stuck else cfg["offset"]
+                return 200, json.dumps({"count": total if total is not None else len(vacs or []), "vacancies": (vacs or [])[off:off + cfg["count"]]})
+            if challenge:
+                return 403, "<html><title>Checking search engine crawler...</title></html>"
+            if parts.path.startswith("/ad/"):
+                return (200, ad) if ad is not None else (404, "")
+            body = served.get(parts.path)
+            return (200, body) if body is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_pages_config_is_replayed_and_the_walk_reaches_the_stated_count_with_the_address_and_contact_withheld(self):
+        mod = self._mod()
+        vacs = [self._vac(i, f"Job {i}") for i in range(35)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "aarhus"], pages={"/": self._page()}, vacs=vacs, total=35)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 35)
+        self.assertIn("35 emitted over 2 call(s) of 30 — the site states 35: equal", err)
+        self.assertEqual([urllib.parse.urlsplit(u).path for u, _d, _h in sent], ["/", "/api/integration/vacancy/get-page", "/api/integration/vacancy/get-page"])
+        c1, c2 = sent[1][1], sent[2][1]
+        self.assertEqual((c1["sectionId"], c1["count"], c1["offset"], c1["langCode"], c1["sortByProjectDataId"], c1["sortAscending"], c1["light"], c1["filters"]), (self.SID, 30, 0, "da-DK", "deadline", True, False, []))
+        self.assertEqual(c2["offset"], 30)
+        self.assertEqual(sent[1][2].get("Content-Type"), "application/json")
+        self.assertEqual(sent[1][2].get("Referer"), f"https://{self.HOST}/")
+        r = rows[0]
+        self.assertEqual((r["id"], r["number"], r["title"], r["place"], r["country"], r["country_name"], r["department"], r["closes"], r["url"]),
+                         ("s00000", 31600, "Job 0", "Åbyhøj", "DK", "Denmark", "Flyverkorps", "2026-09-20T21:59:00Z", f"https://{self.HOST}/ad/job-0/s00000"))
+        self.assertEqual(r["fields"], {"Frist": "2026-09-20T21:59:00.000Z", "Lokation": "Åbyhøj, Denmark", "Arbejdstid": "Deltid"})
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("Kingosvej", "8230", "Kontaktperson", "Anne Markvardsen", "ankjm@", "23648237"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_root_without_a_section_falls_to_the_list_page_the_stamp_the_bounded_walk_the_repeat_and_the_challenge(self):
+        mod = self._mod()
+        vacs = [self._vac(0, "A"), self._vac(1, "B", location="Storgata 1, 0155, Oslo, Norway"), self._vac(2, "C", location="Rådhuset")]
+        pages = {"/": self._page(section=False), "/ledige-stillinger": self._page(count=6)}
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/ledige-stillinger"], pages=pages, vacs=vacs)
+        self.assertEqual((code, len(rows)), (0, 3), err)
+        self.assertEqual([urllib.parse.urlsplit(u).path for u, _d, _h in sent[:3]], ["/", "/ledige-stillinger", "/api/integration/vacancy/get-page"])
+        self.assertEqual(sent[2][1]["count"], 6)
+        self.assertEqual([r["country"] for r in rows], ["DK", "NO", None])
+        self.assertEqual(rows[2]["place"], "Rådhuset")
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus", "--country-code", "no"], pages=pages, vacs=vacs)
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["B", "C"]), err)   # C names no country and is stamped, as the note says
+        self.assertIn("2 emitted for NO of the 3 read", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus", "--page", "/da/ledige-stillinger"], pages={"/da/ledige-stillinger": self._page(count=6)}, vacs=vacs)
+        self.assertEqual((code, len(rows)), (0, 3), err)
+        big = [self._vac(i, f"J{i}") for i in range(12)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus", "--max-pages", "1"], pages={"/": self._page(count=6)}, vacs=big)
+        self.assertEqual((code, len(rows)), (0, 6), err)
+        self.assertIn("1 call(s) of 6 by request (--max-pages), not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus"], pages={"/": self._page(count=6)}, vacs=big, stuck=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("not advancing", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus"], pages={"/": self._page()}, vacs=[], total=0)
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted over 1 call(s) of 30 — the site states 0", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "au"], challenge=True)
+        self.assertEqual((code, rows, len(sent)), (7, [], 1), err)
+        self.assertIn("challenge", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "aarhus"], pages={"/": "<html><body>Not this family at all</body></html>"})
+        self.assertEqual(code, 6, err)
+
+    def test_the_ad_page_is_read_balanced_and_scrubbed_and_the_apply_form_is_never_touched(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/ad/social-og-sundhedshjaelper/wt7hyj"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _d, _h in sent], [f"https://{self.HOST}/ad/social-og-sundhedshjaelper/wt7hyj"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"]), ("wt7hyj", "Social- og sundhedshjælper"))
+        self.assertTrue(r["description"].startswith("Vil du have et job?"))
+        self.assertIn("Afdelingen dækker vagter", r["description"], "a nested div is not the end of the advert")
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("ankjm@", "23648237", "Søg jobbet", "/apply/"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/ad/x/wt7hyj"], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/ad/x/wt7hyj"], ad="<html><body>gone</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in (f"https://{self.HOST}/apply/x/wt7hyj", "https://emply.com/ad/x/y", f"https://{self.HOST}/ad/wt7hyj"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_another_host_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "aalborg.career.emply.com", "aarhus.career.emply.com.evil.example", "emply.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "hr", "a.b", "-x", "https://emply.com/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("aarhus", "AARHUS.career.emply.com", f"https://{self.HOST}/ledige-stillinger"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual(mod.place_of("Kingosvej 1-7, 8230, Åbyhøj, Denmark"), ("Åbyhøj", "DK", "Denmark"))
+        self.assertEqual(mod.place_of("Rådhuset, Aarhus C"), ("Aarhus C", None, None))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
