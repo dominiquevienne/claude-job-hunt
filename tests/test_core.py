@@ -28228,7 +28228,7 @@ class AnATSWhoseJobPortalAPIPagesByTakeAndSkipStatesTheCustomersTotalAndNamesThe
     UNKNOWN = json.dumps({"CustomerAlias": None, "CustomerName": None, "TransactionStatus": {"Description": "Value cannot be null.\r\nParameter name: connectionString", "StatusCode": 1}, "Items": [], "PositionCountCustomer": 0, "PositionCountList": 0})
 
     AD = ('<html><body><div id="column1"><div class="AdContentContainer"><h1 class="ProjectName">2 introduktionsstillinger i radiologi</h1><div id="AdvertisementInnerContent"><h2>Drømmer du om at blive radiolog?</h2>'
-          '<p>Vi søger 2 introduktionslæger. Skriv til Rikke.Beese.Dalby@rsyd.dk eller ring 3062 8065.</p><div class="box"><div><p>Afdelingen er organiseret i 7 sektioner.</p></div></div>'
+          '<p>Vi søger 2 introduktionslæger. Skriv til Rikke.Beese.Dalby@rsyd.dk eller ring 3062 8065.</p><div class="box"><div><p>Om afdelingen:</p></div></div><p>Afdelingen er organiseret i 7 sektioner.</p>'
           '<div class="contact emptyparent"><div class="question rowheader">Contact</div><div class="contactinfo"><div><strong><span id="contact1">Rikke Beese Dalby</span></strong></div><div>Cheflæge</div><div class="emptyparent"><span class="empty icontext">3062 8065</span></div></div></div></div>\n'
           '<div class="apply"><a id="ApplyButton" href="ApplicationInit.aspx?cid=198&amp;ProjectId=237101&amp;SkipAdvertisement=True">Søg stillingen</a></div></div></div></body></html>')
 
