@@ -28919,5 +28919,141 @@ class AnATSWhoseCareerPageWidgetListsAdvertsByLimitOffsetAndPageAndStatesTheCoun
         self.assertEqual(mod.when(1788854741), "2026-09-08")
         self.assertIsNone(mod.when(None))
 
+class ABoardWhoseHostChallengesTheClientOnEveryPathAndWhoseTabServesAWordPressRESTCollectionCountedAsAnArchive(unittest.TestCase):
+    """**`mabumbe.py`, 2026-09-20 (#332).** Mabumbe (Tanzania): every path answers the
+    declared client with a Cloudflare «Just a moment...» (403, moving md5) while
+    a connected tab is served and, from inside the page, `fetch()` of
+    `/wp-json/wp/v2/noo_job?per_page=100&page=N&_embed=wp:term&after=…` answers
+    200 — `x-wp-total` 44 523 is the archive, `after=` narrows the window (146
+    in seven days on 2026-09-20). Both ways: the HTTP attempt dies with 9 and
+    the procedure (never another agent string), `--from` normalises the tab's
+    JSON — the employer from the title's « at », the deadline from three prose
+    forms and null otherwise, the terms from `_embedded`, ids when it is
+    absent, e-mails and telephones scrubbed, the apply link never emitted —
+    the stated total compared, a repeated id emitted once, a bad file refused,
+    other hosts never sent."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mabumbe", os.path.join(SCRIPTS, "mabumbe.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(jid, title, content, locs=("Dar es Salaam",), cats=("Administration Jobs",), embedded=True):
+        it = {"id": jid, "date": "2026-09-19T08:34:51", "date_gmt": "2026-09-19T05:34:51", "modified": "2026-09-19T08:34:51", "modified_gmt": "2026-09-19T05:34:51",
+              "slug": f"post-{jid}", "status": "publish", "type": "noo_job", "link": f"https://mabumbe.com/jobs/post-{jid}/",
+              "title": {"rendered": title}, "excerpt": {"rendered": "<p>x</p>"}, "content": {"rendered": content},
+              "job_category": [13549], "job_type": [7], "job_location": [13551]}
+        if embedded:
+            it["_embedded"] = {"wp:term": [[{"id": 13549, "name": c, "taxonomy": "job_category", "slug": "x"} for c in cats],
+                                           [{"id": 1, "name": "Nafasi za Kazi Wiki Hii", "taxonomy": "job_tag", "slug": "x"}],
+                                           [{"id": 7, "name": "Full time Jobs", "taxonomy": "job_type", "slug": "x"}],
+                                           [{"id": 13551, "name": l, "taxonomy": "job_location", "slug": "x"} for l in locs]]}
+        return it
+
+    UCSF = ("<h1>IT Support Officer</h1><h2>ABOUT GLOBAL PROGRAMS</h2><p>The Global Programs (GP) Office in Tanzania is an affiliate of the University of California, San Francisco.</p>"
+            "<p>Applications and supporting documents should be sent via e-mail to <a href=\"mailto:info.tanzania@ucglobalprograms.org\">info.tanzania@ucglobalprograms.org</a> or call +255 22 123 4567. Deadline is 30th September 2026.</p>"
+            "<p><strong>How to Apply:</strong> Job type Full-time Job, To submit your application, please follow the link provided below.</p><p><a href=\"https://forms.example/apply?x=1\">CLICK HERE TO APPLY</a></p><p>Check all: <a href=\"/jobs/\">JOBS IN TANZANIA</a></p>")
+    NEEC = ("<p>Executive Secretary<br />Company<br />National Economic Empowerment Council (NEEC)<br />Positions<br />1 Position<br />Calendar<br />Application Period<br />18/09/2026 &#8211; 01/10/2026<br />Duties<br />To implement the functions of the Council.</p>")
+
+    def _run(self, mod, argv, answers=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url) if answers else (403, "<title>Just a moment...</title>", {})
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_challenge_ends_the_http_attempt_with_the_browser_exit_and_the_procedure(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--after", "2026-09-13"])
+        self.assertEqual((code, rows), (9, []), err)
+        self.assertIn("the rules permit this and the server refused the client", err)
+        self.assertIn("fetch('/wp-json/wp/v2/noo_job?per_page=100&page=N&_embed=wp:term&after=2026-09-13T00:00:00')", err)
+        self.assertIn("--from <files> --stated <x-wp-total>", err)
+        self.assertEqual(sent, ["https://mabumbe.com/wp-json/wp/v2/noo_job?per_page=100&page=1&_embed=wp:term&after=2026-09-13T00:00:00"])
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://mabumbe.com/jobs/executive-secretary-at-neec-september-2026/"])
+        self.assertEqual((code, rows), (9, []), err)
+        self.assertIn("slug=executive-secretary-at-neec-september-2026", err)
+        for bad in ("https://evil.example/jobs/x/", "https://mabumbe.com/malawi-pslce-results/", "https://mabumbe.com/jobs/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad])
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()            # the real request(), the guard alone stubbed: another host dies before any byte
+        fresh.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm:
+            fresh.request("https://evil.example/wp-json/wp/v2/noo_job")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_served_route_is_paged_to_its_totalpages_and_compared_to_x_wp_total(self):
+        mod = self._mod()
+        pages = {"1": [self._item(1, "A at X September 2026", self.NEEC)], "2": [self._item(2, "B at Y September 2026", self.NEEC), self._item(1, "A at X September 2026", self.NEEC)]}
+
+        def answers(url):
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            page = q.get("page", ["1"])[0]
+            return (200, json.dumps(pages.get(page, [])), {"X-WP-Total": "3", "X-WP-TotalPages": "2"})
+        code, rows, err, sent = self._run(mod, ["jobs", "--after", "2026-09-13"], answers)
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 2), err)
+        self.assertIn("2 emitted, the route states 3 for the window: 1 short", err)
+        self.assertEqual([r["id"] for r in rows], ["1", "2"])
+
+    def test_the_tabs_json_is_normalised_the_employer_read_from_the_title_and_the_contact_scrubbed(self):
+        mod = self._mod()
+        d = tempfile.mkdtemp()
+        try:
+            p1, p2 = os.path.join(d, "p1.json"), os.path.join(d, "p2.json")
+            with open(p1, "w", encoding="utf-8") as f:
+                json.dump([self._item(159269, "IT Support Officer job at Global Programs September 2026", self.UCSF, cats=("ICT Jobs", "NGO and Social Work Jobs")),
+                           self._item(159278, "Executive Secretary at NEEC September 2026", self.NEEC, locs=("Dar es Salaam", "Dodoma"))], f)
+            with open(p2, "w", encoding="utf-8") as f:
+                json.dump([self._item(159300, "Various HALMASHAURI Jobs September, 2026", "<p>Apply before 5 October 2026.</p>", embedded=False),
+                           self._item(159278, "Executive Secretary at NEEC September 2026", self.NEEC)], f)
+            code, rows, err, sent = self._run(mod, ["jobs", "--from", p1, p2, "--stated", "3"])
+            self.assertEqual((code, len(rows), sent), (0, 3, []), err)
+            self.assertIn("3 emitted, the route states 3 for the window: equal", err)
+            a, b, c = rows
+            self.assertEqual((a["id"], a["title"], a["company"], a["posted"], a["closes"], a["locations"], a["categories"], a["job_type"], a["country"], a["url"]),
+                             ("159269", "IT Support Officer", "Global Programs", "2026-09-19T05:34:51Z", "30th September 2026", ["Dar es Salaam"], ["ICT Jobs", "NGO and Social Work Jobs"], ["Full time Jobs"], "TZ", "https://mabumbe.com/jobs/post-159269/"))
+            self.assertEqual(a["title_as_posted"], "IT Support Officer job at Global Programs September 2026")
+            self.assertIn("[e-mail withheld]", a["description"])
+            self.assertIn("[telephone withheld]", a["description"])
+            dump = json.dumps(a)
+            for hidden in ("info.tanzania@", "+255 22 123 4567", "forms.example", "CLICK HERE TO APPLY", "Nafasi za Kazi Wiki Hii"):
+                self.assertNotIn(hidden, dump, hidden)
+            self.assertTrue(a["contacts_withheld"])
+            self.assertEqual((b["title"], b["company"], b["closes"], b["locations"]), ("Executive Secretary", "NEEC", "01/10/2026", ["Dar es Salaam", "Dodoma"]))
+            self.assertEqual((c["title"], c["company"], c["closes"], c["locations"], c["term_ids"]),
+                             ("Various HALMASHAURI Jobs", None, "5 October 2026", None, {"job_location": [13551], "job_category": [13549], "job_type": [7]}))
+            code, rows, err, _ = self._run(mod, ["jobs", "--from", p1])
+            self.assertEqual((code, len(rows)), (0, 2), err)
+            self.assertIn("no x-wp-total handed over", err)
+            code, rows, err, _ = self._run(mod, ["ad", "--from", p2])
+            self.assertEqual((code, rows[0]["id"]), (0, "159300"), err)
+            bad = os.path.join(d, "bad.json")
+            with open(bad, "w", encoding="utf-8") as f:
+                f.write('{"code":"rest_no_route","message":"No route was found"}')
+            code, rows, err, _ = self._run(mod, ["jobs", "--from", bad])
+            self.assertEqual((code, rows), (2, []), err)
+            self.assertIn("not a list of noo_job items", err)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        self.assertEqual(mod.company_of("Programme Officer (PO), AIM – 138 positions at BRAC September 2026"), ("Programme Officer (PO), AIM – 138 positions", "BRAC"))
+        self.assertEqual(mod.company_of("Exim Bank graduate trainee program September 2026"), ("Exim Bank graduate trainee program", None))
+        self.assertIsNone(mod.deadline_of("The Council will contact shortlisted candidates."))
+        self.assertEqual(mod.deadline_of("Application deadline: 30 September 2026 BRAC is committed"), "30 September 2026")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

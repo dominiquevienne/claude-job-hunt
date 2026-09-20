@@ -278,7 +278,7 @@ browser at all. `hiringcafe.md`, `job-room.md`, `france-travail.md`, `apec.md`,
 `meteojob.md`, `hellowork.md` and the ATS family (`workday.md`,
 `greenhouse.md`, `lever.md`, `ashby.md`, `workable.md`, `teamtailor.md`, `swissdevjobs.md`, `taleez.md`, `flatchr.md`, `digitalrecruiters.md`, `talentsoft.md`, `emploi-territorial.md`, `labonnealternance.md`, `jobology.md`, `batiactu.md`, `anefa.md`, `adecco.md`, `randstad-fr.md`, `crit.md`, `hays-fr.md`, `empleate.md`, `oposiciones.md`, `infoempleo.md`, `turijobs.md`, `arbeitsagentur.md`, `jobsireland.md`, `platsbanken.md`, `personio.md`, `recruitee.md`, `pinpoint.md`, `oraclecloud.md`, `stepstone.md`, `mycareersfuture.md`, `kalibrr.md`, `jobup.md`, `jobs-ch.md`, `jobbkk.md`, `adzuna.md`, `computrabajo.md`, `icims.md`, `vieclam24h.md`, `philjobnet.md`) are plain HTTP, and `jobstore.md` is plain HTTP for discovery but needs the browser to read an ad, and need no extension,
 no login and no Chrome. Only `linkedin.md`,
-`indeed.md`, `cadremploi.md`, `figaro-emploi.md`, `softy.md` and `wttj.md` (for reading; its discovery half is plain HTTP) need the user's own browser — and of those,
+`indeed.md`, `cadremploi.md`, `figaro-emploi.md`, `softy.md`, `mabumbe.md` (the tab fetches the REST collection, `mabumbe.py --from` reads the saved answers) and `wttj.md` (for reading; its discovery half is plain HTTP) need the user's own browser — and of those,
 only LinkedIn needs them logged in. Announcing requirements a board does not have costs the user a
 setup they did not need — and when the extension really is missing, HiringCafe
 is a sweep that still runs, not just a fallback to `cover-letter`.

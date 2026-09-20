@@ -1,13 +1,13 @@
-# Board adapter — Mabumbe (Tanzania): rules open to `Claude-User`, and an anti-robot challenge on every path
+# Board adapter — Mabumbe (Tanzania): a challenge to the declared client on every path, the user's tab served — and from inside it the WordPress REST collection `noo_job` answers, 100 a page, `after=` for the window; `mabumbe.py jobs --from` normalises what the tab hands over, the archive's 44 523 named as an archive
 
-<!-- verified: 2026-09-14 -->
+<!-- verified: 2026-09-20 -->
 
 <!-- hosts: mabumbe.com, www.mabumbe.com -->
-<!-- script: none -->
+<!-- script: mabumbe.py -->
 <!-- countries: TZ -->
-<!-- content: indeterminate · 2 hosts, same rules; 4 paths tried under the permitted token and all 4 answer HTTP 403 with a 5 637-byte Cloudflare interstitial titled `Just a moment...`, md5 different on two fetches of the same URL at constant size — a challenge, not a page; nothing of the site was read · 2026-09-11 13:20 UTC -->
+<!-- content: measured · **2026-09-20 14:16–14:22 UTC, the declared client and a connected tab.** Rules (`/robots.txt`, 200, 1 956 B — no longer the Cloudflare managed file of 11.09): `ChatGPT-User`, `python`, `curl`, `wget` and some thirty SEO crawlers refused `/`; `User-agent: *` closes `/wp-admin/`, `/wp-includes/`, `/cgi-bin/` only — neither `Claude-User` nor `ClaudeBot` named, the `*` group applies, `/jobs/` and `/wp-json/` permitted. Transport to the client: `/jobs/`, `/sitemap.xml`, `/wp-json/wp/v2/posts`, `/wp-json/wp/v2/noo_job` — HTTP 403 ×2 each, 5 652–5 790 B «Just a moment...», md5 moving at constant size (the challenge of 11.09, unchanged; never defeated). The tab: `/jobs/` served, «44,523 jobs found», 14 cards on page 1 (`article.ajzjp-card`, `data-job-id`, the employer in `.ajzjp-card-company`), pager to `/jobs/page/3425/`; and from inside the page `fetch('/wp-json/wp/v2/noo_job?per_page=100&page=N&_embed=wp:term')` answers 200 — `x-wp-total` **44 523** (= the page's counter: the archive since the site began), `x-wp-totalpages` 446, `per_page` capped at 100 (101 → 400), ten calls in a row served; `after=2026-08-21T00:00:00` → **619** (7 pages), `after=2026-09-13T00:00:00` → **146** over 2 pages, 146 distinct ids — equal; 133 of the 146 titles carry « at <employer> », 78 of 146 a deadline in one of three prose forms. Each item: `date`/`date_gmt`, `modified`, `link`, `title`, `content` (the whole advert, 2 000–16 000 characters), `excerpt`, and the terms `job_category` (NGO and Social Work 8 053, Administration 5 991, Government 5 123, Banking and Finance 4 558 …), `job_location` (60; Dar es Salaam 26 956, Arusha 3 230, Dodoma 2 807), `job_type` (Full time Jobs; the rest SEO tags). No JobPosting, no employer field · 2026-09-20 -->
 <!-- witness: none — nothing was served. The site's own «44 156» (2026-09-02, `shared/plausible-and-false.md`) is a WordPress archive counter with expired advertisements inside it, cited there and not re-read here · **browser, 2026-09-14 10:04 UTC: `/jobs/` served to a connected tab without the interstitial — «44,393 jobs found», WordPress posts 15 a page, `/jobs/page/2/ … /3415/`, the last carrying 14; the count is the archive's (posts since the site began — tenders, notices and results among them), not a count of live advertisements; the ad page carries a WebPage / BreadcrumbList / WebSite / Organization graph and no JobPosting** · **the bound, one page, 10:16 UTC: page 1 of `/jobs/` holds 15 posts, every title dated «September 2026» (the cards render no `<time>`; the month lives in the title), 13 of them vacancies (a job at a named employer, or a recruitment digest of a named body — TIRA 9 posts, NSI 13, councils 59), 1 a tender, 1 a digest of other posts; the archive's 44 393 is the site's counter, the live fraction is what a walk stopped at the first older month yields** -->
-<!-- route: browser · 44393 · 2026-09-14 -->
+<!-- route: browser · 619 · 2026-09-20 -->
 
 **Tanzania's first host on a card.** *The rules open and the transport serves a
 challenge — two different kinds of «no», and the second is the one that
@@ -118,4 +118,61 @@ the key, the post's own date and employer from its title («… job at
 <employer> <month> <year>»). The declared client gets the moving «Just a
 moment…» (2026-09-11, 2026-09-13) — never defeated; the tab was not
 challenged today.
+
+## 2026-09-20 — #332: the collection behind the archive page, from the tab; `mabumbe.py`
+
+**Measured 2026-09-20 14:16–14:22 UTC.** The challenge to the declared
+client is what it was on the 11th and the 14th — `/jobs/`, `/sitemap.xml`
+and two REST routes answer 403 with «Just a moment...» twice each, md5
+moving — and the tab is served as on the 14th. What is new is what the tab
+can reach: **the WordPress REST collection of the site's job post type,
+`noo_job`**, from inside the page:
+
+```
+fetch('/wp-json/wp/v2/noo_job?per_page=100&page=1&_embed=wp:term')                      200 · x-wp-total 44523 · x-wp-totalpages 446
+fetch('/wp-json/wp/v2/noo_job?per_page=100&page=1&_embed=wp:term&after=2026-08-21T00:00:00')   200 · 619 · 7 pages
+fetch('/wp-json/wp/v2/noo_job?per_page=100&page=1&_embed=wp:term&after=2026-09-13T00:00:00')   200 · 146 · 2 pages — 146 distinct ids read
+fetch('/wp-json/wp/v2/noo_job?per_page=101')                                             400 (the cap is 100)
+```
+
+**44 523 is the page's own «jobs found» — and it is the archive**: every
+post ever filed as a job (the count grew from 44 393 on the 14th to 44 523
+on the 20th, 130 posts in six days — 146 in the seven days `after=` reads,
+tenders, exam notices and «Call for Interview» digests among them). The
+`route:` line now carries **619, the posts of the last 30 days**, the window
+`mabumbe.py` reads by default; the archive is named beside it, never
+counted as live advertisements. `_embed=wp:term` resolves the taxonomies
+in the same answer: `job_location` (60 terms), `job_category`, `job_type`
+(one real value, «Full time Jobs», among SEO tags), `job_tag` (Swahili SEO
+phrases — dropped). **No employer field**: the title's own shape carries it
+(«Executive Secretary at NEEC September 2026» → NEEC; 133 of 146 titles have
+an « at »), null otherwise; the deadline is prose in three forms («Deadline
+is 30th September 2026», «Application deadline: 30 September 2026»,
+«Application Period 18/09/2026 – 01/10/2026»), read when present (78 of
+146), null otherwise.
+
+**The adapter, `mabumbe.py` (#332).** `jobs` over HTTP takes the guard, asks
+the route once, meets the 403 and **dies with exit 9** — the browser exit of
+`_ua.browser_fallback` — printing the procedure: open `https://mabumbe.com/jobs/`
+in the user's own Chrome, run the `fetch()` above one page at a time (2 s
+apart), save each answer to a file, and `mabumbe.py jobs --from p1.json
+p2.json … --stated <x-wp-total>`. `--from` normalises the tab's JSON — id,
+url, title (the « at » part removed) and `title_as_posted`, `company`,
+`posted` (`date_gmt` as UTC), `modified`, `closes`, `locations`,
+`categories`, `job_type`, the description as text — and prints «N emitted,
+the route states M for the window» beside it. `ad --url
+https://mabumbe.com/jobs/<slug>/` asks the same route by `slug=` and dies
+the same way; `ad --from` reads the saved answer. **Never another agent
+string, never the challenge answered.**
+
+**Withheld.** E-mail addresses and telephone numbers scrubbed from the
+description (the adverts end with «Applications … should be sent via e-mail
+to …» — the sentence stays, the address does not); the site's apply link
+(«CLICK HERE TO APPLY») never emitted; `job_tag` dropped;
+`contacts_withheld` on every record. Guard in `tests/`: the challenge and
+its exit, the paged walk against `x-wp-total`, the tab's JSON normalised
+both with and without `_embedded`, the employer from the title, the three
+deadline forms and their absence, the scrub, the apply link, a repeated id
+once, a bad file refused, another host never sent — 6 mutations, 6 red
+(2026-09-20).
 
