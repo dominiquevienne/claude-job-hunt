@@ -29202,5 +29202,166 @@ class AnATSWhoseCareerSiteCarriesItsOwnKeyedFeedLinkAndWhoseFeedListsAnOfferOnce
         for ok in ("zabka", "ZABKA.pracujunas.pl", f"https://{self.HOST}/"):
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
 
+class AnATSWhoseRulesRefuseTheListCallInAFileWithoutAGroupSoTheDeclaredSitemapIsTheListAtTheWrittenDelay(unittest.TestCase):
+    """**`talentlyft.py`, 2026-09-20 (#474).** TalentLyft: `<tenant>.talentlyft.com
+    /robots.txt` has no `User-agent:` line, refuses `/JobList` and
+    `/JobsSimple`, writes `Crawl-delay: 150` and declares `/sitemap.xml`;
+    the job pages carry a JobPosting with a street line and a postal code.
+    Both ways: the sitemap read and its `/jobs/<slug>` entries walked in
+    order (the root and other paths left out), the JobPosting mapped with
+    the street and postcode withheld, the remote flag from the street line,
+    the country and the stamp, a gone page counted and named, the bounded
+    walk, a host without a sitemap (3), a non-sitemap answer (6), the pace
+    set to the written 150 s, other hosts refused, bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_talentlyft", os.path.join(SCRIPTS, "talentlyft.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "secret-level.talentlyft.com"
+
+    def _sitemap(self, slugs, extra=()):
+        urls = "".join(f"<url><loc>https://{self.HOST}/jobs/{s}</loc><lastmod>2026-06-10T19:48:33.2+00:00</lastmod></url>" for s in slugs)
+        urls += "".join(f"<url><loc>{u}</loc></url>" for u in extra)
+        return '<?xml version="1.0" encoding="utf-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls + f"<url><loc>https://{self.HOST}</loc></url></urlset>"
+
+    @staticmethod
+    def _page(title, country="US", street="Los Angeles, CA, United States of America (Remote)", desc="&lt;p&gt;We&#x2019;re looking for a developer. Write to jobs@secretlevel.co or call (310) 555-0100.&lt;/p&gt;"):
+        p = {"context": "https://schema.org/", "@type": "JobPosting", "title": title, "datePosted": "2026-06-10", "employmentType": "FULL_TIME",
+             "hiringOrganization": {"@type": "Organization", "name": "Secret Level"},
+             "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": street, "addressLocality": "Los Angeles", "addressRegion": "California", "postalCode": "90064", "addressCountry": country}},
+             "description": desc}
+        return '<html><head><title>x</title><script type="application/ld+json">' + json.dumps(p) + "</script></head><body><h1>" + title + "</h1></body></html>"
+
+    def _run(self, mod, argv, sitemap=None, pages=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        pages = pages or {}
+
+        def request(url):
+            sent.append(url)
+            path = urllib.parse.urlsplit(url).path
+            if path == "/sitemap.xml":
+                return (200, sitemap) if sitemap is not None else (404, "")
+            slug = path.split("/jobs/", 1)[1] if "/jobs/" in path else None
+            body = pages.get(slug)
+            return (200, body) if body is not None else (404, "")
+        mod.request = request
+        mod._PACES.clear()
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_sitemap_is_the_list_and_every_job_page_is_read_with_the_street_and_postcode_withheld(self):
+        mod = self._mod()
+        sm = self._sitemap(["full-stack-engineer-ceUz", "senior-producer-cfgu", "full-stack-engineer-ceUz"], extra=[f"https://{self.HOST}/articles/x", "https://other.talentlyft.com/jobs/y"])
+        pages = {"full-stack-engineer-ceUz": self._page("Full Stack Engineer"), "senior-producer-cfgu": self._page("Senior Producer", country="HR", street="Zagreb, Croatia")}
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "secret-level"], sitemap=sm, pages=pages)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/sitemap.xml", f"https://{self.HOST}/jobs/full-stack-engineer-ceUz", f"https://{self.HOST}/jobs/senior-producer-cfgu"], "in the sitemap's order, once each, the root and other paths left out")
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted — the sitemap names 2 job page(s): equal (a sitemap's count is the pages it names, not a count the site states)", err)
+        self.assertIn("150 s", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["remote"], r["employment_type"], r["posted"], r["updated"]),
+                         ("full-stack-engineer-ceUz", "Full Stack Engineer", "Secret Level", "Los Angeles", "California", "US", True, "FULL_TIME", "2026-06-10", "2026-06-10T19:48:33.2+00:00"))
+        self.assertIsNone(rows[1]["remote"])
+        self.assertTrue(r["description"].startswith("We’re looking for a developer."), r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("90064", "United States of America", "secretlevel.co", "555-0100"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(mod.WRITTEN_DELAY, 150.0)
+        fresh = self._mod()                                   # the real request(): the pace it builds carries the written delay
+        made = []
+
+        class Recorder:
+            def __init__(self, host, own=0.0):
+                made.append((host, own))
+
+            def wait(self):
+                pass
+
+        class Resp:
+            headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def getcode(self):
+                return 200
+
+            def read(self):
+                return b"<urlset></urlset>"
+        fresh.Pace = Recorder
+        fresh.gate = lambda url: {"allowed": True}
+        fresh.urllib.request.urlopen = lambda req, timeout=60: Resp()
+        fresh.TENANT["host"] = self.HOST
+        self.assertEqual(fresh.request(f"https://{self.HOST}/sitemap.xml")[0], 200)
+        self.assertEqual(made, [(self.HOST, 150.0)], "the written Crawl-delay is the pace, although it is addressed to no group")
+
+    def test_the_stamp_and_filter_a_gone_page_the_bounded_walk_a_host_without_a_sitemap_and_a_non_sitemap(self):
+        mod = self._mod()
+        sm = self._sitemap(["a", "b", "c"])
+        pages = {"a": self._page("A"), "b": self._page("B", country="HR"), "c": self._page("C", country="")}
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/", "--country-code", "hr"], sitemap=sm, pages=pages)
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["B", "C"]), err)   # C names no country and is stamped, as the note says
+        self.assertIn("2 emitted for HR of the 3 read", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "secret-level"], sitemap=sm, pages={"a": pages["a"], "c": pages["c"]})
+        self.assertEqual((code, [r["id"] for r in rows]), (0, ["a", "c"]), err)
+        self.assertIn("1 short; 1 named page(s) without a posting (b: gone)", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "secret-level", "--max-pages", "1"], sitemap=sm, pages=pages)
+        self.assertEqual((code, len(rows), len(sent)), (0, 1, 2), err)
+        self.assertIn("1 emitted of the 3 job pages the sitemap names — 1 read by request (--max-pages), not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "secret-level"], sitemap=self._sitemap([]))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the sitemap names 0 job page(s)", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], sitemap=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], sitemap="<html><body>not a sitemap</body></html>")
+        self.assertEqual(code, 6, err)
+        self.assertIn("not a sitemap", err)
+
+    def test_the_ad_reads_one_job_page_and_another_host_is_never_sent(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/full-stack-engineer-ceUz?utm=x"], pages={"full-stack-engineer-ceUz": self._page("Full Stack Engineer")})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/jobs/full-stack-engineer-ceUz"])
+        self.assertEqual((rows[0]["title"], rows[0]["country"], rows[0]["updated"]), ("Full Stack Engineer", "US", None))
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/gone"], pages={})
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/nopost"], pages={"nopost": "<html><body>no posting</body></html>"})
+        self.assertEqual(code, 6, err)
+        for bad in (f"https://{self.HOST}/JobList", "https://www.talentlyft.com/jobs/x", f"https://{self.HOST}/articles/x"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], pages={})
+            self.assertEqual((code, sent), (2, []), bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "flyer-one-ventures.talentlyft.com", "secret-level.talentlyft.com.evil.example", "talentlyft.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/sitemap.xml")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "help", "a.b", "-x", "https://talentlyft.com/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("secret-level", "SECRET-LEVEL.talentlyft.com", f"https://{self.HOST}/"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
