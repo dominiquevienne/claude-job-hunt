@@ -28364,20 +28364,6 @@ class AnATSWhoseCareerSitePostsItsOwnSectionConfigToGetPageAndWhoseVacancyCarrie
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_emply", os.path.join(SCRIPTS, "emply.py"))
-class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageListsTheContactsInItsQuickInfo(unittest.TestCase):
-    """**`varbi.py`, 2026-09-20 (#469).** Varbi: `<tenant>.varbi.com/` is one
-    `#table-position` — title (a link with `jobID:`), town, department,
-    closing date — no page, no count (Region Stockholm: 476 ids in one
-    page); the job page has `h1`, `div.job-desc` and a `quick-info` table
-    whose `union-representative` and contact rows list names, telephones
-    and e-mails. Both ways: the table read once with its length as the
-    count and the note saying no count is stated, the stamp, the language
-    path, a non-Varbi page (6), a 404 (3), the ad's quick info with the
-    people rows withheld and the description scrubbed and balanced, bad
-    addresses, other hosts refused (7), bad tenants."""
-
-    def _mod(self):
-        spec = importlib.util.spec_from_file_location("_varbi", os.path.join(SCRIPTS, "varbi.py"))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod
@@ -28424,38 +28410,6 @@ class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageLis
                 return (200, ad) if ad is not None else (404, "")
             body = served.get(parts.path)
             return (200, body) if body is not None else (404, "")
-    HOST = "su.varbi.com"
-
-    def _row(self, i, title, town="Stockholm", dept="Kemikum", ends="2026-09-29"):
-        u = f"https://{self.HOST}/se/what:job/jobID:{969900 + i}/"
-        return (f'<tr> <td class="text-xs-small padding-left-xs pos-title"> <a href="{u}">{title}</a> </td> <td class="text-xs-small pos-town"> <a href="{u}">{town}</a> </td>'
-                f' <td class="text-xs-small hidden-xs pos-subcompany"> {dept} </td> <td class="text-xs-small padding-right-xs pos-ends"> <a href="{u}">{ends}</a> </td> </tr>')
-
-    def _list(self, rows):
-        return ('<html lang="sv"><head><title>Lediga jobb vid Stockholms universitet</title></head><body><h1 class="top-banner-heading">Lediga jobb</h1><div class="table-mobile">'
-                '<table class="table table-striped link-black" id="table-position"> <thead> <tr> <th class="posJobtitle"><a href="?s=1&o=1">Titel</a></th><th>Ort</th><th>Avdelning</th><th>Sista ansökningsdag</th> </tr> </thead> <tbody>'
-                + "".join(rows) + '</tbody></table></div></body></html>')
-
-    AD = ('<html><body><div class="row"><h1 tabindex="0" class="pull-left">Forskare i materialkemi</h1><a class="btn btn-apply" href="https://su.varbi.com/se/what:login/jobID:969973/type:job/apply:1/">Logga in och sök jobbet</a></div>'
-          '<div class="subcompany-desc mb"></div><div class="job-desc mb"><p><strong>Kemikum</strong> är en av de största institutionerna.</p><div class="box"><div><p>Arbetsuppgifter</p></div></div><p>Forskaren ska syntetisera material. Frågor: niklas.hedin@su.se, 08-16 20 00.</p></div>'
-          '<table class="table table-condensed quick-info"><tbody><tr class="quick-info-type-of-employment"><th scope="row" class="vth col-md-3">Anställningsform</th><td>Tidsbegränsad anställning</td></tr>'
-          '<tr class="quick-info-hours"><th>Anställningens omfattning</th><td>Heltid</td></tr><tr class="quick-info-number-of-positions"><th>Antal lediga befattningar</th><td>1</td></tr>'
-          '<tr class="quick-info-town"><th>Ort</th><td>Stockholm</td></tr><tr class="quick-info-county"><th>Län</th><td>Stockholms län</td></tr><tr class="quick-info-country"><th>Land</th><td>Sverige</td></tr>'
-          '<tr class="quick-info-reference-number"><th>Referensnummer</th><td>SU FV-3081-26</td></tr>'
-          '<tr class="quick-info-contact"><th>Kontakt</th><td><ul class="contactList"><li>Niklas Hedin, professor, 08-16 20 00, niklas.hedin@su.se</li></ul></td></tr>'
-          '<tr class="quick-info-union-representative"><th>Facklig företrädare</th><td><ul class="contactList"><li>- ST/OFR, 08162000, st@st.su.se</li><li>- Saco-S, 08162000, saco@saco.su.se</li></ul></td></tr>'
-          '<tr class="quick-info-published"><th>Publicerat</th><td>2026-09-18 </td></tr><tr class="quick-info-ends"><th>Sista ansökningsdag</th><td> 2026-09-29 </td></tr></tbody></table></body></html>')
-
-    def _run(self, mod, argv, page=None, ad=None):
-        sent = []
-        mod.gate = lambda url: {"allowed": True}
-
-        def request(url):
-            sent.append(url)
-            path = urllib.parse.urlsplit(url).path
-            if "what:job" in path:
-                return (200, ad) if ad is not None else (404, "")
-            return (200, page) if page is not None else (404, "")
         mod.request = request
         import contextlib
         out, err = io.StringIO(), io.StringIO()
@@ -28540,6 +28494,88 @@ class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageLis
         code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/ad/x/wt7hyj"], ad="<html><body>gone</body></html>")
         self.assertEqual(code, 6, err)
         for bad in (f"https://{self.HOST}/apply/x/wt7hyj", "https://emply.com/ad/x/y", f"https://{self.HOST}/ad/wt7hyj"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_another_host_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "aalborg.career.emply.com", "aarhus.career.emply.com.evil.example", "emply.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "hr", "a.b", "-x", "https://emply.com/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("aarhus", "AARHUS.career.emply.com", f"https://{self.HOST}/ledige-stillinger"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual(mod.place_of("Kingosvej 1-7, 8230, Åbyhøj, Denmark"), ("Åbyhøj", "DK", "Denmark"))
+        self.assertEqual(mod.place_of("Rådhuset, Aarhus C"), ("Aarhus C", None, None))
+
+class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageListsTheContactsInItsQuickInfo(unittest.TestCase):
+    """**`varbi.py`, 2026-09-20 (#469).** Varbi: `<tenant>.varbi.com/` is one
+    `#table-position` — title (a link with `jobID:`), town, department,
+    closing date — no page, no count (Region Stockholm: 476 ids in one
+    page); the job page has `h1`, `div.job-desc` and a `quick-info` table
+    whose `union-representative` and contact rows list names, telephones
+    and e-mails. Both ways: the table read once with its length as the
+    count and the note saying no count is stated, the stamp, the language
+    path, a non-Varbi page (6), a 404 (3), the ad's quick info with the
+    people rows withheld and the description scrubbed and balanced, bad
+    addresses, other hosts refused (7), bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_varbi", os.path.join(SCRIPTS, "varbi.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "su.varbi.com"
+
+    def _row(self, i, title, town="Stockholm", dept="Kemikum", ends="2026-09-29"):
+        u = f"https://{self.HOST}/se/what:job/jobID:{969900 + i}/"
+        return (f'<tr> <td class="text-xs-small padding-left-xs pos-title"> <a href="{u}">{title}</a> </td> <td class="text-xs-small pos-town"> <a href="{u}">{town}</a> </td>'
+                f' <td class="text-xs-small hidden-xs pos-subcompany"> {dept} </td> <td class="text-xs-small padding-right-xs pos-ends"> <a href="{u}">{ends}</a> </td> </tr>')
+
+    def _list(self, rows):
+        return ('<html lang="sv"><head><title>Lediga jobb vid Stockholms universitet</title></head><body><h1 class="top-banner-heading">Lediga jobb</h1><div class="table-mobile">'
+                '<table class="table table-striped link-black" id="table-position"> <thead> <tr> <th class="posJobtitle"><a href="?s=1&o=1">Titel</a></th><th>Ort</th><th>Avdelning</th><th>Sista ansökningsdag</th> </tr> </thead> <tbody>'
+                + "".join(rows) + '</tbody></table></div></body></html>')
+
+    AD = ('<html><body><div class="row"><h1 tabindex="0" class="pull-left">Forskare i materialkemi</h1><a class="btn btn-apply" href="https://su.varbi.com/se/what:login/jobID:969973/type:job/apply:1/">Logga in och sök jobbet</a></div>'
+          '<div class="subcompany-desc mb"></div><div class="job-desc mb"><p><strong>Kemikum</strong> är en av de största institutionerna.</p><div class="box"><div><p>Arbetsuppgifter</p></div></div><p>Forskaren ska syntetisera material. Frågor: niklas.hedin@su.se, 08-16 20 00.</p></div>'
+          '<table class="table table-condensed quick-info"><tbody><tr class="quick-info-type-of-employment"><th scope="row" class="vth col-md-3">Anställningsform</th><td>Tidsbegränsad anställning</td></tr>'
+          '<tr class="quick-info-hours"><th>Anställningens omfattning</th><td>Heltid</td></tr><tr class="quick-info-number-of-positions"><th>Antal lediga befattningar</th><td>1</td></tr>'
+          '<tr class="quick-info-town"><th>Ort</th><td>Stockholm</td></tr><tr class="quick-info-county"><th>Län</th><td>Stockholms län</td></tr><tr class="quick-info-country"><th>Land</th><td>Sverige</td></tr>'
+          '<tr class="quick-info-reference-number"><th>Referensnummer</th><td>SU FV-3081-26</td></tr>'
+          '<tr class="quick-info-contact"><th>Kontakt</th><td><ul class="contactList"><li>Niklas Hedin, professor, 08-16 20 00, niklas.hedin@su.se</li></ul></td></tr>'
+          '<tr class="quick-info-union-representative"><th>Facklig företrädare</th><td><ul class="contactList"><li>- ST/OFR, 08162000, st@st.su.se</li><li>- Saco-S, 08162000, saco@saco.su.se</li></ul></td></tr>'
+          '<tr class="quick-info-published"><th>Publicerat</th><td>2026-09-18 </td></tr><tr class="quick-info-ends"><th>Sista ansökningsdag</th><td> 2026-09-29 </td></tr></tbody></table></body></html>')
+
+    def _run(self, mod, argv, page=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            path = urllib.parse.urlsplit(url).path
+            if "what:job" in path:
+                return (200, ad) if ad is not None else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
     def test_the_table_is_read_once_and_its_length_is_the_count_with_no_count_stated(self):
         mod = self._mod()
         page = self._list([self._row(i, f"Job {i}") for i in range(3)] + [self._row(2, "Job 2 again")])
@@ -28594,18 +28630,6 @@ class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageLis
         mod = self._mod()
         mod.gate = lambda url: {"allowed": True}
         mod.TENANT["host"] = self.HOST
-        for host in ("evil.example", "aalborg.career.emply.com", "aarhus.career.emply.com.evil.example", "emply.com"):
-            with self.assertRaises(SystemExit) as cm:
-                mod.request(f"https://{host}/")
-            self.assertEqual(cm.exception.code, 7, host)
-        for bad in ("", "www", "hr", "a.b", "-x", "https://emply.com/x"):
-            with self.assertRaises(SystemExit) as cm:
-                mod.tenant_of(bad)
-            self.assertEqual(cm.exception.code, 2, bad)
-        for ok in ("aarhus", "AARHUS.career.emply.com", f"https://{self.HOST}/ledige-stillinger"):
-            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
-        self.assertEqual(mod.place_of("Kingosvej 1-7, 8230, Åbyhøj, Denmark"), ("Åbyhøj", "DK", "Denmark"))
-        self.assertEqual(mod.place_of("Rådhuset, Aarhus C"), ("Aarhus C", None, None))
         for host in ("evil.example", "solna.varbi.com", "su.varbi.com.evil.example", "varbi.com"):
             with self.assertRaises(SystemExit) as cm:
                 mod.request(f"https://{host}/")
