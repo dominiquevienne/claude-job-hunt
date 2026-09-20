@@ -29363,5 +29363,141 @@ class AnATSWhoseRulesRefuseTheListCallInAFileWithoutAGroupSoTheDeclaredSitemapIs
         for ok in ("secret-level", "SECRET-LEVEL.talentlyft.com", f"https://{self.HOST}/"):
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
 
+class AnATSWhoseEmployersShareOneServerRenderedBoardThatStatesItsCountAndPageInAStatusLine(unittest.TestCase):
+    """**`seemehired.py`, 2026-09-20 (#475).** SeeMeHired: `/jobs?page=N` is
+    server-rendered, 12 cards a page, «1639 jobs found. Showing page 1 of
+    137.» in a status line; cards carry `aria-label="View job: T at C in P"`,
+    `posteddate`, `status`, tag spans; the per-company filter is ignored by
+    the permitted list (the filtered list is refused in writing). Both
+    ways: the walk to the stated count with the page's own «page x of y»,
+    the card fields, the salary tag, the stamp, a repeating page (6), a
+    page that says it is another page (6), the bounded walk, an empty
+    board, a page without the status line (6), the ad's JobPosting with the
+    street and postcode withheld and the description scrubbed, the address
+    rebuilt, other hosts refused."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_seemehired", os.path.join(SCRIPTS, "seemehired.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(i, title, company="Caremark Kirklees", place="Holmfirth", status="Full time", salary="From £14.00 Hourly to £18.50 Hourly"):
+        tags = f'<span class="inline-block rounded-md border">{status}</span>' + (f'<span class="inline-block rounded-md border">{salary}</span>' if salary else "")
+        return (f'<div class="flex mt-5"><a href="/jobs/{74000 + i}" class="group flex" aria-label="View job: {title} at {company} in {place}" diversity="false" posteddate="8 hours ago" status="{status}">'
+                f'<div class="p-8"><h3>{title} </h3><p>{company} <span>|</span> {place} </p><div class="mt-2">{tags}</div></div></a></div>')
+
+    def _page(self, cards, total, page, pages, status=True):
+        st = f'<p class="sr-only" role="status" aria-live="polite">{total} jobs found. Showing page {page} of {pages}.</p>' if status else ""
+        return '<html><head><title>Jobs | SeeMeHired</title></head><body><section>' + st + "".join(cards) + '<a href="/jobs?page=2">2</a></section></body></html>'
+
+    AD = ('<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Payroll Administrator ","identifier":{"@type":"PropertyValue","name":"CTS"},"datePosted":"2026-09-19","validThrough":"2026-09-26","employmentType":"PART_TIME",'
+          '"hiringOrganization":{"@type":"Organization","name":"Connect Transform Sustain (CTS)","logo":"https://api.seemehired.com/x.jpeg"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","streetAddress":"Unit 2 Milltown Industrial Estate, Upper Dromore Rd, Warrenpoint ","addressLocality":"Newry ","addressRegion":"","postalCode":"BT34 3PN","addressCountry":"GB"}},'
+          '"directApply":true,"url":"https://seemehired.com/jobs/10821","description":"<h2>Payroll Administrator</h2><p>Due to growth CTS is hiring. Contact hr@cts.example or 028 4175 0000.</p>"}</script></head><body><h1>Payroll Administrator</h1></body></html>')
+
+    def _run(self, mod, argv, pages=None, ad=None, stuck=False, lie=False, same_cards=False):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            parts = urllib.parse.urlsplit(url)
+            if parts.path == "/jobs":
+                n = int((urllib.parse.parse_qs(parts.query).get("page") or ["1"])[0])
+                if pages is None:
+                    return 404, ""
+                idx = 0 if (stuck or same_cards) else min(n, len(pages)) - 1
+                total, cards = pages[idx]
+                return 200, self._page(cards, total, (n + 1 if lie and n > 1 else n) if not stuck else 1, len(pages))
+            if parts.path.startswith("/jobs/"):
+                return (200, ad) if ad is not None else (404, "")
+            return 404, ""
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_reads_the_status_line_and_the_cards_to_the_stated_count(self):
+        mod = self._mod()
+        p1 = [self._card(i, f"Job {i}") for i in range(12)]
+        p2 = [self._card(12 + i, f"Job {12 + i}", company="Leading Lives", place="Mildenhall", status="Part time", salary=None) for i in range(3)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--country-code", "gb"], pages=[(15, p1), (15, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://seemehired.com/jobs", "https://seemehired.com/jobs?page=2"])
+        self.assertEqual(len(rows), 15)
+        self.assertIn("15 emitted over 2 page(s) — the board states 15: equal; country GB stamped from --country-code", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["country"], r["schedule"], r["salary"], r["posted_ago"], r["url"]),
+                         ("74000", "Job 0", "Caremark Kirklees", "Holmfirth", "GB", "Full time", "From £14.00 Hourly to £18.50 Hourly", "8 hours ago", "https://seemehired.com/jobs/74000"))
+        self.assertEqual((rows[12]["company"], rows[12]["schedule"], rows[12]["salary"]), ("Leading Lives", "Part time", None))
+        self.assertTrue(r["contacts_withheld"])
+        code, rows, err, _ = self._run(mod, ["jobs"], pages=[(15, p1), (15, p2)])
+        self.assertIsNone(rows[0]["country"])
+
+    def test_the_bounded_walk_the_repeating_page_the_lying_page_the_empty_board_and_a_page_without_the_status_line(self):
+        mod = self._mod()
+        p1 = [self._card(i, f"J{i}") for i in range(12)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--max-pages", "1"], pages=[(1639, p1), (1639, p1), (1639, p1)])
+        self.assertEqual((code, len(rows), len(sent)), (0, 12, 1), err)
+        self.assertIn("12 emitted of the 1 639 the board states — 1 page(s) of 12 walked by request (--max-pages) out of 3, not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs"], pages=[(36, p1), (36, p1), (36, p1)], stuck=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("not advancing", err)
+        code, rows, err, _ = self._run(mod, ["jobs"], pages=[(36, p1), (36, p1), (36, p1)], same_cards=True)   # the right page number, the same cards
+        self.assertEqual(code, 6, err)
+        self.assertIn("repeated the previous one", err)
+        p2 = [self._card(12 + i, f"J{12 + i}") for i in range(12)]
+        p3 = [self._card(24 + i, f"J{24 + i}") for i in range(12)]
+        code, rows, err, _ = self._run(mod, ["jobs"], pages=[(36, p1), (36, p2), (36, p3)], lie=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("says it is page 3", err)
+        code, rows, err, _ = self._run(mod, ["jobs"], pages=[(0, [])])
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted over 1 page(s) — the board states 0: equal", err)
+        mod2 = self._mod()
+        mod2.gate = lambda url: {"allowed": True}
+        mod2.request = lambda url: (200, "<html><body>a page without the status line</body></html>")
+        import contextlib
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+            mod2.main(["jobs"])
+        self.assertEqual(cm.exception.code, 6, err.getvalue())
+
+    def test_the_ad_reads_the_jobposting_withholds_the_street_and_postcode_and_scrubs(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://seemehired.com/jobs/10821/?company=cts&jobtitle=x"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://seemehired.com/jobs/10821"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["employment_type"], r["posted"], r["closes"]),
+                         ("10821", "Payroll Administrator", "Connect Transform Sustain (CTS)", "Newry", None, "GB", "PART_TIME", "2026-09-19", "2026-09-26"))
+        self.assertTrue(r["description"].startswith("Payroll Administrator\nDue to growth"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("Milltown", "BT34", "hr@cts", "4175 0000"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://seemehired.com/jobs/1"], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://seemehired.com/jobs/1"], ad="<html><body>no posting</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in ("https://seemehired.com/jobs/filtered", "https://www.seemehired.com/jobs/1", "https://seemehired.com/jobs/titanic-hotel-belfast/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "api.seemehired.com", "seemehired.com.evil.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/jobs")
+            self.assertEqual(cm.exception.code, 7, host)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
