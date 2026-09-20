@@ -267,7 +267,8 @@ def cmd_jobs(a):
             new += 1
         if hits and new == 0:
             die(f"{list_url}: page {walked} (Skip={(walked - 1) * page['page_size']}) repeated the previous one — the pager is not advancing; {th(len(rows))} kept of the {th(total)} stated.", EXIT_PARTIAL)
-        if not hits or len(rows) >= (total or 0) or (a.max_pages and walked >= a.max_pages):
+        last = -(-(total or 0) // page["page_size"])          # the stated count's last page — the walk is bounded by the board's own number
+        if not hits or len(rows) >= (total or 0) or walked >= last or (a.max_pages and walked >= a.max_pages):
             break
         walked += 1
         _t, hits = load_page(page, a.q, (walked - 1) * page["page_size"])
