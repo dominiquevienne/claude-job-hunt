@@ -59,7 +59,8 @@ PAGE_SIZE = 50
 ALIAS_RE = re.compile(r"^[a-z0-9][a-z0-9_\-]*$", re.I)
 DATE_RE = re.compile(r"/Date\((-?\d+)([+-]\d{4})?\)/")
 TITLE_RE = re.compile(r'<h1 class="ProjectName"[^>]*>(.*?)</h1>', re.S)
-CONTENT_RE = re.compile(r'<div id="AdvertisementInnerContent"[^>]*>(.*?)</div>\s*(?=<div|<!--|</td|</body)', re.S)
+CONTENT_OPEN_RE = re.compile(r'<div id="AdvertisementInnerContent"[^>]*>')
+DIV_RE = re.compile(r"<div\b|</div>", re.I)
 CONTACT_RE = re.compile(r'<div class="contact[ "].*?<div class="contactinfo">.*?</div>\s*</div>', re.S)
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 PHONE_RE = re.compile(r"(?<![\w/$€])\+?\d[\d\s().\-]{6,}\d(?!\w)")
@@ -124,6 +125,19 @@ def scrub(s):
         return None
     s = MAIL_RE.sub("[e-mail withheld]", s)
     return PHONE_RE.sub("[telephone withheld]", s).strip() or None
+
+
+def inner_div(markup, open_re):
+    """The balanced inside of the `<div>` `open_re` opens — the advert nests its own divs, so a first `</div>` is not the end."""
+    m = open_re.search(markup or "")
+    if not m:
+        return None
+    depth, pos = 1, m.end()
+    for t in DIV_RE.finditer(markup, m.end()):
+        depth += 1 if t.group(0).lower().startswith("<div") else -1
+        if depth == 0:
+            return markup[pos:t.start()]
+    return markup[pos:]
 
 
 def when(v):
@@ -258,10 +272,10 @@ def cmd_ad(a):
     if st != 200:
         die(f"{url}: HTTP {st}", EXIT_PARTIAL)
     t = TITLE_RE.search(body)
-    c = CONTENT_RE.search(body)
-    if not t or not c:
+    c = inner_div(body, CONTENT_OPEN_RE)
+    if not t or c is None:
         die(f"{url}: no `ProjectName` or no `AdvertisementInnerContent` in the page — not an advert page, or the advert is gone.", EXIT_PARTIAL)
-    content = CONTACT_RE.sub("", c.group(1))
+    content = CONTACT_RE.sub("", c)          # a template that nests the contact block inside the content: dropped whole
     r = {
         "source": BOARD, "ledger_id": f"{BOARD}:cid{q['cid']}:{q['projectid']}", "id": int(q["projectid"]), "customer_id": int(q["cid"]), "url": url,
         "title": text(t.group(1)),
