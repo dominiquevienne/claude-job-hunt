@@ -27869,5 +27869,186 @@ class AnATSWhoseBoardPageIsPermittedButWhoseListRouteIsRefusedInWritingAndTakenO
         self.assertEqual(mod.tenant_of(f"https://recruiting2.ultipro.com/{self.CODE}/JobBoard/{self.GUID.upper()}", "recruiting.ultipro.com"), ("recruiting2.ultipro.com", self.CODE, self.GUID))
         self.assertEqual(mod.tenant_of(f"{self.CODE}/{self.GUID}", "recruiting2.ultipro.com"), ("recruiting2.ultipro.com", self.CODE, self.GUID))
 
+class AnATSWhoseTenantSiteRendersItsListAndPagesByAWebFormsPostbackThatNeedsThePagesOwnFieldsAndCookies(unittest.TestCase):
+    """**`eploy.py`, 2026-09-20 (#464).** Eploy: the tenant's own host serves
+    `/vacancies/vacancy-search-results.aspx?view=list` server-rendered
+    (`vsr-job` cards, the count in `<title>N Vacancies - …</title>`), and
+    page 2 and on by `__doPostBack('…VacancyPager','2')` — a POST that must
+    carry every hidden field (`__VIEWSTATE`…), the selects' values and the
+    session's cookies, or the server answers page 1 again (measured live:
+    Leicester 17/17 over 2 pages, Manchester 82/82 over 7, NHSP 3/3). Both
+    ways: the postback's fields and event, the walk to the stated count, a
+    postback that answers the page it came from (6), the empty tenant (0
+    stated, «no results»), the bounded walk, a page without the count, the
+    address trimmed of streets and postcodes, the country stamp, the ad's
+    JobPosting with the street and postal code withheld and the description
+    scrubbed, another host refused (7), a bad tenant refused before a request."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eploy", os.path.join(SCRIPTS, "eploy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "jobs.example.ac.uk"
+    PAGER = "ctl00$ContentContainer$ctl00$VacancyPager"
+
+    @staticmethod
+    def _card(i, title, loc="Leicester", salary="Competitive", closes="11 Oct 2026", picker=False):
+        vid = 13900 + i
+        loc_html = (f'<div data-id="div_content_VacV_AllLocations" class="content"><script>var x=1;</script><div id="p_pnlReadonly"><span id="ctl00_x_VacV_AllLocations_lblReadonlySelected">{loc}</span></div>'
+                    f'<input name="ctl00$x$VacV_AllLocations$hdnText" type="hidden" id="h" /><span id="ctl00_x_rqvOneToMany" class="red" style="display:none;">All Locations is a required field</span></div>'
+                    if picker else f'<div data-id="div_content_VacV_LocationID" class="content"><span id="ctl00_x_VacV_LocationID" data-selectedvalue="21">{loc}</span><span id="ctl00_x_rqv" class="red" style="display:none;">Location is a required field</span></div>')
+        fid = "VacV_AllLocations" if picker else "VacV_LocationID"
+        lab = "<div class=\"label\"><span><i data-tooltip='All Locations' class='icon'><span class='its-u-visually-hidden'>All Locations</span></i></span></div>" if picker else '<div class="label"><span>Location:</span></div>'
+        return (f'<div id="ctl00_ContentContainer_ctl00_VacancyListView_ctl{i:02d}_pnlList" class="vsr-job"><div class="push--bottom"><h2 class="vsr-job__title">'
+                f'<a id="ctl00_x_ApplicationHyperlink1" href="{vid}/{title.lower().replace(" ", "-")}.html">{title}</a></h2></div><div class="grid clearfix">'
+                f'<div id="div_DQVacancyID_{vid}" class="item vsr-job__list-item is-read-only"><div><div class="label"><span>Vacancy ID:</span></div><div data-id="div_content_DQVacancyID" class="content"><span id="a">{vid}</span></div></div></div>'
+                f'<div id="div_{fid}_{vid}" class="item vsr-job__list-item is-read-only"><div>{lab}{loc_html}</div></div>'
+                f'<div id="div_VacV_DisplaySalary_{vid}" class="item vsr-job__list-item is-read-only"><div><div class="label"><span>Salary details:</span></div><div data-id="div_content_VacV_DisplaySalary" class="content"><span id="b">{salary}</span></div></div></div>'
+                f'<div id="div_VacV_AdvertisingEndDate_{vid}" class="item vsr-job__list-item is-read-only"><div><div class="label"><span>Advert closes midnight on:</span></div><div data-id="div_content_VacV_AdvertisingEndDate" class="content"><span id="c">{closes}</span></div></div></div>'
+                f'</div><a href="{vid}/{title.lower().replace(" ", "-")}.html">More Info</a><a href="vacancy-apply.aspx?VacancyID={vid}">Apply</a></div>')
+
+    def _page(self, cards, total, page=1, pages=2, no_count=False):
+        title = "Vacancy Search Results - Eploy" if no_count else f"{total} Vacancies   - University of Example"
+        links = "".join(f"<a href=\"javascript:__doPostBack(&#39;{self.PAGER}&#39;,&#39;{n}&#39;)\" title=\"Go to page {n}\">{n}</a>" if n != page else f'<span class="cpb">{n}</span>' for n in range(1, pages + 1))
+        body = "".join(cards) if cards else '<div class="vsr__no-results"><i class="icon"></i>Your search returned no results. Please refine your criteria.</div>'
+        return (f"<html><head><title>\n\t{title}\n</title></head><body><form method=\"post\" action=\"/vacancies/vacancy-search-results.aspx?view=list\" id=\"aspnetForm\">"
+                f'<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" /><input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />'
+                f'<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="VS{page}/abc+def==" /><input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="CA0B0334" />'
+                f'<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="EV{page}" /><input name="ctl00$ctl17$hiddenPostAction" type="hidden" id="hpa" value="False" />'
+                f'<input name="ctl00$x$hdnSelected" type="hidden" id="hs" data-value="24,36" /><input type="text" name="ctl00$topContent$QuickSearch$txtKeywords" value="typed" />'
+                + ("" if no_count else f'<span class="hero__title">{total} Vacancies</span>') + f'<div class="paginator paginator--top">{links}</div>'
+                f'<select name="ctl00$ContentContainer$ctl00$ddSortColumn"><option value="VacV.Title">Title</option><option selected="selected" value="VacV.DatePosted">Date Posted</option></select>'
+                f'<div id="ctl00_ContentContainer_ctl00_VacancyListView">{body}</div><script>$Eploy(document).ready(function() {{}});</script></form></body></html>')
+
+    def _ad(self, desc="<p>About the role</p><p>Ask pnd2@example.ac.uk or 0116 555 0100.</p>"):
+        return ('<html><head><script type="application/ld+json">[{"@context":"http://schema.org","@type":"JobPosting","datePosted":"2026-09-17","validThrough":"2026-10-11",'
+                '"description":' + json.dumps(desc) + ',"employmentType":"Permanent or Fixed Term","skills":"Marketing","title":"Director of Marketing","industry":"Professional and Support Services",'
+                '"hiringOrganization":{"@type":"Organization","name":"University of Example Recruitment Team","sameAs":"https://jobs.example.ac.uk"},'
+                '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressCountry":"United Kingdom","streetAddress":"University Road","postalCode":"LE1 7RH","addressLocality":"Leicester","addressRegion":"Leicestershire"}},'
+                '"baseSalary":{"@type":"MonetaryAmount","value":{"@type":"QuantitativeValue","value":"Competitive"}},"url":"https://jobs.example.ac.uk/vacancies/13948/director-of-marketing.html"}]</script></head><body><h1>Director of Marketing</h1></body></html>')
+
+    def _run(self, mod, argv, pages=None, ad=None, stuck=False):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url, data=None, headers=None):
+            sent.append((url, urllib.parse.parse_qs(data.decode()) if data else None, headers or {}))
+            path = urllib.parse.urlsplit(url).path
+            if path.startswith("/vacancies/vacancy-search-results.aspx"):
+                if pages is None:
+                    return 404, ""
+                if data is None:
+                    return 200, pages[0]
+                n = int(urllib.parse.parse_qs(data.decode())["__EVENTARGUMENT"][0])
+                return 200, pages[0] if stuck else pages[n - 1]
+            if ad is not None and path.endswith(".html"):
+                return 200, ad
+            return 404, ""
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_replays_the_pagers_postback_with_the_pages_own_fields_to_the_stated_count(self):
+        mod = self._mod()
+        p1 = self._page([self._card(i, f"Job {i}") for i in range(12)], 17, page=1)
+        p2 = self._page([self._card(12 + i, f"Job {12 + i}", loc="Pear Tree High School, Worcester Road, Cheadle Hulme, Stockport, SK8 5NW", picker=True) for i in range(4)]
+                        + [self._card(16, "Job 16", loc="Moss Side Health Centre, Moss Lane East", picker=True)], 17, page=2)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/vacancies/vacancy-search-results.aspx?view=list", "--country-code", "gb"], pages=[p1, p2])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 17)
+        self.assertIn("17 emitted over 2 page(s) — the site states 17: equal; country GB stamped from --country-code", err)
+        self.assertEqual(len(sent), 2)
+        self.assertIsNone(sent[0][1])
+        form = sent[1][1]
+        self.assertEqual((form["__EVENTTARGET"][0], form["__EVENTARGUMENT"][0], form["__VIEWSTATE"][0], form["__EVENTVALIDATION"][0], form["__VIEWSTATEGENERATOR"][0]),
+                         (self.PAGER, "2", "VS1/abc+def==", "EV1", "CA0B0334"))
+        self.assertEqual(form["ctl00$ContentContainer$ctl00$ddSortColumn"][0], "VacV.DatePosted")
+        self.assertEqual(form["ctl00$ctl17$hiddenPostAction"][0], "False")
+        self.assertNotIn("ctl00$topContent$QuickSearch$txtKeywords", form, "a text box is not a hidden field")
+        self.assertEqual(sent[1][2].get("Referer"), f"https://{self.HOST}/vacancies/vacancy-search-results.aspx?view=list")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["place"], r["country"], r["salary"], r["closes"], r["url"]),
+                         ("13900", "Job 0", "Leicester", "GB", "Competitive", "11 Oct 2026", f"https://{self.HOST}/vacancies/13900/job-0.html"))
+        self.assertEqual(r["fields"], {"Salary details": "Competitive", "Advert closes midnight on": "11 Oct 2026"})
+        r = rows[12]
+        self.assertEqual((r["place"], r["site"]), ("Stockport", "Pear Tree High School"))
+        self.assertEqual((rows[16]["place"], rows[16]["site"]), ("Moss Side Health Centre", None), "a street as the last segment is not a place")
+        dump = json.dumps(rows)
+        for hidden in ("Worcester Road", "Moss Lane", "SK8 5NW", "required field", "var x=1"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_a_postback_that_answers_its_own_page_the_empty_tenant_the_bounded_walk_and_a_page_without_the_count(self):
+        mod = self._mod()
+        p1 = self._page([self._card(i, f"Job {i}") for i in range(12)], 17, page=1)
+        p2 = self._page([self._card(12 + i, f"Job {12 + i}") for i in range(5)], 17, page=2)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.HOST], pages=[p1, p2], stuck=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("answered page 1", err)
+        self.assertIn("12 kept of the 17 stated", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.HOST, "--max-pages", "1"], pages=[p1, p2])
+        self.assertEqual((code, len(rows)), (0, 12), err)
+        self.assertIn("1 page(s) of 12 walked by request (--max-pages), not a shortfall", err)
+        empty = self._page([], 0, pages=1)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.HOST], pages=[empty])
+        self.assertEqual((code, rows, len(sent)), (0, [], 1), err)
+        self.assertIn("0 emitted over 1 page(s) — the site states 0: equal", err)
+        nc = self._page([self._card(i, f"Job {i}") for i in range(3)], 3, pages=1, no_count=True)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.HOST], pages=[nc])
+        self.assertEqual((code, len(rows)), (0, 3), err)
+        self.assertIn("the page states no count", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.HOST], pages=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.HOST], pages=["<html><title>Welcome</title><body>not eploy</body></html>"])
+        self.assertEqual(code, 6, err)
+        self.assertIn("not an Eploy careers site", err)
+
+    def test_the_ad_reads_the_jobposting_withholds_the_street_and_postcode_and_scrubs_the_description(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/vacancies/13948/director-of-marketing.html"], ad=self._ad())
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(sent), 1)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["country"], r["place"], r["region"], r["posted"], r["closes"], r["employment_type"], r["salary"]),
+                         ("13948", "Director of Marketing", "University of Example Recruitment Team", "GB", "Leicester", "Leicestershire", "2026-09-17", "2026-10-11", "Permanent or Fixed Term", "Competitive"))
+        self.assertTrue(r["description"].startswith("About the role"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("University Road", "LE1 7RH", "pnd2@", "555 0100"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/vacancies/13948/director-of-marketing.html"], ad="<html><body>no posting</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in (f"https://{self.HOST}/vacancies/13948", f"https://{self.HOST}/vacancy-apply.aspx?VacancyID=13948", "not a url"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self._ad())
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_a_host_that_is_not_the_runs_tenant_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "jobs.example.ac.uk.evil.example", "www.example.ac.uk"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/vacancies/vacancy-search-results.aspx?view=list")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "not a host", "jobs", "-bad.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("JOBS.LE.AC.UK"), "jobs.le.ac.uk")
+        self.assertEqual(mod.tenant_of("https://jobs.le.ac.uk/vacancies/vacancy-search-results.aspx?view=list"), "jobs.le.ac.uk")
+        self.assertEqual(mod.without_address("Alexandra House Hulme 133 Moss Lane East Manchester M15 5GX"), ["Alexandra House Hulme Manchester"])
+        self.assertEqual(mod.without_address("Trust Based, Berkshire Healthcare NHS Foundation Trust"), ["Trust Based", "Berkshire Healthcare NHS Foundation Trust"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
