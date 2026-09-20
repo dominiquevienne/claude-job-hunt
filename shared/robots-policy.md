@@ -588,6 +588,9 @@ boards:
   hiringcafe:
     enabled: true
     override_robots: true   # same key — NOT the same rule: owner's decision 2026-09-11 (#198)
+  ukgpro:
+    enabled: true
+    override_robots: true   # same key, the general mechanism (#403): the list route is refused in writing (`Disallow: */JobBoardView`), the user sets it — #792, 2026-09-20
 ```
 
 **~~There are three, and the third does not follow from the four questions.~~

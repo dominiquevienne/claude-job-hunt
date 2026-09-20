@@ -26780,8 +26780,10 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
     (`gov-vc`, HTTP 200 ×2) as an HTTP 429 and made the card an indeterminate,
     then «not NXDOMAIN» as a missing delegation the same morning. The reader's
     REFUSAL must not fire on the thousands group of a number nor on a number
-    followed by a byte unit, and must still fire on «HTTP 429» and on a bare
-    dated «429». Both ways on the regex, then the whole `refusal_of` on a card."""
+    followed by a byte unit, nor on an issue number («#403», 2026-09-20 — the
+    override cards cite #403 and read as a consigned 403), and must still fire
+    on «HTTP 429» and on a bare dated «429». Both ways on the regex, then the
+    whole `refusal_of` on a card."""
 
     def _tool(self):
         spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
@@ -26797,7 +26799,8 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
                       "429 bytes on the root", "1 403 octets", "451 o",
                       "| 200 ×2 | 56 429 | 0203503ef43f ×2 |", "(200, 12 451, md5 …)",
                       "(200, 56\u202f429, md5 …)", "| 200 | 1\u00a0403 | md5 |",
-                      "(200, 403 954 B ×2)", "| 200 ×2 | 451 020 | md5 |", "(200, 429\u202f117 B)"):
+                      "(200, 403 954 B ×2)", "| 200 ×2 | 451 020 | md5 |", "(200, 429\u202f117 B)",
+                      "the user's own key (#792, on #403)", "issue #429 opened", "see #451."):   # an issue number is not a status (2026-09-20, ukgpro/tyomarkkinatori read as 403)
             self.assertIsNone(mod.REFUSAL.search(quiet), quiet)
         for loud in ("HTTP 429 on the root, 2026-09-18", "answers 403 on two reads",
                      "429, 2026-09-18, by fetch-body.py", "a 451 to the client"):
