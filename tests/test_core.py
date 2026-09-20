@@ -26796,7 +26796,8 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
                       "(200, 56\u202f429 B)", "(200, 56\u00a0429 B)", "(200, 56429 B)",
                       "429 bytes on the root", "1 403 octets", "451 o",
                       "| 200 ×2 | 56 429 | 0203503ef43f ×2 |", "(200, 12 451, md5 …)",
-                      "(200, 56\u202f429, md5 …)", "| 200 | 1\u00a0403 | md5 |"):
+                      "(200, 56\u202f429, md5 …)", "| 200 | 1\u00a0403 | md5 |",
+                      "(200, 403 954 B ×2)", "| 200 ×2 | 451 020 | md5 |", "(200, 429\u202f117 B)"):
             self.assertIsNone(mod.REFUSAL.search(quiet), quiet)
         for loud in ("HTTP 429 on the root, 2026-09-18", "answers 403 on two reads",
                      "429, 2026-09-18, by fetch-body.py", "a 451 to the client"):
