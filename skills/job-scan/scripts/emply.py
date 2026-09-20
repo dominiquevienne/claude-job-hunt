@@ -68,9 +68,8 @@ BODY_OPEN_RE = re.compile(r'<div class="csa_jobadText"[^>]*>')
 DIV_RE = re.compile(r"<div\b|</div>", re.I)
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 PHONE_RE = re.compile(r"(?<![\w/$€])\+?\d[\d\s().\-]{6,}\d(?!\w)")
-POSTCODE_RE = re.compile(r"^\d{4,5}$")
 CONTACT_FACT_RE = re.compile(r"kontakt|contact|telefon|phone|mail|ansvarlig|recruiter|rekrutter", re.I)   # a fact naming a person or how to reach them
-STREET_RE = re.compile(r"\d")
+STREET_RE = re.compile(r"\d")            # a segment with a digit is a street («Kingosvej 1-7») or a postcode («8230») — both left behind
 COUNTRIES = {"denmark": "DK", "danmark": "DK", "norway": "NO", "norge": "NO", "sweden": "SE", "sverige": "SE", "germany": "DE", "deutschland": "DE",
              "tyskland": "DE", "finland": "FI", "iceland": "IS", "island": "IS", "united kingdom": "GB", "netherlands": "NL", "greenland": "GL", "grønland": "GL"}
 _PACES = {}
@@ -155,7 +154,7 @@ def inner_div(markup, open_re):
 def without_address(location):
     """«Kingosvej 1-7, 8230, Åbyhøj, Denmark» → ["Åbyhøj", "Denmark"] — the street and the postcode left behind."""
     parts = [p.strip() for p in (location or "").split(",") if p.strip()]
-    return [p for p in parts if not POSTCODE_RE.match(p) and not STREET_RE.search(p)]
+    return [p for p in parts if not STREET_RE.search(p)]
 
 
 def place_of(location):
