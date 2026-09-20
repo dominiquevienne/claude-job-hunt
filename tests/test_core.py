@@ -28762,5 +28762,162 @@ class AnATSWhoseListAddressCarriesItsOwnValidatorAndRendersOneTableWithTheTenant
         host, inst, cust, q = mod.tenant_of("web106.reachmee.com/ext/I020/1291/main?site=27&validator=277cb2bac1f6d9ba2720e8827a79e39b&lang=SE")
         self.assertEqual((host, inst, cust, q), ("web106.reachmee.com", "I020", "1291", {"site": "27", "lang": "SE", "validator": "277cb2bac1f6d9ba2720e8827a79e39b"}))
 
+class AnATSWhoseCareerPageWidgetListsAdvertsByLimitOffsetAndPageAndStatesTheCountWithUnlabelledCustomFields(unittest.TestCase):
+    """**`traffit.py`, 2026-09-20 (#472).** Traffit: `<tenant>.traffit.com
+    /public/an/list/?limit=&offset=&page=` → `{count, items[]}`, the call the
+    career page's widget makes; items carry the form, the coordinates and
+    custom fields under hashed keys without a label. Both ways: the walk
+    50 a call to the stated count, the dates from epochs, the locations
+    without postcode and coordinates, the country and the stamp, the
+    hashed fields and the form absent, texts scrubbed, a repeating call
+    (6), a non-JSON answer (6), a 404 (3), the advert page's articles read
+    balanced, bad addresses, other hosts refused, bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_traffit", os.path.join(SCRIPTS, "traffit.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "scalo.traffit.com"
+
+    @staticmethod
+    def _item(i, name, locality="Warszawa", iso="pl", country="Polska", with_location=True):
+        it = {"advertPublishId": 2000 + i, "nrRef": f"08/09/{i}", "recruitmentId": 11000 + i, "advertId": 2300 + i, "url": f"https://scalo.traffit.com/public/an/{'a' * 40}{i:02d}?source=career_page",
+              "awarded": True, "validStart": 1788854741, "validEnd": None, "title": f"({11000 + i}) {name}", "applicationForm": f"https://scalo.traffit.com/public/form/a/{2300 + i}?source=career_page",
+              "confidential": 0, "language": "pl", "name": name, "headerPhoto": "https://scalo.traffit.com/api/file/publicFileContent/2992", "companyId": 9225, "updatedAt": 1788854760, "createdAt": 1788854752,
+              "workflow": 13, "job": {"id": 11000 + i, "experienceLevel": ["regular", "senior"]}, "remote": "0", "_vacStatus": "Active", "_vacStatus.desc": "Status",
+              "095e2902d8976f3cb91c07064b29a030": "<p>Regular/Senior</p>", "b82b8cf61369f19eb9a2bedc2bf014cc": "<p>do 115 PLN/h</p>",
+              "description": "<p>W Scalo zajmujemy się projektami. Pytania: rekrutacja@scalo.io, tel. 512 345 678.</p>", "requirements": "<h2>Wymagania:</h2><ul><li>JIRA</li></ul>",
+              "responsibilities": "<h2>Zakres:</h2><ul><li>testy</li></ul>", "benefits": "<h2>Benefity</h2><ul><li>Multisport</li></ul>",
+              "locations": [{"latitude": "52.235840", "longitude": "21.011959", "iso": iso, "locality": locality, "region1": "Mazowieckie", "region2": locality, "region3": locality, "postcode": "00-001", "country": country}] if with_location else []}
+        return it
+
+    @staticmethod
+    def _answer(items, total):
+        return json.dumps({"count": total, "items": items}, ensure_ascii=False)
+
+    AD = ('<html><body><div class="info__advert-data"><h1 class="advert-data__name">QA/Test Lead</h1></div>'
+          '<article class="main__article">\n   <div\n class="article__content"><div class="jb-only"><p>W Scalo zajmujemy się projektami.</p></div><h2>Cześć!</h2></div>\n</article>'
+          '<article class="main__article"><div class="article__content"><h2>Zakres:</h2><ul><li><div><span>definiowanie</span> strategii</div></li></ul><p>Pytania: rekrutacja@scalo.io, tel. 512 345 678.</p></div></article>'
+          '<a href="https://scalo.traffit.com/public/form/a/2342">Aplikuj</a></body></html>')
+
+    def _run(self, mod, argv, pages=None, raw=None, stuck=False, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            parts = urllib.parse.urlsplit(url)
+            if parts.path == "/public/an/list/":
+                if raw is not None:
+                    return 200, raw
+                if pages is None:
+                    return 404, ""
+                q = urllib.parse.parse_qs(parts.query)
+                off = 0 if stuck else int(q["offset"][0])
+                total, items = pages[min(off // 50, len(pages) - 1)]
+                return 200, self._answer(items, total)
+            if parts.path.startswith("/public/an/"):
+                return (200, ad) if ad is not None else (404, "")
+            return 404, ""
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_asks_50_by_offset_and_page_to_the_stated_count_and_withholds_the_form_coordinates_and_hashed_fields(self):
+        mod = self._mod()
+        p1 = [self._item(i, f"Job {i}") for i in range(50)]
+        p2 = [self._item(50 + i, f"Job {50 + i}") for i in range(6)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "scalo"], pages=[(56, p1), (56, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 56)
+        self.assertIn("56 emitted over 2 call(s) — the site states 56: equal", err)
+        qs = [urllib.parse.parse_qs(urllib.parse.urlsplit(u).query) for u in sent]
+        self.assertEqual([(q["limit"][0], q["offset"][0], q["page"][0]) for q in qs], [("50", "0", "1"), ("50", "50", "2")])
+        r = rows[0]
+        self.assertEqual((r["id"], r["recruitment_id"], r["reference"], r["title"], r["place"], r["region"], r["country"], r["country_name"], r["published"], r["experience_level"], r["language"]),
+                         ("2300", "11000", "08/09/0", "Job 0", "Warszawa", "Mazowieckie", "PL", "Polska", "2026-09-08", ["regular", "senior"], "pl"))
+        self.assertEqual(r["url"], f"https://{self.HOST}/public/an/{'a' * 40}00", "the tracking parameter is dropped")
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertEqual(r["sections"]["requirements"], "Wymagania:\nJIRA")
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("public/form", "latitude", "52.235840", "00-001", "095e2902", "115 PLN", "rekrutacja@", "512 345 678", "headerPhoto", "publicFileContent"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_country_filter_and_stamp_the_bounded_walk_the_repeating_call_the_empty_tenant_and_a_non_tenant(self):
+        mod = self._mod()
+        items = [self._item(0, "A"), self._item(1, "B", locality="Berlin", iso="de", country="Niemcy"), self._item(2, "C", with_location=False)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/career/", "--country-code", "de"], pages=[(3, items)])
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["B", "C"]), err)   # C has no location and is stamped, as the note says
+        self.assertIn("2 emitted for DE of the 3 read", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "scalo"], pages=[(3, items)])
+        self.assertEqual([r["country"] for r in rows], ["PL", "DE", None])
+        p1 = [self._item(i, f"J{i}") for i in range(50)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "scalo", "--max-pages", "1"], pages=[(235, p1), (235, p1)])
+        self.assertEqual((code, len(rows)), (0, 50), err)
+        self.assertIn("1 call(s) of 50 by request (--max-pages), not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "scalo"], pages=[(235, p1), (235, p1)], stuck=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("not advancing", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "vercom"], pages=[(0, [])])
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted over 1 call(s) — the site states 0", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], raw="<html><title>Traffit</title><body>not a list</body></html>")
+        self.assertEqual(code, 6, err)
+        self.assertIn("not JSON", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], pages=None)
+        self.assertEqual(code, 3, err)
+
+    def test_the_advert_page_is_read_by_its_articles_balanced_and_scrubbed(self):
+        mod = self._mod()
+        url = f"https://{self.HOST}/public/an/6c60388dc0503557f220236254a6d70f386c306646513d3d"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url + "?source=career_page"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [url], "the tracking parameter is dropped")
+        r = rows[0]
+        self.assertEqual((r["title"], r["sections"]), ("QA/Test Lead", 2))
+        self.assertTrue(r["description"].startswith("W Scalo zajmujemy się projektami."))
+        self.assertIn("Cześć!", r["description"], "a nested div is not the end of the article")
+        self.assertIn("definiowanie strategii", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("public/form", json.dumps(r))
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad="<html><body>gone</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in (f"https://{self.HOST}/public/form/a/2342", "https://traffit.com/public/an/6c60388dc0503557f220236254a6d70f386c306646513d3d", f"https://{self.HOST}/public/an/short"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_another_host_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "vercom.traffit.com", "scalo.traffit.com.evil.example", "traffit.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/public/an/list/")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "cdn3", "a.b", "-x", "https://traffit.com/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("scalo", "SCALO.traffit.com", f"https://{self.HOST}/career/"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual(mod.tenant_of("cloud_recruitment"), "cloud_recruitment.traffit.com")
+        self.assertEqual(mod.when(1788854741), "2026-09-08")
+        self.assertIsNone(mod.when(None))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
