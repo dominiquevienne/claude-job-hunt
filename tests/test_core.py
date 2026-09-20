@@ -28050,5 +28050,140 @@ class AnATSWhoseTenantSiteRendersItsListAndPagesByAWebFormsPostbackThatNeedsTheP
         self.assertEqual(mod.without_address("Alexandra House Hulme 133 Moss Lane East Manchester M15 5GX"), ["Alexandra House Hulme Manchester"])
         self.assertEqual(mod.without_address("Trust Based, Berkshire Healthcare NHS Foundation Trust"), ["Trust Based", "Berkshire Healthcare NHS Foundation Trust"])
 
+class AnATSWhoseTenantSubdomainServesAServerRenderedTableWithItsCountAndWhoseNonTenantsAnswerWithTheVendorsSite(unittest.TestCase):
+    """**`laura.py`, 2026-09-20 (#466).** LAURA Rekrytointi: `<tenant>.rekrytointi.com
+    /paikat/index.php?o=A_LOJ&list=1` is a table with `result_count`
+    («Avoimia työpaikkoja: 20») and one row per job, every cell a link
+    carrying `jid=` and a session `rspvt=`; a subdomain that is no tenant
+    answers 200 with the vendor's marketing site (measured: pingviini). Both
+    ways: the count beside the emitted number, the tenant's own column labels,
+    the session token never emitted, the job address rebuilt, the vendor's
+    site as a non-tenant (6), a list shorter than its count (short, not
+    walked), the country stamp, the ad's period and scrubbed description,
+    another host refused (7), bad tenants refused before a request."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_laura", os.path.join(SCRIPTS, "laura.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "tuni.rekrytointi.com"
+
+    @staticmethod
+    def _row(i, title, dept="Palveluyksiköt", closes="21.09.2026", cls="odd"):
+        link = f"/paikat/index.php?jid={3100 + i}&key=&o=A_RJ&rspvt=19j41l9ecyiso808c0g4o4oow4s8k0o"
+        return (f"<tr class='{cls}'><td class='col_Name'><a href='{link}'>{title}</a></td><td class='col_ApplyEndDate'><a href='{link}'>{closes}</a></td>"
+                f"<td class='col_Department'><a href='{link}'>{dept}</a></td></tr><!--end-aid--->")
+
+    def _list(self, rows, total, label="Avoimia työpaikkoja"):
+        heads = ("<tr class='title_row'><th class='col_Name'>Tehtävän nimi<a class='sort_icon' href='?o=A_LOJ&list=1&s0_name=Name'><img src='x'/></a></th>"
+                 "<th class='col_ApplyEndDate'>Hakuaika päättyy<a class='sort_icon' href='?x'><img src='x'/></a></th><th class='col_Department'>Tiedekunta/Yksikkö<a class='sort_icon' href='?x'><img src='x'/></a></th></tr>")
+        return (f"<html><head><title>Avoimet työpaikat - {self.HOST}</title></head><body><form></form><div class='auto_list auto_list_open_jobs'><div class='result_count'>{label}: {total}</div>"
+                f"<table class='results clickable_multi' id='auto_list_table_open_jobs' data-min-link-count='2'><colgroup><col class='col_Name'/></colgroup>{heads}{''.join(rows)}</table></div></body></html>")
+
+    VENDOR = "<html><head><title>Valitse sujuvampi rekrytointi Lauran avulla – Laura.fi</title></head><body><div class='hero'>Yksi kumppani. Sujuvampi rekrytointi.</div></body></html>"
+
+    def _ad(self, desc="<p>We are inviting applications.</p><p>Lisätietoja:<br>Apulaisprofessori Pia Hautamäki<br><a href=\"mailto:pia.hautamaki@tuni.fi\">pia.hautamaki@tuni.fi</a>, puh. 040 123 4567</p>"):
+        return ("<html><body><div class=\"applicant_logo\"><div style='display:none;'><img src='/logos/tuni-some-logo.png'/></div><a href='http://www.tuni.fi/'><img src='/logos/tuni-logo.png' width='316' alt=\"Tampereen yliopisto\" title=\"Tampereen yliopisto\"/></a></div>"
+                "<div class='job_name job_name3160'><h1>Doctoral researcher in industrial sales</h1></div><div class='job_description' id='jid3160'>" + desc + "</div>"
+                "<div class='job_start_end_times'><span class='se_text_se_date'><span class='se_text'>Application period starts: </span><span class='se_date'>2026-08-28 15:15</span></span>"
+                "<span class='se_text_se_date'><span class='se_text'>Application period ends: </span><span class='se_date'>2026-09-20 23:59</span></span></div>"
+                "<div class='apply_to_job'><a href='https://tuni.rekrytointi.com/paikat/?o=A_A&amp;jid=3160&amp;rspvt=hj77'>Submit an application</a></div></body></html>")
+
+    def _run(self, mod, argv, page=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            if q.get("o") == ["A_LOJ"]:
+                return (200, page) if page is not None else (404, "")
+            if q.get("o") == ["A_RJ"]:
+                return (200, ad) if ad is not None else (404, "")
+            return 404, ""
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_is_read_once_with_its_count_its_labels_and_no_session_token(self):
+        mod = self._mod()
+        page = self._list([self._row(i, f"Job {i}", cls="odd" if i % 2 == 0 else "even") for i in range(3)], 3)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "tuni", "--country-code", "fi"], page=page)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 3)
+        self.assertIn("3 emitted — the page states 3: equal; country FI stamped from --country-code", err)
+        self.assertEqual(sent, [f"https://{self.HOST}/paikat/index.php?o=A_LOJ&list=1"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["department"], r["closes"], r["country"], r["url"]),
+                         ("3100", "Job 0", "Palveluyksiköt", "21.09.2026", "FI", f"https://{self.HOST}/paikat/index.php?o=A_RJ&jid=3100"))
+        self.assertEqual(r["fields"], {"Hakuaika päättyy": "21.09.2026", "Tiedekunta/Yksikkö": "Palveluyksiköt"})
+        self.assertNotIn("rspvt", json.dumps(rows))
+        self.assertTrue(r["contacts_withheld"])
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/paikat/index.php?o=A_LOJ&list=3&lang=en", "--list", "3", "--lang", "en"], page=self._list([self._row(0, "Job")], 1, label="Open jobs"))
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        self.assertEqual(sent, [f"https://{self.HOST}/paikat/index.php?o=A_LOJ&list=3&lang=en"])
+        self.assertTrue(rows[0]["url"].endswith("&jid=3100&lang=en"))
+
+    def test_a_non_tenant_answers_with_the_vendors_site_and_a_short_list_is_reported_not_walked(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "pingviini"], page=self.VENDOR)
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("not a LAURA tenant", err)
+        self.assertEqual(len(sent), 1)
+        page = self._list([self._row(i, f"Job {i}") for i in range(2)], 20)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "tuni"], page=page)
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 1), err)
+        self.assertIn("2 emitted — the page states 20: 18 short", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "tuni"], page=self._list([], 0))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the page states 0: equal", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "tuni"], page=None)
+        self.assertEqual(code, 3, err)
+
+    def test_the_ad_reads_the_title_period_and_employer_and_scrubs_the_contact(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/paikat/index.php?jid=3160&o=A_RJ&lang=en&rspvt=hj77"], ad=self._ad())
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/paikat/index.php?o=A_RJ&jid=3160&lang=en"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["posted"], r["closes"], r["language"]),
+                         ("3160", "Doctoral researcher in industrial sales", "Tampereen yliopisto", "2026-08-28 15:15", "2026-09-20 23:59", "en"))
+        self.assertTrue(r["description"].startswith("We are inviting applications."))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("pia.hautamaki@", "040 123 4567", "rspvt", "o=A_A"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/paikat/index.php?o=A_RJ&jid=3160"], ad=self.VENDOR)
+        self.assertEqual(code, 6, err)
+        for bad in (f"https://{self.HOST}/paikat/?o=A_A&jid=3160", "https://laura.fi/paikat/index.php?o=A_RJ&jid=1", f"https://{self.HOST}/paikat/index.php?o=A_RJ"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self._ad())
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_another_host_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "finnlines.rekrytointi.com", "tuni.rekrytointi.com.evil.example", "laura.fi"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/paikat/index.php?o=A_LOJ&list=1")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "osaajapankki", "a.b", "-x", "https://laura.fi/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("tuni", "TUNI.rekrytointi.com", "https://tuni.rekrytointi.com/paikat/index.php?o=A_LOJ&list=1"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
