@@ -29055,5 +29055,152 @@ class ABoardWhoseHostChallengesTheClientOnEveryPathAndWhoseTabServesAWordPressRE
         self.assertIsNone(mod.deadline_of("The Council will contact shortlisted candidates."))
         self.assertEqual(mod.deadline_of("Application deadline: 30 September 2026 BRAC is committed"), "30 September 2026")
 
+class AnATSWhoseCareerSiteCarriesItsOwnKeyedFeedLinkAndWhoseFeedListsAnOfferOncePerRegion(unittest.TestCase):
+    """**`erecruiter.py`, 2026-09-20 (#471).** eRecruiter: `<tenant>.pracujunas.pl`
+    is a Next.js page whose `__NEXT_DATA__.props.pageProps.companyData
+    .offersLink` names the feed (`offers.erecruiter.pl/skk/company/<id>/
+    offers.json?hash=<key>`); the feed answers `{"jobs": [...]}`, one item
+    per offer and region, with the application form, the GDPR clause and
+    the coordinates in every item. Both ways: the feed link replayed as the
+    page carries it, one row per region item and the offers counted, the
+    country from the item and the stamp, the form/clause/coordinates
+    withheld, texts scrubbed, a page without companyData (6), a feed link
+    of another shape (6), a 404 (3), the offer page's sections, bad
+    addresses, other hosts refused, bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_erecruiter", os.path.join(SCRIPTS, "erecruiter.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "zabka.pracujunas.pl"
+    FEED = "https://offers.erecruiter.pl/skk/company/18802512/offers.json?hash=24F0DDE06AAD618C3C516F2311D0DAF6"
+
+    def _page(self, feed=None, company=True):
+        cd = {"id": "43986cea", "companyName": "18802512", "companyDisplayName": "Żabka Polska Sp. z o.o. ", "subDomainName": "zabka", "offersLink": feed or self.FEED, "regions": [{"regionType": "OffersList"}]} if company else None
+        nd = {"props": {"pageProps": {"companyData": cd, "domain": "zabka.pracujunas.pl", "status": 200}}, "page": "/"}
+        return '<html><head><title>Kariera | Żabka</title></head><body><div id="__next"></div><script id="__NEXT_DATA__" type="application/json">' + json.dumps(nd, ensure_ascii=False) + '</script></body></html>'
+
+    @staticmethod
+    def _item(oid, region_id, title, town="Toruń", region="kujawsko-pomorskie", country="PL"):
+        return {"url": f"https://skk.erecruiter.pl/Offer.aspx?oid={region_id}&ejoId=812866&ejorId=550752&comId=18802512", "urlWithLayout": "…", "title": title,
+                "publishDate": "2026-08-28", "expiryDate": "2026-09-27", "company": "Żabka Polska Sp. z o.o. ", "partnership": "Żabka", "location": town, "referencenumber": "",
+                "country": {"id": 1, "isoCode": country} if country else None, "region": {"id": "2", "name": region}, "departments": ["Operacje terenowe "], "additionalFields": {}, "branches": [],
+                "applicationLink": "https://system.erecruiter.pl/FormTemplates/RecruitmentForm.aspx?webid=123AA158", "companyDescription": "", "requirements": "<p><strong>Aplikuj jeśli:</strong></p><ul><li>Masz prawo jazdy</li></ul>",
+                "opportunities": "", "notes": "<p>Pytania: rekrutacja@zabka.pl, tel. 61 856 37 00.</p>", "clause": "<p>Administratorem Pani / Pana danych osobowych jest Żabka…</p>", "experience": "",
+                "jobOfferId": oid, "jobOfferRegionId": region_id, "customLayoutId": "B0EE", "positionDescription": "<p><strong>Zakres:</strong></p><ul><li>Wsparcie Franczyzobiorców.</li></ul>",
+                "lastModificationDate": "2026-08-28T15:38:38.023", "uniqueId": f"812866-18802512", "geolocations": [{"latitude": "53.0137", "longitude": "18.5984", "locationName": town}],
+                "compensationPackage": {"salaryRanges": [], "benefits": "<ul><li>Auto służbowe</li></ul>"}}
+
+    AD = ('<html><body><div id="offWrap"><p class="offComp"> Żabka Polska Sp. z o.o. </p><h1> <span> <p><strong>Partnerka/Partner ds. sprzedaży</strong></p></span></h1><div class="offDet"><div id="divWorkplace"><span id="lblWorkPlace">Miejsce pracy:</span> Toruń<br /></div><div id="divRegionName"><span id="lblRegionName">Region:</span> kujawsko-pomorskie<br /></div></div>'
+          '<div id="divJobDescription"><h2><span id="lblJobDescription">Opis stanowiska</span></h2><div class="desc"><p><strong>Zakres:</strong></p><ul><li>Wsparcie Franczyzobiorców.</li></ul></div></div>'
+          '<div id="divRequirements"><h2><span id="lblDemands">Wymagania</span></h2><div class="desc"><p>Prawo jazdy. Pytania: rekrutacja@zabka.pl, 61 856 37 00.</p></div></div></div></body></html>')
+
+    def _run(self, mod, argv, page=None, feed=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            host = urllib.parse.urlsplit(url).netloc
+            if host == "offers.erecruiter.pl":
+                return (200, json.dumps(feed, ensure_ascii=False)) if feed is not None else (404, "")
+            if host == "skk.erecruiter.pl":
+                return (200, ad) if ad is not None else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_feed_link_is_replayed_as_the_page_carries_it_and_an_offer_in_two_regions_is_two_rows(self):
+        mod = self._mod()
+        feed = {"jobs": [self._item(3535273, 4952907, "Partner"), self._item(3535273, 4952908, "Partner", town="Kraków", region="małopolskie"), self._item(3535274, 4952909, "Kasjer", country=None), self._item(3535274, 4952909, "Kasjer again"),
+                         self._item(3535275, 4952910, "Fahrer", town="Berlin", region="Berlin", country="DE")]}
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "zabka"], page=self._page(), feed=feed)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/", self.FEED])
+        self.assertEqual(len(rows), 4, "a repeated region item is one row")
+        self.assertIn("4 emitted (3 offers, an offer in several regions is several items) — the feed is the board for Żabka Polska Sp. z o.o.: no count is stated anywhere", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["offer_id"], r["title"], r["company"], r["brand"], r["place"], r["region"], r["country"], r["departments"], r["published"], r["closes"]),
+                         ("4952907", "3535273", "Partner", "Żabka Polska Sp. z o.o.", "Żabka", "Toruń", "kujawsko-pomorskie", "PL", ["Operacje terenowe "], "2026-08-28", "2026-09-27"))
+        self.assertTrue(r["url"].startswith("https://skk.erecruiter.pl/Offer.aspx?oid=4952907"))
+        self.assertTrue(r["description"].startswith("Zakres:"))
+        self.assertEqual(r["sections"]["requirements"], "Aplikuj jeśli:\nMasz prawo jazdy")
+        self.assertIn("[e-mail withheld]", r["sections"]["notes"])
+        self.assertIn("[telephone withheld]", r["sections"]["notes"])
+        self.assertEqual(r["benefits"], "Auto służbowe")
+        self.assertIsNone(rows[2]["country"])
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("FormTemplates", "Administratorem", "latitude", "53.0137", "rekrutacja@", "856 37 00"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/", "--country-code", "pl"], page=self._page(), feed=feed)
+        self.assertEqual((code, [r["id"] for r in rows]), (0, ["4952907", "4952908", "4952909"]), err)   # the DE item filtered out
+        self.assertEqual(rows[2]["country"], "PL", "an item without a country is stamped")
+        self.assertIn("3 emitted for PL of the 4 items (3 offers)", err)
+
+    def test_the_empty_feed_a_page_without_company_data_a_feed_of_another_shape_and_a_404(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "viessmann"], page=self._page(), feed={"jobs": []})
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted (0 offers", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "zabka"], page=self._page(company=False), feed={"jobs": []})
+        self.assertEqual((code, len(sent)), (6, 1), err)
+        self.assertIn("no `companyData.offersLink`", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "zabka"], page=self._page(feed="https://evil.example/feed.json?hash=1"), feed={"jobs": []})
+        self.assertEqual((code, len(sent)), (6, 1), err)
+        self.assertIn("not the feed shape", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "zabka"], page="<html><body>a site that is not eRecruiter</body></html>")
+        self.assertEqual(code, 6, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], page=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "zabka"], page=self._page(), feed=None)
+        self.assertEqual(code, 6, err)
+
+    def test_the_offer_page_is_read_by_its_sections_and_scrubbed(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://skk.erecruiter.pl/Offer.aspx?oid=4952907&cfg=E98E&ejoId=812866&ejorId=550752&comId=18802512"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://skk.erecruiter.pl/Offer.aspx?oid=4952907&ejoId=812866&ejorId=550752&comId=18802512"], "the layout key is dropped")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"]), ("4952907", "Partnerka/Partner ds. sprzedaży", "Żabka Polska Sp. z o.o.", "Toruń", "kujawsko-pomorskie"))
+        self.assertEqual(list(r["sections"]), ["Opis stanowiska", "Wymagania"])
+        self.assertTrue(r["description"].startswith("Zakres:"))
+        self.assertIn("[e-mail withheld]", r["sections"]["Wymagania"])
+        self.assertIn("[telephone withheld]", r["sections"]["Wymagania"])
+        self.assertNotIn("rekrutacja@", json.dumps(r, ensure_ascii=False))
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://skk.erecruiter.pl/Offer.aspx?oid=1"], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://skk.erecruiter.pl/Offer.aspx?oid=1"], ad="<html><body>gone</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in ("https://system.erecruiter.pl/FormTemplates/RecruitmentForm.aspx?WebID=1", "https://skk.erecruiter.pl/Offer.aspx?ejoId=1", "https://evil.example/Offer.aspx?oid=1"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_other_hosts_are_never_sent_and_bad_tenants_are_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        for host in ("evil.example", "dkms.pracujunas.pl", "system.erecruiter.pl", "zabka.pracujunas.pl.evil.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "a.b", "-x", "https://erecruiter.pl/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("zabka", "ZABKA.pracujunas.pl", f"https://{self.HOST}/"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
