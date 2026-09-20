@@ -27557,5 +27557,130 @@ class AnATSWhoseCareersPageCarriesEveryJobInItsOwnPageDataAndWritesCountriesInTh
         self.assertEqual([iso.alpha2(x) for x in ("PHL", "usa", "MEX", "IRL", "CHN", "US", "XYZ", None)], ["PH", "US", "MX", "IE", "CN", "US", "XYZ", None])
         self.assertGreater(len(iso.ALPHA3_TO_2), 240)
 
+
+
+class AnATSWhoseCareerCenterListsRequisitionsByAOneBasedSkipCappedAtTwentyAndStatesTheTotal(unittest.TestCase):
+    """**`adpworkforcenow.py`, 2026-09-20 (#462).** ADP Workforce Now: the
+    Career Center's app calls `…/careercenter/public/events/staffing/v1/
+    job-requisitions?cid=…&ccId=…&lang=…&$top=20&$skip=<1 + 20·page>`
+    (`$top` capped at 20 by the service, `$skip` 1-based) → `meta.totalNumber`
+    and `jobRequisitions[]`; the requisition's description by
+    `job-requisitions/<id>`. Both ways: the walk's parameters and its stop at
+    the stated total, the country from the location's name when the address
+    carries none, internal postings skipped, postal codes absent, the empty
+    tenant, a repeating pager (6), the country filter, the ad scrubbed, other
+    hosts refused (7), bad tenants refused before a request."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_adpwfn", os.path.join(SCRIPTS, "adpworkforcenow.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    CID = "4f8b9ec0-f968-42cd-9774-88eb269c652e"
+
+    @staticmethod
+    def _req(i, title, city="Kalaheo", state="HI", country_name="Kalaheo, HI, US", internal=False, desc=None):
+        r = {"itemID": f"92054529{i:05d}_1", "requisitionTitle": title, "postDate": "2026-09-18T17:22:00.000-04:00", "clientRequisitionID": str(1300 + i),
+             "workLevelCode": {"shortName": "Regular"}, "screeningRequirements": [], "sponsoredVisaTypeCodes": [],
+             "customFieldGroup": {"stringFields": [{"stringValue": str(606000 + i), "nameCode": {"codeValue": "ExternalJobID"}}, {"stringValue": "Technicians", "nameCode": {"codeValue": "JobClass"}}],
+                                  "indicatorFields": [{"indicatorValue": internal, "nameCode": {"codeValue": "InternalPostingFlag"}}]},
+             "requisitionLocations": [{"address": {"cityName": city, "countrySubdivisionLevel1": {"codeValue": state}, "postalCode": "96741"}, "nameCode": {"shortName": " " + country_name}}]}
+        if desc is not None:
+            r["requisitionDescription"] = desc
+        return r
+
+    def _run(self, mod, argv, pages, detail=None):
+        sent = []
+
+        def request(url):
+            sent.append(url)
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            path = urllib.parse.urlsplit(url).path
+            if path.endswith("/job-requisitions"):
+                skip = int(q.get("$skip", ["1"])[0])
+                idx = (skip - 1) // 20
+                total, reqs = pages[min(idx, len(pages) - 1)] if pages else (0, [])
+                return 200, json.dumps({"jobRequisitions": reqs, "meta": {"startSequence": skip, "totalNumber": total}})
+            return 200, json.dumps(detail or {})
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_asks_top_20_with_a_one_based_skip_and_stops_at_the_stated_total(self):
+        mod = self._mod()
+        p1 = [self._req(i, f"Job {i}") for i in range(20)]
+        p2 = [self._req(20 + i, f"Job {20 + i}") for i in range(5)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.CID], [(25, p1), (25, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 25)
+        self.assertIn("25 emitted — the service states 25: equal", err)
+        qs = [urllib.parse.parse_qs(urllib.parse.urlsplit(u).query) for u in sent]
+        self.assertEqual([q["$skip"][0] for q in qs], ["1", "21"])
+        self.assertEqual({q["$top"][0] for q in qs}, {"20"})
+        self.assertEqual((qs[0]["cid"][0], qs[0]["ccId"][0], qs[0]["lang"][0], qs[0]["locale"][0]), (self.CID, "19000101_000001", "en_US", "en_US"))
+        r = rows[0]
+        self.assertEqual((r["id"], r["ref"], r["external_id"], r["title"], r["place"], r["region"], r["country"], r["posted"], r["job_class"]), ("9205452900000_1", "1300", "606000", "Job 0", "Kalaheo", "HI", "US", "2026-09-18", "Technicians"))
+        self.assertTrue(r["url"].endswith("&jobId=606000"))
+        self.assertNotIn("96741", json.dumps(rows))
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_internal_postings_the_empty_tenant_the_country_filter_the_bounded_walk_and_the_repeating_pager(self):
+        mod = self._mod()
+        mixed = [self._req(1, "A"), self._req(2, "B", internal=True), self._req(3, "C", city="Toronto", state="ON", country_name="Toronto, ON, CA")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CID], [(3, mixed)])
+        self.assertEqual((code, [r["id"][-7:] for r in rows]), (0, ["00001_1", "00003_1"]), err)
+        self.assertIn("1 short (internal postings are skipped)", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid={self.CID}&ccId=19000101_000001&lang=en_US", "--country-code", "ca"], [(3, mixed)])
+        self.assertEqual((code, [r["country"] for r in rows]), (0, ["CA"]), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CID], [(0, [])])
+        self.assertEqual((code, rows), (0, []))
+        self.assertIn("0 requisitions", err)
+        self.assertIn("not an error", err)
+        p1 = [self._req(i, f"J{i}") for i in range(20)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CID, "--max-pages", "1"], [(85, p1)])
+        self.assertEqual((code, len(rows)), (0, 20), err)
+        self.assertIn("walked 1 page(s) by request, not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.CID], [(85, p1), (85, p1)])
+        self.assertEqual(code, 6, err)
+        self.assertIn("repeats", err)
+
+    def test_the_ad_reads_the_requisition_by_its_external_id_and_scrubs_the_description(self):
+        mod = self._mod()
+        det = self._req(0, "Mechanic Helper", desc="<div><p><strong>Primary Purpose</strong></p><p>Assist. Apply to hr@kauaicoffee.com or call (808) 555-0100.</p></div>")
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid={self.CID}&ccId=19000101_000001&lang=en_US&jobId=606158"], [], detail=det)
+        self.assertEqual(code, 0, err)
+        self.assertTrue(urllib.parse.urlsplit(sent[0]).path.endswith("/job-requisitions/606158"), sent[0])
+        r = rows[0]
+        self.assertEqual((r["title"], r["country"], r["place"]), ("Mechanic Helper", "US", "Kalaheo"))
+        self.assertTrue(r["description"].startswith("Primary Purpose"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("kauaicoffee", json.dumps(r))
+
+    def test_a_host_that_is_not_adp_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "www.adp.com", "workforcenow.adp.com.evil.example"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("peak", "12345", "https://example.com/mascsr/default/mdf/recruitment/recruitment.html?cid=" + self.CID, ""):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad, "19000101_000001", "en_US")
+            self.assertEqual(cm.exception.code, 2, bad)
+        with self.assertRaises(SystemExit) as cm:
+            mod.tenant_of(self.CID, "nope", "en_US")
+        self.assertEqual(cm.exception.code, 2)
+        self.assertEqual(mod.tenant_of(f"https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid={self.CID.upper()}&ccId=19000101_000002&lang=en_CA", "19000101_000001", "en_US"), (self.CID, "19000101_000002", "en_CA"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
