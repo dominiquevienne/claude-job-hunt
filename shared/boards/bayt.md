@@ -2,10 +2,12 @@
 
 <!-- verified: 2026-09-13 -->
 <!-- hosts: www.bayt.com -->
-<!-- countries: AE SA EG JO LB KW QA BH OM MA -->
+<!-- countries: AE SA EG JO LB KW QA BH OM MA DZ -->
 <!-- content: measured · **the UAE listing states three figures and the card names them**: «13.6K jobs found» in the listing header, «8378 jobs openings» in its prose, and a pager to 333 pages of 30 (≤ 9 990) — read from a connected browser tab at 12:51 UTC, 30 `/en/uae/jobs/<slug>-<id>/` cards and a JSON-LD ItemList on the page; the declared client gets a 403 of 5 695 B whose md5 moves between two reads (a challenge page, family 3), which the tab passed with nothing to click · 2026-09-13 -->
 <!-- witness: three figures the site states about one listing, none equal to another — the header's 13.6K, the prose's 8 378, the pager's 333 × 30; the card carries all three rather than choosing · 2026-09-13 -->
 <!-- route: browser · 13600 · 2026-09-13 -->
+
+**DZ added 2026-09-20 (#770):** `https://www.bayt.com/en/algeria/jobs/` read in a connected tab at 12:3x UTC (the clock read 12:31 after the tab) — served without a challenge, its own heading «311 jobs found» for Algeria. The client's route is unchanged (a Cloudflare challenge, 2026-09-13); the browser route now counts Algeria among the countries the board publishes for.
 
 The largest job site in the Middle East and North Africa. **No adapter, and
 the reason is a layer, not a policy.**
