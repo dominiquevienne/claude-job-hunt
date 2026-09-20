@@ -28641,5 +28641,126 @@ class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageLis
         for ok in ("su", "SU.varbi.com", f"https://{self.HOST}/what:findjob/?showresult=1"):
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
 
+class AnATSWhoseListAddressCarriesItsOwnValidatorAndRendersOneTableWithTheTenantsColumnsAndNoCount(unittest.TestCase):
+    """**`reachmee.py`, 2026-09-20 (#470).** ReachMee: the tenant is the
+    list's own address (`web103.reachmee.com/ext/I011/853/main?site=6&lang=SE
+    &validator=<hash>`), one `#jobsTable` with `th#col-N` labels the tenant
+    chose and one row per job linked by `job_id=`; no page, no count. The
+    job page: `h1#jobad-heading`, `p.extid`, `div.jobad-body`, a
+    `section.contact` of names, telephones and e-mails. Both ways: the
+    address replayed as given, the columns mapped by their ids and kept by
+    their labels, the sort key and mobile label not read as values, the
+    stamp, a page without the table (6), the ad with the contact section
+    withheld and the prose scrubbed, bad addresses, another host refused,
+    a composed tenant refused."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_reachmee", os.path.join(SCRIPTS, "reachmee.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LIST = "https://web103.reachmee.com/ext/I011/853/main?site=6&lang=SE&validator=c5f766a55eafbb016232008485a24b49"
+    VAL = "c5f766a55eafbb016232008485a24b49"
+
+    def _row(self, jid, title, town="Norrköping", form="Extrajobb", ref="LiU-2026-04136", area="ITN", exp="Student", closes="2026-10-02"):
+        u = f"https://web103.reachmee.com/ext/I011/853/job?site=6&lang=SE&validator={self.VAL}&job_id={jid}"
+        return (f"<tr> <td><a href='{u}' class='btn btn-link'>{title}</a> </td> <td><span class='show-mobile'>Sista ans.dag:</span><span data-order=\"1\" style=\"display:none\">{closes}</span> {closes}</td>"
+                f" <td>{form}</td> <td>{ref}</td> <td>{town}</td> <td>{area}</td> <td>{exp}</td> </tr>")
+
+    def _list(self, rows):
+        return ("<html><head><title>Linköpings universitet | Lediga jobb</title></head><body><div id=\"mainjoblist\"> <table class='table table-hover jobsTableClass' id='jobsTable' ><caption class='sub-heading'>Lista på tillgängliga jobb.</caption>"
+                " <thead><tr><th id='col-1'>Anställningar <i class='table-sort-column-icon'></i></th><th id='col-6'>Sista ans.dag <i class='table-sort-column-icon'></i></th><th id='col-17'>Anställningsform <i></i></th><th id='col-3'>Diarienummer <i></i></th><th id='col-9'>Ort <i></i></th><th id='col-11'>Affärsområde <i></i></th><th id='col-14'>Erfarenhetsområde <i></i></th></tr></thead> <tbody>"
+                + "".join(rows) + "</tbody></table></div></body></html>")
+
+    AD = ('<html><body><main role="main" class="ad"><div class="jobad-header"><h1 id="jobad-heading" class="heading h1">Amanuens för uppdrag</h1></div><p class="text-color-muted extid">Norrköping</p><p class="text-color-muted extid"><span>Referensnummer</span> LiU-2026-04136</p>'
+          '<div class="jobad-body"><p class="prefix-text">Vi har kraften från över 50 000 studenter.</p><div class="box"><div><p>Om jobbet</p></div></div><p>Frågor till Mark E Dieckmann, mark.e.dieckmann@liu.se, 011-363166.</p></div>'
+          '<section class="contact"><h2 class="sub-heading h2">Kontaktpersoner</h2><div class="contact-person"><p class="contact-name">Mark E Dieckmann</p><p class="contact-position">Universitetslektor</p><p class="contact-phone">011-363166</p><p class="contact-email"><a href="mailto:mark.e.dieckmann@liu.se">mark.e.dieckmann@liu.se</a></p></div></section>'
+          '<a href="https://web103.reachmee.com/ext/I011/853/auth?site=6&lang=SE&validator=x&apply=29920">Sök jobbet</a></main></body></html>')
+
+    def _run(self, mod, argv, page=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            path = urllib.parse.urlsplit(url).path
+            if path.endswith("/job"):
+                return (200, ad) if ad is not None else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_address_is_replayed_as_given_and_the_tenants_columns_are_mapped_and_kept(self):
+        mod = self._mod()
+        page = self._list([self._row(29920, "Amanuens"), self._row(29662, "Adjunkt", town="Linköping", form="Tillsvidareanställning", ref="LiU-2026-03432", area="IEI", exp="Lärare", closes="2026-10-12"), self._row(29920, "Amanuens again")])
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", self.LIST, "--country-code", "se"], page=page)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [self.LIST])
+        self.assertEqual(len(rows), 2, "a repeated job_id is one job")
+        self.assertIn("2 emitted — the table is the board: no count is stated anywhere and no page follows; country SE stamped from --country-code", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["place"], r["closes"], r["employment_type"], r["reference"], r["country"], r["region"]),
+                         ("29920", "Amanuens", "Norrköping", "2026-10-02", "Extrajobb", "LiU-2026-04136", "SE", None))
+        self.assertEqual(r["url"], f"https://web103.reachmee.com/ext/I011/853/job?site=6&lang=SE&validator={self.VAL}&job_id=29920")
+        self.assertEqual(r["fields"], {"Sista ans.dag": "2026-10-02", "Anställningsform": "Extrajobb", "Diarienummer": "LiU-2026-04136", "Ort": "Norrköping", "Affärsområde": "ITN", "Erfarenhetsområde": "Student"})
+        self.assertNotIn("Sista ans.dag:", json.dumps(rows, ensure_ascii=False), "the mobile label is not a value")
+        self.assertTrue(r["contacts_withheld"])
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.LIST], page=self._list([]))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the table is the board", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.LIST], page="<html><body>JavaScript måste vara påslaget. No list for this validator.</body></html>")
+        self.assertEqual(code, 6, err)
+        self.assertIn("no `#jobsTable`", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.LIST], page=None)
+        self.assertEqual(code, 3, err)
+
+    def test_the_ad_withholds_the_contact_section_and_scrubs_the_prose(self):
+        mod = self._mod()
+        url = f"https://web103.reachmee.com/ext/I011/853/job?site=6&lang=SE&validator={self.VAL}&job_id=29920"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url + "&rmref=2484"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [url], "the address is rebuilt from its four parameters, tracking dropped")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["place"], r["reference"], r["contact_section_withheld"]), ("29920", "Amanuens för uppdrag", "Norrköping", "LiU-2026-04136", True))
+        self.assertTrue(r["description"].startswith("Vi har kraften"))
+        self.assertIn("Frågor till", r["description"], "a nested div is not the end of the advert")
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("dieckmann@", "011-363166", "Universitetslektor", "Kontaktpersoner", "contact-name", "apply="):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], ad="<html><body>gone</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in (self.LIST, "https://web103.reachmee.com/ext/I011/853/job?site=6&job_id=1", "https://evil.example/ext/I011/853/job?site=6&validator=x&job_id=1", url.replace("job_id=29920", "job_id=abc")):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_another_host_is_never_sent_and_a_composed_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = "web103.reachmee.com"
+        for host in ("evil.example", "web106.reachmee.com", "web103.reachmee.com.evil.example", "www.reachmee.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/ext/I011/853/main?site=6&validator=x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "853", "https://web103.reachmee.com/ext/I011/853/main", "https://web103.reachmee.com/ext/I011/853/main?site=6", "https://www.reachmee.com/ext/I011/853/main?site=6&validator=x", "https://web103.reachmee.com/ext/I011/853/job?site=6&validator=x&job_id=1"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        host, inst, cust, q = mod.tenant_of("web106.reachmee.com/ext/I020/1291/main?site=27&validator=277cb2bac1f6d9ba2720e8827a79e39b&lang=SE")
+        self.assertEqual((host, inst, cust, q), ("web106.reachmee.com", "I020", "1291", {"site": "27", "lang": "SE", "validator": "277cb2bac1f6d9ba2720e8827a79e39b"}))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
