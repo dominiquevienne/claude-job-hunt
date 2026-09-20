@@ -28185,5 +28185,165 @@ class AnATSWhoseTenantSubdomainServesAServerRenderedTableWithItsCountAndWhoseNon
         for ok in ("tuni", "TUNI.rekrytointi.com", "https://tuni.rekrytointi.com/paikat/index.php?o=A_LOJ&list=1"):
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
 
+class AnATSWhoseJobPortalAPIPagesByTakeAndSkipStatesTheCustomersTotalAndNamesTheHiringManagerInEveryItem(unittest.TestCase):
+    """**`hrmanager.py`, 2026-09-20 (#467).** HR-Manager / Talentech: `api.hr-manager.net
+    /jobportal.svc/<alias>/positionlist/json/?incads=0&take=50&skip=N` →
+    `Items[]`, `PositionCountCustomer` (the total), `PositionCountList`;
+    an unknown alias answers 400 with `StatusCode: 1`; the item carries
+    `ProjectLeader` (name, e-mail, telephone, portrait) and the department's
+    street — never emitted; dates as `/Date(ms+0200)/`. The advert by its
+    permitted page (`h1.ProjectName`, `#AdvertisementInnerContent`, the
+    `contact` block dropped). Both ways: the walk's take/skip to the stated
+    total, the dates, the country from the tree and the stamp, a repeating
+    call (6), the unknown alias (3), the bounded walk, the ad scrubbed and
+    its apply form never composed, other hosts refused (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hrmanager", os.path.join(SCRIPTS, "hrmanager.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(i, title, city="Vejle", country="Danmark", county="Syddanmark", leader=True):
+        return {"CustomerAlias": "rsd", "CustomerName": "Region Syddanmark", "Id": 237000 + i, "Name": title,
+                "AdvertisementUrl": f"http://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId={237000 + i}&DepartmentId=6704&MediaId=5",
+                "AdvertisementUrlSecure": f"https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId={237000 + i}&DepartmentId=6704&MediaId=5",
+                "ApplicationFormUrlSecure": f"https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId={237000 + i}&SkipAdvertisement=True",
+                "ApplicationDue": "/Date(1790200799000+0200)/", "Published": "/Date(1788941224000+0200)/", "LastUpdated": "/Date(1788941232000+0200)/",
+                "StartDate": "/Date(1793487600000+0100)/", "StartDateASAP": False, "WorkHours": "37", "PositionType": "", "WorkPlace": "", "ShortDescription": "",
+                "Department": {"Address": "", "City": "", "Country": "", "County": "", "Id": 6704, "Name": "Biokemi og Immunologi", "Zip": ""},
+                "DepartmentTree": {"Address": "Damhaven 12", "City": city, "Country": country, "County": county, "Id": 4761, "Name": "Region Syddanmark", "POBox": "", "Zip": "7100"},
+                "Languages": [{"Code": "da", "IsDefault": True, "IsoCode": "da-DK"}],
+                "PositionCategory": {"Id": 12773, "Name": "Bioanalytiker"}, "PositionLocation": {"Id": 12790, "Name": city},
+                "ProjectLeader": {"Email": "jane.doe@rsyd.dk", "FirstName": "Jane", "LastName": "Doe", "Phone": "38633186", "ImageUrl": "https://profilepicture.hrmts.net/abc"} if leader else None,
+                "ProjectLeaderEmail": "jane.doe@rsyd.dk" if leader else None, "ProjectLeaderId": 46459, "ProjectAdministratorId": 7,
+                "Users": {"ProjectLeader": {"Email": "jane.doe@rsyd.dk"}, "ProjectParticipants": [{"Email": "jane.doe@rsyd.dk", "Phone": "38633186"}]}}
+
+    @staticmethod
+    def _answer(items, total, skip):
+        return json.dumps({"CustomerAlias": "rsd", "CustomerName": "Region Syddanmark", "TransactionStatus": {"Description": "The operation completed successfully.", "StatusCode": 0},
+                           "Items": items, "PositionCountCustomer": total, "PositionCountList": len(items), "PositionCountSearch": total, "PositionCountSkipped": skip})
+
+    UNKNOWN = json.dumps({"CustomerAlias": None, "CustomerName": None, "TransactionStatus": {"Description": "Value cannot be null.\r\nParameter name: connectionString", "StatusCode": 1}, "Items": [], "PositionCountCustomer": 0, "PositionCountList": 0})
+
+    AD = ('<html><body><div id="column1"><div class="AdContentContainer"><h1 class="ProjectName">2 introduktionsstillinger i radiologi</h1><div id="AdvertisementInnerContent"><h2>Drømmer du om at blive radiolog?</h2>'
+          '<p>Vi søger 2 introduktionslæger. Skriv til Rikke.Beese.Dalby@rsyd.dk eller ring 3062 8065.</p></div>\n<div class="contact emptyparent"><div class="question rowheader">Contact</div><div class="contactinfo"><div><strong><span id="contact1">Rikke Beese Dalby</span></strong></div><div>Cheflæge</div><div class="emptyparent"><span class="empty icontext">3062 8065</span></div></div></div>'
+          '<div class="apply"><a id="ApplyButton" href="ApplicationInit.aspx?cid=198&amp;ProjectId=237101&amp;SkipAdvertisement=True">Søg stillingen</a></div></div></div></body></html>')
+
+    def _run(self, mod, argv, pages=None, unknown=False, stuck=False, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            parts = urllib.parse.urlsplit(url)
+            q = urllib.parse.parse_qs(parts.query)
+            if parts.netloc == "api.hr-manager.net":
+                if unknown:
+                    return 400, self.UNKNOWN
+                skip = int(q.get("skip", ["0"])[0])
+                take = int(q.get("take", ["50"])[0])
+                idx = 0 if stuck else skip // take
+                total, items = pages[min(idx, len(pages) - 1)] if pages else (0, [])
+                return 200, self._answer(items, total, skip)
+            return (200, ad) if ad is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_takes_50_by_skip_to_the_stated_total_and_withholds_the_hiring_manager_and_the_street(self):
+        mod = self._mod()
+        p1 = [self._item(i, f"Job {i}") for i in range(50)]
+        p2 = [self._item(50 + i, f"Job {50 + i}", city="Odense", country="Denmark") for i in range(6)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "regionsyddanmark"], pages=[(56, p1), (56, p2)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 56)
+        self.assertIn("56 emitted over 2 call(s) — the API states 56 for Region Syddanmark: equal", err)
+        qs = [urllib.parse.parse_qs(urllib.parse.urlsplit(u).query) for u in sent]
+        self.assertEqual([urllib.parse.urlsplit(u).path for u in sent], ["/jobportal.svc/regionsyddanmark/positionlist/json/"] * 2)
+        self.assertEqual([(q["take"][0], q["skip"][0], q["incads"][0]) for q in qs], [("50", "0", "0"), ("50", "50", "0")])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["country_name"], r["category"], r["work_hours"], r["languages"]),
+                         (237000, "Job 0", "Region Syddanmark", "Vejle", "Syddanmark", "DK", "Danmark", "Bioanalytiker", "37", ["da"]))
+        self.assertEqual((r["published"], r["closes"], r["starts"]), ("2026-09-09T10:07+02:00", "2026-09-23T23:59+02:00", "2026-11-01T00:00+01:00"))
+        self.assertTrue(r["url"].startswith("https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237000"))
+        self.assertEqual(rows[50]["country"], "DK")
+        dump = json.dumps(rows)
+        for hidden in ("jane.doe", "Jane", "38633186", "profilepicture", "Damhaven", "7100", "SkipAdvertisement", "ProjectLeader", "46459"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_country_filter_and_stamp_the_bounded_walk_the_repeating_call_the_empty_tenant_and_the_unknown_alias(self):
+        mod = self._mod()
+        items = [self._item(0, "A"), self._item(1, "B", city="Malmö", country="Sverige", county="Skåne"), self._item(2, "C", country="", county="")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "https://candidate.hr-manager.net/vacancies/list.aspx?customer=regionsyddanmark&mediaid=5", "--country-code", "se"], pages=[(3, items)])
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["B", "C"]), err)   # C has no country in its tree and is stamped SE, as the note says
+        self.assertIn("2 emitted for SE of the 3 read", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "regionsyddanmark", "--country-code", "dk"], pages=[(3, items)])
+        self.assertEqual((code, [r["title"] for r in rows]), (0, ["A", "C"]), err)
+        self.assertEqual(rows[1]["country"], "DK", "a tree without a country is stamped")
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "regionsyddanmark"], pages=[(3, items)])
+        self.assertEqual([r["country"] for r in rows], ["DK", "SE", None])
+        p1 = [self._item(i, f"J{i}") for i in range(50)]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "regionsyddanmark", "--max-pages", "1"], pages=[(256, p1), (256, p1)])
+        self.assertEqual((code, len(rows)), (0, 50), err)
+        self.assertIn("1 call(s) of 50 by request (--max-pages), not a shortfall", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "regionsyddanmark"], pages=[(256, p1), (256, p1)], stuck=True)
+        self.assertEqual(code, 6, err)
+        self.assertIn("not advancing", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kl"], pages=[(0, [])])
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted over 1 call(s) — the API states 0", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "zzznosuchalias"], unknown=True)
+        self.assertEqual((code, rows, len(sent)), (3, [], 1), err)
+        self.assertIn("StatusCode 1", err)
+
+    def test_the_ad_reads_the_permitted_page_drops_the_contact_block_and_never_composes_the_form(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=6704&MediaId=5&SkipAdvertisement=True"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=237101&DepartmentId=6704&MediaId=5"], "the form flag is dropped from what is sent")
+        r = rows[0]
+        self.assertEqual((r["id"], r["customer_id"], r["title"]), (237101, 198, "2 introduktionsstillinger i radiologi"))
+        self.assertTrue(r["description"].startswith("Drømmer du om at blive radiolog?"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("Rikke.Beese", "3062 8065", "Cheflæge", "SkipAdvertisement"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=1"], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198&ProjectId=1"], ad="<html><body>not an advert</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in ("https://candidate.hr-manager.net/vacancies/list.aspx?customer=kl", "https://evil.example/ApplicationInit.aspx?cid=198&ProjectId=1", "https://candidate.hr-manager.net/ApplicationInit.aspx?cid=198"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_a_host_that_is_not_hr_manager_is_never_sent_and_a_bad_tenant_is_refused_before_any_request(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for host in ("evil.example", "www.hr-manager.net", "api.hr-manager.net.evil.example", "recruiter-api.hr-manager.net"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/x")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "a b", "https://laura.fi/x", "https://candidate.hr-manager.net/vacancies/list.aspx", "rsd/x"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        self.assertEqual(mod.tenant_of("RegionH"), "regionh")
+        self.assertEqual(mod.tenant_of("https://api.hr-manager.net/jobportal.svc/regionsyddanmark/positionlist/json/?incads=1"), "regionsyddanmark")
+        self.assertEqual(mod.when("/Date(1790200799000+0200)/"), "2026-09-23T23:59+02:00")
+        self.assertEqual(mod.when("/Date(1790200799000)/"), "2026-09-23T21:59+00:00")
+        self.assertIsNone(mod.when(""))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
