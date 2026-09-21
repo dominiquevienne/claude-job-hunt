@@ -102,7 +102,7 @@ log in rather than trying to authenticate.
 | Constraint | Consequence |
 | :-- | :-- |
 | The automated tab is **usually** `document.hidden === true` (its window is in the background) | `setTimeout` is throttled to ~1 s per tick. An in-page loop of 25 × 200 ms sleeps **times out the 45 s CDP budget**. Never sleep in page JS — use `computer{action:"wait"}` between steps inside a `browser_batch`. **It is not an invariant** — see the last trap |
-| The results list is virtualized **and** the tab is hidden | Only the **first ~7 job cards** ever hydrate. Scrolling the list (window, container, or `scrollIntoView`) does **not** hydrate more. Do not fight it: run **more, narrower searches** instead of trying to read 25 results from one |
+| The results list is virtualized **and** the tab is hidden | Only the **first ~7 job cards** hydrate at the first extraction. Scrolling from page JS (`window`, the container, `scrollIntoView`) does **not** hydrate more — **a real wheel scroll does** (`computer{scroll}` on the list): 7 → 13 → 22 of 25 on one page, 2026-09-21, the tab hidden; 7 → 16 and 9 → 18 after a click and a scroll, 2026-09-14 (#586). So: extract, `computer{scroll, down, 5}` over the list, `wait 3`, extract again — two or three times for 25 cards; and keep the searches narrow, the account's cadence is the same |
 | The job description pane only loads on a **real** mouse click on a card | `element.click()` from JS updates the URL but renders nothing. `/jobs/view/<id>/` standalone renders nothing either. You must `screenshot` → read the card's y-position → `computer{left_click}` at those coordinates |
 | `fetch()` of `/jobs/view/...` or `/jobs-guest/jobs/api/...` | Returns HTTP **999** or an empty body. There is no API shortcut |
 | `localStorage` is unavailable in the injected world | Silently no-ops. Accumulate results in the tool output, not in the page |
@@ -118,7 +118,10 @@ on the user's real account, not on a scraper.
 ## Building a search URL
 
 `sortBy=R` is relevance; relevance decays fast, so the top ~7 results are the
-useful ones — which is exactly what hydrates (see the constraint table).
+useful ones — which is exactly what hydrates at the first extraction; a
+real scroll over the list hydrates the rest (see the constraint table and
+the #586 trap: five of eighteen new adverts of a 2026-09-14 sweep were in the
+cards that only a scroll rendered).
 
 ```
 https://www.linkedin.com/jobs/search/?keywords=<terms>&location=<place>&sortBy=R
@@ -323,3 +326,30 @@ them not to advance the form until you resume.
 `alert`, `confirm`, `prompt` and browser modals block every subsequent command
 and kill the session. If one appears by accident, tell the user it must be
 dismissed by hand in their browser.
+
+### Trap found on re-verification, 2026-09-21 (#586): a real scroll hydrates, page-JS scrolling does not
+
+The constraint table said «scrolling the list does not hydrate more» — measured
+2026-08-28 with page-JS scrolls (`window.scrollBy`, the container's
+`scrollTop`, `scrollIntoView`). A reporter saw 16/25 and 18/25 hydrated on
+2026-09-14 after a **real** click on a card followed by a `computer{scroll}`,
+the gestures not separated. Separated on 2026-09-21 (09:2x UTC, the
+candidate's own Chrome through the extension, one search `"Solutions
+Architect"` Lausanne, 26 results, 25 cards in the DOM, `document.hidden` true
+at the start):
+
+```
+first extraction (navigate + wait 5)                 7 / 25 hydrated   hidden: true
+computer{scroll, down, 5, (640,400)} + wait 3        13 / 25            hidden: true   ← the scroll alone
+computer{left_click} on a card + wait 4              13 / 25            hidden: false  ← the click adds nothing (it brings the window forward)
+computer{scroll, down, 5} again + wait 3             22 / 25            hidden: false
+```
+
+**The wheel event is what hydrates, not the click and not the tab's
+visibility** — a hidden tab hydrated 7 → 13 on the first scroll. Page-JS
+scrolls fire no wheel event, which is why the 2026-08-28 line held for
+them and did not generalise. Three pages, two days, one account (2026-09-14:
+2 pages, click + scroll; 2026-09-21: 1 page, the gestures apart). The
+constraint row and the search advice above are rewritten accordingly; the
+pace rule is untouched — the extra cards are on a page already loaded.
+
