@@ -31985,5 +31985,134 @@ class AMultiEmployerATSWhoseCareerCenterFillsItselfByPostingItsOwnFormAndLinksTo
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnATSWhoseCareerPageRendersItsJobCardsNextToItsTeamsNames(unittest.TestCase):
+    """**`factorial.py`, 2026-09-21 (#486).** Factorial: the tenant's career
+    page renders the whole list as `li.job-offer-item` cards (`data-job-
+    postings-url` to `/job_posting/<slug>-<id>`, `data-contract-type`,
+    `data-is-remote`, three text cells: title, team, workplace) next to a
+    team section full of employee names — the cards are read, the team
+    never; a card without a posting url (the spontaneous application) is
+    not a position; no count is stated. A page without the controller is
+    not a tenant (6); a 404 is gone (3); the vendor's own hosts and any
+    other host are refused (7); `--country-code` STAMPS and says so. The ad
+    is the page's JobPosting, its full street address and postal code
+    withheld, its text scrubbed. Mutated (`-B`, detached copy): the card
+    regex broken → reddens; the spontaneous card kept → reddens; the street
+    emitted → reddens; the scrub dropped → reddens; the stamp note dropped
+    → reddens; another host's posting url kept → reddens; the vendor-host
+    check dropped → reddens; the duplicate ids kept → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_factorial", os.path.join(SCRIPTS, "factorial.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(host, pid, slug, title, team, mode, remote="false", url=None):
+        u = url or f"https://{host}/job_posting/{slug}-{pid}"
+        return (f"<li class='job-offer-item w-full' data-action='click-&gt;job-postings#goToJob' data-contract-type='indefinite' data-controller='job-postings' data-is-remote='{remote}' data-job-postings-url='{u}' data-location-id='302593' data-target='job-filters.job' data-team-id='83827' role='button'>"
+                f'<div class=\'mb-4\'><div class=\'md:flex\'><span><div class="text-sm sm:text-base leading-xs font-bold text-gray-500 text-left factorial__headingFontFamily">{title} </div></span>'
+                f'<div><div class="text-sm leading-sm font-normal text-gray-350 text-left">{team} </div></div><div><div class="text-sm leading-sm font-normal text-gray-350 text-left">{mode} </div></div></div></div></li>')
+
+    SPONTANEOUS = "<li class='job-offer-item w-full' data-action='click-&gt;job-postings#goToJob' data-controller='job-postings' role='button'><div class='mb-4'><span><div class=\"text-sm sm:text-base leading-xs font-bold text-gray-500 text-left factorial__headingFontFamily\">Candidatura espontánea </div></span><a href='https://kampaoh.factorial.es/apply'>Inscríbete ahora</a></div></li>"
+    TEAM = '<section id="team"><h2>Conoce al equipo</h2><div class="member"><img alt="CARMEN"><p>CARMEN</p><p>OPERARIO/A AUXILIAR</p></div><div class="member"><p>JUAN CARLOS</p><p>RESPONSABLE CONTROL</p></div></section>'
+
+    @classmethod
+    def _page(cls, cards):
+        return f'<html><body>{cls.TEAM}<section id="jobs"><ul>' + "".join(cards) + '</ul></section></body></html>'
+
+    AD = ('<html><head><script type="application/ld+json">{"@context": "http://schema.org", "@type": "JobPosting", "title": "IT Systems Engineer", '
+          '"description": "<p>We are looking for a Mid IT Systems Engineer.</p><p>Write to jobs@factorial.co or call +34 931 000 000. Start from 01/11/2026.</p>", "identifier": {"@type": "PropertyValue", "name": "Factorial", "value": "323635"}, '
+          '"datePosted": "2026-09-17", "hiringOrganization": {"@type": "Organization", "name": "Factorial", "sameAs": "https://careers.factorialhr.com"}, '
+          '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Calle Anade Real, 11 - Perillo, 15173 - Oleiros, A Coruña", "addressLocality": "A Coruña", "addressRegion": "A Coruña", "postalCode": "15173", "addressCountry": "ES"}}}</script></head><body></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, host, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_cards_are_read_and_the_team_never(self):
+        import contextlib
+        mod = self._mod()
+        h = "kampaoh.factorial.es"
+        page = self._page([self._card(h, "312764", "limpiador-a-kampaoh-las-arenas", "Limpiador/a Kampaoh las Arenas", "Operaciones", "Presencial"),
+                           self._card(h, "312765", "recepcionista", "Recepcionista", "Operaciones", "Remoto", remote="true"),
+                           self._card(h, "999", "other", "Another tenant's card", "X", "Y", url="https://other.factorial.es/job_posting/other-999"),
+                           self._card(h, "312764", "dup", "The same id twice", "X", "Y"), self.SPONTANEOUS])
+        rows, err, asked, raw = self._run(mod, [(200, page)], tenant="kampaoh", country_code="es")
+        self.assertEqual(asked, ["https://kampaoh.factorial.es/"])
+        self.assertEqual([r["id"] for r in rows], ["312764", "312765"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["team"], a["workplace"], a["contract"], a["remote"], a["location_id"], a["team_id"], a["contacts_withheld"]),
+                         ("factorial", h, "ES", f"factorial:{h}:312764", f"https://{h}/job_posting/limpiador-a-kampaoh-las-arenas-312764", "Limpiador/a Kampaoh las Arenas", "Operaciones", "Presencial", "indefinite", False, "302593", "83827", True))
+        self.assertIs(rows[1]["remote"], True)
+        for secret in ("CARMEN", "JUAN CARLOS", "Candidatura", "other.factorial.es"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("2 emitted, the 2 cards the page carries for kampaoh.factorial.es — no count is stated anywhere, the list is the board.", err)
+        self.assertIn("country ES is the user's stamp — the cards state no country.", err)
+        rows, err, asked, raw = self._run(mod, [(200, page)], tenant="https://careers.factorialhr.com/#jobs")
+        self.assertEqual(asked, ["https://careers.factorialhr.com/"])
+        self.assertEqual(rows, [])   # the fixture's cards belong to kampaoh, not to this host
+        self.assertNotIn("stamp", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([]) + "<div data-controller='job-postings'></div>")], tenant="vegenat")
+        self.assertEqual(rows, [])
+        self.assertIn("0 positions — the career page renders no job card", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page without the career module</body></html>")], tenant="vegenat")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="nosuch")
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("app", "https://api.factorialhr.com/x", "help.factorialhr.com"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, [], tenant=bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="https://jobs.example.com/")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://api.factorialhr.com/x", "kampaoh.factorial.es")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_with_its_full_street_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://careers.factorialhr.com/job_posting/it-systems-engineer-323635/")
+        self.assertEqual(asked, ["https://careers.factorialhr.com/job_posting/it-systems-engineer-323635"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["reference"], a["place"], a["region"], a["country"], a["published"], a["contacts_withheld"]),
+                         ("323635", "IT Systems Engineer", "Factorial", "323635", "A Coruña", "A Coruña", "ES", "2026-09-17", True))
+        self.assertEqual(a["description"], "We are looking for a Mid IT Systems Engineer.\nWrite to [e-mail withheld] or call [telephone withheld]. Start from 01/11/2026.")
+        for secret in ("Anade Real", "15173", "Perillo", "931 000", "jobs@"):
+            self.assertNotIn(secret, raw, secret)
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://careers.factorialhr.com/job_posting/x-323635", country_code="PT")
+        self.assertEqual(rows, [])
+        self.assertIn("the ad is in ES, not PT — 0 emitted", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://careers.factorialhr.com/job_posting/x-1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no posting</body></html>")], cmd="ad", url="https://careers.factorialhr.com/job_posting/x-1")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://careers.factorialhr.com/apply")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
