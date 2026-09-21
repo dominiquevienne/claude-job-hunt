@@ -32315,5 +32315,140 @@ class ALedgerKeyFoldedByItsWriterIsFoldedByItsReaderToo(unittest.TestCase):
         self.assertIn("workday:swisscom:swisscomexternalcareers:R-0005876", seen)
 
 
+class ANetworkNodeWhoseAdvertsBearTheMarksOfFabricationAndSayItOnEveryRow(unittest.TestCase):
+    """**`eritreajobsearch.py`, 2026-09-21 (#549).** Eritrea Job Search: the
+    listing read by the site's own per-page form (`?jobs_ppp=384`) and its
+    pager to the site's own counter; every row flagged `source_signals`
+    (fabrication suspected, dated, not established — the owner's decision to
+    build rather than discard). Both ways: the form's own option or nothing
+    (2), the walk by the pager's next link and no further, a repeated id once,
+    the count against the counter (short → 6, no counter read → 6), the flag
+    on every row, the advert's JobPosting and the page's description with the
+    salary as written beside the JSON-LD currency, the network's contacts
+    scrubbed, the listing page for an unknown slug (3), bad addresses and
+    query strings refused, another host refused before the gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eritreajobsearch", os.path.join(SCRIPTS, "eritreajobsearch.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(pid, title, place="Dekemhare", views=6):
+        slug = title.lower().replace(" ", "-").replace(",", "").replace("–", "")
+        return (f'<div class="item-job col-sm-6"><article class="map-item job-grid post-{pid} job_listing type-job_listing status-publish hentry job_listing_type-full-time" data-latitude="" data-longitude="" data-img="">'
+                f'<div class="job-type with-title"> <a class="type-job" href="https://eritreajobsearch.com/job-type/full-time/" style="">Full Time</a> </div>'
+                f'<div class="employer-logo"><a href="https://eritreajobsearch.com/job/{slug}/"><img src="https://eritreajobsearch.com/wp-content/themes/superio/images/placeholder.png" alt="{title}"></a></div>'
+                f'<div class="job-information"> <h2 class="job-title"><a href="https://eritreajobsearch.com/job/{slug}/" rel="bookmark">{title}</a></h2> <div class="job-location"> <i class="flaticon-location"></i> <a href="https://eritreajobsearch.com/job-location/{place.lower()}/">{place}</a> </div> <span class="job-views"> 👁 {views} views </span> </div></article></div>')
+
+    @staticmethod
+    def _listing(cards, page, last, stated=468, ppp=384):
+        counter = f'<div class="job-count-theme-box"><div class="job-count-left"><span class="job-count-title"> Total Active Jobs in Eritrea </span></div><div class="job-count-number"> {stated} </div><div class="job-count-text"> Jobs Available </div></div>' if stated is not None else ""
+        pager = "".join(f'<a class="page-numbers" href="https://eritreajobsearch.com/job-vacancy-eritrea/page/{i}/?jobs_ppp={ppp}">{i}</a>' for i in range(1, last + 1) if i != page)
+        if page < last:
+            pager += f'<a class="next page-numbers" href="https://eritreajobsearch.com/job-vacancy-eritrea/page/{page + 1}/?jobs_ppp={ppp}">Next</a>'
+        return (f'<html><head><title>Current Job Vacancies in Asmara | Jobs in Eritrea</title></head><body><a href="https://eritreajobsearch.com/contact/">Call us +91- 8100605863 support@africajobsearch.com</a>{counter}'
+                f'<form method="get" action="https://eritreajobsearch.com/job-vacancy-eritrea/" class="form-superio-ppp"><select name="jobs_ppp"><option value="12">12 Per Page</option><option value="384">384 Per Page</option></select></form>'
+                f'<div class="jobs-wrapper items-wrapper"><div class="row items-wrapper-grid">{"".join(cards)}</div></div><div class="pagination">{pager}</div></body></html>')
+
+    AD = ('<html><head><title>Corporate Attorney Job Vacancy in Zalambessa, Eritrea – Legal Services</title><script type="application/ld+json">{"@context":"http://schema.org/","@type":"JobPosting","datePosted":"2026-09-13T19:07:28+00:00","title":"Corporate Attorney Job Vacancy in Zalambessa, Eritrea – Legal Services",'
+          '"description":"Position: Corporate Attorney\\nCompany: Deloitte Eritrea\\nSalary: SSP 1,500,000 &amp;#8211; SSP 2,500,000 per annum","hiringOrganization":{"@type":"Organization","name":"Deloitte Eritrea"},"jobLocation":{"@type":"Place","address":"Zalambessa"},'
+          '"baseSalary":{"@type":"MonetaryAmount","currency":"Nfk","value":{"@type":"QuantitativeValue","minValue":"1500000","maxValue":"2500000","unitText":"YEAR"}},"employmentType":"FULL_TIME","validThrough":"2027-03-12"}</script></head>'
+          '<body><a href="/contact/">Call us +91- 8100605863 support@africajobsearch.com</a><div class="job-detail-buttons"><a href="javascript:void(0);" class="btn btn-apply">Apply Now</a><div class="msg-inner">Please <a href="https://eritreajobsearch.com/login-register-eritrea-jobs/">Register here</a> as Candidate to apply.</div></div>'
+          '<div class="job-detail-description"> <h3 class="title">Job Description</h3> <p><strong>Position:</strong> Corporate Attorney</p> <p><strong>Company:</strong> Deloitte Eritrea</p> <p><strong>Location:</strong> Zalambessa, Eritrea</p> <p><strong>Salary:</strong> SSP 1,500,000 &#8211; SSP 2,500,000 per annum</p> <p>Company Overview: Deloitte is a global leader. Apply via careers@deloitte-er.example or +291 1 120000.</p> </div>'
+          '<div class="job-detail-share"><h3>Share this post</h3></div></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_by_the_sites_own_form_and_pager_against_its_counter_with_the_flag_on_every_row(self):
+        mod = self._mod()
+        p1 = [self._card(13000 + i, f"Post {i} Job Vacancy in Barentu, Eritrea – Sector", "Barentu", i) for i in range(384)]
+        p2 = [self._card(13000, "Post 0 Job Vacancy in Barentu, Eritrea – Sector", "Barentu", 0)] + [self._card(14000 + i, f"Late {i} Job Vacancy in Asmara, Eritrea – Sector", "Asmara", 1) for i in range(84)]
+
+        def answers(url):
+            if url == "https://eritreajobsearch.com/job-vacancy-eritrea/?jobs_ppp=384":
+                return 200, self._listing(p1, 1, 2)
+            if url == "https://eritreajobsearch.com/job-vacancy-eritrea/page/2/?jobs_ppp=384":
+                return 200, self._listing(p2, 2, 2)
+            return 200, self._listing([], 3, 2)
+        code, rows, err, sent = self._run(mod, ["jobs"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://eritreajobsearch.com/job-vacancy-eritrea/?jobs_ppp=384", "https://eritreajobsearch.com/job-vacancy-eritrea/page/2/?jobs_ppp=384"])
+        self.assertEqual(len(rows), 468)
+        self.assertIn("468 emitted over 2 page(s) of 384 — the site states 468: equal.", err)
+        self.assertIn("every row carries source_signals — fabrication-suspected (2026-09-21); see #549.", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["id"], r["url"], r["slug"], r["title"], r["place"], r["kind"], r["views"], r["country"], r["contacts_withheld"]),
+                         ("eritreajobsearch:13000", "13000", "https://eritreajobsearch.com/job/post-0-job-vacancy-in-barentu-eritrea--sector/", "post-0-job-vacancy-in-barentu-eritrea--sector", "Post 0 Job Vacancy in Barentu, Eritrea – Sector", "Barentu", "Full Time", 0, "ER", True))
+        self.assertTrue(all(r["source_signals"] and r["source_signals"][0].startswith("fabrication-suspected (2026-09-21)") and "not established" in r["source_signals"][0] for r in rows))
+        self.assertNotIn("8100605863", json.dumps(rows))
+        # short of the counter → 6; a page of repeats stops; no counter read → 6; the form's own options only
+        code, rows, err, sent = self._run(mod, ["jobs", "--per-page", "12"], lambda url: (200, self._listing(p1[:12], 1, 2, 468, 12)) if url.endswith("?jobs_ppp=12") and "/page/" not in url else (200, self._listing(p1[:12], 2, 2, 468, 12)))
+        self.assertEqual((code, len(rows), len(sent)), (6, 12, 2), err)
+        self.assertIn("page 2: only repeats — stopped.", err)
+        self.assertIn("12 emitted over 2 page(s) of 12 — the site states 468: 456 short.", err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, self._listing(p1[:3], 1, 1, None)))
+        self.assertEqual((code, len(rows)), (6, 3), err)
+        self.assertIn("the site's counter was not read", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--per-page", "100"], answers)
+        self.assertEqual((code, sent), (2, []), err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, "<html><body><h1>Jobs in Eritrea</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (403, ""))
+        self.assertEqual(code, 7, err)
+        fresh = self._mod()
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fresh.request("https://africajobsearch.com/job-vacancy-africa/")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_advert_keeps_the_salary_as_written_beside_the_jsonld_currency_and_scrubs_the_network(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://eritreajobsearch.com/job/corporate-attorney-job-vacancy-in-zalambessa-eritrea-legal-services"], lambda url: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://eritreajobsearch.com/job/corporate-attorney-job-vacancy-in-zalambessa-eritrea-legal-services/"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["posted"], r["valid_through"], r["employment_type"], r["salary_currency_ldjson"], r["salary_min_ldjson"], r["salary_max_ldjson"], r["salary_as_written"], r["country"], r["contacts_withheld"]),
+                         ("corporate-attorney-job-vacancy-in-zalambessa-eritrea-legal-services", "Corporate Attorney Job Vacancy in Zalambessa, Eritrea – Legal Services", "Deloitte Eritrea", "Zalambessa", "2026-09-13T19:07:28+00:00", "2027-03-12", "FULL_TIME", "Nfk", "1500000", "2500000", "SSP 1,500,000 – SSP 2,500,000 per annum", "ER", True))
+        self.assertTrue(r["description"].startswith("Position: Corporate Attorney\nCompany: Deloitte Eritrea"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("Share this post", r["description"])
+        self.assertTrue(r["source_signals"][0].startswith("fabrication-suspected"))
+        for hidden in ("deloitte-er.example", "291 1 120000", "8100605863", "africajobsearch", "login-register"):
+            self.assertNotIn(hidden, json.dumps(r), hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://eritreajobsearch.com/job/pas-une-annonce/"], lambda url: (200, self._listing([], 1, 1)))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("listing page", err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://eritreajobsearch.com/job/x/"], lambda url: (200, "<html><body><p>Pricing</p></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://eritreajobsearch.com/job-vacancy-eritrea/", "https://eritreajobsearch.com/job/x/?p=1", "https://africajobsearch.com/job/x/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
