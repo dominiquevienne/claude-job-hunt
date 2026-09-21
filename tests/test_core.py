@@ -30591,5 +30591,159 @@ class AnATSWhoseCareerSiteHasItsOwnJSONAPIStatingNumFoundAndWhoseVendorApplyPage
         for ok, host in (("proxiserve", self.HOST), ("PROXISERVE.jobs.beetween.com", self.HOST), (f"https://{self.HOST}/jobs?page=2", self.HOST), ("welcoop.nos-recrutements.fr", "welcoop.nos-recrutements.fr"), ("https://welcoop.nos-recrutements.fr/job/x", "welcoop.nos-recrutements.fr")):
             self.assertEqual(mod.tenant_of(ok), host, ok)
 
+class AnATSWhoseTenantScriptNamesItsSearchAPIAndWhoseAdsCarryAContactBlock(unittest.TestCase):
+    """**`beesite.py`, 2026-09-21 (#479).** BeeSite (milch & zucker): the
+    tenant's `/script/gjb_scripts.js` names its API (`gjbAddress`, under
+    `beesite.de`), the list is GET `<api>search/?data=<JSON>` (HR-XML:
+    `SearchResult.SearchResultCountAll` stated, `SearchResultItems[]
+    .MatchedObjectDescriptor`), walked 100 an item to the stated count; a
+    page that repeats the previous ids dies (6); a host without the script
+    is not a tenant (3); an API outside `beesite.de` is refused before any
+    request (7); `--country-code` filters on `PositionLocation.CountryCode`
+    and says so when none is given. The ad is the page's JobPosting: its
+    text scrubbed of e-mails and telephones — dates («ab 15.11.2026») left
+    alone — its street and postal code never emitted. Mutated (`-B`,
+    detached copy): the address regex broken → the tenant reddens; the
+    vendor-domain check dropped → the foreign API passes (reddens); the
+    repeat check dropped → the repeating fixture passes (reddens); the
+    country filter dropped → reddens; the scrub dropped → the telephone
+    leaks (reddens); the date exception dropped → the date is withheld
+    (reddens); the street emitted → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_beesite", os.path.join(SCRIPTS, "beesite.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SCRIPT = 'var gjb_authBearerToken;\n\nvar gjb_apiTokenPayload = "";\nvar gjb_channelMarkers = [];\n\n\nvar gjbAddress = "https://lvr-beesite-gjb.app.beesite.de/";\n'
+
+    @staticmethod
+    def _item(pid, title, country="DE", city="Bonn"):
+        return {"MatchedObjectId": pid, "RelevanceRank": 1, "MatchedObjectDescriptor": {
+            "ID": pid, "PositionTitle": title, "PublicationCode": "4de8311b785433b382be929027f9b57f",
+            "PositionURI": f"https://jobs.lvr.de/index.php?ac=jobad&id={pid}", "PositionShortURI": f"index.php?ac=jobad&id={pid}",
+            "PublicationChannel": [{"StartDate": "2026-09-17"}], "PublicationEndDate": "2026-10-09",
+            "PositionIndustry": [{"Name": "Gesundheitswesen"}, {"Name": "öffentlicher Dienst"}], "JobCategory": [{"Name": "Therapie"}],
+            "CareerLevel": [{"Name": "Berufseinsteigende"}, {"Name": "Berufserfahrene"}], "PositionSchedule": [{"Code": "3", "Name": "Voll-/ oder Teilzeit"}],
+            "PositionOfferingType": [{"Name": "befristet"}], "ParentOrganizationName": "LVR-Klinik Bonn",
+            "PositionLocation": [{"CountryName": "Deutschland", "CountryCode": country, "CountrySubDivision": "4610", "CountrySubDivisionName": "Nordrhein-Westfalen", "CityName": city}],
+            "PublicationStartDate": "2026-09-17"}}
+
+    @classmethod
+    def _api(cls, items, total):
+        return json.dumps({"LanguageCode": "DE", "SearchParameters": {}, "SearchResult": {"SearchResultCount": len(items), "SearchResultCountAll": total, "SearchResultItems": items, "UserArea": {"ExecutionError": 0}}}, ensure_ascii=False)
+
+    AD = ('<html><head><title>Stellenanzeige</title><script type="application/ld+json">{"@context": "http://schema.org/", "@type": "JobPosting", "directApply": "True", "datePosted": "2026-09-17", '
+          '"description": "&lt;p&gt;Das &lt;strong&gt;KiNZ&lt;/strong&gt; behandelt Kinder.&lt;/p&gt;&lt;p&gt;Fragen an Frau Muster, Tel. 0228 668-215, oder muster@lvr.de.&lt;/p&gt;", '
+          '"hiringOrganization": {"name": "LVR-Klinik Bonn", "@type": "Organization"}, "jobLocation": [{"address": {"streetAddress": "Waldenburger Ring 46", "addressLocality": "Bonn", "addressRegion": "Nordrhein-Westfalen", "postalCode": "53119", "addressCountry": "DE", "@type": "PostalAddress"}, "@type": "Place"}], '
+          '"title": "Kinder- &amp; Jugendlichenpsychotherapeut*in (m/w/d) in Ausbildung ab 15.11.2026", "validThrough": "2026-10-09", "employmentType": "FULL_TIME", "identifier": {"name": "LVR-Klinik Bonn", "value": "J000020817", "@type": "PropertyValue"}}</script></head>'
+          '<body><div id="jobad-container" data-jobad-container data-jobad-id="20817"><div class="col-xs-12 job-ad-contact"><p>Frau Muster</p><p>0228 6683-111</p></div></div></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, hosts, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_pages=0) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_script_names_the_api_the_api_states_the_count_and_the_walk_reaches_it(self):
+        import contextlib
+        mod = self._mod()
+        mod.PAGE_SIZE = 2
+        p1 = self._api([self._item("20817", "Psychotherapeut*in"), self._item("20818", "Pflegefachkraft", country="AT", city="Wien")], 3)
+        p2 = self._api([self._item("20819", "Arzt")], 3)
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, p1), (200, p2)], tenant="jobs.lvr.de")
+        self.assertEqual(asked[0], "https://jobs.lvr.de/script/gjb_scripts.js")
+        self.assertTrue(asked[1].startswith("https://lvr-beesite-gjb.app.beesite.de/search/?data="))
+        q1 = json.loads(urllib.parse.parse_qs(urllib.parse.urlsplit(asked[1]).query)["data"][0])
+        q2 = json.loads(urllib.parse.parse_qs(urllib.parse.urlsplit(asked[2]).query)["data"][0])
+        self.assertEqual((q1["SearchParameters"]["FirstItem"], q1["SearchParameters"]["CountItem"], q2["SearchParameters"]["FirstItem"], q1["SearchCriteria"], q1["LanguageCode"]), (1, 2, 3, [], "DE"))
+        self.assertIn("PositionLocation.CountryCode", q1["SearchParameters"]["MatchedObjectDescriptor"])
+        self.assertEqual([r["id"] for r in rows], ["20817", "20818", "20819"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["region"], a["category"], a["career_level"], a["industry"], a["schedule"], a["contract"], a["published"], a["expires"], a["contacts_withheld"]),
+                         ("beesite", "jobs.lvr.de", "DE", "Deutschland", "beesite:jobs.lvr.de:20817", "https://jobs.lvr.de/index.php?ac=jobad&id=20817", "Psychotherapeut*in", "LVR-Klinik Bonn", "Bonn", "Nordrhein-Westfalen", "Therapie", "Berufseinsteigende / Berufserfahrene", "Gesundheitswesen / öffentlicher Dienst", "Voll-/ oder Teilzeit", "befristet", "2026-09-17", "2026-10-09", True))
+        self.assertIn("3 emitted, the API states 3 for jobs.lvr.de.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, p1), (200, p2)], tenant="https://jobs.lvr.de/index.php?ac=search_result", country_code="at")
+        self.assertEqual([r["id"] for r in rows], ["20818"])
+        self.assertIn("1 emitted for AT of the 3 read; the API states 3", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, p1)], tenant="jobs.lvr.de", max_pages=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted, the API states 3 for jobs.lvr.de — 1 short (the walk stopped at page 1)", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, self._api([], 0))], tenant="jobs.lvr.de")
+        self.assertEqual(rows, [])
+        self.assertIn("0 positions — the API states 0 today", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.SCRIPT), (200, p1), (200, p1)], tenant="jobs.lvr.de")   # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="jobs.pwc.de")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "var x = 1;")], tenant="jobs.lvr.de")
+        self.assertEqual(cm.exception.code, 6)
+        uncounted = json.dumps({"SearchResult": {"SearchResultItems": [self._item("20817", "Psychotherapeut*in")]}})   # a list without the stated count is a changed route, not a board of one
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.SCRIPT), (200, uncounted)], tenant="jobs.lvr.de")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, 'var gjbAddress = "https://api.example.com/";')], tenant="jobs.lvr.de")   # the script points outside the vendor
+        self.assertEqual(cm.exception.code, 7)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="not a host")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://elsewhere.example.com/x", {"jobs.lvr.de"})
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_country_filter_says_so_when_the_api_gives_no_code(self):
+        mod = self._mod()
+        it = self._item("20817", "Psychotherapeut*in")
+        del it["MatchedObjectDescriptor"]["PositionLocation"][0]["CountryCode"]
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, self._api([it], 1))], tenant="jobs.lvr.de", country_code="DE")
+        self.assertEqual(rows, [])
+        self.assertIn("the API gave no CountryCode on any of the 1 positions", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, self._api([it], 1))], tenant="jobs.lvr.de")
+        self.assertEqual((rows[0]["country"], rows[0]["country_name"]), (None, "Deutschland"))
+
+    def test_the_ad_is_the_pages_jobposting_with_its_contacts_and_street_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://jobs.lvr.de/index.php?ac=jobad&id=20817")
+        self.assertEqual(asked, ["https://jobs.lvr.de/index.php?ac=jobad&id=20817"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["place"], a["region"], a["country"], a["employment_type"], a["published"], a["expires"], a["reference"], a["contacts_withheld"]),
+                         ("20817", "Kinder- & Jugendlichenpsychotherapeut*in (m/w/d) in Ausbildung ab 15.11.2026", "LVR-Klinik Bonn", "Bonn", "Nordrhein-Westfalen", "DE", "FULL_TIME", "2026-09-17", "2026-10-09", "J000020817", True))
+        self.assertEqual(a["description"], "Das KiNZ behandelt Kinder.\nFragen an Frau Muster, Tel. [telephone withheld], oder [e-mail withheld].")
+        for secret in ("Waldenburger", "53119", "668-215", "6683-111", "muster@", "streetAddress", "postalCode"):
+            self.assertNotIn(secret, raw)
+        self.assertIn("15.11.2026", raw)   # a date is not a telephone
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://jobs.lvr.de/index.php?ac=jobad&id=1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>nothing</body></html>")], cmd="ad", url="https://jobs.lvr.de/index.php?ac=jobad&id=1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '<div id="jobad-container" data-jobad-id="1"></div>')], cmd="ad", url="https://jobs.lvr.de/index.php?ac=jobad&id=1")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://jobs.lvr.de/jobs/20817")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
