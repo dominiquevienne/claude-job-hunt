@@ -31594,5 +31594,143 @@ class AnATSWhosePortalListsInATableOrCardsAndWhoseLinksCarryASessionIdAndACustom
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnATSWhoseListIsEmbeddedOnTheEmployersOwnPageByATokenAndFilledByAVersionedDataCall(unittest.TestCase):
+    """**`ostendis.py`, 2026-09-21 (#484).** Ostendis: the employer's page
+    carries the loader (`data-token`) and one or more `OSTENDISJOBS.embed(
+    token, "DE", …)` calls; the loader GETs `/ojp/assets/version/<token>`,
+    then `/ojp/data/<version>/jobs/<token>/<LANG>?domain=<page host>` — the
+    adapter replays both with the page's own values, one data call per
+    place, ids emitted once. An unknown token answers `{"version": null}`
+    — «not a tenant» (3); a page without the loader is not a tenant (3);
+    an answer without `jobs` or with an error message is a changed route
+    (6); a host the run did not name is refused (7). The job's `zip` and
+    `image` never leave; the ad is the page's JobPosting, its street,
+    postal code and logo withheld, its text scrubbed. Mutated (`-B`,
+    detached copy): the embed regex broken → reddens; the null-version
+    branch dropped → reddens; the domain dropped from the call → reddens;
+    the zip emitted → reddens; the duplicate ids kept → reddens; the error
+    message ignored → reddens; the country filter dropped → reddens; the
+    scrub dropped in the ad → reddens; the street emitted → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_ostendis", os.path.join(SCRIPTS, "ostendis.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    T1, T2 = "blsr7vzflvim1wk2s4y77yxts5m9sanr", "lcl6leao8qefbz7mvsqg0wpbfitg4vkc"
+    PAGE = ('<html><body><script src="https://odm.ostendis.com/ojp/assets/loader" integrity="sha384-x" data-token="' + T1 + '" crossorigin="anonymous" id="ostendisLoader"></script>'
+            '<div id="ostendisJobs1"></div><script> document.addEventListener("ostendisLoaderReady", function () { OSTENDISJOBS.embed( "' + T1 + '", /* publication place hash */ "DE", /* jobpublisher language */ "#ostendisJobs1", {} ); '
+            'OSTENDISJOBS.embed( "' + T2 + '", // hash\n "DE", // lang\n "#ostendisJobs2", {} ); }); </script></body></html>')
+
+    @staticmethod
+    def _job(pid, title, cc="CH", city="Zofingen", extra=None):
+        j = {"id": pid, "reference": "", "title": title, "country": "Schweiz", "countrycode": cc, "city": city, "zip": "4800", "published": "", "timestamp": "1789516800",
+             "type": "", "position": "", "workload": "100%", "workload_min": "100", "workload_max": "100", "company": "", "department": "",
+             "detail": f"https://jobs.mepersonal.ch/publication/slug-{pid}/" + "a" * 64, "action": "", "actionTarget": "_blank", "button": "", "image": "https://file.ostendis.com/public/jobad/1/x", "text": "",
+             "startdate": "Per sofort", "timestamp2": "0", "language": "Deutsch", "langcode": "DE"}
+        j.update(extra or {})
+        return j
+
+    @staticmethod
+    def _data(jobs, error=""):
+        return json.dumps({"jobs": jobs, "error": {"message": error}, "options": {"page": 5}, "translations": {}})
+
+    AD = ('<html><head><script type="application/ld+json">{"@context": "https://schema.org/", "@type": "JobPosting", "title": "Initiativbewerbung", '
+          '"description": "<div>Die Marken von Lactalis stehen für Genuss.</div><div>Fragen an Frau Muster: 041 854 20 20, muster@lactalis.ch. Eintritt per 01.11.2026.</div>", '
+          '"identifier": {"@type": "PropertyValue", "name": "Lactalis Suisse SA", "value": "1563"}, "datePosted": "2023-06-27", "employmentType": ["FULL_TIME", "OTHER"], '
+          '"hiringOrganization": {"@type": "Organization", "name": "Lactalis Suisse SA", "logo": "https://odm.ostendis.com/ojp/file/company/cb96/thumbnail"}, '
+          '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Bahnhofstrasse 67 ", "addressLocality": "Küssnacht am Rigi", "postalCode": "6403", "addressRegion": "SZ", "addressCountry": "CH"}}}</script></head><body></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, hosts, accept=None):
+            asked.append((url, tuple(sorted(hosts))))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, domain=None, lang=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), [u for u, _h in asked], out.getvalue()
+
+    def test_the_page_names_its_places_and_the_data_call_carries_the_pages_own_values(self):
+        import contextlib
+        mod = self._mod()
+        d1 = self._data([self._job(78711, "Logistiker Leitstand (a)"), self._job(78712, "Polymechaniker", cc="DE", city="Lörrach")])
+        d2 = self._data([self._job(78711, "Logistiker Leitstand (a)"), self._job(78720, "Sachbearbeiter")])
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, '{"version":"v55"}'), (200, d1), (200, d2)], tenant="https://www.mepersonal.ch/stellenangebote")
+        self.assertEqual(asked, ["https://www.mepersonal.ch/stellenangebote", f"https://odm.ostendis.com/ojp/assets/version/{self.T1}",
+                                 f"https://odm.ostendis.com/ojp/data/v55/jobs/{self.T1}/DE?domain=www.mepersonal.ch", f"https://odm.ostendis.com/ojp/data/v55/jobs/{self.T2}/DE?domain=www.mepersonal.ch"])
+        self.assertEqual([r["id"] for r in rows], ["78711", "78712", "78720"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["publication_place"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["place"], a["workload"], a["start"], a["published"], a["language"], a["contacts_withheld"]),
+                         ("ostendis", "www.mepersonal.ch", self.T1, "CH", "Schweiz", f"ostendis:{self.T1}:78711", "https://jobs.mepersonal.ch/publication/slug-78711/" + "a" * 64, "Logistiker Leitstand (a)", "Zofingen", "100%", "Per sofort", "2026-09-16", "DE", True))
+        self.assertEqual(rows[2]["publication_place"], self.T2)
+        for secret in ("4800", "file.ostendis.com", '"zip"', '"image"'):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("3 emitted, the 3 jobs the lists carry for www.mepersonal.ch (2 publication place(s), v55) (1 listed twice across places) — no count is stated anywhere, the list is the board.", err)
+        rows, err, asked, raw = self._run(mod, [(200, '{"version":"v55"}'), (200, d1)], tenant=self.T1, domain="www.mepersonal.ch", lang="fr", country_code="de")
+        self.assertEqual(asked, [f"https://odm.ostendis.com/ojp/assets/version/{self.T1}", f"https://odm.ostendis.com/ojp/data/v55/jobs/{self.T1}/FR?domain=www.mepersonal.ch"])
+        self.assertEqual([r["id"] for r in rows], ["78712"])
+        self.assertIn("1 emitted for DE of the 2 jobs", err)
+        rows, err, asked, raw = self._run(mod, [(200, '{"version":"v55"}'), (200, self._data([]))], tenant=self.T1, domain="www.mepersonal.ch")
+        self.assertEqual(rows, [])
+        self.assertIn("0 jobs — the list answered an empty `jobs`", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '{"version":null}')], tenant="z" * 32, domain="example.org")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page without the loader</body></html>")], tenant="https://www.example.ch/jobs")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '{"version":"v55"}'), (200, '{"foo": 1}')], tenant=self.T1, domain="www.mepersonal.ch")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '{"version":"v55"}'), (200, self._data([], error="Domain not allowed"))], tenant=self.T1, domain="www.mepersonal.ch")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant=self.T1)   # a token without its domain
+        self.assertEqual(cm.exception.code, 2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="not a page")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://file.ostendis.com/public/jobad/1/x", {"odm.ostendis.com"})
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_with_its_street_and_logo_withheld(self):
+        import contextlib
+        mod = self._mod()
+        tok = "t1xhujc6spqxjw86rgqq9jp9j5r81g503y0j1c7ayacs3rpdqixvltkpj2em9oep"
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url=f"https://link.ostendis.com/publication/initiativbewerbung/{tok}?utm=x")
+        self.assertEqual(asked, [f"https://link.ostendis.com/publication/initiativbewerbung/{tok}"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["tenant"], a["title"], a["company"], a["reference"], a["place"], a["region"], a["country"], a["employment_type"], a["published"], a["contacts_withheld"]),
+                         (tok, "link.ostendis.com", "Initiativbewerbung", "Lactalis Suisse SA", "1563", "Küssnacht am Rigi", "SZ", "CH", ["FULL_TIME", "OTHER"], "2023-06-27", True))
+        self.assertEqual(a["description"], "Die Marken von Lactalis stehen für Genuss.\nFragen an Frau Muster: [telephone withheld], [e-mail withheld]. Eintritt per 01.11.2026.")
+        for secret in ("Bahnhofstrasse", "6403", "854 20 20", "muster@", "thumbnail"):
+            self.assertNotIn(secret, raw, secret)
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url=f"https://jobs.mepersonal.ch/publication/x/{tok}", country_code="DE")
+        self.assertEqual(rows, [])
+        self.assertIn("the ad is in CH, not DE — 0 emitted", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url=f"https://jobs.ostendis.com/publication/x/{tok}")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page without a posting</body></html>")], cmd="ad", url=f"https://jobs.ostendis.com/publication/x/{tok}")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://jobs.ostendis.com/publication/x/short")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
