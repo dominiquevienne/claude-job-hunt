@@ -31861,5 +31861,129 @@ class ATenantPortalWhoseLoginShellHidesAJobApiThatStatesItsTotalAndLeaksItsRecru
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, "{}"))
             self.assertEqual((code, sent), (2, []), bad)
 
+class AMultiEmployerATSWhoseCareerCenterFillsItselfByPostingItsOwnFormAndLinksToTheTenantsDomain(unittest.TestCase):
+    """**`prospective.py`, 2026-09-21 (#485).** Prospective: `ohws.prospective
+    .ch/public/v1/careercenter/<id>/` carries `#careercenter-form` and fills
+    `#jobs` by POSTing that form to itself (`offset`, `limit`, `lang`…); the
+    `.job` items link to the tenant's own domain with the ad's UUID at the
+    end — the adapter keys on the UUID, walks `offset` by 100 until an
+    answer brings nothing new, reads the total where a template prints it
+    (`.total`), and never sends to the tenant's domain. A center on the
+    «project template» is not built (6); a page without the form is not a
+    center (6); a 404 is gone (3); `--country-code` STAMPS and says so. The
+    ad on `/public/v1/jobs/<uuid>` is the page's JobPosting, its street and
+    postal code withheld, any `track=` token dropped. Mutated (`-B`,
+    detached copy): the UUID link regex broken → reddens; the walk's end on
+    «nothing new» dropped → reddens; the stated total ignored → reddens; the
+    street emitted → reddens; the scrub dropped → reddens; the stamp note
+    dropped → reddens; the template check dropped → reddens; the track token
+    kept → reddens; another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_prospective", os.path.join(SCRIPTS, "prospective.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    PAGE = '<html><body><form id="careercenter-form" name="ohform" class="form" method="post"><input id="offset" name="offset" type="hidden" value="0"><input id="limit" name="limit" type="hidden" value="12"><input id="lang" name="lang" type="hidden" value="de"></form><div id="jobListAndPagination"></div></body></html>'
+    U1, U2, U3 = "892e45e0-1fec-4b5f-ae5f-d379d5fe0e89", "73ea297f-0925-4900-97ce-5903ba623fc1", "9075ca9f-71e6-4325-8378-2ab8f4080f88"
+
+    @classmethod
+    def _answer(cls, items, total=None, template="css"):
+        head = f'<header id="header-content"><h2 class="ui header jobs-total"><span class="total">{total}</span> Jobs</h2></header>' if total is not None else ""
+        if template == "css":
+            body = "".join(f'<div class="job job-{i}"><div class="ui grid"><a class="job-title" target="_blank" href="https://jobs.css.ch/offene-stellen/{slug}/{u}" title="{t} ">{t}</a><div class="job-meta"><span class="place-of-work">{pl}</span></div></div></div>' for i, (u, slug, t, pl) in enumerate(items))
+        else:
+            body = "".join(f'<div class="job"> <a href="https://jobs.ekz.ch/offene-stellen/{slug}/{u}" title="{t}" target="_blank"> <div class="job-title">{t}</div> <div class="job-city">{pl}</div> </a> </div>' for u, slug, t, pl in items)
+        return f'<html><body>{head}<div id="jobListAndPagination"><div id="jobs">{body}</div><div class="paging"><a href="#" onclick="sendPagination(0); return false;">1</a></div></div></body></html>'
+
+    AD = ('<html><head><script type="application/ld+json">{"@context": "https://schema.org", "@type": "JobPosting", "title": "Product Owner Web (w/m) 80-100%", '
+          '"description": "<p>Wir suchen dich.</p><p>Fragen an Frau Muster, 058 277 11 11, muster@css.ch. Start per 01.01.2027.</p>", "datePosted": "2026-09-21", "validThrough": "2036-09-17", "employmentType": ["PART_TIME"], '
+          '"hiringOrganization": {"@type": "Organization", "name": "CSS Versicherung"}, "jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Tribschenstrasse 21", "postalCode": "6005", "addressLocality": "Luzern / hybrid", "addressRegion": "Region Zentralschweiz", "addressCountry": "CH"}}}</script></head><body></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, data=None, accept=None):
+            asked.append((url, urllib.parse.parse_qs(data.decode()) if data else None))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="de", max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_form_is_posted_back_and_the_uuid_is_the_key(self):
+        import contextlib
+        mod = self._mod()
+        mod.PAGE_SIZE = 2
+        a1 = self._answer([(self.U1, "product-owner-web-w-m", "Product Owner Web (w/m) 80-100%", "Luzern / hybrid"), (self.U2, "x", "Netzelektriker:in", "Wetzikon")], total=3)
+        a2 = self._answer([(self.U3, "y", "Elektroinstallateur:in", "Dietikon")], total=3)
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, a1), (200, a2)], tenant="1000981", country_code="ch")
+        self.assertEqual([u for u, _d in asked], ["https://ohws.prospective.ch/public/v1/careercenter/1000981/"] * 3)
+        self.assertEqual((asked[0][1], asked[1][1]["offset"], asked[1][1]["limit"], asked[1][1]["lang"], asked[2][1]["offset"]), (None, ["0"], ["2"], ["de"], ["2"]))
+        self.assertEqual([r["id"] for r in rows], [self.U1, self.U2, self.U3])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["employer_url"], a["title"], a["place"], a["contacts_withheld"]),
+                         ("prospective", "1000981", "CH", f"prospective:{self.U1}", f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}", f"https://jobs.css.ch/offene-stellen/product-owner-web-w-m/{self.U1}", "Product Owner Web (w/m) 80-100%", "Luzern / hybrid", True))
+        self.assertIn("3 emitted, the page states 3 for center 1000981 (2 answer(s) of 2).", err)
+        self.assertIn("country CH is the user's stamp — the list states no country.", err)
+        ekz = self._answer([(self.U2, "x", "Netzelektriker:in Freileitungsbau 80-100%", "Wetzikon"), (self.U3, "y", "Elektroinstallateur:in", "Dietikon")], template="ekz")
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, ekz), (200, ekz)], tenant="https://ohws.prospective.ch/public/v1/careercenter/1003036/?filter_40=")
+        self.assertEqual([(r["id"], r["title"], r["place"]) for r in rows], [(self.U2, "Netzelektriker:in Freileitungsbau 80-100%", "Wetzikon"), (self.U3, "Elektroinstallateur:in", "Dietikon")])
+        self.assertEqual(len(asked), 3)   # a second answer with the same items ends the walk
+        self.assertIn("2 emitted for center 1003036 over 2 answer(s) of 2 — no count is stated, the list is the board.", err)
+        self.assertNotIn("stamp", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.PAGE), (200, self._answer([], total=0))], tenant="1000981")
+        self.assertEqual(rows, [])
+        self.assertIn("0 emitted, the page states 0", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body><h1>Career Center project template</h1></body></html>")], tenant="1002929")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page without the form</body></html>")], tenant="1000981")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="999")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="https://jobs.css.ch/offene-stellen/")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://jobs.css.ch/offene-stellen/x/" + self.U1)
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_with_its_street_withheld_and_the_track_token_dropped(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url=f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}?track=eyJhbGciOi.xxx.yyy")
+        self.assertEqual([u for u, _d in asked], [f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["place"], a["region"], a["country"], a["employment_type"], a["published"], a["expires"], a["contacts_withheld"]),
+                         (self.U1, "Product Owner Web (w/m) 80-100%", "CSS Versicherung", "Luzern / hybrid", "Region Zentralschweiz", "CH", ["PART_TIME"], "2026-09-21", "2036-09-17", True))
+        self.assertEqual(a["description"], "Wir suchen dich.\nFragen an Frau Muster, [telephone withheld], [e-mail withheld]. Start per 01.01.2027.")
+        for secret in ("Tribschenstrasse", "6005", "277 11 11", "muster@", "track="):
+            self.assertNotIn(secret, raw, secret)
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url=f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}", country_code="DE")
+        self.assertEqual(rows, [])
+        self.assertIn("the ad is in CH, not DE — 0 emitted", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "<title>Fehlermeldung</title>")], cmd="ad", url=f"https://ohws.prospective.ch/public/v1/jobs/{self.U2}")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no posting</body></html>")], cmd="ad", url=f"https://ohws.prospective.ch/public/v1/jobs/{self.U2}")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url=f"https://jobs.css.ch/offene-stellen/x/{self.U1}")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
