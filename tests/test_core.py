@@ -30745,5 +30745,134 @@ class AnATSWhoseTenantScriptNamesItsSearchAPIAndWhoseAdsCarryAContactBlock(unitt
         self.assertEqual(cm.exception.code, 2)
 
 
+class AnATSWhoseBoardIsRenderedWholeInItsPageAndWhoseWidgetRouteIsRefusedInWriting(unittest.TestCase):
+    """**`softgarden.py`, 2026-09-21 (#480).** softgarden: the tenant's
+    `/<lang>/vacancies` renders every position in the page — `var
+    complete_job_id_list = jobs_selected = [ids]` is the page's own count,
+    the `matchElement` cards carry `matchValue <field>` cells named by the
+    tenant's columns — while `/*/widgets/`, `/api/` and `/rest/` are refused
+    in writing and never asked (a widget address names the tenant, nothing
+    more). A 404 is «Unknown subdomain» (3); a page without the id list is a
+    changed page (6); the vendor's own hosts and any other host are refused
+    before a request (7); `--country-code` STAMPS and says so. The ad is the
+    page's JobPosting, its street, postal code, contact footer and logo never
+    emitted, its text scrubbed — dates left alone. Mutated (`-B`, detached
+    copy): the id-list regex broken → the board reddens; the vendor-host
+    check dropped → `app.` passes (reddens); the stamp note dropped →
+    reddens; the street emitted → reddens; the scrub dropped → the footer's
+    e-mail leaks (reddens); the widget query kept in the tenant's address →
+    reddens; the card without an id in the list dropped → reddens; the
+    two-digit year not expanded → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_softgarden", os.path.join(SCRIPTS, "softgarden.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(pid, title, city="Bremen", company="GRÜN Software Group", date="15.09.26"):
+        return (f'<div class="matchElement" id="job_id_{pid}"> <div class="matchValue date">{date}</div><div target="_blank" class="matchValue title"> '
+                f'<a href="../job/{pid}/{title.replace(" ", "-")}?jobDbPVId=28{pid}&amp;l=de" target="_blank">{title}</a> </div>'
+                f'<div class="matchValue ProjectGeoLocationCity"> <div> <div class="location-container"> <span class="location-view-item">{city}</span> </div> </div> </div>'
+                f'<div class="matchValue sg_company_id">{company}</div><div class="matchValue audience">Berufserfahrene</div> </div>')
+
+    @classmethod
+    def _board(cls, ids, cards):
+        return ('<html><head><title>Karriere Board | GRÜN</title></head><body><script type="text/javascript" id="jobsearchjs"> var jobs_per_page = 10; '
+                f'var complete_job_id_list = jobs_selected = [{", ".join(ids)}]; var jobs_keyword_search = complete_job_id_list; </script>'
+                '<div class="matchContainer"> <div class="matchElement matchHeadline"> <div id="matchValueHeadline1" class="matchValue title"><a href="#"><span>Stellenangebot</span></a> </div> </div> <div class="outputContainer">'
+                + "".join(cards) + ' </div> <div class="pagination pagination-centered"><ul id="job-search-pagination" class="taloom-pager"></ul></div></div></body></html>')
+
+    AD = ('<html><head><title>Duales Studium</title><script type="application/ld+json">{"@context": "http://schema.org/", "@type": "JobPosting", "title": "Duales Studium Elektrotechnik (B.Eng.) ab 01.10.2026", '
+          '"description": "<p>Die <a href=\\"https://www.aixtema.de/\\">GRÜN aixtema GmbH</a> bietet Dienstleistungen an.</p><p>Fragen: personal@escoor.de oder 04131 123-456.</p>", '
+          '"datePosted": "2026-09-20T15:15:12.048+02:00", "validThrough": "2028-09-20T15:15:12.048+02:00", "employmentType": ["FULL_TIME"], '
+          '"identifier": {"@type": "PropertyValue", "name": "GRÜN aixtema GmbH", "value": "https://gruen-aixtema.softgarden.io/#organization"}, '
+          '"baseSalary": {"@type": "MonetaryAmount", "currency": "EUR", "value": {"@type": "QuantitativeValue", "minValue": 0.0, "maxValue": 0.0, "unitText": "MONTH"}}, '
+          '"hiringOrganization": {"@type": "Organization", "name": "GRÜN aixtema GmbH", "logo": "https://app.softgarden.io/assets/public/media/get/480f2efe/Logo.jpg"}, '
+          '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Wilschenbrucher Weg 84", "addressLocality": "Lüneburg", "postalCode": "21337", "addressRegion": "Niedersachsen", "addressCountry": "Deutschland"}}}</script></head>'
+          '<body><section id="footer"><h2>Kontakt</h2><div class="asp-daten"><h3>Philipp Skrotzki</h3><p>E-Mail: personal@escoor.de</p></div></section></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, host, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="de") if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_page_lists_its_own_ids_and_the_cards_name_their_fields(self):
+        import contextlib
+        mod = self._mod()
+        page = self._board(["49734098", "60022705", "70000001"], [self._card("49734098", "Mitarbeiter Support"), self._card("60022705", "Projektleiter", city="Lüneburg", date="03.01.26"), self._card("80000009", "Praktikant")])
+        rows, err, asked, raw = self._run(mod, [(200, page)], tenant="gruen")
+        self.assertEqual(asked, ["https://gruen.softgarden.io/de/vacancies"])
+        self.assertEqual([r["id"] for r in rows], ["49734098", "60022705", "80000009"])   # the list's order, then the card the list does not name
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["audience"], a["category"], a["published"], a["contacts_withheld"]),
+                         ("softgarden", "gruen.softgarden.io", None, "softgarden:gruen.softgarden.io:49734098", "https://gruen.softgarden.io/job/49734098/Mitarbeiter-Support?jobDbPVId=2849734098&l=de", "Mitarbeiter Support", "GRÜN Software Group", "Bremen", "Berufserfahrene", None, "2026-09-15", True))
+        self.assertEqual(rows[1]["published"], "2026-01-03")
+        self.assertIn("3 emitted, the page's own list names 3 for gruen.softgarden.io — 1 named without a card, 1 card(s) not in the list.", err)
+        self.assertNotIn("stamp", err)
+        rows, err, asked, raw = self._run(mod, [(200, page)], tenant="https://infodas.softgarden.io/de/widgets/jobs", country_code="de")
+        self.assertEqual(asked, ["https://infodas.softgarden.io/de/vacancies"])   # the widget path is refused in writing — never asked
+        self.assertEqual({r["country"] for r in rows}, {"DE"})
+        self.assertIn("country DE is the user's stamp — the board states no country on its cards.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._board([], []))], tenant="gruen.softgarden.io")
+        self.assertEqual(rows, [])
+        self.assertIn("0 positions — the board's id list is empty", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="zzz-not-a-tenant")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a board without its id list</body></html>")], tenant="gruen")
+        self.assertEqual(cm.exception.code, 6)
+        for bad in ("app.softgarden.io", "https://www.softgarden.io/", "jobdb"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, [], tenant=bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="https://karriere.example.com/jobs")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://app.softgarden.io/assets/x", "gruen.softgarden.io")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_with_its_footer_and_street_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://gruen.softgarden.io/job/66860360/Duales-Studium-Elektrotechnik-B.Eng.-?jobDbPVId=285261432&l=de&utm_source=x")
+        self.assertEqual(asked, ["https://gruen.softgarden.io/job/66860360/Duales-Studium-Elektrotechnik-B.Eng.-?jobDbPVId=285261432&l=de"])   # the page's own parameters, nothing else
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["place"], a["region"], a["country"], a["country_name"], a["employment_type"], a["published"], a["expires"], a["contacts_withheld"]),
+                         ("66860360", "Duales Studium Elektrotechnik (B.Eng.) ab 01.10.2026", "GRÜN aixtema GmbH", "Lüneburg", "Niedersachsen", None, "Deutschland", ["FULL_TIME"], "2026-09-20", "2028-09-20", True))
+        self.assertEqual(a["description"], "Die GRÜN aixtema GmbH bietet Dienstleistungen an.\nFragen: [e-mail withheld] oder [telephone withheld].")
+        for secret in ("Wilschenbrucher", "21337", "escoor.de", "123-456", "Skrotzki", "Logo.jpg", "streetAddress", "postalCode", "baseSalary"):
+            self.assertNotIn(secret, raw)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://gruen.softgarden.io/job/1/x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page without a posting</body></html>")], cmd="ad", url="https://gruen.softgarden.io/job/1/x")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://gruen.softgarden.io/de/vacancies")
+        self.assertEqual(cm.exception.code, 2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://app.softgarden.io/job/1/x")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
