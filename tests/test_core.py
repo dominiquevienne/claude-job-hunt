@@ -31052,10 +31052,10 @@ class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFit
         return mod
 
     @staticmethod
-    def _card(jid, title, company="CROWN MINING SUPPLIES", place="Georgetown Guyana"):
+    def _card(jid, title, company="CROWN MINING SUPPLIES", place="Georgetown Guyana", kind="Full-time"):
         return (f'<div class="previewBox border-topp" id="{jid}"><div class="media py-3 pl-4 pr-3"><div class="media-body"><div class="row"><div class="cold"><input type="checkbox" name="apply_job" value="x"></div>'
                 f'<div class="col-md-11 pl-2"><h5 class="mt-0 mb-2 text-dark">{title}</h5><span class="text-muted mobile-line-break"> {company} </span><span class="mx-1"> &#8226; </span><span class=" text-muted mobile-line-break"> {place} </span>'
-                f'<div><span class="text-muted"> Full-time </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 220000 GYD </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 3 years - 6 years </span></div>'
+                f'<div><span class="text-muted"> {kind} </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 220000 GYD </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 3 years - 6 years </span></div>'
                 f'<div class="text-muted mt-1">The {title} role is dynamic. Call 592 555 1234 or rh@crown.example . . .</div>'
                 f'<div class="small mt-2 skill-tag"><form name="search" action="https://jobs.gov.gy/job_search.php" method="post"><input type="hidden" name="action" value="search"><input type="hidden" name="skillTag" value="Organization"><button>Organization</button></form></div>'
                 f'<span class="result-ends"><span class="text-muted" style="font-size:14px;"> Posted: 18th Sep, 2026 </span></span><span class="result-ends for-mobile"><span class="text-muted" style="font-size:14px;"> Ends : 01st Nov, 2026 </span></span></div></div></div></div></div>')
@@ -31101,7 +31101,7 @@ class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFit
 
     def test_the_first_page_then_the_categories_and_the_union_against_the_stated_count(self):
         mod = self._mod()
-        first = [self._card("2591", "Assistant"), self._card("2590", "General Clerk", "The Guyana Oil Company Limited", "East Berbice-Corentyne Guyana")]
+        first = [self._card("2591", "Assistant"), self._card("2590", "General Clerk", "The Guyana Oil Company Limited", "East Berbice-Corentyne Guyana", kind="")]
         cats = {"33": [self._card("2591", "Assistant"), self._card("2500", "Driver")], "1": [self._card("2400", "Accountant")], "7": []}
 
         def answers(url, data):
@@ -31120,6 +31120,8 @@ class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFit
         self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["place"], r["kind"], r["salary"], r["experience"], r["posted"], r["closes"], r["country"], r["contacts_withheld"]),
                          ("jobsgovgy:2591", "https://jobs.gov.gy/2591/Assistant.html", "Assistant", "CROWN MINING SUPPLIES", "Georgetown Guyana", "Full-time", "220000 GYD", "3 years - 6 years", "18th Sep, 2026", "01st Nov, 2026", "GY", True))
         self.assertIn("[telephone withheld]", r["teaser"])
+        # an empty job-type span (the site prints one) leaves the salary in its place — 2 of 20 on the first page, 2026-09-21
+        self.assertEqual((rows[1]["kind"], rows[1]["salary"], rows[1]["experience"]), (None, "220000 GYD", "3 years - 6 years"))
         self.assertIn("[e-mail withheld]", r["teaser"])
         self.assertNotIn("skillTag", json.dumps(rows))
         # a category beyond one page is named; the union short of the stated count says so
@@ -31163,7 +31165,11 @@ class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFit
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url, data: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
         fresh = self._mod()
-        fresh.gate = lambda url: {"allowed": True}
+
+        def gate_reached(url):  # the refusal comes BEFORE the gate: reaching it is the defect
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
         import contextlib
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
             fresh.request("https://evil.example/job_search.php", {"action": "search"})

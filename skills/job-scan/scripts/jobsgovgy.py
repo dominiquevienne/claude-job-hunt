@@ -164,8 +164,7 @@ def parse_search(body):
     for b in BOX_RE.finditer(body or ""):
         seg = re.sub(r"<form.*?</form>", " ", b.group("body"), flags=re.S)   # the skill-tag forms and the apply form
         h5 = H5_RE.search(seg)
-        spans = [text(x) for x in SPAN_RE.findall(seg)]
-        spans = [x for x in spans if x]
+        spans = [text(x) for x in SPAN_RE.findall(seg)]   # positional — an empty span (no job type) stays None so the salary keeps its place
         teaser = TEASER_RE.search(seg)
         posted, ends = POSTED_RE.search(seg), ENDS_RE.search(seg)
         cards.append({"id": b.group("id"), "title": text(h5.group(1)) if h5 else None,
