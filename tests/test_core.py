@@ -31453,5 +31453,146 @@ class ACongoleseDirectoryWhoseJobSectionStatesNoTotalAndWhosePagerIsTheOnlyBound
                 fresh.request(never)
             self.assertEqual(cm.exception.code, 7, never)
 
+class AnATSWhosePortalListsInATableOrCardsAndWhoseLinksCarryASessionIdAndACustomHost(unittest.TestCase):
+    """**`rexx.py`, 2026-09-21 (#482).** rexx systems: `<tenant>-portal.rexx-
+    recruitment.com/stellenangebote.html?start=N` lists in a table (columns
+    named by the `<th>` links' `order[field]`) or in cards; the ad's address
+    is `/<slug>-<lang>-j<id>.html`; the links carry a `?sid=` session id and,
+    for a tenant on its own domain, that domain — both rewritten to the
+    portal host without the id; the pager's `nav_next` is followed, a page
+    repeating the previous ids dies (6). The ad is the page's JobPosting
+    with four text sections, the street and postal code withheld, the text
+    scrubbed and its double-encoding («Ã¼», «â€‚») repaired. `--country-code`
+    STAMPS on the list and says so; on the ad it filters. The vendor's own
+    hosts and any other host refused (7); a name that does not resolve is
+    «not a portal» (3). Mutated (`-B`, detached copy): the session id kept
+    → reddens; the custom host kept → reddens; the repeat check dropped →
+    reddens; the street emitted → reddens; the scrub dropped → reddens; the
+    mojibake repair dropped → reddens; the «00.00.0000» deadline read as a
+    date → reddens; the stamp note dropped → reddens; the vendor-host check
+    dropped → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_rexx", os.path.join(SCRIPTS, "rexx.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SID = "sid=40cf09dd828e7d901bd2be52820f6fee"
+
+    @classmethod
+    def _table(cls, rows, next_start=None):
+        th = "".join(f'<th class="real_table_col{i}"><a href="https://stadtfrankfurtjobs.de/stellenangebote.html?order%5Bdir%5D=asc&amp;order%5Bfield%5D={f}&amp;{cls.SID}">{l}</a></th>'
+                     for i, (f, l) in enumerate([("stellenbezeichnung", "Stellenbezeichnung"), ("standort_bez", "Ämter"), ("taetigkeiten", "Einstieg"), ("valid_until", "Bewerbungsfrist")], 1))
+        body = "".join(f'<tr class="alternative_{i % 2}"> <td class="real_table_col1"><a target="_self" href="https://stadtfrankfurtjobs.de/{slug}-de-j{pid}.html?{cls.SID}">{title}</a> </td> <td class="real_table_col2">{dept}</td> <td class="real_table_col3">{lvl}</td> <td class="real_table_col4">{dl}</td> </tr>'
+                       for i, (pid, slug, title, dept, lvl, dl) in enumerate(rows))
+        nav = ('<div id="joblist_navigator"><ul class=path_nav><li class="nav_prev"></li><li class="nav_item stellen_navi_sel"><a href="#">1</a></li>'
+               + (f'<li class="nav_next"><a title="Nächste Seite" href="https://stadtfrankfurtjobs.de/stellenangebote.html?start={next_start}&amp;{cls.SID}"><i class="fa fa-angle-left"></i></a></li>' if next_start is not None else '<li class="nav_next"></li>')
+               + '</ul></div>')
+        return f'<html><body><table id="joboffers" class="real_table"><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table>{nav}</body></html>'
+
+    CARDS = ('<html><body><form><article class="joboffer_container" onclick="window.location.href=\'https://msig-portal.rexx-recruitment.com/Underwriter-Casualty-mwd-de-j560.html\'"> <div class="joboffer_outer"> <div class="joboffer_inner"> <div class="joboffer_title_text joboffer_box"> '
+             '<a target="_self" href="https://msig-portal.rexx-recruitment.com/Underwriter-Casualty-mwd-de-j560.html">Underwriter Casualty (m/w/d)</a> <div class="job_details"> <span class="job_details_second">Expert Staff</span> </div> </div> '
+             '<div class="joboffer_informations joboffer_box"> <span class="job_standort">Köln</span> <div class="jobcategory_details"></div> </div> </div> </div> </article>'
+             '<article class="joboffer_container"> <div class="joboffer_title_text joboffer_box"> <a target="_self" href="https://msig-portal.rexx-recruitment.com/Data-Engineer-en-j561.html">Data Engineer</a> </div> <div class="joboffer_informations joboffer_box"> Köln </div> </article>'
+             '</form><div id="joblist_navigator"><ul class=path_nav><li class="nav_next"></li></ul></div></body></html>')
+
+    AD = ('<html><head><script type="application/ld+json">{"@context": "http://schema.org", "@type": "JobPosting", "title": "Abteilungsleiter:in (w/m/d) Abwasserbehandlung", '
+          '"description": "<h2></h2>Jede Bewegung braucht Menschen, die &Atilde;&frac14;berzeugt vorangehen. Fragen: 069 212-45678, karriere@stadt-frankfurt.de. Frist bis 25.10.2026.", '
+          '"responsibilities": "<ul><li>Leitung der Abteilung</li></ul>", "qualifications": "<ul><li>Master</li></ul>", "jobBenefits": "<ul><li>Aufgabe&acirc;&#128;&#130;&acirc;&#128;&#130;</li><li>Altersvorsorge und&Acirc;&nbsp;Jobticket</li></ul>", '
+          '"datePosted": "2026-09-09", "validThrough": "2026-10-25", "employmentType": "FULL_TIME", "hiringOrganization": {"@type": "Organization", "name": "Stadt Frankfurt Jobportal", "logo": ""}, '
+          '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Goldsteinstraße 160", "addressLocality": "Frankfurt am Main", "addressRegion": "Hessen", "postalCode": "60528", "addressCountry": "DE"}}}</script></head><body><a href="stellenangebote.html">Zurück</a></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, host, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_table_and_the_cards_give_the_same_record_and_the_session_id_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._table([("11131", "Buechereiangestellter-wmd", "Büchereiangestellte:r (w/m/d)", "Stadtbücherei", "Berufseinsteiger:in", "11.10.2026"), ("11190", "Abteilungsleiterin-wmd", "Abteilungsleiter:in (w/m/d)", "Stadtentwässerung", "Führungskraft", "25.10.2026")], next_start=100)
+        p2 = self._table([("4976", "Forstwirtinnen-wmd", "Forstwirt:innen (w/m/d)", "Grünflächenamt", "Berufserfahrene:r", "00.00.0000")])
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2)], tenant="stadtfrankfurt", country_code="de")
+        self.assertEqual(asked, ["https://stadtfrankfurt-portal.rexx-recruitment.com/stellenangebote.html", "https://stadtfrankfurt-portal.rexx-recruitment.com/stellenangebote.html?start=100"])
+        self.assertEqual([r["id"] for r in rows], ["11131", "11190", "4976"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["lang"], a["location"], a["level"], a["deadline"], a["place"], a["contacts_withheld"]),
+                         ("rexx", "stadtfrankfurt-portal.rexx-recruitment.com", "DE", "rexx:stadtfrankfurt-portal.rexx-recruitment.com:11131", "https://stadtfrankfurt-portal.rexx-recruitment.com/Buechereiangestellter-wmd-de-j11131.html", "Büchereiangestellte:r (w/m/d)", "de", "Stadtbücherei", "Berufseinsteiger:in", "2026-10-11", None, True))
+        self.assertIsNone(rows[2]["deadline"])   # «00.00.0000» is no deadline
+        self.assertNotIn("sid=", raw)
+        self.assertNotIn("stadtfrankfurtjobs.de", raw)
+        self.assertIn("3 emitted over 2 page(s) for stadtfrankfurt-portal.rexx-recruitment.com — no count is stated anywhere; the pager was followed to its end.", err)
+        self.assertIn("country DE is the user's stamp — the list states no country.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self.CARDS)], tenant="https://msig-portal.rexx-recruitment.com/stellenangebote.html")
+        self.assertEqual([(r["id"], r["title"], r["place"], r["level"], r["lang"], r["country"]) for r in rows], [("560", "Underwriter Casualty (m/w/d)", "Köln", "Expert Staff", "de", None), ("561", "Data Engineer", "Köln", None, "en", None)])
+        self.assertNotIn("stamp", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], tenant="stadtfrankfurt-portal", max_pages=1)
+        self.assertEqual(len(rows), 2)
+        self.assertIn("(stopped by --max-pages)", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._table([]))], tenant="codesys")
+        self.assertEqual(rows, [])
+        self.assertIn("0 positions — the list shows none", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)], tenant="stadtfrankfurt")   # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>not a rexx portal</body></html>")], tenant="stadtfrankfurt")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="nosuch")
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("www", "https://api.rexx-recruitment.com/x"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, [], tenant=bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="https://stadtfrankfurtjobs.de/stellenangebote.html")   # the custom host is not the portal host the adapter sends to
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://stadtfrankfurtjobs.de/stellenangebote.html", "stadtfrankfurt-portal.rexx-recruitment.com")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_repaired_and_scrubbed_with_its_street_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://stadtfrankfurt-portal.rexx-recruitment.com/Abteilungsleiterin-wmd-Abwasserbehandlung-Betrieb-de-j11190.html?sid=abc")
+        self.assertEqual(asked, ["https://stadtfrankfurt-portal.rexx-recruitment.com/Abteilungsleiterin-wmd-Abwasserbehandlung-Betrieb-de-j11190.html"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["lang"], a["title"], a["company"], a["place"], a["region"], a["country"], a["employment_type"], a["published"], a["expires"], a["contacts_withheld"]),
+                         ("11190", "de", "Abteilungsleiter:in (w/m/d) Abwasserbehandlung", "Stadt Frankfurt Jobportal", "Frankfurt am Main", "Hessen", "DE", ["FULL_TIME"], "2026-09-09", "2026-10-25", True))
+        self.assertEqual(a["sections"]["description"], "Jede Bewegung braucht Menschen, die überzeugt vorangehen. Fragen: [telephone withheld], [e-mail withheld]. Frist bis 25.10.2026.")
+        self.assertEqual(a["sections"]["benefits"], "Aufgabe\nAltersvorsorge und Jobticket")   # «â€‚» repaired to U+2002 and folded as the whitespace it is; «Â » the mojibaked nbsp
+        self.assertEqual((a["sections"]["responsibilities"], a["sections"]["qualifications"]), ("Leitung der Abteilung", "Master"))
+        for secret in ("Goldstein", "60528", "212-45678", "karriere@", "sid=", "Ã", "Â"):
+            self.assertNotIn(secret, raw, secret)
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://stadtfrankfurt-portal.rexx-recruitment.com/x-de-j11190.html", country_code="AT")
+        self.assertEqual(rows, [])
+        self.assertIn("the ad is in DE, not AT — 0 emitted", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://stadtfrankfurt-portal.rexx-recruitment.com/x-de-j1.html")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '<html><body><a href="stellenangebote.html">Zurück</a> nothing else</body></html>')], cmd="ad", url="https://stadtfrankfurt-portal.rexx-recruitment.com/x-de-j1.html")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://stadtfrankfurt-portal.rexx-recruitment.com/stellenangebote.html")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
