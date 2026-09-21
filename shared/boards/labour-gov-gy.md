@@ -1,13 +1,14 @@
-# Board adapter — Ministry of Labour (Guyana): reopened by the 2026-09-07 doctrine, the transport refuses the client with a static 403, and a browser is served a broken site (2026-09-14)
+# Board measurement — Ministry of Labour (Guyana): open on 2026-09-21, served to the declared client, and NOT a board — its «Jobs Bank» page is one link to the National Job Bank on `jobs.gov.gy` (card `jobs-gov-gy.md`); refused at the transport on 2026-09-12, a broken WordPress to a browser on 2026-09-14
 
-<!-- verified: 2026-09-14 -->
+<!-- verified: 2026-09-21 -->
 
 <!-- hosts: labour.gov.gy, www.labour.gov.gy -->
 <!-- script: none -->
 <!-- countries: GY -->
-<!-- content: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:56 UTC -->
-<!-- witness: none — nothing was served to the client; the browser was served an error page on every path · 2026-09-14 -->
-<!-- route: none · the host serves a browser (the provider 403 is for the client only) but the site itself is broken — WordPress «There has been a critical error on this website» on `/`, `www.`, `/vacancies` and the REST root, 09:09–09:11 UTC, two reads of the root five minutes apart; a route to nothing today; whether a job bank lives here stays unknown — next control 2026-09-21 · 2026-09-14 -->
+<!-- content: out-of-domain · **the ministry's WordPress is served to the declared client on 2026-09-21 — `/` 200 ×2 (06:32:49 UTC, 208–211 KB; the provider refusal of 2026-09-12 gone), `/jobs-bank/` 200 ×2 (06:33:09, 06:33:10 UTC; 128 760 B) — and lists nothing itself: the «Jobs Bank» page is a text about the National Job Bank whose one outbound link is `https://jobs.gov.gy/`, the board (measured the same minute, card `jobs-gov-gy.md`); rules read, `*` open, `ClaudeBot` still named and refused, no Crawl-delay; nothing to enumerate on this host** · 2026-09-21 -->
+<!-- content-2026-09-12: indeterminate · 1 host, rules read twice and certain — `ClaudeBot` named and refused, `*` open, so `identity()` answers `claude-user` and since #230 `verdict()` sweeps under it — and the root and a listing path answer HTTP 403 to that client on 2 fetches each: 25 bytes, md5 `9ccabba20b9f` all four times — the static provider default (`Your request was blocked.`), the same bytes as `www.jobstore.com` and `www.hays.fr`; nothing of the site was read · 2026-09-12 11:56 UTC -->
+<!-- witness: the page text and its one outbound link — the board is another host, `jobs.gov.gy`, measured on its own card; nothing to enumerate here · 2026-09-21 -->
+<!-- route-2026-09-14: none · WordPress «critical error» on every path in a browser, the provider 403 to the client · superseded 2026-09-21 -->
 
 **Measured 2026-09-12 at 11:56:58Z UTC for #233, lot 5 — a measurement of the
 transport, not a decision about the host.** Every fetch under the declared
@@ -79,3 +80,17 @@ unknown; the Barbadian counterpart (`labour-gov-bb`) points elsewhere.
 the measurement is the usual one (the list, its count, a stable key, a
 JobPosting or not) and `route: browser · N · date` replaces the line.
 
+## The control three days on — the site answers, and the job bank lives on `jobs.gov.gy`
+
+```
+GET https://labour.gov.gy/             200 ×2 (06:32:49 UTC) — «Ministry of Labour and Manpower Planning», WordPress up; the 25-byte refusal of 2026-09-12 is gone
+GET https://labour.gov.gy/jobs-bank/   200 ×2 (06:33:09, 06:33:10 UTC) — «What is the National Job Bank?» … «View National Job Bank Portal» → https://jobs.gov.gy/
+```
+
+**The ministry's site is up and served to the plain client, and it is not
+the board: it describes the National Job Bank and links to it.** The same
+shape as Barbados (`labour-gov-bb.md` → `barbadosjobregister.gov.bb`):
+`content: out-of-domain`, nothing to enumerate here. The board itself —
+`jobs.gov.gy`, served, «187 Jobs Found» — is measured on `jobs-gov-gy.md`,
+and #314 (the ministry's offers, if it publishes any) is lifted from
+`blocked` on that reading: it does, on that host.

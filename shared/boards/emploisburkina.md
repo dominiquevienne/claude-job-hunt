@@ -1,6 +1,6 @@
 # Board adapter — Emplois Burkina (Burkina Faso)
 
-<!-- verified: 2026-09-14 -->
+<!-- verified: 2026-09-21 -->
 
 <!-- hosts: emploisburkina.bf -->
 <!-- hosts-source: named by the Burkina Faso country page, rank consigned, 2026-09-04; its sitemap is declared on the third-party host `afriqueemplois.com` and the guard was taken there separately · 2026-09-07 -->
@@ -213,3 +213,14 @@ control of the network's sitemap (2026-09-21) stands: if
 `afriqueemplois.com/sitemap-jobs-BF.xml` answers, it is the inventory and
 `list` grows to it.
 
+## The control a week on — the network's sitemap still answers 500
+
+```
+GET https://afriqueemplois.com/sitemap-jobs-BF.xml   500 ×2 by the declared client (06:14:46, 06:14:47 UTC) — 6 615 B, md5 e8fb861397b4 both reads
+```
+
+**Second failure dated.** The 6 615 bytes are the same size as on 2026-09-14
+(the md5 was not consigned then, so «the same page» is a size, not an
+identity). `list` stays at the site's pages (3–4 cards each behind the
+refused `/api/load-more`); the inventory is still not readable. Next control
+2026-09-28.
