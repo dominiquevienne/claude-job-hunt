@@ -179,7 +179,10 @@ rebuild.
 
 **Check the no-results banner first — see trap 1. Then filter before you
 extract — see trap 5: every page carries a decoy card, and this snippet used
-to harvest it.**
+to harvest it. And cut at the suggestions heading — see trap 1 again (#585):
+a page WITH results carries the «Emplois similaires à ceux consultés» block
+too, and its cards are recommendations from the browsing history, not
+answers to the query.**
 
 ```js
 (()=>{
@@ -188,8 +191,16 @@ to harvest it.**
   // a single-line innerText and a hand-made data-jk
   const real=all.filter(c=>{const r=c.getBoundingClientRect();
                             return r.width>0 && r.height>0;});
+  // #585 — the suggestions block: a heading «Emplois similaires à ceux
+  // consultés» (hl=fr; the English form not measured — the likely wordings
+  // are listed), and EVERY card after it in document order is a
+  // recommendation, whatever the page says above. The cut is the heading.
+  const heads=[...document.querySelectorAll('h1,h2,h3,h4')]
+    .filter(e=>/similaires à ceux consult|Emplois similaires|Jobs similar to|Similar jobs|based on your (?:search|browsing) history/i.test(e.innerText||''));
+  const h=heads.length?heads[heads.length-1]:null;
+  const results=h?real.filter(c=>!(h.compareDocumentPosition(c)&Node.DOCUMENT_POSITION_FOLLOWING)):real;
   const nl=c=>(c.innerText.match(/\n/g)||[]).length;
-  const rows=real.map(c=>{
+  const rows=results.map(c=>{
     const a=c.querySelector('[data-jk]');
     const p=c.innerText.split('\n').map(s=>s.trim()).filter(Boolean)
             .filter(s=>!/^(Candidature simplifiée|nouveau|Publiée|Employeur actif|PostulerEnregistrer|Enregistrer)/i.test(s));
@@ -202,12 +213,33 @@ to harvest it.**
     // that the geometry dropped the decoy and not a real card
     dropped_single_line: all.filter(c=>!real.includes(c) && nl(c)<=1).length,
     kept_single_line: rows.filter(r=>r.nl<=1).length,   // must be 0
+    // #585 — the suggestions block: its heading (null when none was found —
+    // then NOTHING was cut, and a page that has the block passes whole), and
+    // the visible cards after it that this run left out
+    suggestions_heading: h?h.innerText.trim().slice(0,60):null,
+    suggestions_dropped: real.length-results.length,
     rows
   });
 })()
 ```
 
-**Read the two counts before the rows.** `dropped_by_geometry: 0` on a page
+**Read the counts before the rows — four now.** `suggestions_heading: null`
+means no heading was found, so nothing was cut: on a page that shows the
+block, that is the filter that has stopped working (a wording change, a
+tag change), not a clean page; `suggestions_dropped` is what the cut left
+out. Measured 2026-09-14 (#585) on `?q="Full Stack"&l=Lausanne, VD`: 10
+visible cards, the `<h2>` «Emplois similaires à ceux consultés», **5 of the
+10 after it** — and the same four cards (Academic Work ×3, ALBEDIS) closed
+three disjoint searches («Tech Lead», «Full Stack», «CTO») word for word,
+with different ones ten minutes later on the same URL: recommendations,
+not results. *2026-09-21 09:19 UTC, the same URL in the candidate's own
+Chrome through the extension: `ch.indeed.com` answered «Security Check -
+Indeed.com», a challenge — consigned, not defeated, so the cut was not
+re-run on a live page that day; it was run in `node` on stub cards, both
+ways (with the heading: 2 emitted of 4 visible, 2 dropped; without: 4, 0,
+heading null) — the guard
+`IndeedsExtractionCutsAtTheSuggestionsHeadingOnEveryPage` reads the
+snippet from this card and does the same on every run where `node` is.* `dropped_by_geometry: 0` on a page
 that carries a decoy is a filter that has stopped working, and nothing else
 would say so — every measured page since 2026-08-27 carried at least one
 (five over eight searches, one per page over four pages, one apiece over
@@ -271,12 +303,18 @@ rows' shape is unchanged; the counts are new):
 
 ## Traps
 
-**1. A zero-result search still renders cards.** This is the dangerous one.
-`?q=laravel&l=Lausanne` returns the banner *"ne donne aucun résultat"* **and
-six `.job_seen_beacon` cards with valid `data-jk`** — "Emplois similaires à ceux
-consultés", suggestions based on browsing history, not results. Harvest them and
-you inject six unrelated ads into the ledger, attributed to a search they never
-matched, with nothing to show anything went wrong.
+**1. Every page can render the suggestions block — the zero-result page
+renders nothing else.** This is the dangerous one. `?q=laravel&l=Lausanne`
+returns the banner *"ne donne aucun résultat"* **and six `.job_seen_beacon`
+cards with valid `data-jk`** — "Emplois similaires à ceux consultés",
+suggestions based on browsing history, not results. Harvest them and you
+inject six unrelated ads into the ledger, attributed to a search they never
+matched, with nothing to show anything went wrong. **And a page WITH results
+carries the same block below them** (#585, 2026-09-14: 5 of 10 visible
+cards on a «Full Stack» page followed the heading; the same four cards
+closed three disjoint searches). The zero page was where the block was first
+seen, not the only page that has it: **the cut is the heading**, and the
+extraction snippet above makes it on every page.
 
 **Always check the banner before extracting:**
 

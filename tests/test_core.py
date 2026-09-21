@@ -32449,6 +32449,64 @@ class ANetworkNodeWhoseAdvertsBearTheMarksOfFabricationAndSayItOnEveryRow(unitte
         for bad in ("https://eritreajobsearch.com/job-vacancy-eritrea/", "https://eritreajobsearch.com/job/x/?p=1", "https://africajobsearch.com/job/x/"):
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
+class IndeedsExtractionCutsAtTheSuggestionsHeadingOnEveryPage(unittest.TestCase):
+    """**#585, 2026-09-21.** `shared/boards/indeed.md`: a page WITH results
+    carries the «Emplois similaires à ceux consultés» block below them, and
+    `.job_seen_beacon` harvested its cards as results (5 of 10 on a measured
+    page; the same four cards closed three disjoint searches). The card's
+    extraction snippet now finds the heading and keeps only the visible cards
+    that PRECEDE it, printing `suggestions_heading` (null when none was
+    found — then nothing was cut) and `suggestions_dropped`. The snippet is
+    read from the card and run in `node` on stub cards, both ways: with the
+    heading, the cards after it leave and the counts say so; without it,
+    nothing is cut and the heading is null. Skipped where `node` is absent.
+    Mutated (the cut removed from the snippet in the card): the with-heading
+    page emits the suggestions → reddens."""
+
+    STUB = r"""
+const FOLLOWING=4;
+function card(id,lines,w,h,after){return {id,txt:lines.join('\n'),w,h,after,
+  querySelector(sel){return sel==='[data-jk]'?{getAttribute:()=>id}:null},
+  getBoundingClientRect(){return {width:w,height:h}}, get innerText(){return this.txt}};}
+function page(withHeading){
+  const cards=[card('a1',['Dev','Liip','Lausanne','x'],468,120,false), card('a2',['Lead','Atinary','Lausanne','y'],468,130,false),
+               card('decoy',['Dev Liip Lausanne'],0,0,false), card('s1',['IT Support','Academic Work','Genève','z'],468,120,true), card('s2',['Archiviste','ALBEDIS','Lausanne','w'],468,120,true)];
+  const heading={tagName:'H2',innerText:'Emplois similaires à ceux consultés', compareDocumentPosition(c){return c.after?FOLLOWING:2;}};
+  global.Node={DOCUMENT_POSITION_FOLLOWING:FOLLOWING};
+  global.document={querySelectorAll(sel){ if(sel==='.job_seen_beacon') return cards; if(sel==='h1,h2,h3,h4') return withHeading?[{tagName:'H1',innerText:'Emplois'},heading]:[{tagName:'H1',innerText:'Emplois'}]; return [];}, body:{innerText:''}};
+  return JSON.parse((SNIPPET));
+}
+console.log(JSON.stringify({with:page(true),without:page(false)}));
+"""
+
+    def _snippet(self):
+        card = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards" / "indeed.md"
+        text = card.read_text(encoding="utf-8")
+        i = text.index("## Extracting search results")
+        m = re.search(r"```js\n(.*?)```", text[i:], re.S)
+        return m.group(1).strip()
+
+    def test_the_cards_after_the_heading_are_left_out_and_counted(self):
+        import shutil, subprocess, tempfile
+        if not shutil.which("node"):
+            self.skipTest("node is not installed here — the snippet's logic is exercised where it is")
+        snip = self._snippet()
+        self.assertIn("suggestions_dropped", snip)
+        self.assertIn("compareDocumentPosition", snip)
+        fd, t = tempfile.mkstemp(suffix=".js")
+        os.write(fd, self.STUB.replace("(SNIPPET)", snip).encode()); os.close(fd)
+        try:
+            r = subprocess.run(["node", t], capture_output=True, text=True, timeout=60)
+        finally:
+            os.unlink(t)
+        self.assertEqual(r.returncode, 0, r.stderr[:500])
+        out = json.loads(r.stdout)
+        w, wo = out["with"], out["without"]
+        self.assertEqual(([x["i"] for x in w["rows"]], w["emitted"], w["suggestions_dropped"], w["suggestions_heading"], w["dropped_by_geometry"]),
+                         (["a1", "a2"], 2, 2, "Emplois similaires à ceux consultés", 1))
+        self.assertEqual(([x["i"] for x in wo["rows"]], wo["emitted"], wo["suggestions_dropped"], wo["suggestions_heading"]),
+                         (["a1", "a2", "s1", "s2"], 4, 0, None))   # no heading: nothing cut, and the output says so
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
