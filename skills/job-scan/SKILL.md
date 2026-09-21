@@ -320,7 +320,12 @@ for this run — and offer to save it into `config.yml` if they want it to stick
 Record as `discarded`, **with the reason**, so they are never re-proposed (the
 full list is in `shared/pipeline-format.md`):
 
-- Aggregators and repost farms, plus anything in `search.blocklist`.
+- Aggregators and repost farms, plus anything in `search.blocklist`. **A
+  poster that publishes several employers' ads in one day under one template
+  (`## About the Company / ## About the Role`) is a repost farm even when each
+  ad reads well** — and it may rewrite the location and the mode (#596:
+  «Ipoh, hybrid» became «Delft, Remote»). Propose adding it to
+  `search.blocklist`; the candidate decides.
 - Ads whose stack is explicitly foreign to the candidate.
 - Anything breaching the commute filter below.
 - Anything already in the exclusion set from step 0.

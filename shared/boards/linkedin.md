@@ -321,6 +321,26 @@ not a failure to route around**. Hand it to the user: open the folder so the
 file is one click away, name the exact button and the exact filename, and ask
 them not to advance the form until you resume.
 
+## The poster of a card is not the employer its description names (#596, 2026-09-21)
+
+A card's poster can be an intermediary republishing another company's ad
+**with the location and the mode rewritten**. Measured 2026-09-16 and
+re-read 2026-09-21: `linkedin:4466567518`, poster **Torentify**,
+«Netherlands (Remote)», the description naming Exact Software and «Work
+Location: Delft — Remote»; `exact.com/careers/vacancies` lists 20 openings
+and exactly one PHP role — **«PHP Software Engineer (Ipoh)», Malaysia,
+hybrid**, whose requirements block is the card's word for word. The same
+poster published two more «Switzerland (Remote)» ads for two other companies
+within 24 h, all three under one template (`## About the Company / ## About
+the Role`).
+
+**So:** the employer's own careers page is the witness, and the check is on
+the **place and the mode**, not on the role's existence — `cover-letter`
+step 1a. Three employers in a day under one template is a repost farm:
+propose `search.blocklist` (job-scan § filter), the candidate decides. A
+rewritten location passes the commute filter and the right-to-work question
+with no signal at all, which is what makes this trap worth its lines.
+
 ## Never trigger a native dialog
 
 `alert`, `confirm`, `prompt` and browser modals block every subsequent command

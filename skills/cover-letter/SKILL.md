@@ -277,6 +277,20 @@ When either at-risk signal holds, verify **before drafting**.
    SmartRecruiters says so unambiguously — *"This job opening doesn't exist
    anymore"* — where a board keeps serving the description as if nothing
    happened.
+1a. **When the employer's posting is found, compare the PLACE and the MODE
+   before concluding «open» — an existing posting is not the same posting.**
+   On 2026-09-16 (#596) a LinkedIn card from a reposter (Torentify, «Netherlands
+   (Remote)», the description naming Exact Software) matched exactly one
+   posting on `exact.com/careers/vacancies` — the same requirements block
+   word for word — and that posting is **«PHP Software Engineer (Ipoh)»,
+   Malaysia, hybrid**: the intermediary had rewritten the location and the
+   mode, and a search for «Exact + PHP» found a posting, the wrong one. Same
+   company, same text, another continent: the board's ad is discarded with
+   the employer's page as the witness, and the verdict is on the board's ad,
+   not on the employer. A reposter that publishes several employers' ads in
+   a day under one template is the shape to expect (`linkedin.md`, the trap
+   of 2026-09-21); re-read 2026-09-21 — the employer's page still lists 20
+   openings and one PHP role, Ipoh.
 1b. **On a board URL, read the status before the body — and never conclude
    "open" from a page reached by a redirect.** JobCloud's boards (jobup,
    jobs.ch) answer with four different states and the body alone separates
