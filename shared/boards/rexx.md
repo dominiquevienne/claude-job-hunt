@@ -84,5 +84,8 @@ and `en`, the stamp said, `--max-pages`, the empty list, the repeating
 page, a page that is not a portal, the unknown portal, the vendor's hosts,
 the custom host and another host refused, the ad with its street, its
 telephone and e-mail, its double-encoding, the country filter on the ad,
-the ad gone or changed). Mutation bench on a detached copy, `python3 -B`
-— see the PR.
+the ad gone or changed). Mutation bench on a detached copy, `python3 -B`,
+9 / 9 red: the session id kept · the custom host kept · the repeat check
+dropped · the street emitted · the scrub dropped in the ad · the mojibake
+repair dropped · «00.00.0000» read as a date · the stamp note dropped ·
+the vendor-host check dropped.
