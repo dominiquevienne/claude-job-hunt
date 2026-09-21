@@ -33363,5 +33363,209 @@ class AnInventoryReadWhereTheRulesAllowItBecauseEveryQueryStringIsRefused(unitte
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
 
+class APublicEmploymentServiceWhoseWeekIsAPdfAndWhoseLayoutIsItsStructure(unittest.TestCase):
+    """**`employmentgovsc.py`, 2026-09-21 (#714).** Seychelles' Department of
+    Employment publishes **one PDF a week** and no HTML list at all, so the
+    adapter follows the link the page itself publishes (it changes every
+    week and is never composed) and reads the document's text layer with the
+    standard library — in memory, never to disk. **The layout IS the
+    structure**: a sector at the left margin, an employer centred, a bulleted
+    vacancy, a wrapped second line, and a contact column that is read only to
+    be WITHHELD. Four things this guard holds, and each was a defect first:
+
+    * a `ToUnicode` CMap maps a range to an **array** of destinations —
+      `<0003> <0004> [<0020> <0041>]` is where this document keeps its space
+      and its «A» — and reading only the single-destination form turned
+      «REBA'S MOTOR MECHANIC» into «REB'S MOTOR MECHNIC» **in silence**;
+    * a font NAME is **per page**: resolving `/F3` globally reads one page's
+      text with another page's CMap. A code the CMap does not name is now
+      SHOWN (U+FFFD), never dropped;
+    * a vacancy and a telephone number share a baseline («• Guest Service
+      Agent» at x=87, «Contact: 2522265» at x=293), so the baseline is cut
+      **where a run starts the contact block** — not at a fixed x, because a
+      centred employer name runs past that column;
+    * runs are concatenated, and a space goes back only where the pen's gap,
+      measured with **the font's own `/Widths` and `/W`**, is wider than a
+      sixth of the size: an estimate glued «Food andBeverage» or split
+      «SERVIC ES».
+
+    Both ways: the fixture document is read whole; the employer's contacts
+    are withheld and NAMED in `withheld_fields` while the closing date is
+    emitted; a PDF with no text layer dies (6); a body that is not a PDF dies
+    (6); a page linking no document dies (6); a 404 dies (3); another host is
+    refused (7). Mutated (`-B`, detached copy): the array form of `bfrange`
+    dropped → the «A» and the space vanish (reddens); the unmapped code
+    dropped instead of shown → reddens; the per-page fonts replaced by a
+    global map → reddens; the contact cut removed → the number lands in the
+    title (reddens); the width-measured space removed → words glue (reddens);
+    the scrub dropped → reddens; the withheld declaration emptied → reddens;
+    the «no count stated» note dropped → reddens; another host sent →
+    reddens."""
+
+    # ------------------------------------------------------------------ a document, built by hand
+    @staticmethod
+    def _pdf(lines):
+        """`lines` = [(x, y, font, size, text)] on one page, in a document whose CMap needs the array form."""
+        # F1: a simple WinAnsi font with real /Widths; F2: a CID font whose CMap maps <0003>-<0004>
+        # to [<0020> <0041>] — a space and an «A» — which is the form that was being lost.
+        cmap = (b"/CIDInit /ProcSet findresource begin begincmap\n"
+                b"1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n"
+                b"2 beginbfrange\n<0003> <0004> [<0020> <0041>]\n<0011> <0012> <0042>\nendbfrange\n"
+                b"1 beginbfchar\n<0018> <0044>\nendbfchar\nendcmap end")
+        content = []
+        for x, y, font, size, text in lines:
+            if font == "F2":
+                body = b"<" + b"".join(b"%04X" % c for c in text) + b">"
+            else:
+                # the bullet is WinAnsi 0x95, as the document writes it — not a Latin-1 character
+                body = b"(" + text.replace("(", r"\(").replace(")", r"\)").replace("\u2022", "\x95").encode("latin-1") + b")"
+            content.append(b"BT /%s %.2f Tf 1 0 0 1 %.2f %.2f Tm %s Tj ET" % (font.encode(), size, x, y, body))
+        stream = b"\n".join(content)
+        widths = b"[" + b" ".join(b"500" for _ in range(32, 123)) + b"]"
+        objs = {
+            1: b"<</Type/Catalog/Pages 2 0 R>>",
+            2: b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+            3: b"<</Type/Page/Parent 2 0 R/Resources<</Font<</F1 5 0 R/F2 7 0 R>>>>/Contents 4 0 R>>",
+            4: b"<</Length %d>>\nstream\n%s\nendstream" % (len(stream), stream),
+            5: b"<</Type/Font/Subtype/TrueType/BaseFont/AAAAAA+Calibri/Encoding/WinAnsiEncoding/FirstChar 32/LastChar 122/Widths 6 0 R>>",
+            6: widths,
+            7: b"<</Type/Font/Subtype/Type0/BaseFont/BBBBBB+Calibri/Encoding/Identity-H/DescendantFonts 8 0 R/ToUnicode 9 0 R>>",
+            8: b"<</BaseFont/BBBBBB+Calibri/Subtype/CIDFontType2/Type/Font/DW 500/W 10 0 R>>",
+            9: b"<</Length %d>>\nstream\n%s\nendstream" % (len(cmap), cmap),
+            10: b"[3 [500 500 500]]",
+        }
+        out = b"%PDF-1.7\n"
+        for num in sorted(objs):
+            out += b"%d 0 obj\n%s\nendobj\n" % (num, objs[num])
+        return out + b"trailer<</Root 1 0 R>>\n%%EOF"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_scgov", os.path.join(SCRIPTS, "employmentgovsc.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    PAGE_HTML = ('<html><body><div class="category"><h2>National Vacancies</h2>'
+                 '<a href="/job-opportunities/national-vacancies/weekly-vacancy-list-15th-to-21st-september-2026/download">'
+                 'Weekly Vacancy List - 15th to 21st September 2026</a>'
+                 '<a href="/job-opportunities/national-vacancies/weekly-vacancy-list-15th-to-21st-september-2026/download">Download</a>'
+                 '</div></body></html>')
+
+    def _document(self):
+        # «REBA'S» and «A LA DIGUE» come through the CID font, whose CMap needs the ARRAY form:
+        # code 0x0004 is «A», 0x0003 is a space, 0x0011/0x0012 are «B»/«C», 0x0018 is «D».
+        return self._pdf([
+            (72.0, 700.0, "F1", 14.04, "ADMINISTRATIVE AND OTHER RELATED SERVICES:"),
+            (216.9, 670.0, "F1", 14.04, "OCEANICA RESORT "),              # centred, and it runs
+            (329.9, 670.0, "F1", 14.04, "-"),                             # past the contact column
+            (337.4, 670.0, "F1", 14.04, " GLACIS"),
+            (69.0, 640.0, "F1", 14.04, "•"),
+            (87.0, 640.0, "F1", 14.04, "Financial Controller (With"),     # two runs typeset APART
+            (275.0, 640.0, "F1", 14.04, "Driving License)"),              # (the pen stops at 269.5): a space goes back
+            (293.8, 640.0, "F1", 14.04, "Email: rh@oceanica.sc"),         # SAME baseline as the vacancy
+            (69.0, 620.0, "F1", 14.04, "•"),
+            (87.0, 620.0, "F1", 14.04, "Information Technology (IT)"),
+            (87.0, 605.0, "F1", 14.04, "Administrator"),                  # a wrapped title
+            (293.8, 620.0, "F1", 14.04, "Contact: 2522326"),
+            (293.8, 600.0, "F1", 14.04, "Closing Date: 18th September 2026"),
+            (200.0, 560.0, "F2", 14.04, [0x0011, 0x0004, 0x0018]),        # «BAD» through the CID font
+            (69.0, 540.0, "F1", 14.04, "•"),
+            (87.0, 540.0, "F1", 14.04, "Cook"),
+            (200.0, 520.0, "F2", 14.04, [0x0011, 0x0004, 0x00FF]),        # a code the CMap does NOT name
+            (69.0, 500.0, "F1", 14.04, "•"),
+            # a title that runs into the employer's address, as the document does when the columns touch
+            (87.0, 500.0, "F1", 14.04, "Master Cutter cutter950@example.sc 2537558"),
+        ])
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, binary=False):
+            asked.append((url, binary))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_documents=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_week_is_read_from_the_pdf_and_the_contacts_never_travel(self):
+        mod = self._mod()
+        served = [(200, self.PAGE_HTML, {}),
+                  (200, self._document(), {"Content-Type": "application/pdf",
+                                           "Content-Disposition": 'attachment; filename="Weekly Vacancy List.pdf"; modification-date="Tue, 15 Sep 2026 08:34:02 +0400"'})]
+        rows, err, asked, raw = self._run(mod, served, country_code="sc")
+        self.assertEqual([a[1] for a in asked], [False, True])      # the page, then the document as bytes
+        self.assertTrue(asked[1][0].endswith("/weekly-vacancy-list-15th-to-21st-september-2026/download"))
+        self.assertEqual([r["title"] for r in rows],
+                         ["Financial Controller (With Driving License)",   # the space the widths put back
+                          "Information Technology (IT) Administrator",     # the wrapped second line
+                          "Cook",
+                          "Master Cutter [e-mail withheld] [telephone withheld]"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["employer"], a["sector"], a["contacts_withheld"], a["key_is_ours"]),
+                         ("employmentgovsc", "SC", "OCEANICA RESORT - GLACIS",
+                          "ADMINISTRATIVE AND OTHER RELATED SERVICES", True, True))
+        self.assertEqual(a["ledger_id"], "employmentgovsc:weekly-vacancy-list-15th-to-21st-september-2026:oceanica-resort-glacis:financial-controller-with-driving-license")
+        self.assertEqual(a["document_published"], "Tue, 15 Sep 2026 08:34:02 +0400")
+        # the contacts belong to the EMPLOYER's block, so both its vacancies declare both of them
+        self.assertEqual(a["withheld_fields"], ["employer_email", "employer_phone"])
+        self.assertEqual(rows[1]["withheld_fields"], ["employer_email", "employer_phone"])
+        self.assertEqual(rows[2]["withheld_fields"], [])             # another employer, no contact filed
+        self.assertEqual(rows[3]["withheld_fields"], ["employer_email", "employer_phone"])
+        self.assertEqual(a["closing_date"], "2026-09-18")            # the date IS the vacancy's, and the block's
+        self.assertEqual(rows[1]["closing_date"], "2026-09-18")
+        self.assertIsNone(rows[2]["closing_date"])
+        self.assertEqual(rows[2]["employer"], "BAD")                 # the CID font, through the ARRAY form
+        for secret in ("rh@oceanica.sc", "2522326"):
+            self.assertNotIn(secret, raw, secret)
+        # a code the CMap does not name is SHOWN: the loss is legible, it does not pass for text
+        self.assertEqual(rows[3]["employer"], "BA\ufffd")
+        self.assertNotIn("\ufffd", rows[0]["employer"])
+        for secret in ("cutter950@example.sc", "2537558"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("4 vacancies emitted, 3 employer(s), 1 sector(s)", err)
+        self.assertEqual(rows[3]["id"].rsplit(":", 1)[-1], "master-cutter-e-mail-withheld-telephone-withheld")
+        self.assertIn("state no count", err)
+        self.assertIn("3 record(s) name what was dropped", err)
+        self.assertIn("country SC is the user's stamp", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        pdf_headers = {"Content-Type": "application/pdf"}
+        scan = b"%PDF-1.7\n1 0 obj\n<</Type/Catalog>>\nendobj\ntrailer<</Root 1 0 R>>"
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, [(200, self.PAGE_HTML, {}), (200, scan, pdf_headers)])
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("no text layer", err.getvalue())
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, [(200, self.PAGE_HTML, {}), (200, b"<html>a login page</html>", {"Content-Type": "text/html"})])
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("no %PDF header", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>the category, empty this week</body></html>", {})])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "", {})])
+        self.assertEqual(cm.exception.code, 3)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://employment.gov.sc/job-opportunities/national-vacancies")   # not the www host
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
