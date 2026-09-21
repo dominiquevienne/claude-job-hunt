@@ -33586,5 +33586,164 @@ class APublicEmploymentServiceWhoseWeekIsAPdfAndWhoseLayoutIsItsStructure(unitte
         self.assertEqual(cm.exception.code, 7)
 
 
+class ANationalPortalWhosePortletStatesItsTotalAndPagesByAnUnderscoredToken(unittest.TestCase):
+    """**`myanmargov.py`, 2026-09-21 (#634).** Myanmar's national portal: the
+    ministries' «Job & Vacancy» notices live in a Liferay asset publisher
+    that **states its own total** («Job & Vacancy - 183 items») and pages by
+    the token the page prints (`idasset460` on the day) — read from its own
+    pager links, never composed, as JobCentre Brunei's is. **The portlet's
+    parameter names carry a LEADING UNDERSCORE**
+    (`_…_INSTANCE_<token>_cur`): without it Liferay ignores them and serves
+    page 1 again, which reads exactly like a board that repeats itself — and
+    the repeat guard fired on a walk that was never walking. The titles are
+    Burmese, so a key slugged from ASCII letters is EMPTY: twenty records
+    shared one identifier that way, and the title is now folded by its
+    digest. The portal keeps closed notices (181 of 182 on the day state a
+    date already past) — the ministries' filing, not a fault, counted and
+    never dropped in silence; `--closing-after` filters on the date the
+    ENTRY states and says how many it dropped. A card without an address or
+    a title is COUNTED, so «one short of the stated total» has a candidate
+    explanation instead of a shrug. Both ways: the pager is followed and the
+    walk ends on the stated total; a page repeating the one before dies (6);
+    a page without a pager token dies (6) rather than composing one; a 404
+    dies (3); a bad `--lang` or `--closing-after` dies (2); another host is
+    refused (7). Mutated (`-B`, detached copy): the leading underscore
+    dropped → page 1 again (reddens); the token composed instead of read →
+    reddens; the digest key replaced by an ASCII slug → two notices collide
+    (reddens); the stated total ignored → reddens; the «short» branch
+    removed → reddens; the skipped-card count silenced → reddens; the closed
+    count silenced → reddens; the scrub dropped → reddens; another host sent
+    → reddens."""
+
+    INSTANCE = "idasset460"
+    PORTLET = "com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mmgov", os.path.join(SCRIPTS, "myanmargov.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @classmethod
+    def _card(cls, href, title, agency="Ministry of Finance and Revenue", closing="September 03, 2026"):
+        return ('<div class="col-md-12 smallcardstyle">'
+                '<div class="col-md-2"><span class="blueColor2"></span></div><div class="col-md-10">'
+                f'<a href="{href}" target="_blank"><h2 class="fontsize18">{title}</h2></a>'
+                f'<p><span class="graycolor col-md-3 col-sm-5">Agency:</span><span class="blueColor1">{agency}</span></p>'
+                f'<p><span class="graycolor col-md-3 col-sm-5">Closing Date::</span><span class="blueColor1">{closing}</span></p>'
+                '</div></div>')
+
+    @classmethod
+    def _page(cls, cards, total="183", pager=(1, 2, 3)):
+        links = "".join(
+            f'<li><a href="https://myanmar.gov.mm/vacancies?p_p_id={cls.PORTLET}_INSTANCE_{cls.INSTANCE}'
+            f'&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view'
+            f'&_{cls.PORTLET}_INSTANCE_{cls.INSTANCE}_delta=10&p_r_p_resetCur=false'
+            f'&_{cls.PORTLET}_INSTANCE_{cls.INSTANCE}_cur={n}">{n}</a></li>' for n in pager)
+        head = (f'<h4 class="font19 bold">Job &amp; Vacancy - <span class="blueColor">{total} items</span></h4>'
+                if total else "")
+        return ('<html><body><section class="portlet">' + head + "".join(cards)
+                + '<div class="taglib-page-iterator"><ul class="custum_pagination">' + links
+                + "</ul></div></section></body></html>")
+
+    def _run(self, mod, pages, **kw):
+        """`pages` maps a `cur` value (1 for the first request) to a (code, body)."""
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            m = re.search(r"_cur=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="en", closing_after=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_pager_is_followed_by_the_token_the_page_prints(self):
+        mod = self._mod()
+        burmese = "ဘဏ္ဍာရေးနှင့်အခွန်ဝန်ကြီးဌာန၊ ငွေတိုက်ဦးစီးဌာနမှ စိစစ်ရေးမှူး"
+        other = "အမျိုးသားစီမံကိန်းဝန်ကြီးဌာန၊ စီမံကိန်းရေးဆွဲရေးဦးစီးဌာန"
+        p1 = self._page([self._card("/documents/20143/0/a.pdf", burmese, closing="October 19, 2026"),
+                         # the SAME address, another notice: a call and its result
+                         self._card("/documents/20143/0/a.pdf", other, closing="September 03, 2026"),
+                         '<div class="col-md-12 smallcardstyle"><div class="col-md-10">no address, no title</div></div>'],
+                        total="4")
+        p2 = self._page([self._card("http://www.myanmarjob.gov.mm/job/view/13585", "Clerk", agency="Ministry Of Electricity And Energy", closing="June 25, 2018"),
+                         self._card("https://monp.gov.mm/my/blog/x", "Planner rh@monp.gov.mm 09 123 4567", closing="February 27, 2026")],
+                        total="4", pager=(1, 2))
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, p2), 3: (200, self._page([], total="4"))}, country_code="mm")
+        # the second request carries the UNDERSCORED parameter names, with the page's own token
+        self.assertIn(f"_{self.PORTLET}_INSTANCE_{self.INSTANCE}_cur=2", asked[1])
+        self.assertIn(f"_{self.PORTLET}_INSTANCE_{self.INSTANCE}_delta=10", asked[1])
+        self.assertEqual(len(rows), 4)
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["agency"], a["closing_date"], a["url"],
+                          a["document_downloaded"], a["key_is_ours"], a["contacts_withheld"]),
+                         ("myanmargov", "MM", "Ministry of Finance and Revenue", "2026-10-19",
+                          "/documents/20143/0/a.pdf", False, True, True))
+        self.assertEqual(a["title"], burmese)
+        # one address, two notices, two keys — a Burmese title slugged in ASCII would be empty
+        self.assertEqual(rows[0]["url"], rows[1]["url"])
+        self.assertNotEqual(rows[0]["id"], rows[1]["id"])
+        self.assertEqual(len({r["id"] for r in rows}), 4)
+        self.assertEqual(rows[3]["title"], "Planner [e-mail withheld] [telephone withheld]")
+        for secret in ("rh@monp.gov.mm", "09 123 4567"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("4 entry(ies) read over 2 page(s), and the portlet states 4 — they agree", err)
+        self.assertIn("1 card(s) carried no address or no title and were counted", err)
+        self.assertIn("state a closing date before", err)
+        self.assertIn("country MM is the user's stamp", err)
+
+    def test_the_filters_and_the_counts_say_what_they_did(self):
+        mod = self._mod()
+        p1 = self._page([self._card("/a", "One", closing="October 19, 2026"),
+                         self._card("/b", "Two", closing="June 25, 2018")], total="2", pager=(1,))
+        rows, err, asked, raw = self._run(mod, {1: (200, p1)}, closing_after="2026-01-01")
+        self.assertEqual([r["id"].split("#")[0] for r in rows], ["/a"])
+        self.assertIn("1 emitted (1 dropped by --closing-after", err)
+        p1 = self._page([self._card("/a", "One")], total="9", pager=(1,))
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, self._page([], total="9", pager=(1,)))})
+        self.assertIn("1 entry(ies) read over 2 page(s), the portlet states 9 — 8 short", err)
+        p1 = self._page([self._card("/a", "One")], total="", pager=(1,))
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, self._page([], total="", pager=(1,)))})
+        self.assertIn("the portlet stated no total this time", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card("/a", "One")], total="99")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, p1)})          # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, {1: (200, "<html><body>a page with no pager at all</body></html>")})
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("never composed", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (404, "")})
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {}, lang="eng")
+        self.assertEqual(cm.exception.code, 2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {}, closing_after="19 October 2026")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.myanmar.gov.mm/vacancies")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
