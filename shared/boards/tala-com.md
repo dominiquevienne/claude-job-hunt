@@ -1,12 +1,12 @@
 # Assessed, adapter not built — Tala-Com (DR Congo)
 
-<!-- verified: 2026-09-14 -->
+<!-- verified: 2026-09-21 -->
 
 <!-- hosts: www.tala-com.com -->
 <!-- script: none -->
 <!-- countries: CD -->
 <!-- content: measured · 31 live advertisements under `/offres-demploi/`, read in a browser across the three pages the site paginates — 15 + 15 + 1, no address repeated between pages · 2026-09-08 -->
-<!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 · **2026-09-14 09:43 UTC: the name resolves again on 1.1.1.1 and 8.8.8.8 (two Cloudflare addresses, NOERROR); from a connected tab `/offres-demploi/` is served without challenge — 15 cards, `/offres-demploi/page/2/` 12, no page 3: 27 distinct `/offres-emploi/<slug>/`, the site states no total; the ad page carries WebPage / BreadcrumbList / WebSite / Organization JSON-LD (a `datePublished`), no JobPosting; four e-mail addresses in the ad read — never to be emitted** -->
+<!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 · **2026-09-14 09:43 UTC: the name resolves again on 1.1.1.1 and 8.8.8.8 (two Cloudflare addresses, NOERROR); from a connected tab `/offres-demploi/` is served without challenge — 15 cards, `/offres-demploi/page/2/` 12, no page 3: 27 distinct `/offres-emploi/<slug>/`, the site states no total; the ad page carries WebPage / BreadcrumbList / WebSite / Organization JSON-LD (a `datePublished`), no JobPosting; four e-mail addresses in the ad read — never to be emitted** · **2026-09-21: the DECLARED CLIENT is served — the provider 403 is gone: `/` 200 ×2 (06:27:04, 06:27:07 UTC; 349 529 B), `/offres-demploi/` 200 ×2 (06:30:02, 06:30:04 UTC; ~250 KB) 15 ads + pager to page 2, `/offres-demploi/page/2/` 200 ×2 (06:32:12, 06:32:14 UTC) 14 ads, no page 3 — 29 distinct `/offres-emploi/<slug>/` (27 on 2026-09-14, 31 on 2026-09-08), the site states no total; a WordPress site (Divi, a custom post type `offres-emploi`, `wp-json` linked); the name resolves on both resolvers (104.21.10.145, 172.67.163.152), whois ACTIVE, expiry 2028-09-20 (renewed); rules read, `*` open, no Crawl-delay** -->
 <!-- route: browser · 27 · 2026-09-14 -->
 
 **A national board in a country of a hundred million people, and it refused our
@@ -149,3 +149,20 @@ address and telephone withheld. No script: the client is refused (#404).
 The control of 2026-09-21 in the pilot's deferred tasks can be closed as
 done here.
 
+## The control three days on — the declared client is served: the HTTP route is open
+
+```
+dig @1.1.1.1 / @8.8.8.8 www.tala-com.com      NOERROR — 104.21.10.145, 172.67.163.152; whois ACTIVE, expiry 2028-09-20
+GET https://www.tala-com.com/                        200 ×2 (06:27:04, 06:27:07 UTC) — 349 529 B, the hub's home
+GET https://www.tala-com.com/offres-demploi/         200 ×2 (06:30:02, 06:30:04 UTC) — 15 ads, pager → page 2
+GET https://www.tala-com.com/offres-demploi/page/2/  200 ×2 (06:32:12, 06:32:14 UTC) — 14 ads, no page 3
+```
+
+**Twenty-nine distinct `/offres-emploi/<slug>/` over two pages, to the plain
+client, no challenge, no 403** — the reason this card gave for «no script»
+(the client is refused, #404) has fallen. The route stays `browser · 27 ·
+2026-09-14` until a script exists; **#339 is reopened on this reading** — a
+script walks `/offres-demploi/page/N/` until the pager ends, keys on the
+slug, reads the ad's `datePublished` from its WebPage node, scrubs every
+e-mail address and telephone, and prints «N emitted, the site states no
+total». The 2026-09-21 control of the deferred tasks is done here.

@@ -1,11 +1,11 @@
 # Board measurement — Jobs in Dominica (`jobsindominica.com`, Dominica): Cloudflare answers 522 (origin unreachable) to the declared client twice and to curl on 2026-09-18, ~80 s each; nothing of the site was read — the sixth «Jobs <country>» island host on the same 16 bytes in two days; indeterminate, a measure to redo; no adapter yet
 
-<!-- verified: 2026-09-18 -->
+<!-- verified: 2026-09-21 -->
 
 <!-- hosts: jobsindominica.com -->
 <!-- script: none -->
 <!-- countries: DM -->
-<!-- content: indeterminate · **the root answers 522 on two reads by the declared client (08:07:26→08:08:49 and →08:10:12 UTC; 16 B `error code: 522`, md5 2c2dae9e9cdd), the same 522 to curl — Cloudflare could not reach the origin; nothing read, rules not read (`_robots.allowed` → open, `certain: False`)** · 2026-09-18 -->
+<!-- content: indeterminate · **the root answers 522 on two reads by the declared client (08:07:26→08:08:49 and →08:10:12 UTC; 16 B `error code: 522`, md5 2c2dae9e9cdd), the same 522 to curl — Cloudflare could not reach the origin; nothing read, rules not read (`_robots.allowed` → open, `certain: False`)** — **second control 2026-09-21, 06:27:56 and 06:29:19 UTC: the same 522 twice — 16 B `error code: 522`, md5 2c2dae9e9cdd, the bytes of 2026-09-18; the origin is still unreachable behind Cloudflare, nothing read** · 2026-09-21 -->
 <!-- witness: none — nothing was read · 2026-09-18 -->
 <!-- route: none · non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked qui dit pourquoi et ce qui lèverait), #754 · 2026-09-19 -->
 
@@ -21,3 +21,15 @@ GET https://jobsindominica.com/   522 ×2 (client, ~80 s each), 522 (curl) — �
 ```
 
 **An origin down is neither a refusal nor a permission** — with `jobsnassaubahamas.com` (2026-09-16), `jobsstlucia.lc`, `jobsseychelles.sc`, `jobsantigua.ag` and `jobsstvincent.com` (2026-09-18) that is six hosts of one naming family on one 16-byte body: one operator, one origin down, by the shape of it — observed, not concluded. Not «closed»: the next control is 2026-09-21 (a deferred task of the session that measured).
+
+## The control three days on — the same 522 twice
+
+```
+GET https://jobsindominica.com/   522 ×2 by the declared client (06:27:56 and 06:29:19 UTC) — 16 B «error code: 522», md5 2c2dae9e9cdd, identical to 2026-09-18
+```
+
+**Three days later the origin is still unreachable, and the six island hosts
+on these 16 bytes answer the same today** (jobsstlucia.lc, jobsseychelles.sc,
+jobsantigua.ag, jobsstvincent.com, jobsindominica.com; jobsnassaubahamas.com
+was not in this control). Nothing read, still not «closed»: #754 stays
+`blocked` with this date; next control 2026-09-28.
