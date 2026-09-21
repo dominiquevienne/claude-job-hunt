@@ -32719,5 +32719,121 @@ class AReasonCutMidNumberNamesAnotherTicket(unittest.TestCase):
         self.assertGreaterEqual(seen, 5, f"{seen} `route: none` cards end their reason on a ticket; fifteen were written on 2026-09-18 (#755) — either lines were lost or the walk narrowed")
         self.assertEqual(seen, kept)
 
+class APublicServiceWhoseVacanciesAreInThePagesOwnLivewireDataUnderThreeGroupings(unittest.TestCase):
+    """**`blmis.py`, 2026-09-21 (#680).** Bhutan's labour-market information
+    system ships every vacancy in the page itself — the Livewire component's
+    `wire:initial-data`, three groupings of ONE board (`job_by_company`,
+    `job_by_categories`, `job_by_location`; 401 / 176 / 17, **471 distinct**
+    on the day): the union keyed by `application_no` is the board, no POST is
+    replayed, and the page states no total — the run says so. The ministry's
+    **audit fields** (`created_by`, `updated_by`, `edited_by`, `deleted_by`,
+    `action_remarks`, `is_deleted`, `is_completed`) are user ids and case
+    notes: never emitted. A vacancy's **`gender`** is a personal criterion —
+    null on all 471 today, withheld BY NAME when one carries it (#183, as
+    Brunei's age range), the record saying which fields it withheld. Both
+    ways: a record with a gender loses it and declares it; a page without the
+    lists is a changed page (6); another host is refused (7). Mutated (`-B`,
+    detached copy): the criterion emitted → reddens; the withheld list
+    dropped → reddens; an audit field emitted → reddens; the union taken from
+    one grouping → the count falls (reddens); the scrub dropped → reddens;
+    the «no total stated» note dropped → reddens; another host sent →
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_blmis", os.path.join(SCRIPTS, "blmis.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _vac(no, designation, employer, dzongkhag="Thimphu", gender=None, desc="Knows how to cook", remarks="Write to hr@hive.bt or call 17123456."):
+        return {"application_no": no, "employer_app_id": "31000470", "designation": designation, "business_name": employer,
+                "job_category": "Cook", "qualification": "No Education", "field_of_study": 1463, "year_of_experience": 518,
+                "dzongkhag_name": dzongkhag, "gewog_name": "Gelephu", "placement": "Gelephu town", "starting_salary": "15000.00",
+                "slot": 2, "employment_type": "Regular", "last_date_registration": "2026-09-30", "job_description": desc,
+                "remarks": remarks, "created_at": "2026-06-16 20:17:04", "created_by": 86233, "updated_by": 280845,
+                "edited_by": None, "deleted_by": None, "action_remarks": "checked by desk 4", "is_deleted": "N",
+                "is_completed": None, "gender": gender, "company_name": None}
+
+    @classmethod
+    def _page(cls, by_company, by_categories, by_location, lists=True):
+        data = {"is_findjob": False, "category_list": [], "location_list": [], "search_job_list": []}
+        if lists:
+            data.update({"job_by_company": by_company, "job_by_categories": by_categories, "job_by_location": by_location})
+        blob = {"fingerprint": {"id": "0rOq", "name": "frontpage.jobseeker", "path": "jobseeker_page/mispage"},
+                "effects": {"listeners": []}, "serverMemo": {"data": data, "checksum": "75ed8fb8eeb9"}}
+        import html as _h
+        return '<html><body><div wire:id="0rOq" wire:initial-data="' + _h.escape(json.dumps(blob), quote=True) + '"></div></body></html>'
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, dzongkhag=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_jobs(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_union_of_the_three_groupings_is_the_board(self):
+        import contextlib
+        mod = self._mod()
+        a = self._vac("4213813", "Cook", "The Hive", dzongkhag="Sarpang")
+        b = self._vac("4214988", "Sales Person", "City Cinema")
+        c = self._vac("4211729", "Security Supervisor", "The View")
+        page = self._page([a, b], [a, c], [c])          # three groupings, three distinct vacancies
+        rows, err, asked, raw = self._run(mod, [(200, page)], country_code="bt")
+        self.assertEqual(asked, ["https://www.blmis.gov.bt/jobseeker_page/mispage"])
+        self.assertEqual(sorted(r["id"] for r in rows), ["4211729", "4213813", "4214988"])
+        r = [x for x in rows if x["id"] == "4213813"][0]
+        self.assertEqual((r["source"], r["country"], r["ledger_id"], r["title"], r["employer"], r["place"], r["dzongkhag"], r["salary_month_nu"], r["posts"], r["employment_type"], r["closes"], r["posted"], r["withheld_fields"], r["contacts_withheld"]),
+                         ("blmis", "BT", "blmis:4213813", "Cook", "The Hive", "Sarpang · Gelephu · Gelephu town", "Sarpang", "15000.00", 2, "Regular", "2026-09-30", "2026-06-16", None, True))
+        self.assertEqual(r["remarks"], "Write to [e-mail withheld] or call [telephone withheld].")
+        for secret in ("created_by", "updated_by", "action_remarks", "checked by desk", "is_deleted", "86233", "hr@hive.bt", "17123456"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("3 emitted of the 3 distinct vacancies the page carries (company 2, categories 2, location 1 — three groupings of one board); the site states no total, the union is the board.", err)
+        self.assertIn("no personal criterion on any vacancy today", err)
+        rows, err, asked, raw = self._run(mod, [(200, page)], dzongkhag="thimphu")
+        self.assertEqual(sorted(r["id"] for r in rows), ["4211729", "4214988"])
+        self.assertIn("--dzongkhag thimphu: kept 2 of 3.", err)
+        self.assertNotIn("stamp", err)
+
+    def test_a_vacancy_that_carries_a_gender_loses_it_and_says_so(self):
+        mod = self._mod()
+        g = self._vac("4215124", "Manager", "Hotel Zhingkham", gender="Female")
+        rows, err, asked, raw = self._run(mod, [(200, self._page([g], [], []))])
+        self.assertEqual(rows[0]["withheld_fields"], ["gender"])
+        self.assertNotIn("Female", raw)
+        self.assertIn("gender withheld where a vacancy carried it (#183)", err)
+
+    def test_a_page_without_the_lists_is_a_changed_page_and_another_host_is_refused(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._page([], [], [], lists=False))])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no livewire here</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")])
+        self.assertEqual(cm.exception.code, 3)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([], [], []))])
+        self.assertEqual(rows, [])
+        self.assertIn("0 vacancies — the page's lists are empty", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://blmis.gov.bt/jobseeker_page/mispage")     # the apex is not the host the card names
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
