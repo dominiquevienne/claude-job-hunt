@@ -120,9 +120,22 @@ user has to clean by hand.
 
 Then build the **exclusion set**: every `ID` in the ledger whose status is
 `applied`, `rejected`, `no-go` or `discarded`. Those are never proposed again —
-`index --excluded-only` is exactly that list. Rows still `todo` stay in the
-file and get refreshed in place rather than duplicated, and `rows --status
-todo` gives them in full because those are the ones a run rewrites.
+`index --excluded-only` is exactly that list. **Put both forms of each id in
+the set: `id` as written, and `canonical` when the line carries one** — the
+case-folded form of a board that reads part of its key case-insensitively
+(Workday's `site`; #592: rows written before 2026-09-02 hold
+`SwisscomExternalCareers`, the adapter now writes `swisscomexternalcareers`,
+and a string comparison called every one of them «new»). Rows still `todo`
+stay in the file and get refreshed in place rather than duplicated, and
+`rows --status todo` gives them in full because those are the ones a run
+rewrites.
+
+```python
+seen = set()
+for line in index_output:               # ledger.py index --excluded-only
+    rec = json.loads(line)
+    seen.add(rec["id"]); seen.add(rec.get("canonical", rec["id"]))
+```
 
 **Note the row count from `count` before you write anything, and take the
 file's fingerprint.** Step 6 checks both:
@@ -373,8 +386,8 @@ form against the step 0 exclusion set:**
 ```python
 from _cards import platform_siblings, same_posting_ids
 sibs = platform_siblings(f"{PLUGIN}/shared/boards")
-for form in same_posting_ids(row["ledger_id"], sibs):
-    if form in seen:                 # the step 0 exclusion set
+for form in same_posting_ids(row["ledger_id"], sibs):   # siblings AND each form's case-folded shape (#592)
+    if form in seen:                 # the step 0 exclusion set — ids as written and canonical
         discard(row, f"already held as {form}")
 ```
 

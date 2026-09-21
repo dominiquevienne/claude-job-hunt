@@ -32252,6 +32252,68 @@ class AClassicCareersSiteWhoseMoreJobsCountIsWhatRemainsAfterThePage(unittest.Te
         for bad in ("https://careers.pageuppeople.com/541/cw/en/listing/", "https://secure.pageuppeople.com/541/cw/en/job/725443/x", "https://careers.pageuppeople.com/541/cw/en/job/abc/x"):
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
+class ALedgerKeyFoldedByItsWriterIsFoldedByItsReaderToo(unittest.TestCase):
+    """**#592, 2026-09-21.** `workday.py` folds the `site` segment of the
+    ledger id since `1c8e2f2` (2026-09-02); the rows written before keep
+    `SwisscomExternalCareers`, and the exclusion set compared ids as
+    strings — every row closed before the change came back as «new», an id
+    well formed and absent, indistinguishable from a first sighting. The
+    fold now lives where the comparison happens: `_cards.canonical_id`
+    lowers the case-insensitive segments of a board's key (Workday's site,
+    and nothing of another board), `same_posting_ids` adds each form's
+    canonical shape, and `ledger.py index` prints `canonical` beside an id
+    whose written form differs — so a set built from both catches the old
+    row. Both directions: a mixed-case ledger row against a folded card is
+    one vacancy; two different requisitions, or another board's mixed-case
+    id, stay apart. Mutated (`-B`, detached copy): the fold dropped from
+    `canonical_id` → reddens; the map emptied → reddens; `same_posting_ids`
+    without the canonical forms → reddens; `index` without `canonical` →
+    reddens; the fold applied to every segment → the requisition case
+    collapses (reddens)."""
+
+    def test_the_old_row_and_the_new_card_are_one_vacancy(self):
+        from _cards import canonical_id, same_posting_ids
+        old = "workday:swisscom:SwisscomExternalCareers:R-0005876"
+        new = "workday:swisscom:swisscomexternalcareers:R-0005876"
+        self.assertEqual(canonical_id(old), new)
+        self.assertEqual(canonical_id(new), new)
+        seen_both = {old, canonical_id(old)}          # the step 0 set as SKILL.md now builds it: as written, and canonical
+        self.assertTrue(any(f in seen_both for f in same_posting_ids(new, {})), "the folded card does not meet the mixed-case row")
+        self.assertIn(new, same_posting_ids(old, {}))  # and the other way round: the old id expands to its folded shape
+
+    def test_what_is_not_the_same_stays_apart(self):
+        from _cards import canonical_id, same_posting_ids
+        self.assertEqual(canonical_id("workday:swisscom:SwisscomExternalCareers:R-0005876"), "workday:swisscom:swisscomexternalcareers:R-0005876")
+        self.assertNotEqual(canonical_id("workday:swisscom:SwisscomExternalCareers:R-0005876"), canonical_id("workday:swisscom:SwisscomExternalCareers:R-0006135"))
+        self.assertEqual(canonical_id("workday:Swisscom:site:R-1")[:16], "workday:Swisscom")   # only the site segment folds, not the tenant nor the requisition
+        self.assertEqual(canonical_id("workday:t:s:r-1"), "workday:t:s:r-1")
+        self.assertEqual(canonical_id("jobup:AbC"), "jobup:AbC")                              # another board's id is not touched
+        self.assertEqual(canonical_id("no-colon"), "no-colon")
+        self.assertEqual(canonical_id(""), "")
+        self.assertEqual(same_posting_ids("jobup:AbC", {}), ["jobup:AbC"])
+        a = set(same_posting_ids("workday:t:SiteX:R-1", {})); b = set(same_posting_ids("workday:t:SiteX:R-2", {}))
+        self.assertEqual(a & b, set())
+
+    def test_the_index_prints_the_canonical_form_beside_a_mixed_case_id(self):
+        import contextlib, subprocess, tempfile
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "job-pipeline.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("# Pipeline\n\n## Ads\n\n| ID | Status | Match | Note |\n|---|---|---|---|\n"
+                     "| workday:swisscom:SwisscomExternalCareers:R-0005876 | discarded 2026-08-30 | 40 | hard blocker |\n"
+                     "| workday:swisscom:swisscomexternalcareers:R-0006135 | applied 2026-09-10 | 80 | — |\n"
+                     "| jobup:AbC | todo | 50 | — |\n\n## Log\n")
+        r = subprocess.run([sys.executable, "-B", os.path.join(SCRIPTS, "ledger.py"), "index", "--excluded-only", "--file", path], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        recs = [json.loads(l) for l in r.stdout.splitlines() if l.startswith("{")]
+        self.assertEqual([x["id"] for x in recs], ["workday:swisscom:SwisscomExternalCareers:R-0005876", "workday:swisscom:swisscomexternalcareers:R-0006135"])
+        self.assertEqual(recs[0]["canonical"], "workday:swisscom:swisscomexternalcareers:R-0005876")
+        self.assertNotIn("canonical", recs[1])         # already folded: nothing to add
+        seen = set()
+        for x in recs:
+            seen.add(x["id"]); seen.add(x.get("canonical", x["id"]))
+        self.assertIn("workday:swisscom:swisscomexternalcareers:R-0005876", seen)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
