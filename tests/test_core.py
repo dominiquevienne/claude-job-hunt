@@ -32835,5 +32835,108 @@ class APublicServiceWhoseVacanciesAreInThePagesOwnLivewireDataUnderThreeGrouping
         self.assertEqual(cm.exception.code, 7)
 
 
+class AGovernmentCategoryWhoseEntriesAreDocumentsAndWhoseEndIsAnEmptyPage(unittest.TestCase):
+    """**`timorlestegov.py`, 2026-09-21 (#685).** The Government of
+    Timor-Leste's «Recruitment» category: each entry is a `docs_details`
+    block naming a **document** (24 of 25 PDFs) with its date and the
+    editor's summary; **no count is stated anywhere** and the pager only
+    names the next pages, so the walk asks page after page **until one
+    carries no entry** — page 4 on the day — and says so. The document's
+    file name is the key (the portal repeats no id), the documents are
+    never downloaded, and the dates come in English AND Portuguese months
+    («20 of Outubro of 2022»). Both ways: the empty page ends the walk and
+    is not counted as a page of entries; a page repeating the previous
+    documents dies (6); a first page without the category's entries is a
+    changed page (6); another host is refused (7). Mutated (`-B`, detached
+    copy): the empty-page end removed → the walk never stops on the
+    fixtures (reddens); the Portuguese months dropped → the date is left
+    raw (reddens); the key taken from the title → two documents of one
+    title collide (reddens); the scrub dropped → reddens; the «no count
+    stated» note dropped → reddens; another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_tlgov", os.path.join(SCRIPTS, "timorlestegov.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _entry(name, title, date="01 of July of 2026", size="210 KB", summary="<br /> <p>Nine vacancies are open.</p><br /> <p>Write to rh@mj.gov.tl or call +670 333 1234.</p>"):
+        return ('<li><div class="docs_img"><a href="https://timor-leste.gov.tl/wp-content/uploads/2026/07/' + name + '" target="_blank"><img src="x"/></a></div>'
+                f'<div class="docs_details"><span class="date">{date}</span><div>'
+                f'<a class="title" href="https://timor-leste.gov.tl/wp-content/uploads/2026/07/{name}" target="_blank">{title}</a>'
+                f'<div>{summary}</div><div id="file_size">{size}</div></div></div></li>')
+
+    @classmethod
+    def _page(cls, entries):
+        return '<html><body><div id="content"><ul>' + "".join(entries) + '</ul><div align="right">1 <a href="/?cat=44&lang=en&page=2">2</a></div></div><!-- / content column --></body></html>'
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="en", max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_jobs(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_ends_on_the_empty_page_and_the_document_is_the_key(self):
+        mod = self._mod()
+        p1 = self._page([self._entry("C27BC53D6ECA87895.pdf", "Call for Applications for Judges"),
+                         self._entry("MCA-TLIP-Logo.pdf", "Logo Design Contest", date="20 of Outubro of 2022", size="1.2 MB")])
+        p2 = self._page([self._entry("Clean-version-SPN-12.pdf", "Procurement Consultant", date="12 of May of 2022")])
+        p3 = self._page([])
+        rows, err, asked, raw = self._run(mod, [(200, p1), (200, p2), (200, p3)], country_code="tl")
+        self.assertEqual(asked, ["https://timor-leste.gov.tl/?cat=44&lang=en",
+                                 "https://timor-leste.gov.tl/?cat=44&lang=en&page=2",
+                                 "https://timor-leste.gov.tl/?cat=44&lang=en&page=3"])
+        self.assertEqual([r["id"] for r in rows], ["C27BC53D6ECA87895.pdf", "MCA-TLIP-Logo.pdf", "Clean-version-SPN-12.pdf"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["published"], a["document_size"], a["contacts_withheld"]),
+                         ("timorlestegov", "TL", "timorlestegov:C27BC53D6ECA87895.pdf", "https://timor-leste.gov.tl/wp-content/uploads/2026/07/C27BC53D6ECA87895.pdf", "Call for Applications for Judges", "2026-07-01", "210 KB", True))
+        self.assertEqual(rows[1]["published"], "2022-10-20")     # the portal dates in Portuguese too
+        self.assertEqual(a["summary"], "Nine vacancies are open.\nWrite to [e-mail withheld] or call [telephone withheld].")
+        for secret in ("rh@mj.gov.tl", "333 1234"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("3 entries emitted over 2 page(s); page 3 carried none — the walk's end. The category states no count: what it lists is the board.", err)
+        self.assertIn("country TL is the user's stamp", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._entry("a.pdf", "One")])
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p1), (200, p1)])                    # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>another site</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")])
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], lang="eng")
+        self.assertEqual(cm.exception.code, 2)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([]))])
+        self.assertEqual(rows, [])
+        self.assertIn("0 entries — the category's first page carries none", err)
+        rows, err, asked, raw = self._run(mod, [(200, p1)], max_pages=1)
+        self.assertEqual(len(rows), 1)
+        self.assertIn("stopped by --max-pages at page 1", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.timor-leste.gov.tl/?cat=44")      # the www host is not the one the card names
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
