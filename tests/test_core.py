@@ -31732,5 +31732,134 @@ class AnATSWhoseListIsEmbeddedOnTheEmployersOwnPageByATokenAndFilledByAVersioned
         self.assertEqual(cm.exception.code, 2)
 
 
+class ATenantPortalWhoseLoginShellHidesAJobApiThatStatesItsTotalAndLeaksItsRecruiters(unittest.TestCase):
+    """**`seamlesshiring.py`, 2026-09-21 (#494).** SeamlessHiring: `<tenant>.seamlesshiring.com`
+    is a login shell; `/v2/jobs/job-list?page=N` answers a Laravel page with
+    `total`, `last_page`, twenty a page; `/v2/jobs/find/<id>` the record; the
+    record carries the recruiters' contacts, the company's telephone, e-mail,
+    address and API key, the form and the screening. Both ways: the walk to
+    `last_page` and the count against `total` (short → 6), a repeated id once,
+    a page of repeats stopping the walk, the vendor's own hosts and any other
+    refused before the gate (7), an unknown tenant (3), a login shell answering
+    HTML (6), `--country-code` stamped and said, the salary only when the
+    tenant shows it, the advert by its public address and «Job not found» (3),
+    bad addresses refused, and nothing from the contact and screening blocks
+    in any row."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_seamlesshiring", os.path.join(SCRIPTS, "seamlesshiring.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(jid, title, show_pay=0, location="Lagos"):
+        return {"id": jid, "title": title, "summary": "Write to hr@goil.example or call +234 706 895 5509.", "details": "<p><strong>Key Responsibilities</strong></p><ul><li>Coordinate shipments</li></ul><p>Apply: careers@goil.example</p>",
+                "experience": "<ul><li>Bachelor's Degree</li></ul>", "location": location, "city": "", "country_id": 393, "post_date": "2026-09-18", "expiry_date": "2026-10-04", "closing_date": "2026-10-05 00:00:00",
+                "job_type": "full-time", "work_style": "onsite", "position": "EXECUTIVE", "job_level": None, "qualification": "", "minimum_remuneration": "200000", "maximum_remuneration": "300000", "currency_id": 74, "show_remuneration": show_pay,
+                "is_private": 0, "status": "ACTIVE", "fields": {"first_name": {"is_visible": True}}, "form_structure": [{"key": "personal-information"}], "scoring_criteria": {"skills_match": 0}, "auto_screening_json": {"pass_mark": 0}, "sentiment_analysis": {"negative": None},
+                "company": {"id": 570, "name": "GOIL LAGOS HQ LOCATION", "logo": "goil_logo.png", "phone": "+2347068955509", "email": "recruit@goil.example", "address": "12 Marina Road", "api_key": "9ab81e01-secret-key", "website": "https://goil.example"},
+                "users": [{"id": 3738, "name": "OMOLOLA LAWAL", "email": "omolola@goil.example"}],
+                "location_details": {"id": 4266, "name": "Lagos", "country_id": 393}, "specializations": [{"id": 3803, "name": "Logistics /Supply Chain/Shipping"}]}
+
+    @staticmethod
+    def _page(jobs, page, last, total, host="goldenoiltd.seamlesshiring.com"):
+        nxt = f"http://{host}/v2/jobs/job-list?page={page + 1}" if page < last else None
+        return json.dumps({"status_code": 200, "status": "success", "message": "Data fetched successfully!", "data": {"jobs": {"current_page": page, "data": jobs, "last_page": last, "per_page": 20, "total": total, "next_page_url": nxt}, "subsidiaries": [{"id": 570, "name": "GOIL", "phone": "+2347068955509", "email": "recruit@goil.example"}]}})
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        class _NoPace(dict):   # request() is replaced below; the pace map is never reached, but stays harmless
+            def setdefault(self, k, v):
+                return type("P", (), {"wait": staticmethod(lambda: None)})()
+        mod._PACES = _NoPace()
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_to_last_page_against_the_stated_total_and_nothing_from_the_contact_blocks(self):
+        mod = self._mod()
+        p1 = [self._job(10848 + i, f"POST {i}", show_pay=(1 if i == 0 else 0)) for i in range(20)]
+        p2 = [self._job(10848, "POST 0", 1), self._job(10900, "POST 20")]
+
+        def answers(url):
+            if url == "https://goldenoiltd.seamlesshiring.com/v2/jobs/job-list":
+                return 200, self._page(p1, 1, 2, 21)
+            if url == "https://goldenoiltd.seamlesshiring.com/v2/jobs/job-list?page=2":
+                return 200, self._page(p2, 2, 2, 21)
+            return 200, self._page([], 3, 2, 21)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "goldenoiltd", "--country-code", "ng"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://goldenoiltd.seamlesshiring.com/v2/jobs/job-list", "https://goldenoiltd.seamlesshiring.com/v2/jobs/job-list?page=2"])
+        self.assertEqual(len(rows), 21)
+        self.assertIn("21 emitted from goldenoiltd.seamlesshiring.com — the site states 21: equal.", err)
+        self.assertIn("country NG stamped from --country-code", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["place"], r["country"], r["country_id"], r["job_type"], r["work_style"], r["position"], r["posted"], r["expires"], r["closes"], r["salary_min"], r["salary_max"], r["currency_id"], r["specializations"], r["private"], r["contacts_withheld"]),
+                         ("seamlesshiring:goldenoiltd.seamlesshiring.com:10848", "https://goldenoiltd.seamlesshiring.com/job/view/10848", "POST 0", "GOIL LAGOS HQ LOCATION", "Lagos", "NG", 393, "full-time", "onsite", "EXECUTIVE", "2026-09-18", "2026-10-04", "2026-10-05", "200000", "300000", 74, ["Logistics /Supply Chain/Shipping"], False, True))
+        self.assertEqual((rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["currency_id"]), (None, None, None))   # show_remuneration 0
+        self.assertEqual(r["summary"], "Write to [e-mail withheld] or call [telephone withheld].")
+        self.assertTrue(r["description"].startswith("Key Responsibilities\nCoordinate shipments"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        dump = json.dumps(rows)
+        for hidden in ("goil.example", "7068955509", "Marina Road", "secret-key", "OMOLOLA", "goil_logo", "first_name", "personal-information", "skills_match", "pass_mark", "sentiment", "recruit@"):
+            self.assertNotIn(hidden, dump, hidden)
+        # short of the total → 6; a page of repeats stops the walk
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://goldenoiltd.seamlesshiring.com/job/view/1"], lambda url: (200, self._page(p1, 1, 2, 30)) if url.endswith("job-list") else (200, self._page(p1[:3], 2, 2, 30)))
+        self.assertEqual((code, len(rows), len(sent)), (6, 20, 2), err)
+        self.assertIn("page 2 of 2: only repeats — stopped.", err)
+        self.assertIn("20 emitted from goldenoiltd.seamlesshiring.com — the site states 30: 10 short.", err)
+        # a login shell answering HTML is not the API (6); an empty tenant is 0 = 0; an unknown tenant 404 → 3
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "coronationgroup"], lambda url: (200, "<html><title>Coronation Group | SeamlessHiring</title></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "mgas.seamlesshiring.com"], lambda url: (200, self._page([], 1, 1, 0, "mgas.seamlesshiring.com")))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted from mgas.seamlesshiring.com — the site states 0: equal.", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "nobody"], lambda url: (404, "Page not found"))
+        self.assertEqual((code, rows), (3, []), err)
+        for never in ("seamlesshiring.com", "cdn.seamlesshiring.com", "www.seamlesshr.com", "evil.example", "a.b.seamlesshiring.com"):
+            code, rows, err, sent = self._run(mod, ["jobs", "--tenant", never], lambda url: (200, self._page([], 1, 1, 0)))
+            self.assertEqual((code, sent), (2, []), never)
+        fresh = self._mod()
+        fresh._HOST["name"] = "goldenoiltd.seamlesshiring.com"
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        import contextlib
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fresh.request("https://letshego.seamlesshiring.com/v2/jobs/job-list")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_advert_by_its_public_address_and_a_missing_id(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://letshego.seamlesshiring.com/job/view/10845"], lambda url: (200, json.dumps({"status_code": 200, "data": self._job(10845, "Portfolio Analyst", 0, "")})))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://letshego.seamlesshiring.com/v2/jobs/find/10845"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["url"], r["title"], r["place"], r["country"], r["salary_min"]), ("10845", "https://letshego.seamlesshiring.com/job/view/10845", "Portfolio Analyst", "Lagos", None, None))   # location blank → location_details.name
+        self.assertNotIn("goil.example", json.dumps(r))
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://letshego.seamlesshiring.com/job/view/1"], lambda url: (404, json.dumps({"message": {"message": "Job not found", "status_code": 404}})))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("Job not found", err)
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://letshego.seamlesshiring.com/job/view/2"], lambda url: (200, json.dumps({"status_code": 200, "data": {"jobs": []}})))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://letshego.seamlesshiring.com/jobs/view/10845", "https://letshego.seamlesshiring.com/v2/jobs/find/10845", "https://seamlesshiring.com/job/view/10845", "https://evil.example/job/view/10845"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, "{}"))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
