@@ -31031,5 +31031,149 @@ class AnATSWhoseListPageCarriesEveryPublicationAsJSONWithItsAddressesAndApplicat
         self.assertEqual(cm.exception.code, 2)
 
 
+class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFitOnePage(unittest.TestCase):
+    """**`jobsgovgy.py`, 2026-09-21 (#314).** jobs.gov.gy: `POST /job_search.php action=search`
+    states «187 Jobs Found» and shows twenty `div.previewBox#<id>` cards; the
+    pager is a script under `/language/` — refused in writing, not read; the
+    «By Category» page lists 89 category forms with live counts, each search
+    below twenty, the union equal to the stated count. Both ways: the first
+    page then the categories (only when the stated count exceeds it, and
+    only the non-empty ones), the union compared to the stated count, a
+    repeated id once, a category beyond one page named as a shortfall,
+    `--no-categories`, `--category`, an empty result, a page without the
+    search (6), the advert's JobPosting and fields with the description
+    scrubbed, the home page for a gone id (3), bad addresses refused, another
+    host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobsgovgy", os.path.join(SCRIPTS, "jobsgovgy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(jid, title, company="CROWN MINING SUPPLIES", place="Georgetown Guyana", kind="Full-time"):
+        return (f'<div class="previewBox border-topp" id="{jid}"><div class="media py-3 pl-4 pr-3"><div class="media-body"><div class="row"><div class="cold"><input type="checkbox" name="apply_job" value="x"></div>'
+                f'<div class="col-md-11 pl-2"><h5 class="mt-0 mb-2 text-dark">{title}</h5><span class="text-muted mobile-line-break"> {company} </span><span class="mx-1"> &#8226; </span><span class=" text-muted mobile-line-break"> {place} </span>'
+                f'<div><span class="text-muted"> {kind} </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 220000 GYD </span><span class="mx-1"> &#8226; </span><span class="text-muted"> 3 years - 6 years </span></div>'
+                f'<div class="text-muted mt-1">The {title} role is dynamic. Call 592 555 1234 or rh@crown.example . . .</div>'
+                f'<div class="small mt-2 skill-tag"><form name="search" action="https://jobs.gov.gy/job_search.php" method="post"><input type="hidden" name="action" value="search"><input type="hidden" name="skillTag" value="Organization"><button>Organization</button></form></div>'
+                f'<span class="result-ends"><span class="text-muted" style="font-size:14px;"> Posted: 18th Sep, 2026 </span></span><span class="result-ends for-mobile"><span class="text-muted" style="font-size:14px;"> Ends : 01st Nov, 2026 </span></span></div></div></div></div></div>')
+
+    @classmethod
+    def _search(cls, cards, found):
+        return (f'<html><body><div class="card-header"><h1>Jobs</h1><div class="text-muted mt-2">{found} Jobs Found.</div></div><form name="page" action="https://jobs.gov.gy/job_search.php" method="post"><div id="page_contents">{"".join(cards)}'
+                f'<div class="card-footer card-footer-custom2 bg-white"><ul id=\'pagination-flickr\'><li class=\'active\'>1</li><li><a href=\'javascript:jobsearch_pagination(20,"","","","1");\'>2</a></li></ul></div></div></form></body></html>')
+
+    @staticmethod
+    def _by_industry(cats):
+        forms = "".join(f'<form name="search" action="https://jobs.gov.gy/job_search.php" method="post" class="form-signin"><input type="hidden" name="action" value="search"><input type="hidden" name="job_category[]" value="{cid}"><button type="submit" class="btn">{lab}{"&nbsp;(" + str(n) + ")" if n else ""}</button></form>' for cid, lab, n in cats)
+        return f"<html><body><h2>Industry</h2>{forms}</body></html>"
+
+    AD = ('<html><head><title>Assistant/Jobs.gov.gy</title><script type="application/ld+json">{"@context":"http://schema.org","@type":"JobPosting","baseSalary":{"@type":"MonetaryAmount","value":"220000"},"datePosted":"2026-09-18 ",'
+          '"description":"&lt;div&gt;&lt;p&gt;The Assistant role is a very dynamic position. Write to rh@crown.example or call 592 555 1234.&lt;/p&gt;&lt;/div&gt;","disambiguatingDescription":"The Assistant role is a very dynamic position.","employmentType":["Full-time"],'
+          '"hiringOrganization":{"@type":"Organization","name":"CROWN MINING SUPPLIES","logo":"https://jobs.gov.gy/logo/20260918144233crown_logo.jpg"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressCountry":"GY"}},"title":"Assistant"}</script></head>'
+          '<body><h4>Assistant</h4><div class="text-muted">CROWN MINING SUPPLIES</div><div class="text-muted"> Georgetown, Guyana </div><div class="row"><div class="col"><b>Experience</b></div><div class="col">3 years - 6 years</div></div>'
+          '<div class="row"><div class="col"><b>Job category</b></div><div class="col">Production/Operations</div></div><div class="row"><div class="col"><b>Salary</b></div><div class="col">220000 GYD</div></div>'
+          '<div class="row"><div class="col"><b>Apply before :</b></div><div class="col">Sun Nov 01, 2026</div></div><div class="row"><div class="col"><b>Job Type :</b></div><div class="col">Full-time</div></div><div class="row"><div class="col"><b>Posted Date</b></div><div class="col">Fri Sep 18, 2026</div></div>'
+          '<a href="https://jobs.gov.gy/apply_now.php?query_string=abc">Apply</a></body></html>')
+    HOME = '<html><head><title>Jobs.gov.gy</title></head><body><h2>NATIONAL JOB BANK</h2><div>Jobs Listed from all Across Guyana</div></body></html>'
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url, data=None):
+            sent.append((url, dict(data) if data else None))
+            return answers(url, data)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_first_page_then_the_categories_and_the_union_against_the_stated_count(self):
+        mod = self._mod()
+        first = [self._card("2591", "Assistant"), self._card("2590", "General Clerk", "The Guyana Oil Company Limited", "East Berbice-Corentyne Guyana", kind="")]
+        cats = {"33": [self._card("2591", "Assistant"), self._card("2500", "Driver")], "1": [self._card("2400", "Accountant")], "7": []}
+
+        def answers(url, data):
+            if url.endswith("job_search_by_industry.php"):
+                return 200, self._by_industry([("33", "Drivers", 2), ("1", "Accountant", 1), ("7", "Auto Electricians", 0), ("9", "Cook", 1)])
+            if data and data.get("job_category[]"):
+                cid = data["job_category[]"]
+                return 200, self._search(cats.get(cid, []), len(cats.get(cid, [])))
+            return 200, self._search(first, 4)
+        code, rows, err, sent = self._run(mod, ["list"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["id"] for r in rows], ["2591", "2590", "2500", "2400"])
+        self.assertEqual([(u.rsplit("/", 1)[1], d) for u, d in sent], [("job_search.php", {"action": "search"}), ("job_search_by_industry.php", None), ("job_search.php", {"action": "search", "job_category[]": "33"}), ("job_search.php", {"action": "search", "job_category[]": "1"})])
+        self.assertIn("4 emitted — the site states 4: equal", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["place"], r["kind"], r["salary"], r["experience"], r["posted"], r["closes"], r["country"], r["contacts_withheld"]),
+                         ("jobsgovgy:2591", "https://jobs.gov.gy/2591/Assistant.html", "Assistant", "CROWN MINING SUPPLIES", "Georgetown Guyana", "Full-time", "220000 GYD", "3 years - 6 years", "18th Sep, 2026", "01st Nov, 2026", "GY", True))
+        self.assertIn("[telephone withheld]", r["teaser"])
+        # an empty job-type span (the site prints one) leaves the salary in its place — 2 of 20 on the first page, 2026-09-21
+        self.assertEqual((rows[1]["kind"], rows[1]["salary"], rows[1]["experience"]), (None, "220000 GYD", "3 years - 6 years"))
+        self.assertIn("[e-mail withheld]", r["teaser"])
+        self.assertNotIn("skillTag", json.dumps(rows))
+        # a category beyond one page is named; the union short of the stated count says so
+        cats["33"] = [self._card("2591", "Assistant")]
+        code, rows, err, sent = self._run(mod, ["list"], lambda url, data: (200, self._by_industry([("33", "Drivers", 25), ("1", "Accountant", 1)])) if url.endswith("industry.php") else ((200, self._search(cats["33"], 25)) if data and data.get("job_category[]") == "33" else ((200, self._search(cats["1"], 1)) if data and data.get("job_category[]") else (200, self._search(first, 30)))))
+        self.assertEqual((code, len(rows)), (0, 3), err)
+        self.assertIn("Drivers (33): 25 found, 1 shown", err)
+        self.assertIn("3 emitted — the site states 30: 27 short", err)
+        code, rows, err, sent = self._run(mod, ["list", "--no-categories"], answers)
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 1), err)
+        self.assertIn("2 emitted — the site states 4: 2 short (--no-categories", err)
+        code, rows, err, sent = self._run(mod, ["list", "--category", "1"], answers)
+        self.assertEqual((code, [r["id"] for r in rows]), (0, ["2591", "2590", "2400"]), err)
+        self.assertIn("emitted from 1 category — a filtered walk", err)
+        code, rows, err, sent = self._run(mod, ["list"], lambda url, data: (200, self._search([], 0)))
+        self.assertEqual((code, rows, len(sent)), (0, [], 1), err)
+        self.assertIn("0 emitted — the site states 0: equal", err)
+        code, rows, err, _ = self._run(mod, ["list"], lambda url, data: (200, self.HOME))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["list"], lambda url, data: (403, ""))
+        self.assertEqual(code, 7, err)
+
+    def test_the_advert_reads_its_jobposting_and_fields_and_a_gone_id_is_the_home_page(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://jobs.gov.gy/2591/Assistant.html"], lambda url, data: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _ in sent], ["https://jobs.gov.gy/2591/Assistant.html"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["posted"], r["posted_as_written"], r["closes"], r["employment_type"], r["salary"], r["experience"], r["category"]),
+                         ("2591", "Assistant", "CROWN MINING SUPPLIES", "Georgetown, Guyana", "2026-09-18", "Fri Sep 18, 2026", "Sun Nov 01, 2026", "Full-time", "220000 GYD", "3 years - 6 years", "Production/Operations"))
+        self.assertTrue(r["description"].startswith("The Assistant role is a very dynamic position."))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("rh@crown", "592 555 1234", "crown_logo", "apply_now"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://jobs.gov.gy/563/Facilities-Support-Engineer.html"], lambda url, data: (200, self.HOME))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("home page", err)
+        for bad in ("https://jobs.gov.gy/job_search.php", "https://jobs.gov.gy/2591/", "https://labour.gov.gy/2591/Assistant.html", "https://evil.example/2591/Assistant.html"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url, data: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+
+        def gate_reached(url):  # the refusal comes BEFORE the gate: reaching it is the defect
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fresh.request("https://evil.example/job_search.php", {"action": "search"})
+        self.assertEqual(cm.exception.code, 7)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
