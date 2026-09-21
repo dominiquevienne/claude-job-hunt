@@ -32179,7 +32179,7 @@ class AClassicCareersSiteWhoseMoreJobsCountIsWhatRemainsAfterThePage(unittest.Te
 
     def test_the_walk_by_the_more_jobs_link_and_the_count_against_shown_plus_remaining(self):
         mod = self._mod()
-        p1 = [self._row(725443 + i, f"Post {i}") for i in range(100)]
+        p1 = [self._row(725443 + i, f"Post {i}", summary=("Join us. Write to jobs@compass.example or ring 08 9000 1234." if i == 0 else f"Teaser {i}.")) for i in range(100)]
         p2 = [self._row(725443, "Post 0"), self._row(800000, "Post 100", "Canberra", None, None)]
 
         def answers(url):
@@ -32198,6 +32198,7 @@ class AClassicCareersSiteWhoseMoreJobsCountIsWhatRemainsAfterThePage(unittest.Te
         self.assertEqual((r["ledger_id"], r["id"], r["url"], r["title"], r["place"], r["closes"], r["country"], r["contacts_withheld"]),
                          ("pageup:careers.pageuppeople.com:725443", "725443", "https://careers.pageuppeople.com/541/cw/en/job/725443/post-0", "Post 0", "Perth", "2026-10-30T03:55:00Z", "AU", True))
         self.assertEqual(r["summary"], "Join us. Write to [e-mail withheld] or ring [telephone withheld].")
+        self.assertEqual((rows[1]["summary"], rows[99]["summary"]), ("Teaser 1.", "Teaser 99."))   # each summary row belongs to the job above it
         self.assertEqual((rows[100]["place"], rows[100]["closes"], rows[100]["summary"]), ("Canberra", None, None))
         self.assertNotIn("compass.example", json.dumps(rows))
         # the site's own page size when asked, a tenant on its own host with two columns and another locale
@@ -32214,7 +32215,7 @@ class AClassicCareersSiteWhoseMoreJobsCountIsWhatRemainsAfterThePage(unittest.Te
         self.assertIn("careersite", err)
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "999999"], lambda url: (404, ""))
         self.assertEqual((code, rows), (3, []), err)
-        for bad in ("secure.pageuppeople.com/apply/541/gateway/default.aspx", "https://www.pageuppeople.com/", "https://careers.pageuppeople.com/541/cw/en/job/1/x", "abc"):
+        for bad in ("secure.pageuppeople.com/apply/541/gateway/default.aspx", "https://secure.pageuppeople.com/541/cw/en/listing/", "https://www.pageuppeople.com/cw/en/listing/", "https://careers.pageuppeople.com/541/cw/en/job/1/x", "abc"):
             code, rows, err, sent = self._run(mod, ["jobs", "--tenant", bad], lambda url: (200, ""))
             self.assertEqual((code, sent), (2, []), bad)
         fresh = self._mod()
