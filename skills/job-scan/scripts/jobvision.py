@@ -112,13 +112,14 @@ def request(url):
 
 
 def decode_text(raw, headers=None):
-    """The sitemaps are UTF-16 with a BOM; the pages are UTF-8 — decide on the bytes, not on a guess."""
+    """The sitemaps are UTF-16 WITH A BOM, the pages are UTF-8 — the BOM is read on the bytes, and
+    everything else goes through `_decode.decode_body`, which reads the declaration and says when it
+    has to fall back (no `errors="replace"` of our own, ever)."""
+    if isinstance(raw, str):
+        return raw
     if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
         return raw.decode("utf-16")
-    try:
-        return decode_body(raw, headers)[0] if headers is not None else raw.decode("utf-8")
-    except Exception:
-        return raw.decode("utf-8", errors="replace")
+    return decode_body(raw, headers)[0]
 
 
 def text(markup):
@@ -154,7 +155,11 @@ def parse_sitemap(body):
         for loc in LOC_RE.findall(seg):
             p = urllib.parse.urlsplit(loc)
             am = AD_PATH_RE.match(urllib.parse.unquote(p.path))
-            if p.netloc.lower() == HOST and am and not re.search(r"\.(?:jpe?g|png|webp|gif)$", am.group(2), re.I):
+            # the image <loc> of an entry are `/company/logo/…` and `/jobpost/image/…`, never `/jobs/<id>/…` —
+            # measured on the 2026-09-21 sitemap: 56 095 `/jobs/` addresses, NONE with an image extension. So the
+            # shape test below is what excludes them, and no extension filter is added: a filter that cannot fire
+            # would be a guard that cannot redden (its mutation stayed green, which is how it was caught).
+            if p.netloc.lower() == HOST and am:
                 ad = (am.group(1), loc)
                 break
         if not ad:
