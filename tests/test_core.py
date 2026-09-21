@@ -32496,7 +32496,7 @@ console.log(JSON.stringify({with:page(true),without:page(false)}));
         fd, t = tempfile.mkstemp(suffix=".js")
         os.write(fd, self.STUB.replace("(SNIPPET)", snip).encode()); os.close(fd)
         try:
-            r = subprocess.run(["node", t], capture_output=True, text=True, timeout=60)
+            r = subprocess.run(["node", t], capture_output=True, text=True, encoding="utf-8", timeout=60)   # not the console's code page: «à» came back mangled on windows-latest
         finally:
             os.unlink(t)
         self.assertEqual(r.returncode, 0, r.stderr[:500])
