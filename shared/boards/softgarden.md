@@ -71,4 +71,8 @@ a card without an id, the widget address resolved to the board, the stamp
 said, the empty board, the unknown subdomain, a page without the list, the
 vendor's hosts and another host refused, the ad with its footer and street,
 the ad gone or changed, a foreign query dropped from the ad address).
-Mutation bench on a detached copy, `python3 -B` — see the PR.
+Mutation bench on a detached copy, `python3 -B`, 9 / 9 red: the id-list
+regex broken · the vendor-host check dropped · the stamp note dropped ·
+the street emitted · the scrub dropped in the ad · the foreign query kept
+in the ad address · the card not in the list dropped · the two-digit year
+not expanded · another host sent.
