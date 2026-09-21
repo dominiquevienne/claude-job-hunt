@@ -67,5 +67,8 @@ tenant's link and a duplicated id dropped, the ZKB columns with no count
 and the stamp said, a stated zero, the vendor's landing page, a page
 without the list, a 404, malformed tenants, the mirror host refused, the
 ad with its contact block, street and logo, the ad's country filter, the
-ad gone or changed). Mutation bench on a detached copy, `python3 -B` — see
-the PR.
+ad gone or changed). Mutation bench on a detached copy, `python3 -B`,
+9 / 9 red: the stated-count regex broken · the vendor-page check dropped ·
+the street emitted · the scrub dropped in the ad · the stamp note dropped ·
+another tenant's link kept · the duplicate ids kept · `index.html` kept in
+the url · another host sent.
