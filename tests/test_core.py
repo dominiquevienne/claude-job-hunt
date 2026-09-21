@@ -30193,5 +30193,127 @@ class AnATSWhoseTenantListStatesItsCountOnOnePageAndWhoseHostServesARateChalleng
         self.assertEqual(mod.iso_date("16 de septiembre, 2026"), "2026-09-16")
         self.assertIsNone(mod.iso_date("September 16, 2026"))
 
+class AnATSWhoseCareerPageShipsEveryJobInItsNextDataAndPrintsTheCountItShips(unittest.TestCase):
+    """**`gupy.py`, 2026-09-21 (#491).** Gupy: `<tenant>.gupy.io/` is a Next.js page
+    whose `__NEXT_DATA__` `pageProps.jobs` carries every published job and
+    whose text prints «N vagas» (FARM 161 = 161, Lojas Renner 92, Motiva 114);
+    `/jobs/<id>` ships `pageProps.job` with the texts, dates, address (a street
+    in `addressLine`) and the process steps. Both ways: the list from the page
+    data against the printed count, a repeated id once, the country from the
+    job, the job page's fields with the street never emitted and the texts
+    scrubbed, a page without the data (6), a 404 (3), the vendor's hosts and
+    bad tenants refused before a request, another host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_gupy", os.path.join(SCRIPTS, "gupy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "farm.gupy.io"
+
+    @staticmethod
+    def _page(page_props, count_text=""):
+        return ('<html><head><title>FARM</title></head><body><div>Busca de vagas</div>' + count_text +
+                '<script id="__NEXT_DATA__" type="application/json">' + json.dumps({"props": {"pageProps": page_props}, "page": "/"}, ensure_ascii=False) + '</script></body></html>')
+
+    @staticmethod
+    def _job(jid, title, city="São Paulo", country="Brasil"):
+        return {"id": jid, "title": title, "type": "vacancy_type_effective", "department": "UM FARM",
+                "workplace": {"address": {"country": country, "stateShortName": "SP", "state": "São Paulo", "city": city, "district": ""}, "workplaceType": "on-site"}, "quickApply": False}
+
+    JOB = {"id": 12057784, "name": "FARM | Apoio de Loja | BELA VISTA", "description": "<p>você é uma pessoa que ama se conectar? Escreva para rh@farm.example ou ligue (11) 5555-1234.</p>",
+           "prerequisites": "<ul><li>trabalhar bem em equipe</li></ul>", "responsibilities": "<ul><li>monitorar o fluxo</li></ul>", "relevantExperiences": "<p>benefícios</p>",
+           "handicapped": True, "addressLine": "CINCINATO BRAGA, 106, São Paulo, São Paulo, Brasil, 01333010", "addressCity": "São Paulo", "addressState": "São Paulo", "addressStateShortName": "SP",
+           "addressCountry": "Brasil", "addressCountryShortName": "BR", "jobType": "vacancy_type_effective", "status": "published", "code": "0472-12057784", "publishedAt": "2026-08-14T15:36:56.841Z",
+           "expiresAt": "2026-12-01", "registerEndDate": "2026-12-01", "workplaceType": "on-site", "company": {"id": 472, "subdomain": "gruposoma"},
+           "careerPage": {"name": "FARM", "urlLogo": "https://attachments.gupy.io/x/logo.png"},
+           "jobSteps": [{"id": 1, "name": "Cadastro", "order": 0}, {"id": 2, "name": "Contratação", "order": 100}]}
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES.clear()
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_comes_from_the_page_data_and_is_compared_to_the_printed_count(self):
+        mod = self._mod()
+        pp = {"subdomain": "farm", "careerPage": {"name": "FARM", "publicationName": "FARM", "subdomain": "farm"},
+              "jobs": [self._job(12057784, "FARM | Apoio de Loja | BELA VISTA"), self._job(12279277, "Vendedor", "Rio de Janeiro"), self._job(12057784, "repeat")]}
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "farm"], lambda url: (200, self._page(pp, "<span>3 vagas</span>")))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/"])
+        self.assertEqual([r["id"] for r in rows], ["12057784", "12279277"])
+        self.assertIn("2 emitted — the page prints 3 vagas: 1 short", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["department"], r["country"], r["state"], r["place"], r["job_type"], r["workplace_type"], r["contacts_withheld"]),
+                         (f"gupy:{self.HOST}:12057784", f"https://{self.HOST}/jobs/12057784", "FARM | Apoio de Loja | BELA VISTA", "FARM", "UM FARM", "BR", "SP", "São Paulo", "vacancy_type_effective", "on-site", True))
+        self.assertNotIn("jobBoardSource", json.dumps(rows))
+        pp["jobs"] = pp["jobs"][:2]
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/"], lambda url: (200, self._page(pp, "<span>2 vagas</span>")))
+        self.assertEqual((code, len(rows)), (0, 2), err)
+        self.assertIn("2 emitted — the page prints 2 vagas: equal", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "farm"], lambda url: (200, self._page(pp)))
+        self.assertIn("prints no «N vagas» count", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "farm"], lambda url: (200, "<html><body><h1>FARM</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nao-existe"], lambda url: (404, ""))
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "farm"], lambda url: (403, ""))
+        self.assertEqual(code, 7, err)
+
+    def test_the_job_page_ships_the_job_and_the_street_is_never_emitted(self):
+        mod = self._mod()
+        page = self._page({"job": self.JOB, "subdomain": "farm"})
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/12057784?jobBoardSource=gupy_public_page"], lambda url: (200, page))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/jobs/12057784"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["group"], r["code"], r["posted"], r["closes"], r["country"], r["state"], r["place"], r["job_type"], r["workplace_type"], r["open_to_disabled"], r["steps"]),
+                         ("12057784", "FARM | Apoio de Loja | BELA VISTA", "FARM", "gruposoma", "0472-12057784", "2026-08-14T15:36:56.841Z", "2026-12-01", "BR", "SP", "São Paulo", "vacancy_type_effective", "on-site", True, ["Cadastro", "Contratação"]))
+        self.assertTrue(r["description"].startswith("você é uma pessoa"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertEqual(sorted(r["sections"]), ["prerequisites", "relevantExperiences", "responsibilities"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("CINCINATO", "01333010", "rh@farm", "5555-1234", "attachments.gupy.io", "addressLine"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/1"], lambda url: (200, self._page({"subdomain": "farm"})))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/1"], lambda url: (404, ""))
+        self.assertEqual(code, 3, err)
+        for bad in (f"https://{self.HOST}/", f"https://{self.HOST}/jobs/abc", "https://portal.gupy.io/jobs/1", "https://www.gupy.io/jobs/1", "https://evil.example/jobs/1"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, page))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+        fresh.gate = lambda url: {"allowed": True}
+        fresh.TENANT["host"] = self.HOST
+        import contextlib
+        for host in ("evil.example", "renner.gupy.io", "farm.gupy.io.evil.example"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(f"https://{host}/")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "portal", "suporte", "-x", "www.gupy.io", "https://portal.gupy.io/x", "farm.example.com"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("farm", "FARM.gupy.io", f"https://{self.HOST}/jobs/12057784"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual((mod.country_of("Brasil"), mod.country_of("x", "br"), mod.country_of("Atlantis")), ("BR", "BR", None))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
