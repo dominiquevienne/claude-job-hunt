@@ -29777,7 +29777,6 @@ class AnATSWhoseCareerPageCarriesItsOwnListCallURLWithACSRFPairAndAnswersHTMLIns
         self.assertEqual(mod.tenant_of(self.CAREER), (self.HOST, "/juliaservice", "it"))
         self.assertEqual(mod.tenant_of("berner.intervieweb.it/it/career/"), ("berner.intervieweb.it", "", "it"))
 
-<<<<<<< HEAD
 class AnATSWhoseJobsiteCarriesItsWholeListInlineAndWhoseRulesRefuseEveryQueryString(unittest.TestCase):
     """**`jobtoolz.py`, 2026-09-21 (#478).** Jobtoolz: `<tenant>.jobtoolz.com/<lang>`
     hands its whole list to `window.jobComponent([jobs], 8, locations, types,
@@ -29793,27 +29792,10 @@ class AnATSWhoseJobsiteCarriesItsWholeListInlineAndWhoseRulesRefuseEveryQueryStr
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_jobtoolz", os.path.join(SCRIPTS, "jobtoolz.py"))
-=======
-class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCarriesLabelledRows(unittest.TestCase):
-    """**`bizneo.py`, 2026-09-21 (#489).** Bizneo HR: `<tenant>.bizneo.com/jobs?page=N`
-    (or the employer's own host) is a server-rendered `div#job-board` of
-    `a.job-card` cards, five a page, the page past the last answering 200
-    with an empty board; a subdomain that is no tenant answers 404 with the
-    vendor's blueprint; the advert page carries `<h1>`, «Publicada <i>…</i>»,
-    labelled rows (`div[title=…]`) and `general-content` blocks. Both ways:
-    the walk to the empty page and its count against the pager, a page of
-    repeats ending the walk, the key (UUID or slug), the non-tenant (3), a
-    page without the board (6), the ad's rows, sections and scrubbed body, a
-    bad address refused, another host never sent (7), bad tenants refused."""
-
-    def _mod(self):
-        spec = importlib.util.spec_from_file_location("_bizneo", os.path.join(SCRIPTS, "bizneo.py"))
->>>>>>> a1f620a (wip(#489): bizneo.py + its guard (before the mutation bench))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod
 
-<<<<<<< HEAD
     HOST = "cnh-industrial.jobtoolz.com"
 
     def _page(self, jobs, groups=None):
@@ -29841,46 +29823,6 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
             if path.count("/") >= 2 and len(path.split("/")[1]) == 2 and path.split("/")[2]:
                 return (200, ad) if ad is not None else (404, "")
             return (200, page) if page is not None else (404, "")
-=======
-    HOST = "icp.bizneo.com"
-
-    @staticmethod
-    def _card(url, title, place="Meco", mode=None):
-        extra = f"<span> {mode} </span>" if mode else ""
-        return (f'<a class="job-card" target="_blank" rel="noopener noreferrer" href="{url}"><div class="job-logo-wrapper"><img alt="" src="https://assets.bizneo.com/x.png?X-Amz-Signature=abc" /></div>'
-                f'<div class="content"><div class="info"><div class="title">{title}</div><div class="details"><span>{place}</span>{extra}</div></div><span class="button ghost">…</span></div></a>')
-
-    @staticmethod
-    def _list(cards, pages=1):
-        pager = "".join(f'<li><a class="" href="/jobs?page={i}">{i}</a></li>' for i in range(2, pages + 1))
-        return (f'<html><head><title>ICP Logística</title></head><body><form><select name="location"><option value="county:x">Madrid</option></select></form>'
-                f'<div id="job-board" class="job-board"><div class="job-collection list">{"".join(cards)}</div>'
-                f'<div><ul class="pagination"><li class="prev disabled">Anterior</li><li><a class="active" href="#">1</a></li>{pager}</ul></div></div></body></html>')
-
-    BLUEPRINT = "<html><head><title>Bizneo</title></head><body><h1>32- blueprint-2</h1></body></html>"
-
-    @staticmethod
-    def _row(label, value):
-        return f'<div title="{label}" class="flex items-center gap-4 p-4 border-b border-grey-200 last:border-b-0"><i class="huge-icon"></i><div class="flex flex-wrap gap-x-4 gap-y-1"><span class="font-bold text-xl">{value}</span></div></div>'
-
-    def _ad(self):
-        rows = "".join(self._row(k, v) for k, v in (("Ubicación", "Meco"), ("Categoría", "Informática y telecomunicaciones"), ("Subcategoría", "Programación"), ("Sector", "Logística"),
-                                                    ("Jornada laboral", "Completa"), ("Modalidad de trabajo", "Presencial"), ("Nivel profesional", "Empleado"), ("Departamento", "Informática")))
-        return ('<html><head><title>ICP | Desarrollador Junior .NET</title></head><body><aside><button>¡Aplica ahora!</button><div class="card !p-4 !mb-0 flex"><div class="flex-1">' + rows + '</div></div>'
-                '<a href="https://twitter.com/share?url=x">X</a></aside><div class="content flex-1"><div class="card"><div class="flex-1 min-w-0 flex flex-col gap-4 p-2">'
-                '<h1 class="text-[28px] font-bold"> Desarrollador Junior .NET </h1><span class="tag"><span> Publicada <i>15 de Septiembre</i> </span></span>'
-                '<div class="flex flex-col gap-6"><div class="flex flex-col gap-8"><div class="general-content"><p>¿Te gustaría formarte en nuestro Departamento de IT?</p><p>Escribe a <a href="mailto:rrhh@icp.es">rrhh@icp.es</a> o llama al 91 555 12 34.</p></div></div>'
-                '<div class="flex flex-col gap-6"><p class="font-bold text-[28px] leading-[30px] !mb-0">Requisitos mínimos</p><div class="general-content"><ul><li>Estudios mínimos: FP Grado Superior</li></ul></div></div></div></div></div></div></body></html>')
-
-    def _run(self, mod, argv, answers):
-        sent = []
-        mod.gate = lambda url: {"allowed": True}
-        mod._PACES.clear()
-
-        def request(url):
-            sent.append(url)
-            return answers(url)
->>>>>>> a1f620a (wip(#489): bizneo.py + its guard (before the mutation bench))
         mod.request = request
         import contextlib
         out, err = io.StringIO(), io.StringIO()
@@ -29893,7 +29835,6 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
         return code, rows, err.getvalue(), sent
 
-<<<<<<< HEAD
     def test_the_inline_list_is_the_board_and_one_request_reads_it(self):
         mod = self._mod()
         jobs = [self._job(0, "Harvesting Engineer", "harvesting-engineer"), self._job(1, "Technical Trainer", "technical-trainer", types="Part-time", fids=(370921781,)), self._job(0, "Harvesting Engineer again", "again")]
@@ -29958,7 +29899,75 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         for bad in ("https://www.cnhind-belgium.be/en/x", "https://api.jobtoolz.com/en/x", f"https://{self.HOST}/x"):
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
             self.assertEqual((code, sent), (2, []), bad)
-=======
+
+class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCarriesLabelledRows(unittest.TestCase):
+    """**`bizneo.py`, 2026-09-21 (#489).** Bizneo HR: `<tenant>.bizneo.com/jobs?page=N`
+    (or the employer's own host) is a server-rendered `div#job-board` of
+    `a.job-card` cards, five a page, the page past the last answering 200
+    with an empty board; a subdomain that is no tenant answers 404 with the
+    vendor's blueprint; the advert page carries `<h1>`, «Publicada <i>…</i>»,
+    labelled rows (`div[title=…]`) and `general-content` blocks. Both ways:
+    the walk to the empty page and its count against the pager, a page of
+    repeats ending the walk, the key (UUID or slug), the non-tenant (3), a
+    page without the board (6), the ad's rows, sections and scrubbed body, a
+    bad address refused, another host never sent (7), bad tenants refused."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_bizneo", os.path.join(SCRIPTS, "bizneo.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "icp.bizneo.com"
+
+    @staticmethod
+    def _card(url, title, place="Meco", mode=None):
+        extra = f"<span> {mode} </span>" if mode else ""
+        return (f'<a class="job-card" target="_blank" rel="noopener noreferrer" href="{url}"><div class="job-logo-wrapper"><img alt="" src="https://assets.bizneo.com/x.png?X-Amz-Signature=abc" /></div>'
+                f'<div class="content"><div class="info"><div class="title">{title}</div><div class="details"><span>{place}</span>{extra}</div></div><span class="button ghost">…</span></div></a>')
+
+    @staticmethod
+    def _list(cards, pages=1):
+        pager = "".join(f'<li><a class="" href="/jobs?page={i}">{i}</a></li>' for i in range(2, pages + 1))
+        return (f'<html><head><title>ICP Logística</title></head><body><form><select name="location"><option value="county:x">Madrid</option></select></form>'
+                f'<div id="job-board" class="job-board"><div class="job-collection list">{"".join(cards)}</div>'
+                f'<div><ul class="pagination"><li class="prev disabled">Anterior</li><li><a class="active" href="#">1</a></li>{pager}</ul></div></div></body></html>')
+
+    BLUEPRINT = "<html><head><title>Bizneo</title></head><body><h1>32- blueprint-2</h1></body></html>"
+
+    @staticmethod
+    def _row(label, value):
+        return f'<div title="{label}" class="flex items-center gap-4 p-4 border-b border-grey-200 last:border-b-0"><i class="huge-icon"></i><div class="flex flex-wrap gap-x-4 gap-y-1"><span class="font-bold text-xl">{value}</span></div></div>'
+
+    def _ad(self):
+        rows = "".join(self._row(k, v) for k, v in (("Ubicación", "Meco"), ("Categoría", "Informática y telecomunicaciones"), ("Subcategoría", "Programación"), ("Sector", "Logística"),
+                                                    ("Jornada laboral", "Completa"), ("Modalidad de trabajo", "Presencial"), ("Nivel profesional", "Empleado"), ("Departamento", "Informática")))
+        return ('<html><head><title>ICP | Desarrollador Junior .NET</title></head><body><aside><button>¡Aplica ahora!</button><div class="card !p-4 !mb-0 flex"><div class="flex-1">' + rows + '</div></div>'
+                '<a href="https://twitter.com/share?url=x">X</a></aside><div class="content flex-1"><div class="card"><div class="flex-1 min-w-0 flex flex-col gap-4 p-2">'
+                '<h1 class="text-[28px] font-bold"> Desarrollador Junior .NET </h1><span class="tag"><span> Publicada <i>15 de Septiembre</i> </span></span>'
+                '<div class="flex flex-col gap-6"><div class="flex flex-col gap-8"><div class="general-content"><p>¿Te gustaría formarte en nuestro Departamento de IT?</p><p>Escribe a <a href="mailto:rrhh@icp.es">rrhh@icp.es</a> o llama al 91 555 12 34.</p></div></div>'
+                '<div class="flex flex-col gap-6"><p class="font-bold text-[28px] leading-[30px] !mb-0">Requisitos mínimos</p><div class="general-content"><ul><li>Estudios mínimos: FP Grado Superior</li></ul></div></div></div></div></div></div></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES.clear()
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
     def test_the_list_is_walked_to_the_empty_page_and_counted_against_the_pager(self):
         mod = self._mod()
         c1 = [self._card("https://unete.icp.es/jobs/engenheiro-76d869b5-db41-43ed-a64e-678bee5554a8", "ENGENHEIRO/A", "Palmela"),
@@ -30033,7 +30042,6 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         self.assertEqual(mod.key_of("https://unete.icp.es/jobs/desarrollador-junior-net-985a54af-adbf-481f-92c6-f92c0b54c331"), "985a54af-adbf-481f-92c6-f92c0b54c331")
         self.assertEqual(mod.key_of("https://lefties.bizneo.com/jobs/sustitucion-compras-senior/"), "sustitucion-compras-senior")
         self.assertIsNone(mod.key_of("https://lefties.bizneo.com/jobs"))
->>>>>>> a1f620a (wip(#489): bizneo.py + its guard (before the mutation bench))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
