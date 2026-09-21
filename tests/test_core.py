@@ -32997,8 +32997,12 @@ class APublicPlatformWhoseTableHeaderNamesItsCellsAndWhoseOwnRowLinkIsGone(unitt
         for k, v in kw.items():
             setattr(ns, k, v)
         out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            mod.cmd_jobs(ns)
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())      # the REASON travels with the exit code
+            raise
         return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
 
     def test_the_five_cells_are_read_by_position_and_the_reference_is_not_a_phone_number(self):
@@ -33029,11 +33033,20 @@ class APublicPlatformWhoseTableHeaderNamesItsCellsAndWhoseOwnRowLinkIsGone(unitt
     def test_the_directions_that_must_redden(self):
         import contextlib
         mod = self._mod()
-        six = self._page([self._row("emprego", "One", "02-06-2027", "1", "Entity", "1/2026") .replace("</tr>", "<td>extra</td></tr>")],
-                         heads=("Designação", "Validade", "Vagas", "Entidade", "Referência", "Ilha"))
-        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
-            self._run(mod, [(200, six)], kind="emprego")                 # a column added: the cells would shift
+        row6 = self._row("emprego", "One", "02-06-2027", "1", "Entity", "1/2026").replace("</tr>", "<td>Santiago</td></tr>")
+        six = self._page([row6], heads=("Designação", "Validade", "Vagas", "Entidade", "Referência", "Ilha"))
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, [(200, six)], kind="emprego")                 # a column added: every cell would shift
         self.assertEqual(cm.exception.code, 6)
+        # the HEADER is what decided — not the row check downstream, which would
+        # name a different cause for the same exit code
+        self.assertIn("the header names 6 cell(s), not 5", err.getvalue())
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):     # a header of five over a row of six
+            self._run(mod, [(200, self._page([row6]))], kind="emprego")
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("a row carries 6 cell(s), not 5", err.getvalue())
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             self._run(mod, [(200, "<html><body>the platform's shell, no table</body></html>")], kind="emprego")
         self.assertEqual(cm.exception.code, 6)
