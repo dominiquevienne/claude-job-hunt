@@ -32114,5 +32114,143 @@ class AnATSWhoseCareerPageRendersItsJobCardsNextToItsTeamsNames(unittest.TestCas
         self.assertEqual(cm.exception.code, 2)
 
 
+class AClassicCareersSiteWhoseMoreJobsCountIsWhatRemainsAfterThePage(unittest.TestCase):
+    """**`pageup.py`, 2026-09-21 (#495).** PageUp's classic careers site: the
+    `#search-results-content` table, a «More Jobs» link carrying the next
+    page, the page size and the jobs REMAINING after the page — shown plus
+    remaining is the stated total. Both ways: the walk by the page's own
+    link to the last page and the count against the total (short → 6), a
+    repeated number once, a page of repeats stopping the walk, a tenant whose
+    table has other columns (no Closes cell), the summary row attached to
+    its job, `--page-items` sent, `--country-code` stamped and said, the
+    newer «careersite» shape (no table) → 6, an unknown tenant id 404 → 3,
+    the advert's fields, dates, employer and description scrubbed, the apply
+    gateway never emitted, an unknown job number («Sorry, we can't provide
+    additional information») → 3, bad addresses and the gateway hosts
+    refused before a request, another host refused before the gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pageup", os.path.join(SCRIPTS, "pageup.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(no, title, place="Perth", closes="2026-10-30T03:55:00Z", summary="Join us. Write to jobs@compass.example or ring 08 9000 1234.", three_cols=True, prefix="/541", lang="en"):
+        close_td = f'<td> <span class="close-date"><time datetime="{closes}">30 Oct 2026 </time></span> </td>' if (three_cols and closes) else ("<td> </td>" if three_cols else "")
+        return (f'<tr> <td> <a class="job-link" href="{prefix}/cw/{lang}/job/{no}/{title.lower().replace(" ", "-")}">{title}</a> </td> <td> <span class="location">{place}</span> </td> {close_td} </tr>'
+                + (f' <tr class="summary"> <td colspan="3">{summary}</td> </tr>' if summary else ""))
+
+    @staticmethod
+    def _listing(rows, next_page, items, remaining, prefix="/541", lang="en"):
+        more = f'<p><a href="{prefix}/cw/{lang}/listing/?page={next_page}&page-items={items}" class="more-link button" style="display:block" title="More Jobs" data-page="{next_page}" data-page-items="{items}" >More Jobs <span class="count">{remaining}</span></a></p>' if next_page else ""
+        return (f'<html><head><title>Jobs - Recent Jobs</title></head><body><div id="search-results"><h2>Search results</h2><table><thead><tr><th>Position</th><th>Location</th><th>Closes</th></tr></thead><tbody id="search-results-content">{"".join(rows)}</tbody></table>{more}</div>'
+                f'<div id="recent-jobs"><table><tbody id="recent-jobs-content">{rows[0] if rows else ""}</tbody></table></div></body></html>')
+
+    AD = ('<html><head><title>Karratha Locals</title><meta property="og:site_name" content="Compass Group" /></head><body><div id="pup-content"><div id="job"><div id="job-content"> <h2>Karratha Locals - Hospitality All Rounders</h2> <p> <span style="float:right"><a class="apply-link button" href="https://secure.dc2.pageuppeople.com/apply/541/gateway/default.aspx?c=apply&lJobID=725443">Apply now</a></span>'
+          ' <b>Job no:</b> <span class="job-externalJobNo">725443</span><br> <b>Work type:</b> <span class="work-type full-time">Full Time</span><br> <b>Location:</b> <span class="location">Karratha</span><br> <b>Categories:</b> <span class="categories">Kitchen Support, Food &amp; Beverage</span><br> </p>'
+          ' <div id="job-details"> <div><strong>Earn $91,519 - $102,936</strong></div> <p>ESS provides multi-service capability. Questions: recruit@ess.example or +61 8 9000 1234.</p> </div> <p> <b>Advertised:</b> <span class="open-date"><time datetime="2026-09-21T08:30:00Z">21 Sep 2026 </time></span> W. Australia Standard Time<br> <b>Applications close:</b> <span class="close-date"><time datetime="2026-10-30T03:55:00Z">30 Oct 2026 </time></span> </p>'
+          ' <p><a class="back-link button" href="/541/cw/en/listing/?">Back to search results</a> <a class="apply-link button" href="https://secure.dc2.pageuppeople.com/apply/541/gateway/default.aspx?c=apply&lJobID=725443">Apply now</a></p></div></div></div></body></html>')
+    GONE = '<html><head><title>Jobs - Recent Jobs</title></head><body><div id="pup-content"><div id="messages"><ul id="message-list"><li class="info">Sorry, we can\'t provide additional information about this job right now.</li></ul></div><div id="job" style="display:none"><div id="job-content"></div></div><a href="/541/cw/en/Listing/?jobnotfound=true&amp;subscribe=true">Send me jobs like these</a></div></body></html>'
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        class _NoPace(dict):
+            def setdefault(self, k, v):
+                return type("P", (), {"wait": staticmethod(lambda: None)})()
+        mod._PACES = _NoPace()
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_by_the_more_jobs_link_and_the_count_against_shown_plus_remaining(self):
+        mod = self._mod()
+        p1 = [self._row(725443 + i, f"Post {i}") for i in range(100)]
+        p2 = [self._row(725443, "Post 0"), self._row(800000, "Post 100", "Canberra", None, None)]
+
+        def answers(url):
+            if url == "https://careers.pageuppeople.com/541/cw/en/listing/?page=1&page-items=100":
+                return 200, self._listing(p1, 2, 100, 1)
+            if url == "https://careers.pageuppeople.com/541/cw/en/listing/?page=2&page-items=100":
+                return 200, self._listing(p2, None, 100, 0)
+            return 200, self._listing([], None, 100, 0)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "541", "--country-code", "au"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://careers.pageuppeople.com/541/cw/en/listing/?page=1&page-items=100", "https://careers.pageuppeople.com/541/cw/en/listing/?page=2&page-items=100"])
+        self.assertEqual(len(rows), 101)
+        self.assertIn("101 emitted from careers.pageuppeople.com/541 over 2 page(s) of 100 — the site states 101 (the first page's rows plus its «More Jobs» remainder): equal.", err)
+        self.assertIn("country AU stamped from --country-code", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["id"], r["url"], r["title"], r["place"], r["closes"], r["country"], r["contacts_withheld"]),
+                         ("pageup:careers.pageuppeople.com:725443", "725443", "https://careers.pageuppeople.com/541/cw/en/job/725443/post-0", "Post 0", "Perth", "2026-10-30T03:55:00Z", "AU", True))
+        self.assertEqual(r["summary"], "Join us. Write to [e-mail withheld] or ring [telephone withheld].")
+        self.assertEqual((rows[100]["place"], rows[100]["closes"], rows[100]["summary"]), ("Canberra", None, None))
+        self.assertNotIn("compass.example", json.dumps(rows))
+        # the site's own page size when asked, a tenant on its own host with two columns and another locale
+        two = [self._row(537783 + i, f"Job {i}", "Blacksburg, Virginia", None, "Seeking a generalist.", three_cols=False, prefix="", lang="en-us") for i in range(20)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://jobs.vt.example/cw/en-us/listing/", "--page-items", "20"], lambda url: (200, self._listing(two, 2, 20, 5, "", "en-us")) if "page=1" in url else (200, self._listing(two[:5], None, 20, 0, "", "en-us")))
+        self.assertEqual((code, len(rows)), (6, 20), err)   # page 2 repeated the first five: stopped, 20 of 25
+        self.assertEqual(sent, ["https://jobs.vt.example/cw/en-us/listing/?page=1&page-items=20", "https://jobs.vt.example/cw/en-us/listing/?page=2&page-items=20"])
+        self.assertIn("page 2: only repeats — stopped.", err)
+        self.assertIn("20 emitted from jobs.vt.example over 2 page(s) of 20 — the site states 25 (the first page's rows plus its «More Jobs» remainder): 5 short.", err)
+        self.assertEqual((rows[0]["url"], rows[0]["place"], rows[0]["closes"], rows[0]["summary"]), ("https://jobs.vt.example/cw/en-us/job/537783/job-0", "Blacksburg, Virginia", None, "Seeking a generalist."))
+        # the newer product (no table) is not this adapter; an unknown tenant id is 404
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "511"], lambda url: (200, '<html><body><div class="job-search-results-card">cards</div></body></html>'))
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("careersite", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "999999"], lambda url: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        for bad in ("secure.pageuppeople.com/apply/541/gateway/default.aspx", "https://www.pageuppeople.com/", "https://careers.pageuppeople.com/541/cw/en/job/1/x", "abc"):
+            code, rows, err, sent = self._run(mod, ["jobs", "--tenant", bad], lambda url: (200, ""))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+        fresh._HOST["name"] = "careers.pageuppeople.com"
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        import contextlib
+        for never in ("https://jobs.vt.example/cw/en/listing/", "https://secure.dc2.pageuppeople.com/apply/541/gateway/default.aspx"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(never)
+            self.assertEqual(cm.exception.code, 7, never)
+
+    def test_the_advert_fields_dates_and_employer_and_an_unknown_job_number(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://careers.pageuppeople.com/541/cw/en/job/725443/karratha-locals-hospitality-all-rounders", "--country-code", "AU"], lambda url: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://careers.pageuppeople.com/541/cw/en/job/725443/karratha-locals-hospitality-all-rounders"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["work_type"], r["categories"], r["posted"], r["closes"], r["country"], r["contacts_withheld"]),
+                         ("725443", "Karratha Locals - Hospitality All Rounders", "Compass Group", "Karratha", "Full Time", ["Kitchen Support", "Food & Beverage"], "2026-09-21T08:30:00Z", "2026-10-30T03:55:00Z", "AU", True))
+        self.assertTrue(r["description"].startswith("Earn $91,519 - $102,936\nESS provides"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertNotIn("Advertised", r["description"])
+        for hidden in ("ess.example", "9000 1234", "secure.dc2", "gateway", "lJobID"):
+            self.assertNotIn(hidden, json.dumps(r), hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://careers.pageuppeople.com/541/cw/en/job/1/x"], lambda url: (200, self.GONE))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("can't provide additional information", err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://careers.pageuppeople.com/541/cw/en/job/2/x"], lambda url: (200, "<html><body><div id='pup-content'>Jobs</div></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://careers.pageuppeople.com/541/cw/en/listing/", "https://secure.pageuppeople.com/541/cw/en/job/725443/x", "https://careers.pageuppeople.com/541/cw/en/job/abc/x"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
