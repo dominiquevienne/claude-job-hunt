@@ -32508,5 +32508,130 @@ console.log(JSON.stringify({with:page(true),without:page(false)}));
                          (["a1", "a2", "s1", "s2"], 4, 0, None))   # no heading: nothing cut, and the output says so
 
 
+class APublicEmploymentServiceWhoseLiferayPagerIsReadFromThePageAndWhoseAdvertPrintsAnAgeRange(unittest.TestCase):
+    """**`jobcentrebrunei.py`, 2026-09-21 (#690).** Brunei's public employment
+    service: `/search-job` states «Showing 1 to 12 of 607 entries» and prints
+    its own search-portlet id (a Liferay INSTANCE token) in its pager links —
+    the adapter reads the token there and never composes one; it walks
+    `cur` / `delta=75` to the stated count and compares. The advert's «Job
+    Overview» is labelled rows, and one of them is an **age range** — the
+    advert is served and the criterion is NOT carried (#183): `age` never
+    leaves, and the record says which rows were withheld. Both ways: the
+    cells are read by their own class (a single scanning regex let the
+    wrapper swallow them — the defect this fixture pins), a page repeating
+    the previous ids dies (6), a page without the token or without the
+    stated count is a changed page (6), any other host is refused (7).
+    Mutated (`-B`, detached copy): the age row emitted → reddens; the
+    withheld list dropped → reddens; the token composed instead of read →
+    reddens; the stated count ignored → reddens; the repeat check dropped →
+    reddens; the per-class cell read replaced by one scanning regex → the
+    salary is lost (reddens); another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jcb", os.path.join(SCRIPTS, "jobcentrebrunei.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    P = "com_liferay_portal_search_web_search_results_portlet_SearchResultsPortlet_INSTANCE_8nOy3KJMzV3M"
+
+    @classmethod
+    def _card(cls, pid, title, employer, salary="$ 500 - 600 Monthly", vac=4, place="Brunei Muara, Gadong 'B', Pengkalan Gadong", closing="07/10/2026"):
+        return ('<li class="list-group-item list-group-item-flex " data-qa-id="row" > <div class="jp_job_post_main_wrapper"> <div class="jp_job_post_right_cont"> '
+                f'<h4 class="line-clamp"><a >{title}</a></h4> <p class="line-clamp"><a >{employer}</a></p> <ul> <li class="jp_job_salary">{salary}</li> '
+                f'<div class="jp_job_vacancy_wrapper"> <div class="jp_vacancy">VACANCY: {vac} </div> <div class="jp_time"> <li><a>Full time</a> </div> </div> '
+                f'<li class="jp_job_location line-clamp"><i class="fa icon-map-marker"></i>&nbsp; {place}</li> <li class="jp_closing-date">CLOSING DATE: {closing} </li> '
+                f'<li><a class="jp_applyButton" href="/web/guest/view-job/-/jobs/{pid}/{title.lower().replace(" ", "-")}">Apply</a></li> </ul> </div> </div> </li>')
+
+    @classmethod
+    def _list(cls, cards, first=1, last=12, total=607, token=True):
+        pager = (f'<a href="https://www.jobcentrebrunei.gov.bn/web/guest/search-job?p_p_id={cls.P}&amp;_{cls.P}_cur=1&amp;_{cls.P}_delta=12">1</a>') if token else ""
+        return (f'<html><body><p>Showing {first} to {last} of {total} entries</p>{pager}<ul class="list-group">' + "".join(cards) + "</ul></body></html>")
+
+    AD = ('<html><head><title>Shop Assistant</title></head><body><div class="job-viewer job-viewer-main"> <div class="jp_job_res"><h4>Job Description</h4>'
+          '<p>Shop Assistant</p><p>Minimum O-Level qualification or equivalent</p><p>Questions: hr@bnaurum.bn or +673 8239933.</p></div>'
+          '<div class="job-viewer-top-head"><h4>Job Overview</h4></div><div class="job-overview-wrapper"><h5 class="font-weight-bold p-2 text-center">BN AURUM</h5>'
+          + "".join(f'<div class="jp_listing_overview_list_main_wrapper"><div class="jp_listing_list_icon"><i></i></div><div class="jp_listing_list_icon_cont_wrapper"> <ul> <li>{k}</li> <li> {v} </li> </ul> </div></div>'
+                    for k, v in [("Date Posted", "21 September 2026"), ("Hours", "Shift Hours"), ("Industry Type", "Retail sale of jewellery"), ("Position", "Shop assistant"),
+                                 ("Salary", "$500-600 Monthly"), ("Experience", "0-0 Years Experience"), ("District", "Brunei Muara"), ("Mukim", "Gadong 'B'"), ("Kampong", "Pengkalan Gadong"),
+                                 ("Allowances Range", "50-100"), ("Driving License Class", "3"), ("Age", "20-28"), ("Last date to apply", "07/10/2026")])
+          + '</div></div><div class="jp_footer_main_wrapper">JCB Hotline +673-8239933</div></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_pager_is_the_pages_own_and_the_walk_meets_the_stated_count(self):
+        import contextlib
+        mod = self._mod()
+        mod.PAGE_SIZE = 2
+        first = self._list([self._card("211200374", "Shop Assistant", "BN AURUM")], total=3)
+        p1 = self._list([self._card("211200374", "Shop Assistant", "BN AURUM"), self._card("210297693", "Leather Bag Repairer", "MGJ LOYAL", salary="$ 450 - 650 Monthly", vac=3, closing="26/09/2026")], total=3)
+        p2 = self._list([self._card("210999999", "Production Cleaner", "ACME")], first=3, last=3, total=3)
+        rows, err, asked, raw = self._run(mod, [(200, first), (200, p1), (200, p2)], country_code="bn")
+        self.assertEqual(asked[0], "https://www.jobcentrebrunei.gov.bn/search-job")
+        self.assertIn(f"p_p_id={self.P}", asked[1])
+        self.assertIn(f"_{self.P}_cur=1", asked[1])
+        self.assertIn(f"_{self.P}_delta=2", asked[1])
+        self.assertIn(f"_{self.P}_cur=2", asked[2])
+        self.assertEqual([r["id"] for r in rows], ["211200374", "210297693", "210999999"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["salary"], a["schedule"], a["posts"], a["closes"], a["contacts_withheld"]),
+                         ("jobcentrebrunei", "BN", "jobcentrebrunei:211200374", "https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/211200374/shop-assistant", "Shop Assistant", "BN AURUM", "Brunei Muara, Gadong 'B', Pengkalan Gadong", "$ 500 - 600 Monthly", "Full time", 4, "2026-10-07", True))
+        self.assertIn("3 emitted, the portal states 3.", err)
+        self.assertIn("country BN is the user's stamp", err)
+        rows, err, asked, raw = self._run(mod, [(200, first), (200, p1)], max_pages=1)
+        self.assertIn("2 emitted, the portal states 3 — 1 short (the walk stopped at page 1 of 2).", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, first), (200, p1), (200, p1)])       # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._list([], total=3, token=False))])   # no portlet id in the page
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, '<html><body>a page without the count</body></html>'.replace("x", "x") + f'<a href="?p_p_id={self.P}">1</a>')])
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://jobcentrebrunei.gov.bn/search-job")     # the apex is not the host the card names
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_adverts_age_range_never_leaves(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/211200374/shop-assistant?p_r_p_x=1")
+        self.assertEqual(asked, ["https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/211200374/shop-assistant"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["employer"], a["place"], a["position"], a["salary"], a["allowances"], a["schedule"], a["experience"], a["driving_license"], a["posted"], a["closes"], a["withheld_rows"], a["contacts_withheld"]),
+                         ("211200374", "Shop Assistant", "BN AURUM", "Brunei Muara · Gadong 'B' · Pengkalan Gadong", "Shop assistant", "$500-600 Monthly", "50-100", "Shift Hours", "0-0 Years Experience", "3", "2026-09-21", "2026-10-07", ["age"], True))
+        for secret in ("20-28", "hr@bnaurum", "8239933"):     # the VALUE never leaves; `withheld_rows` names the row on purpose
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("[e-mail withheld]", a["description"])
+        self.assertIn("[telephone withheld]", a["description"])
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/1/x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no viewer</body></html>")], cmd="ad", url="https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/1/x")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://www.jobcentrebrunei.gov.bn/search-job")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
