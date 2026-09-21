@@ -32938,5 +32938,120 @@ class AGovernmentCategoryWhoseEntriesAreDocumentsAndWhoseEndIsAnEmptyPage(unitte
         self.assertEqual(cm.exception.code, 7)
 
 
+class APublicPlatformWhoseTableHeaderNamesItsCellsAndWhoseOwnRowLinkIsGone(unittest.TestCase):
+    """**`pepeiefp.py`, 2026-09-21 (#693).** PEPE, Cabo Verde's public
+    employment institute: the two lists «oferta-emprego» and
+    «oferta-estagio» are rendered server-side in ONE table whose `<thead>`
+    names five cells — Designação · Validade · Vagas · Entidade ·
+    Referência — and the adapter reads the cells **by position**, so it
+    refuses any header that does not name exactly five (a column added or
+    dropped would shift every field in silence, and a shifted field is a
+    plausible wrong answer, not a crash). No pager and **no stated count**:
+    the run says what the table listed rather than printing a total it did
+    not read. The row's own link (`oportunidades/oferta-<kind>?value=…`)
+    answered 404 on the day, so it is emitted as the platform publishes it,
+    dated, and never followed; its href is written **unquoted** in their
+    HTML. A reference like «176/2024» has the shape of a telephone number
+    and is NOT withheld; an e-mail or a real number in any cell is. Both
+    ways: five cells read; a six-cell header dies (6); a 200 without a
+    table dies (6); a 404 on a list dies (3); an empty tbody is 0 entries
+    and not an error; another host is refused (7). Mutated (`-B`, detached
+    copy): the header check loosened to `>= CELLS` → the shifted row is
+    emitted as if nothing happened (reddens); the reference exception
+    dropped → «176/2024» comes out «[telephone withheld]» (reddens); the
+    scrub dropped → the e-mail is emitted (reddens); the unquoted-href
+    branch dropped → `url` is None (reddens); the «no stated count» note
+    dropped → reddens; the 404-on-the-row-link note dropped → reddens;
+    another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pepe", os.path.join(SCRIPTS, "pepeiefp.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(kind, title, validity, vacancies, entity, reference, quoted=False):
+        href = "/frontend/web/pt/oportunidades/oferta-%s?value=%s" % (kind, title.replace(" ", "+"))
+        a = '<a href="%s">' % href if quoted else "<a href=%s>" % href
+        return ("<tr><td>%s<strong>%s</strong></a></td><td>%s</td><td>%s</td>"
+                "<td>%s</td><td>%s</td></tr>" % (a, title, validity, vacancies, entity, reference))
+
+    @classmethod
+    def _page(cls, rows, heads=("Designação", "Validade", "Vagas", "Entidade", "Referência")):
+        th = "".join("<th>%s</th>" % h for h in heads)
+        return ('<html><body><div id="main"><div class="emprego"><h1 class="shadow">Ofertas</h1>'
+                '<table class="table table-striped"><thead><tr>' + th + "</tr></thead><tbody>"
+                + "".join(rows) + "</tbody></table></div></div></body></html>")
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="pt", kind="both")
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_jobs(ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_five_cells_are_read_by_position_and_the_reference_is_not_a_phone_number(self):
+        mod = self._mod()
+        emprego = self._page([self._row("emprego", "khym negoce lda", "02-06-2027", "1", "khym Negoce Lda", "176/2024")])
+        estagio = self._page([self._row("estagio", "Gestão Comercial", "06-10-2026", "3", "CONTACOF, rh@contacof.cv", "20/2026", quoted=True),
+                              self._row("estagio", "Estágio Profissional", "01-12-2026", "1", "VZP LDA (+238) 261 64 46", "15/2025")])
+        rows, err, asked, raw = self._run(mod, [(200, emprego), (200, estagio)], country_code="cv")
+        self.assertEqual(asked, ["https://pepe.iefp.cv/frontend/web/pt/site/oferta-emprego",
+                                 "https://pepe.iefp.cv/frontend/web/pt/site/oferta-estagio"])
+        self.assertEqual([r["id"] for r in rows], ["emprego:176/2024", "estagio:20/2026", "estagio:15/2025"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["kind"], a["title"], a["employer"],
+                          a["deadline"], a["openings"], a["reference"], a["contacts_withheld"]),
+                         ("pepeiefp", "CV", "pepeiefp:emprego:176/2024", "emprego", "khym negoce lda",
+                          "khym Negoce Lda", "2027-06-02", 1, "176/2024", True))
+        self.assertEqual(a["url"], "https://pepe.iefp.cv/frontend/web/pt/oportunidades/oferta-emprego?value=khym+negoce+lda")
+        self.assertEqual(a["url_answered_404"], "2026-09-21")
+        self.assertEqual(rows[1]["employer"], "CONTACOF, [e-mail withheld]")     # the quoted href reads too
+        self.assertTrue(rows[1]["url"].endswith("?value=Gestão+Comercial"))
+        self.assertEqual(rows[2]["employer"], "VZP LDA [telephone withheld]")
+        for secret in ("rh@contacof.cv", "261 64 46"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("3 entries emitted from 2 list(s) (emprego 1, estagio 2); no pager and no stated count", err)
+        self.assertIn("answered 404 on 2026-09-21", err)
+        self.assertIn("country CV is the user's stamp", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        six = self._page([self._row("emprego", "One", "02-06-2027", "1", "Entity", "1/2026") .replace("</tr>", "<td>extra</td></tr>")],
+                         heads=("Designação", "Validade", "Vagas", "Entidade", "Referência", "Ilha"))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, six)], kind="emprego")                 # a column added: the cells would shift
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>the platform's shell, no table</body></html>")], kind="emprego")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], kind="emprego")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], lang="por")
+        self.assertEqual(cm.exception.code, 2)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([]))], kind="estagio")
+        self.assertEqual(rows, [])
+        self.assertIn("0 entries — the list(s) answered 200 and their table carries no row (estagio 0)", err)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.pepe.iefp.cv/frontend/web/pt/site/oferta-emprego")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
