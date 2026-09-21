@@ -74,4 +74,8 @@ filter, the empty list, the null version, a page without the loader, an
 answer without `jobs` and one with an error message, a token without its
 domain, an unnamed host refused; the ad with its street, postal code,
 logo and contact, the ad's country filter, the ad gone or changed).
-Mutation bench on a detached copy, `python3 -B` — see the PR.
+Mutation bench on a detached copy, `python3 -B`, 9 / 9 red: the embed
+regex broken · the null-version branch dropped · the domain dropped from
+the call · the zip emitted · the duplicate ids kept · the error message
+ignored · the country filter dropped · the scrub dropped in the ad · the
+street emitted.
