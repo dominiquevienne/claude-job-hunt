@@ -33341,6 +33341,20 @@ class AnInventoryReadWhereTheRulesAllowItBecauseEveryQueryStringIsRefused(unitte
                 fresh.request(never)
             self.assertEqual(cm.exception.code, 7, never)
 
+    def test_the_key_is_the_sites_id_and_never_a_folded_slug(self):
+        """A key folded from the title is empty for a non-Latin one — and an empty key collides."""
+        mod = self._mod()
+        # **the key is the site's id, never the slug** (cd's finding of 2026-09-21 on a Burmese board, where twenty
+        # records shared one key): an ASCII fold of a Persian title is EMPTY — measured on this very sitemap, 50 097
+        # of 56 095 slugs fold to nothing, so a slug-derived key would collapse 56 095 adverts into 2 233 keys and
+        # the deduplication would DROP the rest with no symptom. Two Persian titles, one Latin, all three kept:
+        sm3 = self._sitemap([self._url(11, "استخدام-حسابدار"), self._url(12, "استخدام-برنامه-نویس"), self._url(13, "senior-developer")])
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, sm3))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["ledger_id"] for r in rows], ["jobvision:11", "jobvision:12", "jobvision:13"])
+        self.assertEqual(len({r["ledger_id"] for r in rows}), 3, "a key that folds a non-Latin title collides and silently drops adverts")
+        self.assertEqual([r["id"] for r in rows], ["11", "12", "13"])
+
     def test_the_advert_withholds_the_street_the_logo_and_the_employers_site(self):
         mod = self._mod()
         url = "https://jobvision.ir/jobs/1468042/استخدام-دستیار"

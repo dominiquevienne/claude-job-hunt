@@ -38,6 +38,16 @@ canonique `/jobs/<id>/x`**, que le site sert à l'identique (relue deux fois,
 qu'un lien qui perd son titre en silence est un mensonge d'une autre espèce.
 *(Trouvaille de `cd` du 21.09 sur un autre board, appliquée ici.)*
 
+**Et la clé est l'id du site, jamais le slug.** Un repli ASCII d'un titre
+persan est **vide** : mesuré sur ce sitemap, **50 097 des 56 095 slugs** se
+replient sur rien — une clé tirée du slug ramènerait 56 095 annonces à
+**2 233 clés**, et le dédoublonnage jetterait le reste *sans aucun symptôme*.
+La clé est donc `jobvision:<id>`, l'id que le site met dans son adresse :
+56 095 ids, 56 095 distincts, zéro répétition le 2026-09-21. La garde
+l'asserte sur deux titres persans et un titre latin dans le même appel.
+*(Forme trouvée par `cd` le 21.09 sur un board birman — vingt enregistrements
+sous une seule clé.)*
+
 **Retenu :** la rue et le code postal de l'annonce, le logo et le site de
 l'employeur, la route de candidature ; textes épurés des adresses e-mail et des
 téléphones (chiffres persans compris) ; `contacts_withheld` sur chaque ligne.
