@@ -65,4 +65,8 @@ id and the spontaneous card next to a team section — the names never in
 the output; the stamp said; a page without cards; a page without the
 module; a 404; the vendor's hosts and another host refused; the ad with
 its full street and contact, the ad's country filter, the ad gone or
-changed). Mutation bench on a detached copy, `python3 -B` — see the PR.
+changed). Mutation bench on a detached copy, `python3 -B`, 9 / 9 red: the
+card regex broken · the spontaneous card kept · the street emitted · the
+scrub dropped in the ad · the stamp note dropped · another host's posting
+url kept · the vendor-host check dropped · the duplicate ids kept ·
+another host sent.
