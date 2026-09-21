@@ -289,17 +289,56 @@ rows' shape is unchanged; the counts are new):
 ## Reading one ad
 
 **The standalone ad page renders fully** — `navigate` and read, no click-through.
+**Read the page's own `JobPosting` first; the CSS hooks change under you.**
+Measured 2026-09-21 09:3x UTC (#824), two live `ch.indeed.com/viewjob` pages in
+the candidate's Chrome: the five selectors this card carried since 2026-08-26
+(`#jobDescriptionText`, `jobsearch-JobInfoHeader-title`,
+`inlineHeader-companyName`, `inlineHeader-companyLocation`,
+`#salaryInfoAndJobType`) **all return `null`**, and so does `h1` — there is no
+`<h1>`. What is there: a `script[type="application/ld+json"]` **JobPosting**
+(title, hiringOrganization, jobLocation, baseSalary, datePosted,
+employmentType, `applicantLocationRequirements`, `jobLocationType`,
+description) and a `div.simple-job-description-html` with the body text.
 
 ```js
-(()=>{const q=s=>{const e=document.querySelector(s);return e?e.innerText.replace(/\s+/g,' ').trim():null;};
- return JSON.stringify({
-   t:   q('[data-testid="jobsearch-JobInfoHeader-title"]') || q('h1'),
-   co:  q('[data-testid="inlineHeader-companyName"]'),
-   loc: q('[data-testid="inlineHeader-companyLocation"]'),
-   meta:q('#salaryInfoAndJobType'),        // salary and/or workload, when present
-   d:   q('#jobDescriptionText')
- });})()
+(()=>{
+  const body = document.body.innerText || '';
+  // 1 — the page's own JobPosting: the only hook that is not a CSS class
+  let ld = null;
+  for (const e of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try { const o = JSON.parse(e.textContent); if (o && o['@type'] === 'JobPosting') { ld = o; break; } } catch (x) {}
+  }
+  // 2 — the description element (NOT under #jobDetailsSection: measured, its
+  //     ancestors are unnamed css-* divs, and that id is absent from some pages)
+  const el = document.querySelector('.simple-job-description-html');
+  // 3 — the text fallback: the localized «job description» heading in body text
+  const H = /Description du poste|Job description|Stellenbeschreibung|Descrizione del lavoro|Descripción del empleo/;
+  const m = body.match(H);
+  const txt = m ? body.slice(body.indexOf(m[0])) : '';
+  const strip = h => (h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return JSON.stringify({
+    t:    ld && ld.title || (document.title.split(' - ')[0] || null),
+    co:   ld && ld.hiringOrganization && ld.hiringOrganization.name || null,
+    loc:  ld && JSON.stringify(ld.jobLocation && ld.jobLocation.address || null),   // Indeed's, not the employer's — see trap 6
+    mode: ld && ld.jobLocationType || null,                    // TELECOMMUTE when the ad is remote
+    alr:  ld && JSON.stringify(ld.applicantLocationRequirements || null),
+    pay:  ld && JSON.stringify(ld.baseSalary || null),
+    posted: ld && ld.datePosted || null,
+    expired: /Cette offre a expiré sur Indeed|This job has expired on Indeed/i.test(body),
+    d:    strip(ld && ld.description) || (el ? el.innerText.replace(/\s+/g, ' ').trim() : '') || txt.replace(/\s+/g, ' ').trim(),
+    source: ld ? 'ld+json' : (el ? 'simple-job-description-html' : (txt ? 'body-text' : null)),
+    body_len: body.length                                        // 0 selectors + a long body = stale hooks, not an empty page
+  });})()
 ```
+
+**Read `source` and `body_len` before the fields.** `source: null` with a
+`body_len` in the thousands is **stale hooks, not an empty page** — which is
+exactly how the 2026-08-26 snippet failed silently for a month. Measured
+2026-09-21: an ad served live answered `ld+json`, 2 623 characters of
+description; an **expired** ad (`jk=f6140fe77fbe011c`, «Cette offre a expiré
+sur Indeed») carried **no JobPosting at all**, kept its
+`.simple-job-description-html`, and its text still read as if open — so
+`expired` is read before anything is written to the ledger.
 
 ## Traps
 
@@ -325,7 +364,9 @@ extraction snippet above makes it on every page.
 If it is true, the search returned **nothing** — record zero and move on,
 whatever the cards say.
 
-**2. `#salaryInfoAndJobType` mixes salary and workload.** It returned `100%` on
+**2. `#salaryInfoAndJobType` mixes salary and workload** *(the selector itself
+is gone since 2026-09-21 — the reading is `baseSalary` in the JobPosting and
+the «- 100%» line of the header; the mixing is the same)*. It returned `100%` on
 one ad (a workload) and a salary range on another. Parse it, do not assume which
 one you got, and never report a workload as a salary.
 
