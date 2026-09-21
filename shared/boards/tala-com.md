@@ -1,13 +1,45 @@
-# Assessed, adapter not built — Tala-Com (DR Congo)
+# Board adapter — Tala-Com (DR Congo): the national directory's job section `/offres-demploi/`, fifteen a page to the pager's last page, the site stating no total and the pager the only bound (29 on 2026-09-21, 16–30); the advert's labelled block and dates; `talacom.py`, the applicant's e-mail and the application link withheld
 
 <!-- verified: 2026-09-21 -->
 
 <!-- hosts: www.tala-com.com -->
-<!-- script: none -->
+<!-- script: talacom.py -->
 <!-- countries: CD -->
-<!-- content: measured · 31 live advertisements under `/offres-demploi/`, read in a browser across the three pages the site paginates — 15 + 15 + 1, no address repeated between pages · 2026-09-08 -->
-<!-- witness: none — the site publishes no total anywhere on the listing; the pagination `1 2 3` is the only external anchor, and it bounds the count without stating it · 2026-09-08 · **2026-09-14 09:43 UTC: the name resolves again on 1.1.1.1 and 8.8.8.8 (two Cloudflare addresses, NOERROR); from a connected tab `/offres-demploi/` is served without challenge — 15 cards, `/offres-demploi/page/2/` 12, no page 3: 27 distinct `/offres-emploi/<slug>/`, the site states no total; the ad page carries WebPage / BreadcrumbList / WebSite / Organization JSON-LD (a `datePublished`), no JobPosting; four e-mail addresses in the ad read — never to be emitted** · **2026-09-21: the DECLARED CLIENT is served — the provider 403 is gone: `/` 200 ×2 (06:27:04, 06:27:07 UTC; 349 529 B), `/offres-demploi/` 200 ×2 (06:30:02, 06:30:04 UTC; ~250 KB) 15 ads + pager to page 2, `/offres-demploi/page/2/` 200 ×2 (06:32:12, 06:32:14 UTC) 14 ads, no page 3 — 29 distinct `/offres-emploi/<slug>/` (27 on 2026-09-14, 31 on 2026-09-08), the site states no total; a WordPress site (Divi, a custom post type `offres-emploi`, `wp-json` linked); the name resolves on both resolvers (104.21.10.145, 172.67.163.152), whois ACTIVE, expiry 2028-09-20 (renewed); rules read, `*` open, no Crawl-delay** -->
-<!-- route: browser · 27 · 2026-09-14 -->
+<!-- content: measured · **2026-09-21 07:33–07:38 UTC, the declared client, the guard on the exact path. Rules (1 583 B, md5 a6ff584c1562): `*` refuses the WordPress internals and `/*?*` (no query string is ever sent); a group naming sixteen AI agents — `ClaudeBot`, `Claude-Web`, `anthropic-ai` — carries no directive: nothing refused; no Crawl-delay. `/offres-demploi/` 200 (250 086 B) — fifteen `article.emploi-item` cards (employer, region, post, contract, `/offres-emploi/<slug>/`), pager `.talacom-pagination` naming page 2; `/page/2/` 200 fourteen; `/page/3/` **200 with no card** (224 631 B of shell — the walk ends on the pager, not on a 404). `talacom.py list` live 07:38 UTC: **«29 emitted — the site states no total; the pager bounds 16–30; 29 of 29 in the job sitemap (60 addresses, the archive with its expired adverts)»** — all 29 with employer, region, contract; Kinshasa 16, Nord-Kivu 6; CDD 23, CDI 4, autres 2. The Yoast `offre_emploi-sitemap.xml` (60 `<loc>`, lastmod 2025-10-22 → 2026-09-18) holds the 29 and 31 more — expired adverts the listing no longer shows. `/wp-json/wp/v2/offre_emploi` answers 200 (ten an answer, `content`, `date`, `city` id, `acf: []` — no expiry): the archive, not the route. The advert (`/offres-emploi/superviseur-nutrition-sante/`, 200, ~237 KB of Divi): title, `.acf-offre-infos` (Type de contrat, Nombre de postes, Référence, a «Document offre» PDF under `/wp-content/uploads/`), `.offre-ville`, a Cloudflare-protected e-mail, «Date d'expiration : 24/09/2026», a «Postuler» link, the description; JSON-LD WebPage `datePublished` 2026-09-18T20:31:18, no JobPosting; **the employer is not on the advert page** (the listing card carries it); an unknown slug 404 (exit 3)** · 2026-09-21 -->
+<!-- witness: none stated — the site publishes no total; `talacom.py list` prints the pager's bound beside the count («the pager bounds 16–30», exit 6 when the count falls outside it) and checks every emitted address against the job sitemap (an absent one named) · 2026-09-21 -->
+<!-- route: http · 29 · 2026-09-21 -->
+
+## 2026-09-21 — `talacom.py` (#339)
+
+```
+talacom.py list [--no-sitemap]      # /offres-demploi/, /page/N/ to the pager's last page; «29 emitted — the site states no total; the pager bounds 16–30; 29 of 29 in the job sitemap (60 …)»
+talacom.py ad --url https://www.tala-com.com/offres-emploi/<slug>/
+```
+
+**Only `/offres-demploi/` is read — the host is a hub (directory, tenders,
+classifieds with scam listings, section below), and the adapter targets the
+employment section and nothing else.** The walk stops at the pager's last
+page (a page beyond it answers 200 with no card, so a 404 would never end
+it); a promised page that shows nothing is said and the walk stopped; the
+count is compared to the pager's bound and the job sitemap is read once so
+an emitted address the sitemap does not carry is named. `ad` gives what the
+listing does not — contract, number of posts, reference, the offer's PDF,
+region, expiry (`dd/mm/yyyy` → ISO), the WebPage `datePublished`, the
+description scrubbed — and the listing gives what the advert does not: the
+employer.
+
+**Withheld:** the applicant's e-mail (Cloudflare-protected on the page,
+never decoded; scrubbed wherever it appears in text), telephones, the
+«Postuler» link and the Google-Forms application link in the text, the
+employer's logo. `contacts_withheld` on every record.
+
+**Guard** `ACongoleseDirectoryWhoseJobSectionStatesNoTotalAndWhosePagerIsTheOnlyBound`
+in `tests/test_core.py` — both ways (the walk to the pager and no further, a
+repeated slug once, the promised empty page, the bound, the sitemap check,
+`--no-sitemap`, no pager, not the listing, the advert's block and dates, the
+scrub, the 404 slug, bad addresses and query strings refused before a
+request, another host refused before the gate). Mutation bench 2026-09-21:
+10 mutations, 10 red.
 
 **A national board in a country of a hundred million people, and it refused our
 client at the transport for three days.**
@@ -119,9 +151,9 @@ of 2026-09-20 is when the answer is most likely to change either way.
 - **no adapter is built.** *Reading this board needs the browser, and whether
   that is a shape this repository wants is a decision, not a measurement.*
 
-## No `route:` line — #264, 2026-09-12
+## No `route:` line — #264, 2026-09-12 (history: the line is back at the top since 2026-09-21)
 
-**This card declares `route: none`, not `route: browser`, and that is the finding.** The 31
+**This card declared `route: none`, not `route: browser`, and that was the finding then.** The 31
 advertisements above were read in a browser on 2026-09-08; since 2026-09-11
 the name is `clientHold` at the registrar and NXDOMAIN on every resolver
 (section above). *A route to a host that does not resolve is a route to
@@ -141,7 +173,7 @@ tab, /offres-demploi/page/2/     served — 12 ads, no page 3: 27 distinct /offr
 tab, /offres-emploi/chef-dequipe-psycho-social/   served, 240 KB — WebPage / BreadcrumbList / WebSite / Organization JSON-LD, datePublished 2026-09-11; no JobPosting; four e-mail addresses in the text
 ```
 
-**`route: browser · 27 · 2026-09-14`** — the walk's own figure, the site
+**`route: browser · 27 · 2026-09-14`** (superseded by the HTTP route above) — the walk's own figure, the site
 states none. What a session does from a tab: `/offres-demploi/page/N/`
 until the pager ends, the slug of `/offres-emploi/<slug>/` as the key, the
 ad's `datePublished` from its WebPage node, the body with every e-mail
@@ -160,8 +192,7 @@ GET https://www.tala-com.com/offres-demploi/page/2/  200 ×2 (06:32:12, 06:32:14
 
 **Twenty-nine distinct `/offres-emploi/<slug>/` over two pages, to the plain
 client, no challenge, no 403** — the reason this card gave for «no script»
-(the client is refused, #404) has fallen. The route stays `browser · 27 ·
-2026-09-14` until a script exists; **#339 is reopened on this reading** — a
+(the client is refused, #404) has fallen. The route became `http · 29 · 2026-09-21` with `talacom.py` (section at the top); **#339 was reopened on this reading** — the
 script walks `/offres-demploi/page/N/` until the pager ends, keys on the
 slug, reads the ad's `datePublished` from its WebPage node, scrubs every
 e-mail address and telephone, and prints «N emitted, the site states no

@@ -31306,5 +31306,152 @@ class AnATSWhoseListIsATableNamedByItsCellsAndWhoseUnknownTenantIsTheVendorsLand
         self.assertEqual(cm.exception.code, 2)
 
 
+class ACongoleseDirectoryWhoseJobSectionStatesNoTotalAndWhosePagerIsTheOnlyBound(unittest.TestCase):
+    """**`talacom.py`, 2026-09-21 (#339).** Tala-Com: `/offres-demploi/` fifteen
+    `article.emploi-item` cards a page, a pager naming the last page, a page
+    beyond the end answering 200 with no card, the site stating no total; the
+    Yoast job sitemap read once as the second witness. Both ways: the walk to
+    the pager's last page and no further, a repeated slug once, a page the
+    pager promised that shows nothing (stopped, said), the count against the
+    pager's bound (outside → 6), the sitemap check naming an address absent
+    from it, `--no-sitemap`, no pager (one page), a page without the listing
+    (6); the advert's labelled block, region, expiry, WebPage date, the text
+    scrubbed of e-mails, telephones and the application form, the apply link
+    and the protected e-mail absent, a 404 slug (3), bad addresses and any
+    query string refused before a request, another host refused before the
+    gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_talacom", os.path.join(SCRIPTS, "talacom.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(slug, title, company="ACTION CONTRE LA FAIM", region="Nord-Kivu", contract="CDD|CONTRAT A DUREE DETERMINEE (CDD)"):
+        return (f'<article class="emploi-item"><a class="emploi-link" href="https://www.tala-com.com/offres-emploi/{slug}/"><div class="emploi-img"><img src="https://www.tala-com.com/wp-content/uploads/2025/07/logo.jpg" alt="{company}" class="entreprise-bottom-image"></div>'
+                f'<div class="emploi-content"><h3 class="emploi-title"><span>{company}</span></h3><div class="emploi-adresse"><span class="marker-icon">{region}</span></div><div class="emploi-poste">{title}</div>'
+                f'<div class="emploi-horaires"><span>{contract}</span></div><div class="emploi-buttons"><span class="btn btn-contact"><span>Postuler</span></span></div></div></a></article>')
+
+    @staticmethod
+    def _listing(cards, current=1, last=2):
+        nums = " ".join(f'<span aria-current="page" class="page-numbers current">{i}</span>' if i == current else f'<a class="page-numbers" href="https://www.tala-com.com/offres-demploi/page/{i}/">{i}</a>' for i in range(1, last + 1))
+        pager = f'<div class="talacom-pagination"><div class="pagination-icon pagination-prev"></div>{nums} <a class="next page-numbers" href="https://www.tala-com.com/offres-demploi/page/2/"><div class="pagination-icon pagination-next"></div></a></div> </div>' if last else ""
+        return f'<html><body><div class="offre-wrapper style-1 talacom-offres posttype-wrapper">{"".join(cards)}</div>{pager}</body></html>'
+
+    @staticmethod
+    def _sitemap(urls):
+        return '<?xml version="1.0"?><urlset>' + "".join(f"<url><loc>{u}</loc><lastmod>2026-09-18T20:35:51+00:00</lastmod></url>" for u in urls) + "</urlset>"
+
+    AD = ('<html><head><script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://www.tala-com.com/offres-emploi/superviseur-nutrition-sante/","name":"SUPERVISEUR NUTRITION SANTE - Tala-Com","datePublished":"2026-09-18T20:31:18+00:00","dateModified":null},{"@type":"Organization","name":"Tala-Com","telephone":"+243 810 000 000"}]}</script></head><body>'
+          '<div class="et_pb_module et_pb_text et_pb_text_0_tb_body et_pb_text_align_left"><div class="et_pb_text_inner">SUPERVISEUR NUTRITION SANTE</div></div>'
+          '<div class="et_pb_code_inner"><div class="acf-offre-infos"><p><strong>Type de contrat :</strong> CDD|CONTRAT A DUREE DETERMINEE (CDD)</p><p><strong>Nombre de postes :</strong> 2</p><p><strong>Référence :</strong> ACF SUPNUTSAN/MW/006/09/2026</p>'
+          "<p><a href='https://www.tala-com.com/wp-content/uploads/2026/09/ewd_user_25889_1789763470_XVtI4iNG.pdf' target='_blank' class='et_pb_button'>Document offre</a></p></div></div>"
+          '<div class="et_pb_code_inner"><p><span class="offre-ville"><span class="marker-icon"></span> Nord-Kivu</span><br> <span class="email-icon"><a href="/cdn-cgi/l/email-protection#a3f1e2f0">recrutement@acf.example</a></span><br> <span class="calendar-tick-icon">Date d\'expiration : </strong>24/09/2026</p> <p><a href="https://forms.gle/apply123" target="_blanc" class="et_pb_button participer">Postuler</a></p></div>'
+          '<div class="et_pb_module et_pb_code et_pb_code_2_tb_body"> <div class="et_pb_code_inner"> <h3>Contexte et mission :</h3><p>Depuis 1997, Action Contre la Faim (ACF) est engagée en RDC.</p><p>COMMENT POSTULER : écrire à recrutement.mweso@acf.example ou appeler le +243 990 123 456, ou remplir https://forms.gle/rmqeg9v3h1xvPj197</p> </div> </div> </div> </div>'
+          '<div class="et_pb_section_3_tb_body">Vous êtes à la recherche d’un emploi ? Déposez votre CV.</div></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_ends_on_the_pager_and_the_count_is_read_against_its_bound_and_the_sitemap(self):
+        mod = self._mod()
+        p1 = [self._card(f"poste-{i}", f"POSTE {i}") for i in range(15)]
+        p2 = [self._card("poste-0", "POSTE 0"), self._card("poste-15", "POSTE 15", "D-PRO SERVICES", "KINSHASA", "CDI|CONTRAT A DUREE INDETERMINEE (CDI)")]
+        every = [f"https://www.tala-com.com/offres-emploi/poste-{i}/" for i in range(16)] + ["https://www.tala-com.com/offres-emploi/expired-one/"]
+
+        def answers(url):
+            if url.endswith("/offre_emploi-sitemap.xml"):
+                return 200, self._sitemap(every)
+            if url.endswith("/offres-demploi/"):
+                return 200, self._listing(p1, 1, 2)
+            if url.endswith("/offres-demploi/page/2/"):
+                return 200, self._listing(p2, 2, 2)
+            return 200, self._listing([], 3, 2)   # beyond the end: 200, no card — must never be asked for here
+        code, rows, err, sent = self._run(mod, ["list"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://www.tala-com.com/offres-demploi/", "https://www.tala-com.com/offres-demploi/page/2/", "https://www.tala-com.com/offre_emploi-sitemap.xml"])
+        self.assertEqual([r["id"] for r in rows], [f"poste-{i}" for i in range(16)])
+        self.assertIn("16 emitted — the site states no total; the pager bounds 16–30; 16 of 16 in the job sitemap (17 addresses, the archive with its expired adverts).", err)
+        r = rows[15]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["region"], r["contract"], r["country"], r["contacts_withheld"]),
+                         ("talacom:poste-15", "https://www.tala-com.com/offres-emploi/poste-15/", "POSTE 15", "D-PRO SERVICES", "KINSHASA", "CDI|CONTRAT A DUREE INDETERMINEE (CDI)", "CD", True))
+        self.assertNotIn("logo.jpg", json.dumps(rows))
+        # an address the sitemap does not carry is named; --no-sitemap skips the second witness
+        code, rows, err, sent = self._run(mod, ["list"], lambda url: (200, self._sitemap(every[:-2])) if url.endswith(".xml") else answers(url))
+        self.assertEqual(code, 0, err)
+        self.assertIn("15 of 16 in the job sitemap (15 addresses", err)
+        self.assertIn("absent from it: https://www.tala-com.com/offres-emploi/poste-15/", err)
+        code, rows, err, sent = self._run(mod, ["list", "--no-sitemap"], answers)
+        self.assertEqual((code, len(rows), len(sent)), (0, 16, 2), err)
+        self.assertIn("the pager bounds 16–30.", err)
+        # the pager promised a page 3 that shows nothing: stopped and said, the count outside the bound → 6
+        code, rows, err, sent = self._run(mod, ["list", "--no-sitemap"], lambda url: (200, self._listing(p1, 1, 3)) if url.endswith("/offres-demploi/") else ((200, self._listing(p2, 2, 3)) if url.endswith("/page/2/") else (200, self._listing([], 3, 3))))
+        self.assertEqual((code, len(rows), len(sent)), (6, 16, 3), err)
+        self.assertIn("page 3 of 3: no card — the pager promised more; stopped.", err)
+        self.assertIn("the pager bounds 31–45 — 16 is OUTSIDE it", err)
+        # one page, no pager
+        code, rows, err, sent = self._run(mod, ["list", "--no-sitemap"], lambda url: (200, self._listing(p2[1:], 1, 0)))
+        self.assertEqual((code, [r["id"] for r in rows], len(sent)), (0, ["poste-15"], 1), err)
+        self.assertIn("1 emitted — the site states no total; the pager bounds 1–15.", err)
+        # not the listing at all
+        code, rows, err, sent = self._run(mod, ["list"], lambda url: (200, "<html><body><h1>Tala-Com</h1><p>Annuaire</p></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, sent = self._run(mod, ["list"], lambda url: (403, ""))
+        self.assertEqual(code, 7, err)
+
+    def test_the_advert_reads_its_labelled_block_and_withholds_the_applicant_contact(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://www.tala-com.com/offres-emploi/superviseur-nutrition-sante"], lambda url: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://www.tala-com.com/offres-emploi/superviseur-nutrition-sante/"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["contract"], r["positions"], r["reference"], r["document_url"], r["region"], r["expires"], r["posted"], r["country"], r["contacts_withheld"]),
+                         ("superviseur-nutrition-sante", "SUPERVISEUR NUTRITION SANTE", "CDD|CONTRAT A DUREE DETERMINEE (CDD)", 2, "ACF SUPNUTSAN/MW/006/09/2026",
+                          "https://www.tala-com.com/wp-content/uploads/2026/09/ewd_user_25889_1789763470_XVtI4iNG.pdf", "Nord-Kivu", "2026-09-24", "2026-09-18T20:31:18+00:00", "CD", True))
+        self.assertTrue(r["description"].startswith("Contexte et mission :\nDepuis 1997"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertIn("[application link withheld]", r["description"])
+        self.assertNotIn("Déposez votre CV", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("acf.example", "243 990", "forms.gle", "email-protection", "apply123", "810 000"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.tala-com.com/offres-emploi/pas-une-annonce/"], lambda url: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.tala-com.com/offres-emploi/x/"], lambda url: (200, "<html><body><div class='et_pb_text_inner'>Annuaire</div></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://www.tala-com.com/offres-demploi/", "https://www.tala-com.com/offres-emploi/x/?p=1", "https://tala-com.com/offres-emploi/x/", "https://evil.example/offres-emploi/x/"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+
+        def gate_reached(url):  # the refusal comes BEFORE the gate: reaching it is the defect
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        for never in ("https://evil.example/offres-demploi/", "https://www.tala-com.com/offres-demploi/?paged=2"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(never)
+            self.assertEqual(cm.exception.code, 7, never)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
