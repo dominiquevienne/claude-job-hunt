@@ -31175,5 +31175,136 @@ class ANationalJobBankWhosePagerIsBehindAWrittenRefusalAndWhoseCategoriesEachFit
             fresh.request("https://evil.example/job_search.php", {"action": "search"})
         self.assertEqual(cm.exception.code, 7)
 
+class AnATSWhoseListIsATableNamedByItsCellsAndWhoseUnknownTenantIsTheVendorsLandingPage(unittest.TestCase):
+    """**`refline.py`, 2026-09-21 (#483).** Refline: `apply.refline.ch/<six
+    digits>/search.html?form.buttons.listAll=1` is one table whose cells are
+    named by their class, «Es liegen N Angebote vor.» the stated count when
+    a tenant prints it; the ad is the page's JobPosting with a contact
+    block. An unknown tenant is answered 200 with the vendor's own landing
+    page («Refline - …» title, no table) — «not a tenant» (3), never an empty
+    board; a page without the list is a changed page (6); any other host is
+    refused (7); `--country-code` STAMPS on the list and says so, filters
+    on the ad. Mutated (`-B`, detached copy): the stated-count regex broken
+    → reddens; the vendor-page check dropped → the landing page passes as
+    an empty board (reddens); the street emitted → reddens; the scrub
+    dropped → reddens; the stamp note dropped → reddens; another tenant's
+    link kept → reddens; the duplicate ids kept → reddens; the ad's
+    index.html kept in the url → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_refline", os.path.join(SCRIPTS, "refline.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(tenant, pid, title, cells):
+        return (f'<tr> <td class="position"><a href="https://apply.refline.ch/{tenant}/{pid}/pub/1/index.html" target="_blank">{title}</a></td> '
+                + "".join(f'<td class="{k}">{v}</td>' for k, v in cells.items()) + ' </tr>')
+
+    @classmethod
+    def _page(cls, rows, stated=None):
+        head = f"<p>Es liegen {stated} Angebote vor.</p>" if stated is not None else ""
+        return (f'<html><head><title>Empa</title></head><body>{head}<form action="https://apply.refline.ch/673276/search.html" method="post"></form>'
+                '<table><thead><tr><th>Stelle</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table></body></html>')
+
+    VENDOR = '<html><head><title>Refline - Bewerbermanagement Software</title></head><body><div class="position">Unsere Position am Markt</div><a href="search.html">x</a></body></html>'
+
+    AD = ('<html><head><title>x</title><script type="application/ld+json">{"@context": "http://schema.org/", "@type": "JobPosting", "title": "Postdoctoral Researcher on CO2", '
+          '"description": "<div>Materials science is our passion.</div><div>Questions? Dr. Sandra Muster, +41 58 765 4066, sandra.muster@empa.ch. Start per 01.01.2027.</div>", '
+          '"datePosted": "2026-03-16T09:10:18.577707+00:00", "validThrough": "2026-09-30", "employmentType": ["FULL_TIME", "TEMPORARY"], '
+          '"hiringOrganization": {"@type": "Organization", "name": "Empa", "logo": "https://apply.refline.ch/673276/companies/master/img/logo.jpg"}, '
+          '"jobLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "CH", "addressLocality": "Dübendorf", "addressRegion": "ZH", "streetAddress": "Ueberlandstrasse 129", "postalCode": "8600"}}, '
+          '"identifier": {"@type": "PropertyValue", "value": "refline-673276-master", "name": "Empa"}}</script></head>'
+          '<body><div class="contactInfo"><p>Dr. Sandra Muster</p><p>+41 58 765 4066</p></div><a class="applyLink" href="apply">Apply now</a></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_table_is_read_by_its_cells_against_the_stated_count(self):
+        import contextlib
+        mod = self._mod()
+        page = self._page([self._row("673276", "2176", "Postdoctoral Researcher on CO2", {"workload": "80% - 100%", "workplace": "Dübendorf", "published": "16.03.2026"}),
+                           self._row("673276", "2199", "Lernende/r Fachperson", {"workload": "100%", "workplace": "Dübendorf", "published": "01.06.2026"}),
+                           self._row("999999", "1", "another tenant's link", {"workplace": "x"}),
+                           self._row("673276", "2176", "the same id twice", {"workplace": "x"})], stated=3)
+        rows, err, asked, raw = self._run(mod, [(200, page)], tenant="673276")
+        self.assertEqual(asked, ["https://apply.refline.ch/673276/search.html?form.buttons.listAll=1"])
+        self.assertEqual([r["id"] for r in rows], ["2176", "2199"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["workload"], a["place"], a["area"], a["segment"], a["language"], a["published"], a["contacts_withheld"]),
+                         ("refline", "673276", None, "refline:673276:2176", "https://apply.refline.ch/673276/2176/pub/1", "Postdoctoral Researcher on CO2", "80% - 100%", "Dübendorf", None, None, None, "2026-03-16", True))
+        self.assertIn("2 emitted, the page states 3 for tenant 673276 — 1 short.", err)
+        self.assertNotIn("stamp", err)
+        zkb = self._page([self._row("792841", "11001", "DevOps Engineer", {"operationArea": "IT / Business Engineering", "workplace": "Zürich", "workload": "80% - 100%", "segment": "Berufserfahrene", "locale": "de"})])
+        rows, err, asked, raw = self._run(mod, [(200, zkb)], tenant="https://apply.refline.ch/792841/search.html", country_code="ch")
+        self.assertEqual(asked, ["https://apply.refline.ch/792841/search.html?form.buttons.listAll=1"])
+        self.assertEqual((rows[0]["id"], rows[0]["area"], rows[0]["segment"], rows[0]["language"], rows[0]["country"]), ("11001", "IT / Business Engineering", "Berufserfahrene", "de", "CH"))
+        self.assertIn("1 emitted for tenant 792841 — the page states no count, the table is the board.", err)
+        self.assertIn("country CH is the user's stamp — the list states no country.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([], stated=0))], tenant="655298")
+        self.assertEqual(rows, [])
+        self.assertIn("0 emitted, the page states 0", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.VENDOR)], tenant="000001")   # the vendor's landing page is not an empty board
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>nothing</body></html>")], tenant="673276")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="673276")
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("empa", "12345", "https://m.refline.ch/673276/index.html"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, [], tenant=bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://m.refline.ch/673276/index.html")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_ad_is_the_pages_jobposting_with_its_contact_block_and_street_withheld(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://apply.refline.ch/673276/2176/pub/1/index.html")
+        self.assertEqual(asked, ["https://apply.refline.ch/673276/2176/pub/1"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["tenant"], a["title"], a["company"], a["place"], a["region"], a["country"], a["employment_type"], a["published"], a["expires"], a["url"], a["contacts_withheld"]),
+                         ("2176", "673276", "Postdoctoral Researcher on CO2", "Empa", "Dübendorf", "ZH", "CH", ["FULL_TIME", "TEMPORARY"], "2026-03-16", "2026-09-30", "https://apply.refline.ch/673276/2176/pub/1", True))
+        self.assertEqual(a["description"], "Materials science is our passion.\nQuestions? Dr. Sandra Muster, [telephone withheld], [e-mail withheld]. Start per 01.01.2027.")
+        for secret in ("Ueberlandstrasse", "8600", "765 4066", "muster@", "logo.jpg", "contactInfo"):
+            self.assertNotIn(secret, raw, secret)
+        rows, err, asked, raw = self._run(mod, [(200, self.AD)], cmd="ad", url="https://apply.refline.ch/673276/2176/pub/1", country_code="DE")
+        self.assertEqual(rows, [])
+        self.assertIn("the ad is in CH, not DE — 0 emitted", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://apply.refline.ch/673276/1/pub/1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.VENDOR)], cmd="ad", url="https://apply.refline.ch/673276/1/pub/1")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>a page with neither posting nor list</body></html>")], cmd="ad", url="https://apply.refline.ch/673276/1/pub/1")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://apply.refline.ch/673276/search.html")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
