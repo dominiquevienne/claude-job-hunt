@@ -57,6 +57,8 @@ says, and the run does not translate). `--country-code` stamps and says so.
 ways on fixtures (the empty page ending the walk and not counted as a page
 of entries, a Portuguese date, the repeating page, a page that is not the
 category, a 404, an empty first page, `--max-pages`, a bad `--lang`, the
-`www.` host refused). Mutation bench on a detached copy, `python3 -B` — see
-the PR.
+`www.` host refused). Mutation bench on a detached copy, `python3 -B`, 6 / 6
+red: the empty-page end removed · the Portuguese months dropped · the key
+taken from the title · the scrub dropped · the «no count stated» note
+dropped · another host sent.
 
