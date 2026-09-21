@@ -30315,5 +30315,145 @@ class AnATSWhoseCareerPageShipsEveryJobInItsNextDataAndPrintsTheCountItShips(uni
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
         self.assertEqual((mod.country_of("Brasil"), mod.country_of("x", "br"), mod.country_of("Atlantis")), ("BR", "BR", None))
 
+class AnATSWhoseTenantPortalFillsItsListByAPostItsOwnScriptMakesTwentyAPageToAnEmptyPage(unittest.TestCase):
+    """**`hiringroom.py`, 2026-09-21 (#492).** Hiring Room: `<tenant>.hiringroom.com/jobs`
+    prints «Ver N vacantes» and declares `typePortal`; its script fills the
+    list by `POST /jobs/getVacanciesForPortal/<page>` (JSON: `result`,
+    `data.total_vacancies`, `data.htmlContent` of twenty cards, the page past
+    the last empty); `/jobs/get_vacancy/<24-hex>` is the advert (hero title,
+    location, area, three tags, `h6` sections). Both ways: the POST's
+    parameters and pages to the empty one, the stated total beside the
+    emitted number, a repeated id once, the country from the location, the
+    empty board, the advert's fields and scrubbed sections with the apply link
+    never emitted, a non-success answer (6), a 404 (3), bad addresses and
+    tenants refused, another host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hiringroom", os.path.join(SCRIPTS, "hiringroom.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "kpmg.hiringroom.com"
+
+    @staticmethod
+    def _card(jid, title, loc="Capital Federal, Buenos Aires (fuera de GBA), Argentina", area="Tecnología, Sistemas y Telecomunicaciones / Tecnologia / Sistemas", mod="Híbrido", sen="Senior"):
+        return (f'<a href="/jobs/get_vacancy/{jid}" class="text-decoration-none hrc-black"><div class="card p-3"><div class="card-body p-0"><h4 class="font-black m-0 mb-2 fs-20 name__vacancy"> {title} </h4>'
+                f'<p class="card-text"><span class="font-weight-light"><i class="hr-Location-pin hrc-black"></i> {loc} </span></p><p class="card-text"><span class="font-weight-light"><i class="hr-Work-area hrc-black"></i> {area} </span></p>'
+                f'<div class="vacancy-tags"><p class="m-0 mr-2"><span class="tag-vacancy fs-12"><i class="hr-Clock mr-1 hrc-black"></i> Full-time </span></p><p class="m-0 mr-2"><span class="tag-vacancy fs-12"><i class="hrc-black hr-Company mr-1"></i> {mod} </span></p>'
+                f'<p class="m-0"><span class="tag-vacancy fs-12"><i class="hr-Campus mr-1 hrc-black"></i> {sen} </span></p></div><p class="vacancy-time card-text fs-12"> Hace 2 meses </p></div></div></a>')
+
+    @staticmethod
+    def _portal(count, type_portal="external"):
+        return (f'<html><head><title>¡Ofertas de empleo en KPMG Argentina! - Hiring Room</title></head><body><p>Ver <span>{count}</span> vacantes</p><div class="vacancyDataContainer"></div>'
+                f'<script>var typePortal = "{type_portal}"; function getVacancies(d) {{ $.ajax({{url: "/jobs/getVacanciesForPortal/" + d.selectedPage}}); }}</script></body></html>')
+
+    @staticmethod
+    def _answer(cards, total, label="1-20 de 49 vacantes"):
+        return json.dumps({"result": "success", "data": {"htmlContent": "".join(cards), "pagination": "", "paginationLabel": f"<p>{label}</p>", "total_vacancies": total, "filtersOptions": {}}})
+
+    AD = ('<html><head><title>Nuevas oportunidades de empleo: Consultor Data Analyst en KPMG Argentina</title></head><body><section class="hero"><div class="hero__title"><h2 class="commonstxt"> Consultor Data Analyst </h2></div>'
+          '<div class="hero__area-ubication hideOnMoible"><p class="commonstxt" title="x"><span class="hr-Location-pin"></span> Capital Federal, Buenos Aires (fuera de GBA), Argentina </p><p class="commonstxt"><span class="hr-Work-area"></span> Tecnología, Sistemas y Telecomunicaciones/Tecnologia / Sistemas </p></div>'
+          '<div class="hero__tag-items"><div class="commonstxt hero__tag"><span class="commonstxt hr-Clock hrc-black"></span>Full-time </div><div class="commonstxt hero__tag"><span class="commonstxt hrc-black hr-Company"></span>Híbrido<!-- c --></div><div class="commonstxt hero__tag"><span class="commonstxt hr-Campus hrc-black"></span>Senior </div></div>'
+          '<p class="commonstxt hero__time-new hero__time--old"> Hace 2 meses </p><a href="https://hiringroom.com/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574/candidates/new" class="btn">Postularse</a></section>'
+          '<main><div class="main__description bg-white p-4"><h6 class="commonstxt hrc-green"><i class="commonstxt hr-File"></i> Descripción del puesto </h6><div class="hrc-fs-14 m-0 hrc-black job-description-content"><ul><li>Responsable de pipelines de datos. Consultas a datos@kpmg.example o al 011 4316-5700.</li></ul></div>'
+          '<!-- La descripción es obligatoria --><h6 class="commonstxt hrc-green"><i class="commonstxt hr-Required"></i> Requisitos </h6><div class="hrc-fs-14 m-0 hrc-black job-description-content"><ul><li>SQL avanzado.</li></ul></div>'
+          '<h6 class="commonstxt hrc-green"><i class="commonstxt hr-Heart"></i> Beneficios </h6><div class="hrc-black hrc-fs-14 job-description-content"><p>Trabajo flexible.</p></div></div><div class="main__button-container"><a href="https://hiringroom.com/jobs/get_vacancy/x/candidates/new">Postularse</a></div></main></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES.clear()
+
+        def request(url, data=None):
+            sent.append((url, dict(data) if data else None))
+            return answers(url, data)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_is_the_post_the_page_makes_walked_to_the_empty_page_and_counted(self):
+        mod = self._mod()
+        ids = [f"6a43eeb6ee94d72ceb0f25{i:02d}" for i in range(3)]
+        pages = {1: [self._card(ids[0], "Consultor Data Analyst"), self._card(ids[1], "Consultor SOC", loc="Santiago, Chile", mod="Remoto", sen="Semi Senior")], 2: [self._card(ids[2], "Auditor", loc="Rosario"), self._card(ids[0], "repeat")], 3: []}
+
+        def answers(url, data):
+            if url.endswith("/jobs"):
+                return 200, self._portal(3)
+            page = int(url.rsplit("/", 1)[1])
+            return 200, self._answer(pages[page], 3)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "kpmg", "--country-code", "ar"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _ in sent], [f"https://{self.HOST}/jobs", f"https://{self.HOST}/jobs/getVacanciesForPortal/1", f"https://{self.HOST}/jobs/getVacanciesForPortal/2"])
+        self.assertEqual(sent[1][1], {"typePortal": "external", "selectedPage": 1})
+        self.assertEqual([r["id"] for r in rows], ids)
+        self.assertIn("3 emitted — the list call states 3: equal; country AR stamped", err)
+        r = rows[1]
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["location"], r["schedule"], r["modality"], r["seniority"], r["posted_relative"], r["contacts_withheld"]),
+                         (f"hiringroom:{self.HOST}:{ids[1]}", f"https://{self.HOST}/jobs/get_vacancy/{ids[1]}", "Consultor SOC", "KPMG Argentina", "CL", "Santiago, Chile", "Full-time", "Remoto", "Semi Senior", "Hace 2 meses", True))
+        self.assertEqual((rows[0]["country"], rows[2]["country"]), ("AR", "AR"))
+        # the total short of the pages: the walk goes to the empty page and says short
+        pages[2] = [self._card(ids[2], "Auditor")]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/jobs"], lambda url, data: (200, self._portal(5)) if url.endswith("/jobs") else (200, self._answer(pages[int(url.rsplit("/", 1)[1])], 5)))
+        self.assertEqual((code, len(rows), len(sent)), (0, 3, 4), err)
+        self.assertIn("3 emitted — the list call states 5: 2 short", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "fravega"], lambda url, data: (200, self._portal(0)) if url.endswith("/jobs") else (200, self._answer([], 0, "0-0 de 0 vacantes")))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the list call states 0: equal", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, self._portal(3)) if url.endswith("/jobs") else (200, '{"result":"error"}'))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, "<html><body><h1>Hiring Room</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nadie"], lambda url, data: (404, ""))
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (403, ""))
+        self.assertEqual(code, 7, err)
+
+    def test_the_advert_reads_its_hero_and_sections_and_never_emits_the_apply_link(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574"], lambda url, data: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _ in sent], [f"https://{self.HOST}/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["country"], r["location"], r["area"], r["schedule"], r["modality"], r["seniority"], r["posted_relative"]),
+                         ("6a43eeb6ee94d72ceb0f2574", "Consultor Data Analyst", "KPMG Argentina", "AR", "Capital Federal, Buenos Aires (fuera de GBA), Argentina", "Tecnología, Sistemas y Telecomunicaciones/Tecnologia / Sistemas", "Full-time", "Híbrido", "Senior", "Hace 2 meses"))
+        self.assertEqual(sorted(r["sections"]), ["Beneficios", "Descripción del puesto", "Requisitos"])
+        self.assertTrue(r["description"].startswith("Responsable de pipelines"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r)
+        for hidden in ("datos@kpmg", "4316-5700", "candidates/new", "Postularse"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574"], lambda url, data: (200, "<html><body>x</body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574"], lambda url, data: (404, ""))
+        self.assertEqual(code, 3, err)
+        for bad in (f"https://{self.HOST}/jobs", f"https://{self.HOST}/jobs/get_vacancy/xyz", "https://hiringroom.com/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574/candidates/new", "https://jobs.hiringroom.com/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574", "https://evil.example/jobs/get_vacancy/6a43eeb6ee94d72ceb0f2574"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url, data: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+        fresh.gate = lambda url: {"allowed": True}
+        fresh.TENANT["host"] = self.HOST
+        import contextlib
+        for host in ("evil.example", "fravega.hiringroom.com", "kpmg.hiringroom.com.evil.example", "hiringroom.com"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(f"https://{host}/jobs")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "jobs", "-x", "www.hiringroom.com", "https://hiringroom.com/jobs", "kpmg.example.com"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("kpmg", "KPMG.hiringroom.com", f"https://{self.HOST}/jobs"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual((mod.country_of("Quito, Ecuador"), mod.country_of("Rosario", "AR"), mod.country_of("Rosario")), ("EC", "AR", None))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
