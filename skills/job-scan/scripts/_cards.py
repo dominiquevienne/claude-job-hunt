@@ -171,16 +171,51 @@ def platform_siblings(boards_dir):
     return out
 
 
+# Prefixes whose id carries a segment the board treats case-insensitively.
+# `workday:<tenant>:<site>:<req>` — the `site` coordinate is case-insensitive
+# at Workday's API and case-preserving in its URL, so the same vacancy arrived
+# under `SwisscomExternalCareers` and `swisscomexternalcareers` (#592). The
+# writer folds it since 1c8e2f2 (2026-09-02); rows written before keep the
+# mixed case, and nothing folded on the reading side until this map.
+CASE_FOLDED_SEGMENTS = {"workday": (2,)}
+
+
+def canonical_id(ledger_id):
+    """The comparison form of a ledger id: the segments its board reads
+    case-insensitively folded to lower case, everything else as written.
+
+        canonical_id("workday:swisscom:SwisscomExternalCareers:R-1") -> "workday:swisscom:swisscomexternalcareers:R-1"
+        canonical_id("jobup:AbC")                                    -> "jobup:AbC"
+
+    **Reader-side, on purpose.** #592: the adapter started folding the site in
+    the key it writes, the exclusion set compared ids as strings, and every
+    row closed before the change came back as «new» — an id well formed,
+    absent from the set, indistinguishable from a first sighting. Folding
+    where the comparison happens covers the ledgers already written; no
+    migration touches the user's file.
+    """
+    if not ledger_id or ":" not in ledger_id:
+        return ledger_id or ""
+    parts = ledger_id.split(":")
+    for i in CASE_FOLDED_SEGMENTS.get(parts[0], ()):
+        if i < len(parts):
+            parts[i] = parts[i].lower()
+    return ":".join(parts)
+
+
 def same_posting_ids(ledger_id, siblings):
-    """Every ledger id that would name **this same advertisement**.
+    """Every ledger id that would name **this same advertisement** — the
+    platform siblings, and each form's canonical (case-folded) shape.
 
     `siblings` is what `platform_siblings()` returned.
 
         same_posting_ids("jobup:abc", sibs) -> ["jobs-ch:abc", "jobup:abc"]
+        same_posting_ids("workday:t:SiteX:R-1", {}) -> ["workday:t:SiteX:R-1", "workday:t:sitex:R-1"]
 
     **This is the check step 3 was missing.** Comparing whole ledger ids finds
     `jobup:abc` and `jobs-ch:abc` different, because they are — as strings.
-    They are the same posting.
+    They are the same posting. And since #592 the same holds inside one
+    board: `workday:t:SiteX:R-1` and `workday:t:sitex:R-1` are one vacancy.
 
     An id with no `:` is returned alone: it is not a namespaced ledger id, and
     guessing a prefix for it would invent an identity.
@@ -191,4 +226,6 @@ def same_posting_ids(ledger_id, siblings):
     out = {ledger_id}
     for sib in siblings.get(prefix, ()):
         out.add(f"{sib}:{ident}")
+    for form in list(out):
+        out.add(canonical_id(form))
     return sorted(out)

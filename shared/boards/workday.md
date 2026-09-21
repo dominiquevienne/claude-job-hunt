@@ -43,6 +43,16 @@ where the caller got the spelling: `workday.py resolve "Swisscom"` returns
 employer's own careers URL say `SwisscomExternalCareers`. **Both list the same
 ads.** `R-0005958` was recorded twice, once per spelling.
 
+**And the ledger MAY carry both forms (#592, 2026-09-21).** The adapter folds
+the site since `1c8e2f2` (2026-09-02); every row written before keeps the
+spelling of its day, and no migration rewrites the user's file. The reading
+side folds instead: `ledger.py index` prints a `canonical` form beside an id
+whose site segment is not already lower case, `_cards.canonical_id` gives it
+to any reader, and `same_posting_ids` expands a card's id to its folded
+shape — so `workday:swisscom:SwisscomExternalCareers:R-0005876` (closed
+before the change) and `workday:swisscom:swisscomexternalcareers:R-0005876`
+(the card of today) are recognised as one vacancy at step 0 and step 3.
+
 The key now folds the site name; the URL keeps the caller's spelling, because
 that is what the employer publishes. This is the Workable shape from the same
 day — `resolve` and `list` disagreeing about an identifier — in its quieter

@@ -65,6 +65,7 @@ import json
 import os
 import re
 import sys
+from _cards import canonical_id
 
 DEFAULT = os.path.join(
     os.environ.get("JOB_HUNT_HOME",
@@ -181,8 +182,12 @@ def cmd_index(a):
         st = status_of(d)
         if a.excluded_only and st not in closed:
             continue
-        print(json.dumps({"id": d.get("ID", ""), "status": st,
-                          "match": d.get("Match", "")}, ensure_ascii=False))
+        ident = d.get("ID", "")
+        rec = {"id": ident, "status": st, "match": d.get("Match", "")}
+        canon = canonical_id(ident)
+        if canon != ident:
+            rec["canonical"] = canon      # #592: the folded form a reader compares against, when it differs
+        print(json.dumps(rec, ensure_ascii=False))
         kept += 1
     whole = len(text.encode())
     note(f"{kept} row(s) of {len(rows)}. The ledger is {whole} bytes; this "
