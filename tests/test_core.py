@@ -30410,6 +30410,14 @@ class AnATSWhoseTenantPortalFillsItsListByAPostItsOwnScriptMakesTwentyAPageToAnE
         self.assertIn("0 emitted — the list call states 0: equal", err)
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, self._portal(3)) if url.endswith("/jobs") else (200, '{"result":"error"}'))
         self.assertEqual((code, rows), (6, []), err)
+        # an answer that is not `success` is not an empty page, even with an (empty) htmlContent
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, self._portal(3)) if url.endswith("/jobs") else (200, '{"result":"error","data":{"htmlContent":"","total_vacancies":3}}'))
+        self.assertEqual((code, rows, len(sent)), (6, [], 2), err)
+        # a page of repeats only ends the walk: page 3 is never asked for
+        repeats = {1: [self._card(ids[0], "A"), self._card(ids[1], "B")], 2: [self._card(ids[1], "B again")], 3: [self._card(ids[2], "C")]}
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, self._portal(5)) if url.endswith("/jobs") else (200, self._answer(repeats[int(url.rsplit("/", 1)[1])], 5)))
+        self.assertEqual((code, [r["id"] for r in rows], len(sent)), (0, ids[:2], 3), err)
+        self.assertIn("2 emitted — the list call states 5: 3 short", err)
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "kpmg"], lambda url, data: (200, "<html><body><h1>Hiring Room</h1></body></html>"))
         self.assertEqual((code, rows), (6, []), err)
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nadie"], lambda url, data: (404, ""))
