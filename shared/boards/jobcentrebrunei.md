@@ -65,5 +65,8 @@ both ways on fixtures (the pager built from the page's own token, the walk
 against a stated count, `--max-pages` and its «short» line, the repeating
 page, a page without the token, a page without the count, the apex refused;
 the advert with its age row, its e-mail and its telephone, the advert gone
-or changed). Mutation bench on a detached copy, `python3 -B` — see the PR.
+or changed). Mutation bench on a detached copy, `python3 -B`, 7 / 7 red: the
+age row emitted · the withheld list dropped · the portlet id composed
+instead of read · the stated count ignored · the repeat check dropped · the
+cells read by one scanning regex (the salary is lost) · another host sent.
 
