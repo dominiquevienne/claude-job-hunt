@@ -171,10 +171,22 @@ def parse_sitemap(body):
 
 def row(e):
     slug = urllib.parse.unquote(urllib.parse.urlsplit(e["url"]).path).split("/", 3)[-1]
-    # the slug IS the site's own title, dashed — rendered readable, never invented; the real title is on the advert («ad»)
-    return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{e['id']}", "id": e["id"], "url": e["url"],
-            "slug": slug, "title_from_slug": " ".join(slug.replace("-", " ").split()) or None,
-            "lastmod": e["lastmod"], "contacts_withheld": True}
+    # the slug IS the site's own title, dashed — rendered readable, never invented; the real title is on the advert («ad»).
+    # **And the KEY is built on what is EMITTED, not on what was read** (#626, 2026-09-21): an employer who writes a
+    # telephone or an address in the title would put it in the slug, hence in the url, the id-slug and the rendered
+    # title — where no scrub of the description would ever reach it. Measured the same day: 0 of 56 095 slugs carry
+    # one. So the case is rare, not impossible: when it happens the slug and the title are scrubbed AND the address
+    # emitted is the canonical one, `/jobs/<id>/x`, which the site serves identically (read twice, 169 119 B, the same
+    # JobPosting) — the row then says `url_neutralised`, because a link that silently loses its title is a lie of another kind.
+    title = " ".join(slug.replace("-", " ").split()) or None
+    leaked = bool(MAIL_RE.search(slug) or PHONE_RE.search(slug.replace("-", " ")))
+    rec = {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{e['id']}", "id": e["id"],
+           "url": f"{BASE}/jobs/{e['id']}/x" if leaked else e["url"],
+           "slug": scrub(slug) if leaked else slug, "title_from_slug": scrub(title) if leaked else title,
+           "lastmod": e["lastmod"], "contacts_withheld": True}
+    if leaked:
+        rec["url_neutralised"] = "the site's own slug carried a contact — the canonical address is emitted instead"
+    return rec
 
 
 def cmd_jobs(a):

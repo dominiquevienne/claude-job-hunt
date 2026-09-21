@@ -33355,6 +33355,25 @@ class AnInventoryReadWhereTheRulesAllowItBecauseEveryQueryStringIsRefused(unitte
         dump = json.dumps(r, ensure_ascii=False)
         for hidden in ("سعادت آباد", "123456", "logo", "santcc.com", "sant.example", "8899"):
             self.assertNotIn(hidden, dump, hidden)
+        # **the key is built on what is EMITTED, not on what was read**: a contact written in the site's own title
+        # travels through the slug, the url and the rendered title, where no scrub of the description reaches it
+        sm2 = self._sitemap([self._url(99, "استخدام-راننده-تماس-09123456789"),
+                             self._url(98, "استخدام-منشی-hr@x.example"),
+                             self._url(97, "استخدام-منشی-hr-at-x-example")])
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, sm2))
+        self.assertEqual(code, 0, err)
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("09123456789", "hr@x.example"):
+            self.assertNotIn(hidden, dump, hidden)
+        self.assertEqual((rows[0]["url"], rows[1]["url"]), ("https://jobvision.ir/jobs/99/x", "https://jobvision.ir/jobs/98/x"))   # the canonical address, which the site serves identically
+        self.assertIn("[telephone withheld]", rows[0]["title_from_slug"])
+        self.assertIn("[e-mail withheld]", rows[1]["title_from_slug"])
+        self.assertIn("url_neutralised", rows[0])
+        self.assertIn("url_neutralised", rows[1])
+        # and the negative: a dashed «at» is not an address — nothing is scrubbed, nothing is neutralised
+        self.assertNotIn("url_neutralised", rows[2])
+        self.assertEqual(rows[2]["url"], "https://jobvision.ir/jobs/97/استخدام-منشی-hr-at-x-example")
+        self.assertEqual(rows[2]["title_from_slug"], "استخدام منشی hr at x example")
         code, rows, err, _ = self._run(mod, ["ad", "--url", "https://jobvision.ir/jobs/1/x"], lambda u: (404, ""))
         self.assertEqual((code, rows), (3, []), err)
         code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, "<html><body>no posting</body></html>"))
