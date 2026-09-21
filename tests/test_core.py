@@ -30463,5 +30463,133 @@ class AnATSWhoseTenantPortalFillsItsListByAPostItsOwnScriptMakesTwentyAPageToAnE
             self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
         self.assertEqual((mod.country_of("Quito, Ecuador"), mod.country_of("Rosario", "AR"), mod.country_of("Rosario")), ("EC", "AR", None))
 
+class AnATSWhoseCareerSiteHasItsOwnJSONAPIStatingNumFoundAndWhoseVendorApplyPageIsReadThroughTheBackend(unittest.TestCase):
+    """**`beetween.py`, 2026-09-21 (#493).** Beetween: `<tenant>.jobs.beetween.com/api/client/information`
+    names the employer, `POST /api/job/list` (page, rows) answers `numFound`
+    and `jobs[]` (full records: texts, dates, city/region/country, contract,
+    salary, url), `GET /api/job/<wid>` one job (500 for an unknown wid); the
+    vendor's apply page `app.beetween.com/WeaselWeb/p/#/apply/job/<wid>xx/<slug>`
+    (a hash route) is read through `apehi.beetween.com/WeaselWeb/api/jobs/byWid/<wid>`.
+    Both ways: the walk to numFound, a repeated wid once, the record's fields
+    with the logo never emitted and the texts scrubbed, an empty board, the
+    unknown tenant (3), a shell instead of JSON (6), the apply page's wid
+    (with and without its suffix) read on the backend host and the relayed
+    address kept, bad addresses and tenants refused, another host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_beetween", os.path.join(SCRIPTS, "beetween.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "proxiserve.jobs.beetween.com"
+
+    @staticmethod
+    def _job(wid, title, city="Millau", country="France", url=None):
+        return {"id": 111860, "wid": wid, "title": title, "descriptionMission": "<p>Pourquoi nous rejoindre? Écrivez à rh@proxiserve.example ou au 05 65 12 34 56.</p>", "descriptionCompany": "<p>Proxiserve (3000 collaborateurs)</p>",
+                "descriptionProfile": "<p><strong>Votre Profil</strong></p>", "creationDate": "2026-09-18T00:00:00.000+00:00", "city": city, "region": "Occitanie", "country": country, "gpsCoordinates": "44.1006693,3.0777594",
+                "logo": "https://apehi.beetween.com/logo/05cb.png", "contractType": "CDI", "salaryMin": 1950.0, "salaryMax": 2000.0, "salaryUnit": "MONTH", "language": "Français",
+                "url": url or f"https://proxiserve.jobs.beetween.com/job/{wid}", "agency": None, "categories": None, "frontPageAd": None, "contractDurationUnit": None, "contractDurationValue": "0"}
+
+    CLIENT = '{"id":171,"name":"proxiserve","completeName":"Proxiserve","website":"https://www.proxiserve.fr","design":{"logo":"https://assets.jobs.beetween.com/x.png"}}'
+    BYWID = '{"wid":"gwbgkau3f0","recruitmentTitle":"Cadre de santé Médecine Polyvalente H/F","description":"<h3>À propos de nous</h3><p>Le service. Contact: drh@ch-tulle.example, 05 55 29 79 00.</p>","industry":null,"location":"19000 Tulle, Nouvelle-Aquitaine","company":"Centre Hospitalier Coeur de Corrèze","videoUrl":null,"locale":"fr","logoUrl":null}'
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES.clear()
+
+        def request(url, payload=None):
+            sent.append((url, payload))
+            return answers(url, payload)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_is_walked_to_numfound_and_the_record_carries_the_fields_and_not_the_logo(self):
+        mod = self._mod()
+        pages = {1: [self._job("jd2k8y01a8", "Technicien travaux Plombier chauffagiste h/f"), self._job("pfgdvrpd36", "Responsable Marketing", "Nancy", url="https://welcoop.nos-recrutements.fr/job/pfgdvrpd36")], 2: [self._job("gw1h72vhrd", "Assistant", "Toulouse", "Belgique"), self._job("jd2k8y01a8", "repeat")]}
+
+        def answers(url, payload):
+            if url.endswith("/api/client/information"):
+                return 200, self.CLIENT
+            return 200, json.dumps({"numFound": 3, "jobs": pages.get(payload["page"], [])})
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "proxiserve"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _ in sent], [f"https://{self.HOST}/api/client/information", f"https://{self.HOST}/api/job/list", f"https://{self.HOST}/api/job/list"])
+        self.assertEqual(sent[1][1], {"keywords": "", "locations": [], "contractTypes": [], "categories": [], "page": 1, "rows": 100})
+        self.assertEqual([r["id"] for r in rows], ["jd2k8y01a8", "pfgdvrpd36", "gw1h72vhrd"])
+        self.assertIn("3 emitted — the site states 3: equal", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["site_id"], r["url"], r["title"], r["company"], r["posted"], r["country"], r["region"], r["place"], r["lat"], r["contract_type"], r["salary"], r["language"], r["contacts_withheld"]),
+                         ("beetween:jd2k8y01a8", "111860", f"https://{self.HOST}/job/jd2k8y01a8", "Technicien travaux Plombier chauffagiste h/f", "Proxiserve", "2026-09-18T00:00:00.000+00:00", "FR", "Occitanie", "Millau", 44.1006693, "CDI", {"salaryMin": 1950.0, "salaryMax": 2000.0, "salaryUnit": "MONTH"}, "Français", True))
+        self.assertTrue(r["description"].startswith("Pourquoi nous rejoindre?"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertEqual(sorted(r["sections"]), ["Entreprise", "Profil"])
+        self.assertEqual((rows[1]["url"], rows[2]["country"], rows[2]["country_name"]), ("https://welcoop.nos-recrutements.fr/job/pfgdvrpd36", "BE", "Belgique"))
+        dump = json.dumps(rows)
+        for hidden in ("rh@proxiserve", "05 65 12 34 56", "apehi.beetween.com/logo", "gpsCoordinates"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://comptoir.jobs.beetween.com/jobs"], lambda url, p: (200, self.CLIENT) if url.endswith("information") else (200, '{"numFound":0,"jobs":[]}'))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the site states 0: equal", err)
+        # numFound above what the pages hold: the walk ends on the empty page and says short
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "proxiserve"], lambda url, p: (200, self.CLIENT) if url.endswith("information") else (200, json.dumps({"numFound": 5, "jobs": pages[1] if p["page"] == 1 else []})))
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 3), err)
+        self.assertIn("2 emitted — the site states 5: 3 short", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "nope-xyz"], lambda url, p: (404, ""))
+        self.assertEqual((code, rows, len(sent)), (3, [], 1), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "proxiserve"], lambda url, p: (200, "<!doctype html><html>shell</html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "proxiserve"], lambda url, p: (403, ""))
+        self.assertEqual(code, 7, err)
+
+    def test_the_advert_is_read_on_the_site_or_through_the_backend_for_the_vendors_apply_page(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/job/jd2k8y01a8"], lambda url, p: (200, self.CLIENT) if url.endswith("information") else (200, json.dumps(self._job("jd2k8y01a8", "Technicien"))))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([u for u, _ in sent], [f"https://{self.HOST}/api/job/jd2k8y01a8", f"https://{self.HOST}/api/client/information"])
+        self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["company"], rows[0]["place"]), ("jd2k8y01a8", "Technicien", "Proxiserve", "Millau"))
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/job/zzzzzzzzzz"], lambda url, p: (500, ""))
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("gone, or another site's", err)
+        for relayed in ("https://app.beetween.com/WeaselWeb/p/#/apply/job/gwbgkau3f04n/cadre-de-sante-medecine-polyvalente-h-f", "https://app.beetween.com/WeaselWeb/p/#/apply/job/gwbgkau3f0"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", relayed], lambda url, p: (200, self.BYWID))
+            self.assertEqual(code, 0, err)
+            self.assertEqual([u for u, _ in sent], ["https://apehi.beetween.com/WeaselWeb/api/jobs/byWid/gwbgkau3f0"])
+            r = rows[0]
+            self.assertEqual((r["id"], r["ledger_id"], r["url"], r["title"], r["company"], r["location"], r["language"]),
+                             ("gwbgkau3f0", "beetween:gwbgkau3f0", relayed, "Cadre de santé Médecine Polyvalente H/F", "Centre Hospitalier Coeur de Corrèze", "19000 Tulle, Nouvelle-Aquitaine", "fr"))
+            self.assertIn("[e-mail withheld]", r["description"])
+            self.assertNotIn("drh@ch-tulle", json.dumps(r))
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://app.beetween.com/WeaselWeb/p/#/apply/job/gwbgkau3f04n/x"], lambda url, p: (200, '{"wid":"gwbgkau3f0"}'))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://app.beetween.com/WeaselWeb/p/#/hug/x", f"https://{self.HOST}/jobs", f"https://{self.HOST}/job/short", "https://www.beetween.com/job/jd2k8y01a8", "https://apehi.beetween.com/job/jd2k8y01a8"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url, p: (200, self.CLIENT))
+            self.assertEqual((code, sent), (2, []), bad)
+        fresh = self._mod()
+        fresh.gate = lambda url: {"allowed": True}
+        fresh.TENANT["host"] = self.HOST
+        import contextlib
+        for host in ("evil.example", "welcoop.jobs.beetween.com", "apehi.beetween.com", "proxiserve.jobs.beetween.com.evil.example"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(f"https://{host}/api/job/list", {})
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "app", "apehi", "-x", "jobs.beetween.com", "app.beetween.com", "https://emploi.beetween.com/WeaselWeb/p/", "a b"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok, host in (("proxiserve", self.HOST), ("PROXISERVE.jobs.beetween.com", self.HOST), (f"https://{self.HOST}/jobs?page=2", self.HOST), ("welcoop.nos-recrutements.fr", "welcoop.nos-recrutements.fr"), ("https://welcoop.nos-recrutements.fr/job/x", "welcoop.nos-recrutements.fr")):
+            self.assertEqual(mod.tenant_of(ok), host, ok)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
