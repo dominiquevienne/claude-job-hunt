@@ -29777,5 +29777,128 @@ class AnATSWhoseCareerPageCarriesItsOwnListCallURLWithACSRFPairAndAnswersHTMLIns
         self.assertEqual(mod.tenant_of(self.CAREER), (self.HOST, "/juliaservice", "it"))
         self.assertEqual(mod.tenant_of("berner.intervieweb.it/it/career/"), ("berner.intervieweb.it", "", "it"))
 
+class AnATSWhoseJobsiteCarriesItsWholeListInlineAndWhoseRulesRefuseEveryQueryString(unittest.TestCase):
+    """**`jobtoolz.py`, 2026-09-21 (#478).** Jobtoolz: `<tenant>.jobtoolz.com/<lang>`
+    hands its whole list to `window.jobComponent([jobs], 8, locations, types,
+    filter groups)` in the page — one request is the board; the rules
+    refuse `/*?` to every agent, so no query string is ever sent; the job
+    page on the tenant host carries a JobPosting with a street and a
+    postcode. Both ways: the inline list decoded (five JSON arguments), the
+    rows with the tenant-host address and the employer's own, the category
+    labels resolved from the filter groups, the stamp, a page without the
+    component (6), a 404 (3), a query string refused before any request
+    (7), the ad with the street and postcode withheld and scrubbed, other
+    hosts refused, bad tenants."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobtoolz", os.path.join(SCRIPTS, "jobtoolz.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "cnh-industrial.jobtoolz.com"
+
+    def _page(self, jobs, groups=None):
+        import html as htmlmod
+        groups = groups if groups is not None else [{"id": 1098847961, "alias": "Filter by type", "order": 0, "filters": [{"id": "", "alias": "All types"}, {"id": 2100286113, "alias": "Engineering"}, {"id": 370921781, "alias": "Service"}]}]
+        arg = json.dumps(jobs) + ",\n            8,\n            " + json.dumps([{"id": "", "alias": "All locations"}, {"id": 2084855974, "alias": "CNH Industrial Zedelgem"}]) + ",\n            " + json.dumps([{"id": "", "alias": "Fulltime & Parttime"}]) + ",\n            " + json.dumps(groups)
+        return '<html lang="en"><body><div id="jobsite-app"><div id="jobs" x-data="window.jobComponent(\n            ' + htmlmod.escape(arg, quote=True) + '\n            )" class="site__container"><template x-for="(job, index) in filteredItemsOnThisPage()"></template></div></div></body></html>'
+
+    @staticmethod
+    def _job(i, title, slug, location="Zedelgem", types="Full-time", fids=(2100286113,)):
+        return {"id": 26900 + i, "title": title, "button": "view vacancy", "url": f"https://www.cnhind-belgium.be/en/{slug}", "image_url": "https://jobtoolz-assets.imgix.net/x.jpg?dpr=1",
+                "location": location, "types": types, "filters": {"filterIds": list(fids), "locationId": 2084855974, "types": ["fulltime"]}}
+
+    AD = ('<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","directApply":true,"datePosted":"2026-09-16","title":"Harvesting Automation Concept Systems Engineer","employmentType":["FULL_TIME"],'
+          '"hiringOrganization":{"@type":"Organization","name":"CNH","sameAs":"https://www.cnhindustrial.com"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","streetAddress":"Léon Claeysstraat 3a","addressLocality":"Zedelgem","postalCode":"8210","addressCountry":"BE"}},'
+          '"description":"<p>You will develop automation. Questions: recruit@cnh.example or +32 50 25 31 11.</p>"}</script></head><body></body></html>')
+
+    def _run(self, mod, argv, page=None, ad=None):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+
+        def request(url):
+            sent.append(url)
+            path = urllib.parse.urlsplit(url).path
+            if path.count("/") >= 2 and len(path.split("/")[1]) == 2 and path.split("/")[2]:
+                return (200, ad) if ad is not None else (404, "")
+            return (200, page) if page is not None else (404, "")
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_inline_list_is_the_board_and_one_request_reads_it(self):
+        mod = self._mod()
+        jobs = [self._job(0, "Harvesting Engineer", "harvesting-engineer"), self._job(1, "Technical Trainer", "technical-trainer", types="Part-time", fids=(370921781,)), self._job(0, "Harvesting Engineer again", "again")]
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "cnh-industrial", "--country-code", "be"], page=self._page(jobs))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/en"])
+        self.assertEqual(len(rows), 2, "a repeated id is one job")
+        self.assertIn("2 emitted — the inline list is the board: no count is stated, the page carries every job and pages them client-side (8 a page); country BE stamped from --country-code", err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["place"], r["country"], r["schedule"], r["categories"], r["url"], r["employer_url"]),
+                         ("26900", "Harvesting Engineer", "Zedelgem", "BE", "Full-time", ["Engineering"], f"https://{self.HOST}/en/harvesting-engineer", "https://www.cnhind-belgium.be/en/harvesting-engineer"))
+        self.assertEqual(rows[1]["categories"], ["Service"])
+        self.assertNotIn("imgix", json.dumps(rows))
+        self.assertTrue(r["contacts_withheld"])
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/nl", "--lang", "nl"], page=self._page(jobs))
+        self.assertEqual((code, len(rows), sent), (0, 2, [f"https://{self.HOST}/nl"]), err)
+        self.assertIsNone(rows[0]["country"])
+        self.assertTrue(rows[0]["url"].startswith(f"https://{self.HOST}/nl/"))
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "cnh-industrial"], page=self._page([]))
+        self.assertEqual((code, rows), (0, []), err)
+        self.assertIn("0 emitted — the inline list is the board", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "cnh-industrial"], page="<html><body>a page without the component</body></html>")
+        self.assertEqual(code, 6, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "nosuch"], page=None)
+        self.assertEqual(code, 3, err)
+
+    def test_a_query_string_is_refused_before_any_request_and_other_hosts_are_never_sent(self):
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        mod.TENANT["host"] = self.HOST
+        with self.assertRaises(SystemExit) as cm:
+            mod.request(f"https://{self.HOST}/en?page=2")
+        self.assertEqual(cm.exception.code, 7)
+        for host in ("evil.example", "altebra.jobtoolz.com", "cnh-industrial.jobtoolz.com.evil.example", "api.jobtoolz.com"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(f"https://{host}/en")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "api", "a.b", "-x", "https://jobtoolz.com/en"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("cnh-industrial", "CNH-INDUSTRIAL.jobtoolz.com", f"https://{self.HOST}/en"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+
+    def test_the_ad_reads_the_jobposting_and_withholds_the_street_and_postcode(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/en/harvesting-automation-concept-systems-engineer?utm=x"], ad=self.AD)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/en/harvesting-automation-concept-systems-engineer"], "the query string is dropped, not sent")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["country"], r["employment_type"], r["posted"]),
+                         ("harvesting-automation-concept-systems-engineer", "Harvesting Automation Concept Systems Engineer", "CNH", "Zedelgem", "BE", ["FULL_TIME"], "2026-09-16"))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("Claeysstraat", "8210", "recruit@", "25 31 11"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/en/gone"], ad=None)
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/en/nopost"], ad="<html><body>no posting</body></html>")
+        self.assertEqual(code, 6, err)
+        for bad in ("https://www.cnhind-belgium.be/en/x", "https://api.jobtoolz.com/en/x", f"https://{self.HOST}/x"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], ad=self.AD)
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
