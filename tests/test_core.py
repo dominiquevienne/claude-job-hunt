@@ -33200,6 +33200,7 @@ class APublicEmploymentServiceWhoseSearchPostReturnsTheWholeBoardUnfolded(unitte
         self.assertEqual([r["id"] for r in rows], ["56321"])
         rows, err, asked, raw = self._run(mod, [(200, self._board())], district="savanne")
         self.assertEqual([r["id"] for r in rows], ["56320"])
+        self.assertIn("1 emitted (1 dropped by the filters asked for", err)      # the district filter counts what it drops too
         rows, err, asked, raw = self._run(mod, [(200, self._board(total="Total Jobs Available : 587 jobs"))])
         self.assertEqual(len(rows), 2)
         self.assertIn("2 row(s) read, the board states 587 — 585 short; the gap is the page's, not a filter's", err)
