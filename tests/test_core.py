@@ -33232,5 +33232,136 @@ class APublicEmploymentServiceWhoseSearchPostReturnsTheWholeBoardUnfolded(unitte
         self.assertEqual(cm.exception.code, 7)
 
 
+class AnInventoryReadWhereTheRulesAllowItBecauseEveryQueryStringIsRefused(unittest.TestCase):
+    """**`jobvision.py`, 2026-09-21 (#626).** Jobvision: the lists live behind query
+    strings, and the rules refuse `*?*` in writing — so the inventory is the site's
+    own job sitemap (UTF-16, `<url>` with one advert `<loc>` and two image ones) and
+    the advert page's JobPosting. Both ways: a query string never sent (7, before the
+    gate) and never built (2), the image `<loc>` never taken for an advert, a repeated
+    id once, `--since` and `--limit` said in the output, the sitemap named as the
+    SOURCE and not as a witness of itself, a sitemap without advert entries (6), the
+    advert's fields with the street, the postal code, the logo and the employer's site
+    withheld, the description scrubbed, a 404 advert (3), and UTF-16 decoded on the
+    bytes."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobvision", os.path.join(SCRIPTS, "jobvision.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _url(jid, slug, lastmod="2026-09-20T14:34:44Z", images=True):
+        imgs = (f"<url><loc>https://jobvision.ir//company/logo/5136.jpeg</loc></url>"
+                f"<url><loc>https://jobvision.ir/jobpost/image/{jid}/{slug}.jpg</loc></url>") if images else ""
+        return (f"<url><loc>https://jobvision.ir/jobs/{jid}/{slug}</loc>"
+                f"<loc>https://jobvision.ir//company/logo/5136.jpeg</loc>"
+                f"<loc>https://jobvision.ir/jobpost/image/{jid}/{slug}.jpg</loc>"
+                f"<lastmod>{lastmod}</lastmod></url>" + imgs)
+
+    @classmethod
+    def _sitemap(cls, urls):
+        return '<?xml version="1.0" encoding="utf-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + "".join(urls) + "</urlset>"
+
+    AD = ('<html><head><title>x</title><script type="application/ld+json">{"@context":"http://schema.org","@type":"JobPosting","directApply":true,"employmentType":"full-time",'
+          '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"سردار جنگل","addressRegion":"تهران","addressCountry":"ایران","postalCode":"123456","streetAddress":"سعادت آباد"}},'
+          '"hiringOrganization":{"name":"شرکت ساختمانی سانت","logo":"https://jobvision.ir/company/logo/5136.jpeg","sameAs":"santcc.com","@type":"Organization"},'
+          '"baseSalary":12000,"industry":"خدماتی","title":"دستیار مدیرعامل","datePosted":"2026-08-19T12:31:22","validThrough":"2026-09-28T12:31:20",'
+          '"description":"شرکت پیمانکاری. Write to hr@sant.example or call 021 8899 7766."}</script></head><body>x</body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_sitemap_is_the_inventory_and_the_images_are_not_adverts(self):
+        mod = self._mod()
+        sm = self._sitemap([self._url(1468042, "استخدام-دستیار", "2026-08-19T12:31:22Z"),
+                            self._url(1468079, "استخدام-بازرس", "2026-09-20T14:34:44Z"),
+                            self._url(1468042, "استخدام-دستیار", "2026-08-19T12:31:22Z")])
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, sm))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://jobvision.ir/sitemap/jobposts.xml"])
+        self.assertEqual([r["id"] for r in rows], ["1468042", "1468079"])   # the repeat once, the images never
+        r = rows[1]
+        self.assertEqual((r["ledger_id"], r["url"], r["slug"], r["title_from_slug"], r["lastmod"], r["country"], r["contacts_withheld"]),
+                         ("jobvision:1468079", "https://jobvision.ir/jobs/1468079/استخدام-بازرس", "استخدام-بازرس", "استخدام بازرس", "2026-09-20T14:34:44Z", "IR", True))
+        dump = json.dumps(rows, ensure_ascii=False)
+        for hidden in ("logo", "jobpost/image", ".jpg", ".jpeg"):
+            self.assertNotIn(hidden, dump, hidden)
+        # what excludes the images is their SHAPE (`/company/logo/…`, `/jobpost/image/…`), not an extension filter:
+        # the 2026-09-21 sitemap has 56 095 `/jobs/` addresses and not one with an image extension — a filter on the
+        # extension could not fire, and a guard that cannot redden is worse than none (#626, caught by its mutation)
+        entries, n_url = self._mod().parse_sitemap(sm)
+        self.assertEqual((len(entries), n_url), (3, 9))
+        self.assertIn("2 emitted from the site's own job sitemap (3 advert entries in 9 <url>), lastmod 2026-08-19 → 2026-09-20.", err)   # 3 entries, 2 distinct: the repeat is counted where it is read and emitted once
+        self.assertIn("the sitemap is the SOURCE, so its own count is not a witness of itself", err)
+        self.assertIn("«56,781 آگهی»", err)
+        # --since and --limit narrow the read AND say so
+        code, rows, err, sent = self._run(mod, ["jobs", "--since", "2026-09-01"], lambda url: (200, sm))
+        self.assertEqual((code, [r["id"] for r in rows]), (0, ["1468079"]), err)
+        self.assertIn("--since 2026-09-01", err)
+        code, rows, err, sent = self._run(mod, ["jobs", "--limit", "1"], lambda url: (200, sm))
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        self.assertIn("--limit 1 — a bounded read, not the inventory", err)
+        # a sitemap that carries no advert is not the inventory
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, self._sitemap(["<url><loc>https://jobvision.ir/jobs/category/accounting</loc></url>"])))
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("not the advert inventory", err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (404, ""))
+        self.assertEqual(code, 3, err)
+        # UTF-16 is decided on the bytes, like the real sitemap
+        self.assertEqual(mod.decode_text(sm.encode("utf-16")), sm)
+        self.assertEqual(mod.decode_text(sm.encode("utf-8")), sm)
+        # a query string is never sent — and the gate is not even consulted
+        fresh = self._mod()
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        for never in ("https://jobvision.ir/jobs?page=2", "https://jobvision.ir/sitemap/jobposts.xml?x=1", "https://candidateapi.jobvision.ir/api/search"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(never)
+            self.assertEqual(cm.exception.code, 7, never)
+
+    def test_the_advert_withholds_the_street_the_logo_and_the_employers_site(self):
+        mod = self._mod()
+        url = "https://jobvision.ir/jobs/1468042/استخدام-دستیار"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [url])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country_as_written"], r["industry"], r["employment_type"], r["salary_as_written"], r["posted"], r["valid_through"], r["country"], r["contacts_withheld"]),
+                         ("1468042", "دستیار مدیرعامل", "شرکت ساختمانی سانت", "سردار جنگل", "تهران", "ایران", "خدماتی", "full-time", 12000, "2026-08-19T12:31:22", "2026-09-28T12:31:20", "IR", True))
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("سعادت آباد", "123456", "logo", "santcc.com", "sant.example", "8899"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://jobvision.ir/jobs/1/x"], lambda u: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, "<html><body>no posting</body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://jobvision.ir/jobs/1468042/x?utm=1", "https://jobvision.ir/jobs/category/accounting", "https://www.jobvision.ir/jobs/1/x", "https://evil.example/jobs/1/x"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
