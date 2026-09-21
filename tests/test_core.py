@@ -30542,6 +30542,10 @@ class AnATSWhoseCareerSiteHasItsOwnJSONAPIStatingNumFoundAndWhoseVendorApplyPage
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "https://comptoir.jobs.beetween.com/jobs"], lambda url, p: (200, self.CLIENT) if url.endswith("information") else (200, '{"numFound":0,"jobs":[]}'))
         self.assertEqual((code, rows), (0, []), err)
         self.assertIn("0 emitted — the site states 0: equal", err)
+        # numFound above what the pages hold: the walk ends on the empty page and says short
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "proxiserve"], lambda url, p: (200, self.CLIENT) if url.endswith("information") else (200, json.dumps({"numFound": 5, "jobs": pages[1] if p["page"] == 1 else []})))
+        self.assertEqual((code, len(rows), len(sent)), (0, 2, 3), err)
+        self.assertIn("2 emitted — the site states 5: 3 short", err)
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "nope-xyz"], lambda url, p: (404, ""))
         self.assertEqual((code, rows, len(sent)), (3, [], 1), err)
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "proxiserve"], lambda url, p: (200, "<!doctype html><html>shell</html>"))
@@ -30557,6 +30561,7 @@ class AnATSWhoseCareerSiteHasItsOwnJSONAPIStatingNumFoundAndWhoseVendorApplyPage
         self.assertEqual((rows[0]["id"], rows[0]["title"], rows[0]["company"], rows[0]["place"]), ("jd2k8y01a8", "Technicien", "Proxiserve", "Millau"))
         code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/job/zzzzzzzzzz"], lambda url, p: (500, ""))
         self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("gone, or another site's", err)
         for relayed in ("https://app.beetween.com/WeaselWeb/p/#/apply/job/gwbgkau3f04n/cadre-de-sante-medecine-polyvalente-h-f", "https://app.beetween.com/WeaselWeb/p/#/apply/job/gwbgkau3f0"):
             code, rows, err, sent = self._run(mod, ["ad", "--url", relayed], lambda url, p: (200, self.BYWID))
             self.assertEqual(code, 0, err)
