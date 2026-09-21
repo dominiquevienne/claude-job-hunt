@@ -71,4 +71,7 @@ the empty list; a page without the data; a language refused before any
 request; the vendor's hosts and another host refused; a name that does
 not resolve; the ad with its addresses, routes and logo, the wrong
 publication on the page, the ad gone or changed). Mutation bench on a
-detached copy, `python3 -B` — see the PR.
+detached copy, `python3 -B`, 9 / 9 red: the list regex broken · the
+country filter dropped · the address emitted · the apply route emitted ·
+the scrub dropped in the ad · the duplicate ids kept · the ad's id check
+dropped · the vendor-host check dropped · the no-country note dropped.
