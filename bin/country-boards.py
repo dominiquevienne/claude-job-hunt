@@ -222,6 +222,30 @@ def route_of(card):
 ROUTE_NONE = re.compile(r"^\s*none\b\s*(?:·\s*(.*?))?\s*$", re.S)
 
 
+def clip(reason, limit=140):
+    """The head of a reason, cut at a word and KEEPING the ticket it ends on.
+
+    **#760, seen on the country pages of 2026-09-19.** The fifteen mute-host
+    cards of the owner's 2026-09-18 decision end their `route: none` reason
+    with the number of the `adapter`+`blocked` ticket that says why — «… et ce
+    qui lèverait le blocage), #745 ». A blind `reason[:140]` cut it mid-word
+    and, worse, mid-number: the Accès column showed «#» or nothing where the
+    ticket should be, **and a cut number is not a shorter number, it is
+    another one**. So: cut on a word boundary, and when the reason ends on a
+    `#<digits>` that the cut dropped, put it back after an ellipsis. A reason
+    that already fits comes back untouched."""
+    reason = (reason or "").strip()
+    if len(reason) <= limit:
+        return reason
+    head = reason[:limit]
+    cut = head.rsplit(" ", 1)[0] if " " in head else head
+    cut = cut.rstrip(" ,;·-")
+    tail = re.search(r"(#\d+)\s*$", reason)
+    if tail and tail.group(1) not in cut:
+        return f"{cut} … {tail.group(1)}"
+    return cut + " …"
+
+
 def route_none_of(card):
     """A declared `route: none · <reason> · YYYY-MM-DD` — (reason, date) — or None.
 
@@ -251,7 +275,7 @@ def access_of(card):
         return "API à clé", "`robots: keyed-api`"
     rn = route_none_of(card)
     if rn:
-        return f"route: none — {rn[0][:140]}" + (f" ({rn[1]})" if rn[1] else ""), "`route: none` (prime sur `script:`, #404)"
+        return f"route: none — {clip(rn[0])}" + (f" ({rn[1]})" if rn[1] else ""), "`route: none` (prime sur `script:`, #404)"
     rt = route_of(card)
     if rt and rt[0] == "browser":
         return (f"navigateur — route déclarée, {rt[1]} annonce(s)" + (f" au {rt[2]}" if rt[2] else ""),

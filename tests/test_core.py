@@ -32633,5 +32633,91 @@ class APublicEmploymentServiceWhoseLiferayPagerIsReadFromThePageAndWhoseAdvertPr
         self.assertEqual(cm.exception.code, 2)
 
 
+class AReasonCutMidNumberNamesAnotherTicket(unittest.TestCase):
+    """**`bin/country-boards.py:clip()`, 2026-09-21 (#760).** The Accès column of a
+    country page prints the head of a `route: none` reason. The fifteen mute-host
+    cards of the 2026-09-18 decision end their reason with the number of the
+    `adapter`+`blocked` ticket that says why — and the old `reason[:140]` cut it
+    mid-word and mid-number, so the column showed «#», or a DIFFERENT number.
+    Both ways: a long reason ending on `#745` keeps `#745`, a reason that fits
+    comes back untouched, a long reason without a ticket is cut on a word and
+    marked, a number that survives the cut is not repeated, and the real cards
+    of the repository all keep the ticket their reason names."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_country_boards", str(pathlib.Path(SCRIPTS).parent.parent.parent / "bin" / "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LONG = ("non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket "
+            "adapter+blocked qui dit pourquoi et ce qui lèverait le blocage), #745")
+
+    def test_the_ticket_survives_the_cut_and_a_short_reason_is_untouched(self):
+        clip = self._mod().clip
+        self.assertGreater(len(self.LONG), 140)
+        out = clip(self.LONG)
+        self.assertTrue(out.endswith("#745"), out)
+        self.assertNotIn("#74 ", out)           # a cut number is not a shorter number, it is another one
+        self.assertTrue(out.startswith("non faisable — décision du propriétaire"), out)
+        self.assertLessEqual(len(out), 150)
+        self.assertEqual(clip("court, sans ticket"), "court, sans ticket")
+        self.assertEqual(clip(""), "")
+        self.assertEqual(clip(None), "")
+        no_ticket = "a " * 120
+        cut = clip(no_ticket)
+        self.assertTrue(cut.endswith("…"), cut)
+        self.assertNotIn("  ", cut.replace(" …", ""))
+        self.assertFalse(cut.rstrip(" …").endswith(","), cut)
+        # a ticket INSIDE the kept head is not repeated at the end
+        inside = "#900 " + "b " * 100
+        self.assertEqual(clip(inside).count("#900"), 1, clip(inside))
+        # a number in the MIDDLE is not a ticket the reason ends on: it is never appended
+        middle = "c " * 80 + "#901 " + "d " * 40
+        self.assertNotIn("#901", clip(middle), clip(middle))
+        # the cut lands on a word boundary of the original, never inside a word
+        for reason in (self.LONG, "alpha beta " + "z" * 200):
+            head = clip(reason).split(" … ")[0].rstrip(" …")
+            self.assertTrue(reason.startswith(head), (reason[:20], head))
+            self.assertTrue(len(reason) == len(head) or reason[len(head)] in " ,;·", repr(reason[len(head) - 2:len(head) + 2]))
+        # and it does not end on the punctuation the cut word carried
+        comma = "m" * 124 + " mot, " + "n" * 60
+        self.assertEqual(clip(comma).rstrip(" …")[-4:], " mot", clip(comma))
+
+    def test_the_access_column_of_a_mute_host_card_cites_its_ticket(self):
+        """The column is what #760 is about — the fixture goes through `access_of()`,
+        not through `clip()` alone, so a blind cut restored there reddens here."""
+        mod = self._mod()
+        card = {"h": {"route": f"none · {self.LONG} · 2026-09-18", "script": "none", "countries": "XX",
+                      "content": "measured · the name does not resolve on two resolvers · 2026-09-18"}}
+        label, basis = mod.access_of(card)
+        self.assertTrue(label.startswith("route: none — non faisable — décision du propriétaire"), label)
+        self.assertIn("#745", label)
+        self.assertIn("(2026-09-18)", label)
+        self.assertIn("route: none", basis)
+
+    def test_every_route_none_card_of_the_repository_keeps_the_ticket_it_names(self):
+        mod = self._mod()
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        seen, kept = 0, 0
+        for card in sorted(d.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            text = card.read_text(encoding="utf-8")
+            m = re.search(r"^<!--\s*route:\s*none\s*(?:·\s*(.*?))?\s*-->\s*$", text, re.M)
+            if not m:
+                continue
+            reason = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d.*$", "", m.group(1) or "").strip()
+            ticket = re.search(r"(#\d+)\s*$", reason)
+            if not ticket:
+                continue
+            seen += 1
+            out = mod.clip(reason)
+            self.assertIn(ticket.group(1), out, f"{card.name}: the Accès column drops the ticket its reason names")
+            kept += 1
+        self.assertGreaterEqual(seen, 5, f"{seen} `route: none` cards end their reason on a ticket; fifteen were written on 2026-09-18 (#755) — either lines were lost or the walk narrowed")
+        self.assertEqual(seen, kept)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
