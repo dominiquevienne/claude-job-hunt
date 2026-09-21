@@ -75,5 +75,9 @@ both ways on fixtures (the script, the two-page walk with the stated
 count, the country filter and the case without a code, the empty tenant,
 `--max-pages`, the repeating page, the non-tenant, a script without the
 address, an address outside the vendor, another host refused, the ad with
-its street and contact block, the ad gone or changed). Mutation bench on a
-detached copy, `python3 -B` — see the PR.
+its street and contact block, the ad gone or changed, the list without
+its stated count). Mutation bench on a detached copy, `python3 -B`, 9 / 9
+red: the address regex broken · the vendor-domain check dropped · the
+repeat check dropped · the country filter dropped · the scrub dropped in
+the ad · the date exception dropped · the street emitted · another host
+sent · the stated count not checked.
