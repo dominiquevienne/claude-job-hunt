@@ -68,5 +68,8 @@ district and says how many it kept.
 both ways on fixtures (the three groupings' union, a vacancy in two of them,
 the district filter, a vacancy carrying a gender, a page without the lists, a
 page without Livewire, a 404, an empty board, the apex refused). Mutation
-bench on a detached copy, `python3 -B` — see the PR.
+bench on a detached copy, `python3 -B`, 7 / 7 red: the criterion emitted ·
+the withheld list dropped · an audit field emitted · the union taken from one
+grouping · the scrub dropped · the «no total stated» note dropped · another
+host sent.
 
