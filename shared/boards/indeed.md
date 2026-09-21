@@ -370,6 +370,24 @@ the «- 100%» line of the header; the mixing is the same)*. It returned `100%` 
 one ad (a workload) and a salary range on another. Parse it, do not assume which
 one you got, and never report a workload as a salary.
 
+**6. A card's location and currency are where Indeed FILED the ad, not where
+the employer is.** Measured 2026-09-21 (#825) on `jk=502a43b1ce23f2fb`,
+`ch.indeed.com`: the header, the page title and **the page's own JobPosting**
+all say `addressLocality: "Full"`, `addressRegion: "AG"`,
+`addressCountry: "CH"` and `baseSalary` **80 000–130 000 CHF/year** — for
+**Whova**, whose own description reads «the San Diego Business Journal's Best
+Places to Work in San Diego». The ad is `jobLocationType: TELECOMMUTE` with
+`applicantLocationRequirements: {Country: Switzerland}`: a remote posting
+filed against the searcher's country, with the pay converted into the local
+currency. **So the structured data is not a witness here** — it carries
+Indeed's filing, not the employer's address, and a Swiss commune of 1 000
+souls is what a commute filter would read. **Before writing a location or a
+salary from an Indeed ad: read `jobLocationType` and
+`applicantLocationRequirements`, look for a city in the description, and
+confirm on the employer's own posting** (`cover-letter` step 1a compares the
+place and the mode for exactly this reason). A converted salary is a figure
+Indeed computed, never a figure the employer wrote.
+
 **3. The location carries a postcode** — `1228 Plan-les-Ouates, GE`,
 `1003 Lausanne, VD`. Like jobup, that is exactly what an unemployment-office
 declaration needs and what most boards omit. **Capture it while the ad is open**
