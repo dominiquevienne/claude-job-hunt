@@ -27,6 +27,17 @@ deux chiffres extérieurs, tous deux à lui : «۴۸ هزار» (arrondi) et «5
 17.09. Le run les imprime ensemble et le dit. `--since` et `--limit` bornent la
 lecture et le disent aussi : une lecture bornée n'est pas l'inventaire.
 
+**La clé se construit sur ce qui est ÉMIS, pas sur ce qui a été lu.** Un
+employeur qui écrit un téléphone ou une adresse dans son TITRE le met dans le
+slug — donc dans l'URL, dans la clé lisible et dans le titre rendu, là où
+aucune expurgation de la description n'irait le chercher. Mesuré le
+2026-09-21 : **0 slug sur 56 095** en porte un. Rare, donc, et pas impossible :
+quand cela arrive, le slug et le titre sont épurés **et l'adresse émise est la
+canonique `/jobs/<id>/x`**, que le site sert à l'identique (relue deux fois,
+169 119 o, le même JobPosting) ; la ligne porte alors `url_neutralised`, parce
+qu'un lien qui perd son titre en silence est un mensonge d'une autre espèce.
+*(Trouvaille de `cd` du 21.09 sur un autre board, appliquée ici.)*
+
 **Retenu :** la rue et le code postal de l'annonce, le logo et le site de
 l'employeur, la route de candidature ; textes épurés des adresses e-mail et des
 téléphones (chiffres persans compris) ; `contacts_withheld` sur chaque ligne.
