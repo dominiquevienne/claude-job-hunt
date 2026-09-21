@@ -33066,5 +33066,171 @@ class APublicPlatformWhoseTableHeaderNamesItsCellsAndWhoseOwnRowLinkIsGone(unitt
         self.assertEqual(cm.exception.code, 7)
 
 
+class APublicEmploymentServiceWhoseSearchPostReturnsTheWholeBoardUnfolded(unittest.TestCase):
+    """**`mauritiusjobs.py`, 2026-09-21 (#696).** Mauritius's National
+    Employment Department: `GET /jobsearch` is the form alone and lists
+    nothing; the form POSTs to `/index.php/jobsearch` with **its own fields
+    and no token**, and the one answer carries the board whole — its own
+    «Total Jobs Available : N jobs», one `<tr onclick="jobdetails('id')">` a
+    row, and **one advert block per row unfolded in the same page**. The
+    advert is a table of **label / value** pairs read **by label**, never by
+    position: Qualifications, Skills, State / Province, Experience, Salary
+    and the website link are on some adverts and not others (363, 340, 251,
+    81, 395 and 69 of 587 on the day), so a positional read would put a
+    district where a summary is. **Age Range is never emitted** (464 of the
+    587 carry one) and `withheld_fields: ["age_range"]` NAMES what was
+    dropped — #183, as Brunei's age range and Bhutan's gender — while
+    Salary Proposed, which is what the employer offers and not a criterion
+    about a person, is emitted as written. The stated count is printed
+    beside the rows read and the run says «short» rather than reconciling
+    them. `--district`, `--local` and `--international` filter the emitted
+    rows on what the advert itself states: OUR filters, after the one
+    request, and the run says how many they dropped. Both ways: the POST
+    carries the form's fields; the labels are read in any order; a row of
+    the wrong width dies (6); a 200 without the result table dies (6); a 404
+    dies (3); a page that states no total says so instead of claiming one;
+    `--local --international` together die (2); another host is refused (7).
+    Mutated (`-B`, detached copy): the age label dropped from the withheld
+    set → the age range is emitted (reddens); the withheld declaration
+    emptied → reddens; the label map read by position → reddens; the stated
+    count ignored → reddens; the «short» branch removed → reddens; the row
+    width check dropped → reddens; the scrub dropped → reddens; the POST
+    body dropped (a GET instead) → reddens; the host check dropped →
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mujobs", os.path.join(SCRIPTS, "mauritiusjobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _row(i, job_id, title, sector, company, country, closing):
+        return ("<tr onclick=\"jobdetails('%s')\" class=\"alternate\"><td align=\"center\">%d</td>"
+                "<td width=\"175\">%s</td><td width=\"225\">%s</td><td width=\"175\">%s</td>"
+                "<td width=\"125\">%s</td><td width=\"100\">%s</td>"
+                "<td align=\"center\"><img src=\"/images/icon_view.png\" alt=\"%s\"></td></tr>"
+                % (job_id, i, title, sector, company, country, closing, job_id))
+
+    @staticmethod
+    def _advert(job_id, pairs):
+        body = "".join("<tr><td width=\"300\">%s</td><td>%s</td></tr>" % (k, v) for k, v in pairs)
+        return ('<tr><td colspan="7" class="hidden-td"><div class="show_details" id="%s">'
+                '<b>x</b><table class="job_details" width="100%%">%s</table></div></td></tr>' % (job_id, body))
+
+    @classmethod
+    def _page(cls, blocks, total="Total Jobs Available : 587 jobs"):
+        return ('<html><body><form action="https://mauritiusjobs.govmu.org/index.php/jobsearch" method="post"></form>'
+                + ("<hr class=\"more-info\">%s" % total if total else "")
+                + '<table class="job_list" border=\'0\'><tr><th> # </th><th>Job Title</th><th>Economic Sector</th>'
+                '<th>Company</th><th>Country</th><th>Closing Date</th><th> + </th></tr>'
+                + "".join(blocks) + "</table></body></html>")
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, data=None):
+            asked.append((url, data))
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, district=None, local=False, international=False)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def _board(self, total="Total Jobs Available : 2 jobs"):
+        a = self._row(1, "56320", "Housemaid/Household Worker", "Private Household", "D. B.", "Mauritius", "21/09/2026")
+        a += self._advert("56320", [("Employer", "D. B."), ("Economic Sector", "Private Household"),
+                                    ("District in Mauritius", "SAVANNE"), ("Country", "Mauritius"),
+                                    ("Job Summary", "<p>Write to rh@example.mu or call +230 5 123 4567.</p>"),
+                                    ("Duties of Job", "<p>Clean.</p>"),
+                                    ("Age Range", "18 - 39"), ("Salary Proposed", "16501 - 18000 (Mauritian Rupees)")])
+        b = self._row(2, "56321", "Project Officer", "Public Administration", "IOM", "Madagascar", "30/09/2026")
+        # the same labels in ANOTHER ORDER, and four of them absent
+        b += self._advert("56321", [("Country", "Madagascar"), ("Job Summary", "<p>Field work.</p>"),
+                                    ("Employer", "IOM"), ("Duties of Job", "<p>Report.</p>"),
+                                    ("Economic Sector", "Public Administration"),
+                                    ("State / Province", "Antananarivo"), ("District in Mauritius", "")])
+        return self._page([a, b], total=total)
+
+    def test_one_post_returns_the_board_and_the_age_range_is_withheld_by_name(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._board())], country_code="mu")
+        self.assertEqual(len(asked), 1)
+        url, data = asked[0]
+        self.assertEqual(url, "https://mauritiusjobs.govmu.org/index.php/jobsearch")
+        for field in ("search_by_local", "search_by_international", "search_by_district",
+                      "search_by_keyword", "search_by_jobtitle", "search_by_qualification", "search_by_sector"):
+            self.assertIn(field + "=", data, field)          # the form's OWN fields, posted as it posts them
+        self.assertEqual([r["id"] for r in rows], ["56320", "56321"])
+        a, b = rows
+        self.assertEqual((a["source"], a["country_stamp"], a["ledger_id"], a["title"], a["employer"],
+                          a["sector"], a["district"], a["country"], a["closing_date"],
+                          a["salary_proposed"], a["advert_read"], a["contacts_withheld"]),
+                         ("mauritiusjobs", "MU", "mauritiusjobs:56320", "Housemaid/Household Worker", "D. B.",
+                          "Private Household", "SAVANNE", "Mauritius", "2026-09-21",
+                          "16501 - 18000 (Mauritian Rupees)", True, True))
+        self.assertEqual(a["summary"], "Write to [e-mail withheld] or call [telephone withheld].")
+        self.assertEqual(a["withheld_fields"], ["age_range"])     # NAMED, #183
+        self.assertNotIn("18 - 39", raw)                          # and the VALUE is nowhere in the output
+        self.assertNotIn("rh@example.mu", raw)
+        self.assertEqual(b["withheld_fields"], [])                # an advert without one declares nothing
+        self.assertEqual((b["country"], b["state_province"], b["employer"], b["summary"]),
+                         ("Madagascar", "Antananarivo", "IOM", "Field work."))   # labels read in any order
+        self.assertIsNone(b["district"])
+        self.assertIn("2 row(s) read, and the board states 2 — they agree", err)
+        self.assertIn("1 of the emitted records declare it in `withheld_fields`", err)
+        self.assertIn("country MU is the user's stamp", err)
+
+    def test_the_filters_are_ours_and_the_stated_count_is_never_reconciled(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, [(200, self._board())], local=True)
+        self.assertEqual([r["id"] for r in rows], ["56320"])
+        self.assertIn("1 emitted (1 dropped by the filters asked for, which are OURS", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._board())], international=True)
+        self.assertEqual([r["id"] for r in rows], ["56321"])
+        rows, err, asked, raw = self._run(mod, [(200, self._board())], district="savanne")
+        self.assertEqual([r["id"] for r in rows], ["56320"])
+        self.assertIn("1 emitted (1 dropped by the filters asked for", err)      # the district filter counts what it drops too
+        rows, err, asked, raw = self._run(mod, [(200, self._board(total="Total Jobs Available : 587 jobs"))])
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 row(s) read, the board states 587 — 585 short; the gap is the page's, not a filter's", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._board(total=""))])
+        self.assertIn("the page stated no total this time", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        wide = self._board().replace("<td align=\"center\">1</td>", "<td align=\"center\">1</td><td>extra</td>")
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, [(200, wide)])
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("a row carries 8 cell(s), not 7", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>the form alone, no result table</body></html>")])
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")])
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], local=True, international=True)
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.mauritiusjobs.govmu.org/index.php/jobsearch", "a=1")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
