@@ -30043,5 +30043,155 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         self.assertEqual(mod.key_of("https://lefties.bizneo.com/jobs/sustitucion-compras-senior/"), "sustitucion-compras-senior")
         self.assertIsNone(mod.key_of("https://lefties.bizneo.com/jobs"))
 
+class AnATSWhoseTenantListStatesItsCountOnOnePageAndWhoseHostServesARateChallengeAsA200(unittest.TestCase):
+    """**`epreselec.py`, 2026-09-21 (#490).** ePreselec: `<tenant>.epreselec.com
+    /Ofertas/Ofertas.aspx` is one page — «Total ofertas: N» and a `<li>` per
+    advert (`data_idOferta`, `op-titulo`, `op-fecha`); `?Id_Oferta=` renders
+    the advert (`pnlVacancy`: title, Localidad, Provincia, vacancies, four
+    labelled sections); the host's rate control answers HTTP 200 with a
+    «Pardon Our Interruption» CAPTCHA page on every path, and its «404 -
+    Page not found» is a 200 too. Both ways: the count beside the emitted
+    number, the date as ISO, the tenant from the title, the advert's fields
+    and scrubbed sections, the 200 challenge ending the run with 9 (through
+    the real `request`), the 200 «Page not found» as a non-tenant (3), a
+    page without the list (6), bad addresses and tenants refused, another
+    host never sent (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_epreselec", os.path.join(SCRIPTS, "epreselec.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HOST = "eroski.epreselec.com"
+
+    @staticmethod
+    def _row(i, jid, title, date="16 de septiembre, 2026"):
+        return (f'<li><a onclick="saveScrollPosition();" id="ctl00_CPH_Body_rptVacancies_ctl0{i}_lbMostrarOferta" data_idOferta="{jid}" href="javascript:__doPostBack(&#39;ctl00$CPH_Body$rptVacancies$ctl0{i}$lbMostrarOferta&#39;,&#39;&#39;)">'
+                f'<div class="row"><div id="divCollapsedVacanciesList" class="col-md-12"><span class="op-titulo">{title} </span> &nbsp;<br /><span class="op-fecha"> {date}</span></div></div></a></li>')
+
+    def _list(self, rows, total, title="Ofertas de empleo - EROSKI - ePreselec", vacancy=""):
+        return (f'<html><head><title>{title}</title></head><body><form><div id="ctl00_CPH_Body_pnlVacanciesList" class="pnlVacanciesList"><div class="total-vacancies-cont"><div class="total-vacancies"> Total ofertas: {total} </div></div>'
+                f'<div class="onepage-ofertas"><ul>{"".join(rows)}</ul></div></div>{vacancy}</form></body></html>')
+
+    VACANCY = ('<div id="ctl00_CPH_Body_pnlVacancy" class="offers__list"><div class="onepage-oferta"><h1><a name="3217349"></a><span id="ctl00_CPH_Body_lDescripcion">Donostia -CAJA/REPOSICION- 092025</span></h1>'
+               '<div class="onepage-rinfo"><div><span id="ctl00_CPH_Body_lLocalidad">Localidad</span>: <span id="ctl00_CPH_Body_lLocalidadText">DONOSTIA/SAN SEBASTIÁN</span></div>'
+               '<div><span id="ctl00_CPH_Body_Label1">Provincia</span>: <span id="ctl00_CPH_Body_lProvinciaText">Guipúzcoa</span></div><div><span id="ctl00_CPH_Body_lVacantes">Nº Vacantes (puestos)</span>: <span id="ctl00_CPH_Body_lNumVacantes">10</span></div></div>'
+               '<h3> Descripción </h3><p><span id="ctl00_CPH_Body_lDescripcionEmpresa">En EROSKI creemos.<br/>Escribe a rrhh@eroski.es o al 943 12 34 56.</span></p>'
+               '<h3> Funciones</h3><p><span id="ctl00_CPH_Body_lFunciones">Reposición y venta.</span></p><h3> Requisitos </h3><p><span id="ctl00_CPH_Body_lRequisitos">ESO.</span></p><h3> Se ofrece</h3><p><span id="ctl00_CPH_Body_lSeOfrece">Contrato.</span></p>'
+               '<a id="ctl00_CPH_Body_btnNext2" href="javascript:__doPostBack(&#39;ctl00$CPH_Body$btnNext2&#39;,&#39;&#39;)"><span>Inscribirme a esta oferta</span></a></div></div>')
+    CHALLENGE = "<html><head><title>Pardon Our Interruption</title></head><body><h1>Pardon Our Interruption</h1><p>As you were browsing something about your browser made us think you were a bot.</p></body></html>"
+    NOT_FOUND = "<html><head><title>Page not found</title></head><body><h1>404 - Page not found</h1><p>We're sorry, but the page you're looking for could not be found.</p></body></html>"
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACES.clear()
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_list_is_read_once_with_its_count_and_the_advert_with_its_fields(self):
+        mod = self._mod()
+        page = self._list([self._row(1, "3217349", "Donostia -CAJA/REPOSICION- 092025"), self._row(2, "3217350", "Bilbao -CAJA- 092025", "1 de agosto, 2026"), self._row(3, "3217349", "Donostia (repeat)")], 3)
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "eroski", "--country-code", "es"], lambda url: (200, page))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/Ofertas/Ofertas.aspx"])
+        self.assertEqual(len(rows), 2)
+        self.assertIn("2 emitted — the page states 3: 1 short", err)
+        r = rows[1]
+        self.assertEqual((r["id"], r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["posted"], r["posted_as_written"], r["contacts_withheld"]),
+                         ("3217350", f"epreselec:{self.HOST}:3217350", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=3217350", "Bilbao -CAJA- 092025", "EROSKI", "ES", "2026-08-01", "1 de agosto, 2026", True))
+        self.assertNotIn("__doPostBack", json.dumps(rows))
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/Ofertas/Ofertas.aspx"], lambda url: (200, self._list([self._row(1, "1", "A")], 1)))
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        self.assertIn("1 emitted — the page states 1: equal", err)
+        code, rows, err, sent = self._run(mod, ["ad", "--url", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=3217349"], lambda url: (200, self._list([self._row(1, "3217349", "Donostia")], 1, vacancy=self.VACANCY)))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=3217349"])
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["province"], r["vacancies"], r["description"]),
+                         ("3217349", "Donostia -CAJA/REPOSICION- 092025", "EROSKI", "DONOSTIA/SAN SEBASTIÁN", "Guipúzcoa", 10, "Reposición y venta."))
+        self.assertEqual(sorted(r["sections"]), ["Descripción", "Funciones", "Requisitos", "Se ofrece"])
+        self.assertIn("[e-mail withheld]", r["sections"]["Descripción"])
+        self.assertIn("[telephone withheld]", r["sections"]["Descripción"])
+        dump = json.dumps(r)
+        for hidden in ("rrhh@eroski", "943 12 34 56", "btnNext"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=999"], lambda url: (200, self._list([], 0)))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in (f"https://{self.HOST}/Ofertas/Ofertas.aspx", "https://www.epreselec.com/Ofertas/Ofertas.aspx?Id_Oferta=1", f"https://{self.HOST}/MisOfertas/MisOfertas.aspx?Id_Oferta=1", "https://evil.example/Ofertas/Ofertas.aspx?Id_Oferta=1"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda url: (200, self.VACANCY))
+            self.assertEqual((code, sent), (2, []), bad)
+
+    def test_the_200_challenge_ends_the_run_with_9_and_the_200_not_found_is_a_non_tenant(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["jobs", "--tenant", "bkspain"], lambda url: (200, self.NOT_FOUND))
+        self.assertEqual((code, rows, len(sent)), (3, [], 1), err)
+        self.assertIn("not an ePreselec tenant", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "bkspain"], lambda url: (404, ""))
+        self.assertEqual(code, 3, err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "eroski"], lambda url: (200, "<html><body><h1>EROSKI</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--tenant", "eroski"], lambda url: (403, ""))
+        self.assertEqual(code, 7, err)
+        # the challenge is met inside the real request(): urlopen answers 200 with the CAPTCHA page
+        fresh = self._mod()
+        fresh.gate = lambda url: {"allowed": True}
+        fresh.TENANT["host"] = self.HOST
+
+        class _Resp:
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+
+            def __init__(self, body):
+                self._b = body.encode("utf-8")
+
+            def getcode(self):
+                return 200
+
+            def read(self):
+                return self._b
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        fresh.urllib.request.urlopen = lambda req, timeout=60: _Resp(self.CHALLENGE)
+        fresh._PACES[self.HOST] = type("P", (), {"wait": lambda self: None})()
+        import contextlib
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+            fresh.request(f"https://{self.HOST}/Ofertas/Ofertas.aspx")
+        self.assertEqual(cm.exception.code, 9)
+        self.assertIn("Pardon Our Interruption", err.getvalue())
+        self.assertIn("never answered", err.getvalue())
+        fresh.urllib.request.urlopen = lambda req, timeout=60: _Resp(self._list([], 0))
+        self.assertEqual(fresh.request(f"https://{self.HOST}/Ofertas/Ofertas.aspx")[0], 200)
+        for host in ("evil.example", "culligan.epreselec.com", "eroski.epreselec.com.evil.example", "www.epreselec.com"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(f"https://{host}/Ofertas/Ofertas.aspx")
+            self.assertEqual(cm.exception.code, 7, host)
+        for bad in ("", "www", "a b", "www.epreselec.com", "https://epreselec.com/x", "eroski.example.com"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                mod.tenant_of(bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        for ok in ("eroski", "EROSKI.epreselec.com", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=1"):
+            self.assertEqual(mod.tenant_of(ok), self.HOST, ok)
+        self.assertEqual(mod.iso_date("16 de septiembre, 2026"), "2026-09-16")
+        self.assertIsNone(mod.iso_date("September 16, 2026"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
