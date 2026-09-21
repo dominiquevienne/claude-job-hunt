@@ -70,4 +70,7 @@ the walk's end on a repeated answer, the stamp said, a stated zero, the
 vendor's template, a page without the form, a 404, a tenant-domain
 address refused; the ad with its street and contact, the `track=` token
 dropped, the country filter, the ad gone or changed). Mutation bench on a
-detached copy, `python3 -B` — see the PR.
+detached copy, `python3 -B`, 9 / 9 red: the UUID link regex broken · the
+walk's end on «nothing new» dropped · the stated total ignored · the
+street emitted · the scrub dropped in the ad · the stamp note dropped ·
+the template check dropped · the `track=` token kept · another host sent.
