@@ -30874,5 +30874,162 @@ class AnATSWhoseBoardIsRenderedWholeInItsPageAndWhoseWidgetRouteIsRefusedInWriti
         self.assertEqual(cm.exception.code, 7)
 
 
+class AnATSWhoseListPageCarriesEveryPublicationAsJSONWithItsAddressesAndApplicationRoutes(unittest.TestCase):
+    """**`dvinci.py`, 2026-09-21 (#481).** d.vinci: `<tenant>.dvinci-easy.com/
+    <lang>/jobs` carries `var DvinciData = { "jobPublications": [...] }` —
+    the list is the board, its length the count; the ad carries `{
+    jobPublication: {...} }` (the key unquoted) and a JobPosting whose
+    description is the text. Every publication carries its locations'
+    addresses, coordinates and three application routes — never emitted;
+    `--country-code` keeps a publication with a location in that country
+    and says how many carry none; a name that does not resolve is «not a
+    tenant» (3); a page without the list is a changed page (6); the
+    vendor's own subdomains and any other host are refused (7). Mutated
+    (`-B`, detached copy): the list regex broken → reddens; the country
+    filter dropped → reddens; the address emitted → reddens; the apply
+    route emitted → reddens; the scrub dropped → reddens; the duplicate ids
+    kept → reddens; the ad's id check dropped → the wrong publication
+    passes (reddens); the vendor-host check dropped → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_dvinci", os.path.join(SCRIPTS, "dvinci.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _pub(pid, position, country="DE", city="Fellbach", extra_loc=None):
+        locs = [{"id": "X", "name": f"{city} (Stuttgart)", "country": {"name": "Deutschland", "isoA2": country} if country else None, "latitude": 48.8, "longitude": 9.3,
+                 "additionalInformation": None, "address": {"address1": None, "address2": "Wilhelm-Pfitzer-Straße 1", "zipCode": "70736", "city": city, "country": {"name": "Deutschland", "isoA2": country}}}]
+        if extra_loc:
+            locs.append(extra_loc)
+        return {"id": pid, "language": "de", "position": position, "pageTitle": position, "subtitle": None, "pageDescription": None,
+                "jobPublicationURL": f"https://fi-ts-karriere.dvinci-easy.com/de/jobs/{pid}/slug-{pid}",
+                "applicationFormURL": f"https://fi-ts-karriere.dvinci-easy.com/de/jobs/{pid}/apply", "applicationApplyApiURL": f"https://fi-ts-karriere.dvinci-easy.com/jobs/{pid}/applyApi", "applicationApplyWhatsAppURL": None,
+                "startDate": "2026-02-18T23:00Z", "endDate": None,
+                "jobOpening": {"id": pid + 100, "name": position, "type": "DEFAULT", "categories": [{"id": 3, "internalName": "ITSM", "name": "IT-Service Management"}], "reference": f"7000{pid}",
+                               "location": f"{city} (Stuttgart)", "department": "35082", "costUnit": None, "targetGroups": [{"id": 7, "internalName": "AZUBI", "name": "Auszubildende"}], "workingTimes": [{"id": 1, "internalName": "FULL_TIME", "name": "Vollzeit"}],
+                               "salaryRange": None, "contractPeriod": {"id": 2, "internalName": "UNLIMITED", "name": "unbefristet"}, "earliestEntryDate": "Ab sofort", "orgUnit": {"id": 117, "name": "35082 ITSM Plattform"},
+                               "createdDate": "2026-02-05T09:34:08.552Z", "company": {"id": 1, "internalName": "FITS", "name": "Finanz Informatik Technologie Service GmbH & Co. KG"}, "salary": None, "locations": locs}}
+
+    @classmethod
+    def _page(cls, pubs):
+        return ('<html><head><title>Stellenangebote</title></head><body><script nonce="x" type="text/javascript"> var DvinciData = { "jobPublications": '
+                + json.dumps(pubs, ensure_ascii=False) + ' } </script><div class="jobs"></div></body></html>')
+
+    @classmethod
+    def _ad(cls, pub, description='<p>Wir suchen Dich.</p><p>Fragen an Frau Muster: 089 123 456-78, muster@f-i-ts.de. Start ab 01.10.2026.</p>'):
+        return ('<html><head><title>x</title></head><body><script nonce="y" type="text/javascript"> var DvinciData = { jobPublication: ' + json.dumps(pub, ensure_ascii=False) + ' } </script>'
+                '<script nonce="z" type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "JobPosting", "title": pub["position"], "datePosted": "2026-02-18T23:00Z", "description": description,
+                "hiringOrganization": {"@type": "Organization", "name": "Finanz Informatik Technologie Service GmbH & Co. KG", "logo": "https://fi-ts-karriere.dvinci-easy.com/appo/public/images/logo.png"},
+                "jobLocation": [{"@type": "Place", "address": {"@type": "PostalAddress", "streetAddress": "Wilhelm-Pfitzer-Straße 1", "addressLocality": "Fellbach", "postalCode": "70736", "addressCountry": "DE"}}], "employmentType": []}, ensure_ascii=False) + '</script></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url, host, accept=None):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, lang="de") if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"jobs": mod.cmd_jobs, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_list_is_the_board_and_the_addresses_and_routes_never_leave(self):
+        import contextlib
+        mod = self._mod()
+        at = {"id": "W", "name": "Wien", "country": {"name": "Österreich", "isoA2": "AT"}, "latitude": None, "longitude": None, "address": {"address2": "Ring 1", "zipCode": "1010", "city": "Wien"}}
+        pubs = [self._pub(71095, "ServiceNow Developer"), self._pub(71096, "Consultant", country=None, city="Haar"), self._pub(71097, "Berater", city="Haar", extra_loc=at), self._pub(71095, "a duplicate id")]
+        rows, err, asked, raw = self._run(mod, [(200, self._page(pubs))], tenant="fi-ts-karriere")
+        self.assertEqual(asked, ["https://fi-ts-karriere.dvinci-easy.com/de/jobs"])
+        self.assertEqual([r["id"] for r in rows], ["71095", "71096", "71097"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["countries"], a["ledger_id"], a["url"], a["title"], a["company"], a["org_unit"], a["reference"], a["location"], a["places"], a["categories"], a["target_groups"], a["working_times"], a["contract"], a["earliest_entry"], a["salary"], a["language"], a["published"], a["expires"], a["contacts_withheld"]),
+                         ("dvinci", "fi-ts-karriere.dvinci-easy.com", "DE", ["DE"], "dvinci:fi-ts-karriere.dvinci-easy.com:71095", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/slug-71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", "35082 ITSM Plattform", "700071095", "Fellbach (Stuttgart)", ["Fellbach"], ["IT-Service Management"], ["Auszubildende"], ["Vollzeit"], "unbefristet", "Ab sofort", None, "de", "2026-02-18", None, True))
+        self.assertEqual((rows[1]["country"], rows[1]["countries"], rows[2]["country"], rows[2]["countries"]), (None, None, None, ["DE", "AT"]))
+        for secret in ("Wilhelm-Pfitzer", "70736", "Ring 1", "1010", "applyApi", "/apply", "48.8", "latitude", "WhatsApp"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("3 emitted, the 3 publications the page lists for fi-ts-karriere.dvinci-easy.com — no count is stated anywhere, the list is the board.", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._page(pubs))], tenant="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/x", country_code="at")
+        self.assertEqual([r["id"] for r in rows], ["71097"])
+        self.assertIn("--country-code AT: 1 publication(s) carry no country in their locations — left out, not for AT.", err)
+        self.assertIn("1 emitted for AT of the 3 publications", err)
+        rows, err, asked, raw = self._run(mod, [(200, self._page([]))], tenant="sicrystal")
+        self.assertEqual(rows, [])
+        self.assertIn("0 publications — the page's list is empty", err)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>no data here</body></html>")], tenant="fi-ts-karriere")
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="fi-ts-karriere", lang="deu")
+        self.assertEqual(cm.exception.code, 2)   # --lang deu is refused before any request
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], tenant="fi-ts-karriere", lang="fr")
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("app", "https://www.dvinci-easy.com/", "login.dvinci-easy.com"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, [], tenant=bad)
+            self.assertEqual(cm.exception.code, 7, bad)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], tenant="https://jobs.example.com/de/jobs")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.dvinci.de/x", "fi-ts-karriere.dvinci-easy.com")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_a_name_that_does_not_resolve_is_not_a_tenant(self):
+        import contextlib
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+
+        class _P:
+            def wait(self):
+                pass
+        mod.Pace = lambda host, own=2.0: _P()
+
+        def urlopen(req, timeout=60):
+            raise urllib.error.URLError(OSError(8, "nodename nor servname provided, or not known"))
+        mod.urllib.request.urlopen = urlopen
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://zzz-not-a-tenant.dvinci-easy.com/de/jobs", "zzz-not-a-tenant.dvinci-easy.com")
+        self.assertEqual(cm.exception.code, 3)
+
+    def test_the_ad_reads_the_pages_object_and_scrubs_the_postings_text(self):
+        import contextlib
+        mod = self._mod()
+        pub = self._pub(71095, "ServiceNow Developer")
+        rows, err, asked, raw = self._run(mod, [(200, self._ad(pub))], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd?utm=x")
+        self.assertEqual(asked, ["https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd"])
+        a = rows[0]
+        self.assertEqual((a["id"], a["title"], a["company"], a["places"], a["country"], a["published"], a["url"], a["contacts_withheld"]),
+                         ("71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", ["Fellbach"], "DE", "2026-02-18", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd", True))
+        self.assertEqual(a["description"], "Wir suchen Dich.\nFragen an Frau Muster: [telephone withheld], [e-mail withheld]. Start ab 01.10.2026.")
+        for secret in ("Wilhelm-Pfitzer", "70736", "123 456", "muster@", "logo.png", "applyApi"):
+            self.assertNotIn(secret, raw, secret)
+        pub2 = self._pub(71095, "Developer"); pub2["jobOpening"]["company"] = None
+        rows, err, asked, raw = self._run(mod, [(200, self._ad(pub2))], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/x")
+        self.assertEqual(rows[0]["company"], "Finanz Informatik Technologie Service GmbH & Co. KG")   # the posting's organisation when the object has none
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self._ad(self._pub(99, "Another")))], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/x")   # the page's object is another publication
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, "<html><body>nothing</body></html>")], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(404, "")], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/1/x")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs")
+        self.assertEqual(cm.exception.code, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
