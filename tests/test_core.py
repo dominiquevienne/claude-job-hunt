@@ -33889,5 +33889,175 @@ class AListThatStatesItsOwnCountInPersianDigitsAndPrintsACriterionWeDoNotCarry(u
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
 
+class AGovernmentCategoryWithNoPagerWhoseEndIsA404AndWhoseRestIsClosed(unittest.TestCase):
+    """**`dpigovgy.py`, 2026-09-22 (#703).** Guyana's Department of Public
+    Information publishes the State agencies' vacancy advertisements in a
+    WordPress category, and three things about it are traps:
+
+    * **the theme prints no pager link at all**, and `/page/N/` answers
+      anyway (page 2, 20 and 60 each carry ten) — a walk that trusted the
+      markup would stop at ten and call it the board. **The end is a 404**,
+      which WordPress serves past the last page, and a 404 on page 1 is the
+      opposite thing: the category is gone (3);
+    * **the sidebar uses the same `item item-N` class as the archive** — a
+      page-wide read counted 41 blocks where the archive holds 10, so the
+      items are read INSIDE `fn-archive-content` and nowhere else;
+    * **the site's REST answers `[]`** for the category AND for a post read
+      from the HTML (measured 2026-09-21 and 2026-09-22): not «empty» —
+      closed to this reading. The HTML is the route.
+
+    Nothing anywhere states a count, so the run prints what it read and how
+    the walk ended. The archive is deep, and `--since` bounds it on the date
+    each entry states: the posts are newest-first, so the walk stops at the
+    first one older, and the run says **the bound was OURS**. A notice's body
+    is the advertisement itself — a PDF in the post's viewer iframe or the
+    post's image — and `ad` NAMES that address; nothing is downloaded. Both
+    ways: the walk ends on the 404 and the last page is not counted as
+    walked; a repeating page dies (6); a 200 without the archive region dies
+    (6); a 404 on page 1 dies (3); a bad `--since` dies (2); `ad` on a query
+    string or another host dies (2/7). Mutated (`-B`, detached copy): the
+    404-ends-the-walk branch removed → the walk never stops (reddens); the
+    items read page-wide → the sidebar's blocks are emitted (reddens); the
+    `--since` bound silently applied without saying it is ours → reddens; the
+    «nothing states a count» note dropped → reddens; the PDF address taken
+    from the iframe `src` instead of its `?file=` → the viewer's own URL is
+    emitted as the advertisement (reddens); the scrub dropped → reddens;
+    another host sent → reddens."""
+
+    HOST = "https://dpi.gov.gy"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_dpigy", os.path.join(SCRIPTS, "dpigovgy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(slug, title, date):
+        return ('<div class="item item-0 item-w100"><div class="item-inner"><div class="item-mid">'
+                f'<a class="sneeit-thumb" href="https://dpi.gov.gy/{slug}/"><img src="x.jpg"/></a></div>'
+                f'<div class="item-bot"><h2 class="item-title"><a href="https://dpi.gov.gy/{slug}/">{title}</a></h2>'
+                f'<div class="item-meta"><span class="item-date">- {date}</span></div></div></div></div>')
+
+    @classmethod
+    def _page(cls, items):
+        # the sidebar carries blocks of the SAME class, outside the archive region
+        sidebar = ('<aside><div class="item item-9"><h2 class="item-title">'
+                   '<a href="https://dpi.gov.gy/president-opens-bridge/">President opens bridge</a></h2>'
+                   '<span class="item-date">- September 20, 2026</span></div></aside>')
+        return ('<html><head><style>.item{}</style></head><body><section class="fn-primary"><main class="fn-content">'
+                '<div class="fn-archive"><div class="fn-archive-header"><h1>Category: <strong>Vacancies</strong></h1></div>'
+                '<div class="fn-archive-content">' + "".join(items) + '</div></div></main>'
+                + sidebar + '</section></body></html>')
+
+    NOTICE = ('<html><body><article class="post category-vacancies">'
+              '<h1 class="entry-title post-title">Bureau of Statistics – Vacancy – Clerk '
+              '(apply to hr@statisticsguyana.gov.gy or call 592 222 3333)</h1>'
+              '<div class="entry-meta"><a class="entry-date updated" href="x">September 15, 2026</a></div>'
+              '<div class="entry-body"><div class="wp-block-algori-pdf-viewer-block-algori-pdf-viewer">'
+              '<iframe class="wp-block-algori-pdf-viewer-block-algori-pdf-viewer-iframe" '
+              'src="https://dpi.gov.gy/wp-content/plugins/algori-pdf-viewer/dist/web/viewer.html?file=https%3A%2F%2Fdpi.gov.gy%2Fwp-content%2Fuploads%2F2026%2F09%2FBoS-Vacancy.pdf" '
+              'style="width:100%;height:800px"></iframe></div>'
+              '<img class="attachment-post-thumbnail wp-post-image" src="https://i0.wp.com/dpi.gov.gy/thumb.jpg"/>'
+              '</div></article></body></html>')
+
+    def _run(self, mod, pages, cmd="jobs", **kw):
+        """`pages` maps a page number (or a url for `ad`) to a (code, body)."""
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if cmd == "ad":
+                return pages[url]
+            m = re.search(r"/page/(\d+)/", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, since=None, max_pages=0, url=kw.pop("url", None))
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                (mod.cmd_ad if cmd == "ad" else mod.cmd_jobs)(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_walk_ends_on_the_404_and_the_sidebar_is_not_the_archive(self):
+        mod = self._mod()
+        p1 = self._page([self._item("gmc-vacancy-porter", "Guyana Marketing Corporation &#8211; Vacancy &#8211; Porter", "September 18, 2026"),
+                         self._item("bos-vacancy-clerk", "Bureau of Statistics &#8211; Vacancy &#8211; Clerk", "September 15, 2026")])
+        p2 = self._page([self._item("guysuco-hiring", "GUYSUCO &#8211; We are Hiring", "August 9, 2026")])
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, p2), 3: (404, "")}, country_code="gy")
+        self.assertEqual(asked, ["https://dpi.gov.gy/category/government-adverts/vacancies/",
+                                 "https://dpi.gov.gy/category/government-adverts/vacancies/page/2/",
+                                 "https://dpi.gov.gy/category/government-adverts/vacancies/page/3/"])
+        self.assertEqual([r["id"] for r in rows], ["gmc-vacancy-porter", "bos-vacancy-clerk", "guysuco-hiring"])
+        # the sidebar's block carries the same class and is NOT a vacancy
+        self.assertNotIn("president-opens-bridge", raw)
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["published"],
+                          a["document_downloaded"], a["contacts_withheld"]),
+                         ("dpigovgy", "GY", "dpigovgy:gmc-vacancy-porter",
+                          "Guyana Marketing Corporation – Vacancy – Porter", "2026-09-18", False, True))
+        self.assertIn("3 entries emitted over 2 page(s)", err)          # the 404 page is not a page walked
+        self.assertIn("page 3 answered 404 — the end of the category", err)
+        self.assertIn("**Nothing states a count**", err)
+        self.assertIn("country GY is the user's stamp", err)
+
+    def test_the_since_bound_is_declared_as_ours(self):
+        mod = self._mod()
+        p1 = self._page([self._item("a", "A", "September 18, 2026"), self._item("b", "B", "July 2, 2026")])
+        rows, err, asked, raw = self._run(mod, {1: (200, p1)}, since="2026-08-01")
+        self.assertEqual([r["id"] for r in rows], ["a"])
+        self.assertEqual(len(asked), 1)                                  # it stops, it does not walk on
+        self.assertIn("OUR bound, not the category's", err)
+        self.assertIn("1 entry(ies) older than 2026-08-01 not emitted", err)
+
+    def test_a_notice_names_its_document_and_never_fetches_it(self):
+        mod = self._mod()
+        url = "https://dpi.gov.gy/bureau-of-statistics-vacancy-clerk/"
+        rows, err, asked, raw = self._run(mod, {url: (200, self.NOTICE)}, cmd="ad", url=url, country_code="gy")
+        self.assertEqual(asked, [url])                                   # the document itself is NOT requested
+        r = rows[0]
+        self.assertEqual(r["document_url"], "https://dpi.gov.gy/wp-content/uploads/2026/09/BoS-Vacancy.pdf")
+        self.assertEqual(r["document_kind"], "pdf")
+        self.assertFalse(r["document_downloaded"])
+        self.assertNotIn("viewer.html", raw)                             # the viewer's URL is not the advertisement
+        self.assertEqual(r["title"], "Bureau of Statistics – Vacancy – Clerk "
+                                     "(apply to [e-mail withheld] or call [telephone withheld])")
+        for secret in ("hr@statisticsguyana.gov.gy", "592 222 3333"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("NAMED, never downloaded", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._item("a", "A", "September 18, 2026")])
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, p1)})                 # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, "<html><body>the theme's not-found page</body></html>")})
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (404, "")})                               # page ONE is the category itself
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {}, since="18 September 2026")
+        self.assertEqual(cm.exception.code, 2)
+        for bad in ("https://dpi.gov.gy/a-notice/?share=twitter", "https://dpi.gov.gy/"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, {}, cmd="ad", url=bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.dpi.gov.gy/category/government-adverts/vacancies/")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
