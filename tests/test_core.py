@@ -34186,5 +34186,166 @@ class APublicServiceRecruiterWhoseMinistryIsAHeadingAndNotAField(unittest.TestCa
         self.assertEqual(cm.exception.code, 7)
 
 
+class APortalWhoseVisibleZeroIsATemplateBranchAndWhoseListIsInItsOwnCall(unittest.TestCase):
+    """**`govtlc.py`, 2026-09-22 (#746).** The Government of Saint Lucia's
+    portal inlines its job list in the page's own
+    `new ResourceSummaryList('Resource', {query}, [items], …, {"TotalRecords":N})`,
+    and three things about it are traps:
+
+    * **the page's visible «No Vacancies to display. 0» is a Knockout branch**
+      (`ko if: Items().length == 0`), present in the markup whatever the list
+      holds. A reader who trusted the visible text would publish ZERO on a
+      page carrying fourteen — the shape of false negative nobody reopens;
+    * **the items array is read by BALANCING brackets**, not by a regular
+      expression stopping at the first `]`: a description holds `]` often
+      enough, and a cut list emits whatever survived it, silently;
+    * **every item carries `Latitude`/`Longitude`** — coordinates are never
+      emitted, and `withheld_fields` NAMES them so the absence is declared.
+
+    `TotalRecords` is the portal's own count and is printed beside the items
+    read, «N short» when they differ. A notice's text is the editor's, minus
+    what a notice tells an applicant to write to: an e-mail, a telephone
+    number, and a **postal address** («P.O. Box 1234», «3 Manoel Street») —
+    each named in `withheld_fields`. And the 500 this portal served on
+    2026-09-18, on which #746 was opened `blocked`, has its own exit: the run
+    says the database is down again rather than «no vacancies». Both ways:
+    fourteen-style list read against its stated total; a stated total that
+    disagrees; no total at all; a 200 without the call (6); a 500 (6); a 404
+    (3); `ad` on a query string, on a non-`/jobs/` path and on another host
+    (2/7). Mutated (`-B`, detached copy): the bracket balance replaced by a
+    non-greedy `]` → the list is cut (reddens); the stated count ignored →
+    reddens; the «short» branch removed → reddens; coordinates not declared
+    withheld → reddens; the postal-address scrub dropped → the address is
+    emitted (reddens); the e-mail scrub dropped → reddens; the 500's own exit
+    removed → reddens; another host sent → reddens."""
+
+    HOST = "https://www.govt.lc"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_govtlc", os.path.join(SCRIPTS, "govtlc.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _page(items, total=2, empty_branch=True):
+        body = json.dumps(items, ensure_ascii=False)
+        visible = ('<div data-bind="visible: Items().length == 0"><p>No Vacancies to display.</p><span>0</span></div>'
+                   if empty_branch else "")
+        return ('<html><body>' + visible + '<div id="m_summaries_container"></div><script>'
+                "var list = new ResourceSummaryList('Resource', "
+                '{"ResourceTypeNames":"jobs","FilterType":0}, ' + body +
+                ", 'm_summaries_container', " +
+                (('{"TotalRecords":%d,"PageSize":15}' % total) if total is not None else '{"PageSize":15}') +
+                ');</script></body></html>')
+
+    @staticmethod
+    def _item(slug, title, date="2026-09-18T12:23:31.2900000Z", description=""):
+        return {"Id": 999, "Url": "/jobs/" + slug, "Title": title, "Date": date,
+                "LastUpdatedDate": "2026-09-18T16:38:15.1530000Z", "Description": description,
+                "ResourceSubTypeName": "Jobs", "Latitude": 13.9094, "Longitude": -60.9789,
+                "Tags": None, "Status": 2}
+
+    NOTICE = ('<html><body><div id="home-mid"><h1>Senior Crown Counsel, Attorney General’s Chambers</h1>'
+              '<table class="font10"><tr><td>Published:</td><td>9/17/2026 10:06:28 AM</td></tr>'
+              '<tr><td valign="top">Description:</td><td valign="top"><p>Applications are invited.</p>'
+              '<p>Send them to the Permanent Secretary, P.O. Box 709, or to hr@govt.lc, '
+              'or deliver to 3 Manoel Street.</p></td></tr></table></div>'
+              '<div id="side-right">the portal\'s own links</div></body></html>')
+
+    def _run(self, mod, served, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return served
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, url=kw.pop("url", None))
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                (mod.cmd_ad if cmd == "ad" else mod.cmd_jobs)(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_visible_zero_is_not_a_count_and_the_array_is_balanced(self):
+        mod = self._mod()
+        # a description carrying «]» — a non-greedy read of the array would cut the list here
+        items = [self._item("business-support-analyst", "BUSINESS SUPPORT ANALYST – LOANS",
+                            # a LONE «]» inside a string: counted as a bracket, it closes the array
+                            # here and the second item is never emitted
+                            description="<p>Duties [see schedule] and annex 2]</p>"),
+                 self._item("senior-crown-counsel", "Senior Crown Counsel, Attorney General’s Chambers",
+                            date="2024-05-02T09:00:00.0000000Z")]
+        rows, err, asked, raw = self._run(mod, (200, self._page(items, total=2)), country_code="lc")
+        self.assertEqual(asked, ["https://www.govt.lc/jobs"])
+        self.assertEqual([r["id"] for r in rows], ["business-support-analyst", "senior-crown-counsel"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["url"],
+                          a["published"], a["updated"], a["kind"], a["contacts_withheld"]),
+                         ("govtlc", "LC", "govtlc:business-support-analyst", "BUSINESS SUPPORT ANALYST – LOANS",
+                          "https://www.govt.lc/jobs/business-support-analyst", "2026-09-18", "2026-09-18", "Jobs", True))
+        self.assertEqual(a["withheld_fields"], ["coordinates"])      # named, not silent
+        for secret in ("13.909", "-60.978", "Latitude"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("2 item(s) inlined, and the portal states 2 — they agree", err)
+        self.assertIn("is a Knockout branch present whatever the list holds", err)
+        self.assertIn("coordinates are never emitted", err)
+        self.assertIn("country LC is the user's stamp", err)
+
+    def test_the_stated_total_is_printed_beside_what_was_read(self):
+        mod = self._mod()
+        items = [self._item("a", "A")]
+        rows, err, asked, raw = self._run(mod, (200, self._page(items, total=14)))
+        self.assertEqual(len(rows), 1)
+        self.assertIn("1 item(s) inlined, the portal states 14 — 13 short", err)
+        rows, err, asked, raw = self._run(mod, (200, self._page(items, total=None)))
+        self.assertIn("the page stated no total this time", err)
+
+    def test_a_notice_keeps_its_text_and_loses_where_to_write(self):
+        mod = self._mod()
+        url = "https://www.govt.lc/jobs/senior-crown-counsel"
+        rows, err, asked, raw = self._run(mod, (200, self.NOTICE), cmd="ad", url=url, country_code="lc")
+        r = rows[0]
+        self.assertEqual(r["published"], "2026-09-17")
+        self.assertIn("Applications are invited.", r["description"])
+        self.assertEqual(r["withheld_fields"], ["email", "postal_address"])
+        for secret in ("P.O. Box 709", "hr@govt.lc", "3 Manoel Street"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("[address withheld]", r["description"])
+        self.assertNotIn("the portal's own links", raw)               # only the notice's own block is read
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, (200, "<html><body><p>No Vacancies to display.</p><span>0</span></body></html>"))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("never a count", err.getvalue())
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, (500, ""))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("database is down again", err.getvalue())       # not «no vacancies»
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (404, ""))
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("https://www.govt.lc/jobs/a-notice?x=1", "https://www.govt.lc/vacancies/a-notice"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, (200, self.NOTICE), cmd="ad", url=bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://govt.lc/jobs")                       # the apex is not the host the card names
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
