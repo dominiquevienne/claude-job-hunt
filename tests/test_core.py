@@ -35876,5 +35876,188 @@ class ABoardThatFitsInOneRequestAndAFieldThatHoldsAPlaceholder(unittest.TestCase
                 self.assertEqual(cm.exception.code, 7)
 
 
+class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
+    """**`iranestekhdam.py`, 2026-09-22 (#630).** Iran Estekhdam: `/search?page=N`, thirty-six
+    cards a page, and **the list states NO total** — where every other Iranian board of the week
+    prints one. The figures it does print are per-EMPLOYER and one is CAPPED («۱۰۰+»), so reading
+    one as the list's total would give a witness specific, plausible and false. The adapter says
+    «the site states no count» and prints the pager's arithmetic AS A BOUND.
+
+    And the card omits its MIDDLE span. The employer, the city and the contract-with-salary are
+    three `span.detail`, but a card without a city carries only two — **the site omits it rather
+    than emitting it empty**. Padding the list at the end (which is right for a site that emits
+    empty spans, and is what the neighbouring adapter does) slid the contract into the city on
+    **87 of 4 352 rows** and left 107 with no contract, on the first full walk. Found by the
+    walk's own control, not by reading.
+
+    Both ways: a capped number refused rather than read; no total ever invented; the bound named
+    a bound; the two-span card keeping its fields straight; the key the `data-id` and never the
+    Persian slug; the same link twice inside one card counted once; the contract and salary split
+    on the parentheses and a span without them yielding NO salary; contacts scrubbed; the gender
+    named as withheld; a 404 advert (3); another host refused BEFORE the gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_iranestekhdam", os.path.join(SCRIPTS, "iranestekhdam.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SLUG = "/%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%DA%A9%D8%A7%D8%B1%D9%BE%D8%B1%D8%AF%D8%A7%D8%B2"
+
+    @classmethod
+    def _card(cls, cid, company, title, city="تهران", pay="تمام وقت (حقوق توافقی)", age="۲۲ دقیقه پیش", badge=None, slug=None):
+        href = "https://iranestekhdam.ir" + (slug or cls.SLUG)
+        details = "".join(f'<span class="detail">{x}</span>' for x in ([company, city, pay] if city is not None else [company, pay]))
+        return (f'<li class="search-post-item">'
+                f'<a href="{href}" target="_blank" class="external-link d-none d-lg-block"><i class="fal fa-link"></i></a>'
+                f'<span class="set-bookmark" data-id="{cid}"><i class="fal fa-bookmark"></i></span>'
+                f'<a href="{href}" data-id="{cid}" class="d-flex w-100">'
+                f'<strong class="detail title">{title}</strong>{details}'
+                f'<span class="date">{age}</span>'
+                + (f'<span class="badge badge-danger">{badge}</span>' if badge else "")
+                + '</a></li>')
+
+    @staticmethod
+    def _listing(cards, last=121):
+        pager = "".join(f'<li class="page-item link"><a href="https://iranestekhdam.ir/search?page={i}">{i}</a></li>'
+                        for i in sorted({2, 3, last}) if i <= last) if last else ""
+        # the company carousel: per-EMPLOYER figures, one of them CAPPED — the trap this guard exists for
+        carousel = '<span class="ads">۲ آگهی فعال</span><span class="ads">۱۰۰+ آگهی فعال</span>'
+        return f'<html><body>{carousel}<ul class="search-posts">{"".join(cards)}</ul><ul>{pager}</ul></body></html>'
+
+    AD = ('<html><head><title>x</title>'
+          '<script type="application/ld+json">{"@context":"http://schema.org","@type":"BreadcrumbList","itemListElement":[]}</script>'
+          '<meta property="og:description" content="شرکت تاو صنعت سپنتا جهت تکمیل کادر خود. جنسیت: آقا. تماس: 09123456789 یا hr@tav.example">'
+          '</head><body><div class="single-contacts-box"><div class="contacts-top">'
+          # the breadcrumb sits BEFORE the title, so a reader that takes the first line takes «خانه» (home)
+          '<div class="breadcrumb"><a href="/">خانه</a> / <a href="/search">آگهی‌ها</a></div>'
+          '<img src="https://kar.iranestekhdam.ir/storage/profile/logos/logo_1705122154.jpg" alt="تاو صنعت سپنتا">'
+          '<h1 class="d-none d-md-block"><a href="https://iranestekhdam.ir/x">استخدام کارپرداز</a></h1>'
+          '<div class="company-title mt-2 text-dark">تاو صنعت سپنتا</div><div class="state">تایباد</div>'
+          '<span class="date">۲۴ دقیقه پیش</span>'
+          '</div></div></section></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_a_capped_number_is_refused_and_no_total_is_ever_invented(self):
+        mod = self._mod()
+        # «۱۰۰+» is AT LEAST a hundred: read as 100 it becomes a count, and a count here would be a lie
+        self.assertEqual((mod.fa_int("۳۶"), mod.fa_int("36"), mod.fa_int("۱۰۰+"), mod.fa_int("100+"), mod.fa_int("")),
+                         (36, 36, None, None, None))
+        p1 = [self._card(f"31{i:05d}", "مام", f"عنوان {i}") for i in range(36)]
+        p2 = [self._card(f"32{i:05d}", "اکسیر", f"عنوان {i}") for i in range(36)]
+        code, rows, err, sent = self._run(mod, ["jobs", "--pages", "2"],
+                                          lambda u: (200, self._listing(p1)) if u.endswith("page=1") else (200, self._listing(p2)))
+        self.assertEqual((code, len(rows)), (0, 72), err)
+        self.assertEqual(sent, ["https://iranestekhdam.ir/search?page=1", "https://iranestekhdam.ir/search?page=2"])
+        self.assertIn("the site states no count", err)
+        self.assertIn("at most 4 356 cards (121 × 36) — a BOUND, not a count", err)
+        # the per-employer figures must never become the list's total
+        self.assertNotIn("the site states 2", err)
+        self.assertNotIn("the site states 100", err)
+        self.assertIn("a BOUNDED read (--pages), not the board", err)
+        self.assertTrue(all(r["criteria_withheld"] == ["gender"] and r["contacts_withheld"] for r in rows))
+        # and a saved copy is bounded BY CONSTRUCTION — one page is not the board, whatever its pager says
+        with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as fh:
+            fh.write(self._listing(p1, last=None))
+            saved = fh.name
+        try:
+            code, rows, err, _ = self._run(mod, ["jobs", "--from", saved], lambda u: (200, ""))
+            self.assertEqual((code, len(rows)), (0, 36), err)
+            self.assertIn("a BOUNDED read (one saved page), not the board", err)
+            self.assertIn("the site states no count", err)
+        finally:
+            os.unlink(saved)
+
+    def test_a_card_without_a_city_does_not_slide_its_contract_into_the_city(self):
+        """The defect the first full walk produced: 87 of 4 352 rows carried «تمام وقت (حقوق توافقی)»
+        as their CITY, because the list was padded at the END and the site omits the MIDDLE."""
+        mod = self._mod()
+        cards = [self._card("3118112", "تاو صنعت سپنتا", "استخدام کارپرداز", city="تایباد"),
+                 self._card("3118113", "فولاد آلیاژ", "کارگر ساده", city=None, pay="تمام وقت (از ۳۰ میلیون به بالا)"),
+                 self._card("3118114", "خانه من", "کمک حسابدار", city="تهران", pay="پاره وقت")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u: (200, self._listing(cards)))
+        self.assertEqual((code, len(rows)), (0, 3), err)
+        a, b, c = rows
+        self.assertEqual((a["place"], a["contract_as_written"], a["salary_as_written"]), ("تایباد", "تمام وقت", "حقوق توافقی"))
+        # the one with no city: the city is None and the contract is STILL the contract
+        self.assertEqual((b["place"], b["contract_as_written"], b["salary_as_written"]), (None, "تمام وقت", "از ۳۰ میلیون به بالا"))
+        self.assertNotIn("تمام وقت", str(b["place"]))
+        # a span with no parentheses is a contract and NO salary — not a salary of nothing
+        self.assertEqual((c["place"], c["contract_as_written"], c["salary_as_written"]), ("تهران", "پاره وقت", None))
+
+    def test_the_key_is_the_id_and_the_duplicated_link_is_counted_once(self):
+        mod = self._mod()
+        # two adverts of the same employer share one Persian slug; keyed on the address they collapse to one
+        cards = [self._card("3118112", "تاو", "کارپرداز"), self._card("3118111", "تاو", "تکنسین فنی")]
+        code, rows, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u: (200, self._listing(cards)))
+        self.assertEqual(len(rows), 2, err)
+        self.assertEqual({r["ledger_id"] for r in rows}, {"iranestekhdam:3118112", "iranestekhdam:3118111"})
+        self.assertEqual(len({r["url"] for r in rows}), 1)   # the same address, and still two adverts
+        # the same id twice across pages is one row, and the walk stops when a page only repeats
+        def repeats(u):
+            return (200, self._listing(cards, last=121))
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], repeats)
+        self.assertEqual((code, len(rows)), (0, 2), err)
+        self.assertEqual(len(sent), 2, f"the walk asked {len(sent)} pages where two were enough")
+        self.assertIn("page 2: only repeats — stopped.", err)
+
+    def test_the_advert_has_no_jobposting_and_says_so_contacts_and_gender_withheld(self):
+        mod = self._mod()
+        url = "https://iranestekhdam.ir" + self.SLUG
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD))
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        r = rows[0]
+        self.assertEqual(r["structured_data"], "none — the page's only ld+json is a BreadcrumbList")
+        self.assertEqual((r["title"], r["company"], r["place"], r["posted_as_written"]),
+                         ("استخدام کارپرداز", "تاو صنعت سپنتا", "تایباد", "۲۴ دقیقه پیش"))
+        self.assertNotIn("/storage/", json.dumps(r, ensure_ascii=False))   # the employer's logo is not a field
+        blob = json.dumps(r, ensure_ascii=False)
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertNotIn("09123456789", blob)
+        self.assertNotIn("hr@tav.example", blob)
+        self.assertEqual(r["criteria_withheld"], ["gender"])
+        # a notice that prints no gender says it by an EMPTY list, not by silence
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD.replace("جنسیت", "سابقه")))
+        self.assertEqual((code, rows[0]["criteria_withheld"]), (0, []), err)
+
+    def test_a_gone_advert_and_another_host_refused_before_the_gate(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://iranestekhdam.ir" + self.SLUG], lambda u: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("HTTP 404", err)
+        # `request` refuses another host BEFORE the gate — the gate is made to RAISE, so a call that
+        # reached it would fail loudly instead of passing for a refusal
+        mod2 = self._mod()
+        mod2.gate = lambda url: (_ for _ in ()).throw(AssertionError("the gate was reached for another host"))
+        mod2._PACE.wait = lambda: None
+        import contextlib
+        err2 = io.StringIO()
+        with contextlib.redirect_stderr(err2):
+            with self.assertRaises(SystemExit) as cm:
+                mod2.request("https://example.com/search")
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("never sent", err2.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
