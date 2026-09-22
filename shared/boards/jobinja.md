@@ -14,12 +14,33 @@ jobinja.py jobs [--pages N | --all]      # vingt par page ; «N émis … le sit
 jobinja.py ad --url https://jobinja.ir/companies/<employeur>/jobs/<id>/<slug>
 ```
 
-**LE SEXE N'EST PAS PORTÉ.** Chaque annonce imprime «جنسیت : زن» (sexe :
-femme) comme critère de recrutement. Le dépôt sert l'annonce et **ne propage
-pas le critère** (#183 — et `jobcentrebrunei.py` fait de même avec une
-tranche d'âge) : le champ n'est jamais émis, et chaque ligne **dit ce qui a
-été laissé** — `criteria_withheld: ["gender"]` — pour qu'un silence ne se
-lise pas comme une absence.
+**LE SEXE N'EST PAS PORTÉ — ET C'EST UN FAIT DE BOARD, ÉCRIT ICI UNE FOIS.**
+La page d'**annonce** imprime «جنسیت : زن» (sexe : femme) comme critère de
+recrutement. Le dépôt sert l'annonce et **ne propage pas le critère** (#183 —
+et `jobcentrebrunei.py` fait de même avec une tranche d'âge) : le champ n'est
+jamais émis.
+
+**L'enregistrement d'annonce dit ce qui a été laissé — `criteria_withheld:
+["gender"]` — SEULEMENT quand la page en portait un**, et `[]` sinon. *Une
+liste vide est « lu, et il n'y en avait pas » ; ce n'est pas la même phrase que
+« retenu ».*
+
+**Et la ligne de LISTE ne porte plus ce champ du tout — correction du
+22.09.2026 (#885).** Elle le déclarait sur chaque carte, alors que **la carte
+n'imprime aucun critère** : seule l'annonce le fait. La ligne affirmait donc
+avoir retenu quelque chose que l'objet qu'elle décrit n'a jamais porté — *une
+affirmation sur le BOARD logée dans un champ qui se lit comme une affirmation
+sur l'ANNONCE, et les deux sont indiscernables une fois l'enregistrement lu.*
+**Le fait de board est vrai, et sa place est ce paragraphe.** Même famille que
+« déclarer avoir retenu un numéro que personne n'a déposé », un cran plus
+loin : là le champ existait et était vide, ici il n'était pas sur l'objet.
+
+*Ce que la détection est, et ce qu'elle coûte&nbsp;:* la déclaration suit la
+**présence du libellé `جنسیت` dans le corps de l'annonce**. Une page qui
+emploierait le mot hors de son bloc de critères ferait déclarer une retenue
+inutile — bornée, dite, et strictement meilleure que l'inconditionnel qu'elle
+remplace. *La regex n'a pas été retouchée : elle a été mesurée avec #627, et on
+ne réécrit pas un motif sans une page pour l'éprouver.*
 
 **La clé est l'id court du site, jamais le slug.** Le slug est le titre
 persan ; son repli ASCII est vide, et une clé vide collisionne — mesuré la

@@ -33768,9 +33768,19 @@ class AListThatStatesItsOwnCountInPersianDigitsAndPrintsACriterionWeDoNotCarry(u
     compared to the stated count (short → 6), the card's nested `<li>` not cutting
     the city and the contract off, the tracking parameters dropped from the emitted
     address, a repeated id once, **the key the site's short id and never the Persian
-    slug** (an ASCII fold of it is empty and collides), the gender never emitted and
-    always named as withheld, contacts scrubbed, a 404 advert (3), another host
-    refused before the gate (7)."""
+    slug** (an ASCII fold of it is empty and collides), the gender never emitted,
+    contacts scrubbed, a 404 advert (3), another host refused before the gate (7).
+
+    **#885, 2026-09-22 — corrected, and this guard followed the convention instead
+    of checking it.** The LIST row used to declare `criteria_withheld: ["gender"]`
+    on every card, and this test asserted it. *But the card prints no gender — only
+    the advert does*: the row claimed a discretion exercised on an object that never
+    held the thing, which is an assertion about the BOARD written into a field that
+    reads as an assertion about the ADVERT. Now the list row carries no such field
+    (asserted on every row), the advert's declaration is conditional on what the page
+    carried, and **an advert without the criterion yields `[]`** — «read, and there
+    was none», which is not the same statement as «withheld». The board's fact is
+    true and lives on the card, once."""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_jobinja", os.path.join(SCRIPTS, "jobinja.py"))
@@ -33838,10 +33848,15 @@ class AListThatStatesItsOwnCountInPersianDigitsAndPrintsACriterionWeDoNotCarry(u
         self.assertEqual(sent, ["https://jobinja.ir/jobs", "https://jobinja.ir/jobs?page=2"])
         self.assertEqual(len(rows), 39)   # the repeat once
         self.assertIn("39 emitted over 2 page(s) of 20 — the site states 16 201 «فرصت شغلی», its pager ending at page 811; a BOUNDED read (--pages), not the board", err)
-        self.assertIn('the gender the board prints beside each advert is NOT carried (#183)', err)
+        self.assertIn('the gender is printed on the ADVERT page, not on these cards', err)
         r = rows[0]
-        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["contract_as_written"], r["posted_as_written"], r["country"], r["criteria_withheld"], r["contacts_withheld"]),
-                         ("jobinja:t000", "t000", "عنوان 0", "datis | datis", "تهران، تهران", "قرارداد تمام وقت", "امروز", "IR", ["gender"], True))
+        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["contract_as_written"], r["posted_as_written"], r["country"], r["contacts_withheld"]),
+                         ("jobinja:t000", "t000", "عنوان 0", "datis | datis", "تهران، تهران", "قرارداد تمام وقت", "امروز", "IR", True))
+        # **#885: a LIST row declares no criterion at all.** The card does not print one —
+        # declaring it withheld there claimed a discretion exercised on an object that never
+        # held the thing. The board's fact is true and lives on the card, once.
+        self.assertTrue(all("criteria_withheld" not in x for x in rows),
+                        "a list row still claims a withheld criterion (#885)")
         self.assertNotIn("_ref", r["url"])   # the board's tracking parameters are not a link
         self.assertNotIn("_t=", r["url"])
         # the key is the site's short id: two Persian titles fold to the same ASCII nothing and must NOT collide
@@ -33881,6 +33896,12 @@ class AListThatStatesItsOwnCountInPersianDigitsAndPrintsACriterionWeDoNotCarry(u
         dump = json.dumps(r, ensure_ascii=False)
         for hidden in ("09123456789", "datis.example", "جنسیت", "زن"):
             self.assertNotIn(hidden, dump, hidden)
+        # **#885, the other direction: an advert that prints NO criterion declares none.**
+        # `[]` is «read, and there was none» — it is not the same statement as «withheld».
+        bare = self.AD.replace("<li>جنسیت</li><li>زن</li>", "<li>حقوق</li><li>توافقی</li>")
+        self.assertNotIn("جنسیت", bare)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, bare))
+        self.assertEqual((code, rows[0]["criteria_withheld"]), (0, []), err)
         code, rows, err, _ = self._run(mod, ["ad", "--url", "https://jobinja.ir/companies/x/jobs/zzzz9/x"], lambda u: (404, ""))
         self.assertEqual((code, rows), (3, []), err)
         code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, "<html><body>no posting</body></html>"))
