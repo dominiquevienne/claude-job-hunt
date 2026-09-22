@@ -35153,5 +35153,146 @@ class ABoardWhoseAdvertStatesWhoMayApplyAndWhoseTitlesAreNotLatin(unittest.TestC
         self.assertEqual(cm.exception.code, 7)
 
 
+class TwoTablesOfOneSystemWhoseColumnsAreNotTheSame(unittest.TestCase):
+    """**`pscke.py`, 2026-09-22 (#802).** Kenya's Public Service Commission
+    publishes its civil-service adverts and its internship programme in two
+    ASP.NET tables of one system — **and their columns are not the same**:
+    eleven against eight, and **the fourth cell is a job scale on one page
+    and a ministry on the other**. The cells are therefore read BY THEIR
+    HEADER; a record whose `ministry` held «CSG 8» would be wrong in a way
+    nothing downstream could notice.
+
+    *A column read by position is also how a reading goes wrong while
+    looking complete: the first inspection of the adverts table printed its
+    first nine cells and concluded it had no closing date. It has one, in
+    the tenth.* What a table does not state stays `null`, and the run says
+    how many records lack a closing date.
+
+    **An advert number has the shape of a telephone number** («143/2026»),
+    and is spared by name — as Cabo Verde's «176/2024» was. **An empty table
+    is a state, not a failure**: the internship table carried its header and
+    no row on 2026-09-20 and carries one today, so a header without rows is
+    reported and a table without a HEADER is the page changing (6). The
+    detail is an `__doPostBack` and is not replayed. Both ways: two tables
+    read by header with their different columns; the pager's «< >» line not
+    taken for a row; an advert number kept; a cell carrying an address
+    scrubbed; an empty table said; a page without a header dying (6); a 404
+    (3); another host refused (7). Mutated (`-B`, detached copy): the cells
+    read by position → the ministry holds a job scale (reddens); the header
+    not required → the pager line becomes a record (reddens); the advert
+    number not spared → «[telephone withheld]» as an id (reddens); the
+    missing-close-date count silenced → reddens; the empty-table note
+    dropped → reddens; `detail_read` claimed true → reddens; the scrub
+    dropped → reddens; another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pscke", os.path.join(SCRIPTS, "pscke.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    JOBS = ('<html><body><table><tr>'
+            + "".join("<th>%s</th>" % h for h in
+                      ["##", "Advert Number", "Position", "Job Scale", "Ministry", "Number of Vacancies",
+                       "Years of Experience Required", "Advert Category", "Advert Date",
+                       "Advert Close Date", ""])
+            + "</tr><tr>"
+            + "".join("<td>%s</td>" % c for c in
+                      ["1", "D111/2026", "Principal Labour Migration Officer", "CSG 8",
+                       "State Department for Labour and Skills Development", "2", "3",
+                       "For Serving Officers Only", "14-09-2026", "05-10-2026", "Advert Details"])
+            + '</tr><tr><td>&lt;&nbsp;&gt;</td></tr></table></body></html>')
+
+    INTERNS = ('<html><body><table><tr>'
+               + "".join("<th>%s</th>" % h for h in
+                         ["##", "Advert Number", "Position", "Ministry/State Department",
+                          "Number of Vacancies", "Advert Date", "Advert Close Date", "Action"])
+               + "</tr><tr>"
+               + "".join("<td>%s</td>" % c for c in
+                         ["1", "143/2026", "Public Service Internship (write to psc@example.go.ke)",
+                          "State Department for Basic Education", "1000", "15-09-2026", "", "Advert Details Apply"])
+               + "</tr></table></body></html>")
+
+    EMPTY = ('<html><body><table><tr>'
+             + "".join("<th>%s</th>" % h for h in ["##", "Advert Number", "Position", "Advert Date"])
+             + "</tr></table></body></html>")
+
+    def _run(self, mod, pages, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return pages[url]
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, kind="both")
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def _pages(self, jobs=None, interns=None):
+        mod = self._mod()
+        return mod, {mod.PAGES["jobs"]: (200, jobs if jobs is not None else self.JOBS),
+                     mod.PAGES["internships"]: (200, interns if interns is not None else self.INTERNS)}
+
+    def test_each_table_is_read_by_its_own_header(self):
+        mod, pages = self._pages()
+        rows, err, asked, raw = self._run(mod, pages, country_code="ke")
+        self.assertEqual(len(asked), 2)
+        a, b = rows
+        self.assertEqual((a["kind"], a["advert_number"], a["title"], a["job_scale"], a["ministry"],
+                          a["vacancies"], a["experience_years"], a["category"],
+                          a["advert_date"], a["close_date"], a["detail_read"]),
+                         ("jobs", "D111/2026", "Principal Labour Migration Officer", "CSG 8",
+                          "State Department for Labour and Skills Development", "2", "3",
+                          "For Serving Officers Only", "2026-09-14", "2026-10-05", False))
+        # the FOURTH cell is a ministry here and a job scale there — read by header, not by position
+        self.assertEqual(b["ministry"], "State Department for Basic Education")
+        self.assertIsNone(b["job_scale"])
+        self.assertEqual(b["advert_number"], "143/2026")          # an advert number is not a telephone
+        self.assertIsNone(b["close_date"])                        # the cell is empty: null, not invented
+        self.assertEqual(b["title"], "Public Service Internship (write to [e-mail withheld])")
+        self.assertNotIn("psc@example.go.ke", raw)
+        self.assertEqual(len(rows), 2)                            # the pager's «< >» line is not a row
+        self.assertIn("2 advert(s) emitted (jobs 1, internships 1)", err)
+        self.assertIn("1 advert(s) state no closing date", err)
+        self.assertIn("read BY THEIR HEADER", err)
+        self.assertIn("`detail_read: false`", err)
+        self.assertIn("country KE is the user's stamp", err)
+
+    def test_an_empty_table_is_a_state_and_a_headerless_page_is_not(self):
+        import contextlib
+        mod, pages = self._pages(jobs=self.EMPTY, interns=self.EMPTY)
+        rows, err, asked, raw = self._run(mod, pages)
+        self.assertEqual(rows, [])
+        self.assertIn("an empty table is a state, not a failure", err)
+        mod, pages = self._pages(jobs="<html><body><p>the system, without its table</p></body></html>")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, pages)
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {mod.PAGES["jobs"]: (404, "")}, kind="jobs")
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {mod.PAGES["jobs"]: (500, "")}, kind="jobs")
+        self.assertEqual(cm.exception.code, 6)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.publicservice.go.ke/jobs/")   # the WordPress host is not this route
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
