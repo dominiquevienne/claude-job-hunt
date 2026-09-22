@@ -35681,14 +35681,25 @@ class ABoardThatFitsInOneRequestAndAFieldThatHoldsAPlaceholder(unittest.TestCase
     an empty array accepted as a state (0 rows, exit 0); a 404 (3); a 200
     that is not JSON (6); a 200 without `jobs` (6); `success: false` (6); an
     unknown filter id (2, with the ids the site does name); another host
-    (7). Mutated (`-B`, detached copy): the phone floor dropped → the stub
-    «0» is claimed as withheld (reddens); the messaging test dropped → a
-    `wa.me` link is emitted (reddens); the digit threshold lowered to 6 → a
-    salary becomes «[telephone withheld]» (reddens); the e-mail scrub
-    dropped → an address reaches a record (reddens); `success` ignored →
-    a refusal is read as an empty board (reddens); the unknown-token count
-    dropped → a raw token passes unannounced (reddens); the host test
-    dropped → another host is requested (reddens)."""
+    (7).
+
+    **Mutated in a detached worktree with `-B`, the red NAMED before each
+    mutation and the line touched printed** — seven for seven, and each red
+    is the one that was named:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the six-digit phone floor dropped | `Lists differ: ['phone'] != []` |
+    | the messaging test dropped | `'wa.me' unexpectedly found` |
+    | the threshold lowered 9 → 6 | `'1.725.000' not found` in the description |
+    | the e-mail scrub dropped | `'hr@x.com' unexpectedly found` |
+    | `success` ignored | `SystemExit not raised` — a refusal read as an empty board |
+    | the unknown-token count dropped | `'category:chemistry' not found` in stderr |
+    | the host test dropped | `2 != 7` on all three URLs |
+
+    *The last one reddens twice over: the repository's network sentinel
+    catches the mutated code trying to leave the machine, which is the same
+    defect seen from the other side.*"""
 
     SCRIPT = ("""const categories = [ { id: 'all', name: 'الكل' },"""
               """ { id: 'tech', name: 'تكنولوجيا' }, { id: 'medical', name: 'طبية' } ];"""
