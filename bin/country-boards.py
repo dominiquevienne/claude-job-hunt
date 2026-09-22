@@ -408,6 +408,7 @@ def status_of(card, cls, measured):
 COUNT_RE = re.compile(r"[^.;·]*?\b\d[\d  ,.']*\s*(?:emitted|émis(?:es)?)\b[^.;·]*", re.I)
 STATED_RE = re.compile(r"[^.;·]*?\b(?:the site |le site |board )?(?:states?|stated|énonce|annonce)\b[^.;·]*\b\d[\d  ,.']*[^.;·]*", re.I)
 TICKET_RE = re.compile(r"(#\d+)\s*$")
+NUMBER_RE = re.compile(r"\d[\d  ,.']*\s*(?:emitted|émis(?:es)?|states?|stated|énonce)|(?:states?|stated|énonce)\s*[«»\"]?\s*\d", re.I)
 SENT_SPLIT_RE = re.compile(r"(?<=[.;])\s+|\s+·\s+")
 
 
@@ -423,7 +424,10 @@ def salient(c):
             continue
         frag = m.group(0).strip(" ,;·")
         if frag and not any(frag in f for f in out):
-            if m.start() > 0 and not c[m.start() - 1].isspace():
+            # the mark goes on what the fragment REALLY starts with, after the strip: a match that begins
+            # on the space following a full stop is a beginning, and «… …**742 emitted» marks nothing
+            at = m.start() + m.group(0).index(frag[0] if frag else "")
+            if at > 0 and not c[at - 1].isspace():
                 frag = "…" + frag
             out.append(frag)
     t = TICKET_RE.search(c)
@@ -462,9 +466,27 @@ def covers_text(card, limit=220):
 
 
 def short(frag, limit=140):
-    """A carried fragment is a reminder, not a paragraph — cut on a word, never mid-number."""
+    """A carried fragment is a reminder, not a paragraph — and it is trimmed from the LEFT.
+
+    **Trimming it from the right reproduced #859 inside its own fix**: the count sits in the middle of the
+    match («…the walk <200 characters> 5 emitted — the site states 5: equal»), so a head-cut carried
+    «…the walk…» and dropped the number the fragment existed to save. Found by the guard's own fixture."""
     frag = frag.strip()
-    return frag if len(frag) <= limit else frag[:limit].rsplit(" ", 1)[0].rstrip(" ,;·") + "…"
+    if len(frag) <= limit:
+        return frag
+    # the window is CENTRED on the number, not taken from either end: trimming from the right dropped
+    # «5 emitted» and kept «the walk…», trimming from the left dropped «651 emitted» and kept «…states
+    # 651» — both found by this guard, three minutes apart, in the fix for #859 itself.
+    m = NUMBER_RE.search(frag)
+    if not m:
+        return frag[:limit].rsplit(" ", 1)[0].rstrip(" ,;·") + "…"
+    start = max(0, min(m.start() - 30, len(frag) - limit))
+    cut = frag[start:start + limit]
+    if start:
+        cut = ("…" + cut.split(" ", 1)[1]) if " " in cut else "…" + cut
+    if start + limit < len(frag):
+        cut = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,;·") + "…"
+    return cut
 
 
 def balance(frag):
