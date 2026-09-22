@@ -35057,7 +35057,10 @@ class ABoardWhoseAdvertStatesWhoMayApplyAndWhoseTitlesAreNotLatin(unittest.TestC
               '<div class="acbar-jd__rich acbar-rich-content"><p>Drive the truck.</p></div></article>'
               '<article class="acbar-jd__card"><div class="acbar-jd__card-head">'
               '<h2 class="acbar-jd__card-title">Submission Guideline</h2></div>'
-              '<div class="acbar-jd__rich acbar-rich-content"><p>Mention the vacancy number.</p></div>'
+              # the address appears TWICE: inside the block that is emitted, and in the paragraph
+              # that is not — dropping either scrub lets one of them through
+              '<div class="acbar-jd__rich acbar-rich-content"><p>Mention the vacancy number and '
+              'send your CV to hr@skyaria.af</p></div>'
               '<p class="acbar-jd__email"><strong>Email / Application Form:</strong> '
               '<span dir="ltr">hrd@skyaria.af</span> or call 0700 123 456</p></article>'
               '</body></html>')
@@ -35119,10 +35122,10 @@ class ABoardWhoseAdvertStatesWhoMayApplyAndWhoseTitlesAreNotLatin(unittest.TestC
                          ("145755", "Haul Truck Operator", "Full Time", "Oruzgan - Chora Paiband Mine", "SAMC-14-2026"))
         # the two blocks, INCLUDING the one that ends on the e-mail paragraph
         self.assertEqual(r["job_summary"], "Drive the truck.")
-        self.assertEqual(r["submission_guideline"], "Mention the vacancy number.")
+        self.assertEqual(r["submission_guideline"], "Mention the vacancy number and send your CV to [e-mail withheld]")
         # what the advert states about a person is NAMED and not carried
         self.assertEqual(r["withheld_fields"], ["email", "gender", "nationality", "telephone"])
-        for secret in ("Male", "Afghan", "hrd@skyaria.af", "0700 123 456"):
+        for secret in ("Male", "Afghan", "hrd@skyaria.af", "hr@skyaria.af", "0700 123 456"):
             self.assertNotIn(secret, raw, secret)
         self.assertIn("does NOT carry: gender, nationality", err)
 
