@@ -34246,7 +34246,12 @@ class APortalWhoseVisibleZeroIsATemplateBranchAndWhoseListIsInItsOwnCall(unittes
                 "ResourceSubTypeName": "Jobs", "Latitude": 13.9094, "Longitude": -60.9789,
                 "Tags": None, "Status": 2}
 
-    NOTICE = ('<html><body><div id="home-mid"><h1>Senior Crown Counsel, Attorney General’s Chambers</h1>'
+    NOTICE = ('<html><body>'
+              # the portal's own banner carries an <h1> and a table BEFORE the notice's block:
+              # read page-wide, the title becomes the site's and the date the banner's
+              '<div id="banner"><h1>Government of Saint Lucia</h1>'
+              '<table><tr><td>Published:</td><td>1/1/2001 12:00:00 AM</td></tr></table></div>'
+              '<div id="home-mid"><h1>Senior Crown Counsel, Attorney General’s Chambers</h1>'
               '<table class="font10"><tr><td>Published:</td><td>9/17/2026 10:06:28 AM</td></tr>'
               '<tr><td valign="top">Description:</td><td valign="top"><p>Applications are invited.</p>'
               '<p>Send them to the Permanent Secretary, P.O. Box 709, or to hr@govt.lc, '
@@ -34318,7 +34323,11 @@ class APortalWhoseVisibleZeroIsATemplateBranchAndWhoseListIsInItsOwnCall(unittes
         for secret in ("P.O. Box 709", "hr@govt.lc", "3 Manoel Street"):
             self.assertNotIn(secret, raw, secret)
         self.assertIn("[address withheld]", r["description"])
-        self.assertNotIn("the portal's own links", raw)               # only the notice's own block is read
+        # only the notice's own block is read: not the banner above it, nor the links below
+        self.assertEqual(r["title"], "Senior Crown Counsel, Attorney General’s Chambers")
+        self.assertNotIn("Government of Saint Lucia", raw)
+        self.assertNotIn("2001", raw)
+        self.assertNotIn("the portal's own links", raw)
 
     def test_the_directions_that_must_redden(self):
         import contextlib
