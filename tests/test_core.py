@@ -34839,5 +34839,150 @@ class ReplantingABranchAsksGitNothingItCannotKnow(unittest.TestCase):
         self.assertIn("already on", r.stderr)
 
 
+class AGovernmentPageWhoseMarkupIsItsOwnAndWhoseClosedPostsStay(unittest.TestCase):
+    """**`abgovag.py`, 2026-09-22 (#728).** The Government of Antigua and
+    Barbuda lists each vacancy in its own `ul.events_list`, below a
+    «Current Vacancies» heading, in markup that is the department's and not
+    a tidy version of it: **the `<span>` is never closed** and **`<date>` is
+    an element nobody else uses**. So the employer is the `<strong>` INSIDE
+    the link, the title is what follows the dash in the same link, and the
+    deadline is the `<date>` — «October 03rd 2026», whose ordinal suffix no
+    date library parses by default. Reading the span, or splitting the line
+    on the dash, would take the department's name into the title or the
+    title into nothing.
+
+    **The page keeps closed posts**, and that is its filing: three on the
+    day, one open and two whose deadline passed. *The issue was opened on
+    «rien d'ouvert le 18.09» — two posts, both closed — and a month with
+    nothing open is not a page that publishes nothing.* They are emitted
+    with their date and **counted**; `--open-on` drops them only when asked,
+    and says the filter is ours. Nothing states a count.
+
+    Both ways: two posts read with their employer, title, deadline and PDF;
+    a post whose deadline has no year-month-day shape emitted with `null`
+    and counted; `--open-on` filtering and saying so; a heading-less page
+    dying (6); a 404 (3); a bad `--open-on` (2); another host refused (7).
+    Mutated (`-B`, detached copy): the employer not split from the title →
+    the title carries the department (reddens); the ordinal suffix not
+    tolerated → every deadline is null (reddens); the «Current Vacancies»
+    heading not required → the footer's own lists are read (reddens); the
+    closed count silenced → reddens; the `--open-on` drop count silenced →
+    reddens; the document marked downloaded → reddens; the scrub dropped →
+    reddens; another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_abag", os.path.join(SCRIPTS, "abgovag.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(pdf, employer, title, deadline):
+        # the department's own markup: <date> is not an element, and the <span> is never closed
+        return ('<ul class="events_list"><li><date>Deadline - %s</date> - <span>'
+                '<a href="media/pdf/vacancies/%s"><strong>%s</strong> - %s</a><span></li></ul>'
+                % (deadline, pdf, employer, title))
+
+    @classmethod
+    def _page(cls, items, heading=True):
+        return ('<html><body><div class="content">'
+                + ("<h2>Current Vacancies</h2>" if heading else "<h2>Latest News</h2>")
+                + "".join(items)
+                + '</div><div class="footerContainer">'
+                # the footer carries a list of the same class: it must not be read as a vacancy
+                + '<ul class="events_list"><li><date>Deadline - January 01st 2020</date> - <span>'
+                  '<a href="terms_policies/acceptable_usage_policy.pdf"><strong>Policy</strong> - '
+                  'Acceptable Usage</a><span></li></ul>'
+                + "</div></body></html>")
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return served
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, open_on=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    BOARD = None
+
+    def _board(self):
+        return self._page([
+            self._item("AD_2026_Meteorological_Officer_III.pdf",
+                       "Antigua and Barbuda Meteorological Service (ABMS)",
+                       "Meteorological Officer III", "October 03rd 2026"),
+            self._item("goab_deputy_accountant_general.pdf",
+                       "The Treasury Dept of the Govt Of Antigua Barbuda(GOAB)",
+                       "Deputy Accountant General - Accounting and Financial Reporting", "July 06th 2026"),
+            self._item("tor_consultant.pdf", "The Treasury Dept (write to hr@ab.gov.ag)",
+                       "HRM Consultant", "when filled"),
+        ])
+
+    def test_the_departments_markup_is_read_as_written(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, (200, self._board()), country_code="ag")
+        self.assertEqual(asked, ["https://ab.gov.ag/detail_template.php?page=media/vacancies"])
+        self.assertEqual([r["id"] for r in rows],
+                         ["ad-2026-meteorological-officer-iii-pdf", "goab-deputy-accountant-general-pdf",
+                          "tor-consultant-pdf"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["employer"], a["title"],
+                          a["deadline"], a["document_url"], a["document_downloaded"], a["contacts_withheld"]),
+                         ("abgovag", "AG", "abgovag:ad-2026-meteorological-officer-iii-pdf",
+                          "Antigua and Barbuda Meteorological Service (ABMS)", "Meteorological Officer III",
+                          "2026-10-03", "https://ab.gov.ag/media/pdf/vacancies/AD_2026_Meteorological_Officer_III.pdf",
+                          False, True))
+        # the dash INSIDE a title is not a separator: only the <strong> divides them
+        self.assertEqual(rows[1]["title"], "Deputy Accountant General - Accounting and Financial Reporting")
+        self.assertIsNone(rows[2]["deadline"])                       # «when filled» is not a date
+        self.assertEqual(rows[2]["employer"], "The Treasury Dept (write to [e-mail withheld])")
+        self.assertNotIn("hr@ab.gov.ag", raw)
+        self.assertNotIn("acceptable_usage_policy", raw)             # the footer's list is not a vacancy
+        self.assertIn("3 post(s) emitted (3 read); **the page states no count**", err)
+        self.assertIn("1 post(s) state no deadline", err)
+        # the COUNT, not the sentence: «0 of the emitted post(s) state a deadline already past»
+        # satisfies a substring assertion just as well, and says the opposite
+        self.assertIn("1 of the emitted post(s) state a deadline already past", err)
+        self.assertIn("country AG is the user's stamp", err)
+
+    def test_the_open_on_filter_says_it_is_ours(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, (200, self._board()), open_on="2026-09-22")
+        self.assertEqual([r["id"] for r in rows],
+                         ["ad-2026-meteorological-officer-iii-pdf", "tor-consultant-pdf"])
+        self.assertIn("1 post(s) whose deadline is before 2026-09-22 not emitted — OUR filter", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, (200, self._page([], heading=False)))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("«Current Vacancies»", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (404, ""))
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (200, self._board()), open_on="03/10/2026")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.ab.gov.ag/detail_template.php?page=media/vacancies")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
