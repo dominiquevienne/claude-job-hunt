@@ -34984,5 +34984,174 @@ class AGovernmentPageWhoseMarkupIsItsOwnAndWhoseClosedPostsStay(unittest.TestCas
         self.assertEqual(cm.exception.code, 7)
 
 
+class ABoardWhoseAdvertStatesWhoMayApplyAndWhoseTitlesAreNotLatin(unittest.TestCase):
+    """**`acbar.py`, 2026-09-22 (#641).** ACBAR is the coordination body of
+    the NGOs in Afghanistan and its board is that country's live route. Four
+    things it teaches:
+
+    * **the advert states criteria about a PERSON** — `Gender: Male`,
+      `Nationality: Afghan` — and they are READ so they can be dropped **by
+      name**: the advert is served, the criterion is not carried (#183, as
+      Bhutan's gender and Brunei's age range). A record that simply lacked
+      them would be indistinguishable from an advert that states none;
+    * **the address to write to sits OUTSIDE the four blocks**, in its own
+      `p.acbar-jd__email`. Matching only the tidy `</div></article>` shape
+      lost the «Submission Guideline» block entirely — *the one block written
+      around an e-mail* — so both are read, and both are scrubbed;
+    * **the titles are Dari and Pashto**, and the key is the board's own
+      numeric id: a slug folded to ASCII letters is empty and collides;
+    * **the posted age is relative** («34 minutes ago») and is kept as the
+      board writes it — a relative age is not a date, and turning it into one
+      would invent a precision the board never published.
+
+    The board states «268 jobs found», printed beside what was read. Both
+    ways: two pages walked and the count compared; a repeating page (6); a
+    first page with no card (6); a 404 (3); `ad` on a query string, on a
+    non-advert path and on another host (2/7); an advert with no criterion
+    saying so. Mutated (`-B`, detached copy): the criteria emitted instead of
+    withheld → gender lands in the record (reddens); the withheld list
+    emptied → reddens; the e-mail paragraph not read → the address survives
+    (reddens); the key taken from the slug → two Dari titles collide
+    (reddens); the relative age parsed into a date → reddens; the stated
+    count ignored → reddens; the repeat guard dropped → reddens; another host
+    sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_acbar", os.path.join(SCRIPTS, "acbar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(ident, slug, title, company, kind="Full Time", place="Paktika",
+              ago="34 minutes ago", closing="2026-10-01"):
+        return ('<div class="job-card"><div class="job-card__main"><div class="job-card__top">'
+                f'<div class="job-card__titlewrap"><a href="https://www.acbar.org/en/jobs/details/{ident}/{slug}" '
+                f'class="job-card__title"> {title} </a><span class="job-badge">NEW</span></div></div>'
+                f'<div class="job-card__company " >{company} <span class="job-dot">•</span> '
+                f'<span class="job-pill">{kind} </span></div></div>'
+                f'<div class="job-card__meta"><span class="job-pill"><i></i> {place}</span>'
+                f'<span class="job-pill"><i></i> {ago}</span>'
+                f'<span class="job-pill"><i></i> {closing} </span></div></div>')
+
+    @classmethod
+    def _page(cls, cards, count="268"):
+        head = (f'<div class="jobs-toolbar__count">{count} jobs found</div>' if count else "")
+        return ('<html><body>' + head + "".join(cards)
+                + '<ul class="pagination"><li><a class="page-link" href="https://www.acbar.org/en/jobs?page=2">2</a></li></ul>'
+                '</body></html>')
+
+    ADVERT = ('<html><body><h1>Haul Truck Operator</h1>'
+              '<div class="acbar-jd__info-row"><dt class="acbar-jd__info-term">Type</dt>'
+              '<dd class="acbar-jd__info-desc">Full Time</dd></div>'
+              '<div class="acbar-jd__info-row"><dt class="acbar-jd__info-term">Location</dt>'
+              '<dd class="acbar-jd__info-desc">Oruzgan - Chora Paiband Mine</dd></div>'
+              '<div class="acbar-jd__info-row"><dt class="acbar-jd__info-term">Nationality</dt>'
+              '<dd class="acbar-jd__info-desc">Afghan</dd></div>'
+              '<div class="acbar-jd__info-row"><dt class="acbar-jd__info-term">Gender</dt>'
+              '<dd class="acbar-jd__info-desc">Male</dd></div>'
+              '<div class="acbar-jd__info-row"><dt class="acbar-jd__info-term">Vacancy Number</dt>'
+              '<dd class="acbar-jd__info-desc">SAMC-14-2026</dd></div>'
+              '<article class="acbar-jd__card"><div class="acbar-jd__card-head">'
+              '<h2 class="acbar-jd__card-title">Job Summary</h2></div>'
+              '<div class="acbar-jd__rich acbar-rich-content"><p>Drive the truck.</p></div></article>'
+              '<article class="acbar-jd__card"><div class="acbar-jd__card-head">'
+              '<h2 class="acbar-jd__card-title">Submission Guideline</h2></div>'
+              # the address appears TWICE: inside the block that is emitted, and in the paragraph
+              # that is not — dropping either scrub lets one of them through
+              '<div class="acbar-jd__rich acbar-rich-content"><p>Mention the vacancy number and '
+              'send your CV to hr@skyaria.af</p></div>'
+              '<p class="acbar-jd__email"><strong>Email / Application Form:</strong> '
+              '<span dir="ltr">hrd@skyaria.af</span> or call 0700 123 456</p></article>'
+              '</body></html>')
+
+    def _run(self, mod, pages, cmd="jobs", **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if cmd == "ad":
+                return pages[url]
+            m = re.search(r"[?&]page=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_pages=0, url=kw.pop("url", None))
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                (mod.cmd_ad if cmd == "ad" else mod.cmd_jobs)(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_list_is_walked_against_the_count_it_states(self):
+        mod = self._mod()
+        dari = "teller به نمایندگی های ولایت پکتیکا"
+        p1 = self._page([self._card("145756", "teller-bh-nmayndgy", dari, "New Kabul Bank"),
+                         self._card("145755", "haul-truck-operator", "Haul Truck Operator",
+                                    "Sky Aria", place="Oruzgan", ago="2 hours ago", closing="2026-09-28")],
+                        count="3")
+        p2 = self._page([self._card("145700", "teller-bh-nmayndgy", dari, "Another Bank",
+                                    place="Kabul", ago="1 day ago", closing="2026-09-30")], count="3")
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, p2)}, country_code="af")
+        self.assertEqual(asked, ["https://www.acbar.org/en/jobs", "https://www.acbar.org/en/jobs?page=2"])
+        self.assertEqual([r["id"] for r in rows], ["145756", "145755", "145700"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["employer"],
+                          a["contract_type"], a["location"], a["posted_relative"], a["closing_date"]),
+                         ("acbar", "AF", "acbar:145756", dari, "New Kabul Bank",
+                          "Full Time", "Paktika", "34 minutes ago", "2026-10-01"))
+        # two Dari titles, one slug, two ids — the key is the board's, not the slug's
+        self.assertEqual(rows[0]["title"], rows[2]["title"])
+        self.assertNotEqual(rows[0]["id"], rows[2]["id"])
+        self.assertIn("3 read over 2 page(s), and the board states 3 — they agree", err)
+        self.assertIn("the key is the board's own numeric id", err)
+        self.assertIn("a relative age is not a date", err)
+        self.assertIn("country AF is the user's stamp", err)
+
+    def test_the_advert_says_who_may_apply_and_the_record_does_not_carry_it(self):
+        mod = self._mod()
+        url = "https://www.acbar.org/en/jobs/details/145755/haul-truck-operator"
+        rows, err, asked, raw = self._run(mod, {url: (200, self.ADVERT)}, cmd="ad", url=url, country_code="af")
+        r = rows[0]
+        self.assertEqual((r["id"], r["title"], r["contract_type"], r["location"], r["vacancy_number"]),
+                         ("145755", "Haul Truck Operator", "Full Time", "Oruzgan - Chora Paiband Mine", "SAMC-14-2026"))
+        # the two blocks, INCLUDING the one that ends on the e-mail paragraph
+        self.assertEqual(r["job_summary"], "Drive the truck.")
+        self.assertEqual(r["submission_guideline"], "Mention the vacancy number and send your CV to [e-mail withheld]")
+        # what the advert states about a person is NAMED and not carried
+        self.assertEqual(r["withheld_fields"], ["email", "gender", "nationality", "telephone"])
+        for secret in ("Male", "Afghan", "hrd@skyaria.af", "hr@skyaria.af", "0700 123 456"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertIn("does NOT carry: gender, nationality", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card("1", "a", "A", "Org")], count="99")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, p1)})
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, self._page([], count="99"))})
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (404, "")})
+        self.assertEqual(cm.exception.code, 3)
+        for bad in ("https://www.acbar.org/en/jobs/details/1/a?x=1", "https://www.acbar.org/en/jobs"):
+            with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                self._run(mod, {}, cmd="ad", url=bad)
+            self.assertEqual(cm.exception.code, 2, bad)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://acbar.org/en/jobs")        # the apex is not the host the card names
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
