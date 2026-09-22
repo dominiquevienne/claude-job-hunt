@@ -34474,5 +34474,100 @@ class ABoardNamedForOthersAndRefusedForUsWhoseTextLivesInATransferredState(unitt
             code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
             self.assertEqual((code, sent), (2, []), bad)
 
+class ACutThatTakesTheMeasureAndNotTheCharacterCount(unittest.TestCase):
+    """**`bin/country-boards.py:covers_text()`, 2026-09-22 (#859).** Two defects in
+    three days, same cause: the cut took a ticket mid-digits (#760, «…#74» for
+    «#745») and then took Guyana's line right after «renders ten div.item blocks» —
+    **the conclusion the day's measurement had just overturned** (ten notices read
+    on 09-18, 746 measured on 09-22). The surviving fragment is plausible and false
+    in both cases. So the cell is cut on what the card MEASURED: the emitted and
+    stated counts and a trailing ticket are carried over the cut, sentences are
+    taken whole, and each carried fragment closes its own code span and bold run.
+    Both ways, with the two incidents replayed."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_country_boards", str(pathlib.Path(SCRIPTS).parent.parent.parent / "bin" / "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cell(self, mod, content):
+        return mod.covers_text({"h": {"content": content}})
+
+    METHOD = ("measured · **the category walked by the declared client, 2026-09-22 08:0x–08:3x UTC, the guard on the exact path: "
+              "`/category/government-adverts/vacancies/` 200 (307 102 B, md5 a3a231007eee) renders ten `div.item` blocks, a WordPress theme "
+              "that prints no pagination link of any kind, which the reading of 2026-09-18 took for the whole board. "
+              "Exercised: `jobs --country-code GY` → **746 emitted, «page 76 answered 404 — the end of the category» said** · 2026-09-22")
+
+    def test_the_guyana_line_no_longer_ends_on_the_conclusion_its_measurement_overturned(self):
+        mod = self._mod()
+        out = self._cell(mod, self.METHOD)
+        self.assertNotIn("blocks …", out[-40:], out[-120:])           # the old last word
+        self.assertIn("746", out, out)
+        self.assertIn("746 emitted", out)
+        self.assertGreater(len(out), 120)
+        # the old behaviour, for comparison: a naive 220-character cut loses the number entirely
+        naive = self.METHOD[:220].rsplit(" ", 1)[0] + "…"
+        self.assertNotIn("746", naive)
+
+    def test_a_trailing_ticket_still_survives_the_cut(self):
+        mod = self._mod()
+        reason = ("measured · " + "une prose de méthode qui occupe la cellule entière et ne dit rien du compte. " * 4
+                  + "non faisable — décision du propriétaire du 18.09.2026 (un hôte muet reçoit un ticket adapter+blocked), #745")
+        out = self._cell(mod, reason)
+        self.assertTrue(out.endswith("#745"), out[-60:])
+        self.assertNotIn("#74 ", out)
+
+    def test_the_counts_are_carried_and_the_sentences_are_taken_whole(self):
+        mod = self._mod()
+        line = ("measured · " + "la méthode, les sélecteurs et les noms de classe occupent le début de la ligne. " * 3
+                + "Le site énonce 1 744 résultats. " + "encore de la prose de méthode. " * 3
+                + "**187 emitted — the site states 187: equal**")
+        out = self._cell(mod, line)
+        self.assertIn("187 emitted", out)
+        self.assertIn("1 744", out)
+        self.assertEqual(out.count("`") % 2, 0)
+        self.assertEqual(out.count("**") % 2, 0, out)
+        # sentences whole: what precedes the « … » ends a sentence or is an explicitly marked word cut
+        head = out.split(" …")[0]
+        self.assertTrue(head.rstrip("`*").endswith((".", ";", ")", "»")) or len(head) >= 100, head[-60:])
+
+    def test_a_short_line_is_untouched_and_an_absent_one_is_named(self):
+        mod = self._mod()
+        short = "measured · the root answers 200 and states «12 vacancies» · 2026-09-22"
+        self.assertEqual(self._cell(mod, short), "measured · the root answers 200 and states «12 vacancies»")
+        self.assertEqual(self._cell(mod, ""), "*(pas de ligne `content:`)*")
+        # the date is stripped, the pipe escaped — a cell that breaks the table is a cell nobody reads
+        self.assertNotIn("2026-09-22", self._cell(mod, short))
+        self.assertIn("\\|", self._cell(mod, "measured · a | b · 2026-09-22"))
+
+    def test_every_card_of_the_repository_that_states_a_count_keeps_it_in_its_cell(self):
+        mod = self._mod()
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        checked, kept, lost = 0, 0, []
+        for card in sorted(d.glob("*.md")):
+            if card.name == "README.md":
+                continue
+            m = re.search(r"<!--\s*content:\s*(.*?)\s*-->", card.read_text(encoding="utf-8"), re.S)
+            if not m:
+                continue
+            raw = m.group(1)
+            stripped = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d.*$", "", raw).replace("|", "\\|")
+            if len(stripped) <= 220:
+                continue
+            sal = mod.salient(stripped)
+            if not sal:
+                continue
+            checked += 1
+            out = mod.covers_text({"h": {"content": raw}})
+            if all(s.lstrip("…")[:40] in out for s in sal):
+                kept += 1
+            else:
+                lost.append(card.name)
+        self.assertGreaterEqual(checked, 150, f"{checked} long cells state a count; 170 did on 2026-09-22 — either cards were lost or the walk narrowed")
+        self.assertEqual(lost, [], "these cells drop the count their card states: " + ", ".join(lost[:8]))
+        self.assertEqual(checked, kept)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
