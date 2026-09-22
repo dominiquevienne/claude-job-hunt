@@ -36213,10 +36213,16 @@ class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
     def test_a_shifted_table_is_refused_and_counted_never_emitted_askew(self):
         mod = self._mod()
         good = self._row("22 Sep, 26", "Oxfam", "Coordinator", "Aden", "06 Oct, 26", slug="ok-1")
-        # a column inserted in the middle: the dates are no longer under the date headers
-        shifted = ("<tr><td>22 Sep, 26</td><td>Oxfam</td><td>NEW COLUMN</td>"
+        # **A column inserted in the MIDDLE, the link still where the header says.** A «Sector»
+        # cell after Title pushes Location into Deadline and Deadline into Tools: the title's
+        # address is intact, the organisation is intact, and ONLY the date columns show it —
+        # `Deadline` now holds «Aden». *The first version of this row put the new column where
+        # the link was, so the row was refused for having no link and the date check was never
+        # reached: the mutation that removes it stayed GREEN. A guard the test cannot reach reads
+        # exactly like a guard that holds.*
+        shifted = ("<tr><td>22 Sep, 26</td><td>Oxfam</td>"
                    '<td><a href="https://yemenhr.com/jobs/shift-2">Coordinator</a></td>'
-                   "<td>Aden</td><td>06 Oct, 26</td></tr>")
+                   "<td>NEW SECTOR COLUMN</td><td>Aden</td><td>06 Oct, 26</td></tr>")
         page1 = self._page([good, shifted], total="2", foot=(("Aden", 6, 1),))
         recs, err, _asked = self._run(mod, {1: (200, page1),
                                             2: (200, self._page([self.EMPTY], total="2", foot=(("Aden", 6, 1),)))})
