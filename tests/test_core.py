@@ -33759,5 +33759,135 @@ class ANationalPortalWhosePortletStatesItsTotalAndPagesByAnUnderscoredToken(unit
         self.assertEqual(cm.exception.code, 7)
 
 
+class AListThatStatesItsOwnCountInPersianDigitsAndPrintsACriterionWeDoNotCarry(unittest.TestCase):
+    """**`jobinja.py`, 2026-09-22 (#627).** Jobinja: `/jobs?page=N`, twenty cards a
+    page, the page stating «۱۶,۲۰۱ فرصت ‌شغلی» in PERSIAN digits beside «فعال», its
+    pager naming the last page; each advert prints a GENDER as a hiring criterion —
+    the advert is served, **the criterion is not carried** (#183). Both ways: the
+    Persian count read as a number, a bounded read said as bounded, a full walk
+    compared to the stated count (short → 6), the card's nested `<li>` not cutting
+    the city and the contract off, the tracking parameters dropped from the emitted
+    address, a repeated id once, **the key the site's short id and never the Persian
+    slug** (an ASCII fold of it is empty and collides), the gender never emitted and
+    always named as withheld, contacts scrubbed, a 404 advert (3), another host
+    refused before the gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobinja", os.path.join(SCRIPTS, "jobinja.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(jid, company, title, city="تهران، تهران", contract="قرارداد تمام‌وقت", age="امروز"):
+        href = f"https://jobinja.ir/companies/{company}/jobs/{jid}/%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85?_ref=16&amp;_t=3835"
+        return (f'<li class="o-listView__item o-listView__item--hasIndicator c-jobListView__item">'
+                f'<div class="o-listView__itemWrap"><h2 class="o-listView__itemTitle c-jobListView__title">'
+                f'<a class="c-jobListView__titleLink" target="_blank" href="{href}"> {title} </a>'
+                f'<span class="c-jobListView__passedDays"> ({age}) </span></h2>'
+                f'<ul class="o-listView__itemComplementInfo c-jobListView__meta">'
+                f'<li class="c-jobListView__metaItem"><i class="c-icon"></i><span>{company} | {company}</span></li>'
+                f'<li class="c-jobListView__metaItem"><i class="c-icon"></i><span> {city} </span></li>'
+                f'<li class="c-jobListView__metaItem"><i class="c-icon"></i><span> {contract} </span></li>'
+                f'</ul></div></li>')
+
+    @classmethod
+    def _listing(cls, cards, stated="۱۶,۲۰۱", last=811):
+        pager = "".join(f'<a href="https://jobinja.ir/jobs?page={i}">{i}</a>' for i in (2, 3, last)) if last else ""
+        head = (f'<h3 class="c-jobSearchState__numberOfResults"><span class="c-jobSearchState__numberOfResultsEcho"> {stated} فرصت ‌شغلی </span>'
+                f'<span class="c-jobSearchState__active">فعال</span></h3>') if stated else ""
+        return f'<html><body><div class="c-jobListView">{head}{"".join(cards)}<div class="paginator">{pager}</div></div></body></html>'
+
+    AD = ('<html><head><title>x</title><script type="application/ld+json">{"@context":"http://schema.org","@type":"JobPosting","datePosted":"2026-09-22",'
+          '"title":"منشی و مسئول دفتر (خانم)","hiringOrganization":{"@type":"Organization","name":"داتیس مهام سپنتا"},'
+          '"baseSalary":{"@type":"MonetaryAmount","currency":"IRT","value":10300000,"unitText":"MONTH"},"employmentType":"FULL_TIME",'
+          '"jobLocation":{"@type":"place","address":{"@type":"PostalAddress","addressLocality":"تهران","addressCountry":{"@type":"Country","name":"IR"}}},"jobLocationType":"TELECOMMUTE",'
+          '"description":"محل کار: تهران. تماس: 09123456789 یا hr@datis.example"}</script></head>'
+          '<body><ul><li>جنسیت</li><li>زن</li><li>حداقل مدرک تحصیلی</li><li>مهم نیست</li></ul></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_persian_count_the_bounded_read_and_the_key_that_is_not_a_slug(self):
+        mod = self._mod()
+        self.assertEqual((mod.fa_int("۱۶,۲۰۱"), mod.fa_int("16,201"), mod.fa_int("۴۸"), mod.fa_int("")), (16201, 16201, 48, None))
+        p1 = [self._card(f"t{i:03d}", "datis", f"عنوان {i}") for i in range(20)]
+        p2 = [self._card("t000", "datis", "عنوان 0")] + [self._card(f"u{i:03d}", "batis", f"عنوان {i}") for i in range(19)]
+
+        def answers(url):
+            return (200, self._listing(p1)) if url == "https://jobinja.ir/jobs" else (200, self._listing(p2))
+        code, rows, err, sent = self._run(mod, ["jobs", "--pages", "2"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, ["https://jobinja.ir/jobs", "https://jobinja.ir/jobs?page=2"])
+        self.assertEqual(len(rows), 39)   # the repeat once
+        self.assertIn("39 emitted over 2 page(s) of 20 — the site states 16 201 «فرصت شغلی», its pager ending at page 811; a BOUNDED read (--pages), not the board", err)
+        self.assertIn('the gender the board prints beside each advert is NOT carried (#183)', err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["contract_as_written"], r["posted_as_written"], r["country"], r["criteria_withheld"], r["contacts_withheld"]),
+                         ("jobinja:t000", "t000", "عنوان 0", "datis | datis", "تهران، تهران", "قرارداد تمام وقت", "امروز", "IR", ["gender"], True))
+        self.assertNotIn("_ref", r["url"])   # the board's tracking parameters are not a link
+        self.assertNotIn("_t=", r["url"])
+        # the key is the site's short id: two Persian titles fold to the same ASCII nothing and must NOT collide
+        self.assertEqual(len({x["ledger_id"] for x in rows}), 39)
+        # a full walk that ends short of the stated count says so and exits 6
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], lambda url: (200, self._listing(p1, last=2)) if url == "https://jobinja.ir/jobs" else (200, self._listing(p2, last=2)))
+        self.assertEqual((code, len(rows)), (6, 39), err)
+        self.assertIn("16 162 short.", err)
+        # a page that states nothing, and a page that is not the list
+        code, rows, err, sent = self._run(mod, ["jobs", "--pages", "1"], lambda url: (200, self._listing(p1, stated=None, last=None)))
+        self.assertEqual((code, len(rows)), (0, 20), err)
+        self.assertIn("the site states no total", err)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda url: (200, "<html><body><h1>جابینجا</h1></body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        fresh = self._mod()
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            fresh.request("https://jobvision.ir/jobs")
+        self.assertEqual(cm.exception.code, 7)
+
+    def test_the_advert_is_served_and_the_gender_criterion_is_not_carried(self):
+        mod = self._mod()
+        url = "https://jobinja.ir/companies/datis/jobs/tou2/%D8%A7%D8%B3%D8%AA"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url + "?_ref=16"], lambda u: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(sent, [url])   # the tracking parameter is not sent either
+        r = rows[0]
+        self.assertEqual((r["id"], r["ledger_id"], r["title"], r["company"], r["place"], r["employment_type"], r["remote"], r["salary_currency"], r["salary_value"], r["posted"], r["criteria_withheld"], r["contacts_withheld"]),
+                         ("tou2", "jobinja:tou2", "منشی و مسئول دفتر (خانم)", "داتیس مهام سپنتا", "تهران", "FULL_TIME", "TELECOMMUTE", "IRT", 10300000, "2026-09-22", ["gender"], True))
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("09123456789", "datis.example", "جنسیت", "زن"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://jobinja.ir/companies/x/jobs/zzzz9/x"], lambda u: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, "<html><body>no posting</body></html>"))
+        self.assertEqual((code, rows), (6, []), err)
+        for bad in ("https://jobinja.ir/jobs", "https://jobinja.ir/companies/datis", "https://www.jobinja.ir/companies/x/jobs/t1/x", "https://evil.example/companies/x/jobs/t1/x"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
