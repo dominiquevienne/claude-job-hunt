@@ -36068,5 +36068,238 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         self.assertIn("never sent", err2.getvalue())
 
 
+class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
+    """**`yemenhr.py`, 2026-09-22 (#646).** Yemen's first adapter — jobs and
+    tenders, the same table twice. Five things:
+
+    * **the site states its own count PER LOCATION**, and the location is in
+      every row, so the run checks them place by place. *A total cannot see
+      a partial loss* — an extraction that drops five rows and doubles five
+      others still states fifty — and this witness earned itself on the
+      first run: «Jobs in Lahij (4)» against 2 read, because a cell can name
+      two places («Lahij , Al-Kokhah») and the site counts the row under
+      each. **Fifty were emitted against a stated fifty the whole time**;
+    * **and when it disagreed the other way the site settled it**: the
+      tenders footer says «Aden (3)», the rows give 4, and
+      `/tenders?location_id=6` returns 4 and states «Total: 4». So the run
+      calls a disagreement a QUESTION and names the third reading, rather
+      than a verdict against its own rows;
+    * **the cells are read by header label and the date columns are checked
+      as dates.** The tenders table has six header cells and five-cell rows
+      — no «Tools» — so today the missing column is the LAST and a
+      positional read lands correctly *by luck*. A row whose Posted or
+      Deadline is not a date is refused **and counted**, never emitted
+      askew;
+    * **a one-cell row is the board speaking, not a row we failed to read**:
+      «No jobs available.» ends the walk and is printed as the board's own
+      words;
+    * **«Important Notes» is word for word the same on every advert** — the
+      site's standing advice to applicants. Counted and NOT carried; an
+      advert whose notes are its own keeps them.
+
+    Both ways: the full record; the tenders' five-cell rows read correctly;
+    a SHIFTED table refused and counted; the message row ending the walk; a
+    footer disagreement named as a question; the notes dropped on the many
+    and kept on the one; `--details` off by default; the host's own
+    `Crawl-delay` passed to the pace; a repeating page (6); a 200 with no
+    table (6); a 404 (3); an account path refused (7); another host (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_yemenhr", os.path.join(SCRIPTS, "yemenhr.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    HEAD = ["Posted", "Organization", "Title", "Location", "Deadline", "Tools"]
+
+    @classmethod
+    def _row(cls, posted, org, title, place, deadline, tools="Login to mark", new=False, slug=None,
+             kind="jobs"):
+        link = ('<div class="text-gray-900 break-words"><a  href="https://yemenhr.com/%s/%s" '
+                'target="_blank" lang="en">%s</a></div>%s' %
+                (kind, slug or "a-slug-1234abcd", title, '<span>new</span>' if new else ""))
+        cells = [posted, org, link, place, deadline] + ([tools] if tools is not None else [])
+        return "<tr>" + "".join("<td>%s</td>" % c for c in cells) + "</tr>"
+
+    @classmethod
+    def _page(cls, rows, total="50", foot=(("Multiple Cities", 18, 11),), word="Jobs"):
+        head = "<tr>" + "".join("<th>%s</th>" % h for h in cls.HEAD) + "</tr>"
+        tot = ('<span class="font-bold">Total:</span> <br class="sm:hidden"> %s' % total) if total else ""
+        links = "".join('<a href="https://yemenhr.com/%s?location_id=%d">%s in %s (%d)</a>'
+                        % (word.lower(), i, word, n, c) for n, i, c in foot)
+        return "<html><body>%s<table>%s%s</table>%s</body></html>" % (tot, head, "".join(rows), links)
+
+    def _run(self, mod, pages, which="jobs", **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if url in pages:                       # an advertisement, keyed by its own address
+                return pages[url]
+            m = re.search(r"[?&]page=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(location_id=None, since=None, details=False,
+                                country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.run(ns, which)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    EMPTY = '<tr><td colspan="6">No jobs available.</td></tr>'
+
+    def test_the_rows_the_places_and_the_count_the_site_states(self):
+        mod = self._mod()
+        rows = [self._row("22 Sep, 26", "Oxfam", "WASH Consortium Coordinator", "Sana&#039;a",
+                          "06 Oct, 26", new=True, slug="wash-oxfam-11c21af9"),
+                self._row("21 Sep, 26", "TYF", "Agricultural Field Officer", "Lahij , Al-Kokhah",
+                          "25 Sep, 26", slug="agri-tyf-f518044a"),
+                self._row("20 Sep, 26", "NRC", "ICLA Officer", "Lahij", "03 Oct, 26",
+                          slug="icla-nrc-9808fb32")]
+        foot = (("Lahij", 11, 2), ("Sana'a", 3, 1))
+        page1 = self._page(rows, total="3", foot=foot)
+        recs, err, asked = self._run(mod, {1: (200, page1), 2: (200, self._page([self.EMPTY], total="3", foot=foot))},
+                                     country_code="ye")
+        self.assertEqual(asked, ["https://yemenhr.com/jobs/", "https://yemenhr.com/jobs/?page=2"])
+        self.assertEqual([r["id"] for r in recs],
+                         ["wash-oxfam-11c21af9", "agri-tyf-f518044a", "icla-nrc-9808fb32"])
+        self.assertEqual(recs[0]["ledger_id"], "yemenhr:job:wash-oxfam-11c21af9")
+        self.assertEqual((recs[0]["published"], recs[0]["deadline"]), ("2026-09-22", "2026-10-06"))
+        self.assertEqual(recs[0]["organization"], "Oxfam")
+        self.assertEqual(recs[0]["location"], "Sana'a")
+        self.assertTrue(recs[0]["newly_posted"])
+        self.assertFalse(recs[2]["newly_posted"])
+        # **a cell that names two places is two places** — and that is what the site counts
+        self.assertEqual(recs[1]["locations"], ["Lahij", "Al-Kokhah"])
+        self.assertEqual(recs[1]["location"], "Lahij, Al-Kokhah")
+        self.assertTrue(all(r["country"] == "YE" and r["contacts_withheld"] and not r["detail_read"]
+                            for r in recs))
+        self.assertNotIn("description", recs[0])
+        self.assertIn("3 job(s) emitted over 1 page(s)", err)
+        self.assertIn("«Total: 3»", err)
+        self.assertIn("they agree", err)
+        # **the per-place witness, which is what a total cannot be**
+        self.assertIn("2 of 2 location counts", err)
+        self.assertIn("No jobs available.", err)
+        self.assertIn("the walk's end", err)
+
+    def test_a_footer_that_disagrees_is_a_question_not_a_verdict(self):
+        mod = self._mod()
+        rows = [self._row("22 Sep, 26", "SFD", "Solar", "Aden", "26 Oct, 26", tools=None, kind="tenders",
+                          slug="solar-sfd-97c6131a"),
+                self._row("08 Sep, 26", "Islamic Relief", "Call", "Aden , Taiz", "30 Sep, 26",
+                          tools=None, kind="tenders", slug="call-ir-aden")]
+        foot = (("Aden", 6, 1),)          # the site states one, the rows give two
+        page1 = self._page(rows, total="2", foot=foot, word="Tenders")
+        recs, err, _asked = self._run(mod, {1: (200, page1),
+                                            2: (200, self._page([self.EMPTY], total="2", foot=foot, word="Tenders"))},
+                                      which="tenders")
+        # **five-cell rows of a six-column header read correctly**
+        self.assertEqual([r["id"] for r in recs], ["solar-sfd-97c6131a", "call-ir-aden"])
+        self.assertEqual(recs[0]["kind"], "tender")
+        self.assertEqual((recs[1]["published"], recs[1]["deadline"]), ("2026-09-08", "2026-09-30"))
+        self.assertEqual(recs[1]["locations"], ["Aden", "Taiz"])
+        self.assertIn("APART: Aden: site 1, read 2", err)
+        self.assertIn("a QUESTION, not a verdict", err)
+        self.assertIn("--location-id", err)
+
+    def test_a_shifted_table_is_refused_and_counted_never_emitted_askew(self):
+        mod = self._mod()
+        good = self._row("22 Sep, 26", "Oxfam", "Coordinator", "Aden", "06 Oct, 26", slug="ok-1")
+        # a column inserted in the middle: the dates are no longer under the date headers
+        shifted = ("<tr><td>22 Sep, 26</td><td>Oxfam</td><td>NEW COLUMN</td>"
+                   '<td><a href="https://yemenhr.com/jobs/shift-2">Coordinator</a></td>'
+                   "<td>Aden</td><td>06 Oct, 26</td></tr>")
+        page1 = self._page([good, shifted], total="2", foot=(("Aden", 6, 1),))
+        recs, err, _asked = self._run(mod, {1: (200, page1),
+                                            2: (200, self._page([self.EMPTY], total="2", foot=(("Aden", 6, 1),)))})
+        self.assertEqual([r["id"] for r in recs], ["ok-1"])      # the shifted row is NOT emitted
+        self.assertIn("1 row(s) refused", err)
+        self.assertIn("not a date", err)
+
+    def test_the_standing_advice_is_counted_and_not_carried(self):
+        mod = self._mod()
+        rows = [self._row("22 Sep, 26", "A", "One", "Aden", "06 Oct, 26", slug="one-1"),
+                self._row("22 Sep, 26", "B", "Two", "Aden", "06 Oct, 26", slug="two-2"),
+                self._row("22 Sep, 26", "C", "Three", "Aden", "06 Oct, 26", slug="three-3")]
+        ADVICE = "Following the instructions on How to apply will always increase your chances."
+        def ad(desc, apply_, notes):
+            return ("<h2>Job Description /<span>x</span></h2><p>%s</p>"
+                    "<h2>How to Apply /<span>y</span></h2><p>%s</p>"
+                    "<h2>Important Notes / <span>z</span></h2><p>%s</p>"
+                    "<h2>Related Jobs</h2><p>ignored</p>" % (desc, apply_, notes))
+        pages = {1: (200, self._page(rows, total="3", foot=(("Aden", 6, 3),))),
+                 2: (200, self._page([self.EMPTY], total="3", foot=(("Aden", 6, 3),))),
+                 "https://yemenhr.com/jobs/one-1": (200, ad("Desc one", "Write to hr@example.com", ADVICE)),
+                 "https://yemenhr.com/jobs/two-2": (200, ad("Desc two", "Call 0712345678 now", ADVICE)),
+                 "https://yemenhr.com/jobs/three-3": (200, ad("Desc three", "Apply online", "Our own notes."))}
+        recs, err, asked = self._run(mod, pages, details=True)
+        self.assertEqual(len(asked), 5)                          # two list pages and three adverts
+        self.assertTrue(all(r["detail_read"] for r in recs))
+        self.assertEqual(recs[0]["description"], "Desc one")
+        # **the advice repeated on two is dropped; the one with its own keeps it**
+        self.assertNotIn("important_notes", recs[0])
+        self.assertNotIn("important_notes", recs[1])
+        self.assertEqual(recs[2]["important_notes"], "Our own notes.")
+        self.assertIn("word for word the same on 2 of the 3", err)
+        self.assertIn("1 carry their own and keep it", err)
+        # **and nothing reaches a record that reaches a person**
+        blob = json.dumps(recs, ensure_ascii=False)
+        self.assertNotIn("hr@example.com", blob)
+        self.assertNotIn("0712345678", blob)
+        self.assertIn("[e-mail withheld]", recs[0]["how_to_apply"])
+        self.assertIn("[telephone withheld]", recs[1]["how_to_apply"])
+
+    def test_the_hosts_own_crawl_delay_is_what_paces_the_run(self):
+        import contextlib
+        mod = self._mod()
+        seen = {}
+
+        class Pace(object):
+            def __init__(self, host, own=None):
+                seen["own"] = own
+
+            def wait(self):
+                pass
+        mod.Pace = Pace
+        mod.gate = lambda url: {"allowed": True, "crawl_delay": 3.0}
+        mod.urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(OSError("no network in a test"))
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://yemenhr.com/jobs/")
+        self.assertEqual(seen.get("own"), 3.0)      # the host wrote it; we do not pick our own
+
+    def test_the_ways_the_walk_can_fail_and_the_paths_never_asked_for(self):
+        import contextlib
+        mod = self._mod()
+        row = self._row("22 Sep, 26", "A", "One", "Aden", "06 Oct, 26", slug="one-1")
+        page = self._page([row], total="1", foot=(("Aden", 6, 1),))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, page), 2: (200, page)})          # page 2 repeats page 1
+        self.assertEqual(cm.exception.code, 6)
+        for first, code in (((200, "<html><body>nothing at all</body></html>"), 6),
+                            ((404, ""), 3),
+                            ((500, ""), 6)):
+            mod = self._mod()
+            with self.subTest(first=first[0]):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    self._run(mod, {1: first})
+                self.assertEqual(cm.exception.code, code)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for url in ("https://yemenhr.com/login", "https://yemenhr.com/register",
+                    "https://www.yemenhr.com/jobs/", "https://example.com/jobs/"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
