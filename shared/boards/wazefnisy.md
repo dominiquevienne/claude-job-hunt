@@ -61,6 +61,16 @@ number nobody filed is a false statement about our own discretion — quieter
 than a leak, and just as wrong. *Six digits is the floor; Syrian numbers are
 ten.*
 
+**And the floor is a property of THIS field on THIS board, stated so that it
+does not travel.** It was chosen against what was measured here — 92 «0» and
+14 «963» against 622 numbers of nine or ten digits — and it is read only on
+`wazefnisy`'s own `phone`. *What it would cost elsewhere is not known and is
+not guessed*: a jurisdiction whose subscriber numbers are five digits would
+need a lower one, and a board that files short codes would need the question
+asked again. Seven- and eight-digit numbers pass it; **nothing below six was
+seen on this board, and that is a reading of 888 adverts on one day, not a rule
+about telephones.**
+
 **The scrub's threshold is nine digits, and it is declared.** Of 180 digit runs
 in the free text, 158 are withheld and 22 left as the employer wrote them —
 five of those carry seven or eight digits (`1.725.000` twice, `300 - 1000`,
