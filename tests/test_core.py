@@ -34626,5 +34626,218 @@ class ACutThatTakesTheMeasureAndNotTheCharacterCount(unittest.TestCase):
         self.assertEqual(lost, [], "these cells drop the count their card states: " + ", ".join(lost[:8]))
         self.assertEqual(checked, kept)
 
+class ReplantingABranchAsksGitNothingItCannotKnow(unittest.TestCase):
+    """**`bin/replant.py`, 2026-09-22 (#861).** Two sessions appending a guard
+    class to the end of `tests/test_core.py` and a row to
+    `shared/boards/README.md` conflict on every rebase, **at the same two
+    places and never for a disagreement**: both classes belong, one after the
+    other, and they land at the same offset because a file has only one end.
+    The tool replants the branch on `origin/main` — the branch's own files
+    written back, the class re-APPENDED, the row REPLACED — so no merge is
+    requested and there is nothing to resolve.
+
+    Exercised in a throwaway git repository built by the test: main carries
+    another session's class and row; the branch carries its own; after
+    replanting, **both classes are present, in order, and both rows are
+    there**. And each refusal is exercised, because each one exists against a
+    silent failure: a class already on main (the branch is merged, and a
+    second copy would be appended); a README prefix matching zero rows (the
+    card was renamed and the row vanishes); a prefix matching two (the wrong
+    row is replaced, and both look plausible afterwards); a `test_core.py`
+    that does not end with its `if __name__` block (appending buries what is
+    there). Mutated (`-B`, detached copy): the «already on main» refusal
+    dropped → the class is appended twice (reddens); the «exactly one row»
+    refusal loosened to `>= 1` → the wrong row is replaced (reddens); the
+    anchor check dropped → the tail of the file is buried (reddens); the
+    branch's own files not written → they vanish (reddens)."""
+
+    ANCHOR = '\n\nif __name__ == "__main__":\n    unittest.main(verbosity=2)\n'
+    TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "replant.py")
+
+    def _repo(self):
+        """A repository with `origin/main` and a branch, each having appended its own class and row."""
+        import shutil, subprocess, tempfile
+        if not shutil.which("git"):
+            self.skipTest("git is not on PATH")
+        root = tempfile.mkdtemp(prefix="replant-")
+        self.addCleanup(shutil.rmtree, root, True)
+        up, work = os.path.join(root, "up.git"), os.path.join(root, "w")
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", up], check=True)
+        subprocess.run(["git", "clone", "-q", up, work], check=True)
+        for k, v in (("user.email", "t@example"), ("user.name", "T")):
+            subprocess.run(["git", "-C", work, "config", k, v], check=True)
+
+        def write(path, body):
+            full = os.path.join(work, path)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with io.open(full, "w", encoding="utf-8") as fh:
+                fh.write(body)
+
+        write("tests/test_core.py", "import unittest\n\n\nclass ABase(unittest.TestCase):\n    pass\n" + self.ANCHOR)
+        write("shared/boards/README.md", "| Board | File | Status |\n| :-- | :-- | :-- |\n"
+                                         "| Alpha board (X) | `alpha.md` | measured |\n"
+                                         "| Beta board (Y) | `beta.md` | measured |\n")
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "base"], check=True)
+        subprocess.run(["git", "-C", work, "push", "-q", "origin", "main"], check=True)
+
+        # the branch: its own file, its class appended, its row rewritten
+        subprocess.run(["git", "-C", work, "checkout", "-qb", "mine"], check=True)
+        write("skills/job-scan/scripts/mine.py", "# the branch's own adapter\n")
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        write("tests/test_core.py", t[:-len(self.ANCHOR)]
+              + "\n\nclass AMineGuard(unittest.TestCase):\n    pass\n" + self.ANCHOR)
+        with io.open(os.path.join(work, "shared/boards/README.md"), encoding="utf-8") as fh:
+            r = fh.read()
+        write("shared/boards/README.md", r.replace("| Beta board (Y) | `beta.md` | measured |",
+                                                   "| Beta board (Y) | `beta.md` | **Shipped** |"))
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "mine"], check=True)
+
+        # meanwhile ANOTHER session appends its own class and row to main
+        subprocess.run(["git", "-C", work, "checkout", "-q", "main"], check=True)
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        write("tests/test_core.py", t[:-len(self.ANCHOR)]
+              + "\n\nclass AnotherSessionsGuard(unittest.TestCase):\n    pass\n" + self.ANCHOR)
+        with io.open(os.path.join(work, "shared/boards/README.md"), encoding="utf-8") as fh:
+            r = fh.read()
+        write("shared/boards/README.md", r.replace("| Alpha board (X) | `alpha.md` | measured |",
+                                                   "| Alpha board (X) | `alpha.md` | **Shipped by them** |"))
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "theirs"], check=True)
+        subprocess.run(["git", "-C", work, "push", "-q", "origin", "main"], check=True)
+
+        # main also gains a row sharing the branch's prefix — the branch still has one, main has two,
+        # and replacing «the» row there would be a coin toss
+        with io.open(os.path.join(work, "shared/boards/README.md"), encoding="utf-8") as fh:
+            r = fh.read()
+        write("shared/boards/README.md", r + "| Beta board (Y) | `beta-archive.md` | measured |\n")
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "an archive row"], check=True)
+        subprocess.run(["git", "-C", work, "push", "-q", "origin", "main"], check=True)
+        subprocess.run(["git", "-C", work, "reset", "-q", "--hard", "HEAD~1"], check=True)
+
+        # a branch whose class is ALREADY on main: the shape of a branch that was merged
+        subprocess.run(["git", "-C", work, "checkout", "-qb", "already"], check=True)
+        write("skills/job-scan/scripts/already.py", "# merged already\n")
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "already"], check=True)
+
+        subprocess.run(["git", "-C", work, "checkout", "-q", "mine"], check=True)
+        return work
+
+    def _run(self, work, *args):
+        """The tool's output, decoded BY US.
+
+        `text=True` leaves the decoding to the platform, and on the Windows cell of the matrix the
+        captured streams came back as `None` — every assertion on them then failed with a TypeError
+        that says nothing about the tool. Bytes in, one decoding, and an object whose `stdout` is
+        always a string.
+        """
+        import subprocess
+        r = subprocess.run([sys.executable, os.path.abspath(self.TOOL)] + list(args),
+                           cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return argparse.Namespace(returncode=r.returncode,
+                                  stdout=(r.stdout or b"").decode("utf-8", "replace"),
+                                  stderr=(r.stderr or b"").decode("utf-8", "replace"))
+
+    def test_a_rebase_would_conflict_and_replanting_keeps_both(self):
+        import subprocess
+        work = self._repo()
+        clash = subprocess.run(["git", "-C", work, "rebase", "origin/main"],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertNotEqual(clash.returncode, 0, "the rebase this tool exists for did not conflict")
+        subprocess.run(["git", "-C", work, "rebase", "--abort"], capture_output=True)
+
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py", "--row", "| Beta board (Y) | `beta.md`")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        self.assertIn("class AnotherSessionsGuard", t)                       # theirs survived
+        self.assertIn("class AMineGuard", t)                                 # mine is back
+        self.assertLess(t.index("AnotherSessionsGuard"), t.index("AMineGuard"))
+        self.assertTrue(t.endswith(self.ANCHOR))
+        with io.open(os.path.join(work, "shared/boards/README.md"), encoding="utf-8") as fh:
+            readme = fh.read()
+        self.assertIn("| Alpha board (X) | `alpha.md` | **Shipped by them** |", readme)
+        self.assertIn("| Beta board (Y) | `beta.md` | **Shipped** |", readme)
+        # the file must carry the BRANCH'S content: opening it for writing creates it either way,
+        # so its existence proves nothing
+        with io.open(os.path.join(work, "skills/job-scan/scripts/mine.py"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "# the branch's own adapter\n")
+        self.assertIn("Nothing is committed", r.stdout)
+        # and it did NOT commit: the tree is dirty, deliberately
+        st = subprocess.run(["git", "-C", work, "status", "--porcelain"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertTrue((st.stdout or b"").strip())
+
+    def test_a_tests_file_that_does_not_end_with_its_anchor_is_refused(self):
+        import subprocess
+        work = self._repo()
+        subprocess.run(["git", "-C", work, "checkout", "-q", "main"], check=True)
+        subprocess.run(["git", "-C", work, "reset", "-q", "--hard", "origin/main"], check=True)
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        with io.open(os.path.join(work, "tests/test_core.py"), "w", encoding="utf-8") as fh:
+            fh.write(t + "\n# a trailing block someone added\n")
+        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+        subprocess.run(["git", "-C", work, "commit", "-qm", "a tail"], check=True)
+        subprocess.run(["git", "-C", work, "push", "-q", "origin", "main"], check=True)
+        subprocess.run(["git", "-C", work, "checkout", "-q", "mine"], check=True)
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py", "--row", "| Beta board (Y) | `beta.md`")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("does not end with its `if __name__` block", r.stderr)
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        self.assertIn("a trailing block someone added", t)        # and it is still there
+
+    def test_a_branch_that_adds_no_readme_row_replants_too(self):
+        """**This tool's own branch is this case**: it ships a tool and a guard class and adds no
+        board row. The first version demanded a row, so it could not replant the branch that
+        delivers it — on exactly the conflict it exists to remove."""
+        import subprocess
+        work = self._repo()
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("no README row (none was asked for)", r.stdout)
+        with io.open(os.path.join(work, "tests/test_core.py"), encoding="utf-8") as fh:
+            t = fh.read()
+        self.assertIn("class AnotherSessionsGuard", t)
+        self.assertIn("class AMineGuard", t)
+        with io.open(os.path.join(work, "shared/boards/README.md"), encoding="utf-8") as fh:
+            readme = fh.read()
+        # the index is left exactly as main has it: the branch claimed no row in it
+        self.assertIn("| Beta board (Y) | `beta.md` | measured |", readme)
+        self.assertNotIn("**Shipped**", readme)
+
+    def test_each_refusal_that_exists_against_a_silent_failure(self):
+        work = self._repo()
+        # a prefix matching TWO rows: replacing the wrong one is invisible afterwards
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py", "--row", "| ")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("must match exactly one", r.stderr)
+        # a prefix matching NONE: the row would simply vanish from the index
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py", "--row", "| Gamma board")
+        self.assertEqual(r.returncode, 2)
+        # a class the branch does not have
+        r = self._run(work, "mine", "ANameNobodyWrote", "skills/job-scan/scripts/mine.py", "--row", "| Beta board (Y)")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("does not carry a class named", r.stderr)
+        # a file the branch does not have
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/absent.py", "--row", "| Beta board (Y)")
+        self.assertEqual(r.returncode, 2)
+        # the prefix matches one row on the branch and TWO on main: which one would be replaced?
+        r = self._run(work, "mine", "AMineGuard", "skills/job-scan/scripts/mine.py", "--row", "| Beta board (Y)")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("two means the prefix is too short", r.stderr)
+
+        # the branch is already merged: its class is on main, and a second copy would be appended
+        r = self._run(work, "already", "AnotherSessionsGuard", "skills/job-scan/scripts/already.py", "--row", "| Alpha board (X)")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("already on", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
