@@ -35646,5 +35646,235 @@ class ABoardWhoseBadgeIsOnEveryCardAndWhoseSalaryIsBehindALogin(unittest.TestCas
         self.assertEqual(cm.exception.code, 7)
 
 
+class ABoardThatFitsInOneRequestAndAFieldThatHoldsAPlaceholder(unittest.TestCase):
+    """**`wazefnisy.py`, 2026-09-22 (#650).** Syria's first adapter — the
+    country had no route at all until this one. Five things, and three of
+    them are about the difference between a field being PRESENT and a field
+    carrying something:
+
+    * **the whole board is one request**: `api.php?action=get_jobs` returns
+      every advert, and the array's own length is the witness printed beside
+      what was emitted. There is no pager to walk and no count to chase,
+      so the only way a record can go missing is that we dropped it — and
+      the run says how many and why (`N short` otherwise);
+    * **`phone` holds «0» on 92 of the 888 adverts and «963» on 14.** A
+      `withheld_fields: ["phone"]` on those would claim we removed a number
+      nobody filed — *a false statement about our own discretion, quieter
+      than a leak and just as wrong*. The floor is six digits;
+    * **a contact never reaches the record**: phone, application e-mail,
+      and any link that opens a conversation with a person (`wa.me`,
+      `t.me`). A form (`forms.gle`, `tally.so`) is not a contact and is
+      emitted; an address that is not an address — `http://www. homs`,
+      typed by an employer — is dropped as well, because a link nobody can
+      follow is worse than saying there was one;
+    * **the scrub's threshold is nine digits and it is declared**: ten-digit
+      Syrian numbers go, `1.725.000` and `31/12/2026` stay, and the run
+      PRINTS how many seven-and-eight-digit runs it left. Arabic-Indic
+      digits are covered by the same rule;
+    * **the Arabic labels are the site's own**, read from its `script.js`;
+      a token the site does not name is emitted raw and counted, never
+      guessed, and an unparseable list says `labels_read: false` instead of
+      dying — a label is a decoration, the token is the datum.
+
+    And `success: false` is the API REFUSING, not the board being empty: it
+    exits 6 rather than printing nothing. Both ways: the full record read;
+    an empty array accepted as a state (0 rows, exit 0); a 404 (3); a 200
+    that is not JSON (6); a 200 without `jobs` (6); `success: false` (6); an
+    unknown filter id (2, with the ids the site does name); another host
+    (7).
+
+    **Mutated in a detached worktree with `-B`, the red NAMED before each
+    mutation and the line touched printed** — seven for seven, and each red
+    is the one that was named:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the six-digit phone floor dropped | `Lists differ: ['phone'] != []` |
+    | the messaging test dropped | `'wa.me' unexpectedly found` |
+    | the threshold lowered 9 → 6 | `'1.725.000' not found` in the description |
+    | the e-mail scrub dropped | `'hr@x.com' unexpectedly found` |
+    | `success` ignored | `SystemExit not raised` — a refusal read as an empty board |
+    | the unknown-token count dropped | `'category:chemistry' not found` in stderr |
+    | the host test dropped | `2 != 7` on all three URLs |
+
+    *The last one reddens twice over: the repository's network sentinel
+    catches the mutated code trying to leave the machine, which is the same
+    defect seen from the other side.*"""
+
+    SCRIPT = ("""const categories = [ { id: 'all', name: 'الكل' },"""
+              """ { id: 'tech', name: 'تكنولوجيا' }, { id: 'medical', name: 'طبية' } ];"""
+              """ const cities = [ { id: 'all', name: 'كل المدن' },"""
+              """ { id: 'damascus', name: 'دمشق' }, { id: 'aleppo', name: 'حلب' } ];"""
+              """ const jobTypes = [ { id: 'all', name: 'كل الأنواع' },"""
+              """ { id: 'remote', name: 'عن بعد' }, { id: 'full_time', name: 'دوام كامل' } ];""")
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_wazefni", os.path.join(SCRIPTS, "wazefnisy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(ident, **kw):
+        j = {"id": ident, "category": "tech", "city": "damascus", "job_type": "remote",
+             "company_name": "شركة", "job_title": "مبرمج", "description": "وصف",
+             "phone": None, "has_whatsapp": False, "has_phone_call": 0,
+             "application_email": None, "application_link": None,
+             "salary": 200, "salary_period": "شهري", "currency_type": "USD",
+             "timestamp": "2026-09-22T12:41:29+00:00", "is_premium": 0, "premium_until": None,
+             "views_count": 3, "is_urgent": False, "urgent_start_date": None, "urgent_end_date": None}
+        j.update(kw)
+        return j
+
+    def _run(self, mod, jobs=None, api=None, script=None, **kw):
+        import contextlib
+        asked = []
+
+        def request(url, accept="text/html"):
+            asked.append(url)
+            if url.endswith("script.js"):
+                return script if script is not None else (200, self.SCRIPT)
+            if api is not None:
+                return api
+            return 200, json.dumps({"success": True, "jobs": jobs or []}, ensure_ascii=False)
+        mod.request = request
+        ns = argparse.Namespace(city=None, category=None, type=None, since=None,
+                                country_code=None, max=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_what_the_record_carries_and_what_it_never_does(self):
+        mod = self._mod()
+        jobs = [
+            self._job(1, phone="0988019803", application_email="hr@example.com",
+                      application_link="https://wa.me/963997679129",
+                      description="راتب 1.725.000 ل.س قبل 31/12/2026 — اتصل 0989828459 أو hr@x.com"),
+            self._job(2, phone="0", application_link="https://forms.gle/abc", city="aleppo",
+                      category="medical", job_type="full_time", salary=None, currency_type="0"),
+            self._job(3, phone="963", application_link="http://www. homs",
+                      description="للتواصل ٠٩٨٨٠١٩٨٠٣ من ٢٠ - ٥٠"),
+        ]
+        rows, err, asked = self._run(mod, jobs, country_code="sy")
+        self.assertEqual(asked, ["https://www.wazefnisy.com/jobs/script.js",
+                                 "https://www.wazefnisy.com/jobs/api.php?action=get_jobs"])
+        self.assertEqual([r["id"] for r in rows], [1, 2, 3])
+        blob = json.dumps(rows, ensure_ascii=False)
+        # **no contact, by any route** — the fields, the link, and the free text
+        self.assertNotIn("0988019803", blob)
+        self.assertNotIn("0989828459", blob)
+        self.assertNotIn("hr@example.com", blob)
+        self.assertNotIn("hr@x.com", blob)
+        self.assertNotIn("wa.me", blob)
+        self.assertNotIn("٠٩٨٨٠١٩٨٠٣", blob)          # the same rule, in Arabic-Indic digits
+        # **and what it says it withheld is what was there**
+        self.assertEqual(rows[0]["withheld_fields"], ["phone", "application_email", "application_link"])
+        self.assertEqual(rows[1]["withheld_fields"], [])      # «0» is a placeholder, not a number
+        self.assertEqual(rows[2]["withheld_fields"], ["application_link"])   # «963» is not one either
+        self.assertEqual(rows[1].get("apply_url"), "https://forms.gle/abc")  # a form is not a contact
+        self.assertIsNone(rows[0].get("apply_url"))
+        self.assertIsNone(rows[2].get("apply_url"))
+        # **the threshold leaves a salary and a date as the employer wrote them**
+        self.assertIn("1.725.000", rows[0]["description"])
+        self.assertIn("31/12/2026", rows[0]["description"])
+        self.assertIn("٢٠ - ٥٠", rows[2]["description"])
+        self.assertEqual(rows[0]["description"].count("[telephone withheld]"), 1)
+        self.assertIn("[e-mail withheld]", rows[0]["description"])
+        # **the labels are the site's own, and the ids travel beside them**
+        self.assertEqual((rows[0]["city"], rows[0]["city_id"]), ("دمشق", "damascus"))
+        self.assertEqual((rows[1]["category"], rows[1]["employment_type"]), ("طبية", "دوام كامل"))
+        self.assertEqual(rows[0]["url"], "https://www.wazefnisy.com/jobs/job_details.php?id=1")
+        self.assertEqual(rows[0]["published"], "2026-09-22")
+        self.assertTrue(all(r["country"] == "SY" and r["contacts_withheld"] and not r["detail_read"]
+                            for r in rows))
+        # **a salary of nothing is absent, not zero**, and «0» is not a currency
+        self.assertNotIn("salary", rows[1])
+        self.assertIn("salary", rows[0])
+        self.assertNotIn("currency", rows[1])
+        # **the run counts what it emitted against what the API sent**
+        self.assertIn("3 emitted, the API sent 3", err)
+        self.assertIn("digit run(s) of 7–8 digits", err)     # the threshold's cost, printed
+        self.assertIn("featured 0 of 3", err)
+        self.assertIn("stamp", err)
+
+    def test_a_flag_is_carried_only_when_it_is_set_and_an_unnamed_token_is_counted(self):
+        mod = self._mod()
+        rows, err, _asked = self._run(mod, [self._job(1), self._job(2, is_premium=1, is_urgent=True),
+                                            self._job(3, category="chemistry")])
+        self.assertNotIn("featured", rows[0])
+        self.assertNotIn("urgent", rows[0])
+        self.assertTrue(rows[1]["featured"] and rows[1]["urgent"])
+        self.assertIn("featured 1 of 3, urgent 1 of 3", err)
+        # a token the site does not name is emitted RAW and SAID, never guessed
+        self.assertEqual((rows[2]["category"], rows[2]["category_id"]), (None, "chemistry"))
+        self.assertIn("category:chemistry", err)
+
+    def test_an_empty_array_is_a_state_and_a_refusal_is_not(self):
+        import contextlib
+        mod = self._mod()
+        rows, err, _asked = self._run(mod, [])
+        self.assertEqual(rows, [])
+        self.assertIn("0 emitted, the API sent 0", err)
+        self.assertIn("check the filters", err)
+        # **`success: false` is the API refusing, and it must not read as an empty board**
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, api=(200, json.dumps({"success": False, "jobs": []})))
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_the_ways_the_endpoint_can_fail_each_have_their_own_exit(self):
+        import contextlib
+        for api, code in (((404, ""), 3),
+                          ((500, ""), 6),
+                          ((200, "<html>not json</html>"), 6),
+                          ((200, json.dumps({"success": True})), 6),
+                          ((200, json.dumps({"success": True, "jobs": {}})), 6)):
+            mod = self._mod()
+            with self.subTest(api=api[0]):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    self._run(mod, api=api)
+                self.assertEqual(cm.exception.code, code)
+
+    def test_a_filter_the_site_does_not_know_is_refused_with_the_ids_it_does(self):
+        import contextlib
+        mod = self._mod()
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, [self._job(1)], city="zzz")
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("damascus", err.getvalue())
+        # and a filter the site DOES know reduces instead of failing toward everything
+        mod = self._mod()
+        rows, err2, _a = self._run(mod, [self._job(1), self._job(2, city="aleppo")], city="aleppo")
+        self.assertEqual([r["id"] for r in rows], [2])
+        self.assertIn("1 left out by the filters", err2)
+
+    def test_the_labels_are_read_from_the_site_and_their_absence_is_declared(self):
+        mod = self._mod()
+        rows, err, _asked = self._run(mod, [self._job(1)], script=(404, ""))
+        self.assertEqual((rows[0]["city"], rows[0]["city_id"]), (None, "damascus"))
+        self.assertIn("labels_read: false", err)
+        self.assertIn("HTTP 404", err)
+
+    def test_no_other_host_is_ever_requested(self):
+        import contextlib
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for url in ("https://wazefnisy.com/jobs/api.php?action=get_jobs",   # the apex is not the host measured
+                    "http://www.wazefnisy.com/jobs/api.php?action=get_jobs",
+                    "https://example.com/jobs/api.php"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
