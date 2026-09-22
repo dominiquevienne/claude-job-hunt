@@ -220,7 +220,11 @@ def row(c):
     return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['id']}", "id": c["id"], "url": c["url"],
             "title": scrub(c["title"]), "company": scrub(c["company"]), "place": scrub(c["place"]),
             "posted_as_written": c["posted_as_written"],
-            "criteria_withheld": ["gender"], "contacts_withheld": True}
+            # **No `criteria_withheld` here (#885).** The gender is printed on the ADVERT page, not on the
+            # card: measured 2026-09-22, one card of twenty carried «جنسیت». Declaring it on every list row
+            # said we had withheld something the card never held — an affirmation about the BOARD written in
+            # a field that reads as an affirmation about the ADVERT. The board fact lives on the card once.
+            "contacts_withheld": True}
 
 
 def cmd_jobs(a):
@@ -281,7 +285,9 @@ def cmd_jobs(a):
     note(f"{th(n)} emitted over {th(pages_read)} page(s) of {PAGE} — the site states {th(stated) if stated is not None else 'no total'}"
          + (f" «{word}»" if word else "") + (f", its pager ending at page {th(last)}" if last else "")
          + (f"; a BOUNDED read ({'one saved page' if a.from_file else '--pages'}), not the board" if bounded else (": equal." if stated == n else f": {th(abs(stated - n))} short." if stated is not None else ".")))
-    note("the gender the board prints beside an advert is NOT carried (#183): every row says `criteria_withheld: [\"gender\"]`.")
+    note("the board prints a gender criterion ON ITS ADVERT PAGES and it is never carried (#183). The list "
+         "cards do not carry it, so no row claims to have withheld one — a claim about the board does not "
+         "belong in a field that reads as a claim about the advert (#885).")
     if stated is not None and not bounded and stated != n:
         sys.exit(EXIT_PARTIAL)
 
