@@ -35590,7 +35590,8 @@ class ABoardWhoseBadgeIsOnEveryCardAndWhoseSalaryIsBehindALogin(unittest.TestCas
                                     "business leading company ltd", place="International",
                                     second="(Credit Loan Officer (Sales))"),
                          self._card("137154", "seinor-account", "Seinor Account (call 09 123 4567)",
-                                    "Medi Green Company Limited", posts="3")], count="3")
+                                    "Medi Green Company Limited", posts="3",
+                                    benefits="Send your CV to hr@medigreen.com.mm")], count="3")
         p2 = self._page([self._card("137088", "sales-executive", "Sales Executive", "Beauty Apex",
                                     benefits="Competitive salary", highlights="Field sales")], count="3")
         rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, p2)}, country_code="mm")
@@ -35608,7 +35609,9 @@ class ABoardWhoseBadgeIsOnEveryCardAndWhoseSalaryIsBehindALogin(unittest.TestCas
         self.assertEqual(rows[1]["openings"], "3")
         self.assertEqual(rows[1]["location"], "Yangon")
         self.assertEqual(rows[1]["title"], "Seinor Account (call [telephone withheld])")
-        self.assertNotIn("09 123 4567", raw)
+        self.assertEqual(rows[1]["benefits"], "Send your CV to [e-mail withheld]")
+        for secret in ("09 123 4567", "hr@medigreen.com.mm"):
+            self.assertNotIn(secret, raw, secret)
         # the badge is on every card and is NOT a field
         self.assertNotIn("verified", json.dumps(rows, ensure_ascii=False).lower())
         self.assertIn("«Verified» badge is on 3 of the 3 adverts read", err)
