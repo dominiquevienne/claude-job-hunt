@@ -24,12 +24,24 @@ advert (101 193 B): a `JobPosting` — `title`, `hiringOrganization.name`,
 («موقعیت مکانی», «نوع همکاری», «حداقل سابقه کار», «حقوق», «حداقل مدرک
 تحصیلی»).
 
-**THE GENDER IS NOT CARRIED.** The advert page prints «جنسیت: زن» (gender:
-woman) as a hiring criterion. The repository serves the advert and does NOT
-propagate the criterion (#183, and `jobcentrebrunei.py` does the same with an
-age range): the field is never emitted, and each record SAYS what was left
-behind — `criteria_withheld: ["gender"]` — so that a silence is not read as
-an absence.
+**THE GENDER IS NOT CARRIED, AND THE RECORD ONLY SAYS SO WHEN IT WAS THERE.**
+The ADVERT page prints «جنسیت: زن» (gender: woman) as a hiring criterion. The
+repository serves the advert and does NOT propagate the criterion (#183, and
+`jobcentrebrunei.py` does the same with an age range): the field is never
+emitted, and the advert's record names what was left behind —
+`criteria_withheld: ["gender"]` **when the page carried one**, `[]` when it did
+not.
+
+**The LIST row carries no such field at all, and that is a correction (#885).**
+It used to declare `criteria_withheld: ["gender"]` on every card — but *the
+card does not print a gender*, only the advert does. The row was therefore
+claiming to have withheld something the object it describes never held: an
+assertion about the BOARD written into a field that reads as an assertion about
+the ADVERT, and the two are indistinguishable once a record is read. **The fact
+about the board is true and it belongs on the card, once** —
+`shared/boards/jobinja.md` says it. *Same family as «declaring you withheld a
+number nobody filed», one step further: there the field was present and empty,
+here the field was never on the object at all.*
 
 THE KEY IS THE SITE'S ID, NEVER THE SLUG. The slug is the Persian title; an
 ASCII fold of it is empty, and an empty key collides — measured on Jobvision
@@ -184,7 +196,7 @@ def row(c):
     return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['id']}", "id": c["id"], "url": c["url"],
             "title": scrub(c["title"]), "company": scrub(c["company"]), "place": scrub(c["place"]),
             "posted_as_written": c["posted_as_written"], "contract_as_written": c.get("contract_as_written"),
-            "criteria_withheld": ["gender"], "contacts_withheld": True}
+            "contacts_withheld": True}      # no `criteria_withheld`: the CARD prints no criterion (#885)
 
 
 def cmd_jobs(a):
@@ -233,7 +245,10 @@ def cmd_jobs(a):
     note(f"{th(n)} emitted over {th(pages_read)} page(s) of {PAGE} — the site states {th(stated) if stated is not None else 'no total'}"
          + (f" «{word}»" if word else "") + (f", its pager ending at page {th(last)}" if last else "")
          + ("; a BOUNDED read (--pages), not the board" if bounded else (": equal." if stated == n else f": {th(abs(stated - n))} short." if stated is not None else ".")))
-    note("the gender the board prints beside each advert is NOT carried (#183): every row says `criteria_withheld: [\"gender\"]`.")
+    note("the gender is printed on the ADVERT page, not on these cards: the list rows declare no "
+         "criterion (#885), and `ad` says `criteria_withheld: [\"gender\"]` only when the advert "
+         "it read carried one (#183). That the board prints the criterion at all is a fact about "
+         "the board, and the card says it once.")
     if stated is not None and not bounded and stated != n:
         sys.exit(EXIT_PARTIAL)
 
@@ -259,7 +274,9 @@ def cmd_ad(a):
            "salary_currency": label(sal.get("currency")), "salary_value": sal.get("value") if not isinstance(sal.get("value"), (dict, list)) else label(one(sal.get("value")).get("value")),
            "posted": label(p.get("datePosted")),
            "description": (scrub(text(label(p.get("description")) or "")) or "")[:20000] or None,
-           "criteria_withheld": ["gender"], "contacts_withheld": True}
+           # **conditional on what THIS page carried** — an empty list is «read, and there was none»
+           "criteria_withheld": ["gender"] if GENDER_RE.search(body) else [],
+           "contacts_withheld": True}
     print(json.dumps(rec, ensure_ascii=False))
 
 
