@@ -34356,5 +34356,123 @@ class APortalWhoseVisibleZeroIsATemplateBranchAndWhoseListIsInItsOwnCall(unittes
         self.assertEqual(cm.exception.code, 7)
 
 
+class ABoardNamedForOthersAndRefusedForUsWhoseTextLivesInATransferredState(unittest.TestCase):
+    """**`irantalent.py`, 2026-09-22 (#628).** IranTalent names LinkedInBot,
+    TelegramBot and WhatsAppBot and ALLOWS them `*?*` — the `*` group, which is
+    ours, is refused it. So the pager (a query string) is never asked, and the walk
+    goes through the filter pages the site publishes as plain paths in its own
+    sitemap. Both ways: a query string never sent (7) nor built (2), **being named
+    elsewhere changes nothing**, the count read from the page's TEXT and not its
+    markup (the words sit in two tags), a bounded walk said and NOT compared, a full
+    walk compared (short → 6), a repeated id once, the key the site's numeric id,
+    and the advert's text taken from the transferred state when the JSON-LD says
+    `description: null` — **an empty field is not an advert without a text**."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_irantalent", os.path.join(SCRIPTS, "irantalent.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _list(ids, stated="1744"):
+        links = "".join(f'<a href="/job/poste-{i}/{i}">t</a>' for i in ids)
+        # the count and its word live in two different tags, as the board writes them
+        head = (f'<div><h1 class="font-14">آگهی استخدام</h1></div><div><small>{stated} نتیجه</small></div>') if stated else ""
+        return f"<html><body>{head}{links}</body></html>"
+
+    @staticmethod
+    def _sitemap(paths):
+        return "<urlset>" + "".join(f"<url><loc>https://www.irantalent.com{p}</loc></url>" for p in paths) + "</urlset>"
+
+    AD = ('<html><head><script type="application/ld+json">{"@context":"http://schema.org/","@type":"JobPosting","title":"Back-End Developer","description":null,'
+          '"identifier":{"@type":"PropertyValue","name":"Irantalent","value":"74302000"},"datePosted":"2026-09-22T07:25:53.000000Z","employmentType":"Full Time",'
+          '"hiringOrganization":{"@type":"Organization","name":"Golrang Tarabar","logo":"https://minio1.sc.irtalent.cloud/brand-data/x.jpg","sameAs":"https://www.irantalent.com"},'
+          '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","streetAddress":"خیابان ولیعصر 12","addressLocality":"","addressRegion":"Tehran","postalCode":"1234567","addressCountry":"Iran"}}}</script></head>'
+          '<body><script id="ng-state" type="application/json">{"title":"Back-End Developer","role_description":"\\u003Cp\\u003Eشرح موقعیت شغلی\\u003Cbr /\\u003Eتماس: 09121234567 یا hr@golrang.example\\u003C/p\\u003E"}</script></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_walk_goes_through_the_filter_paths_because_the_query_string_is_ours_to_refuse(self):
+        mod = self._mod()
+        pages = {"https://www.irantalent.com/jobs": self._list([1, 2, 3]),
+                 "https://www.irantalent.com/fa/job-filter/sitemap.xml": self._sitemap(["/jobs/banking-jobs", "/jobs/agri-jobs", "/jobs/x-jobs"]),
+                 "https://www.irantalent.com/jobs/banking-jobs": self._list([3, 4], stated=None),
+                 "https://www.irantalent.com/jobs/agri-jobs": self._list([5], stated=None),
+                 "https://www.irantalent.com/jobs/x-jobs": self._list([6], stated=None)}
+        code, rows, err, sent = self._run(mod, ["jobs", "--filters", "2"], lambda u: (200, pages[u]))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([r["id"] for r in rows], ["1", "2", "3", "4", "5"])   # the repeat once
+        self.assertEqual(sent[:2], ["https://www.irantalent.com/jobs", "https://www.irantalent.com/fa/job-filter/sitemap.xml"])
+        self.assertEqual(len(sent), 4)                                          # --filters 2: two filter pages, no more
+        self.assertIn("5 emitted — the list itself renders 3, and 2 of 3 filter pages were walked; the site states 1 744 — a BOUNDED walk, NOT compared to it", err)
+        self.assertEqual((rows[0]["ledger_id"], rows[0]["url"], rows[0]["seen_on"]), ("irantalent:1", "https://www.irantalent.com/job/poste-1/1", "/jobs"))
+        self.assertEqual(rows[3]["seen_on"], "/jobs/banking-jobs")
+        # a full walk IS compared, and a shortfall is an exit
+        code, rows, err, sent = self._run(mod, ["jobs", "--all-filters"], lambda u: (200, pages[u]))
+        self.assertEqual((code, len(rows), len(sent)), (6, 6, 5), err)
+        self.assertIn("the site states 1 744: 1 738 short.", err)
+        # a list that states nothing is a defect of the reading, not a board of zero
+        code, rows, err, sent = self._run(mod, ["jobs", "--filters", "0"], lambda u: (200, self._list([1], stated=None)) if u.endswith("/jobs") else (200, self._sitemap(["/jobs/x-jobs"])))
+        self.assertEqual((code, len(rows)), (6, 1), err)
+        self.assertIn("the list stated no count", err)
+        # a list with no advert link is a defect of the READING, and it must be named as such — not merely exit 6,
+        # which the sitemap step would also produce a moment later on the same fixture (its mutation stayed green
+        # until this assertion named the branch)
+        code, rows, err, sent = self._run(mod, ["jobs"], lambda u: (200, "<html><body>no advert</body></html>"))
+        self.assertEqual((code, rows, len(sent)), (6, [], 1), err)
+        self.assertIn("not the list, or the page changed shape", err)
+        # the query string is never sent — and being named in another group is not our group
+        fresh = self._mod()
+
+        def gate_reached(url):
+            raise AssertionError("the gate was consulted for " + url)
+        fresh.gate = gate_reached
+        fresh._PACE.wait = gate_reached
+        import contextlib
+        for never in ("https://www.irantalent.com/jobs?page=2", "https://www.irantalent.com/jobs-search/?keyword=x", "https://jobinja.ir/jobs"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+                fresh.request(never)
+            self.assertEqual(cm.exception.code, 7, never)
+
+    def test_the_advert_text_comes_from_the_transferred_state_when_the_jsonld_says_null(self):
+        mod = self._mod()
+        url = "https://www.irantalent.com/job/back-end-developer/183595"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD))
+        self.assertEqual(code, 0, err)
+        r = rows[0]
+        self.assertEqual((r["id"], r["ledger_id"], r["title"], r["company"], r["place"], r["country_as_written"], r["employment_type"], r["posted"], r["board_identifier"], r["country"], r["contacts_withheld"]),
+                         ("183595", "irantalent:183595", "Back-End Developer", "Golrang Tarabar", "Tehran", "Iran", "Full Time", "2026-09-22T07:25:53.000000Z", "74302000", "IR", True))
+        # `description: null` in the JSON-LD is an empty FIELD: the text is in the transferred state, and it is read
+        self.assertTrue(r["description"] and r["description"].startswith("شرح موقعیت شغلی"), r["description"])
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        dump = json.dumps(r, ensure_ascii=False)
+        for hidden in ("خیابان ولیعصر", "1234567", "irtalent.cloud", "golrang.example", "09121234567"):
+            self.assertNotIn(hidden, dump, hidden)
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.irantalent.com/job/x/999999999"], lambda u: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        for bad in ("https://www.irantalent.com/job/x/1?utm=1", "https://www.irantalent.com/jobs", "https://irantalent.com/job/x/1", "https://evil.example/job/x/1"):
+            code, rows, err, sent = self._run(mod, ["ad", "--url", bad], lambda u: (200, self.AD))
+            self.assertEqual((code, sent), (2, []), bad)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
