@@ -398,17 +398,107 @@ def status_of(card, cls, measured):
     return label
 
 
-def covers_text(card):
+# What a `content:` line ends on, and must survive a cut (#859, two defects in three days).
+# **The cut does not know what it carries.** On 2026-09-19 it took a ticket number mid-digits («…#74» for
+# «#745») and sent eleven country pages to the wrong issue; on 2026-09-22 it took Guyana's line after
+# «renders ten div.item blocks» — **the very conclusion the day's measurement had just overturned** (ten
+# notices read on 09-18, 746 measured on 09-22). In both cases the surviving fragment is plausible and
+# false, so nobody reopens it. So the line is cut on what the card MEASURED, not on a character count:
+# the counts and the ticket are carried over the cut, and a sentence is taken whole or not at all.
+COUNT_RE = re.compile(r"[^.;·]*?\b\d[\d  ,.']*\s*(?:emitted|émis(?:es)?)\b[^.;·]*", re.I)
+STATED_RE = re.compile(r"[^.;·]*?\b(?:the site |le site |board )?(?:states?|stated|énonce|annonce)\b[^.;·]*\b\d[\d  ,.']*[^.;·]*", re.I)
+TICKET_RE = re.compile(r"(#\d+)\s*$")
+NUMBER_RE = re.compile(r"\d[\d  ,.']*\s*(?:emitted|émis(?:es)?|states?|stated|énonce)|(?:states?|stated|énonce)\s*[«»\"]?\s*\d", re.I)
+SENT_SPLIT_RE = re.compile(r"(?<=[.;])\s+|\s+·\s+")
+
+
+def salient(c):
+    """The fragments a reader must not lose: the emitted count, the stated count, a trailing ticket.
+
+    A fragment that starts inside a word or a code span is prefixed with «…»: carried out of its sentence,
+    «py list` live 07:21…» would otherwise read as the beginning of something rather than the middle."""
+    out = []
+    for rx in (COUNT_RE, STATED_RE):
+        m = rx.search(c)
+        if not m:
+            continue
+        frag = m.group(0).strip(" ,;·")
+        if frag and not any(frag in f for f in out):
+            # the mark goes on what the fragment REALLY starts with, after the strip: a match that begins
+            # on the space following a full stop is a beginning, and «… …**742 emitted» marks nothing
+            at = m.start() + m.group(0).index(frag[0] if frag else "")
+            if at > 0 and not c[at - 1].isspace():
+                frag = "…" + frag
+            out.append(frag)
+    t = TICKET_RE.search(c)
+    if t:
+        out.append(t.group(1))
+    return out
+
+
+def covers_text(card, limit=220):
     c = card["h"].get("content", "")
     if not c:
         return "*(pas de ligne `content:`)*"
     c = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d(?:T[\d:]+Z?)?\s*$", "", c)
     c = c.replace("|", "\\|")
-    if len(c) > 220:
-        c = c[:220].rsplit(" ", 1)[0] + "…"
-        if c.count("`") % 2:          # never cut inside a code span
-            c += "`"
-    return c
+    if len(c) <= limit:
+        return c
+    keep = salient(c)
+    # whole sentences only, up to the limit — a half sentence that affirms is worse than a shorter cell
+    kept, used = [], 0
+    for part in SENT_SPLIT_RE.split(c):
+        part = part.strip()
+        if not part:
+            continue
+        if used + len(part) + 1 > limit:
+            break
+        kept.append(part)
+        used += len(part) + 1
+    head = " ".join(kept).strip(" ,;·")
+    # A card whose first sentence is longer than the limit would leave «measured» alone as the head — true,
+    # and empty. Below half the budget, the head is extended by a WORD cut of what follows: half a sentence
+    # is acceptable as the middle of a cell, never as its last word — which is what the tail below guarantees.
+    if len(head) < limit // 2:
+        head = c[:limit].rsplit(" ", 1)[0].rstrip(" ,;·")
+    tail = [balance(short(f)) for f in keep if f and f not in head]
+    return balance(head) + " …" + "".join(f" {f}" for f in tail)
+
+
+def short(frag, limit=140):
+    """A carried fragment is a reminder, not a paragraph — and it is trimmed from the LEFT.
+
+    **Trimming it from the right reproduced #859 inside its own fix**: the count sits in the middle of the
+    match («…the walk <200 characters> 5 emitted — the site states 5: equal»), so a head-cut carried
+    «…the walk…» and dropped the number the fragment existed to save. Found by the guard's own fixture."""
+    frag = frag.strip()
+    if len(frag) <= limit:
+        return frag
+    # the window is CENTRED on the number, not taken from either end: trimming from the right dropped
+    # «5 emitted» and kept «the walk…», trimming from the left dropped «651 emitted» and kept «…states
+    # 651» — both found by this guard, three minutes apart, in the fix for #859 itself.
+    m = NUMBER_RE.search(frag)
+    if not m:
+        return frag[:limit].rsplit(" ", 1)[0].rstrip(" ,;·") + "…"
+    start = max(0, min(m.start() - 30, len(frag) - limit))
+    cut = frag[start:start + limit]
+    if start:
+        cut = ("…" + cut.split(" ", 1)[1]) if " " in cut else "…" + cut
+    if start + limit < len(frag):
+        cut = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,;·") + "…"
+    return cut
+
+
+def balance(frag):
+    """Close what the cut left open — a code span or a bold run, EACH FRAGMENT ON ITS OWN.
+
+    Closing at the very end of the cell instead would swallow the carried counts into the run the head
+    opened: the reader then sees the measurement in bold italics of another sentence, or not at all."""
+    if frag.count("`") % 2:
+        frag += "`"
+    if frag.count("**") % 2:
+        frag += "**"
+    return frag
 
 
 def table(cards, iso2):
