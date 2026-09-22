@@ -51,6 +51,14 @@ exactly the conflict it exists to remove. A branch that adds no row passes
 * **`tests/test_core.py` does not end with its `if __name__ == "__main__":`** —
   something else is at the end of that file, and appending blind would bury it.
 
+A BRANCH CUT BEFORE #861 DOES NOT CONTAIN THIS TOOL. Its checkout has no
+`bin/replant.py`, and `git checkout -B` replaces the tree before the tool could
+be read from it — so run main's copy instead:
+
+    git show origin/main:bin/replant.py > /tmp/replant.py && python3 /tmp/replant.py <branch> …
+
+*Measured 2026-09-22 on #869, the tool's first use outside its own case.*
+
 WHAT IT DOES NOT DO
 
 It does not commit and it does not push. The branch is replanted, the suite is
