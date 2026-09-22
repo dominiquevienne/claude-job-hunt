@@ -35277,6 +35277,16 @@ class TwoTablesOfOneSystemWhoseColumnsAreNotTheSame(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             self._run(mod, pages)
         self.assertEqual(cm.exception.code, 6)
+        # a table of ROWS WITHOUT A HEADER: the columns are unknown, and guessing them would put
+        # each value under whatever name the guess happens to hold
+        headerless = ('<html><body><table><tr>'
+                      + "".join("<td>%s</td>" % c for c in
+                                ["1", "D111/2026", "Principal Labour Migration Officer", "CSG 8"])
+                      + "</tr></table></body></html>")
+        mod, pages = self._pages(jobs=headerless)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, pages)
+        self.assertEqual(cm.exception.code, 6)
 
     def test_the_directions_that_must_redden(self):
         import contextlib
