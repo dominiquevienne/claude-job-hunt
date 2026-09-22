@@ -35498,5 +35498,150 @@ class AHubThatAnswersLikeAListAndARowThatPretendsToBeAWord(unittest.TestCase):
         self.assertIn("never sent", err3.getvalue())
 
 
+class ABoardWhoseBadgeIsOnEveryCardAndWhoseSalaryIsBehindALogin(unittest.TestCase):
+    """**`jobnetmm.py`, 2026-09-22 (#635).** Myanmar's largest private
+    generalist. Four things, and two of them are about what a record must
+    NOT carry:
+
+    * **the «Verified» badge is on every card read** — 30 of 30 on page 1,
+      60 of 60 over two pages. *A value true of everything separates
+      nothing*, and a field that never varies reads like information while
+      carrying none, so the run COUNTS it and the record does not hold it;
+    * **the salary is behind a login** on every card, and the record says so
+      (`salary_behind_login: true`) rather than leaving the field absent —
+      *a field a site hides is not a field the site lacks, and only the
+      record can tell them apart.* The login page is refused before the
+      gate: no account is ever created;
+    * **the board prints no pager link** and `?page=N` answers anyway (page
+      2 carries thirty adverts, none shared with page 1). A walk trusting
+      the markup would stop at the first thirty and call it the board — the
+      same shape as Guyana's DPI;
+    * **the location and the «N Post» count share one class**, so they are
+      told apart by what they SAY: «1 Post» is a count, a place is not.
+
+    The board states «2,077 Jobs Found», printed beside what was read. Both
+    ways: two pages walked, the count compared, the excerpts read from the
+    paragraphs that carry them; a repeating page (6); a first page with no
+    card (6); a 404 (3); the login path refused (7); another host refused
+    (7). Mutated (`-B`, detached copy): the badge carried as a field →
+    reddens; `salary_behind_login` dropped → reddens; the «N Post» taken for
+    a location → the place becomes «1 Post» (reddens); the stated count
+    ignored → reddens; the repeat guard dropped → reddens; the login refusal
+    removed → reddens; the scrub dropped → reddens; another host sent →
+    reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_jobnet", os.path.join(SCRIPTS, "jobnetmm.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(ident, slug, title, employer, place="Yangon", posts="1", second=None,
+              benefits="Quarterly Bonus", highlights="Leading Bank in Myanmar", verified=True):
+        second_html = ('<div class="search__job-heading"><a class="search__job-title2" '
+                       'href="/job/%s/%s">%s</a></div>' % (slug, ident, second)) if second else ""
+        badge = ('<div class="divverified"><span class="verified-label">Verified</span></div>'
+                 if verified else "")
+        return ('<div class="serp-item"><div class="search__job semi-yellow"><div class="search__job-head">'
+                f'<div class="search__job-heading"><a class="search__job-title ClickTrack-TopList" '
+                f'href="/job/{slug}/{ident}">{title}</a></div>{second_html}'
+                f'<p class="search__job-subtitle"> {employer} </p>'
+                '<a class="search__job-sign " href="/login?redirect=https://www.jobnet.com.mm/jobs-in-myanmar">'
+                '<span>Login to view Salary</span></a>'
+                f'<p class="search__job-location"><img src="/img/noofpost.png"/><span>{posts} Post</span></p>'
+                f'<p class="search__job-location"><i class="fa fa-location-arrow"></i><span>{place}.</span></p>'
+                f'{badge}</div>'
+                '<div class="search__job-body"><ul class="search__job-list">'
+                f'<li><p class="benefit"><strong>Benefits:</strong> {benefits}</p></li>'
+                f'<li><p class="highlights"><strong>Highlights:</strong> {highlights}</p></li>'
+                '</ul></div></div></div>')
+
+    @classmethod
+    def _page(cls, cards, count="2,077"):
+        head = ("<p class=\"search__header-res desktop\"><span class='number'>%s</span> Jobs Found</p>" % count
+                if count else "")
+        return "<html><body>" + head + "".join(cards) + "</body></html>"
+
+    def _run(self, mod, pages, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            m = re.search(r"[?&]page=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_what_the_record_carries_and_what_it_refuses_to(self):
+        mod = self._mod()
+        p1 = self._page([self._card("137646", "senior-sales-manager", "Senior Sales Manager",
+                                    "business leading company ltd", place="International",
+                                    second="(Credit Loan Officer (Sales))"),
+                         self._card("137154", "seinor-account", "Seinor Account (call 09 123 4567)",
+                                    "Medi Green Company Limited", posts="3")], count="3")
+        p2 = self._page([self._card("137088", "sales-executive", "Sales Executive", "Beauty Apex",
+                                    benefits="Competitive salary", highlights="Field sales")], count="3")
+        rows, err, asked, raw = self._run(mod, {1: (200, p1), 2: (200, p2)}, country_code="mm")
+        self.assertEqual(asked, ["https://www.jobnet.com.mm/jobs-in-myanmar",
+                                 "https://www.jobnet.com.mm/jobs-in-myanmar?page=2"])
+        self.assertEqual([r["id"] for r in rows], ["137646", "137154", "137088"])
+        a = rows[0]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["title_second"],
+                          a["employer"], a["location"], a["openings"], a["benefits"], a["highlights"],
+                          a["salary_behind_login"], a["contacts_withheld"]),
+                         ("jobnetmm", "MM", "jobnetmm:137646", "Senior Sales Manager",
+                          "(Credit Loan Officer (Sales))", "business leading company ltd",
+                          "International", "1", "Quarterly Bonus", "Leading Bank in Myanmar", True, True))
+        # the «N Post» count and the place share a class: the place is not «1 Post»
+        self.assertEqual(rows[1]["openings"], "3")
+        self.assertEqual(rows[1]["location"], "Yangon")
+        self.assertEqual(rows[1]["title"], "Seinor Account (call [telephone withheld])")
+        self.assertNotIn("09 123 4567", raw)
+        # the badge is on every card and is NOT a field
+        self.assertNotIn("verified", json.dumps(rows, ensure_ascii=False).lower())
+        self.assertIn("«Verified» badge is on 3 of the 3 adverts read", err)
+        self.assertIn("**it separates nothing**", err)
+        self.assertIn("3 read over 2 page(s), and the board states 3 — they agree", err)
+        self.assertIn("NO pager link", err)
+        self.assertIn("`salary_behind_login: true`", err)
+        self.assertIn("country MM is the user's stamp", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._card("1", "a", "A", "Org")], count="99")
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, p1)})
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, self._page([], count="99"))})
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (404, "")})
+        self.assertEqual(cm.exception.code, 3)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            mod.request("https://www.jobnet.com.mm/login?redirect=x")
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("never requested", err.getvalue())
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://jobnet.com.mm/jobs-in-myanmar")     # the apex is not the host the card names
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
