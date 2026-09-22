@@ -48,6 +48,15 @@ page carries something per-request — **so no fingerprint comparison is worth
 anything on it**; the HTTP code and the class name are what is stable, and
 both were the same twice.
 
+*This is «before comparing two md5, fetch twice» used in the direction it is
+rarely written in.* The rule usually **licenses** a comparison: two reads
+agree, so the fingerprint means something, so two hosts can be compared by it.
+Here the two reads **disagree**, and the rule therefore **forbids** the
+comparison outright — this body cannot be matched against another host's, or
+against its own reading tomorrow, and any «the refusal changed» drawn from it
+would be an artefact of the page's own per-request content. **What held twice
+is what may be carried: the code, and the name of the missing class.**
+
 **This is a state of the site on 2026-09-22, not a verdict on the board.** The
 17.09 reading stands as read: the same root, the same client, 844 470 B and
 «+6356 فرصة». Nothing here says the adverts are gone; it says the service that
