@@ -34059,5 +34059,132 @@ class AGovernmentCategoryWithNoPagerWhoseEndIsA404AndWhoseRestIsClosed(unittest.
         self.assertEqual(cm.exception.code, 7)
 
 
+class APublicServiceRecruiterWhoseMinistryIsAHeadingAndNotAField(unittest.TestCase):
+    """**`pscgovvc.py`, 2026-09-22 (#732).** Saint Vincent's Service
+    Commissions Department publishes the public service's open posts on one
+    Joomla page, and **the ministry is a HEADING, not a field of the post**:
+    `<p><strong>Ministry …</strong></p>` then `<ul><li>` posts. So it is
+    carried forward to each post that follows it until the next heading —
+    and a post that appears BEFORE any heading carries `None`, never the
+    ministry of the block above it, which is the failure a carried-forward
+    value produces when nothing resets it. A paragraph that is itself a link
+    is not a heading. Nothing states a count. The advertisement is a PDF the
+    Department publishes: **named, never downloaded**. And **the footer,
+    which carries the Department's street address, is not read at all** — by
+    construction, not by scrubbing. Both ways: two ministries and their
+    posts; a post before any heading; a paragraph-link not taken for a
+    heading; a post without a deadline emitted with `null` and counted; a
+    deadline already past emitted and counted; `--open-on` filtering and
+    saying the filter is ours; a 200 without the article body dies (6); a 404
+    dies (3); a bad `--open-on` dies (2); another host is refused (7).
+    Mutated (`-B`, detached copy): the ministry not carried forward → every
+    post loses it (reddens); the heading not reset → a post inherits the
+    ministry above it wrongly... (the fixture's first post has none);
+    paragraph-links taken as headings → the ministry becomes a link's text
+    (reddens); the «no count» note dropped → reddens; the undated count
+    silenced → reddens; the `--open-on` drop count silenced → reddens; the
+    document marked downloaded → reddens; the scrub dropped → reddens;
+    another host sent → reddens."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_pscvc", os.path.join(SCRIPTS, "pscgovvc.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    BODY = ('<html><body><div class="item-page"><div itemprop="articleBody">'
+            # a post BEFORE any ministry heading: it must carry None, not a neighbour's ministry
+            '<ul><li><a href="/psc/images/PDF/Vacancies/900_-_Clerk.pdf">Post of Clerk</a>'
+            ' <strong><em>(Deadline: November 02, 2026)</em></strong></li></ul>'
+            '<p><strong>Ministry of Higher Education, Grenadines Affairs, Airports and Seaports</strong></p>'
+            '<ul><li><a href="/psc/images/PDF/Vacancies/423_-_Procurement_Officer_I_-_Urban.pdf">Post of Procurement Officer I</a>'
+            ' <strong><em>(Deadline: September 28, 2026)</em></strong><br /></li></ul>'
+            '<p><strong>Ministry of Education, Vocational Training and Innovation</strong></p>'
+            # a paragraph that is a link sits BETWEEN the heading and its posts: taken for a heading,
+            # it would become their ministry, and the posts below would say «Application forms»
+            '<p><a href="/psc/index.php/forms">Application forms</a></p>'
+            '<ul><li><a href="/psc/images/PDF/Vacancies/API.pdf">Post of Information Officer (write to psc@gov.vc)</a>'
+            ' <em><strong>(Deadline: October 05, 2026)</strong></em></li>'
+            '<li><a href="/psc/images/PDF/Vacancies/NoDate.pdf">Post of Registry Officer</a></li>'
+            '<li><a href="/psc/images/PDF/Vacancies/Old.pdf">Post of Typist</a>'
+            ' <strong><em>(Deadline: January 09, 2020)</em></strong></li></ul>'
+            '</div> </div>'
+            '<footer><p>Location: The Personnel Department is located in the Ministerial Building on '
+            'Halifax Street, on the second floor.</p><p>Call 784 456 1111</p></footer></body></html>')
+
+    def _run(self, mod, served, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return served
+        mod.request = request
+        ns = argparse.Namespace(country_code=None, open_on=None)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked, out.getvalue()
+
+    def test_the_ministry_is_carried_forward_and_the_footer_is_never_read(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, (200, self.BODY), country_code="vc")
+        self.assertEqual(asked, ["https://psc.gov.vc/psc/index.php/vacancies"])
+        self.assertEqual([r["id"] for r in rows],
+                         ["900-clerk-pdf", "423-procurement-officer-i-urban-pdf", "api-pdf", "nodate-pdf", "old-pdf"])
+        self.assertIsNone(rows[0]["ministry"])                       # before any heading
+        self.assertEqual(rows[1]["ministry"], "Ministry of Higher Education, Grenadines Affairs, Airports and Seaports")
+        self.assertEqual(rows[2]["ministry"], "Ministry of Education, Vocational Training and Innovation")
+        self.assertEqual(rows[3]["ministry"], rows[2]["ministry"])   # carried forward within the block
+        a = rows[1]
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["deadline"],
+                          a["document_url"], a["document_downloaded"], a["contacts_withheld"]),
+                         ("pscgovvc", "VC", "pscgovvc:423-procurement-officer-i-urban-pdf",
+                          "Post of Procurement Officer I", "2026-09-28",
+                          "https://psc.gov.vc/psc/images/PDF/Vacancies/423_-_Procurement_Officer_I_-_Urban.pdf",
+                          False, True))
+        self.assertEqual(rows[2]["title"], "Post of Information Officer (write to [e-mail withheld])")
+        self.assertIsNone(rows[3]["deadline"])
+        # the footer's street and telephone are nowhere in the output, because it is never read
+        for secret in ("Halifax Street", "784 456 1111", "psc@gov.vc"):
+            self.assertNotIn(secret, raw, secret)
+        self.assertNotIn("Application forms", raw)                   # a paragraph-link is not a heading
+        self.assertIn("5 post(s) emitted under 2 ministry(ies)", err)
+        self.assertIn("**the page states no count**", err)
+        self.assertIn("1 post(s) state no deadline", err)
+        self.assertIn("1 emitted post(s) state a deadline already past", err)
+        self.assertIn("country VC is the user's stamp", err)
+
+    def test_the_open_on_filter_says_it_is_ours(self):
+        mod = self._mod()
+        rows, err, asked, raw = self._run(mod, (200, self.BODY), open_on="2026-10-01")
+        self.assertEqual([r["id"] for r in rows], ["900-clerk-pdf", "api-pdf", "nodate-pdf"])
+        self.assertIn("2 post(s) whose deadline is before 2026-10-01 not emitted — OUR filter", err)
+
+    def test_the_directions_that_must_redden(self):
+        import contextlib
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (200, "<html><body>the site, without its article body</body></html>"))
+        self.assertEqual(cm.exception.code, 6)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (404, ""))
+        self.assertEqual(cm.exception.code, 3)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, (200, self.BODY), open_on="1 October 2026")
+        self.assertEqual(cm.exception.code, 2)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            mod.request("https://www.psc.gov.vc/psc/index.php/vacancies")
+        self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
