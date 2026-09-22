@@ -35304,5 +35304,199 @@ class TwoTablesOfOneSystemWhoseColumnsAreNotTheSame(unittest.TestCase):
         self.assertEqual(cm.exception.code, 7)
 
 
+class AHubThatAnswersLikeAListAndARowThatPretendsToBeAWord(unittest.TestCase):
+    """**`karboom.py`, 2026-09-22 (#629).** Karboom: the bare `/jobs` is the CATEGORY
+    HUB — nine featured adverts, no count — and `?page=N` is the list. The neighbouring
+    Iranian board (`jobinja.ir`, #627) has the OPPOSITE convention, so a walk that
+    carries the habit over reads the hub, emits nine, and says nothing is wrong: **the
+    hub answers 200 and parses cleanly, which is exactly why no exit code catches it.**
+    The discriminator is the page's own `span#search-result-count`, and it is required
+    in the walk AND in `--from`, where no address exists to tell the two apart.
+
+    Also guarded, both ways: page one asks `?page=1` and never the bare path; the count
+    read from Persian digits and compared to what was emitted (short → 6, equal → 0);
+    a bounded read said as bounded and naming WHICH bound; `employmentType` — the site's
+    own row, HTML-escaped — reduced to the contract, its internal `id`/`job_id` and its
+    request-time `created_at` never emitted; the key the site's hashid and never the
+    Persian slug; the gender never emitted and always named as withheld; contacts
+    scrubbed; a 404 advert (3); another host refused BEFORE the gate (7)."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_karboom", os.path.join(SCRIPTS, "karboom.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(hid, company, title, city="تهران", age="امروز"):
+        href = f"https://karboom.io/jobs/{hid}/%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85"
+        return (f'<div class="job-position-card position-relative cursor-pointer js-job-position-card " data-href="{href}">'
+                f'<div class="box-intro js-job-item flex-col-between" data-url="https://karboom.io/jobs/details/{hid}">'
+                f'<div class="logo-column"><img data-src="https://karboom.io/storage/employers/logo/x.png" alt="{company}"></div>'
+                f'<h3 class="sm-title-size ellipsis-text width-100 m-0"><a class="no-text-decoration" title="{title}" href="{href}"> {title} </a></h3>'
+                f'<div class="flex-center"><span class="company-name ellipsis-text m-0">{company}</span>'
+                f'<span class="p-x-5">-</span><span class="pull-right">{city}</span></div>'
+                f'<div class="tag-box"><p class="date sm-text-size kb-text-gray-light m-0">{age}</p></div>'
+                f'</div></div>')
+
+    @classmethod
+    def _listing(cls, cards, stated="۳۹۳", last=20):
+        pager = "".join(f'<a href="https://karboom.io/jobs?page={i}">{i}</a>' for i in sorted({2, 3, last}) if i <= last) if last else ""
+        head = (f'<div class="m-b-20"><span class="search-result-count" id="search-result-count">{stated}</span>'
+                f'<h1 class="inline-block-display m-0"><span class="search-result-count-text m-r-5" id="static-text">آگهی استخدام</span></h1></div>') if stated else ""
+        return f'<html><body><div class="related-job-position row m-0 js-job-list">{head}{"".join(cards)}<div class="paginator">{pager}</div></div></body></html>'
+
+    # The hub: it answers 200, it holds real cards, and it states NO count. Nine of them, as measured.
+    @classmethod
+    def _hub(cls):
+        return cls._listing([cls._card(f"h{i:05d}", "مام", f"وعنوان {i}") for i in range(9)], stated=None, last=None)
+
+    AD = ('<html><head><title>x</title><script type="application/ld+json">{"@context":"http://schema.org","@type":"JobPosting",'
+          '"title":"استخدام سرپرست حسابداری","datePosted":"2026-09-21 10:35:49","validThrough":"2026-10-22 12:45:29pm",'
+          '"hiringOrganization":{"@type":"Organization","name":"گلبرگ رادین کویر"},'
+          '"employmentType":"{&quot;id&quot;:118711,&quot;job_id&quot;:48484,&quot;cooperation_type&quot;:&quot;FULL_TIME&quot;,&quot;created_at&quot;:&quot;2026-09-22T09:15:10.000000Z&quot;}",'
+          '"educationRequirements":"کارشناسی","occupationalCategory":"حسابداری / حسابرسی",'
+          '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"کرمان","addressRegion":""}},'
+          '"description":"تماس: 09123456789 یا hr@golbarg.example"}</script></head>'
+          '<body><div class="row"><span>جنسیت</span></div><div class="row"><span>زن</span></div></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url):
+            sent.append(url)
+            return answers(url)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_page_one_asks_the_query_and_the_persian_count_is_compared_to_what_was_emitted(self):
+        mod = self._mod()
+        self.assertEqual((mod.fa_int("۳۹۳"), mod.fa_int("393"), mod.fa_int("۱,۷۴۴"), mod.fa_int("")), (393, 393, 1744, None))
+        p1 = [self._card(f"k{i:05d}", "مام", f"عنوان {i}") for i in range(20)]
+        p2 = [self._card("k00000", "مام", "عنوان 0")] + [self._card(f"m{i:05d}", "اکسیر", f"عنوان {i}") for i in range(19)]
+
+        def answers(url):
+            return (200, self._listing(p1)) if url.endswith("page=1") else (200, self._listing(p2))
+        code, rows, err, sent = self._run(mod, ["jobs", "--pages", "2"], answers)
+        self.assertEqual(code, 0, err)
+        # page one carries `?page=1`: the bare path is the hub, and asking it is the whole defect
+        self.assertEqual(sent, ["https://karboom.io/jobs?page=1", "https://karboom.io/jobs?page=2"])
+        self.assertEqual(len(rows), 39)   # the repeat once
+        self.assertIn("39 emitted over 2 page(s) of 20 — the site states 393 «آگهی استخدام», its pager ending at page 20; a BOUNDED read (--pages), not the board", err)
+        self.assertIn("the gender the board prints beside an advert is NOT carried (#183)", err)
+        r = rows[0]
+        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["posted_as_written"], r["country"], r["criteria_withheld"], r["contacts_withheld"]),
+                         ("karboom:k00000", "k00000", "عنوان 0", "مام", "تهران", "امروز", "IR", ["gender"], True))
+        self.assertNotIn("/storage/", json.dumps(rows, ensure_ascii=False))   # the employer's logo is not a field
+        self.assertEqual(len({x["ledger_id"] for x in rows}), 39)   # the hashid keys, the Persian slug would fold to nothing
+        # a walk that ends short of the stated count says so and exits 6; one that matches exits 0
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], lambda url: (200, self._listing(p1, last=2)) if url.endswith("page=1") else (200, self._listing(p2, last=2)))
+        self.assertEqual((code, len(rows)), (6, 39), err)
+        self.assertIn("354 short", err)
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], lambda url: (200, self._listing(p1, stated="۳۹", last=2)) if url.endswith("page=1") else (200, self._listing(p2, stated="۳۹", last=2)))
+        self.assertEqual((code, len(rows)), (0, 39), err)
+        self.assertIn("39 emitted over 2 page(s) of 20 — the site states 39 «آگهی استخدام», its pager ending at page 2: equal.", err)
+        # a pager that claims twenty pages while page three onward only repeats: the walk stops on the REPEAT,
+        # not on the pager's word — otherwise it asks the host seventeen more times for nothing
+        def repeats(url):
+            return (200, self._listing(p1, stated="۳۹", last=20)) if url.endswith("page=1") else (200, self._listing(p2, stated="۳۹", last=20))
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], repeats)
+        self.assertEqual((code, len(rows)), (0, 39), err)
+        self.assertEqual(len(sent), 3, f"the walk asked {len(sent)} pages where three were enough: {sent}")
+        self.assertIn("page 3: only repeats — stopped.", err)
+
+    def test_the_category_hub_answers_200_and_is_refused_in_both_modes(self):
+        """The defect this adapter exists against: the hub is a 200 with nine parsable cards."""
+        mod = self._mod()
+        # it really does parse — otherwise this guard would be proving something else
+        stated, word, last, cards = mod.parse_listing(self._hub())
+        self.assertEqual((stated, word, last, len(cards)), (None, None, None, 9))
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], lambda url: (200, self._hub()))
+        self.assertEqual((code, rows), (6, []), err)
+        self.assertIn("the list states no count", err)
+        self.assertIn("category hub", err)
+        # and `--from` has no address to tell them apart, so it needs the same discriminator
+        with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as fh:
+            fh.write(self._hub())
+            hub_path = fh.name
+        # the saved page carries the count but NO pager — so nothing but `--from` itself can make it bounded,
+        # and a copy of one page stops being reported as a board that lost 373 adverts
+        with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as fh:
+            fh.write(self._listing([self._card(f"k{i:05d}", "مام", f"عنوان {i}") for i in range(20)], last=None))
+            list_path = fh.name
+        try:
+            code, rows, err, _ = self._run(mod, ["jobs", "--from", hub_path], lambda url: (200, ""))
+            self.assertEqual((code, rows), (6, []), err)
+            self.assertIn("category hub", err)
+            # the same mode on the real list is green, and says it read ONE SAVED PAGE and not the board
+            code, rows, err, _ = self._run(mod, ["jobs", "--from", list_path], lambda url: (200, ""))
+            self.assertEqual((code, len(rows)), (0, 20), err)
+            self.assertIn("a BOUNDED read (one saved page), not the board", err)
+        finally:
+            os.unlink(hub_path)
+            os.unlink(list_path)
+
+    def test_the_row_that_pretends_to_be_a_word_and_the_criterion_that_is_never_carried(self):
+        mod = self._mod()
+        url = "https://karboom.io/jobs/wmjevl/%D8%B3%D8%B1%D9%BE%D8%B1%D8%B3%D8%AA"
+        code, rows, err, sent = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD))
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        r = rows[0]
+        # the contract is kept; the site's internal identifiers and its request-time stamp are not
+        self.assertEqual(r["employment_type"], "FULL_TIME")
+        blob = json.dumps(r, ensure_ascii=False)
+        for leak in ("118711", "48484", "job_id", "created_at", "2026-09-22T09:15:10"):
+            self.assertNotIn(leak, blob, f"the site's own row leaked into the record: {leak}")
+        self.assertEqual((r["ledger_id"], r["place"], r["posted"], r["valid_through"]),
+                         ("karboom:wmjevl", "کرمان", "2026-09-21 10:35:49", "2026-10-22 12:45:29pm"))
+        # the gender is printed by the page and is NEVER a field; the record says what was left behind
+        self.assertEqual(r["criteria_withheld"], ["gender"])
+        self.assertNotIn("زن", blob)
+        # contacts scrubbed out of the description, in Persian digits as in Latin
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertNotIn("09123456789", blob)
+        # a page with no gender field says so by an EMPTY list, not by silence
+        code, rows, err, _ = self._run(mod, ["ad", "--url", url], lambda u: (200, self.AD.replace("جنسیت", "سابقه کار")))
+        self.assertEqual((code, rows[0]["criteria_withheld"]), (0, []), err)
+
+    def test_a_gone_advert_and_another_host_refused_before_the_gate(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://karboom.io/jobs/wmjevl/x"], lambda u: (404, ""))
+        self.assertEqual((code, rows), (3, []), err)
+        self.assertIn("HTTP 404", err)
+        # an address that is not this board's is refused by `cmd_ad` before anything is sent (2, and it says so)
+        mod2 = self._mod()
+        import contextlib
+        err2 = io.StringIO()
+        with contextlib.redirect_stderr(err2), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit) as cm:
+                mod2.main(["ad", "--url", "https://example.com/jobs/wmjevl/x"])
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("not a Karboom advert address", err2.getvalue())
+        # and `request` itself refuses another host BEFORE the gate — the gate is made to RAISE, so a call
+        # that reached it would fail loudly instead of passing for a refusal
+        mod3 = self._mod()
+        mod3.gate = lambda url: (_ for _ in ()).throw(AssertionError("the gate was reached for another host"))
+        mod3._PACE.wait = lambda: None
+        err3 = io.StringIO()
+        with contextlib.redirect_stderr(err3):
+            with self.assertRaises(SystemExit) as cm:
+                mod3.request("https://example.com/jobs")
+        self.assertEqual(cm.exception.code, 7)
+        self.assertIn("never sent", err3.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
