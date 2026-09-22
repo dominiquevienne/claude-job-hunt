@@ -93,6 +93,10 @@ the city and the age are in the page's own markup, and the record carries
 **an absent JobPosting is not an absent advert**, and a field left blank would
 have said the opposite.
 
+## The criterion is a fact of the BOARD, not of the row
+
+**The gender is printed in the NOTICE, and is not carried.** ZERO of thirty-six cards carried «جنسیت» on 2026-09-22 while 4 352 of 4 352 rows declared one — the worst instance of the defect #885 names. **No list row declares a withheld criterion**; the advert's own record declares it, and only when the page carries it.
+
 ## What is emitted, and what is withheld
 
 Emitted: the site's `data-id`, the address, the title, the employer, the city

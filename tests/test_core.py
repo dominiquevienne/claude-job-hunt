@@ -35394,10 +35394,15 @@ class AHubThatAnswersLikeAListAndARowThatPretendsToBeAWord(unittest.TestCase):
         self.assertEqual(sent, ["https://karboom.io/jobs?page=1", "https://karboom.io/jobs?page=2"])
         self.assertEqual(len(rows), 39)   # the repeat once
         self.assertIn("39 emitted over 2 page(s) of 20 — the site states 393 «آگهی استخدام», its pager ending at page 20; a BOUNDED read (--pages), not the board", err)
-        self.assertIn("the gender the board prints beside an advert is NOT carried (#183)", err)
+        self.assertIn("the board prints a gender criterion ON ITS ADVERT PAGES and it is never carried (#183)", err)
+        self.assertIn("no row claims to have withheld one", err)
         r = rows[0]
-        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["posted_as_written"], r["country"], r["criteria_withheld"], r["contacts_withheld"]),
-                         ("karboom:k00000", "k00000", "عنوان 0", "مام", "تهران", "امروز", "IR", ["gender"], True))
+        self.assertEqual((r["ledger_id"], r["id"], r["title"], r["company"], r["place"], r["posted_as_written"], r["country"], r["contacts_withheld"]),
+                         ("karboom:k00000", "k00000", "عنوان 0", "مام", "تهران", "امروز", "IR", True))
+        # **#885: a list row declares NO criterion.** The gender is on the advert page — one card of twenty
+        # carried it on 2026-09-22 — so a row that claimed to have withheld one claimed something the card
+        # never held. The absence is asserted on EVERY row, not just the first.
+        self.assertTrue(all("criteria_withheld" not in x for x in rows), "a list row still claims a withheld criterion")
         self.assertNotIn("/storage/", json.dumps(rows, ensure_ascii=False))   # the employer's logo is not a field
         self.assertEqual(len({x["ledger_id"] for x in rows}), 39)   # the hashid keys, the Persian slug would fold to nothing
         # a walk that ends short of the stated count says so and exits 6; one that matches exits 0
@@ -35974,7 +35979,10 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         self.assertNotIn("the site states 2", err)
         self.assertNotIn("the site states 100", err)
         self.assertIn("a BOUNDED read (--pages), not the board", err)
-        self.assertTrue(all(r["criteria_withheld"] == ["gender"] and r["contacts_withheld"] for r in rows))
+        # **#885: a list row declares NO criterion.** Zero of thirty-six cards carried «جنسیت» on
+        # 2026-09-22 while 4 352 of 4 352 rows declared one — the worst instance of the defect measured.
+        self.assertTrue(all("criteria_withheld" not in r and r["contacts_withheld"] for r in rows),
+                        "a list row still claims a withheld criterion")
         # and a saved copy is bounded BY CONSTRUCTION — one page is not the board, whatever its pager says
         with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as fh:
             fh.write(self._listing(p1, last=None))
@@ -35997,6 +36005,7 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         code, rows, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u: (200, self._listing(cards)))
         self.assertEqual((code, len(rows)), (0, 3), err)
         a, b, c = rows
+        self.assertTrue(all("criteria_withheld" not in r for r in rows))
         self.assertEqual((a["place"], a["contract_as_written"], a["salary_as_written"]), ("تایباد", "تمام وقت", "حقوق توافقی"))
         # the one with no city: the city is None and the contract is STILL the contract
         self.assertEqual((b["place"], b["contract_as_written"], b["salary_as_written"]), (None, "تمام وقت", "از ۳۰ میلیون به بالا"))

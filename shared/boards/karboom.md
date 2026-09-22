@@ -81,6 +81,10 @@ provenances are not one grandeur: the Tehran facet (`/jobs/tehran`, read
 count and the city label are two questions, and five minutes separate the two
 reads. Nothing here says which — it is recorded, not resolved.
 
+## The criterion is a fact of the BOARD, not of the row
+
+**The gender is printed on the ADVERT page, and is not carried.** One card of twenty carried «جنسیت» on the list of 2026-09-22 — so **no list row declares a withheld criterion** (#885): a claim about the board does not belong in a field that reads as a claim about the advert. The advert's own record declares it, and only when the page carries it.
+
 ## What is emitted, and what is withheld
 
 Emitted per advert, from the list: the site's hashid, the canonical address,

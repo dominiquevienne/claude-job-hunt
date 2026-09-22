@@ -219,7 +219,10 @@ def row(c):
             "title": scrub(c["title"]), "company": scrub(c["company"]), "place": scrub(c["place"]),
             "contract_as_written": c["contract_as_written"], "salary_as_written": c["salary_as_written"],
             "posted_as_written": c["posted_as_written"], "badge_as_written": c["badge_as_written"],
-            "criteria_withheld": ["gender"], "contacts_withheld": True}
+            # **No `criteria_withheld` here (#885).** The gender is in the NOTICE, not on the card: measured
+            # 2026-09-22, ZERO of thirty-six cards carried «جنسیت» while 4 352 of 4 352 rows declared one.
+            # A claim about the board does not belong in a field that reads as a claim about the advert.
+            "contacts_withheld": True}
 
 
 def cmd_jobs(a):
@@ -270,7 +273,9 @@ def cmd_jobs(a):
     bound = f"; its pager ends at page {th(last)}, so at most {th(last * PAGE)} cards ({th(last)} × {PAGE}) — a BOUND, not a count" if last else ""
     note(f"{th(n)} emitted over {th(pages_read)} page(s) of {PAGE} — **the site states no count**{bound}"
          + (f"; a BOUNDED read ({'one saved page' if a.from_file else '--pages'}), not the board" if bounded else "."))
-    note("the gender the notices print is NOT carried (#183): every row says `criteria_withheld: [\"gender\"]`.")
+    note("the notices print a gender criterion and it is never carried (#183). The list cards do not carry "
+         "one, so no row claims to have withheld one — a claim about the board does not belong in a field "
+         "that reads as a claim about the advert (#885).")
 
 
 def cmd_ad(a):
