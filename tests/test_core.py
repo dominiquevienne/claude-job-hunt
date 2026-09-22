@@ -36102,7 +36102,27 @@ class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
     footer disagreement named as a question; the notes dropped on the many
     and kept on the one; `--details` off by default; the host's own
     `Crawl-delay` passed to the pace; a repeating page (6); a 200 with no
-    table (6); a 404 (3); an account path refused (7); another host (7)."""
+    table (6); a 404 (3); an account path refused (7); another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — seven for seven:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the date-shape check dropped | `['ok-1', 'shift-2'] != ['ok-1']` |
+    | a multi-place cell stops counting for each | `['Lahij , Al-Kokhah'] != ['Lahij', 'Al-Kokhah']` |
+    | the one-cell message row treated as a row | `'No jobs available.' not found` in stderr |
+    | the standing advice carried again | `'important_notes' unexpectedly found` |
+    | the e-mail scrub dropped | `'hr@example.com' unexpectedly found` |
+    | our own delay instead of the host's | `1.0 != 3.0` |
+    | the host check dropped | `2 != 7` on two URLs |
+
+    **And the first mutation was GREEN until the test was fixed.** The
+    shifted row put the inserted column where the title's link is, so the
+    row was refused for having no link and the date check was never reached
+    — *a guard the test cannot reach reads exactly like a guard that holds*.
+    The column now lands after Title, which is where a real insertion would
+    put it, and only the date columns show it."""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_yemenhr", os.path.join(SCRIPTS, "yemenhr.py"))
