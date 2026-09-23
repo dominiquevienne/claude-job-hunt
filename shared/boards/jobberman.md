@@ -120,3 +120,26 @@ six mutations on a detached worktree (`python3 -B`), six red — the
 dedup across files dropped, `PAGES_ALLOWED` raised to 11, the count regex
 broken, the `--host` table reduced, the breadcrumb filter dropped, the
 salary regex allowing a bare comma.
+
+## 2026-09-23 (#894) — two witnesses, and it still misreported WHY it stopped
+
+**This adapter has more witnesses than most** — the listing's own «N Jobs Found»,
+printed beside every walk and compared in all three branches, and a `sitemap`
+route reading the index the rules themselves declare. *The count was never the
+problem.*
+
+**What was wrong is the sentence explaining the shortfall.** It read «the rules
+allow page=2…10 by name and refuse the rest, **so the listing walk ends here by
+the rules**» — true when the cap is what stopped the walk, and **false when a
+page simply added nothing new**, which ends the loop one branch earlier.
+
+> **In that second case the run asserted a cause it did not have.** Same species
+> as `empleos_hn.py` the same day: not a guard that displays what it should
+> compare, but a guard that **states what it did not do**. And here it is worse
+> in one respect — the cause it named is a legitimate one, so the sentence reads
+> like a deliberate, well-founded stop.
+
+**Corrected 2026-09-23**: the two endings are told apart, and the early one says
+plainly that the walk **did not** end by the rules and that why it ended is not
+established. *Naming the ending honestly is cheaper than guessing it, and the
+guard now builds a page-2-repeats-page-1 case to hold it there.*

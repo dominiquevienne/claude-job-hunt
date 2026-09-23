@@ -21424,6 +21424,25 @@ class OneFileThreeHostsAndAListingWalkThatEndsWhereTheRulesSay(unittest.TestCase
         self.assertNotIn("page=11", " ".join(asked))
         self.assertIn("the rules allow page=2…10 by name and refuse the rest, so the listing walk ends here by the rules", err)
 
+    def test_a_walk_that_ends_early_does_not_say_it_ended_by_the_rules(self):
+        """**#894.** The shortfall sentence explained itself by the page cap — «the rules
+        allow page=2…10 … so the listing walk ends here by the rules» — and printed that
+        whether the cap had stopped the walk or a page had simply added nothing new. *In the
+        second case it asserted a cause it did not have*: same species as `empleos_hn`, where
+        the note claimed a walk to the last page that had stopped before it. The two endings
+        are now told apart, and the early one says plainly that why it ended is not
+        established."""
+        mod = self._mod()
+        page1 = self._listing("4,194", [self._card(1000 + i, f"job-1-{i}", f"01{i:02d}ab", f"T1{i}", "Co",
+                                                   "Lagos", "Full Time", None, "Sales", "1 day ago")
+                                        for i in range(16)])
+        rows, err, asked = self._run(mod, mod.cmd_recent, [(200, page1), (200, page1)])
+        self.assertEqual(len(rows), 16)
+        self.assertEqual(len(asked), 2)          # page 2 repeated page 1 and the walk stopped
+        self.assertIn("did NOT end by the rules", err)
+        self.assertIn("why it ended is not established", err)
+        self.assertNotIn("so the listing walk ends here by the rules", err)
+
     def test_the_sitemap_dedupes_across_category_files_and_prints_the_listings_count(self):
         mod = self._mod()
         index = "<sitemapindex>" + "".join(f"<sitemap><loc>https://www.jobberman.com/sitemap-listings-{c}-en.xml</loc><lastmod>2026-09-13T16:00:00+00:00</lastmod></sitemap>" for c in ("accounting", "admin")) + "</sitemapindex>"

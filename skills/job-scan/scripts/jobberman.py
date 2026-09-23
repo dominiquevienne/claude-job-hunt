@@ -218,7 +218,7 @@ def cmd_sitemap(a):
 
 def cmd_recent(a):
     host = host_of(a)
-    rows, seen, stated, page = [], set(), None, 1
+    rows, seen, stated, page, ended = [], set(), None, 1, "the cap"
     limit_pages = min(a.pages or PAGES_ALLOWED, PAGES_ALLOWED)
     while True:
         url = f"https://{host}/jobs" + (f"?page={page}" if page > 1 else "")
@@ -237,9 +237,15 @@ def cmd_recent(a):
             seen.add(c["id"])
             rows.append(row(host, c))
             new += 1
+        # **#894: the two endings must not be told as one.** The sentence below explains a
+        # shortfall by «the rules allow page=2…10 … so the listing walk ends here by the
+        # rules» — true when the cap is what stopped us, FALSE when a page simply added
+        # nothing new, and in that second case the run asserts a cause it did not have.
         if not found or new == 0:
+            ended = "nothing new" if found else "no card"
             break
         if page >= limit_pages or (a.limit and len(rows) >= a.limit):
+            ended = "the cap"
             break
         page += 1
     emitted = rows[:a.limit] if a.limit else rows
@@ -251,7 +257,12 @@ def cmd_recent(a):
     elif n >= stated:
         note(f"{th(n)} emitted over {page} page(s), the listing states {th(stated)} «Jobs Found» — " + ("equal" if n == stated else "more emitted than stated") + ".")
     else:
-        note(f"{th(n)} emitted of the {th(stated)} the listing states «Jobs Found» — {page} page(s) of {PAGE_SIZE}; the rules allow page=2…{PAGES_ALLOWED} by name and refuse the rest, so the listing walk ends here by the rules; `sitemap` is the whole.")
+        why = (f"the rules allow page=2…{PAGES_ALLOWED} by name and refuse the rest, so the "
+               f"listing walk ends here by the rules"
+               if ended == "the cap" else
+               f"page {page} added {ended} while the rules still allowed page=2…{PAGES_ALLOWED} — "
+               f"the walk did NOT end by the rules, and why it ended is not established")
+        note(f"{th(n)} emitted of the {th(stated)} the listing states «Jobs Found» — {page} page(s) of {PAGE_SIZE}; {why}; `sitemap` is the whole.")
 
 
 def cmd_ad(a):
