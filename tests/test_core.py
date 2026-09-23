@@ -36907,5 +36907,209 @@ class AWindowCheckedAtEveryPageAndAPlaceNamedByTheSiteItself(unittest.TestCase):
                 self.assertEqual(cm.exception.code, 7)
 
 
+class ThreeFiguresThatPredictOneAnotherAndAFieldReadByWhatItIs(unittest.TestCase):
+    """**`myjobsmm.py`, 2026-09-23 (#636).** Myanmar's second living board.
+    Four things:
+
+    * **three figures predict one another, and they were checked BEFORE a
+      line was written**: the home page names thirty categories summing to
+      177; `/jobs` pages twelve and its pager names 15, so 15 × 12 = 180
+      bounds it; and if the board holds 177 the last page must carry
+      exactly 177 − 14 × 12 = **9**. *It carried 9, and page 16 carried
+      none.* Unlike Yemen HR and HireLebanese — where the total and the
+      per-category counts came off the same page and could agree by
+      construction — these are three separate statements;
+    * **the pager is a SLIDING WINDOW**, so the bound is read from page 1
+      only: page 15 itself links to 16, which is empty. A bound taken from
+      every page would follow the window instead of bounding the walk;
+    * **the fields are read by what they ARE, never by position.** Some
+      cards open with a badge («Latest») and others with the employer's
+      name, so the third string is a title on one card and a location on
+      the next. The title is the link's `aria-label`, the employer the
+      `/companies/` link's text, and of the rest the category is the one
+      the SITE names — its own thirty labels;
+    * **a salary the board hides is declared, not dropped**: «Hidden» and
+      «Negotiable» are two different statements and neither is «no salary
+      field».
+
+    And two categories named almost alike are carried as two: the site
+    names them separately, and merging would invent a decision it has not
+    made — *the mirror of HireLebanese, where three ids lived under one
+    truncated label and telling them apart would have invented the
+    distinction. Both times: carry what the site exposes, never what we
+    infer.*
+
+    Both ways: the full record; a card opening with a badge and one opening
+    with the employer read alike; the category matched from the site's
+    vocabulary; «Hidden» and «Negotiable» told apart; a card with no
+    company link counted rather than nulled in silence; the bound read from
+    page 1 and not from the window; a repeating page (6); a first page with
+    no card (6); a 404 (3); an unknown category slug (2); `/cdn-cgi/`
+    refused (7); an account path (7); another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — six for six:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the salary put back under the telephone rule | `'[telephone withheld] MMK' != '350000 - 450000 MMK'` |
+    | the bound re-read on every page | `'the pager named 9 … on page 1' not found` |
+    | the category no longer matched to the site's labels | `None != 'Education / Training / Teaching'` |
+    | «Hidden» and «Negotiable» no longer told apart | `None is not true : the hidden salary is not declared` |
+    | cards with no employer no longer counted | `'1 card(s) carry no employer' not found` |
+    | `/cdn-cgi/` and the host check dropped | `2 != 7` |
+
+    *The first of these is the reason the fixture carries a REAL Myanmar
+    figure: `1000 USD` passes the telephone rule and would have shipped the
+    corruption. And the fourth asserted with `[...]` at first, so dropping
+    the branch reddened with a `KeyError` — **a red of the wrong kind still
+    reads as a crash**, so it asserts with `.get` and names the field.*"""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_myjobsmm", os.path.join(SCRIPTS, "myjobsmm.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    CATS = (("sales-business-development", "Sales / Business Development", 2),
+            ("education-training-teaching", "Education / Training / Teaching", 1))
+
+    @classmethod
+    def _home(cls, cats=None):
+        cats = cls.CATS if cats is None else cats
+        return "<html><body>" + "".join(
+            f'<a class="group" href="/jobs/category/{slug}"><div><p class="text-base">{name}</p></div>'
+            f'<div><p class="text-sm">(<!-- -->{count}<!-- --> <!-- -->Jobs<!-- -->)</p></div></a>'
+            for slug, name, count in cats) + "</body></html>"
+
+    @staticmethod
+    def _card(path, title, employer=None, company=None, salary="Negotiable",
+              place="Yangon, Yangon", cat="Sales / Business Development",
+              etype="Full-time", age="1 day ago", badge="Latest"):
+        who = (f'<a class="relative z-10" href="/companies/{company}"><p>{employer}</p></a>'
+               if company else "")
+        return ('<div class="col-span-1"><div class="relative p-6">'
+                f'<a href="{path}" target="_blank" class="absolute inset-0" aria-label="{title} "></a>'
+                + (f"<span>{badge}</span>" if badge else "") + who
+                + f'<svg viewBox="0 0 256 256"><path d="M216,56H176V48"></path></svg>'
+                + "".join(f"<span>{x}</span>" for x in (salary, place, cat, etype, age) if x)
+                + "</div></div>")
+
+    @classmethod
+    def _page(cls, cards, pager=(2, 15)):
+        links = "".join(f'<a href="/jobs?page={n}">{n}</a>' for n in pager)
+        return "<html><body>" + links + "".join(cards) + "</body></html>"
+
+    def _run(self, mod, pages, home=None, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if url.endswith("myjobs.com.mm/") or url == "https://myjobs.com.mm/":
+                return home if home is not None else (200, self._home())
+            m = re.search(r"[?&]page=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(category=None, since_days=None, country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_record_the_vocabulary_and_the_three_figures(self):
+        mod = self._mod()
+        p1 = self._page([
+            self._card("/jobs/acme-sales-manager-aa1111", "Sales Manager", "Acme Ltd", "acme-ltd-zz0000"),
+            # **this card opens with the EMPLOYER, not a badge** — a positional read would take
+            # «Beta Co» for a badge and the title for the employer
+            self._card("/jobs/beta-maths-teacher-bb2222", "Maths Teacher", "Beta Co", "beta-co-yy1111",
+                       badge=None, salary="Hidden", cat="Education / Training / Teaching",
+                       etype="Internship", age="about 12 hours ago"),
+            # no company link at all: the site prints none, so no name is read
+            self._card("/jobs/nobody-video-editor-cc3333", "Video Editor", None, None,
+                       salary="350000 - 450000 MMK")], pager=(2, 2))
+        recs, err, asked = self._run(mod, {1: (200, p1), 2: (200, self._page([], pager=(1, 2)))},
+                                     country_code="mm")
+        self.assertEqual(asked[0], "https://myjobs.com.mm/")
+        self.assertEqual([r["id"] for r in recs], ["aa1111", "bb2222", "cc3333"])
+        self.assertEqual((recs[0]["title"], recs[0]["employer"]), ("Sales Manager", "Acme Ltd"))
+        self.assertEqual((recs[1]["title"], recs[1]["employer"]), ("Maths Teacher", "Beta Co"))
+        self.assertEqual(recs[1]["category"], "Education / Training / Teaching")
+        self.assertEqual(recs[0]["url"], "https://myjobs.com.mm/jobs/acme-sales-manager-aa1111")
+        self.assertEqual((recs[1]["posted_as_written"], recs[1]["posted_days_ago"]), ("about 12 hours ago", 0))
+        self.assertEqual((recs[0]["posted_as_written"], recs[0]["posted_days_ago"]), ("1 day ago", 1))
+        # **hidden, negotiable and written are three different statements**
+        # `.get` rather than `[...]`: dropping the branch should redden with an AssertionError
+        # naming the field, not a KeyError — *a red of the wrong KIND still reads as a crash.*
+        self.assertTrue(recs[1].get("salary_hidden"), "the hidden salary is not declared")
+        self.assertTrue(recs[0].get("salary_negotiable"), "the negotiable salary is not declared")
+        self.assertEqual(recs[2]["salary_as_written"], "350000 - 450000 MMK")
+        self.assertNotIn("salary_hidden", recs[0])
+        # **a card with no company link is counted, not silently nulled**
+        self.assertIsNone(recs[2]["employer"])
+        self.assertIn("1 card(s) carry no employer", err)
+        self.assertIn("3 emitted over 1 page(s) of 12", err)
+        self.assertIn("2 categories sum to 3", err.replace("the home page's ", ""))
+        self.assertIn("bounds the walk", err)
+        self.assertTrue(all(r["country"] == "MM" and r["contacts_withheld"] and not r["detail_read"]
+                            for r in recs))
+
+    def test_the_bound_comes_from_page_one_and_not_from_the_sliding_window(self):
+        """**The pager slides**: the real page 15 offers a link to 16, which is empty. A bound
+        re-read on every page would follow the window and never bound anything."""
+        mod = self._mod()
+        p1 = self._page([self._card(f"/jobs/x-{i}-a{i}1111", f"T{i}") for i in range(3)], pager=(2, 9))
+        p2 = self._page([self._card(f"/jobs/y-{i}-b{i}2222", f"U{i}") for i in range(2)], pager=(1, 2, 3))
+        recs, err, _a = self._run(mod, {1: (200, p1), 2: (200, p2), 3: (200, self._page([], pager=(2, 3)))},
+                                  home=(200, self._home((("s", "S", 5),))))
+        self.assertEqual(len(recs), 5)
+        self.assertIn("the pager named 9 as its largest page on page 1", err)   # not 3, the window's edge
+
+    def test_a_category_the_site_does_not_name_is_refused_and_one_it_names_walks(self):
+        import contextlib
+        mod = self._mod()
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, {1: (200, self._page([]))}, category="nope")
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("sales-business-development", err.getvalue())
+        mod = self._mod()
+        recs, err2, asked = self._run(mod, {1: (200, self._page([self._card("/jobs/a-b-cc1111", "T")])),
+                                            2: (200, self._page([]))},
+                                      category="sales-business-development")
+        self.assertIn("/jobs/category/sales-business-development", asked[1])
+        self.assertNotIn("category counts the site states", err2)   # a filter moves our side only
+
+    def test_the_ways_the_walk_can_fail_and_the_paths_never_asked_for(self):
+        import contextlib
+        mod = self._mod()
+        one = self._page([self._card("/jobs/a-b-cc1111", "T")], pager=(2, 5))
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, one), 2: (200, one)})
+        self.assertEqual(cm.exception.code, 6)
+        for first, code in (((200, "<html><body>nothing</body></html>"), 6), ((404, ""), 3), ((500, ""), 6)):
+            mod = self._mod()
+            with self.subTest(first=first[0]):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    self._run(mod, {1: first})
+                self.assertEqual(cm.exception.code, code)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for url in ("https://myjobs.com.mm/cdn-cgi/l/email-protection#771e191118",
+                    "https://myjobs.com.mm/login", "https://www.myjobs.com.mm/jobs",
+                    "https://example.com/jobs"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
