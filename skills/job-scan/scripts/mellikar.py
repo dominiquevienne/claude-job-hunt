@@ -238,8 +238,10 @@ def cmd_categories(a):
         seen.add(slug)
         tail = body[body.index(f'/jobs/category/{slug}"'):][:600]
         m = COUNT_RE.search(tail)
-        # the tile's text is the name AND the count beneath it; the name alone is what a label is
-        label = (text(inner) or "").split("\n")[0].strip() or None
+        # The tile's text is the name AND the count beneath it. Cutting on the first line break works
+        # on the real page, where the two sit in sibling blocks — and NOT on a tile whose count shares
+        # the line. The count is removed by what it IS, not by where it happens to fall.
+        label = COUNT_RE.sub("", text(inner) or "").strip(" \n()") or None
         out.append({"category": slug, "label": label, "stated": fa_int(m.group(1)) if m else None})
     if not out:
         die(f"{HOME}: no category tile in the answer — the home page changed shape.", EXIT_PARTIAL)

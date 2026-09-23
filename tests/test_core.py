@@ -36428,8 +36428,8 @@ class AListThatResetsItselfAndThreeMeaningsOfABarrenRound(unittest.TestCase):
         return f'<html><body><form id="fo" method="post">{state}{body}{btn}</form></body></html>'
 
     HOME = ('<html><body><p>امروز بیش از 70000 شغل را جستجو کنید!</p>'
-            '<a href="/jobs/category/manual-worker"><span>کارگر</span></a><span>(5365 موقعیت باز)</span>'
-            '<a href="/jobs/category/sewing"><span>دوخت</span></a><span>(592 موقعیت باز)</span>'
+            '<a href="/jobs/category/manual-worker"><span>کارگر</span><p>(5365 موقعیت باز)</p></a>'
+            '<a href="/jobs/category/sewing"><span>دوخت</span><p>(592 موقعیت باز)</p></a>'
             '<p>خیابان امام، پلاک 4</p><p>021-22040036</p><p>09109423215</p></body></html>')
 
     def _run(self, mod, argv, answers):
@@ -36489,6 +36489,25 @@ class AListThatResetsItselfAndThreeMeaningsOfABarrenRound(unittest.TestCase):
         self.assertIn("rounds without growth — the list is over", err)
         # the page that did not grow is NAMED with its size, so «over» is not a guess
         self.assertIn("the page did not grow (36 rows", err)
+
+    def test_one_flat_round_is_tolerated_and_two_end_the_walk(self):
+        """**Prospective, and it says so**: I measured RESETS on this board, not a transient flat round.
+        `MAX_STALLS = 2` buys the tolerance for one; without a case that needs it, the constant would be
+        an unjustified 2 and a single hiccup would end a walk that had 5 365 rows to go."""
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(72)]
+        # 36, then FLAT at 36, then growth to 54 — the flat round must not end the walk
+        pages = [self._page(A[:36]), self._page(A[:36]), self._page(A[:54]), self._page(A[:54]), self._page(A[:54])]
+        seq = iter(pages)
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, next(seq, pages[-1])) if form is not None else (200, self._page(A[:18]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "5"], answers)
+        self.assertEqual((code, len(rows)), (0, 54), err)    # NOT 36: the flat round was tolerated
+        self.assertIn("the page did not grow (36 rows", err)
+        self.assertIn("rounds without growth — the list is over", err)   # the two flat ones at the end
 
     def test_the_whole_form_echoed_answers_500_and_the_message_says_why(self):
         mod = self._mod()
