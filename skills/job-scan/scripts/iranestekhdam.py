@@ -270,12 +270,22 @@ def cmd_jobs(a):
     n = len(out)
     bounded = bool(a.from_file) or (not a.all_pages and (a.pages or 3) < (last or 0))
     # **No total is invented.** The bound is arithmetic on the pager and is called a bound.
-    bound = f"; its pager ends at page {th(last)}, so at most {th(last * PAGE)} cards ({th(last)} × {PAGE}) — a BOUND, not a count" if last else ""
+    # **The bound is ASSERTED, not merely printed.** A walk that stops early prints a smaller number and
+    # nothing contradicts it — the site states no count, so there is no other witness. Measured on
+    # `mellikar.com` the same week (#631): a WebForms list RESET itself twice in eight rounds, and a stop
+    # on «no new row» would have emitted 18 of 5 358 with exit 0. `talacom.py` already does this; this
+    # adapter printed the interval and checked nothing.
+    lo, hi = (max(1, (last - 1) * PAGE + 1), last * PAGE) if last else (None, None)
+    bound = f"; its pager ends at page {th(last)}, so the walk must land in {th(lo)}–{th(hi)} ({th(last)} × {PAGE}) — a BOUND, not a count" if last else ""
+    short = bool(last) and not bounded and not (lo <= n <= hi)
     note(f"{th(n)} emitted over {th(pages_read)} page(s) of {PAGE} — **the site states no count**{bound}"
-         + (f"; a BOUNDED read ({'one saved page' if a.from_file else '--pages'}), not the board" if bounded else "."))
+         + (f"; a BOUNDED read ({'one saved page' if a.from_file else '--pages'}), not the board" if bounded
+            else (f"; **OUTSIDE the pager's bound — the walk stopped early or the list moved**" if short else "; inside the bound.")))
     note("the notices print a gender criterion and it is never carried (#183). The list cards do not carry "
          "one, so no row claims to have withheld one — a claim about the board does not belong in a field "
          "that reads as a claim about the advert (#885).")
+    if short:
+        sys.exit(EXIT_PARTIAL)
 
 
 def cmd_ad(a):
