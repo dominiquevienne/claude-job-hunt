@@ -116,3 +116,25 @@ Measured 13:27–13:40 UTC. Rules twice, root twice (stable), listing three
 times (page 1 stable, the stream moving), `start=20` and `start=28` once
 each, one advertisement. `list --pages 3 --live`: 56 emitted of 57 distinct,
 83 rows read (28+28+27), 26 repeated, 10 Gold pinned, 1 expired.
+
+## 2026-09-23 (#894) — this walk has NO witness, and the site's counter is not one
+
+**The walk stops when a page brings nothing new**, prints a note, and that is all.
+*Nothing outside our own extraction bounds it.*
+
+**And the figure the site displays is not a bound.** «Jobs Posted» is a
+**cumulative counter — it counts everything ever posted**, not what the list
+holds today. Reading it as a total would give a witness that is specific,
+plausible and false: the adapter already refuses to use it that way, and this
+card now says why in so many words.
+
+> **So the stopping rule holds by luck here.** If this board ever resets its
+> list — a session dropped, a cache serving the first slice again — a round
+> without novelty would be indistinguishable from the end, and the run would
+> report a complete read with no error and no exit code.
+
+**What would give it a witness**, in order of what would cost least to measure:
+a count printed by a *filtered* listing (by category or by district, if one
+states its own), a sitemap, or the pager naming its own last page. **None has
+been measured**, and writing that down is worth more than leaving the walk
+looking as though it had a net.

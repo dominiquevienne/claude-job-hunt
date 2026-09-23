@@ -197,3 +197,20 @@ script walks `/offres-demploi/page/N/` until the pager ends, keys on the
 slug, reads the ad's `datePublished` from its WebPage node, scrubs every
 e-mail address and telephone, and prints «N emitted, the site states no
 total». The 2026-09-21 control of the deferred tasks is done here.
+
+## 2026-09-23 (#894) — this one compares, and it tells the truth about what it did
+
+**Checked against the defect of #894 and found sound.** The walk ends on a page
+that only repeats, *and it says so against the site's own bound*:
+
+```
+if page <= last:  note(f"page {page} of {last}: only repeats — the pager promised more; stopped.")
+```
+
+**The pager's last page is the site's own figure, and it is compared, not
+printed.** A walk that stops early therefore announces itself as a walk that
+stopped early — which is the whole of what #894 asks for.
+
+*What it does not do is exit `6` on that shortfall: the run says it, the exit
+code does not.* **That is a candidate, not a defect** — the difference from
+`empleos_hn.py` is that nothing here asserts a completeness it does not have.

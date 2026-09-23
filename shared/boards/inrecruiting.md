@@ -72,3 +72,23 @@ another host's list replayed · the section not sent · the walk stopping
 after the first page · the summary not scrubbed · the screen-reader label
 read as a value · the empty tenant read as an error · the street emitted ·
 the ad not scrubbed · a composed tenant accepted.
+
+## 2026-09-23 (#894) — no witness, and the adapter says so itself
+
+**The tenant's career page states no count**, so the walk ends when a page
+repeats the one before it. The source has said this in place since it was
+written — `# the next page repeated the last: the end, since no count is
+stated` — and the card now carries it too, because *a limit that lives only in
+a comment is a limit only its author knows.*
+
+> **The rule holds by luck if a tenant's career page can ever serve the same
+> slice twice** — a session reset, a cache, a filter lost in flight. Nothing
+> outside our own extraction would contradict it.
+
+**One tenant at a time is what makes this bearable**: the walks are short and a
+missing page shows in a number a human reads. *It is not a witness; it is a
+reason the absence of one has not yet cost anything.*
+
+**What would give it one:** a tenant whose career page prints its own total,
+measured on several tenants to know whether the field is the ATS's or that
+employer's. Not measured.
