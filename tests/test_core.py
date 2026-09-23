@@ -36945,7 +36945,25 @@ class ThreeFiguresThatPredictOneAnotherAndAFieldReadByWhatItIs(unittest.TestCase
     company link counted rather than nulled in silence; the bound read from
     page 1 and not from the window; a repeating page (6); a first page with
     no card (6); a 404 (3); an unknown category slug (2); `/cdn-cgi/`
-    refused (7); an account path (7); another host (7)."""
+    refused (7); an account path (7); another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — six for six:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the salary put back under the telephone rule | `'[telephone withheld] MMK' != '350000 - 450000 MMK'` |
+    | the bound re-read on every page | `'the pager named 9 … on page 1' not found` |
+    | the category no longer matched to the site's labels | `None != 'Education / Training / Teaching'` |
+    | «Hidden» and «Negotiable» no longer told apart | `None is not true : the hidden salary is not declared` |
+    | cards with no employer no longer counted | `'1 card(s) carry no employer' not found` |
+    | `/cdn-cgi/` and the host check dropped | `2 != 7` |
+
+    *The first of these is the reason the fixture carries a REAL Myanmar
+    figure: `1000 USD` passes the telephone rule and would have shipped the
+    corruption. And the fourth asserted with `[...]` at first, so dropping
+    the branch reddened with a `KeyError` — **a red of the wrong kind still
+    reads as a crash**, so it asserts with `.get` and names the field.*"""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_myjobsmm", os.path.join(SCRIPTS, "myjobsmm.py"))
