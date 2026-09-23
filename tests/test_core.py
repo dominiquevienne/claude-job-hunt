@@ -37028,8 +37028,10 @@ class ThreeFiguresThatPredictOneAnotherAndAFieldReadByWhatItIs(unittest.TestCase
         self.assertEqual((recs[1]["posted_as_written"], recs[1]["posted_days_ago"]), ("about 12 hours ago", 0))
         self.assertEqual((recs[0]["posted_as_written"], recs[0]["posted_days_ago"]), ("1 day ago", 1))
         # **hidden, negotiable and written are three different statements**
-        self.assertTrue(recs[1]["salary_hidden"])
-        self.assertTrue(recs[0]["salary_negotiable"])
+        # `.get` rather than `[...]`: dropping the branch should redden with an AssertionError
+        # naming the field, not a KeyError — *a red of the wrong KIND still reads as a crash.*
+        self.assertTrue(recs[1].get("salary_hidden"), "the hidden salary is not declared")
+        self.assertTrue(recs[0].get("salary_negotiable"), "the negotiable salary is not declared")
         self.assertEqual(recs[2]["salary_as_written"], "350000 - 450000 MMK")
         self.assertNotIn("salary_hidden", recs[0])
         # **a card with no company link is counted, not silently nulled**
