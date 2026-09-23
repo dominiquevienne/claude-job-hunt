@@ -68,9 +68,10 @@ served.
 
 ## Control of 2026-09-23 — still mute, and the silence is now dated twice
 
-**2026-09-23 15:33:41 UTC (`jobmali.com`) and 15:42:18 UTC (`www.jobmali.com`),
-declared client, `bin/fetch-body.py`, twelve days after the first reading.** Both
-reads end the same way, and the tool says so before the request goes out:
+**2026-09-23, declared client, `bin/fetch-body.py`, twelve days after the first
+reading: FOUR attempts, all timeouts** — `jobmali.com` at 15:33:41 and 15:59:09
+UTC, `www.jobmali.com` twice, the surviving record attesting 15:50:32. Every one
+ends the same way, and the tool says so before the request goes out:
 
 ```
 [fetch-body] the rules file was not read (no-rules-timeout); waiting 10s before the first request
@@ -83,8 +84,19 @@ ERROR: https://www.jobmali.com/: URLError: <urlopen error timed out>
 nothing to fingerprint: there is not even a refusal to compare.**
 
 **Two hosts, two dates, the same nothing.** The 2026-09-11 reading recorded
-twelve timeouts across four reads; today's adds two more on the two hosts named
-by the card. *Twelve days apart, from the same network, an identical silence —
+twelve timeouts across four reads; today's adds four more on the two hosts named
+by the card.
+
+> **Correction of a figure published earlier today.** The first version of this
+> paragraph, and the comment on #773, gave «15:42:18 UTC» for `www`. That value
+> was read from the provenance file **while the invocation writing it was still
+> retrying**: the record that survives says **15:50:32**, and a second attempt on
+> the apex followed at 15:59:09. *The fact is unchanged — the host answered
+> nothing — and the timestamp was wrong.* **Two invocations writing to the same
+> output path leave one provenance, and reading it mid-flight reads a state that
+> will not survive.** The rule that follows: a time is published from the record
+> as it stands when the tool has EXITED, never from the file while it is being
+> written. *Twelve days apart, from the same network, an identical silence —
 which is one observation more than «it was mute that afternoon», and still not
 a verdict about the site.*
 
