@@ -93,6 +93,21 @@ the city and the age are in the page's own markup, and the record carries
 **an absent JobPosting is not an absent advert**, and a field left blank would
 have said the opposite.
 
+## The pager's bound is ASSERTED, not merely printed
+
+The first version of this adapter **printed** the interval and checked nothing. A walk that stopped
+early would have printed a smaller number and **nothing would have contradicted it** — this list
+states no count, so the interval is the only witness there is.
+
+**What made the hole visible was another board.** On `mellikar.com` the same week (#631), a WebForms
+list **reset itself to its first slice twice in eight rounds**; a stop on «no new row» — the rule
+this adapter and fifty-five others use — would have emitted **18 of the 5 358** the site announces,
+with exit 0 and no error. `talacom.py` already asserted its own interval; this one did not.
+
+So the walk now lands in `(last−1) × 36 + 1 … last × 36` or **exits 6 and says it is outside**.
+Measured on 2026-09-22: 121 pages, 4 352 emitted, interval 4 321–4 356 — inside, and the four
+missing are exactly the short last page.
+
 ## The criterion is a fact of the BOARD, not of the row
 
 **The gender is printed in the NOTICE, and is not carried.** ZERO of thirty-six cards carried «جنسیت» on 2026-09-22 while 4 352 of 4 352 rows declared one — the worst instance of the defect #885 names. **No list row declares a withheld criterion**; the advert's own record declares it, and only when the page carries it.
