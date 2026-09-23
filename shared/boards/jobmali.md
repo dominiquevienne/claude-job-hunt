@@ -1,6 +1,6 @@
 # Board measurement — jobmali.com (Mali): the name resolves, the host never answers — INDETERMINATE, and an indeterminate is not probed
 
-<!-- verified: 2026-09-11 -->
+<!-- verified: 2026-09-23 -->
 
 <!-- hosts: jobmali.com, www.jobmali.com -->
 <!-- script: none -->
@@ -65,3 +65,33 @@ INDETERMINATE moves from the rules file to the transport: nothing forbids,
 and nothing answers. A measurement to redo, from another network or at
 another hour; not a verdict.* `route:` is not declared — nothing was
 served.
+
+## Control of 2026-09-23 — still mute, and the silence is now dated twice
+
+**2026-09-23 15:33:41 UTC (`jobmali.com`) and 15:42:18 UTC (`www.jobmali.com`),
+declared client, `bin/fetch-body.py`, twelve days after the first reading.** Both
+reads end the same way, and the tool says so before the request goes out:
+
+```
+[fetch-body] the rules file was not read (no-rules-timeout); waiting 10s before the first request
+ERROR: https://jobmali.com/: URLError: <urlopen error timed out>
+ERROR: https://www.jobmali.com/: URLError: <urlopen error timed out>
+```
+
+*The rules file times out, so under #283 there is no rule to obey — open,
+`certain: False` — and then the transport times out too.* **No byte, no status,
+nothing to fingerprint: there is not even a refusal to compare.**
+
+**Two hosts, two dates, the same nothing.** The 2026-09-11 reading recorded
+twelve timeouts across four reads; today's adds two more on the two hosts named
+by the card. *Twelve days apart, from the same network, an identical silence —
+which is one observation more than «it was mute that afternoon», and still not
+a verdict about the site.*
+
+> **A host that never answers is not a host that refuses.** Nothing forbids and
+> nothing responds; the measurement is to redo from another network or at
+> another hour, and `route:` stays undeclared because nothing was served.
+
+**#773 stays `blocked` with this date**, and what lifts it is unchanged: one
+read that returns a status — any status, a refusal included, since a refusal is
+a body and a body can be measured.
