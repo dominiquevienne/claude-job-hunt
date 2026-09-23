@@ -1,6 +1,6 @@
 # Board measurement — Jobs in Bahamas (`jobsnassaubahamas.com`, Bahamas): served on 13.09, and on 16.09 the origin is down behind Cloudflare — HTTP 522 on the rules file and the root, three readings; no script yet, a control decides
 
-<!-- verified: 2026-09-16 -->
+<!-- verified: 2026-09-23 -->
 
 <!-- hosts: jobsnassaubahamas.com -->
 <!-- script: none -->
@@ -46,3 +46,39 @@ is a question for the owner, not a verdict of this card.
 
 *Control deposited in the sessions' deferred-tasks file for 2026-09-18 — the next session
 day after the derogation window.*
+
+## Control of 2026-09-23 — still 522, and now measured WITH its five siblings
+
+**2026-09-23 15:32:45 and 15:34:07 UTC, declared client, the guard on the exact
+path** (`/robots.txt` answers 522 too, so no rule could be read — open,
+`certain: False`, #283): the root answers **HTTP 522, 16 bytes,
+md5 `2c2dae9e9cdd`** on both reads. *Byte for byte what it answered on
+2026-09-16: seven days of an origin that does not respond.*
+
+**And the five hosts of the same family answer the same, in the same minutes:**
+
+```
+jobsnassaubahamas.com   522, 16 B, md5 2c2dae9e9cdd   (×2)
+jobsantigua.ag          522, 16 B, md5 2c2dae9e9cdd
+jobsindominica.com      522, 16 B, md5 2c2dae9e9cdd
+jobsseychelles.sc       522, 16 B, md5 2c2dae9e9cdd
+jobsstlucia.lc          522, 16 B, md5 2c2dae9e9cdd
+jobsstvincent.com       522, 16 B, md5 2c2dae9e9cdd
+```
+
+**This is what the 2026-09-21 control could not say.** That one re-read the five
+and recorded that Nassau «was not in this control» — so the family had six
+members and five dates. *Six hosts on one date is a different measurement from
+five hosts on one date and a sixth on another*: it is the first reading in which
+the whole family is observed at once, and it is uniform.
+
+**Nothing follows about the operator's name**, which is still not known and not
+composed: what is measured is a shape — same code, same length, same
+fingerprint, six hosts, one instant. **An origin that has been down for a week
+is not a board that refuses us**: `/` and `/robots.txt` alike are 522, which is
+Cloudflare saying it cannot reach the site, not the site saying no.
+
+**#448 stays `blocked`, and what lifts it is unchanged: the origin answering.**
+Next control **2026-09-28**, the date the five siblings already carry — from now
+on the six are read together, which is what their card asked for and what this
+control finally makes possible.
