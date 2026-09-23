@@ -37111,5 +37111,260 @@ class ThreeFiguresThatPredictOneAnotherAndAFieldReadByWhatItIs(unittest.TestCase
                 self.assertEqual(cm.exception.code, 7)
 
 
+class AnEnvelopeThatRestatesItsTotalAsZeroWhenItIsPastTheEnd(unittest.TestCase):
+    """**`zangia.py`, 2026-09-23 (#660).** The board's list is a Next.js shell; the adverts come from the
+    JSON its own bundle calls, and that JSON states its own total — which is this walk's only witness.
+
+    **Past the last page the envelope restates that total as ZERO.** Measured the same day: page 89 of 89
+    answers 25 items and `meta.total: 7945`; page 90 answers none and
+    `{"total": 0, "page": 0, "limit": 0, "totalPages": 0}`. A walk that refreshes its witness each round
+    therefore ends holding **zero** as the board's stated count, and prints «7 945 emitted — the site states
+    0: 7 945 short», which accuses an exact walk of over-reading and exits 6. *Nothing in the answer marks
+    that envelope as past-the-end: it has the same shape as a real one.* The total and the last page are
+    read on page ONE and never again, and the first test here is that mutation.
+
+    The rest of what this guard holds, each measured on the board on 2026-09-23:
+
+        the recruiter's telephone rides in `contact` on 84 of the 90 rows of page one — dropped WHOLE
+        `lat`/`lng` pin a workplace more precisely than a street — never read
+        the two routes do not carry the same criterion keys: an ABSENT key is not an unset one
+        a walk of 89 requests met a connection reset on the 49th — the rows already read are kept
+        the advert address carries an UNDERSCORE: `/job/_<code>`, never `/job/<code>`
+
+    The criterion pair is the defect of #885 turned around. There, a row claimed to have withheld something
+    its card never held. Here, `criteria_withheld: []` on a route that does not carry `age_requires` says
+    *the board prints no criterion about this advert* when the truth is *this route does not say* — and the
+    advert measured that day carried `age` and `retirement` on its list row."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_zangia", os.path.join(SCRIPTS, "zangia.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(code, **kw):
+        rec = {"code": code, "title": "Төслийн менежер", "company_name": "СҮҮХҮНГИЙ ХХК",
+               "company_name_en": "SUUKHUNGII LLC", "address": "Чингэлтэй дүүрэг",
+               "salary_phrase": "2,500,000-3,000,000", "salary_min": 2500000, "salary_max": 3000000,
+               "timetype": "Бүтэн цагийн", "job_level": "Менежер", "eng_req": False, "remote": 0,
+               "time": 1789003212, "end_on": 1791647999, "contact": "99112233, 80254000",
+               "lat": 47.9214851, "lng": 106.9068904, "logo": "J1-UNAE43C", "hits": 433, "applies": 22,
+               "age_requires": 0, "for_hbi": 0, "is_retired": 0}
+        rec.update(kw)
+        return rec
+
+    @classmethod
+    def _envelope(cls, codes, total=7, pages=1, **kw):
+        return json.dumps({"items": [cls._item(c, **kw) for c in codes],
+                           "meta": {"total": total, "page": 1, "limit": 90, "totalPages": pages}})
+
+    PAST_THE_END = json.dumps({"items": [], "meta": {"total": 0, "page": 0, "limit": 0, "totalPages": 0}})
+
+    def _run(self, mod, argv, answers):
+        """`mod.request` is stubbed, NOT `request_twice`: the retry belongs to what is under test."""
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        mod.RETRY_WAIT = 0
+        sent = []
+
+        def request(url, soft=False):
+            sent.append(url)
+            st, body = answers(url)
+            if st is None and not soft:
+                mod.die(f"{url}: stub failure")
+            return st, body
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_the_stated_total_is_read_on_page_one_and_never_again(self):
+        """The mutation this class exists for: move the read out of `if page == 1` and the witness becomes 0."""
+        mod = self._mod()
+        # the board names four pages and only three carry adverts — the fourth is the past-the-end envelope
+        pages = {1: self._envelope(["a", "b", "c"], total=7, pages=4),
+                 2: self._envelope(["d", "e"], total=7, pages=4),
+                 3: self._envelope(["f", "g"], total=7, pages=4),
+                 4: self.PAST_THE_END}
+
+        def answers(url):
+            n = int(re.search(r"[?&]page=(\d+)", url).group(1))
+            return 200, pages[n]
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual(len(rows), 7, err)
+        self.assertIn("the site states 7", err)          # NOT «states 0»
+        self.assertNotIn("the site states 0", err)
+        self.assertIn(": equal.", err)
+        self.assertEqual(code, 0, err)                   # a re-read would make this 6
+
+    def test_the_recruiter_telephone_never_reaches_a_row(self):
+        mod = self._mod()
+
+        def answers(url):
+            return 200, self._envelope(["a"], total=1, pages=1, contact="99112233, 11317798, 1800-1600")
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        blob = json.dumps(rows[0], ensure_ascii=False)
+        for digits in ("99112233", "11317798", "18001600", "1800-1600"):
+            self.assertNotIn(digits, blob)
+        for field in ("contact", "lat", "lng", "logo", "hits", "applies"):
+            self.assertNotIn(field, rows[0])
+        self.assertIs(rows[0]["contacts_withheld"], True)
+
+    def test_the_scrubber_takes_the_contact_and_leaves_the_pay(self):
+        """Both ways, on one body: three shapes of Mongolian number masked, and the money, the dates and
+        the working hours left alone. Opening the pattern to a bare `[1-9]` would eat `12000000` — a salary
+        in tugriks — which is the whole reason the first digit is constrained."""
+        mod = self._mod()
+        body = ("Холбоо барих: 99112233, 11317798, 1800-1600, +976 80254000, a@b.mn. "
+                "Цалин: 2,500,000-3,000,000, 12000000 төгрөг, 1 200 000. "
+                "Ажлын цаг 09:00-18:00, 2026 оны 10 сарын 10. Туршлага 6000-10000 ширхэг.")
+        detail = json.dumps({"code": "a", "title": "T", "company_name": "C", "address": "A",
+                             "description": f"<p>{body}</p>", "for_hbi": 0})
+
+        def answers(url):
+            return 200, detail
+        code, rows, err, _ = self._run(mod, ["ad", "--code", "a"], answers)
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        d = rows[0]["description"]
+        for gone in ("99112233", "11317798", "1800-1600", "80254000", "a@b.mn"):
+            self.assertNotIn(gone, d)
+        for kept in ("2,500,000-3,000,000", "12000000", "1 200 000", "09:00-18:00", "2026", "6000-10000"):
+            self.assertIn(kept, d)
+        self.assertIn("[telephone withheld]", d)
+        self.assertIn("[e-mail withheld]", d)
+
+    def test_a_criterion_the_route_does_not_carry_is_unknown_and_not_absent(self):
+        mod = self._mod()
+
+        def listing(url):
+            return 200, self._envelope(["a"], total=1, pages=1, age_requires=45, is_retired=1)
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], listing)
+        self.assertEqual(rows[0]["criteria_withheld"], ["age", "retirement"], err)
+        self.assertEqual(rows[0]["criteria_unknown"], [])
+        # the same advert by the detail route, which carries ONLY `for_hbi`
+        mod2 = self._mod()
+
+        def detail(url):
+            return 200, json.dumps({"code": "a", "title": "T", "company_name": "C", "for_hbi": 0})
+        code2, rows2, err2, _ = self._run(mod2, ["ad", "--code", "a"], detail)
+        self.assertEqual(rows2[0]["criteria_withheld"], [], err2)
+        self.assertEqual(rows2[0]["criteria_unknown"], ["age", "retirement"], err2)
+
+    def test_a_walk_the_transport_cuts_keeps_its_rows_and_says_it_is_short(self):
+        """A reset on the 49th of 89 requests threw away 48 pages on 2026-09-23, because the rows were held
+        to be printed at the end. They go out as they are read, and the walk that stops says so."""
+        mod = self._mod()
+        tries = []
+
+        def answers(url):
+            n = int(re.search(r"[?&]page=(\d+)", url).group(1))
+            if n == 1:
+                return 200, self._envelope(["a", "b"], total=7, pages=4)
+            tries.append(n)
+            return None, "ConnectionResetError: [Errno 54] Connection reset by peer"
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual(len(rows), 2, err)               # NOT zero: page one is kept
+        self.assertEqual(tries, [2, 2])                   # asked once, retried once
+        self.assertIn("one retry in 0 s", err)
+        self.assertIn("the rows already written are kept", err)
+        self.assertIn("did NOT reach the end of the board", err)
+        self.assertEqual(code, 6, err)
+
+    def test_another_host_is_refused_before_the_gate(self):
+        mod = self._mod()
+        import contextlib
+        seen = []
+        mod.gate = lambda url: seen.append(url)
+        for url in ("https://www.zangia.mn/api/jobs/search", "https://example.com/api/jobs/search",
+                    "https://new-api.zangia.mn.evil.test/api/jobs/search"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+        self.assertEqual(seen, [])
+
+    def test_the_advert_address_carries_the_underscore(self):
+        mod = self._mod()
+        import contextlib
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        for bad in ("https://www.zangia.mn/job/1jd5q7pvwy", "https://www.zangia.mn/job/_1jd/extra",
+                    "https://example.com/job/_1jd5q7pvwy"):
+            with self.subTest(url=bad):
+                mod.request = lambda url, soft=False: (200, "{}")
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.main(["ad", "--url", bad])
+                self.assertEqual(cm.exception.code, 2)
+        asked = []
+
+        def answers(url):
+            asked.append(url)
+            return 200, json.dumps({"code": "1jd5q7pvwy", "title": "T", "company_name": "C", "for_hbi": 0})
+        code, rows, err, _ = self._run(mod, ["ad", "--url", "https://www.zangia.mn/job/_1jd5q7pvwy"], answers)
+        self.assertEqual((code, len(rows)), (0, 1), err)
+        self.assertEqual(asked, ["https://new-api.zangia.mn/api/jobs/1jd5q7pvwy"])
+        self.assertEqual(rows[0]["url"], "https://www.zangia.mn/job/_1jd5q7pvwy")
+
+    def test_a_bounded_read_says_so_and_is_not_a_loss(self):
+        mod = self._mod()
+
+        def answers(url):
+            return 200, self._envelope(["a", "b"], total=7, pages=4)
+        code, rows, err, sent = self._run(mod, ["jobs", "--pages", "1"], answers)
+        self.assertEqual((code, len(rows)), (0, 2), err)
+        self.assertIn("a BOUNDED read (--pages), not the board", err)
+        self.assertNotIn("short", err)
+        self.assertEqual(len(sent), 1)
+
+    def _levels(self, mod, total, per):
+        """`per` maps a level id to its stated count; every other id answers zero."""
+        def answers(url):
+            m = re.search(r"jobLevelId%5B%5D=(\d+)|jobLevelId\[\]=(\d+)", url)
+            if not m:
+                return 200, json.dumps({"items": [self._item("a")], "meta": {"total": total, "totalPages": 1}})
+            lid = int(m.group(1) or m.group(2))
+            return 200, json.dumps({"items": [], "meta": {"total": per.get(lid, 0), "totalPages": 1}})
+        return self._run(mod, ["levels"], answers)
+
+    def test_the_levels_partition_the_board_and_that_is_the_second_witness(self):
+        """A total that agrees with itself is not a check. This one is a different question, asked ten
+        times, whose answers land on the total — which is what makes it a proof and not a coincidence."""
+        code, rows, err, sent = self._levels(self._mod(), 7945,
+                                             {1: 93, 2: 3127, 3: 454, 4: 2676, 5: 255, 6: 938, 7: 171, 8: 128, 9: 66, 10: 37})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 12)
+        self.assertIn("the levels sum to 7 945 and the board states 7 945", err)
+        self.assertIn("PARTITIONS", err)
+        self.assertEqual(len(sent), 13)          # one for the total, twelve for the levels
+
+    def test_levels_that_miss_the_total_are_named_and_the_command_is_short(self):
+        """Both ways. A shortfall must not read as a partition, and the message says which way it failed."""
+        for per, word, gap in (({1: 93, 2: 3000}, "DISAGREE by 4 852", 4852),
+                               ({1: 5000, 2: 5000}, "DISAGREE by 2 055", 2055)):
+            with self.subTest(gap=gap):
+                code, _, err, _ = self._levels(self._mod(), 7945, per)
+                self.assertEqual(code, 6, err)
+                self.assertIn(word, err)
+                self.assertNotIn("PARTITIONS", err)
+
+    def test_a_facet_the_board_does_not_offer_is_refused_by_name(self):
+        mod = self._mod()
+        import contextlib
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e:
+            mod.main(["jobs", "--type", "over_50"])
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("45plus", e.getvalue())
+        self.assertIn("disability", e.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
