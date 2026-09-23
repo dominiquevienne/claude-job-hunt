@@ -73,3 +73,29 @@ Mutation bench on a detached copy, `python3 -B`, 6 / 6 red: the pager's
 last page not read · the same-cards guard dropped · the dedup dropped · the
 swapped classes «corrected» the wrong way · the description not scrubbed ·
 the application field emitted.
+
+## 2026-09-23 (#894) — the pager's bound is now COMPARED, not printed
+
+**The walk ended on two different things through one condition.**
+`if new == 0 or n >= last` conflated «the page added nothing new» with «the
+pager's last page is reached», and the sentence printed afterwards then said the
+walk had gone *«to the last»* **even when it had stopped early**.
+
+> **A board that resets its list makes the first ending fire on the first round.**
+> Measured on Melli Kar the same day (#631, #894): a reset every eighth request,
+> 18 adverts reported out of the 5 358 the category states — no error, no exit
+> code, nothing to re-read.
+
+**The site prints no total, but its pager names its own last page** — and that
+number is read on page 0 already. So it is now compared: a round without novelty
+**before** that page exits `6` with both figures, rather than being reported as a
+complete read. *A guard that displays what it should compare reads like a guard.*
+
+**What this does not claim.** The existing repeat check compares each page's ids
+against **page 0's** — so a reset to the first page was already caught. What was
+not caught is a page repeating its *neighbour*: a cache serving the previous
+slice, a filter lost in flight. That case now has a name and an exit code.
+
+*This card's witness line is unchanged and still honest: the site prints no
+total, and the pager's reach is the only bound there is. The change is that the
+bound is now enforced instead of announced.*

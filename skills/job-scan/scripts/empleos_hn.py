@@ -169,6 +169,17 @@ def cmd_list(a):
             out.append(c)
             new += 1
         pages += 1
+        # **#894: a round without novelty is not the end of a list whose own pager reaches
+        # further.** The two endings were one condition, and the note below then claimed the
+        # walk had gone «to the last» even when it had stopped early. The pager's largest
+        # number is the site's own bound — so it is COMPARED here, not printed afterwards.
+        # *Measured on Melli Kar: a board that resets its list makes this fire on the first
+        # round and report eighteen adverts out of 5 358 with no error at all.*
+        if new == 0 and n < last and not (a.pages and pages >= a.pages):
+            die(f"page {n} added nothing new while the pager names {last + 1} page(s): a round "
+                f"without novelty is not the end of a list that reaches further — "
+                f"{th(len(out))} emitted, the pager's bound being {th((last + 1) * PER_PAGE)}. "
+                f"The walk stops here rather than reporting a complete read (#894).", EXIT_PARTIAL)
         if new == 0 or n >= last or (a.pages and pages >= a.pages):
             break
         n += 1

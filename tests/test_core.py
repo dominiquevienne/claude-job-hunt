@@ -26309,6 +26309,26 @@ class AHonduranDrupalBoardWhoseSearchPagesToItsLastPageWithoutATotalAndWhoseAdCa
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
             self._run(mod, [(200, self._page([], last=0))])
         self.assertEqual(cm.exception.code, 6)
+        # **#894: a round without novelty, on a pager that reaches further, is NOT the end.**
+        # Page 1 repeats page 0's cards *without being page 0's page* — the same-cards guard
+        # above does not see it, because that one compares against page 0 only. The pager names
+        # five pages, so stopping here would have reported a complete read of a fifth of the
+        # board. *Measured on Melli Kar, a board that resets its list: eighteen adverts of
+        # 5 358, no error, no exit code, nothing to re-read.*
+        mod = self._mod()
+        p0b = self._page([self._card("a-1", "A", "E1"), self._card("b-2", "B", "E2")], last=4)
+        p1b = self._page([self._card("a-1", "A", "E1")], last=4)
+        # `_run` swallows its own stderr when the walk exits, and THREE different checks in
+        # this module exit 6 — so the code alone would not say which one spoke. The message is
+        # captured at `die` instead: *a guard identified only by its exit code is a guard you
+        # cannot tell from its neighbours.*
+        said = []
+        original = mod.die
+        mod.die = lambda msg, code=2: (said.append(msg), original(msg, code))[-1]
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, p0b), (200, p1b)])
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("added nothing new while the pager names 5 page(s)", said[0])
         mod = self._mod()
         mod.gate = lambda url: {"allowed": True}
         for bad in ("https://empleos.hn/search/node?keys=x", "https://empleos.hn/user/login", "https://empleos.hn/register_asp", "https://empleos.hn/cdn-cgi/l/email-protection"):
