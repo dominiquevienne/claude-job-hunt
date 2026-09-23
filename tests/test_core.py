@@ -35995,7 +35995,7 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         self.assertEqual((code, len(rows)), (0, 72), err)
         self.assertEqual(sent, ["https://iranestekhdam.ir/search?page=1", "https://iranestekhdam.ir/search?page=2"])
         self.assertIn("the site states no count", err)
-        self.assertIn("at most 4 356 cards (121 × 36) — a BOUND, not a count", err)
+        self.assertIn("the walk must land in 4 321–4 356 (121 × 36) — a BOUND, not a count", err)
         # the per-employer figures must never become the list's total
         self.assertNotIn("the site states 2", err)
         self.assertNotIn("the site states 100", err)
@@ -36034,6 +36034,31 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         # a span with no parentheses is a contract and NO salary — not a salary of nothing
         self.assertEqual((c["place"], c["contract_as_written"], c["salary_as_written"]), ("تهران", "پاره وقت", None))
 
+    def test_the_pagers_bound_is_asserted_and_not_merely_printed(self):
+        """#631's lesson, ported back: a walk that stops early prints a smaller number and nothing
+        contradicts it — this site states no count, so the pager's interval is the ONLY witness.
+        Measured on `mellikar.com` the same week: a WebForms list reset itself twice in eight rounds,
+        and a stop on «no new row» would have emitted 18 of 5 358 with exit 0. `talacom.py` already
+        asserted its interval; this adapter printed one and checked nothing."""
+        mod = self._mod()
+        f1 = [self._card(f"41{i:05d}", "مام", f"عنوان {i}") for i in range(36)]
+        f2 = [self._card(f"42{i:05d}", "اکسیر", f"عنوان {i}") for i in range(36)]
+
+        def full(url):
+            return (200, self._listing(f1, last=121)) if url.endswith("page=1") else (200, self._listing(f2, last=121))
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], full)
+        self.assertEqual((code, len(rows)), (6, 72), err)
+        self.assertIn("the walk must land in 4 321–4 356", err)
+        self.assertIn("OUTSIDE the pager's bound", err)
+        # the criterion note is printed BEFORE the exit — a note after sys.exit never reaches anyone
+        self.assertIn("never carried (#183)", err)
+
+        def two(url):
+            return (200, self._listing(f1, last=2)) if url.endswith("page=1") else (200, self._listing(f2, last=2))
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], two)
+        self.assertEqual((code, len(rows)), (0, 72), err)
+        self.assertIn("inside the bound.", err)
+
     def test_the_key_is_the_id_and_the_duplicated_link_is_counted_once(self):
         mod = self._mod()
         # two adverts of the same employer share one Persian slug; keyed on the address they collapse to one
@@ -36043,8 +36068,10 @@ class AListThatStatesNoCountAndACardThatOmitsItsMiddleSpan(unittest.TestCase):
         self.assertEqual({r["ledger_id"] for r in rows}, {"iranestekhdam:3118112", "iranestekhdam:3118111"})
         self.assertEqual(len({r["url"] for r in rows}), 1)   # the same address, and still two adverts
         # the same id twice across pages is one row, and the walk stops when a page only repeats
+        # AUCUN pager sur cette page : une liste sans pager n'a pas d'intervalle à opposer au compte, donc
+        # c'est bien l'arrêt sur répétition qu'on éprouve ici et rien d'autre
         def repeats(u):
-            return (200, self._listing(cards, last=121))
+            return (200, self._listing(cards, last=None))
         code, rows, err, sent = self._run(mod, ["jobs", "--all"], repeats)
         self.assertEqual((code, len(rows)), (0, 2), err)
         self.assertEqual(len(sent), 2, f"the walk asked {len(sent)} pages where two were enough")
