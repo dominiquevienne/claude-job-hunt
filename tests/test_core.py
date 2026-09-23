@@ -36621,5 +36621,272 @@ class AListThatResetsItselfAndThreeMeaningsOfABarrenRound(unittest.TestCase):
         self.assertIn("jobs --category", err)
 
 
+class AWindowCheckedAtEveryPageAndAPlaceNamedByTheSiteItself(unittest.TestCase):
+    """**`hirelebanese.py`, 2026-09-23 (#657).** Lebanon's first adapter. Four
+    things:
+
+    * **every page states «Job Posts A - B of T Results Found»**, so the walk
+      is checked at EACH page rather than once at the end: `A` must be the
+      pager's own arithmetic, and a page whose window starts elsewhere ends
+      the walk (6) instead of being emitted as if it were in place. *A total
+      compared once at the end cannot say WHERE a walk went wrong.*
+    * **a total that moves mid-walk is reported, not averaged** — the board
+      grew from 3 210 to 3 232 between two days, and a board that changes
+      under a walk is a fact about the board;
+    * **the place is read by the site's own vocabulary, not by a separator.**
+      A row prints «employer - location» and the location itself carries the
+      separator: «shareQ - Lebanon - Beirut». Splitting on the last « - »
+      gives «Beirut», **which is not a facet name and matches no count**. The
+      longest label the string ends with wins, and a tail matching none keeps
+      the whole string as the employer with the place null AND counted;
+    * **a FEATURED advert is read and flagged.** Its star image sits between
+      `<h4>` and the link, and a parser requiring them adjacent dropped one
+      panel on eighteen pages of the first full walk — **3 199 read against a
+      stated 3 232**. The per-page window is what said so, and the defect
+      turned out to name a field the board sells;
+    * **the labels are truncated at twenty characters and some repeat.** Rows
+      print «United Arab Emirates - Dubai» where the facet reads «United Arab
+      Emirates», and THREE ids collapse onto that one label. A twenty-character
+      label therefore matches a tail that begins with it, and the site's counts
+      are summed per label — telling the three apart would invent a distinction
+      the page does not expose. The record keeps the row's own words; the label
+      only buckets it;
+    * **the site's 44 location facets sum to its stated total**, which is how
+      «Lebanon (1951)» and «Lebanon - Beirut (901)» were shown to be siblings
+      rather than parent and child — so the counts may be compared one by
+      one. *That arithmetic cost nothing: the numbers were already held.*
+
+    Both ways: the full record; the window checked and a shifted window
+    refused (6); a moving total reported; the three shapes of «employer -
+    place»; an unnamed tail counted; the per-place comparison; contacts
+    scrubbed; a repeating page (6); a first page with neither count nor
+    advert (6); a 404 (3); an unknown facet id (2); an account path (7);
+    another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — seven for seven:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the per-page window check dropped | `SystemExit not raised` |
+    | `<h4>` and the link required adjacent | `['267997', '274748'] != [… , '280956']` |
+    | a truncated label stops being recognised | `('Acme - United Arab Emirates - Dubai', None) != ('Acme', …)` |
+    | the label's length measured AFTER trimming | the same, on «Democratic Republic of the Congo» |
+    | duplicate labels no longer summed | `'2 of 2 location counts' not found` |
+    | the e-mail scrub dropped | `'hr@example.com' unexpectedly found` |
+    | the host check dropped | `2 != 7` on three URLs |
+
+    *The first of them reddened with a `KeyError` from the harness until the
+    fixture supplied a page a sound walk never asks for: **a red for the wrong
+    reason reads like a guard that held**.*"""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_hirelb", os.path.join(SCRIPTS, "hirelebanese.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _panel(ident, title, who, posted="Posted at Sep 22, 2026", excerpt="An excerpt.", featured=False):
+        # **A featured advert puts a star image between `<h4>` and the link.** Requiring the two
+        # to be adjacent lost one panel on eighteen pages of the first full walk — 3 199 read
+        # against a stated 3 232 — and it was the page's OWN per-page window that said so.
+        star = '<img src=images/star.png height=32 width=32 align=absmiddle>' if featured else ""
+        head = "panel-heading featured-job-color" if featured else "panel-heading"
+        return ('<div class="panel panel-default jobs-margin">' + f'<div class="{head}">'
+                f'<div class=panel-title><h4>{star}<a href="../jobdetails.aspx?id={ident}">{title}</a></h4></div>'
+                f'<div class=row><div class=col-xs-9>{who} </div></div>'
+                f'<div class=row><div class=col-xs-12 style="color: gray ">{posted}</div></div>'
+                f'<div class=row><div class=col-xs-12>{excerpt}</div></div></div></div>')
+
+    @classmethod
+    def _page(cls, panels, first=1, last=None, total=3):
+        last = first + len(panels) - 1 if last is None else last
+        head = (f'<span id="LST_Label1"><table><tr><td> Job Posts {first} - {last} of {total} '
+                f'Results Found&nbsp;| First |</td></tr></table>')
+        return "<html><body>" + head + "".join(panels) + "</body></html>"
+
+    @classmethod
+    def _browse(cls, facets=(("Lebanon", 117, 2), ("Lebanon - Beirut", 241, 1))):
+        return "<html><body>" + "".join(
+            f'<a href="../searchresults.aspx?resume=1&top=0&category=&company=&country={i}" >'
+            f'<img src="../flags/{i}.png" alt={n} />  {n}</a> ({c})</div>' for n, i, c in facets
+        ) + "</body></html>"
+
+    def _run(self, mod, pages, browse=None, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if "findjobhome" in url:
+                return browse if browse is not None else (200, self._browse())
+            m = re.search(r"[?&]pg=(\d+)", url)
+            return pages[int(m.group(1)) if m else 1]
+        mod.request = request
+        ns = argparse.Namespace(country_id=None, since=None, country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_record_the_places_and_the_count_checked_place_by_place(self):
+        mod = self._mod()
+        p1 = self._page([self._panel("267997", "Social Work Internship", "shareQ - Lebanon"),
+                         self._panel("274748", "Marketing Internship", "shareQ - Lebanon - Beirut",
+                                     excerpt="Write to hr@example.com or call 03 123 456 789"),
+                         self._panel("280956", "Research Assistant", "Beirut Consulting - Lebanon",
+                                     posted="Posted at Oct 1, 2026", featured=True)], total=3)
+        recs, err, asked = self._run(mod, {1: (200, p1), 2: (200, self._page([], first=51, last=50, total=3))},
+                                     country_code="lb")
+        self.assertEqual(asked[0], "https://www.hirelebanese.com/jseeker/findjobhome.aspx")
+        self.assertEqual([r["id"] for r in recs], ["267997", "274748", "280956"])
+        self.assertEqual(recs[0]["url"], "https://www.hirelebanese.com/jobdetails.aspx?id=267997")
+        self.assertEqual((recs[0]["employer"], recs[0]["place"]), ("shareQ", "Lebanon"))
+        # **the location carries the separator, so the SITE'S label decides where the employer ends**
+        self.assertEqual((recs[1]["employer"], recs[1]["place"]), ("shareQ", "Lebanon - Beirut"))
+        # and an employer whose own name ends in a place word keeps it
+        self.assertEqual((recs[2]["employer"], recs[2]["place"]), ("Beirut Consulting", "Lebanon"))
+        self.assertEqual((recs[0]["published"], recs[2]["published"]), ("2026-09-22", "2026-10-01"))
+        self.assertTrue(all(r["country"] == "LB" and r["contacts_withheld"] and not r["detail_read"]
+                            for r in recs))
+        blob = json.dumps(recs, ensure_ascii=False)
+        self.assertNotIn("hr@example.com", blob)
+        self.assertNotIn("03 123 456 789", blob)
+        self.assertIn("[e-mail withheld]", recs[1]["excerpt"])
+        self.assertIn("[telephone withheld]", recs[1]["excerpt"])
+        self.assertIn("3 emitted over 1 page(s) of 50", err)
+        self.assertIn("the board states 3", err)
+        self.assertIn("they agree", err)
+        # **the witness a total cannot be, and the reason it may be trusted**
+        self.assertIn("2 of 2 location counts", err)
+        self.assertIn("PARTITION", err)
+        # **the featured advert is READ, and its badge is carried only when set**
+        self.assertEqual(recs[2]["title"], "Research Assistant")
+        self.assertTrue(recs[2]["featured"])
+        self.assertNotIn("featured", recs[0])
+        self.assertIn("1 of 3 advert(s) are FEATURED", err)
+
+    def test_a_window_that_does_not_start_where_the_pager_says_ends_the_walk(self):
+        import contextlib
+        mod = self._mod()
+        p1 = self._page([self._panel(str(i), f"T{i}", "E - Lebanon") for i in range(50)], total=120)
+        # page 2 states a window starting at 1 again: the walk is not where it thinks it is
+        p2 = self._page([self._panel(str(100 + i), f"U{i}", "E - Lebanon") for i in range(50)],
+                        first=1, last=50, total=120)
+        # **page 3 is provided although a sound walk never asks for it**: without it, removing
+        # the check reddens with a KeyError from the harness instead of the assertion — a red for
+        # the wrong reason reads like a guard that held.
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, p2),
+                            3: (200, self._page([], first=101, last=100, total=120))})
+        self.assertEqual(cm.exception.code, 6)
+
+    def test_a_total_that_moves_under_the_walk_is_reported_not_averaged(self):
+        mod = self._mod()
+        p1 = self._page([self._panel(str(i), f"T{i}", "E - Lebanon") for i in range(50)], total=60)
+        p2 = self._page([self._panel(str(100 + i), f"U{i}", "E - Lebanon") for i in range(10)],
+                        first=51, last=60, total=61)
+        recs, err, _a = self._run(mod, {1: (200, p1), 2: (200, p2),
+                                        3: (200, self._page([], first=101, last=100, total=61))})
+        self.assertEqual(len(recs), 60)
+        self.assertIn("it changed under the walk", err)
+        self.assertIn("neither", err)
+
+    def test_a_truncated_label_matches_the_full_name_the_row_prints(self):
+        """**The browse page cuts its labels at twenty characters**, and the rows print the
+        full names: «United Arab Emirates - Dubai» against a facet reading «United Arab
+        Emirates». Without this, fourteen rows ended in a place the site does name and three
+        facets read zero. And three ids collapse onto that same twenty-character label, so the
+        site's counts are SUMMED per label — telling them apart would invent a distinction the
+        page does not expose. *The record keeps the row's own words; the label only buckets it.*
+        """
+        mod = self._mod()
+        facets = (("United Arab Emirates", 5, 1), ("United Arab Emirates", 6, 1),
+                  ("Lebanon", 117, 1))
+        p1 = self._page([self._panel("1", "One", "Acme - United Arab Emirates - Dubai"),
+                         self._panel("2", "Two", "Beta - United Arab Emirates - Abu Dhabi"),
+                         self._panel("3", "Three", "Gamma - Lebanon")], total=3)
+        recs, err, _a = self._run(mod, {1: (200, p1), 2: (200, self._page([], first=51, last=50, total=3))},
+                                  browse=(200, self._browse(facets)))
+        self.assertEqual((recs[0]["employer"], recs[0]["place"]), ("Acme", "United Arab Emirates - Dubai"))
+        self.assertEqual((recs[1]["employer"], recs[1]["place"]), ("Beta", "United Arab Emirates - Abu Dhabi"))
+        self.assertEqual((recs[2]["employer"], recs[2]["place"]), ("Gamma", "Lebanon"))
+        # the two UAE facets are one bucket of 2, and the rows give 2
+        self.assertIn("2 of 2 location counts", err)
+        self.assertIn("1 facet(s) share a label with another", err)
+
+    def test_a_label_whose_twentieth_character_is_a_space_is_still_a_cut_label(self):
+        """**Our own normalisation hid one case for a whole round.** The page cuts at twenty
+        characters, and one label's twentieth is a space — `'Democratic Republic '`. Stripping
+        it first leaves nineteen, it stops looking truncated, and the rows printing «Democratic
+        Republic of the Congo» match nothing: the facet read 0 against a stated 3 while the
+        grand total agreed perfectly. *The length is therefore taken before `.strip()`.*"""
+        mod = self._mod()
+        facets = (("Democratic Republic ", 373, 1), ("Lebanon", 117, 1))
+        p1 = self._page([self._panel("1", "One", "Acme - Democratic Republic of the Congo"),
+                         self._panel("2", "Two", "Beta - Lebanon")], total=2)
+        recs, err, _a = self._run(mod, {1: (200, p1), 2: (200, self._page([], first=51, last=50, total=2))},
+                                  browse=(200, self._browse(facets)))
+        self.assertEqual((recs[0]["employer"], recs[0]["place"]),
+                         ("Acme", "Democratic Republic of the Congo"))
+        self.assertIn("2 of 2 location counts", err)
+
+    def test_a_place_the_site_does_not_name_is_counted_and_never_guessed(self):
+        mod = self._mod()
+        p1 = self._page([self._panel("1", "One", "Acme - Atlantis")], total=1)
+        recs, err, _a = self._run(mod, {1: (200, p1), 2: (200, self._page([], first=51, last=50, total=1))})
+        self.assertEqual((recs[0]["employer"], recs[0]["place"]), ("Acme - Atlantis", None))
+        self.assertIn("1 row(s) end in a place the site's own facets do not name", err)
+
+    def test_the_facets_are_the_sites_and_an_unknown_id_is_refused_with_the_ones_it_names(self):
+        import contextlib
+        mod = self._mod()
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(err):
+            self._run(mod, {1: (200, self._page([], total=0))}, country_id="999")
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("117 (Lebanon)", err.getvalue())
+        # a facet the site DOES name walks, and the comparison is then left alone
+        mod = self._mod()
+        p1 = self._page([self._panel("1", "One", "Acme - Lebanon")], first=1, last=1, total=1)
+        recs, err2, asked = self._run(mod, {1: (200, p1), 2: (200, self._page([], first=51, last=50, total=1))},
+                                      country_id="117")
+        self.assertIn("country=117", asked[1])
+        self.assertIn("were not checked", err2)
+
+    def test_the_ways_the_walk_can_fail_and_the_paths_never_asked_for(self):
+        import contextlib
+        mod = self._mod()
+        # **the total must exceed what page 1 carries**, or the walk stops on its own count and
+        # the repeat branch is never reached — the guard would read green without being exercised.
+        p1 = self._page([self._panel("1", "One", "E - Lebanon")], total=2)
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, {1: (200, p1), 2: (200, self._page([self._panel("1", "One", "E - Lebanon")],
+                                                              first=51, last=51, total=2))})
+        self.assertEqual(cm.exception.code, 6)
+        for first, code in (((200, "<html><body>nothing</body></html>"), 6), ((404, ""), 3), ((500, ""), 6)):
+            mod = self._mod()
+            with self.subTest(first=first[0]):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    self._run(mod, {1: first})
+                self.assertEqual(cm.exception.code, code)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for url in ("https://www.hirelebanese.com/jseeker/login.aspx",
+                    "https://hirelebanese.com/searchresults.aspx",
+                    "https://example.com/searchresults.aspx"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
