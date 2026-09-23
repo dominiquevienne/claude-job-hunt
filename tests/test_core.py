@@ -36375,5 +36375,231 @@ class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
                 self.assertEqual(cm.exception.code, 7)
 
 
+
+class AListThatResetsItselfAndThreeMeaningsOfABarrenRound(unittest.TestCase):
+    """**`mellikar.py`, 2026-09-23 (#631).** A WebForms board walked by postback whose list **resets
+    itself to its first slice** — twice in eight rounds, measured. Every other adapter here stops when
+    a round brings nothing new; on this board that rule emits **18 of the 5 365 the category states**,
+    with exit 0, no error and nothing to re-read.
+
+    And «nothing new» is ambiguous in THREE ways, of which one is the end:
+
+        the list RESET                       the page's row count falls back to 18
+        the server CLIMBS BACK after a reset  it grows again, 36 → 54 → 72
+        the list is over                     it stops growing
+
+    A first version stopped after three barren rounds and lost 144 of the 270 rows the same category
+    gives — wrong for the same reason, one level down. **The walk is therefore driven by the page's own
+    row count, never by novelty**, and this guard holds the three apart.
+
+    Also, both ways: the whole form echoed answers 500 and the message says why; a row of another
+    category is counted and NAMED, never emitted silently; `lblEnteshar` («publication») holds the
+    CONTRACT and is read for what it holds; the salary behind a login is DECLARED, not left absent;
+    the front's «more than 70 000» never becomes a count; an advert has no address, so `ad` refuses
+    with the reason."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mellikar", os.path.join(SCRIPTS, "mellikar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _item(i, aid, daste="1", city="تهران", title="وسط کار تولیدی", family="کارگر",
+              contract="تمام وقت", salary="برای مشاهده حقوق وارد شوید"):
+        n = f"{i:02d}"
+        return (f'<input type="hidden" name="ctl00$ContentPlaceHolder1$Repeater1$ctl{n}$HideAgahiID" value="{aid}">'
+                f'<input type="hidden" name="ctl00$ContentPlaceHolder1$Repeater1$ctl{n}$HideDaste" value="{daste}">'
+                f'<input type="hidden" name="ctl00$ContentPlaceHolder1$Repeater1$ctl{n}$hideKarfarmaID" value="21{aid}">'
+                f'<input type="hidden" name="ctl00$ContentPlaceHolder1$Repeater1$ctl{n}$HideShahr" value="31">'
+                f'<span id="ContentPlaceHolder1_Repeater1_lblName2_{i}">{title} {family}</span>'
+                f'<span id="ContentPlaceHolder1_Repeater1_lblShoghl_{i}">{family}</span>'
+                f'<span id="ContentPlaceHolder1_Repeater1_lblCity_{i}">{city}</span>'
+                f'<span id="ContentPlaceHolder1_Repeater1_lblEnteshar_{i}">{contract}</span>'
+                f'<span id="ContentPlaceHolder1_Repeater1_mablaghLi2_{i}">{salary}</span>')
+
+    @classmethod
+    def _page(cls, aids, vs="V" * 9368, loadmore=True, dastes=None):
+        body = "".join(cls._item(i, a, daste=(dastes or {}).get(a, "1")) for i, a in enumerate(aids))
+        state = (f'<input type="hidden" name="__VIEWSTATE" value="{vs}">'
+                 f'<input type="hidden" name="__VIEWSTATEGENERATOR" value="A1B2C3D4">'
+                 f'<input type="hidden" name="__EVENTVALIDATION" value="{"E" * 4076}">')
+        btn = '<input type="button" name="ctl00$ContentPlaceHolder1$btnLoadMore" value="بیشتر">' if loadmore else ""
+        return f'<html><body><form id="fo" method="post">{state}{body}{btn}</form></body></html>'
+
+    HOME = ('<html><body><p>امروز بیش از 70000 شغل را جستجو کنید!</p>'
+            '<a href="/jobs/category/manual-worker"><span>کارگر</span><p>(5365 موقعیت باز)</p></a>'
+            '<a href="/jobs/category/sewing"><span>دوخت</span><p>(592 موقعیت باز)</p></a>'
+            '<p>خیابان امام، پلاک 4</p><p>021-22040036</p><p>09109423215</p></body></html>')
+
+    def _run(self, mod, argv, answers):
+        sent = []
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+
+        def request(url, form=None):
+            sent.append((url, "POST" if form is not None else "GET"))
+            return answers(url, form)
+        mod.request = request
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    def test_a_reset_is_climbed_back_through_and_is_not_the_end(self):
+        """The defect this adapter exists against, and the one my first version still had."""
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(90)]
+        # rounds: 36, then a RESET back to 18, then the climb back 36, 54, then 72 — the walk must
+        # reach 72 and never stop at 18
+        pages = [self._page(A[:36]), self._page(A[:18]), self._page(A[:36]),
+                 self._page(A[:54]), self._page(A[:72])]
+        seq = iter(pages)
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, next(seq, pages[-1])) if form is not None else (200, self._page(A[:18]))
+        code, rows, err, sent = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "5"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 72, err)          # NOT 18, and NOT 36
+        self.assertIn("the list RESET to its first slice (18)", err)
+        self.assertIn("climbing back", err)
+        self.assertIn("1 reset(s) climbed back through", err)
+        self.assertIn("the site states 5 365 for this category", err)
+
+    def test_the_end_is_the_page_that_stops_growing(self):
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(54)]
+        pages = [self._page(A[:36]), self._page(A[:36]), self._page(A[:36])]
+        seq = iter(pages)
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, next(seq, pages[-1])) if form is not None else (200, self._page(A[:18]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "6"], answers)
+        self.assertEqual((code, len(rows)), (0, 36), err)
+        self.assertIn("rounds without growth — the list is over", err)
+        # the page that did not grow is NAMED with its size, so «over» is not a guess
+        self.assertIn("the page did not grow (36 rows", err)
+
+    def test_one_flat_round_is_tolerated_and_two_end_the_walk(self):
+        """**Prospective, and it says so**: I measured RESETS on this board, not a transient flat round.
+        `MAX_STALLS = 2` buys the tolerance for one; without a case that needs it, the constant would be
+        an unjustified 2 and a single hiccup would end a walk that had 5 365 rows to go."""
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(72)]
+        # 36, then FLAT at 36, then growth to 54 — the flat round must not end the walk
+        pages = [self._page(A[:36]), self._page(A[:36]), self._page(A[:54]), self._page(A[:54]), self._page(A[:54])]
+        seq = iter(pages)
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, next(seq, pages[-1])) if form is not None else (200, self._page(A[:18]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "5"], answers)
+        self.assertEqual((code, len(rows)), (0, 54), err)    # NOT 36: the flat round was tolerated
+        self.assertIn("the page did not grow (36 rows", err)
+        self.assertIn("rounds without growth — the list is over", err)   # the two flat ones at the end
+
+    def test_the_whole_form_echoed_answers_500_and_the_message_says_why(self):
+        mod = self._mod()
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (500, "") if form is not None else (200, self._page([f"19{i:04d}" for i in range(18)]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "2"], answers)
+        self.assertEqual(code, 6, err)
+        self.assertIn("HTTP 500 — the postback was refused", err)
+        self.assertIn("only __VIEWSTATE, __VIEWSTATEGENERATOR, __EVENTVALIDATION and the button are sent", err)
+
+    def test_the_postback_sends_the_three_state_fields_and_the_button_only(self):
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(36)]
+        captured = {}
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            if form is not None:
+                captured.update(form)
+                return (200, self._page(A))
+            return (200, self._page(A[:18]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "1"], answers)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(set(captured), {"__VIEWSTATE", "__VIEWSTATEGENERATOR", "__EVENTVALIDATION",
+                                         "__EVENTTARGET", "__EVENTARGUMENT",
+                                         "ctl00$ContentPlaceHolder1$btnLoadMore"})
+        # not one Repeater hidden goes back: echoing the whole form is what answers 500
+        self.assertFalse([k for k in captured if "Repeater1" in k])
+
+    def test_a_row_of_another_category_is_counted_and_named_never_emitted(self):
+        mod = self._mod()
+        A = [f"19{i:04d}" for i in range(36)]
+        dastes = {A[20]: "7", A[21]: "7"}
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, self._page(A, dastes=dastes)) if form is not None else (200, self._page(A[:18]))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "1"], answers)
+        self.assertEqual(len(rows), 34, err)
+        self.assertIn("2 row(s) of another category appeared and were NOT emitted", err)
+
+    def test_the_field_named_publication_holds_the_contract_and_the_salary_is_declared(self):
+        mod = self._mod()
+        A = ["190385", "190378"]
+
+        def answers(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            return (200, self._page(A, loadmore=False)) if form is None else (200, self._page(A, loadmore=False))
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "1"], answers)
+        r = rows[0]
+        # the tile appends the job family to the title; the title alone is what a title is
+        self.assertEqual((r["title"], r["family_as_written"]), ("وسط کار تولیدی", "کارگر"))
+        self.assertEqual(r["contract_as_written"], "تمام وقت")   # from lblEnteshar, which means «publication»
+        self.assertIs(r["salary_behind_login"], True)
+        self.assertIsNone(r["salary_as_written"])
+        self.assertIs(r["contacts_withheld"], True)
+        # a salary the site DOES print is emitted as written, and the flag falls
+        def answers2(url, form=None):
+            if url.endswith("/"):
+                return (200, self.HOME)
+            page = self._page(A, loadmore=False).replace("برای مشاهده حقوق وارد شوید", "از ۳۰ میلیون به بالا")
+            return (200, page)
+        code, rows, err, _ = self._run(mod, ["jobs", "--category", "manual-worker", "--rounds", "1"], answers2)
+        self.assertEqual((rows[0]["salary_behind_login"], rows[0]["salary_as_written"]), (False, "از ۳۰ میلیون به بالا"))
+
+    def test_the_categories_are_counts_and_the_front_figure_is_a_claim(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["categories"], lambda url, form=None: (200, self.HOME))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([(r["category"], r["stated"]) for r in rows],
+                         [("manual-worker", 5365), ("sewing", 592)])
+        self.assertEqual(rows[0]["label"], "کارگر")     # the tile's count is not part of its name
+        self.assertIn("«MORE THAN 70 000»: a claim, never a count", err)
+        # the front's 70000 is never read as a number, and the operator's own contacts never leave
+        blob = json.dumps(rows, ensure_ascii=False)
+        for leak in ("70000", "021-22040036", "09109423215", "خیابان امام"):
+            self.assertNotIn(leak, blob, f"the home page's {leak} reached a record")
+
+    def test_an_advert_has_no_address_so_ad_refuses_with_the_reason(self):
+        mod = self._mod()
+        code, rows, err, sent = self._run(mod, ["ad", "--url", "https://mellikar.com/jobs/category/sewing"],
+                                          lambda url, form=None: (200, ""))
+        self.assertEqual((code, rows, sent), (6, [], []))     # nothing was even sent
+        self.assertIn("no address of its own", err)
+        self.assertIn("jobs --category", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
