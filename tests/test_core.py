@@ -37366,5 +37366,192 @@ class AnEnvelopeThatRestatesItsTotalAsZeroWhenItIsPastTheEnd(unittest.TestCase):
         self.assertIn("disability", e.getvalue())
 
 
+class ABoardThatClampsPastItsLastPageAndPrintsItsEmployerTwice(unittest.TestCase):
+    """**`wazifaha.py`, 2026-09-24 (#642).** Afghanistan's first
+    generalist — `acbar.py` reads the NGO coordination body, which is the
+    humanitarian market. Four things:
+
+    * **the site CLAMPS past its last page.** `?page=17` answers 200 with
+      page 16's two adverts, the same ids. *A walk that stops on an empty
+      page never terminates here*, and one that stops on «a round without
+      novelty» is right for the wrong reason — it would stop the same way
+      on a cache or a filter lost in flight. So the walk is bounded by the
+      pager's largest number, read on page 1, **and** a repeated page ends
+      it, and the run says which of the two fired. **This is the second new
+      shape of the #894 family found in two days**: the other is the
+      Iranian pager that CRUSHES — pages 100, 500 and 5 000 identical to
+      the byte — where «nothing new» returns a round, false number instead
+      of never returning;
+    * **three figures predict one another**: the list states 272, the pager
+      names 16, eighteen cards a page puts the last at 272 − 15 × 18 = 2.
+      *It carried 2* — tested before a line was written;
+    * **the cards are counted by CONTAINER, never by link.** Page 1 carries
+      eighteen cards and forty-eight distinct advert addresses: the sidebar
+      links adverts too. Counting hrefs would have disagreed with the
+      board's own figures for a reason having nothing to do with the board;
+    * **and every field is taken from what the site MARKS.** Each card
+      prints its employer twice *with two different truncations* —
+      «Rahmanzai Logistic, Trading, …» narrow, «…, Construction, A…» wide.
+      A positional read after de-duplication slid the province one place
+      along and put a truncated organisation where «Kabul» belonged, **on
+      24 of 272 rows**. The place is the meta item bearing
+      `fa-location-dot`; the employer is the company link's longest text.
+
+    And the criterion follows the object read: **177 of the 272 cards print
+    a gender**, so the list row declares it where the card carried one and
+    `[]` where it did not (#183, #885). *The first draft of this adapter
+    asserted that no card printed one — a claim made from the two cards its
+    author had dumped.*
+
+    Both ways: the full record; the clamp told apart from the bound; the
+    place read by its icon and not by position; the two truncations read
+    once; the gender declared only where printed; the employer's own
+    truncation flagged; a first page with no card (6); a 404 (3); an
+    account path (7); another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — six for six:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the place read positionally again | `('Field Surveyor', 'AAMC', None) != (…, 'Multi Locations')` |
+    | the employer taken as the FIRST link text | `'Rahmanzai Logistic, Trading, …' != '… Construction, A…'` |
+    | the clamp no longer told from the bound | `'the walk ended on a repeated page' not found` (and 9 pages walked instead of 2) |
+    | the gender declared everywhere | `['gender'] != []` |
+    | the cards counted by LINK, not container | `('Field Surveyor', None, None) != (…, 'AAMC', 'Multi Locations')` |
+    | the account-path and host checks dropped | `2 != 7` |
+
+    *The third reddened with a `KeyError` until the stub was made to CLAMP
+    like the board does — **a red of the wrong kind still reads as a
+    crash**, and a stub that raises past the last page is a fixture the
+    site never produces.*"""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_wazifaha", os.path.join(SCRIPTS, "wazifaha.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _card(ident, slug, title, employer_short, employer_long, place, age="1 day ago",
+              vacancies=None, gender=None, badge="New"):
+        vac = f'<span class="wz-job-meta-item"><i class="fas fa-users"></i> {vacancies} Vacancies</span>' if vacancies else ""
+        gen = f'<span class="wz-job-meta-item"><i class="fas fa-venus-mars"></i>{gender}</span>' if gender else ""
+        return ('<div class="wz-job-body"><div class="wz-job-content"><div class="wz-job-topline">'
+                f'<span class="wz-job-time"> {age} </span>' + (f'<span class="wz-badge-new">{badge}</span>' if badge else "")
+                + f'</div><a href="/jobs/{ident}/{slug}" class="wz-job-name d-md-none">{title}</a>'
+                f'<a href="/jobs/{ident}/{slug}" class="wz-job-name d-none d-md-block">{title}</a>'
+                '<div class="wz-job-meta"><span class="wz-job-meta-item"><i class="far fa-building"></i>'
+                f'<a href="/companies/{slug}-co" class="d-md-none">{employer_short}</a>'
+                f'<a href="/companies/{slug}-co" class="d-none d-md-inline">{employer_long}</a></span>'
+                f'<span class="wz-job-meta-item"><i class="fas fa-location-dot"></i> {place}</span>'
+                + vac + gen + "</div></div></div>")
+
+    @classmethod
+    def _page(cls, cards, stated=272, pager=(2, 16)):
+        links = "".join(f'<a href="?page={n}">{n}</a>' for n in pager)
+        return ("<html><body><h2>(%d) Active Jobs</h2><div>Showing %d active jobs</div>%s%s</body></html>"
+                % (stated, stated, links, "".join(cards)))
+
+    def _run(self, mod, pages, **kw):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            m = re.search(r"[?&]page=(\d+)", url)
+            n = int(m.group(1)) if m else 1
+            # **The stub CLAMPS, because the board does**: past the last page it re-serves the
+            # last. A stub that raised instead would make the mutation removing the repeat check
+            # redden with a `KeyError` — *a red of the wrong kind still reads as a crash* — and
+            # would also be a fixture the site never produces.
+            return pages[n] if n in pages else pages[max(pages)]
+        mod.request = request
+        ns = argparse.Namespace(location=None, since_days=None, details=False,
+                                country_code=None, max_pages=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_jobs(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_the_record_the_marked_fields_and_the_two_truncations(self):
+        mod = self._mod()
+        cards = [self._card("31550", "field-surveyor", "Field Surveyor", "AAMC", "AAMC",
+                            "Multi Locations", age="6 hours ago", vacancies="68"),
+                 # **the employer is printed twice with two DIFFERENT truncations**, and the
+                 # province follows it — a positional read puts the long truncation in `place`
+                 self._card("31534", "senior-engineer", "Senior Engineer",
+                            "Rahmanzai Logistic, Trading, …",
+                            "Rahmanzai Logistic, Trading, Construction, A…", "Kabul",
+                            age="12 hours ago", gender="Male")]
+        recs, err, asked = self._run(mod, {1: (200, self._page(cards, stated=2, pager=(1,))),
+                                           2: (200, self._page([], stated=2, pager=(1,)))},
+                                     country_code="af")
+        self.assertEqual([r["id"] for r in recs], ["31550", "31534"])
+        self.assertEqual(recs[0]["url"], "https://www.wazifaha.org/jobs/31550/field-surveyor")
+        self.assertEqual((recs[0]["title"], recs[0]["employer"], recs[0]["place"]),
+                         ("Field Surveyor", "AAMC", "Multi Locations"))
+        # **the place is «Kabul», not the longer truncation of the employer**
+        self.assertEqual(recs[1]["place"], "Kabul")
+        self.assertEqual(recs[1]["employer"], "Rahmanzai Logistic, Trading, Construction, A…")
+        self.assertTrue(recs[1]["employer_truncated"])
+        self.assertFalse(recs[0]["employer_truncated"])
+        self.assertEqual((recs[0]["vacancies"], recs[1]["vacancies"]), (68, None))
+        self.assertEqual((recs[0]["posted_as_written"], recs[0]["posted_days_ago"]), ("6 hours ago", 0))
+        # **the criterion follows the object read**: one card prints a gender, the other none
+        self.assertEqual(recs[1]["criteria_withheld"], ["gender"])
+        self.assertEqual(recs[0]["criteria_withheld"], [])
+        self.assertTrue(all(r["country"] == "AF" and r["contacts_withheld"] and not r["detail_read"]
+                            for r in recs))
+        self.assertIn("2 emitted over 1 page(s) of 18", err)
+        self.assertIn("they agree", err)
+
+    def test_the_clamp_is_told_apart_from_the_bound(self):
+        """**Past its last page the site re-serves the last**, so an empty page never comes.
+        The bound stops the walk; a repeat stops it too, and the run says which."""
+        mod = self._mod()
+        p1 = [self._card(str(1000 + i), f"s{i}", f"T{i}", "Co", "Co", "Kabul") for i in range(18)]
+        p2 = [self._card(str(2000 + i), f"u{i}", f"U{i}", "Co", "Co", "Herat") for i in range(2)]
+        # page 3 re-serves page 2 — the clamp. The pager names 2, so the bound fires first.
+        recs, err, asked = self._run(mod, {1: (200, self._page(p1, stated=20, pager=(2,))),
+                                           2: (200, self._page(p2, stated=20, pager=(1, 2))),
+                                           3: (200, self._page(p2, stated=20, pager=(1, 2)))})
+        self.assertEqual(len(recs), 20)
+        self.assertEqual(len(asked), 2)                    # page 3 is never asked for
+        self.assertIn("the walk ended on the bound", err)
+        self.assertIn("Asking past the last page returns the last page again", err)
+        # and when the bound is WRONG, the clamp is what stops the walk, and it says so
+        mod = self._mod()
+        recs, err, asked = self._run(mod, {1: (200, self._page(p1, stated=20, pager=(2, 9))),
+                                           2: (200, self._page(p2, stated=20, pager=(1, 2))),
+                                           3: (200, self._page(p2, stated=20, pager=(1, 2)))})
+        self.assertEqual(len(recs), 20)
+        self.assertIn("the walk ended on a repeated page", err)
+
+    def test_the_ways_the_walk_can_fail_and_the_paths_never_asked_for(self):
+        import contextlib
+        mod = self._mod()
+        for first, code in (((200, "<html><body>nothing</body></html>"), 6), ((404, ""), 3), ((500, ""), 6)):
+            mod = self._mod()
+            with self.subTest(first=first[0]):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    self._run(mod, {1: first})
+                self.assertEqual(cm.exception.code, code)
+        mod = self._mod()
+        mod.gate = lambda url: {"allowed": True}
+        for url in ("https://www.wazifaha.org/accounts/login", "https://www.wazifaha.org/top-up",
+                    "https://wazifaha.org/jobs/", "https://example.com/jobs/"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url)
+                self.assertEqual(cm.exception.code, 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
