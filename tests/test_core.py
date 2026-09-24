@@ -37553,5 +37553,217 @@ class ABoardThatClampsPastItsLastPageAndPrintsItsEmployerTwice(unittest.TestCase
                 self.assertEqual(cm.exception.code, 7)
 
 
+class APagerThatClampsInsteadOfEnding(unittest.TestCase):
+    """**`eestekhdam.py`, 2026-09-24 (#632).** An Iranian aggregator behind a Nuxt shell whose list is
+    `POST /search-api/search?page=N`. **Past page 100 the server re-serves the hundredth for ever** —
+    measured 2026-09-23: pages 100, 500 and 5000 are identical to the byte (`md5 973706fe9df1`), twenty
+    items, `ok: true`, no error. A narrow query ends properly instead, with `data: {}`.
+
+    So the two rules every other adapter here uses both fail, and both in silence:
+
+        stop on an empty page        never stops at all on a broad query
+        stop when nothing is new     stops at 2 000 and calls the cap the board
+
+    The walk therefore stops on a page that REPEATS the previous one, and says the query hit the cap —
+    after which its count is a lower bound for that query and nothing more. *This is #894's family in its
+    sharpest form: `new == 0` does not return zero here, it returns a round number that is wrong.*
+
+    The rest of what this guard holds, each measured the same day:
+
+        `data` is a LIST when full and a DICT (`{}`) when empty — indexing it dies on «done»
+        the list answers **201**, so a check written for `== 200` refuses every page
+        no total is stated ANYWHERE — meta, filter-options and the sitemap all carry none
+        `sort` and `posted` are refused BY NAME, and the refusal is reachable
+        the gender the board prints on every advert is never carried (#183)
+
+    The refusal is the part worth naming. A first version built the body from `--where`/`--query` only and
+    then checked it for `sort`/`posted`: the keys could never be there, so the check could never fire while
+    its comment claimed a discipline the code did not have. `--filter k=v` is what makes it a gate rather
+    than decoration — and that is the path by which `sort=` would really arrive."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_eestekhdam", os.path.join(SCRIPTS, "eestekhdam.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _ad(i, **kw):
+        rec = {"id": 52000000 + i, "uuid": f"u{i}", "title": "استخدام کارشناس فروش",
+               "short_title": "کارشناس فروش", "brand_name": "وزین پلاست",
+               "brand_sector": "فروش کالا", "gender": 2, "contract": ["تمام وقت"],
+               "provinces": ["اصفهان"], "location": "اصفهان، منطقه ۳", "salary": "از 20 میلیون تومان",
+               "positions": ["کارشناس فروش"], "technologies": [], "ats": True, "expired": False,
+               "url": "/kifxpr-%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85"}
+        rec.update(kw)
+        return rec
+
+    @classmethod
+    def _page(cls, first, n=20, **kw):
+        return json.dumps({"ok": True, "status": "success",
+                           "data": [cls._ad(i, **kw) for i in range(first, first + n)],
+                           "meta": {"url": "/jobs/", "title": "جستجو"}})
+
+    # The empty answer of this board: `data` is an OBJECT, not an array.
+    EMPTY = json.dumps({"ok": True, "status": "success", "data": {}, "meta": {"url": "/jobs/"}})
+
+    def _run(self, mod, argv, answers):
+        mod.gate = lambda url: {"allowed": True}
+        mod._PACE.wait = lambda: None
+        sent = []
+
+        def request(url, body, soft=False):
+            """`mod.request` is stubbed, NOT `request_twice`: the retry belongs to what is under test."""
+            sent.append((url, json.dumps(body, sort_keys=True, ensure_ascii=False)))
+            st, out = answers(url, body)
+            if st is None and not soft:
+                mod.die(f"{url}: stub failure")
+            return st, out
+        mod.request = request
+        mod.RETRY_WAIT = 0
+        import contextlib
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(argv)
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return code, rows, err.getvalue(), sent
+
+    @staticmethod
+    def _page_no(url):
+        return int(re.search(r"[?&]page=(\d+)", url).group(1))
+
+    def test_a_repeated_page_stops_the_walk_and_names_the_cap(self):
+        """The defect this adapter exists against. Pages 3 and 4 are the same twenty adverts."""
+        mod = self._mod()
+
+        def answers(url, body):
+            n = self._page_no(url)
+            return 201, self._page(1 if n >= 3 else n * 100)
+        code, rows, err, sent = self._run(mod, ["jobs", "--all"], answers)
+        # pages 1, 2 and 3 carry adverts (page 3's are new); page 4 re-serves page 3, and THAT is the stop.
+        self.assertEqual(len(rows), 60, err)
+        self.assertIn("RE-SERVED page 3 identically", err)
+        self.assertIn("CLAMPED", err)
+        self.assertIn("hit the page CAP", err)
+        self.assertEqual(code, 6, err)
+        self.assertEqual(len(sent), 4)                       # it did not keep asking for ever
+
+    def test_a_walk_without_that_rule_would_never_stop(self):
+        """**The prospective half, and it says what it does not prove.** The bound `PAGE_CAP` alone would
+        end the walk at a hundred requests — nine minutes on this host — and report the cap as the board.
+        Here the repeat fires on page 4, so the cap is never reached: the two mechanisms are distinct and
+        this test asserts that the REPEAT is what stopped it."""
+        mod = self._mod()
+        asked = []
+
+        def answers(url, body):
+            asked.append(self._page_no(url))
+            return 201, self._page(1)                        # every page identical, from the first
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual(max(asked), 2, err)                 # stopped at the first repeat, not at 100
+        self.assertLess(len(asked), mod.PAGE_CAP)
+        self.assertEqual((code, len(rows)), (6, 20), err)
+
+    def test_an_empty_page_is_the_real_end_and_its_data_is_a_dict(self):
+        mod = self._mod()
+
+        def answers(url, body):
+            return (201, self.EMPTY) if self._page_no(url) >= 3 else (201, self._page(self._page_no(url) * 100))
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual((code, len(rows)), (0, 40), err)     # exit 0: an ending is not a failure
+        self.assertIn("the end of this result set", err)
+        self.assertIn("ended on its own", err)
+        self.assertNotIn("CLAMPED", err)
+
+    def test_two_hundred_and_one_is_a_success_and_a_five_hundred_is_not(self):
+        """A status check written for `== 200` refuses every page of this board."""
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u, b: (201, self._page(1)))
+        self.assertEqual((code, len(rows)), (0, 20), err)
+        mod2 = self._mod()
+        code2, _, err2, _ = self._run(mod2, ["jobs", "--pages", "1"], lambda u, b: (500, ""))
+        self.assertEqual(code2, 6, err2)
+
+    def test_sort_and_posted_are_refused_by_name_and_the_refusal_is_reachable(self):
+        mod = self._mod()
+        import contextlib
+        for key in ("sort", "posted", "salary"):
+            with self.subTest(key=key):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()) as e:
+                    mod.main(["jobs", "--filter", f"{key}=x"])
+                self.assertEqual(cm.exception.code, 7)
+                self.assertIn("refused BY NAME", e.getvalue())
+        # and a facet the rules say nothing about goes through, into the BODY
+        code, _, err, sent = self._run(mod, ["jobs", "--pages", "1", "--filter", "contracts=تمام-وقت"],
+                                       lambda u, b: (201, self._page(1)))
+        self.assertEqual(code, 0, err)
+        self.assertIn("تمام-وقت", sent[0][1])
+
+    def test_the_gender_is_never_emitted_and_every_row_says_so(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u, b: (201, self._page(1)))
+        self.assertEqual(code, 0, err)
+        for r in rows:
+            self.assertEqual(r["criteria_withheld"], ["gender"])
+            self.assertNotIn("gender", r)
+        self.assertIn("20 of 20 row(s) carry a gender", err)   # the count is printed, not just the claim
+        self.assertIn("(#183)", err)
+
+    def test_a_count_from_this_board_is_always_called_a_lower_bound(self):
+        """There is no stated total anywhere, so no walk here has a witness — and the output must say it
+        rather than let a round number read as the board."""
+        mod = self._mod()
+        _, _, err, _ = self._run(mod, ["jobs", "--pages", "1"], lambda u, b: (201, self._page(1)))
+        self.assertIn("a LOWER BOUND", err)
+        self.assertIn("states no total anywhere", err)
+
+    def test_a_walk_the_transport_cuts_keeps_its_rows_and_says_it_is_short(self):
+        """**Twice in two days on two boards**: a connection reset on Zangia's 49th request, and
+        `SSL: UNEXPECTED_EOF_WHILE_READING` on this board's 40th. A hundred requests five seconds apart is
+        eight minutes of exposure; the rows go out as they are read, one retry is tried, and the walk that
+        stops says how far it got instead of leaving a pile of rows with no line under it."""
+        mod = self._mod()
+        tries = []
+
+        def answers(url, body):
+            n = self._page_no(url)
+            if n == 1:
+                return 201, self._page(100)
+            tries.append(n)
+            return None, "URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING]>"
+        code, rows, err, _ = self._run(mod, ["jobs", "--all"], answers)
+        self.assertEqual(len(rows), 20, err)          # NOT zero: page one is kept
+        self.assertEqual(tries, [2, 2])               # asked once, retried once
+        self.assertIn("one retry in 0 s", err)
+        self.assertIn("the rows already written are kept", err)
+        self.assertIn("CUT by the transport", err)
+        self.assertIn("did NOT reach the end", err)
+        self.assertEqual(code, 6, err)
+
+    def test_another_host_is_refused_before_the_gate_eestekhdam(self):
+        mod = self._mod()
+        import contextlib
+        seen = []
+        mod.gate = lambda url: seen.append(url)
+        for url in ("https://e-estekhdam.com/search-api/search",
+                    "https://www.e-estekhdam.com.evil.test/search-api/search",
+                    "https://example.com/search-api/search"):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+                    mod.request(url, {})
+                self.assertEqual(cm.exception.code, 7)
+        self.assertEqual(seen, [])
+
+    def test_the_pace_is_five_seconds_though_the_group_that_applies_imposes_none(self):
+        """The file names ClaudeBot and gives it `Crawl-delay: 5`; our token falls into `*`, which has none.
+        Reading that silence as a permission is what this constant refuses."""
+        mod = self._mod()
+        self.assertEqual(mod._PACE.own, 5.0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
