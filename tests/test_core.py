@@ -37407,7 +37407,24 @@ class ABoardThatClampsPastItsLastPageAndPrintsItsEmployerTwice(unittest.TestCase
     place read by its icon and not by position; the two truncations read
     once; the gender declared only where printed; the employer's own
     truncation flagged; a first page with no card (6); a 404 (3); an
-    account path (7); another host (7)."""
+    account path (7); another host (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each
+    mutation and the line touched printed** — six for six:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the place read positionally again | `('Field Surveyor', 'AAMC', None) != (…, 'Multi Locations')` |
+    | the employer taken as the FIRST link text | `'Rahmanzai Logistic, Trading, …' != '… Construction, A…'` |
+    | the clamp no longer told from the bound | `'the walk ended on a repeated page' not found` (and 9 pages walked instead of 2) |
+    | the gender declared everywhere | `['gender'] != []` |
+    | the cards counted by LINK, not container | `('Field Surveyor', None, None) != (…, 'AAMC', 'Multi Locations')` |
+    | the account-path and host checks dropped | `2 != 7` |
+
+    *The third reddened with a `KeyError` until the stub was made to CLAMP
+    like the board does — **a red of the wrong kind still reads as a
+    crash**, and a stub that raises past the last page is a fixture the
+    site never produces.*"""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_wazifaha", os.path.join(SCRIPTS, "wazifaha.py"))
