@@ -37443,7 +37443,12 @@ class ABoardThatClampsPastItsLastPageAndPrintsItsEmployerTwice(unittest.TestCase
         def request(url):
             asked.append(url)
             m = re.search(r"[?&]page=(\d+)", url)
-            return pages[int(m.group(1)) if m else 1]
+            n = int(m.group(1)) if m else 1
+            # **The stub CLAMPS, because the board does**: past the last page it re-serves the
+            # last. A stub that raised instead would make the mutation removing the repeat check
+            # redden with a `KeyError` — *a red of the wrong kind still reads as a crash* — and
+            # would also be a fixture the site never produces.
+            return pages[n] if n in pages else pages[max(pages)]
         mod.request = request
         ns = argparse.Namespace(location=None, since_days=None, details=False,
                                 country_code=None, max_pages=0)
