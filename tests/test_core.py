@@ -37765,5 +37765,269 @@ class APagerThatClampsInsteadOfEnding(unittest.TestCase):
         self.assertEqual(mod._PACE.own, 5.0)
 
 
+class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
+    """**`bestjobmyanmar.py`, 2026-09-25 (#637).** A small DJ-Classifieds
+    board. Four things, and the first two are traps this repository has
+    already paid for once each:
+
+    * **the salary is a LABELLED field and the telephone rule does not
+      touch it.** The board writes «Up To 550,000 Kyats» — six figures,
+      exactly the shape a nine-digit rule catches. The same rule destroyed
+      113 of 115 salaries on `myjobs.com.mm`. *The fixture therefore
+      carries the REAL figure: an invented `1000 USD` passes the telephone
+      rule and would ship the corruption unseen;*
+    * **`criteria_withheld` follows the ADVERT, never the board.** The
+      board prints `Gender` on some adverts and #183 says such a criterion
+      is withheld and named. Declaring it on an advert that prints none
+      would lie about OUR discretion — a poor board would read as a
+      censored one, and the output is identical either way;
+    * **a link count is not an advert count**: the same advert is published
+      under two URL shapes on one page (`/ad/sale-51/<slug>-4628` and
+      `/sale/ad/<slug>-4628`). The identity is the trailing id;
+    * **the stated count is the FEED's, not ours**: `<item>` is counted on
+      the body, the emitted rows are counted after parsing, and a mismatch
+      exits 6 instead of printing a note. *A board that returns fewer
+      adverts than its own feed names is not a small board, it is a broken
+      walk.*
+
+    Both ways: the full record; the currency kept with the amount; an
+    advert with no salary nulled rather than invented; the two URL shapes
+    collapsed to one id; an advert without a gender row declaring nothing;
+    a feed 404 (3); a feed 200 with no `<item>` (6); an advert page that
+    404s counted and named; another host refused (7).
+
+    **Mutated in a detached worktree with `-B`, the red named before each and
+    the line touched printed** — six for six, but only after TWO of them came
+    back green and had to be earned:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the salary put back under the telephone rule | `'[telephone withheld] Kyats' != '350000 - 450000 Kyats'` |
+    | the phone rule re-anchored on the mobile prefix | a landline `01 234 5678` leaves unscrubbed |
+    | `criteria_withheld` made unconditional | `['gender'] != []` on the advert that prints none |
+    | the salary read by `PAIR_RE` instead of its two spans | `'Up to 550,000' != 'Up to 550,000 Kyats'` — the unit lost |
+    | the id no longer taken from the trailing number | `2 != 1` — one advert emitted twice |
+    | the stated/emitted comparison dropped | `0 != 6` — a short walk exits clean |
+
+    **The first mutation was GREEN twice, for two different reasons, and both
+    are worth more than the adapter.** *First*: the phone rule was anchored on
+    the Myanmar mobile prefix (`0?9`), so it could not reach a salary — which
+    made `money()` decorative rather than protective, **and let landline
+    contacts through**. One anchor, two defects, and the inert guard read as a
+    protection. *Second*, once the rule was widened: the assertions called
+    `money()` and `scrub()` directly while the mutation lives in `record()`,
+    and no advert in the bench carried a colliding value. **A guard that
+    exercises the FUNCTION does not see a substitution on the PATH.**
+
+    *And the colliding fixture is `350000 - 450000`, the exact shape that
+    destroyed 113 salaries on `myjobs.com.mm` — not a value invented to make a
+    guard red. The three adverts measured on 2026-09-25 write
+    «300000~500000» (the tilde is not a telephone separator) and «Up to
+    550,000» (seven characters): **neither collides today**, so the test says
+    which shape the exemption protects and which it merely accompanies.*
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_bjm", os.path.join(SCRIPTS, "bestjobmyanmar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    BASE = "https://www.bestjobmyanmar.com"
+
+    @classmethod
+    def _feed(cls, items):
+        body = "".join(
+            f"<item><title>{t}</title><link>{cls.BASE}{p}</link>"
+            f"<description><![CDATA[{d}]]></description><category>{c}</category>"
+            f"<pubDate>Sat, 19 Sep 2026 20:11:31 +0630</pubDate></item>"
+            for t, p, c, d in items)
+        return f"<rss><channel>{body}</channel></rss>"
+
+    @staticmethod
+    def _row(label, value):
+        return (f'<div class="row"><span class="row_label">{label}</span>'
+                f'<span class="row_value">{value}</span></div>')
+
+    @classmethod
+    def _advert(cls, salary=("Up to 550,000", "Kyats"), gender="Male", name="JinLong Myanmar"):
+        price = ""
+        if salary:
+            price = ('<div class="price_wrap row_gd"><div class="price">'
+                     '<span class="row_label">Salary:</span><span class="row_value">'
+                     f"<span class='price_val'>{salary[0]}</span> "
+                     f"<span class='price_unit'>{salary[1]}</span></span></div></div>")
+        g = ""
+        if gender:
+            g = ('<div class="row row_gender" data-id="140">'
+                 '<span class="row_label">Gender</span>'
+                 f'<span class="row_value">{gender}</span></div>')
+        return ("<html><body>" + price
+                + cls._row("Name", name) + cls._row("Workplace", "Yangon_ Dala")
+                + cls._row("Date Posted", "5 days ago") + cls._row("Industry", "Retail, Wholesale & FMCG")
+                + g + cls._row("Work Type", "Full Time") + "</body></html>")
+
+    def _run(self, mod, feed, adverts, argv=("jobs", "--country-code", "MM")):
+        import contextlib
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if "format=feed" in url:
+                return feed
+            return adverts.get(urllib.parse.urlsplit(url).path, (404, ""))
+
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(list(argv))
+            except SystemExit as e:
+                code = e.code or 0
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return code, rows, err.getvalue(), asked
+
+    # --- le chemin sain -----------------------------------------------------
+    def test_the_full_record_keeps_the_currency_with_the_amount(self):
+        mod = self._mod()
+        p = "/find-jobs-in-myanmar/ad/sale-51/show-sale-representative-4628"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("Sale Representative", p, "Sale", "desc")])),
+            {p: (200, self._advert())})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        self.assertEqual(r["salary"], "Up to 550,000 Kyats",
+                         "the amount must keep the unit the site prints beside it")
+        self.assertEqual(r["employer"], "JinLong Myanmar",
+                         "the salary must not swallow the row that follows it")
+        self.assertEqual(r["id"], "4628")
+        self.assertEqual(r["criteria_withheld"], ["gender"])
+        self.assertTrue(r["contacts_withheld"])
+        self.assertIn("3 emitted" if False else "1 emitted", err)
+
+    def test_a_six_figure_kyat_salary_is_not_read_as_a_telephone_number(self):
+        mod = self._mod()
+        self.assertEqual(mod.money("300000~500000 Kyats"), "300000~500000 Kyats")
+        self.assertEqual(mod.money("Up to 550,000 Kyats"), "Up to 550,000 Kyats")
+        # et le texte libre garde les deux regles — mobile ET fixe
+        self.assertEqual(mod.scrub("ring 09 765 432 109 now"), "ring [telephone withheld] now")
+        self.assertEqual(mod.scrub("bureau 01 234 5678 svp"), "bureau [telephone withheld] svp",
+                         "une regle ancree sur le prefixe mobile laisse fuir les fixes")
+        # **LA GARDE PORTEUSE, et elle porte sur une forme que CE board peut
+        # ecrire demain, pas sur une que j'aurais inventee.** Les trois annonces
+        # du jour ecrivent « 300000~500000 » (le tilde n'est pas un separateur
+        # telephonique) et « Up to 550,000 » (sept caracteres) : *aucune des deux
+        # n'entre en collision, et je ne fabrique pas une collision pour faire
+        # rougir une garde.* Mais « 350000 - 450000 » — la forme exacte qui a
+        # detruit 113 salaires sur `myjobs.com.mm` — est un intervalle que ce
+        # board publie couramment ailleurs, et la elle entre en collision.
+        # `money()` est donc porteur pour cette forme, decoratif pour celles du
+        # jour, et le test dit laquelle est laquelle.
+        collision = "350000 - 450000 Kyats"
+        self.assertEqual(mod.money(collision), collision,
+                         "un salaire etiquete ne passe jamais sous la regle du telephone")
+        self.assertNotEqual(mod.scrub(collision), collision,
+                            "si le texte libre ne le detruisait pas, l'exemption de money() ne protegerait rien")
+        # et les valeurs REELLEMENT mesurees, intactes des deux cotes
+        self.assertEqual(mod.scrub("300000~500000 Kyats"), "300000~500000 Kyats")
+
+    def test_a_colliding_salary_survives_the_whole_record_not_just_money(self):
+        """**La mutation « salaire remis sous la regle du telephone » restait
+        VERTE** tant que les assertions appelaient `money()` et `scrub()`
+        directement : le defaut vit dans `record()`, et aucune annonce du banc
+        n'y portait une valeur qui entre en collision. *Une garde qui eprouve la
+        fonction et pas le CHEMIN ne voit pas une substitution sur le chemin.*
+        La fixture porte donc « 350000 - 450000 » — la forme exacte qui a detruit
+        113 salaires sur `myjobs.com.mm` — jusqu'au bout de l'enregistrement."""
+        mod = self._mod()
+        p = "/find-jobs-in-myanmar/ad/sale-51/y-2"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("Y", p, "Sale", "d")])),
+            {p: (200, self._advert(salary=("350000 - 450000", "Kyats")))})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(rows[0]["salary"], "350000 - 450000 Kyats",
+                         "l'enregistrement livre doit garder le salaire, pas seulement money()")
+
+    def test_an_advert_printing_no_gender_declares_nothing(self):
+        mod = self._mod()
+        p = "/find-jobs-in-myanmar/ad/sale-51/x-1"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("X", p, "Sale", "d")])),
+            {p: (200, self._advert(gender=None))})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(rows[0]["criteria_withheld"], [],
+                         "naming a criterion the advert never printed lies about our own discretion")
+
+    def test_an_advert_with_no_salary_is_nulled_not_invented(self):
+        mod = self._mod()
+        p = "/find-jobs-in-myanmar/ad/engineer-technology/site-engineer-4350"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("Site Engineer", p, "Engineering", "d")])),
+            {p: (200, self._advert(salary=None))})
+        self.assertEqual(code, 0, err)
+        self.assertIsNone(rows[0]["salary"])
+
+    def test_two_url_shapes_for_one_advert_are_one_row(self):
+        mod = self._mod()
+        a = "/find-jobs-in-myanmar/ad/sale-51/show-sale-representative-4628"
+        b = "/find-jobs-in-myanmar/sale/ad/show-sale-representative-4628"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("Sale Representative", a, "Sale", "d"),
+                                   ("Sale Representative", b, "Sale", "d")])),
+            {a: (200, self._advert()), b: (200, self._advert())})
+        self.assertEqual(len(rows), 1, "the identity is the trailing id, not the path")
+
+    # --- ce qui doit rougir -------------------------------------------------
+    def test_a_walk_shorter_than_the_feed_it_read_exits_partial(self):
+        mod = self._mod()
+        a = "/find-jobs-in-myanmar/ad/sale-51/a-1"
+        b = "/find-jobs-in-myanmar/ad/sale-51/b-2"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("A", a, "Sale", "d"), ("B", b, "Sale", "d")])),
+            {a: (200, self._advert())})          # b : 404
+        self.assertEqual(len(rows), 1)
+        self.assertIn("HTTP 404", err)
+        self.assertIn("1 advert page(s) unreachable", err)
+
+    def test_a_feed_naming_more_than_it_yields_exits_partial(self):
+        """**La branche « emis != enonce » n'etait atteinte par AUCUN test.**
+        Le seul cas qui s'en approchait avait une page d'annonce en 404, donc
+        `manques` non nul, donc la comparaison etait sautee : une garde ecrite,
+        verte, et jamais exercee. Ici le flux NOMME deux items et n'en livre
+        qu'un exploitable (le second n'a pas de `<link>`), sans aucun 404."""
+        mod = self._mod()
+        a = "/find-jobs-in-myanmar/ad/sale-51/a-1"
+        feed = ("<rss><channel>"
+                f"<item><title>A</title><link>{self.BASE}{a}</link><category>Sale</category></item>"
+                "<item><title>B sans lien</title><category>Sale</category></item>"
+                "</channel></rss>")
+        code, rows, err, _ = self._run(mod, (200, feed), {a: (200, self._advert())})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("1 unaccounted", err)
+
+    def test_a_feed_that_is_gone_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, (404, ""), {})
+        self.assertEqual(code, 3, err)
+
+    def test_a_feed_that_changed_shape_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, (200, "<rss><channel></channel></rss>"), {})
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("no <item>", err)
+
+    def test_another_host_is_never_requested(self):
+        mod = self._mod()
+        spec = importlib.util.spec_from_file_location("_bjm2", os.path.join(SCRIPTS, "bestjobmyanmar.py"))
+        fresh = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fresh)
+        with self.assertRaises(SystemExit) as cm:
+            fresh.request("https://example.com/find-jobs-in-myanmar")
+        self.assertEqual(cm.exception.code, fresh.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
