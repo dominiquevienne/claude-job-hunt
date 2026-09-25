@@ -37918,6 +37918,23 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
         # et les valeurs REELLEMENT mesurees, intactes des deux cotes
         self.assertEqual(mod.scrub("300000~500000 Kyats"), "300000~500000 Kyats")
 
+    def test_a_colliding_salary_survives_the_whole_record_not_just_money(self):
+        """**La mutation « salaire remis sous la regle du telephone » restait
+        VERTE** tant que les assertions appelaient `money()` et `scrub()`
+        directement : le defaut vit dans `record()`, et aucune annonce du banc
+        n'y portait une valeur qui entre en collision. *Une garde qui eprouve la
+        fonction et pas le CHEMIN ne voit pas une substitution sur le chemin.*
+        La fixture porte donc « 350000 - 450000 » — la forme exacte qui a detruit
+        113 salaires sur `myjobs.com.mm` — jusqu'au bout de l'enregistrement."""
+        mod = self._mod()
+        p = "/find-jobs-in-myanmar/ad/sale-51/y-2"
+        code, rows, err, _ = self._run(
+            mod, (200, self._feed([("Y", p, "Sale", "d")])),
+            {p: (200, self._advert(salary=("350000 - 450000", "Kyats")))})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(rows[0]["salary"], "350000 - 450000 Kyats",
+                         "l'enregistrement livre doit garder le salaire, pas seulement money()")
+
     def test_an_advert_printing_no_gender_declares_nothing(self):
         mod = self._mod()
         p = "/find-jobs-in-myanmar/ad/sale-51/x-1"
