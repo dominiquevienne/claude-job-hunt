@@ -38029,5 +38029,167 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
         self.assertEqual(cm.exception.code, fresh.EXIT_REFUSED)
 
 
+class AStructuredFieldThatIsTheWrongHalfOfItsOwnPage(unittest.TestCase):
+    """**`myworldmm.py`, 2026-09-25 (#638).** A Yangon agency's board whose
+    sitemap is DECLARED in its own rules file. Three things, and the first
+    inverts the assumption a parser usually makes:
+
+    * **two fields of the `JobPosting` JSON-LD are wrong, and they are the
+      two a machine would trust most.** `baseSalary` says
+      `{"currency": "£", "unitText": "YEAR", "minValue": 4}` on an advert
+      whose page prints «&nbsp;Up to 4,000,000 MMK + Other Allowances&nbsp;» — the
+      structured field kept the leading digit of «4,000,000» and a pound
+      sign from a template. *It parses, it is well-formed, and it is
+      plausible to anything that does not also read the page.* **A
+      structured field is not the truer one because it is structured;**
+    * **`hiringOrganization` is the AGENCY**, not the employer. Taking it
+      would attribute all 219 adverts to one company. The employer is
+      anonymised on purpose — `employer` is null **by measurement**, and
+      `employer_anonymised` says so rather than leaving a hole that reads
+      like a parse failure;
+    * **the class names are build artefacts.** `styles_metaLabel__qSmzr`
+      is a CSS-module hash that changes on any rebuild; the pattern
+      matches the stable prefix. *Anchoring on the hash would break at the
+      next deploy, and a board that suddenly yields no field reads exactly
+      like a board that stopped publishing.*
+
+    Both ways: the full record; the page salary kept whole (seven digits,
+    the `myjobs.com.mm` shape); a «Negotiable» salary carried as written;
+    only `/jobs/` entries taken from a sitemap that also names blog and
+    client pages; a sitemap 404 (3); a sitemap 200 naming no advert (6); an
+    advert page that 404s counted and named; another host refused (7).
+
+    **Mutated with the red named before each** — five for five:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the salary taken from the JSON-LD | `'£4 YEAR' != 'Up to 4,000,000 MMK + Other Allowances'` |
+    | `hiringOrganization` used as the employer | `'MyWorld Myanmar' is not None` |
+    | `META_RE` anchored on the CSS hash | every field `None` — the board reads as gone |
+    | the sitemap filtered on nothing | a blog page emitted as an advert |
+    | the named/emitted comparison dropped | a short walk exits clean |
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mw", os.path.join(SCRIPTS, "myworldmm.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    BASE = "https://www.myworld.com.mm"
+    AD = "/jobs/TMY81005-purchasing-manager-at-a-leading-international-chemicals-factory-in-yangon"
+
+    @classmethod
+    def _sitemap(cls, paths=None):
+        paths = paths or [cls.AD, "/blog/how-to-write-a-cv", "/clients/acme"]
+        return "<urlset>" + "".join(
+            f"<url><loc>{cls.BASE}{p}</loc><lastmod>2026-09-25</lastmod></url>" for p in paths) + "</urlset>"
+
+    @staticmethod
+    def _meta(label, value):
+        return (f'<span class="styles_metaLabel__qSmzr">{label}</span>'
+                f'<span class="styles_metaValue__8o2_t">{value}</span>')
+
+    @classmethod
+    def _advert(cls, salary="Up to 4,000,000 MMK + Other Allowances"):
+        ld = {"@context": "https://schema.org", "@type": "JobPosting",
+              "title": "Purchasing Manager at a Leading International Chemicals Factory in Yangon",
+              "datePosted": "2026-09-25T04:40:32.191Z", "validThrough": "2027-03-25T23:59:59.999Z",
+              "description": "<p>Lead operational purchasing.</p>",
+              # la valeur REELLE mesuree : elle contredit la page
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "\u00a3",
+                             "value": {"@type": "QuantitativeValue", "unitText": "YEAR", "minValue": 4}},
+              "hiringOrganization": {"@type": "Organization", "name": "MyWorld Myanmar"},
+              "jobLocation": {"@type": "Place"}}
+        return ("<html><body>"
+                + '<script type="application/ld+json">' + json.dumps(ld) + "</script>"
+                + cls._meta("Type", "Permanent") + cls._meta("Salary", salary)
+                + cls._meta("Location", "Yangon, Myanmar (Burma)")
+                + cls._meta("Reference", "TMY81005")
+                + cls._meta("Sector", "Manufacturing &amp; Operations")
+                + "</body></html>")
+
+    def _run(self, mod, sitemap, pages, argv=("jobs", "--country-code", "MM")):
+        import contextlib
+        def request(url):
+            if url.endswith("/sitemap.xml"):
+                return sitemap
+            return pages.get(urllib.parse.urlsplit(url).path, (404, ""))
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(list(argv))
+            except SystemExit as e:
+                code = e.code or 0
+        return code, [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_salary_comes_from_the_page_not_from_the_structured_field(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap()), {self.AD: (200, self._advert())})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 1, "only the /jobs/ entry is an advert")
+        self.assertEqual(rows[0]["salary"], "Up to 4,000,000 MMK + Other Allowances",
+                         "the JSON-LD says £4/YEAR for this advert; the page is the one that is right")
+        self.assertEqual(rows[0]["sector"], "Manufacturing & Operations")
+        self.assertEqual(rows[0]["contract_type"], "Permanent")
+        self.assertEqual(rows[0]["id"], "TMY81005")
+
+    def test_the_agency_is_not_the_employer(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap()), {self.AD: (200, self._advert())})
+        self.assertIsNone(rows[0]["employer"],
+                          "hiringOrganization names the agency; taking it attributes every advert to one company")
+        self.assertTrue(rows[0]["employer_anonymised"],
+                        "a null employer must declare WHY, or it reads like a parse failure")
+        self.assertEqual(rows[0]["agency"], "MyWorld Myanmar")
+
+    def test_a_negotiable_salary_is_carried_as_written(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap()),
+                                    {self.AD: (200, self._advert(salary="Salary can be negotiable"))})
+        self.assertEqual(rows[0]["salary"], "Salary can be negotiable")
+
+    def test_only_job_entries_are_taken_from_a_mixed_sitemap(self):
+        mod = self._mod()
+        named = mod.adverts_of(self._sitemap())
+        self.assertEqual(len(named), 1, "the sitemap also names blog and client pages")
+        self.assertIn("/jobs/", named[0][0])
+        self.assertEqual(named[0][1], "2026-09-25", "the lastmod the site publishes is carried")
+
+    def test_a_sitemap_that_is_gone_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (404, ""), {})
+        self.assertEqual(code, 3, err)
+
+    def test_a_sitemap_naming_no_advert_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap(["/blog/x"])), {})
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("no /jobs/ entry", err)
+
+    def test_an_unreachable_advert_is_counted_and_named(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.AD, "/jobs/AAA1-x"])),
+                                    {self.AD: (200, self._advert())})
+        self.assertEqual(len(rows), 1)
+        self.assertIn("1 unreachable", err)
+        self.assertIn("HTTP 404", err)
+        # **et l'invariante tient : 1 emis + 1 injoignable == 2 nommes.** C'est ce
+        # qui remplace une comparaison MORTE (`not manques and rows != named`, qui
+        # ne pouvait pas tirer puisqu'une ligne est ajoutee a chaque 200). Une
+        # ligne perdue en silence casserait la somme — et la mutation qui ajoute un
+        # `continue` muet rougit sur les cas du dessus, ou toutes les annonces sont
+        # joignables et le compte doit coller exactement.
+        self.assertEqual(code, 0, "une marche entierement expliquee sort proprement")
+
+    def test_another_host_is_never_requested(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.com/jobs/x")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
