@@ -37765,10 +37765,6 @@ class APagerThatClampsInsteadOfEnding(unittest.TestCase):
         self.assertEqual(mod._PACE.own, 5.0)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
-
-
 class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
     """**`bestjobmyanmar.py`, 2026-09-25 (#637).** A small DJ-Classifieds
     board. Four things, and the first two are traps this repository has
@@ -37800,16 +37796,35 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
     a feed 404 (3); a feed 200 with no `<item>` (6); an advert page that
     404s counted and named; another host refused (7).
 
-    **Mutated with the red named before each, and the line touched
-    printed** — five for five:
+    **Mutated in a detached worktree with `-B`, the red named before each and
+    the line touched printed** — six for six, but only after TWO of them came
+    back green and had to be earned:
 
     | the mutation | the red obtained |
     | :-- | :-- |
-    | the salary put back under the telephone rule | `'[telephone withheld] Kyats' != 'Up to 550,000 Kyats'` |
+    | the salary put back under the telephone rule | `'[telephone withheld] Kyats' != '350000 - 450000 Kyats'` |
+    | the phone rule re-anchored on the mobile prefix | a landline `01 234 5678` leaves unscrubbed |
     | `criteria_withheld` made unconditional | `['gender'] != []` on the advert that prints none |
     | the salary read by `PAIR_RE` instead of its two spans | `'Up to 550,000' != 'Up to 550,000 Kyats'` — the unit lost |
     | the id no longer taken from the trailing number | `2 != 1` — one advert emitted twice |
     | the stated/emitted comparison dropped | `0 != 6` — a short walk exits clean |
+
+    **The first mutation was GREEN twice, for two different reasons, and both
+    are worth more than the adapter.** *First*: the phone rule was anchored on
+    the Myanmar mobile prefix (`0?9`), so it could not reach a salary — which
+    made `money()` decorative rather than protective, **and let landline
+    contacts through**. One anchor, two defects, and the inert guard read as a
+    protection. *Second*, once the rule was widened: the assertions called
+    `money()` and `scrub()` directly while the mutation lives in `record()`,
+    and no advert in the bench carried a colliding value. **A guard that
+    exercises the FUNCTION does not see a substitution on the PATH.**
+
+    *And the colliding fixture is `350000 - 450000`, the exact shape that
+    destroyed 113 salaries on `myjobs.com.mm` — not a value invented to make a
+    guard red. The three adverts measured on 2026-09-25 write
+    «300000~500000» (the tilde is not a telephone separator) and «Up to
+    550,000» (seven characters): **neither collides today**, so the test says
+    which shape the exemption protects and which it merely accompanies.*
     """
 
     def _mod(self):
@@ -38012,3 +38027,7 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             fresh.request("https://example.com/find-jobs-in-myanmar")
         self.assertEqual(cm.exception.code, fresh.EXIT_REFUSED)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
