@@ -580,6 +580,39 @@ sample: **a zero of indexation is not a property of the board it is about, it is
 the state of an index on a date.** *A stale percentage invites a challenge; a
 stale zero is simply believed.*
 
+## A card field you invented is read by nothing, and the suite stays green
+
+**Before adding a comment field to a card, count how often it already occurs.**
+
+```bash
+grep -oh '<!-- [a-z_]*:' shared/boards/*.md | sort | uniq -c | sort -rn
+```
+
+**A count of `1` is the whole signal.** It means either a new convention someone
+is deliberately starting, or a typo wearing the face of an intention — and
+nothing else in the file distinguishes them.
+
+**Measured 2026-09-25, writing off `afgjobs`.** A first draft marked the
+write-off with `<!-- status: written off by the owner … -->`. It read perfectly,
+it was accurate, **and it passed all 1 249 tests.** The count said `1` out of
+495 cards, against 495 `countries:`, 484 `script:`, 180 `route:`.
+
+> **A guard checks that the fields it KNOWS are well formed. It cannot check
+> that a field it does not know does anything** — an invented field is not in
+> its vocabulary, so it is neither wrong nor right, it is invisible.
+
+**And here it was not a matter of style.** The repository already marks an
+owner's exclusion in `route:` — `route: none · non faisable — validé par le
+propriétaire le <date> (verbatim : «&nbsp;…&nbsp;»)`, as on `paperpk`, `rozgar` and
+`kazibongo` of 2026-09-14 — **and `route:` is the field the country-page ratio
+tooling reads to count an entry as non-feasible.** A `status:` field would have
+produced a page whose denominator silently ignored the write-off: *a wrong ratio,
+published, with every test green.*
+
+**So the rule is mechanical, and it costs one second before writing rather than
+one release after:** a field that occurs once is either announced as a new
+convention — and then it is given a reader — or it is a mistake.
+
 ## When a shipped adapter stops working
 
 Boards redesign, and an adapter that was verified against the live site stops
