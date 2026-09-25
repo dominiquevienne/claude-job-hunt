@@ -38191,5 +38191,161 @@ class AStructuredFieldThatIsTheWrongHalfOfItsOwnPage(unittest.TestCase):
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
 
+class TwoTagsForOneFieldAndAPagerThatNamesItsLast(unittest.TestCase):
+    """**`myanmarjoblink.py`, 2026-09-25 (#639).** A Myanmar generalist whose
+    LIST carries every field, so the board is 27 requests and not 405.
+
+    * **the same field is carried by two different tags depending on the
+      item**: `<span class="fprize">` on ordinary adverts, `<p
+      class="fprize">` on others. Anchoring on the TAG returned `salary`
+      and `place` null **on every row**, silently — the output stayed a
+      complete, well-formed JSON whose two empty fields read as «&nbsp;this
+      board publishes no salary&nbsp;». *It is the `job_position_featured`
+      variance one layer down: read by the CLASS the site sets, never by
+      the tag that carries it;*
+    * **a featured advert is an advert.** The items are `job_listing
+      clearfix` and `job_listing clearfix job_position_featured`; the exact
+      class drops every featured one, and what remains still looks like a
+      board — the defect that cost 33 of 3 232 on Wazifaha;
+    * **the bound is read from page 1 and only from page 1.** The pager
+      names `2 3 4 5 6` and **27**: a sliding window that also carries its
+      last page. Read on every page it would follow the walk instead of
+      bounding it;
+    * **and the salary really does collide here.** «&nbsp;500,000 - 700,000&nbsp;»
+      is a long run of digits and separators — the exact shape of the rule
+      that destroyed 113 salaries on `myjobs.com.mm`. *Unlike
+      BestJobMyanmar, where no measured value collided, `money()` is
+      load-bearing on this board.*
+
+    Both ways: the full record; a featured item read like an ordinary one;
+    both tags accepted for one class; the reference split off by its own
+    shape and not by whitespace, so a two-word title survives; a repeating
+    page (6); a first page with no item (6); a 404 (3); another host (7).
+
+    **Mutated with the red named before each** — five for five:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | `SALARY_RE` anchored on `<p` alone | `None != '500,000 - 700,000'` |
+    | `ITEM_RE` anchored on the exact class | `1 != 2` — the featured advert vanishes |
+    | the bound re-read on every page | the window followed instead of bounding |
+    | the salary put under the telephone rule | `'[telephone withheld]' != '500,000 - 700,000'` |
+    | the reference split on whitespace | `'Junior' != 'Junior Accountant'` |
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mjl", os.path.join(SCRIPTS, "myanmarjoblink.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    BASE = "https://www.myanmarjoblink.com"
+
+    @classmethod
+    def _item(cls, ident, titre="Junior Accountant", ref="JO-59112", featured=False,
+              balise="span", salary="500,000 - 700,000", place="Mingaladon ,\n Yangon"):
+        klass = "job_listing clearfix" + (" job_position_featured" if featured else "")
+        return (f'<li class="{klass}">'
+                f'<div class="position"><h3><a href="{cls.BASE}/find-jobs/detail/{ident}">'
+                f'{titre}   {ref}</a></h3>'
+                f'<div class="company"><a href="{cls.BASE}/companies/detail/10"><strong>Dagon Glory Recruitment Services</strong></a>'
+                f'<{balise} class="only-mobile-show">Un extrait.</{balise}></div></div>'
+                f'<{balise} class="fprize"><b>Salary</b>: {salary}</{balise}>'
+                f'<{balise} class="Place">{place}</{balise}>'
+                f'Posted 21/09/2026</li>')
+
+    @classmethod
+    def _page(cls, items, pager=(2, 3, 27)):
+        liens = "".join(f'<a href="/find-jobs/page/{n}">{n}</a>' for n in pager)
+        return "<html><body>" + liens + "".join(items) + "</body></html>"
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "MM")):
+        import contextlib
+        asked = []
+        def request(url):
+            asked.append(url)
+            p = urllib.parse.urlsplit(url).path
+            return pages.get(p, (200, self._page([], pager=())))
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(list(argv))
+            except SystemExit as e:
+                code = e.code or 0
+        return code, [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_both_tags_are_accepted_for_one_class(self):
+        mod = self._mod()
+        for balise in ("span", "p"):
+            items = mod.items_of(self._page([self._item("1", balise=balise)]))
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0]["salary"], "500,000 - 700,000",
+                             f"le champ est porte par <{balise}> sur certaines annonces")
+            self.assertIsNotNone(items[0]["place"])
+
+    def test_a_featured_advert_is_an_advert(self):
+        mod = self._mod()
+        items = mod.items_of(self._page([self._item("1"), self._item("2", featured=True)]))
+        self.assertEqual(len(items), 2, "la classe exacte laisse tomber les annonces en vedette")
+
+    def test_the_reference_is_split_off_by_its_shape_not_by_whitespace(self):
+        mod = self._mod()
+        t, r = mod.titre_et_ref("Junior Accountant   JO-59112")
+        self.assertEqual(t, "Junior Accountant", "couper sur l'espace couperait un titre de deux mots")
+        self.assertEqual(r, "JO-59112")
+        t2, r2 = mod.titre_et_ref("Driver")
+        self.assertEqual((t2, r2), ("Driver", None), "une annonce sans reference garde son titre")
+
+    def test_a_colliding_salary_survives_the_whole_record(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, {
+            "/find-jobs": (200, self._page([self._item("1")], pager=(2,))),
+            "/find-jobs/page/2": (200, self._page([], pager=())),
+        })
+        self.assertEqual(rows[0]["salary"], "500,000 - 700,000",
+                         "cette forme entre en collision avec la regle du telephone : money() porte ici")
+        self.assertNotEqual(mod.scrub("500,000 - 700,000"), "500,000 - 700,000",
+                            "si le texte libre ne la detruisait pas, l'exemption ne protegerait rien")
+
+    def test_the_bound_is_read_from_the_first_page_only(self):
+        mod = self._mod()
+        code, rows, err, asked = self._run(mod, {
+            "/find-jobs": (200, self._page([self._item("1")], pager=(2, 3))),
+            "/find-jobs/page/2": (200, self._page([self._item("2")], pager=(3, 4, 9))),
+            "/find-jobs/page/3": (200, self._page([], pager=())),
+        })
+        self.assertIn("named 3 as its last", err,
+                      "la borne vient de la page 1 ; la fenetre glissante de la page 2 nomme 9")
+        self.assertEqual(len(rows), 2)
+
+    def test_a_repeating_page_ends_the_walk(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, {
+            "/find-jobs": (200, self._page([self._item("1")], pager=(2, 3))),
+            "/find-jobs/page/2": (200, self._page([self._item("1")], pager=(3,))),
+        })
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("repeats", err)
+
+    def test_a_first_page_without_an_item_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, {"/find-jobs": (200, "<html><body>rien</body></html>")})
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("changed shape", err)
+
+    def test_a_list_that_is_gone(self):
+        mod = self._mod()
+        code, rows, err, _ = self._run(mod, {"/find-jobs": (404, "")})
+        self.assertEqual(code, 3, err)
+
+    def test_another_host_is_never_requested(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.com/find-jobs")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
