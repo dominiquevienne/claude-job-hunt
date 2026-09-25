@@ -228,8 +228,18 @@ def cmd_jobs(a):
     note("employers are anonymised by the agency — `employer` is null by measurement, not by omission.")
     if stamp:
         note(f"country {stamp} is the user's stamp.")
-    if not plafonne and not manques and len(rows) != len(named):
-        die(f"{len(rows)} emitted against {len(named)} named by the sitemap", EXIT_PARTIAL)
+    # **LA COMPARAISON PRECEDENTE ETAIT MORTE, PAS SEULEMENT INERTE — 25.09.2026.**
+    # Elle disait `not manques and len(rows) != len(named)` : or une ligne est
+    # ajoutee pour CHAQUE 200, donc `len(rows) != len(named)` n'arrive que si
+    # `manques > 0`, ce que la meme condition exclut. **Elle ne pouvait pas tirer.**
+    # *Une garde inerte peut au moins rougir un jour ; celle-la etait vide.*
+    # Ce qui se controle vraiment est une INVARIANTE : tout ce que le sitemap nomme
+    # est soit emis, soit compte comme injoignable. Si une ligne disparait en
+    # silence — un `continue` ajoute plus tard, un enregistrement qui leve — la
+    # somme cesse de coller et le dit.
+    if not plafonne and len(rows) + manques != len(named):
+        die(f"{len(rows)} emitted + {manques} unreachable != {len(named)} named by the sitemap"
+            f" — {len(named) - len(rows) - manques} row(s) dropped in silence", EXIT_PARTIAL)
 
 
 def main(argv=None):

@@ -38176,6 +38176,13 @@ class AStructuredFieldThatIsTheWrongHalfOfItsOwnPage(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertIn("1 unreachable", err)
         self.assertIn("HTTP 404", err)
+        # **et l'invariante tient : 1 emis + 1 injoignable == 2 nommes.** C'est ce
+        # qui remplace une comparaison MORTE (`not manques and rows != named`, qui
+        # ne pouvait pas tirer puisqu'une ligne est ajoutee a chaque 200). Une
+        # ligne perdue en silence casserait la somme — et la mutation qui ajoute un
+        # `continue` muet rougit sur les cas du dessus, ou toutes les annonces sont
+        # joignables et le compte doit coller exactement.
+        self.assertEqual(code, 0, "une marche entierement expliquee sort proprement")
 
     def test_another_host_is_never_requested(self):
         mod = self._mod()
