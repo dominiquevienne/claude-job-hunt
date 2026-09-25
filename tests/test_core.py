@@ -37896,8 +37896,27 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
         mod = self._mod()
         self.assertEqual(mod.money("300000~500000 Kyats"), "300000~500000 Kyats")
         self.assertEqual(mod.money("Up to 550,000 Kyats"), "Up to 550,000 Kyats")
-        # et le texte libre, lui, garde les deux regles
+        # et le texte libre garde les deux regles — mobile ET fixe
         self.assertEqual(mod.scrub("ring 09 765 432 109 now"), "ring [telephone withheld] now")
+        self.assertEqual(mod.scrub("bureau 01 234 5678 svp"), "bureau [telephone withheld] svp",
+                         "une regle ancree sur le prefixe mobile laisse fuir les fixes")
+        # **LA GARDE PORTEUSE, et elle porte sur une forme que CE board peut
+        # ecrire demain, pas sur une que j'aurais inventee.** Les trois annonces
+        # du jour ecrivent « 300000~500000 » (le tilde n'est pas un separateur
+        # telephonique) et « Up to 550,000 » (sept caracteres) : *aucune des deux
+        # n'entre en collision, et je ne fabrique pas une collision pour faire
+        # rougir une garde.* Mais « 350000 - 450000 » — la forme exacte qui a
+        # detruit 113 salaires sur `myjobs.com.mm` — est un intervalle que ce
+        # board publie couramment ailleurs, et la elle entre en collision.
+        # `money()` est donc porteur pour cette forme, decoratif pour celles du
+        # jour, et le test dit laquelle est laquelle.
+        collision = "350000 - 450000 Kyats"
+        self.assertEqual(mod.money(collision), collision,
+                         "un salaire etiquete ne passe jamais sous la regle du telephone")
+        self.assertNotEqual(mod.scrub(collision), collision,
+                            "si le texte libre ne le detruisait pas, l'exemption de money() ne protegerait rien")
+        # et les valeurs REELLEMENT mesurees, intactes des deux cotes
+        self.assertEqual(mod.scrub("300000~500000 Kyats"), "300000~500000 Kyats")
 
     def test_an_advert_printing_no_gender_declares_nothing(self):
         mod = self._mod()

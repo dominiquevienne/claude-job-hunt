@@ -74,8 +74,17 @@ EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
 EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
 
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-# Un numero birman s'ecrit 09 xxx xxx xxx : au moins neuf chiffres avec separateurs.
-PHONE_RE = re.compile(r"(?<![\w/])\+?\(?0?9[\d\s().\-/]{7,}\d(?!\w)")
+# **UNE REGLE ANCREE SUR LE PREFIXE MOBILE LAISSE PASSER LES FIXES — et elle rend
+# la garde du salaire INERTE par la meme occasion.** Premier jet : `0?9` en tete,
+# donc « 09 765 432 109 » etait pris et « 01 234 5678 » ne l'etait pas ; et comme
+# aucun salaire en kyats ne commence par 9, la mutation qui remettait le salaire
+# sous la regle du telephone **restait VERTE** — la garde ne pouvait pas echouer
+# sur ce qu'elle pretendait surveiller. *Deux defauts d'un seul ancrage : des
+# contacts qui fuient, et une garde inerte qui se lit comme une protection.*
+# La regle porte donc sur la FORME (sept chiffres et plus, separateurs admis), ce
+# qui la met en collision avec les salaires en kyats — et c'est exactement pour ca
+# que `money()` existe et qu'il est desormais porteur, pas decoratif.
+PHONE_RE = re.compile(r"(?<![\w/])\+?\(?\d[\d\s().\-/]{6,}\d(?!\w)")
 ITEM_RE = re.compile(r"<item>(.*?)</item>", re.S)
 TAG_RE = {k: re.compile(r"<%s>(.*?)</%s>" % (k, k), re.S) for k in ("title", "link", "category", "pubDate", "description")}
 CDATA_RE = re.compile(r"<!\[CDATA\[(.*?)\]\]>", re.S)
