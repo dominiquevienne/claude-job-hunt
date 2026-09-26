@@ -233,7 +233,7 @@ board being covered and a card naming it.
 | Hire from Syria (Syria) | `hirefromsyria.md` | **Measured 2026-09-17 (#608): a talent-matching platform, the root served (40 KB) with no job list — not a board with published ads as far as the root shows.** No issue | — |
 | 108.jobs (Laos) | `108-jobs.md` | **Measured 2026-09-17 (#602): HTTP 429 with a «Vercel Security Checkpoint» page on every read, the fingerprint moving — a challenge in front of «the No.1 job site in Laos».** Consigned, not defeated (borne 2); a tab is the next reading | — |
 | Jobinlaos (Laos) | `jobinlaos.md` | **Measured 2026-09-25 (#653), NOT FEASIBLE and `blocked`: a white label of `jobsmerch.com` whose front answers 200 with no advertisement, while the platform API it declares (`api.jobsmerch.com`) answers 522 on every path; the front does not proxy it (404 under its own host, and the bundle calls the third party's full apiBase). One request lifts it: that API returning anything but 522. Its `robots.txt` reads fine — 1 248 B of Cloudflare's content-signals preamble with no signal and no group, so `state: unrecognised`, open, `certain: False`, correctly.** | — |
-| CVConnect (Laos) | `cvconnect-la.md` | **Measured 2026-09-17 (#602), no script yet: the root served (31 KB, identical twice), rules open, «Show 1 - 7 jobs of all 7 jobs», Lao cards with a date range, `/jobs/<id>/`.** | — |
+| CVConnect (Laos) | `cvconnect-la.md` | **Adapter `cvconnect.py` (#654), measured 2026-09-26 — Laos's FIRST adapter.** Page 1 states «4 of all 4» and carries four; pages 2-3 state «of all 1700» and carry nothing, so the count is taken only from a page that carries what it counts. The class names are swapped (`company-name` holds the title) and the employer is corroborated twice | `cvconnect.py jobs --country-code LA` |
 | MyWorld Careers Laos (Laos) | `myworld-la.md` | **Measured 2026-09-17 (#602), no script yet: an agency's board, the root served (80 KB, identical twice), rules open, `/jobs/`, no count stated.** | — |
 | Jobweb (Laos) | `jobweb-la.md` | **Measured 2026-09-17 (#602): NXDOMAIN on two public resolvers — no delegation, not a board today.** No issue | — |
 | National Employment Office — neo.gov.lb (Lebanon) | `neo-gov-lb.md` | **Measured 2026-09-17 (#609): the public employment service's domain is NXDOMAIN on two public resolvers, apex and www — no online service today.** No issue | — |
@@ -1455,6 +1455,31 @@ Two rules for anything added here:
    sections say in their own heading that they date from 2026-08-26 and were
    deliberately left out, because exercising them means driving a real
    application on the user's real account.
+
+## An icon font stores its glyph's name as text, and `text()` keeps it
+
+**Strip presentational elements — `<i>`, `<svg>` — BEFORE stripping tags.**
+
+```python
+t = re.sub(r"<i\b[^>]*>.*?</i>", " ", markup, flags=re.S)   # l'element, pas la balise
+t = re.sub(r"<[^>]+>", " ", t)
+```
+
+**Measured 2026-09-26 on `cvconnect.la` (#654).** The place div contains
+`<i class="material-icons">location_on</i>`, and Material Icons renders a
+*ligature*: the glyph's NAME is the element's text content. An ordinary
+tag-strip removes the tag and keeps the name, so every place came out as
+`"location_on Ban Sibounhueng"`.
+
+> **Neither empty nor absurd, merely prefixed — so it survives every human
+> review.** *It was found by reading the OUTPUT against the browser, not the
+> code; nothing in the source looks wrong.*
+
+**And the reason this belongs here rather than in one card: every adapter
+carries its own `text()`.** A fix inside one adapter protects one board, and the
+next author copies `text()` from whichever adapter they used as a model. *A local
+fix to a duplicated function guarantees recurrence instead of preventing it.*
+Font Awesome in ligature mode does the same thing.
 
 ## An adapter that fetches twice consults the host's rate
 
