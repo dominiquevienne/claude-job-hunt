@@ -38387,14 +38387,16 @@ class TwoCountersThatEachAgreeWithThemselves(unittest.TestCase):
     silently trusted; the icon stripped; the separator counted; a repeating
     page (6); a first page with no card (6); a 404 (3); another host (7).
 
-    **MUTATIONS NOT YET RUN — the guard passes and is UNPROVEN.** The table
-    below is the plan, with the red named in advance; none of the five has
-    been obtained. *Every other class in this file states results, so an
-    unmarked table here would read as results — which is the defect of a
-    guard that cites its own doctrine, one level up.* The sweep was cut by
-    the budget guard; it runs before this branch is proposed.
+    **Mutated with the red named before each** — five for five, **but the
+    first was INERT until a sixth fixture was written.** `porte is None`
+    could never matter: an empty page leaves by the `break` BEFORE the line
+    that takes the stated count, so the protection was the break and not the
+    condition, and I would have credited the condition. *It becomes
+    load-bearing only where a page CARRIES cards while stating a different
+    total* — `test_only_the_first_carrying_page_supplies_the_count` builds
+    exactly that, and it is a shape this board could serve tomorrow.
 
-    | the mutation planned | the red EXPECTED (not yet obtained) |
+    | the mutation | the red obtained |
     | :-- | :-- |
     | the stated count taken from any page | `1700 != 4` — the witness becomes the fiction |
     | the walk stopping on `states` rather than `carries` | the walk does not end |
@@ -38457,6 +38459,24 @@ class TwoCountersThatEachAgreeWithThemselves(unittest.TestCase):
         self.assertIn("of all 1700 jobs", err)
         self.assertIn("not a measurement", err,
                       "le total non adosse s'imprime, et il est nomme comme non-mesure")
+
+    def test_only_the_first_carrying_page_supplies_the_count(self):
+        """**La condition `porte is None` etait INERTE et je l'aurais creditee.**
+        Une page vide sort par le `break` AVANT la ligne qui prend l'enonce, donc
+        la mutation qui retire la condition ne changeait rien : c'est le `break`
+        qui protege, pas elle. *La condition ne devient porteuse que si une page
+        PORTE des cartes en annoncant un autre total* — ce que ce cas construit,
+        et c'est une forme que ce board pourrait servir demain."""
+        mod = self._mod()
+        code, rows, err = self._run(mod, {
+            1: (200, self._page([self._card("1")], 1, 1, 2)),
+            2: (200, self._page([self._card("2")], 31, 60, 1700)),
+            3: (200, self._page([], 61, 90, 1700)),
+        })
+        self.assertEqual(len(rows), 2)
+        self.assertIn("states 2", err,
+                      "l'enonce vient de la PREMIERE page qui porte, pas de la derniere")
+        self.assertNotIn("states 1700", err)
 
     def test_the_walk_stops_on_what_a_page_carries(self):
         mod = self._mod()
