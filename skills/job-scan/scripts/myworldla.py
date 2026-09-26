@@ -83,7 +83,12 @@ LOC_RE = re.compile(r"<loc>\s*(.*?)\s*</loc>", re.S)
 LASTMOD_RE = re.compile(r"<lastmod>\s*(.*?)\s*</lastmod>", re.S)
 # La page porte DEUX blocs ld+json : on prend celui qui se declare JobPosting.
 LD_RE = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
-ADVERT_RE = re.compile(r"/jobs/([A-Z]{2,4}\d+)-")
+# **LE PLAFOND DE QUATRE LETTRES ETAIT TIRE DE MES ECHANTILLONS, PAS DE LA MESURE.**
+# Les codes vus d'abord font trois lettres (TMY, ASI, EMI) et j'ai borne a 4 sans
+# preuve : `EPHYO` en fait CINQ, et le filtre ecartait DEUX annonces sur 44 en
+# silence — la marche restait coherente, le compte enonce du sitemap baissait avec
+# elle, et rien ne se contredisait. *Un filtre eprouve dans un seul sens.*
+ADVERT_RE = re.compile(r"/jobs/([A-Z]{2,10}\d+)-")
 _PACES = {}
 
 
