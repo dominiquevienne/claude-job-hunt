@@ -2095,7 +2095,13 @@ permanently**, whatever else those rows are later merged into. If a corpus
 cannot say which host each row came from, it cannot honour this — which is a
 further reason the provenance rules in this repository are not bookkeeping.
 
-### Prevalence: one
+### Prevalence: two, and the second is a different shape
+
+**Corrected 2026-09-25: this heading read `Prevalence: one` until a second
+host was measured.** The first stands unchanged — `www.portaljob-madagascar.com`,
+2026-09-07, signal expressed. The second, below, carries the **preamble with no
+signal at all**, which is why the count matters less than the fact that the two
+are not the same object.
 
 **One host, found on 2026-09-07 while re-measuring a card.** Nothing here says
 how many carry it, and the signal is recent enough that the answer would be
@@ -2103,6 +2109,95 @@ different next month. *Do not extrapolate from one, and do not treat its
 absence elsewhere as a permission — a file that says nothing about a use has
 neither granted nor restricted it, which the specification states in its own
 words.*
+
+### The same preamble with **no signal set at all** — and it decides its own case
+
+**A second host, and it is not a second instance of the first.**
+`jobinlaos.com/robots.txt`, read 2026-09-25T07:54:48Z, **HTTP 200, 1 248
+bytes, `md5 3f95773253df085be0d6fd831ae2195f`**, served by Cloudflare
+(`cf-ray: a40876851ac124c2-ZRH`). Three facts, each countable in the held
+body:
+
+| fact | count |
+| :-- | :-- |
+| `Content-Signal:` lines | **0** — no signal is set, for any use |
+| `User-agent` lines | **0** — there is no group, not even `*` |
+| `Allow` / `Disallow` lines | **0** — there is no rule of any kind |
+
+**Every one of the 1 248 bytes is a comment.** The file is the explanatory
+preamble Cloudflare ships *without* the signal line it exists to explain —
+the legend with no map.
+
+**And the file settles its own case, in its own words.** Clause (c) of the
+preamble it carries:
+
+> `(c)  If the website operator does not include a content signal for a`
+> `     corresponding use, the website operator neither grants nor restricts`
+> `     permission via content signal with respect to the corresponding use.`
+
+*No signal is included for any use, so clause (c) applies to every use.* **We
+are not reading a silence generously: the document tells us what its silence
+means, and it means neither granted nor restricted.**
+
+#### The Article 4 sentence is present and **inert**, and that is the trap
+
+The file carries the same all-caps sentence as the Madagascar host — **ANY
+RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF RIGHTS
+UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790** — and here it
+reserves nothing, because **no restriction is expressed for it to attach
+to.** Its own protasis is unsatisfied.
+
+> **The two hosts differ on exactly the thing that matters.**
+> `www.portaljob-madagascar.com` *expresses* `ai-train=no`, so Article 4 bites
+> and the section above governs. `jobinlaos.com` expresses nothing, so the
+> same sentence is boilerplate.
+
+**This is the reading a careful person gets wrong in the cautious
+direction** — the sentence is in capitals, it cites a directive, and it sits
+in a file we are about to fetch from. *Treating it as a restriction would
+invent a refusal the operator did not make, and a refusal invented against
+ourselves is still a false verdict.*
+
+#### `allowed()` answers `state: unrecognised`, open, `certain: False` — **and that answer is CORRECT**
+
+**Written here so that nobody repairs the guard.** Run on these exact bytes,
+`_robots.py` reaches `state: unrecognised` (line 613), which has opened the
+door since 2026-09-04, with `certain: False` because no rules were read.
+**That is the right answer twice over:** there are genuinely no rules, and we
+genuinely did not read any — so the verdict and its confidence both describe
+what happened.
+
+*Demonstrated, not recalled — the module's own predicates on the held file:*
+
+```
+_looks_like_rules(body)    -> False    # no directive line anywhere
+_looks_like_refusal(body)  -> False    # nothing here says no
+=> state: unrecognised
+```
+
+**And the near miss is the part worth keeping.** `_looks_like_refusal` is
+asked *first* (line 596), and this body contains **"you may not collect
+content"** in clause (b) plus the capitalised Article 4 sentence. It does not
+match, so the file lands on `unrecognised` rather than `refused-in-prose`.
+*If someone later widens that predicate to catch prose refusals, this file is
+the fixture that must keep answering `unrecognised`* — clause (b) is a
+**definition of what a signal would mean**, not a refusal addressed to
+anybody.
+
+#### Distinguish it from the missing-group defect of #180
+
+**#180 is a file with `Disallow` lines and no `User-agent` line**, where the
+module invented a `*` group and certified it. *The shapes look alike —
+"no group" in both — and the consequence is opposite.* **Here there is no
+rule to attach to an invented group, so nothing can be certified out of
+nothing:** the absence is total, and total absence is the one case the
+specification answers plainly.
+
+**What this host does not tell us.** Whether its operator chose anything at
+all. *A dashboard that emits the preamble without a signal is the likeliest
+reading, and it is a reading, not a measurement* — the same caution the
+section above states for the first host applies here, and it applies harder,
+because an empty template is exactly what an untouched default looks like.
 
 ## A third party's broken infrastructure is not ours to fix — with one exception
 
