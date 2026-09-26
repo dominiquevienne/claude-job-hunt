@@ -233,7 +233,6 @@ board being covered and a card naming it.
 | Hire from Syria (Syria) | `hirefromsyria.md` | **Measured 2026-09-17 (#608): a talent-matching platform, the root served (40 KB) with no job list — not a board with published ads as far as the root shows.** No issue | — |
 | 108.jobs (Laos) | `108-jobs.md` | **Measured 2026-09-17 (#602): HTTP 429 with a «Vercel Security Checkpoint» page on every read, the fingerprint moving — a challenge in front of «the No.1 job site in Laos».** Consigned, not defeated (borne 2); a tab is the next reading | — |
 | Jobinlaos (Laos) | `jobinlaos.md` | **Measured 2026-09-17 (#602), no script yet: the root is a Nuxt shell (48 KB) still titled with its template's name, rules unreadable — client-rendered; the list route is the adapter's first line.** | — |
-| CVConnect (Laos) | `cvconnect-la.md` | **Measured 2026-09-17 (#602), no script yet: the root served (31 KB, identical twice), rules open, «Show 1 - 7 jobs of all 7 jobs», Lao cards with a date range, `/jobs/<id>/`.** | — |
 | MyWorld Careers Laos (Laos) | `myworld-la.md` | **Measured 2026-09-17 (#602), no script yet: an agency's board, the root served (80 KB, identical twice), rules open, `/jobs/`, no count stated.** | — |
 | Jobweb (Laos) | `jobweb-la.md` | **Measured 2026-09-17 (#602): NXDOMAIN on two public resolvers — no delegation, not a board today.** No issue | — |
 | National Employment Office — neo.gov.lb (Lebanon) | `neo-gov-lb.md` | **Measured 2026-09-17 (#609): the public employment service's domain is NXDOMAIN on two public resolvers, apex and www — no online service today.** No issue | — |
@@ -247,6 +246,7 @@ board being covered and a card naming it.
 | BestJobMyanmar (Myanmar) | `bestjobmyanmar.md` | **Adapter `bestjobmyanmar.py` (#637), measured 2026-09-25: the board enumerates itself — its own RSS feed is the route, and 3 emitted against 3 stated.** The issue's `/jobs` is a 404; the identity is the trailing id, since one advert is published under two URL shapes | `bestjobmyanmar.py jobs --country-code MM` |
 | MyWorld Careers (Myanmar) | `myworld-mm.md` | **Adapter `myworldmm.py` (#638), measured 2026-09-25: the rules file NAMES the sitemap (219 adverts), so the enumeration is published. Its `JobPosting` JSON-LD says «£4/YEAR» where the page says «Up to 4,000,000 MMK» — the salary is read from the page, never the structured field; `hiringOrganization` is the agency, not the employer (adverts are anonymised).** | `myworldmm.py jobs --country-code MM` |
 | MyanmarJobLink (Myanmar) | `myanmarjoblink.md` | **Adapter `myanmarjoblink.py` (#639), measured 2026-09-25: the list carries every field, so the board is 27 requests and not 405; the pager names 27 as its last and the bound is read from page 1 only (it slides).** The same field comes as `<span class="fprize">` or `<p class="fprize">` — read by the class, never the tag | `myanmarjoblink.py jobs --country-code MM` |
+| CVConnect (Laos) | `cvconnect-la.md` | **Adapter `cvconnect.py` (#654), measured 2026-09-26 — Laos's FIRST adapter.** Page 1 states «4 of all 4» and carries four; pages 2-3 state «of all 1700» and carry nothing, so the count is taken only from a page that carries what it counts. The class names are swapped (`company-name` holds the title) and the employer is corroborated twice | `cvconnect.py jobs --country-code LA` |
 | Biznetwork (Mongolia) | `biznetwork.md` | **Re-measured 2026-09-24 (#644 gloss-hunt): the root's 404 is unchanged to the byte, and `/robots.txt` returns the SAME 196 B 404 — so the 2026-09-17 «the rules file is served» was false (`state: absent`), and this card's only sign of a live server is gone.** Still indeterminate, no issue | — |
 | Korgar (Tajikistan) | `korgar.md` | **Measured 2026-09-17 (#610), no script yet: the root served (269 KB, identical twice), rules open, «Более 3000 вакансий» claimed, 21 ads at `/vakanciya/<slug>_<id>`, a pager `/vakancii?page=2 … 40`.** | — |
 | Yora / Vazifa (Tajikistan) | `yora.md` | **Measured 2026-09-17 (#610), no script yet: `yora.tj` and `vazifa.tj` serve the same Next.js shell (186 KB), rules open — Vazifa has become Yora, client-rendered; `vazifa.tj/latest-jobs` is 404.** | — |
@@ -1455,6 +1455,31 @@ Two rules for anything added here:
    sections say in their own heading that they date from 2026-08-26 and were
    deliberately left out, because exercising them means driving a real
    application on the user's real account.
+
+## An icon font stores its glyph's name as text, and `text()` keeps it
+
+**Strip presentational elements — `<i>`, `<svg>` — BEFORE stripping tags.**
+
+```python
+t = re.sub(r"<i\b[^>]*>.*?</i>", " ", markup, flags=re.S)   # l'element, pas la balise
+t = re.sub(r"<[^>]+>", " ", t)
+```
+
+**Measured 2026-09-26 on `cvconnect.la` (#654).** The place div contains
+`<i class="material-icons">location_on</i>`, and Material Icons renders a
+*ligature*: the glyph's NAME is the element's text content. An ordinary
+tag-strip removes the tag and keeps the name, so every place came out as
+`"location_on Ban Sibounhueng"`.
+
+> **Neither empty nor absurd, merely prefixed — so it survives every human
+> review.** *It was found by reading the OUTPUT against the browser, not the
+> code; nothing in the source looks wrong.*
+
+**And the reason this belongs here rather than in one card: every adapter
+carries its own `text()`.** A fix inside one adapter protects one board, and the
+next author copies `text()` from whichever adapter they used as a model. *A local
+fix to a duplicated function guarantees recurrence instead of preventing it.*
+Font Awesome in ligature mode does the same thing.
 
 ## An adapter that fetches twice consults the host's rate
 
