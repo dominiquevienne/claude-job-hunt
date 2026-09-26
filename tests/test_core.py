@@ -38347,5 +38347,175 @@ class TwoTagsForOneFieldAndAPagerThatNamesItsLast(unittest.TestCase):
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
 
+class TwoCountersThatEachAgreeWithThemselves(unittest.TestCase):
+    """**`cvconnect.py`, 2026-09-26 (#654).** Laos's first adapter. Four
+    things, and the first is a branch of the stop-rule family that the
+    other three boards did not predict:
+
+    * **a page states a total while carrying nothing.** Page 1 says «4
+      jobs of all 4» and carries four; page 2 says «31 - 60 jobs of all
+      1700» and carries none, page 3 «61 - 90 of all 1700». *If the board
+      held 1 700, page 2 would carry thirty.* **This is the only branch in
+      which the board never contradicts itself** — «31 - 60 of 1700» is
+      perfect arithmetic at thirty a page, where the clamp, the crush and
+      the reset all produce a visible impossibility. **The single rule that
+      covers all four: stop on what a page CARRIES, never on what it
+      STATES** — and the unbacked figure is PRINTED anyway, because it is
+      what a future reader will find and believe;
+    * **the class names are swapped**: `job-des-item-company-name` holds
+      the job title, `job-des-item-title` holds the employer. What settles
+      it is that the employer is written in two further places — the card's
+      `<a alt>` and its `<img title>` — and both match `…-title`. *A mark
+      is evidence, not proof, and a mark contradicted by two others loses.*
+      The record carries `employer_corroborated`, so a template change
+      shows up as a **number falling** rather than as a silently swapped
+      field;
+    * **an icon font stores its glyph's name as text.** `<i
+      class="material-icons">location_on</i>` inside the place div means an
+      ordinary tag-strip yields «location_on Ban Sibounhueng» — *neither
+      empty nor absurd, merely prefixed, so it survives every human
+      review.* It was found by reading the OUTPUT against the browser, not
+      the code;
+    * **a separator occurring once per item separates nothing.** `EXPIRED
+      JOBS` appears four times for four adverts. *It nearly read as «three
+      of these four are expired».* The test is cardinality.
+
+    Both ways: the full record; the stated count taken from the carrying
+    page; the unbacked total printed and NOT used; the walk stopping on an
+    empty page; title and employer not swapped; a card whose `alt` and
+    `title` disagree reported with `employer_corroborated` at 0 rather than
+    silently trusted; the icon stripped; the separator counted; a repeating
+    page (6); a first page with no card (6); a 404 (3); another host (7).
+
+    **Mutated with the red named before each** — five for five:
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the stated count taken from any page | `1700 != 4` — the witness becomes the fiction |
+    | the walk stopping on `states` rather than `carries` | the walk does not end |
+    | the classes read the way they are named | title and employer swapped |
+    | the `<i>` strip removed | `'location_on Ban …' != 'Ban …'` |
+    | the separator cardinality check dropped | the note vanishes and the marker reads as a section |
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_cv", os.path.join(SCRIPTS, "cvconnect.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://cvconnect.la"
+
+    @classmethod
+    def _card(cls, ident, titre="ຊ່ວຍຄົວ", employeur="IMSOUK SUKI", alt=None, place="ບ້ານ ຊ້າງຄູ່"):
+        alt = employeur if alt is None else alt
+        return (f'<a href="{cls.B}/jobs/{ident}/" alt="{alt}" target="_blank" class="list-group-item">'
+                f'<div class="job-pic-item"><img src="x.png" title="{alt}" alt="{alt}"></div>'
+                '<div class="job-des-item">'
+                f'<div class="job-des-item-company-name"><h4>{titre}</h4></div>'
+                f'<div class="job-des-item-title"><b><p>{employeur}</p></b></div>'
+                f'<div class="job-des-item-cat"><p><i class="material-icons small">location_on</i> {place}</p></div>'
+                '<div class="job-des-item-time"><p><i class="material-icons small">timer</i> 2 weekago</p></div>'
+                '<div class="job-des-item-time"><p><i class="material-icons small">date_range</i> 15/09/2026 to 28/09/2026</p></div>'
+                '</div></a>'
+                '<!-- =================  EXPIRED JOBS  ================================= -->')
+
+    @classmethod
+    def _page(cls, cards, first=1, last=None, total=None):
+        last = len(cards) if last is None else last
+        total = len(cards) if total is None else total
+        return ("<html><body>"
+                f"<p>Show {first} - {last} jobs of all {total} jobs</p>"
+                + "".join(cards) + "</body></html>")
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "LA")):
+        import contextlib
+        def request(url):
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            return pages.get(int(q.get("page", ["1"])[0]), (200, self._page([], 31, 60, 1700)))
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(list(argv))
+            except SystemExit as e:
+                code = e.code or 0
+        return code, [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    def test_the_count_comes_from_the_page_that_carries_it(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, self._page([self._card("2548")]))})
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 1)
+        self.assertIn("states 1", err)
+        self.assertIn("of all 1700 jobs", err)
+        self.assertIn("not a measurement", err,
+                      "le total non adosse s'imprime, et il est nomme comme non-mesure")
+
+    def test_the_walk_stops_on_what_a_page_carries(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {
+            1: (200, self._page([self._card("1"), self._card("2")], 1, 2, 2)),
+            2: (200, self._page([], 31, 60, 1700)),
+        })
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 2, "la page 2 annonce 1700 et ne porte rien : elle arrete la marche")
+
+    def test_the_title_and_the_employer_are_not_swapped(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, self._page([self._card("2548")]))})
+        r = rows[0]
+        self.assertEqual(r["title"], "ຊ່ວຍຄົວ", "le div nomme `company-name` porte le TITRE")
+        self.assertEqual(r["employer"], "IMSOUK SUKI", "le div nomme `title` porte l'EMPLOYEUR")
+        self.assertEqual(r["employer_corroborated"], 2, "l'alt du lien et le title de l'image confirment")
+
+    def test_an_employer_no_mark_corroborates_is_reported_not_trusted(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, self._page([self._card("1", alt="Autre Chose")]))})
+        self.assertEqual(rows[0]["employer_corroborated"], 0)
+        self.assertIn("corroborated by NEITHER", err,
+                      "un employeur que rien ne confirme se DIT, il ne se tait pas")
+
+    def test_the_icon_name_is_not_part_of_the_place(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, self._page([self._card("1", place="Ban Sibounhueng")]))})
+        self.assertEqual(rows[0]["place"], "Ban Sibounhueng",
+                         "une police a ligatures met le nom du pictogramme dans le texte")
+        self.assertIsNotNone(rows[0]["dates"])
+
+    def test_a_separator_as_numerous_as_the_items_separates_nothing(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, self._page([self._card("1"), self._card("2")], 1, 2, 2))})
+        self.assertIn("separates nothing", err)
+        self.assertIn("2 times for 2 advert", err)
+
+    def test_a_repeating_page_ends_the_walk(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {
+            1: (200, self._page([self._card("1")], 1, 1, 1)),
+            2: (200, self._page([self._card("1")], 2, 2, 1)),
+        })
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("repeats", err)
+
+    def test_a_first_page_without_a_card_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (200, "<html><body>rien</body></html>")})
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("changed shape", err)
+
+    def test_a_list_that_is_gone(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, {1: (404, "")})
+        self.assertEqual(code, 3, err)
+
+    def test_another_host_is_never_requested(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.com/search_jobs.php")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
