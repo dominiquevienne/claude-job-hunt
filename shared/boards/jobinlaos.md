@@ -5,7 +5,7 @@
 <!-- hosts: jobinlaos.com, api.jobsmerch.com -->
 <!-- script: none -->
 <!-- countries: LA -->
-<!-- feasible: no — 2026-09-25: the platform API this front depends on (`api.jobsmerch.com`) answers 522 on every path; the front does not proxy it (two witnesses). What would lift it is one request: `api.jobsmerch.com/api/v1/jobs` returning anything but 522. Ticket #653, `blocked`. -->
+<!-- route: none · non faisable — l'API de la plateforme dont ce front dépend (`api.jobsmerch.com`) rend 522 sur TOUS ses chemins et le front ne la proxifie pas (404 sous son propre hôte, et le bundle appelle l'apiBase complet du tiers) ; le front répond 200 mais ne porte aucune annonce ; lèverait le blocage en une requête : `api.jobsmerch.com/api/v1/jobs` rendant autre chose qu'un 522, ticket #653 `blocked` · 2026-09-25 -->
 <!-- content: measured · **the front answers (200, 47 897 B) but carries no advertisement: `__NUXT_DATA__` is 384 B / 19 elements with none. The root declares `apiBase: "https://api.jobsmerch.com/api/v1"` — a third party — and `api.jobsmerch.com` answers **522, 16 B** on `/`, `/robots.txt` AND `/api/v1/jobs`. The board is NOT closed: its front serves, and the PLATFORM's origin is off.** · 2026-09-25 -->
 <!-- witness: none — the front serves no advertisement and the API serves nothing · 2026-09-25 -->
 
