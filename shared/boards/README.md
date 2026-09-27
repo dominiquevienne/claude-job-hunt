@@ -1456,6 +1456,54 @@ Two rules for anything added here:
    deliberately left out, because exercising them means driving a real
    application on the user's real account.
 
+## A structured salary is not the truer one, and its currency is the first thing to go
+
+**Carry the salary as the site PRINTS it. Never carry `baseSalary.currency`.**
+
+Measured 2026-09-26/27 on one vendor's two country fronts (#638, #655):
+
+```
+Myanmar   baseSalary  {"currency": "£",   "value": {"minValue": 4}}
+          the page    Salary  Up to 4,000,000 MMK + Other Allowances
+Laos      baseSalary  {"currency": "GBP", "value": {"value": "Up to 45,000,000 LAK + Allowances"}}
+          the page    Salary  Up to 45,000,000 LAK + Allowances
+```
+
+**«&nbsp;£4 per year&nbsp;» for a job paying four million kyats**, and GBP on a salary the
+same object prints in LAK. *One front truncates the number and keeps a template
+currency; the other keeps the string and still mislabels it.* **The same vendor
+serves other countries**, so this is not two cards' worth of trivia.
+
+> **A structured field is not the truer one because it is structured.** *An
+> adapter preferring JSON-LD on principle publishes £4/YEAR, and nothing
+> contradicts it: it is well-formed, parseable, and plausible to anything that
+> does not also read the page.*
+
+And the salary is a LABELLED field, so the telephone rule never touches it — four
+million kyats is seven digits, forty-five million kip is eight, and the nine-digit
+rule destroyed 113 of 115 salaries on `myjobs.com.mm` before it was caught.
+
+## A filter says how many it discarded, or its witness cannot see it
+
+**Measured 2026-09-27 on `myworldla.py` (#655).** The reference code was read as
+`[A-Z]{2,4}` because every sample seen was three letters; **`EPHYO` is five**, so
+two adverts of forty-four were dropped — *with no symptom at all.*
+
+**The walk stayed coherent and the invariant `emitted + unreachable == named` held
+— because the filter sat UPSTREAM of both sides of it.** The `named` count was
+computed *after* the pattern rejected `EPHYO`, so the witness compared two numbers
+drawn from the same filtered set. **A witness downstream of a filter cannot see
+the filter.**
+
+```
+45 /jobs/ entries · 1 index · 2 rejected by the code pattern · 42 walked
+```
+
+*So a filter reports its own attrition, and a too-narrow pattern surfaces as a
+non-zero rejection count in the run's own output.* **The tell here was external
+and lucky**: a figure written down in an earlier window (44) disagreeing with one
+the run printed (42).
+
 ## An icon font stores its glyph's name as text, and `text()` keeps it
 
 **Strip presentational elements — `<i>`, `<svg>` — BEFORE stripping tags.**
@@ -1474,6 +1522,19 @@ tag-strip removes the tag and keeps the name, so every place came out as
 > **Neither empty nor absurd, merely prefixed — so it survives every human
 > review.** *It was found by reading the OUTPUT against the browser, not the
 > code; nothing in the source looks wrong.*
+
+**Measured 2026-09-27: of the 138 adapters that define `text()`, TWO remove the
+element and 136 do not.** *The check, tested both ways — `cvconnect.py` must come
+out clean, `acbar.py` must come out at risk:*
+
+```bash
+grep -l 'def text(' skills/job-scan/scripts/*.py | xargs grep -L '<i\b\[^>\]\*>'
+```
+
+*A first attempt used `myjobsmm.py` as the negative witness and it fell outside
+both lists — it has no `text()` at all, it has `pieces()`. **A control drawn from
+outside the population proves nothing about the population**, and the tell was a
+witness appearing in neither answer.*
 
 **And the reason this belongs here rather than in one card: every adapter
 carries its own `text()`.** A fix inside one adapter protects one board, and the
