@@ -38542,5 +38542,179 @@ class TwoCountersThatEachAgreeWithThemselves(unittest.TestCase):
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
 
+class OneVendorTwoFrontsAndAStructuredFieldWrongOnBoth(unittest.TestCase):
+    """**`myworldla.py`, 2026-09-27 (#655).** The Laos front of the agency
+    whose Myanmar front is `myworldmm.py` (#638). Five things:
+
+    * **the issue asked for one script per `--host` and measurement refused
+      it.** The fronts share no markup at all — `styles_metaLabel__` is on
+      every Myanmar field and absent from Laos, and the Laos `/jobs`
+      carries no advert link. *A `--host` flag would have produced a reader
+      returning `None` on every field*, which is this repository's «reader
+      inherited from the neighbour». What they share is the approach — a
+      sitemap named in the rules file — and the agency's codes;
+    * **`baseSalary` is wrong on BOTH fronts, differently.** Myanmar:
+      `{"currency": "£", "minValue": 4}` — the number truncated. Laos:
+      `{"currency": "GBP", "value": "Up to 45,000,000 LAK + Allowances"}` —
+      the string right, the currency wrong. **The rule covering both: carry
+      the string the site prints, never `baseSalary.currency`;**
+    * **`employmentType` is the literal string «undefined».** *Worse than
+      absent: `if x` keeps it*, and it parses cleanly. Dropped, and counted
+      in the run's own output;
+    * **`jobLocation` smears one string across every address field** —
+      `addressCountry` reads «Pakxe, Laos». One is carried, and
+      `location_fields_identical` records that they agreed, so a front that
+      one day fills them properly appears as a disagreement;
+    * **the reference-code cap was tested in one direction.** `[A-Z]{2,4}`
+      came from the samples I had seen — all three letters — and `EPHYO` is
+      five, so **two adverts of 44 were dropped in silence**: the walk
+      stayed coherent, the sitemap's own count fell with it, and the
+      emitted-equals-named invariant held because *both sides shrank
+      together*. The tell was a number written down earlier disagreeing
+      with a number the run printed.
+
+    Both ways: the full record; the salary string carried whole and the
+    currency never; a numeric `minValue` (the Myanmar shape) yielding null
+    rather than an invented figure; «undefined» dropped and counted; one
+    address field carried with the agreement flagged; a five-letter code
+    admitted; the JobPosting block chosen from among two `ld+json` scripts;
+    a sitemap 404 (3); a sitemap naming no advert (6); an advert page that
+    404s counted; another host refused (7).
+
+    **MUTATIONS NOT YET RUN — the guard passes and is UNPROVEN.** Five are
+    planned with their red named: `baseSalary.currency` carried; «undefined»
+    kept; `addressCountry` used; the code cap back to `{2,4}`; the
+    JobPosting filter dropped from `posting_of`. *Marked because every other
+    class here states results, so an unmarked claim reads as one.*
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_mwla", os.path.join(SCRIPTS, "myworldla.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://laos.myworld-careers.com"
+
+    @classmethod
+    def _sitemap(cls, paths=None):
+        paths = paths or ["/jobs/TMY80502-maintenance-manager-in-pakse-laos/",
+                          "/jobs/EPHYO80859-recruiter-remote-at-a-us-based-agency/",
+                          "/jobs/", "/blog/x"]
+        return "<urlset>" + "".join(
+            f"<url><loc>{cls.B}{p}</loc><lastmod>2026-09-26</lastmod></url>" for p in paths) + "</urlset>"
+
+    @staticmethod
+    def _advert(salary="Up to 45,000,000 LAK + Allowances", numeric=False,
+                etype="undefined", lieu="Pakxe, Laos", ref="TMY80502"):
+        val = {"@type": "QuantitativeValue", "unitText": "YEAR"}
+        val["minValue" if numeric else "value"] = 4 if numeric else salary
+        ld = {"@context": "https://schema.org/", "@type": "JobPosting",
+              "title": "Maintenance Manager at a Global Manufacturing Organization in Pakse, Laos",
+              "datePosted": "2026-09-25T05:00:40.391Z", "validThrough": "2027-03-25T23:59:59.999Z",
+              "description": "<h2>Le poste</h2>", "employmentType": etype,
+              "baseSalary": {"@type": "MonetaryAmount", "currency": "GBP", "value": val},
+              "hiringOrganization": {"@type": "Organization", "name": "MyWorld Careers Laos"},
+              "identifier": {"@type": "PropertyValue", "name": "MyWorld Careers Laos", "value": ref},
+              "jobLocation": {"@type": "Place", "address": {
+                  "@type": "PostalAddress", "streetAddress": lieu, "addressLocality": lieu,
+                  "addressRegion": lieu, "addressCountry": lieu, "postalCode": "-"}}}
+        autre = {"@context": "https://schema.org/", "@type": "WebSite", "name": "MyWorld"}
+        # DEUX blocs ld+json, le non-JobPosting d'abord : le choix doit etre explicite
+        return ("<html><body>"
+                + '<script type="application/ld+json">' + json.dumps(autre) + "</script>"
+                + '<script type="application/ld+json">' + json.dumps(ld) + "</script>"
+                + "</body></html>")
+
+    def _run(self, mod, sitemap, pages, argv=("jobs", "--country-code", "LA")):
+        import contextlib
+        def request(url):
+            if url.endswith("/sitemap.xml"):
+                return sitemap
+            return pages.get(urllib.parse.urlsplit(url).path, (404, ""))
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                mod.main(list(argv))
+            except SystemExit as e:
+                code = e.code or 0
+        return code, [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue()
+
+    P1 = "/jobs/TMY80502-maintenance-manager-in-pakse-laos/"
+    P2 = "/jobs/EPHYO80859-recruiter-remote-at-a-us-based-agency/"
+
+    def test_the_salary_string_is_carried_and_the_currency_never(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1])), {self.P1: (200, self._advert())})
+        self.assertEqual(code, 0, err)
+        r = rows[0]
+        self.assertEqual(r["salary"], "Up to 45,000,000 LAK + Allowances")
+        self.assertNotIn("GBP", json.dumps(r), "le vendeur ecrit GBP sur un salaire en LAK")
+        self.assertNotIn("currency", json.dumps(r))
+        self.assertIn("baseSalary.currency is never carried", err)
+
+    def test_a_numeric_minvalue_yields_null_rather_than_an_invented_figure(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1])),
+                                    {self.P1: (200, self._advert(numeric=True))})
+        self.assertIsNone(rows[0]["salary"],
+                          "la forme birmane est un nombre tronque : on ne l'invente pas")
+
+    def test_undefined_is_dropped_and_counted(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1])), {self.P1: (200, self._advert())})
+        self.assertIsNone(rows[0]["contract_type"], "« undefined » est pire qu'absent : `if x` le garde")
+        self.assertIn('employmentType: "undefined"', err)
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1])),
+                                    {self.P1: (200, self._advert(etype="Permanent"))})
+        self.assertEqual(rows[0]["contract_type"], "Permanent", "un vrai type se garde")
+
+    def test_one_address_field_is_carried_and_the_agreement_flagged(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1])), {self.P1: (200, self._advert())})
+        self.assertEqual(rows[0]["location"], "Pakxe, Laos")
+        self.assertTrue(rows[0]["location_fields_identical"])
+        self.assertIn("SAME string", err)
+
+    def test_a_five_letter_reference_code_is_an_advert(self):
+        mod = self._mod()
+        named = mod.adverts_of(self._sitemap())
+        self.assertEqual(len(named), 2, "EPHYO fait CINQ lettres ; le plafond de 4 en perdait deux sur 44")
+        self.assertTrue(any("EPHYO80859" in u for u, _ in named))
+        self.assertFalse(any(u.endswith("/jobs/") for u, _ in named), "l'index n'est pas une annonce")
+
+    def test_the_jobposting_block_is_chosen_from_among_two(self):
+        mod = self._mod()
+        ld = mod.posting_of(self._advert())
+        self.assertEqual(ld.get("@type"), "JobPosting",
+                         "la page porte deux ld+json et le premier n'est pas le bon")
+
+    def test_a_sitemap_that_is_gone(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (404, ""), {})
+        self.assertEqual(code, 3, err)
+
+    def test_a_sitemap_naming_no_advert_is_not_an_empty_board(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap(["/blog/x"])), {})
+        self.assertEqual(code, mod.EXIT_PARTIAL, err)
+        self.assertIn("no advert entry", err)
+
+    def test_an_unreachable_advert_is_counted(self):
+        mod = self._mod()
+        code, rows, err = self._run(mod, (200, self._sitemap([self.P1, self.P2])),
+                                    {self.P1: (200, self._advert())})
+        self.assertEqual(len(rows), 1)
+        self.assertIn("1 unreachable", err)
+
+    def test_another_host_is_never_requested(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.com/jobs/x")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
