@@ -38581,11 +38581,21 @@ class OneVendorTwoFrontsAndAStructuredFieldWrongOnBoth(unittest.TestCase):
     a sitemap 404 (3); a sitemap naming no advert (6); an advert page that
     404s counted; another host refused (7).
 
-    **MUTATIONS NOT YET RUN — the guard passes and is UNPROVEN.** Five are
-    planned with their red named: `baseSalary.currency` carried; «undefined»
-    kept; `addressCountry` used; the code cap back to `{2,4}`; the
-    JobPosting filter dropped from `posting_of`. *Marked because every other
-    class here states results, so an unmarked claim reads as one.*
+    **Mutated with the red named before each** — five for five, **and the
+    fifth needed its target corrected.** Removing the `"JobPosting"` string
+    filter left the guard GREEN: the `@type` check downstream still rejects
+    the wrong block, so the string filter is an optimisation and the `@type`
+    check is the protection — two layers where I had credited the first.
+    *Mutating both gives `None != 'Pakxe, Laos'`, the WebSite block carrying
+    no `jobLocation`.*
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | `baseSalary.currency` carried in the record | `'GBP' unexpectedly found` |
+    | «undefined» kept as a value | `'undefined' is not None` |
+    | `addressCountry` taken as the location | `False is not true` — the agreement flag lost |
+    | the code cap back to `{2,4}` | `1 != 2` — EPHYO dropped |
+    | BOTH layers of the JobPosting choice removed | `None != 'Pakxe, Laos'` |
     """
 
     def _mod(self):
