@@ -7,7 +7,23 @@
 <!-- countries: LB -->
 <!-- content: indeterminate · **`/jobs` answers HTTP 403, 5 551 then 5 572 B, md5 c37422907d09 / c120d88602b2 — «Just a moment...», a Cloudflare managed challenge (the `revolico` class: same title, moving fingerprint) — under the declared identity, twice; the rules file could not be read (absence of rules, `certain: False`); nothing of the board was read** · 2026-09-17 -->
 <!-- witness: none — nothing was served · 2026-09-17 -->
-<!-- route: none · le defi Cloudflare tient — REMESURE le 2026-09-27 16:1x UTC, deux lectures : 403, 5 569 puis 5 548 o, md5 2eb0dac98bd9 / 09bd6890f9ba, titre «Just a moment...» ; **la TAILLE et l'empreinte bougent toutes deux**, donc c'est un defi et non un refus statique. Borne 2 : on ne le dejoue pas et on ne demande a personne de le dejouer. La lecture suivante — un onglet, pour voir si la page est servie SANS CLIC — n'a pas pu etre prise : l'extension navigateur n'est pas connectee. Consigne, pas un verdict (§2 sexies) · 2026-09-27 -->
+<!-- route: none · le defi Cloudflare tient — REMESURE le 2026-09-27 16:1x UTC, deux lectures : 403, 5 569 puis 5 548 o, md5 2eb0dac98bd9 / 09bd6890f9ba, titre «Just a moment...» ; **la TAILLE et l'empreinte bougent toutes deux**, donc c'est un defi et non un refus statique. Borne 2 : on ne le dejoue pas et on ne demande a personne de le dejouer. La lecture suivante est un onglet, pour voir si la page est servie SANS CLIC. Consigne, pas un verdict (§2 sexies) · 2026-09-27 -->
+
+
+## Ce qui manque est de NOTRE cote, et ce n'est pas une propriete de l'hote
+
+**2026-09-27 16:1x UTC : la route navigateur attend un Chrome ouvert.** L'extension
+n'etait pas connectee — elle l'etait le matin meme, sur d'autres hotes — donc
+l'onglet n'a pas pu etre pris. *Deux tentatives, puis arret : on n'insiste pas sur
+un outil absent.*
+
+> **Cette ligne decrit notre outillage, pas le board.** *Le defi Cloudflare est une
+> propriete de l'hote&nbsp;: elle se mesure et elle dure. «&nbsp;Chrome est ferme&nbsp;» est
+> la meteo de notre cote, et la confondre avec la premiere ferait classer `blocked`
+> ce qui est faisable dans l'heure — or ce compte decide des assignations.*
+
+**Donc cette fiche ne conclut RIEN sur l'accessibilite par navigateur** : la
+question reste ouverte et se reprend des qu'un Chrome est disponible.
 
 **Found by the Lebanon search of #609 (a country never searched), measured
 2026-09-17 13:53–13:55 UTC by the declared client, the guard on the exact path
