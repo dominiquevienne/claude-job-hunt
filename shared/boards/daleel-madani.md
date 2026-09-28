@@ -1,14 +1,40 @@
 # Board measurement — Daleel Madani jobs (`daleel-madani.org/jobs`, Lebanon): the civil-society network's job board (NGO vacancies) — on 2026-09-17 every read answers HTTP 403 with a 5.5 KB «Just a moment...» page, the fingerprint moving: a Cloudflare challenge; consigned, not defeated (borne 2); a tab is the next reading
 
-<!-- verified: 2026-09-27 -->
+<!-- verified: 2026-09-28 -->
 
 <!-- hosts: daleel-madani.org -->
 <!-- script: none -->
 <!-- countries: LB -->
 <!-- content: indeterminate · **`/jobs` answers HTTP 403, 5 551 then 5 572 B, md5 c37422907d09 / c120d88602b2 — «Just a moment...», a Cloudflare managed challenge (the `revolico` class: same title, moving fingerprint) — under the declared identity, twice; the rules file could not be read (absence of rules, `certain: False`); nothing of the board was read** · 2026-09-17 -->
 <!-- witness: none — nothing was served · 2026-09-17 -->
-<!-- route: none · le defi Cloudflare tient — REMESURE le 2026-09-27 16:1x UTC, deux lectures : 403, 5 569 puis 5 548 o, md5 2eb0dac98bd9 / 09bd6890f9ba, titre «Just a moment...» ; **la TAILLE et l'empreinte bougent toutes deux**, donc c'est un defi et non un refus statique. Borne 2 : on ne le dejoue pas et on ne demande a personne de le dejouer. La lecture suivante est un onglet, pour voir si la page est servie SANS CLIC. Consigne, pas un verdict (§2 sexies) · 2026-09-27 -->
+<!-- route: browser · **MESUREE le 2026-09-28 : l'interstitiel se resout SEUL, sans clic ni captcha, et la liste est servie — « Displaying 1 - 20 of 188 », 20 par page, pager glissant ; borne 2 respectee : rien n'a ete dejoue, un vrai navigateur a ete servi apres SA propre verification.** Le client declare reste refuse (voir ci-dessous) · 2026-09-28 -->
+<!-- route-http: none · le defi Cloudflare tient — REMESURE le 2026-09-27 16:1x UTC, deux lectures : 403, 5 569 puis 5 548 o, md5 2eb0dac98bd9 / 09bd6890f9ba, titre «Just a moment...» ; **la TAILLE et l'empreinte bougent toutes deux**, donc c'est un defi et non un refus statique. Borne 2 : on ne le dejoue pas et on ne demande a personne de le dejouer. La lecture suivante est un onglet, pour voir si la page est servie SANS CLIC. Consigne, pas un verdict (§2 sexies) · 2026-09-27 -->
 
+
+## La route navigateur est MESUREE, et le defi n'a pas ete dejoue
+
+**2026-09-28 : l'onglet a ete pris, et l'interstitiel se resout de lui-meme.**
+
+```
+au chargement   « Un instant… »  ·  « Verification de securite en cours »
+12 s plus tard  « Jobs | Daleel Madani »  ·  Displaying 1 - 20 of 188
+```
+
+**Aucun clic, aucun captcha, aucune enigme.** *Le site ecrit lui-meme ce qui se
+passe : « Cette page s'affiche pendant que le site verifie que vous n'etes pas un
+bot ».* **Borne 2 est respectee et c'est la distinction qui compte : nous n'avons
+rien dejoue — un vrai navigateur a ete servi apres SA propre verification.** *Un
+defi qui exigerait un clic ou une resolution nous arreterait, et nous ne pouvions
+pas le savoir avant de regarder.*
+
+**Ce que la liste porte, par annonce** : intitule, organisation, pays, region et
+ville, type de contrat, **date limite de candidature**. Le compte est enonce par
+le site — **188** — et la pagination est de 20, avec un pager glissant
+(`1 2 3 4 … next › last »`), donc dix pages.
+
+**Le client declare reste refuse** : 403 « Just a moment... », empreinte ET taille
+mouvantes (remesure du 2026-09-27). *Les deux faits coexistent et ne se
+contredisent pas : le defi ferme la voie HTTP et s'ouvre a un navigateur.*
 
 ## Ce qui manque est de NOTRE cote, et ce n'est pas une propriete de l'hote
 
