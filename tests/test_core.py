@@ -38872,16 +38872,25 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
     `emitted + unreachable + withdrawn + unread == named`; another host
     refused (7).
 
-    **Mutated with the red named before each — six for six.**
+    **Mutated with the red named before each — and the third needed its target
+    corrected.** Replacing the `"@type":"JobPosting"` regex anchor with the word
+    `title` left the guard GREEN: the `d.get("@type")` check downstream still
+    rejects the form labels. **Two layers where I had credited one** — the anchor
+    LOCATES, the `@type` check PROTECTS — and removing the check alone is green
+    too, because the anchor never reaches the labels. *Only removing BOTH is a
+    defect, and then three separate cases catch it.* Same shape as `myworldla`
+    (#655), met again without recognising it until the mutation said so.
 
     | the mutation | the red obtained |
     | :-- | :-- |
-    | the `latin-1 -> utf-8` round trip dropped | `SystemExit 2` expected, run emitted 0 rows |
-    | `lisible()` always True | `0 != 1` — the mojibake page read as an absence |
-    | `posting_de` matching the word `title` | `'a form label' != None` |
-    | `baseSalary.currency` carried | `'GBP' unexpectedly found` |
-    | `money()` sending the salary through `scrub()` | `'[telephone withheld]' != '3000000 - 3500000'` |
-    | the listing enumerator dropped | `19 != 47` — 28 live adverts lost |
+    | the `latin-1 -> utf-8` round trip dropped | `2 != 0` — a SANE page refused as mojibake |
+    | `lisible()` always True | `0 != 2` — the mojibake page read as an absence |
+    | the `@type` check alone removed | **GREEN, and correctly so** — the anchor does not reach the labels |
+    | the regex anchor alone moved to `title` | **GREEN, and correctly so** — the `@type` check still rejects |
+    | BOTH layers of the JobPosting choice removed | `{'placeholder': 'salary', ...} != {}`, plus `2 != 1` and a third list |
+    | `baseSalary.currency` carried in the record | `'GBP' unexpectedly found` |
+    | `money()` sent through the telephone rule | `'[telephone withheld]' != '3000000 - 3500000'` |
+    | the listing enumerator dropped | `'structure but no JobPosting' not found` — a live advert lost |
     '''
 
     @staticmethod
