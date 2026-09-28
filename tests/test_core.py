@@ -38726,5 +38726,107 @@ class OneVendorTwoFrontsAndAStructuredFieldWrongOnBoth(unittest.TestCase):
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
 
+
+class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
+    """**The card side of `Crawl-delay`, and the sibling of
+    `AnAdapterThatFetchesTwiceConsultsTheHostsRate`.** That one asks whether the
+    adapter PACES; this one asks whether the card ever RECORDED a rate to pace to.
+
+    **The form, and it is a form and not a series of lapses (#907).** The question
+    put to a rules file is «&nbsp;may I?&nbsp;» and the answer fits in a boolean, so
+    what is not a refusal is lost — yet `Crawl-delay` is the one directive that says
+    neither yes nor no but **«&nbsp;yes, at this rate&nbsp;»**. A boolean cannot carry
+    it, and the card inherits the boolean. *`allowed()` does return `crawl_delay`
+    since 2026-09-05; nothing in the code drops it now. What drops it is the writing
+    of the card.*
+
+    **Measured twice, and the DIRECTION of the change is the finding:**
+
+        24.09.2026   84 of 103 cards at «open, certain» silent on the rate
+        28.09.2026   62 of 103          — 22 recovered in four days
+
+    **Nobody had taken #907 when those 22 were recovered.** They came from adapter
+    work: writing an adapter re-measures the host, and the re-measure notes the
+    delay. *That is exactly the route the issue predicted, from `yemenhr.md`,
+    `myjobs-mm.md` and `bast-af.md` — all three found «by chance, during
+    re-measurements done for something else».* **The rate is recovered when you pass
+    through a host again, never when you re-read its card** — so this guard does not
+    ask anyone to re-measure 62 hosts; it makes sure the next pass cannot lose one.
+
+    **The list below can only SHRINK, and the test fails in BOTH directions:** a card
+    that newly concludes «open, certain» without a rate is caught because it is not
+    listed, and one that gains the rate is caught because it still is.
+    *A frozen allowlist checked in one direction becomes a place to hide* — the same
+    reason the sibling guard is written this way.
+
+    *Scope, stated because it bounds what a green means:* the denominator is the
+    CARD, not the host — a multi-host card counts once. `certain: True` is searched
+    in the WHOLE card, which is what reproduces the issue's 103; restricting it to
+    the `content:` line yields 4 and is a worse reproduction, not a stricter one.
+    """
+
+    MUTES = (
+        "3amal.md", "afgjobs.md", "algeriejob.md", "asako.md", "biznetwork.md",
+        "boliviatrabajo.md", "careerfair-nea-gov-kh.md", "careerlink.md",
+        "caribbeanjobsonline.md", "clasificadosonline.md", "clasipar.md",
+        "cv-lv.md", "cvonline-lt.md", "cyprusjobs.md", "cypruswork.md",
+        "duapune.md", "duunitori.md", "easyprace.md", "eightfold.md",
+        "emploi-cd.md", "emploi-cm.md", "emploi-ma.md", "emploi-tg.md",
+        "emploibenin.md", "emploiburkina.md", "emploiguinee.md",
+        "emploisenegal.md", "ethiopiawork.md", "ezega.md", "foundit-ph.md",
+        "founditgulf.md", "gjejpune24.md", "halooglasi.md", "hiringroom.md",
+        "hotnigerianjobs.md", "infotep.md", "intermediair.md", "isinolsun.md",
+        "job-cameroun.md", "jobguinee-pro.md", "jobline.md", "jobsgarden.md",
+        "karboom.md", "kariera-gr.md", "karrierestart.md", "khmer24.md",
+        "kode24.md", "liberiawork.md", "mywork.md", "nea-gov-kh.md",
+        "nodeflair.md", "profesia.md", "profession.md", "rabota-by.md", "rozee.md",
+        "secretcv.md", "southsudanjob.md", "staff-am.md", "sudancareers.md",
+        "toptalent.md", "tyomarkkinatori.md", "undelucram.md",
+    )
+
+    def _silent(self):
+        import glob
+        import io
+        import re
+        # l'idiome du fichier : la racine se calcule ici, pas dans un global
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        rate = re.compile(r"crawl[- ]?delay", re.I)
+        out = set()
+        for p in glob.glob(os.path.join(root, "shared", "boards", "*.md")):
+            n = os.path.basename(p)
+            if n.lower() == "readme.md":
+                continue
+            body = io.open(p, encoding="utf-8", errors="replace").read()
+            if "certain: True" in body and not rate.search(body):
+                out.add(n)
+        return out
+
+    def test_the_population_is_the_one_the_issue_measured(self):
+        """**The premise, and it must hold or the case proves nothing.** If the
+        denominator drifts, the classifier is not the issue's and the count below
+        is about some other set."""
+        import glob
+        import io
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        certain = [p for p in glob.glob(os.path.join(root, "shared", "boards", "*.md"))
+                   if os.path.basename(p).lower() != "readme.md"
+                   and "certain: True" in io.open(p, encoding="utf-8", errors="replace").read()]
+        self.assertGreaterEqual(len(certain), len(self.MUTES),
+                                "fewer «open, certain» cards than silent ones is arithmetically "
+                                "impossible: the classifier is wrong, not the repository")
+
+    def test_no_card_becomes_silent_and_none_stays_listed_once_fixed(self):
+        """**Both directions in one assertion.** Exact equality: a new silent card
+        is absent from `MUTES`, a repaired one is still present. Either way the set
+        differs and the test says which cards and in which direction."""
+        silent, listed = self._silent(), set(self.MUTES)
+        neuf = sorted(silent - listed)
+        repare = sorted(listed - silent)
+        self.assertEqual(silent, listed,
+                         "cards that BECAME silent on the rate (add the rate, do not "
+                         f"extend this list): {neuf or 'none'} — cards that GAINED the "
+                         f"rate (remove them from MUTES, the list only shrinks): "
+                         f"{repare or 'none'}")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
