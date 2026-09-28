@@ -38885,6 +38885,7 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
     | :-- | :-- |
     | the `latin-1 -> utf-8` round trip dropped | `2 != 0` — a SANE page refused as mojibake |
     | `lisible()` always True | `0 != 2` — the mojibake page read as an absence |
+    | the class narrowed to the two-byte leads `[\u00c0-\u00df]` | `False is not true` — Burmese, Lao, Thai, Georgian and Amharic mojibake read as legible |
     | the `@type` check alone removed | **GREEN, and correctly so** — the anchor does not reach the labels |
     | the regex anchor alone moved to `title` | **GREEN, and correctly so** — the `@type` check still rejects |
     | BOTH layers of the JobPosting choice removed | `{'placeholder': 'salary', ...} != {}`, plus `2 != 1` and a third list |
@@ -39017,13 +39018,31 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
         self.assertIn("Refusing to conclude", err)
 
     def test_legibility_is_judged_by_the_shape_of_the_failure_not_by_a_known_word(self):
-        """**Sur un alphabet qu'on ne lit pas, exiger un mot connu est impossible.**"""
+        """**Sur un alphabet qu'on ne lit pas, exiger un mot connu est impossible.**
+
+        Et la classe couvre les tetes de sequence a DEUX et a TROIS octets : les
+        ecritures a trois octets (birman, lao, thai, georgien, amharique) ouvrent
+        sur U+00E0-U+00EF et echappaient a la forme etroite. *Mesure du
+        2026-09-29 sur dix ecritures : trois caracteres nommes en attrapent 1,
+        U+00C0-U+00DF en attrape 5, U+00C0-U+00EF les 10.*
+        """
         mod = self._mod()
-        bon = "ХАБЭА-ын ажилтан"
-        self.assertTrue(mod.lisible(bon))
-        self.assertFalse(mod.lisible(bon.encode("utf-8").decode("latin-1")))
+        deux = ["ХАБЭА-ын ажилтан", "وظائف شاغرة", "آگهی استخدام",
+                "Θέσεις εργασίας", "משרות פנויות"]
+        trois = ["အလုပ်ခေါ်စာ", "ຂ່າວວຽກ", "ตำแหน่งงาน", "ვაკანსია", "የሠራ ማስታወቂያ"]
+        for s in deux + trois:
+            self.assertTrue(mod.lisible(s), s)
+            # **le meme texte, mal decode, doit etre REFUSE — les trois octets compris**
+            self.assertFalse(mod.lisible(s.encode("utf-8").decode("latin-1")), s)
         self.assertTrue(mod.lisible(""))          # rien a juger n'est pas illisible
         self.assertTrue(mod.lisible("Maintenance Manager"))   # du latin pur
+        # **temoin negatif : du latin ACCENTUE sain ne declenche rien**, bien que
+        # « ¿ » et « « » soient dans la plage de continuation.
+        for t in ["Développeur back-end à Genève, Zürich et Málaga",
+                  "Ingeniero de software señor · São Paulo · 65 000€",
+                  "Où ? À Paris. ¿Quién? « Offre d'emploi »",
+                  "Éducation · Santé · Bâtiment · Hôtellerie · Île-de-France"]:
+            self.assertTrue(mod.lisible(t), t)
 
     def test_the_advert_is_found_by_structure_and_never_by_a_keyword(self):
         """**Le dictionnaire d'interface contient tous les mots du domaine.**"""
