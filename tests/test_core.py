@@ -38828,5 +38828,277 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
                          f"rate (remove them from MUTES, the list only shrinks): "
                          f"{repare or 'none'}")
 
+class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase):
+    '''**`lambdaglobal.py`, 2026-09-29 (#661).** Lambda, Mongolia — a Next.js
+    board whose adverts live in the streamed RSC payload. Four things, and the
+    first two are the same defect seen from opposite sides:
+
+    * **a broken decode does not raise: it returns TEXT.** The payload needs
+      `unicode_escape` AND a `latin-1 -> utf-8` round trip. Without the second
+      the whole payload comes back as mojibake, every search fails, and the
+      honest-looking conclusion is «the HTTP route does not carry the
+      adverts» — *no exception, no error code, a payload read end to end.*
+      **So the run checks LEGIBILITY before concluding any absence**, by the
+      signature of the failure (a `[\\u00c0-\\u00df][\\u0080-\\u00bf]` pair) and
+      never by a known word: requiring a word of the site's language assumes
+      one reads it, which on Cyrillic is exactly what is not true;
+    * **and counting a keyword measures the TRANSLATION DICTIONARY.** The
+      payload carries `salary`, `location`, `company` and `title` as form
+      labels and placeholders. *A fully localised interface contains every
+      word of the domain, so finding one proves nothing* — the advert is found
+      by STRUCTURE, an object declaring `"@type":"JobPosting"`;
+    * **three figures said «the sitemap is the enumerator» and membership said
+      otherwise.** Sitemap 50 under `/jobs`, listing 30 links, no count stated
+      anywhere — which reads as one set containing the other. **They intersect
+      in TWO.** Walking the sitemap alone emits 19 and loses 28 live adverts;
+      walking the union emits 47. *No total, no cardinal and no re-reading
+      distinguishes «same size» from «same members»* — this repository's
+      `meme-cardinal-membres-differents`, met in the wild. The run walks both,
+      emits the union, and **states that the board's size is NOT established**;
+    * **a withdrawn advert is a 200 with a whole, legible payload declaring no
+      structured object AT ALL** (a live one declares nine kinds). 31 of the
+      sitemap's 50 are in that state and the listing corroborates: none of the
+      31 is linked. **The run counts «withdrawn» apart from «payload HAS
+      structure but no JobPosting»** — the first is a fact about the board, the
+      second would be a fact about our reading, and collapsing them would let a
+      reader defect hide inside a board's staleness.
+
+    Both ways: the union emitted with each record naming its enumerator; a
+    mojibake payload REFUSED (2) rather than read as an absence; a payload of
+    pure form labels yielding nothing; the salary string carried whole and
+    `baseSalary.currency` never; a seven-digit labelled salary surviving the
+    telephone rule (the Burmese defect, 113 of 115); an `<i>` icon element
+    removed with its glyph; withdrawn and unread counted apart; the invariant
+    `emitted + unreachable + withdrawn + unread == named`; another host
+    refused (7).
+
+    **Mutated with the red named before each — and the third needed its target
+    corrected.** Replacing the `"@type":"JobPosting"` regex anchor with the word
+    `title` left the guard GREEN: the `d.get("@type")` check downstream still
+    rejects the form labels. **Two layers where I had credited one** — the anchor
+    LOCATES, the `@type` check PROTECTS — and removing the check alone is green
+    too, because the anchor never reaches the labels. *Only removing BOTH is a
+    defect, and then three separate cases catch it.* Same shape as `myworldla`
+    (#655), met again without recognising it until the mutation said so.
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the `latin-1 -> utf-8` round trip dropped | `2 != 0` — a SANE page refused as mojibake |
+    | `lisible()` always True | `0 != 2` — the mojibake page read as an absence |
+    | the `@type` check alone removed | **GREEN, and correctly so** — the anchor does not reach the labels |
+    | the regex anchor alone moved to `title` | **GREEN, and correctly so** — the `@type` check still rejects |
+    | BOTH layers of the JobPosting choice removed | `{'placeholder': 'salary', ...} != {}`, plus `2 != 1` and a third list |
+    | `baseSalary.currency` carried in the record | `'GBP' unexpectedly found` |
+    | `money()` sent through the telephone rule | `'[telephone withheld]' != '3000000 - 3500000'` |
+    | the listing enumerator dropped | `'structure but no JobPosting' not found` — a live advert lost |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_lamb", os.path.join(SCRIPTS, "lambdaglobal.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://lambda.global"
+
+    @staticmethod
+    def _chunk(charge, casser=False):
+        """Une page dont la charge RSC porte `charge`.
+
+        `casser` reproduit le defaut reel : la charge y est de l'UTF-8 lu en
+        latin-1, donc `charge_de` rend du TEXTE et non une erreur.
+        """
+        if casser:
+            charge = charge.encode("utf-8").decode("latin-1")
+        echappe = charge.replace("\\", "\\\\").replace('"', '\\"')
+        return ('<html><body><script>self.__next_f.push([1,"%s"])</script></body></html>'
+                % echappe)
+
+    @classmethod
+    def _advert(cls, ident=27449, titre="ХАБЭА-ын ажилтан", salaire=None,
+                devise="MNT", casser=False, structure=True, poste=True):
+        if not structure:
+            # retiree : charge entiere, lisible, AUCUN objet structure
+            return cls._chunk('{"placeholder":"salary","label":"company","field":"title"}', casser)
+        if not poste:
+            # la charge PORTE de la structure, et pas celle-la : notre lecture est en cause
+            return cls._chunk('{"@type":"Organization","name":"Lambda"}', casser)
+        ld = {"@type": "JobPosting", "title": titre,
+              "identifier": {"@type": "PropertyValue", "name": "Job ID", "value": ident},
+              "hiringOrganization": {"@type": "Organization", "name": "Mongolian Express LLC",
+                                     "url": "https://lambda.global/companies/monex"},
+              "jobLocation": {"@type": "Place", "address": {
+                  "@type": "PostalAddress", "addressLocality": "ulaanbaatar/bayangol",
+                  "addressRegion": "Ulaanbaatar", "addressCountry": "Mongolia"}},
+              "employmentType": "MID-LEVEL", "datePosted": "2026-08-31T02:04:37.191Z",
+              "description": 'Терминалд <i class="fa fa-phone"></i> ажилтан авна.'}
+        if salaire is not None:
+            ld["baseSalary"] = {"@type": "MonetaryAmount", "currency": devise,
+                                "value": {"@type": "QuantitativeValue", "value": salaire}}
+        # un formulaire de recherche accompagne l'annonce : le dictionnaire d'interface
+        entoure = '{"placeholder":"salary","label":"company","aria":"location"}'
+        return cls._chunk(entoure + json.dumps(ld, ensure_ascii=False), casser)
+
+    @classmethod
+    def _sitemap(cls, slugs=("aaa-11111111", "bbb-22222222")):
+        urls = "".join(f"<url><loc>{cls.B}/jobs/{s}</loc><lastmod>2026-09-04</lastmod></url>"
+                       for s in slugs)
+        return ("<urlset>" + urls +
+                f"<url><loc>{cls.B}/salary/x</loc></url>"
+                f"<url><loc>{cls.B}/companies/y</loc></url></urlset>")
+
+    @classmethod
+    def _listing(cls, slugs=("ccc-33333333",)):
+        return ("<html>" + "".join(f'<a href="/jobs/{s}">x</a>' for s in slugs) +
+                '<a href="/companies/z">c</a></html>')
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "MN")):
+        """Le module branche sur des pages nommees ; rend (rc, lignes, journal)."""
+        pages = dict(pages)
+
+        def faux_request(url):
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue()
+
+    def _pages(self, **kw):
+        return {
+            f"{self.B}/sitemap.xml": self._sitemap(),
+            f"{self.B}/jobs": self._listing(),
+            f"{self.B}/jobs/aaa-11111111": self._advert(ident=27449, salaire="3000000 - 3500000", **kw),
+            f"{self.B}/jobs/bbb-22222222": self._advert(ident=50023, structure=False),
+            f"{self.B}/jobs/ccc-33333333": self._advert(ident=37580, titre="CONTENT CREATOR",
+                                                        salaire="5500000 - 6500000", **kw),
+        }
+
+    def test_the_union_of_two_enumerators_is_emitted_each_record_naming_its_own(self):
+        """**La mesure qui a renverse la premisse : les deux ensembles se coupent en DEUX.**
+
+        Le sitemap nomme 2 annonces, la liste en lie 1 qu'il ignore. Marcher le
+        seul sitemap perdrait celle-la — sur l'hote, 28 annonces vivantes.
+        """
+        mod = self._mod()
+        rc, lignes, err = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual([r["id"] for r in lignes], ["27449", "37580"])
+        self.assertEqual([r["enumerated_by"] for r in lignes], ["sitemap", "listing"])
+        self.assertIn("sitemap names 2", err)
+        self.assertIn("the /jobs listing links 1", err)
+        self.assertIn("3 distinct", err)
+        # **le compte n'est jamais revendique**
+        self.assertIn("the board's size is not", err.lower())
+
+    def test_a_mojibake_payload_is_refused_instead_of_read_as_an_absence(self):
+        """**Le defaut central : un decodage casse rend du TEXTE, pas une erreur.**
+
+        La page est entiere, elle repond 200, et la seule chose qui la separe
+        d'un board vide est la LISIBILITE de ce qu'on en a tire.
+        """
+        mod = self._mod()
+        rc, lignes, err = self._run(mod, self._pages(casser=True))
+        self.assertEqual(rc, mod.EXIT_BROKEN)
+        self.assertEqual(lignes, [])
+        self.assertIn("mojibake", err)
+        self.assertIn("Refusing to conclude", err)
+
+    def test_legibility_is_judged_by_the_shape_of_the_failure_not_by_a_known_word(self):
+        """**Sur un alphabet qu'on ne lit pas, exiger un mot connu est impossible.**"""
+        mod = self._mod()
+        bon = "ХАБЭА-ын ажилтан"
+        self.assertTrue(mod.lisible(bon))
+        self.assertFalse(mod.lisible(bon.encode("utf-8").decode("latin-1")))
+        self.assertTrue(mod.lisible(""))          # rien a juger n'est pas illisible
+        self.assertTrue(mod.lisible("Maintenance Manager"))   # du latin pur
+
+    def test_the_advert_is_found_by_structure_and_never_by_a_keyword(self):
+        """**Le dictionnaire d'interface contient tous les mots du domaine.**"""
+        mod = self._mod()
+        libelles = '{"placeholder":"salary","label":"company","field":"title","aria":"location"}'
+        self.assertEqual(mod.posting_de(libelles), {})
+        self.assertEqual(mod.structure_de(libelles), set())
+        vrai = '{"@type":"JobPosting","title":"a","identifier":{"value":1}}'
+        self.assertEqual(mod.posting_de(vrai)["title"], "a")
+        self.assertEqual(mod.structure_de(vrai), {"JobPosting"})
+
+    def test_the_salary_is_the_string_the_site_prints_and_never_its_currency(self):
+        """**`baseSalary.currency` est faux chez ce fournisseur (#638/#655).**
+
+        Et le champ LABELLISE echappe a la regle du telephone : une paye
+        mensuelle mongole a sept chiffres, donc la FORME d'un numero — le defaut
+        qui a detruit 113 salaires birmans sur 115.
+        """
+        mod = self._mod()
+        rc, lignes, err = self._run(mod, self._pages(devise="GBP"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(lignes[0]["salary"], "3000000 - 3500000")
+        self.assertNotIn("GBP", json.dumps(lignes, ensure_ascii=False))
+        self.assertNotIn("withheld", lignes[0]["salary"])
+        # et le texte libre, lui, reste expurge
+        self.assertEqual(mod.scrub("залгаарай 99112233"), "залгаарай [telephone withheld]")
+
+    def test_an_icon_element_is_removed_with_its_glyph_not_only_its_tag(self):
+        """**Une police d'icones met son glyphe DANS l'element** (zone privee)."""
+        mod = self._mod()
+        rc, lignes, err = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("", lignes[0]["description"])
+        self.assertEqual(lignes[0]["description"], "Терминалд ажилтан авна.")
+
+    def test_a_withdrawn_advert_is_counted_apart_from_one_we_failed_to_read(self):
+        """**Le premier est un fait sur le board, le second sur NOTRE lecture.**
+
+        Les confondre laisserait un defaut de lecteur se cacher dans la
+        peremption d'un board.
+        """
+        mod = self._mod()
+        pages = self._pages()
+        pages[f"{self.B}/jobs/ccc-33333333"] = self._advert(poste=False)
+        rc, lignes, err = self._run(mod, pages)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 1)
+        self.assertIn("1 withdrawn", err)
+        self.assertIn("structure but no JobPosting", err)
+        self.assertIn("reads on US, not on the board", err)
+
+    def test_an_advert_lost_between_the_four_outcomes_stops_the_run(self):
+        """**emitted + unreachable + withdrawn + unread == named.**"""
+        mod = self._mod()
+        pages = self._pages()
+        del pages[f"{self.B}/jobs/ccc-33333333"]          # 404 -> unreachable
+        rc, lignes, err = self._run(mod, pages)
+        self.assertEqual(rc, 0, err)
+        self.assertIn("1 unreachable", err)
+        self.assertEqual(len(lignes), 1)
+
+    def test_walking_the_sitemap_alone_is_what_loses_the_live_adverts(self):
+        """**19 contre 47 sur l'hote ; ici 1 contre 2.**"""
+        mod = self._mod()
+        rc, lignes, err = self._run(mod, self._pages(),
+                                    argv=("jobs", "--enumerator", "sitemap"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual([r["id"] for r in lignes], ["27449"])
+        self.assertIn("the /jobs listing links 0", err)
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/jobs/x")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
