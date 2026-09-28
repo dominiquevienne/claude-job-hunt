@@ -49,7 +49,10 @@ empty that is not. Nothing contradicts it: no exception, no error code, a payloa
 *This adapter therefore CHECKS that what it decoded is legible before concluding anything* — by the
 SIGNATURE OF THE FAILURE and not by a known word, see `lisible()`, because requiring a word of the
 site's language assumes one reads it. **On a non-Latin site, a wrong decode and absent content are
-indistinguishable without that check.**
+indistinguishable without that check.** *And the signature is a RANGE, not a handful of characters:
+measured on ten scripts, three named characters catch one, the two-byte lead range catches five, and
+the range covering two- AND three-byte leads catches all ten — Burmese, Lao, Thai, Georgian and
+Amharic open on U+00E0-U+00EF and escape the narrow form entirely.*
 
 **AND COUNTING A KEYWORD MEASURES THE TRANSLATION, NOT THE CONTENT.** The payload carries `salary`,
 `location`, `company` and `title` **as form labels and placeholders**. *A fully localised interface
@@ -111,10 +114,17 @@ SLUG_RE = re.compile(r"/jobs/([a-z0-9-]+-\d{6,})\b")
 CHUNK_RE = re.compile(r'self\.__next_f\.push\(\[\d+,"(.*?)"\]\)', re.S)
 TYPE_RE = re.compile(r'"@type"\s*:\s*"([A-Za-z]+)"')
 # La SIGNATURE DE L'ECHEC, pas la presence du contenu : de l'UTF-8 lu en latin-1
-# laisse une tete (U+00C0-U+00DF) suivie d'un octet de continuation (U+0080-U+00BF).
+# laisse une TETE de sequence suivie d'un octet de continuation (U+0080-U+00BF).
 # Ce test ne demande pas de connaitre la langue du site, et c'est pour ca qu'il vaut
 # sur un alphabet qu'on ne lit pas.
-MOJIBAKE_RE = re.compile("[\u00c0-\u00df][\u0080-\u00bf]")
+#
+# **La borne haute est U+00EF et non U+00DF, et ce n'est pas un detail.** U+00C0-U+00DF
+# ouvre les sequences a DEUX octets (cyrillique, arabe, persan, grec, hebreu) ; les
+# ecritures a TROIS octets — birman, lao, thai, georgien, amharique — ouvrent sur
+# U+00E0-U+00EF et passaient donc a travers. *Mesure du 2026-09-29 sur dix ecritures :
+# trois caracteres nommes en attrapent 1, U+00C0-U+00DF en attrape 5, U+00C0-U+00EF les
+# 10 ; zero faux positif sur du latin accentue sain, « ¿ » et « « » compris.*
+MOJIBAKE_RE = re.compile("[\u00c0-\u00ef][\u0080-\u00bf]")
 _PACES = {}
 
 
