@@ -1542,6 +1542,67 @@ next author copies `text()` from whichever adapter they used as a model. *A loca
 fix to a duplicated function guarantees recurrence instead of preventing it.*
 Font Awesome in ligature mode does the same thing.
 
+## A broken decode does not raise — it returns text that reads like absence
+
+**Measured 2026-09-29 on `lambdaglobal.py` (#661), a Mongolian board.** The adverts
+live in a Next.js RSC payload and need `unicode_escape` **and** a `latin-1` to
+`utf-8` round trip:
+
+```python
+dec = brut.encode().decode("unicode_escape")     # suffit pour du latin
+dec = dec.encode("latin-1").decode("utf-8")      # INDISPENSABLE hors latin
+```
+
+**Drop the second line and nothing fails.** The payload comes back as mojibake, every
+search for `"@type":"JobPosting"` finds nothing, and the run concludes *«the HTTP
+route does not carry the adverts»*. **No exception, no error code, a 200 read end to
+end** — a board declared empty that is not.
+
+> **A wrong decode and absent content are indistinguishable from inside the adapter.**
+> *The only thing that separates them is whether what you decoded is LEGIBLE.*
+
+**So an adapter that decodes anything checks legibility before concluding any
+absence — and by the SIGNATURE OF THE FAILURE, never by looking for a known word:**
+
+```python
+MOJIBAKE_RE = re.compile("[\\u00c0-\\u00df][\\u0080-\\u00bf]")   # UTF-8 lu en latin-1
+```
+
+*Requiring a word of the site's language assumes one reads that language* — which on
+Cyrillic, Burmese or Persian is exactly what is not true, and those are the alphabets
+where the defect happens. **The failure's shape is the same in every language; the
+content's is not.**
+
+## Two enumerators of similar size are not one enumerator — test MEMBERSHIP
+
+**Measured 2026-09-29 on `lambdaglobal.py` (#661).** Three figures:
+
+```
+sitemap /jobs   50      listing /jobs (linked)   30      stated count   none
+```
+
+**They read as «the sitemap enumerates, the listing shows its first page».** The
+membership test says the two sets **intersect in two**:
+
+```
+walking the sitemap alone   19 emitted  — and 28 LIVE adverts lost
+walking the union           47 emitted
+```
+
+Four of the 28 listing-only adverts were sampled and all four carried a complete
+`JobPosting`. **No total, no cardinal and no re-reading distinguishes «same order of
+magnitude» from «same members»** — this repository's `meme-cardinal-membres-differents`,
+and the first time it has been met while choosing a ROUTE rather than while comparing
+two counts.
+
+> **When a board offers two ways to enumerate, intersect them before believing one
+> contains the other.** *One `grep` of the slugs answers it.*
+
+**And when neither states a count and neither contains the other, the board's size is
+NOT established** — the run says so, emits the union, and records which enumerator
+named each record. *A `witness:` invented to fill the field would be worse than the
+admission.*
+
 ## An adapter that fetches twice consults the host's rate
 
 **Use `skills/job-scan/scripts/_pace.py` in the fetch wrapper**, keyed by host,
