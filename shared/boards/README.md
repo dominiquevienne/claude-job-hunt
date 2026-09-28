@@ -1565,13 +1565,34 @@ end** — a board declared empty that is not.
 absence — and by the SIGNATURE OF THE FAILURE, never by looking for a known word:**
 
 ```python
-MOJIBAKE_RE = re.compile("[\\u00c0-\\u00df][\\u0080-\\u00bf]")   # UTF-8 lu en latin-1
+MOJIBAKE_RE = re.compile("[\\u00c0-\\u00ef][\\u0080-\\u00bf]")   # UTF-8 lu en latin-1
 ```
 
 *Requiring a word of the site's language assumes one reads that language* — which on
 Cyrillic, Burmese or Persian is exactly what is not true, and those are the alphabets
 where the defect happens. **The failure's shape is the same in every language; the
 content's is not.**
+
+**AND THE SIGNATURE IS A RANGE, NOT A HANDFUL OF CHARACTERS — the same rule one level
+down, and I broke it myself.** *Naming `\u00d0`, `\u00d1`, `\u00c3` reads as a complete list and
+is a list of SPECIMENS; the range I then shipped was itself a specimen of the class it
+belonged to.* Measured 2026-09-29 by round-tripping one word per script through
+`utf-8` then `latin-1`:
+
+| the class | scripts caught, of ten |
+| :-- | --: |
+| three named characters | **1** — Cyrillic only |
+| `[\u00c0-\u00df]`, the two-byte leads | **5** — Cyrillic, Arabic, Persian, Greek, Hebrew |
+| `[\u00c0-\u00ef]`, two- AND three-byte leads | **10** |
+
+**Burmese, Lao, Thai, Georgian and Amharic encode to THREE bytes and open on
+`\u00e0`-`\u00ef`**, so the narrow form is silent on them — *and silent is exactly the
+failure mode this check exists to prevent: a mute check returns «&nbsp;legible&nbsp;», the
+search finds nothing, and the run concludes the board is empty.* **Zero false positives
+on accented Latin**, the strings carrying `¿` and `«` included: those live in the
+continuation range but never follow a lead byte in real text. *Four-byte leads
+(`\u00f0`-`\u00f4`) are still outside — written here as the NEXT limit rather than left
+to be rediscovered the same way.*
 
 ## Two enumerators of similar size are not one enumerator — test MEMBERSHIP
 
