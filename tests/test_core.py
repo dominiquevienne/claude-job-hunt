@@ -39079,6 +39079,40 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
         self.assertLess(paires / len(casse), 0.10, "la densite est bien SOUS 0,10")
         self.assertFalse(mod.lisible(casse), "une page mal decodee doit etre refusee")
 
+    def test_punctuation_glued_after_an_accent_is_not_mojibake(self):
+        """**Le regime pathologique de la PART, et l'ARITE le supprime.**
+
+        Une ponctuation de la plage de continuation collee apres chaque accentue
+        — «&nbsp;é<insécable>&nbsp;», «&nbsp;é·&nbsp;» — faisait lire la part **0,68 a 1,00 sur du
+        texte SAIN**, donc un refus, donc l'adaptateur mort en 2 sur un board
+        correct. *Le corpus reel ne le fait jamais (0,00 sur 115 000 caracteres
+        servis), et c'est justement pourquoi le defaut a ete livre : la borne
+        annoncee — 0,33 — etait une composition, comme les deux qui l'ont
+        contredite ensuite.*
+
+        **La reparation ne change pas la statistique, elle change ce qu'elle
+        COMPTE :** «&nbsp;é&nbsp;» est U+00E9, donc une tete a TROIS octets, et une seule
+        continuation derriere elle n'est pas une sequence UTF-8 valide.
+        """
+        mod = self._mod()
+        NB, MIL = "\u00a0", "\u00b7"
+        for colle in (NB, MIL):
+            sain = ("Qualité" + colle + "Santé" + colle + "Bâtiment" + colle + "Hôtellerie") * 6
+            # la forme EXACTE du piege : chaque accentue suivi d'une continuation
+            self.assertGreater(len(mod.TETE_RE.findall(sain)), 10)
+            self.assertTrue(mod.lisible(sain),
+                            "du latin sain a ponctuation collee ne doit pas etre refuse")
+            # et le meme texte MAL DECODE reste refuse — la reparation ne desarme rien
+            self.assertFalse(mod.lisible(sain.encode("utf-8").decode("latin-1")))
+
+    def test_the_arity_constraint_still_refuses_every_script_it_used_to(self):
+        """**Une reparation qui desarme la garde serait pire que le defaut.**"""
+        mod = self._mod()
+        for s in ("ХАБЭА-ын ажилтан", "وظائف شاغرة", "Θέσεις εργασίας",
+                  "משרות פנויות", "အလုပ်ခေါ်စာ", "ຂ່າວວຽກ", "ตำแหน่งงาน", "ვაკანსია"):
+            self.assertTrue(mod.lisible(s), s)
+            self.assertFalse(mod.lisible(s.encode("utf-8").decode("latin-1")), s)
+
     def test_a_text_with_no_possible_lead_is_legible_rather_than_condemned(self):
         """**0/0 est indecidable, et l'indecidable ne condamne pas ici.**
 

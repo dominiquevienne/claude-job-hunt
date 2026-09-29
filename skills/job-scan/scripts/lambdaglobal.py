@@ -124,7 +124,16 @@ TYPE_RE = re.compile(r'"@type"\s*:\s*"([A-Za-z]+)"')
 # U+00E0-U+00EF et passaient donc a travers. *Mesure du 2026-09-29 sur dix ecritures :
 # trois caracteres nommes en attrapent 1, U+00C0-U+00DF en attrape 5, U+00C0-U+00EF les
 # 10 ; zero faux positif sur du latin accentue sain, « ¿ » et « « » compris.*
-MOJIBAKE_RE = re.compile("[\u00c0-\u00ef][\u0080-\u00bf]")
+# **L'ARITE de l'UTF-8 fait partie de la signature, et l'omettre refuse du texte SAIN.**
+# Une tete a 2 octets prend EXACTEMENT une continuation, une tete a 3 octets EXACTEMENT
+# deux. Sans cette contrainte, une ponctuation de la plage de continuation collee apres
+# un accentue — « e<insecable> », « e<milieu> » — se lit comme du mojibake : mesure du
+# 2026-09-29, part 0,68 a 1,00 sur du texte sain, donc un REFUS et un adaptateur qui
+# meurt en 2 sur un board correct. *« e » est U+00E9, une tete a TROIS octets : une
+# seule continuation derriere elle n'est pas une sequence valide.*
+MOJIBAKE_RE = re.compile(
+    "[\u00c0-\u00df][\u0080-\u00bf](?![\u0080-\u00bf])"      # 2 octets : une, pas deux
+    "|[\u00e0-\u00ef][\u0080-\u00bf]{2}")                    # 3 octets : exactement deux
 # Toute TETE possible, y compris celles qu'aucune paire ne suit : le DENOMINATEUR.
 TETE_RE = re.compile("[\u00c0-\u00ff]")
 _PACES = {}
@@ -225,8 +234,11 @@ def lisible(texte, seuil=0.5):
 
         part = paires / caracteres pouvant etre une TETE (U+00C0-U+00FF)
 
-      * latin SAIN : un accentue est suivi d'une LETTRE — part 0,00 mesuree sur les
-        deux corpus reels, 0,33 au pire sur des phrases composees a insecable ;
+      * latin SAIN : un accentue est suivi d'une LETTRE — part **0,00 mesuree sur
+        les deux corpus reels** (115 000 caracteres servis). *Aucune borne composee
+        n'est citee ici : trois en ont ete produites (0,33 / 1,00 / 0,25-0,33) et
+        chacune mesurait l'agressivite de la composition qui l'avait ecrite. La
+        contrainte d'ARITE rend la question sans objet au lieu de la borner mieux ;*
       * MAL DECODE : chaque tete est suivie d'une continuation — part 0,99 a 1,00 ;
       * non latin SAIN (cyrillique, birman) : aucune tete, 0/0 — **indecidable, donc
         LISIBLE**. *L'ignorance ne condamne pas plus qu'elle ne libere : ici elle
