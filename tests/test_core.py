@@ -34218,7 +34218,16 @@ class APublicServiceRecruiterWhoseMinistryIsAHeadingAndNotAField(unittest.TestCa
         self.assertIn("5 post(s) emitted under 2 ministry(ies)", err)
         self.assertIn("**the page states no count**", err)
         self.assertIn("1 post(s) state no deadline", err)
-        self.assertIn("1 emitted post(s) state a deadline already past", err)
+        # **Ce compte DEPEND DU JOUR, donc il se derive de la fixture et ne se
+        # code pas en dur.** *La fixture porte une echeance au 2026-09-28 : le
+        # 28.09 le compte valait 1, le 29.09 il vaut 2, et `main` est passe au
+        # rouge pendant la nuit sans que personne ne touche au code.* Une
+        # assertion qui vieillit toute seule est une bombe a retardement : elle
+        # accuse la session suivante d'une regression qu'elle n'a pas commise.
+        aujourdhui = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        passees = sum(1 for r in rows if r.get("deadline") and r["deadline"] < aujourdhui)
+        self.assertGreaterEqual(passees, 1, "la fixture doit porter au moins une echeance passee")
+        self.assertIn("%d emitted post(s) state a deadline already past" % passees, err)
         self.assertIn("country VC is the user's stamp", err)
 
     def test_the_open_on_filter_says_it_is_ours(self):
