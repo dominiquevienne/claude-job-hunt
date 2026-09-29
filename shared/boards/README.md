@@ -1623,8 +1623,34 @@ def lisible(texte, seuil=0.5):
     return len(MOJIBAKE_RE.findall(texte)) / tetes < seuil
 ```
 
-*Sane Latin puts a LETTER after an accent — share 0.00 measured, 0.33 worst composed. Mis-decoded
-text puts a continuation after every lead — 0.99 to 1.00, page-shaped or word-shaped alike.*
+*Sane Latin puts a LETTER after an accent — share **0.00 measured on 115 000 served characters**.
+Mis-decoded text puts a continuation after every lead — 0.99 to 1.00, page-shaped or word-shaped
+alike.*
+
+**AND THE MATCH MUST RESPECT UTF-8 ARITY, OR IT REFUSES SANE TEXT.** *The lead range IS the
+accented Latin letters, and the continuation range holds the non-breaking space, the middot and the
+guillemets — so punctuation glued after each accent («&nbsp;`é<nbsp>`&nbsp;», «&nbsp;`é·`&nbsp;») read as
+mojibake at **0.68 to 1.00 on sane text**: a refusal, and an adapter dying with exit 2 on a correct
+board.*
+
+```python
+MOJIBAKE_RE = re.compile(
+    "[\u00c0-\u00df][\u0080-\u00bf](?![\u0080-\u00bf])"   # 2 octets : une, pas deux
+    "|[\u00e0-\u00ef][\u0080-\u00bf]{2}")                  # 3 octets : exactement deux
+```
+
+**`é` is `U+00E9` — a THREE-byte lead — so one continuation behind it is not a valid sequence and
+stops counting.** Sane glued punctuation falls 1.00 → 0.00; every mis-decoded case stays at 1.00;
+Cyrillic, Arabic, Greek, Hebrew, Burmese, Lao, Thai and Georgian are all still refused.
+
+> **NO COMPOSED BOUND IS QUOTED HERE, AND THAT IS DELIBERATE.** *Three were produced for this one
+> check — 0.33, then 1.00, then 0.25–0.33 — by the two sessions hunting the defect. **Each measured
+> how aggressive the composition that produced it was, and none of them bounded anything.***
+
+**The arity constraint is worth more than a better bound because it makes the bound UNNECESSARY.**
+*A bound is re-measured by every new composition; a constraint on the shape of a valid sequence is
+not.* **Next limit, written rather than left to be rediscovered: two continuations glued after an
+accent would still count.**
 **And a correctly decoded non-Latin page carries no lead at all: 0/0 is undecidable, and here it
 must read as LEGIBLE** — refusing by default would kill the adapter on every non-Latin board that
 decoded correctly, which is the whole population this check was written for.
