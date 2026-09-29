@@ -125,6 +125,8 @@ TYPE_RE = re.compile(r'"@type"\s*:\s*"([A-Za-z]+)"')
 # trois caracteres nommes en attrapent 1, U+00C0-U+00DF en attrape 5, U+00C0-U+00EF les
 # 10 ; zero faux positif sur du latin accentue sain, « ¿ » et « « » compris.*
 MOJIBAKE_RE = re.compile("[\u00c0-\u00ef][\u0080-\u00bf]")
+# Toute TETE possible, y compris celles qu'aucune paire ne suit : le DENOMINATEUR.
+TETE_RE = re.compile("[\u00c0-\u00ff]")
 _PACES = {}
 
 
@@ -207,15 +209,35 @@ def text(x):
     return "\n".join(" ".join(l.split()) for l in t.splitlines() if l.strip()).strip() or None
 
 
-def lisible(texte, seuil=0.001):
+def lisible(texte, seuil=0.5):
     """Le decodage a-t-il rendu du texte, ou du mojibake qui LUI RESSEMBLE ?
 
-    Au-dessus du seuil, le decodage est faux quelle que soit la langue — et c'est
-    la seule question a laquelle on puisse repondre sans lire le mongol.
+    **On mesure une PART, pas une densite — et la difference a ete mesuree sur des
+    pages reelles, pas sur des mots composes.** *Une page francophone servie est a
+    ~1,5 % de caracteres accentues : mal decodee, sa DENSITE de paires ne vaut que
+    **0,016**, quand des MOTS non latins composes en rendent 0,33 a 0,47.* **Un
+    seuil de densite regle sur des mots aurait donc laisse passer une page reelle
+    mal decodee** — mesure du 2026-09-29 sur deux boards francophones servis
+    (`emploisburkina.bf`, `www.asako.mg`, 115 000 caracteres de prose).
+
+    La densite depend de la proportion d'ASCII autour, qui n'a rien a voir avec la
+    question posee. La part n'en depend pas&nbsp;:
+
+        part = paires / caracteres pouvant etre une TETE (U+00C0-U+00FF)
+
+      * latin SAIN : un accentue est suivi d'une LETTRE — part 0,00 mesuree sur les
+        deux corpus reels, 0,33 au pire sur des phrases composees a insecable ;
+      * MAL DECODE : chaque tete est suivie d'une continuation — part 0,99 a 1,00 ;
+      * non latin SAIN (cyrillique, birman) : aucune tete, 0/0 — **indecidable, donc
+        LISIBLE**. *L'ignorance ne condamne pas plus qu'elle ne libere : ici elle
+        laisse passer, et c'est `posting_de` qui tranchera sur la STRUCTURE.*
     """
     if not texte:
         return True
-    return len(MOJIBAKE_RE.findall(texte)) / len(texte) < seuil
+    tetes = len(TETE_RE.findall(texte))
+    if not tetes:
+        return True          # rien qui puisse etre une tete mal lue : rien a juger
+    return len(MOJIBAKE_RE.findall(texte)) / tetes < seuil
 
 
 def charge_de(markup):
