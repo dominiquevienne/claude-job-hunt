@@ -1594,6 +1594,46 @@ continuation range but never follow a lead byte in real text. *Four-byte leads
 (`\u00f0`-`\u00f4`) are still outside — written here as the NEXT limit rather than left
 to be rediscovered the same way.*
 
+**AND THE CLASS IS ONLY HALF THE CHECK — THE STATISTIC IS THE OTHER HALF, AND A DENSITY IS THE
+WRONG ONE.** *Measured 2026-09-29 on two served francophone boards (`emploisburkina.bf`,
+`www.asako.mg`, 115 000 characters of prose) after a threshold tuned on composed WORDS was
+about to ship:*
+
+| the text | pair DENSITY | pair SHARE |
+| :-- | --: | --: |
+| real francophone page, sane | 0.0000 | 0.00 |
+| **the same page, mis-decoded** | **0.016** | **0.99** |
+| a non-Latin WORD, mis-decoded (no ASCII around it) | 0.33 – 0.47 | 1.00 |
+| composed French with a non-breaking space | 0.028 | 0.33 |
+
+**A real page is ~1.5&nbsp;% accented characters, so mis-decoding it moves the density barely at
+all** — while composed words, carrying no ASCII, move it twenty times further. *A density
+threshold tuned on words therefore sits far above a real mis-decoded page and calls it legible:
+**the check returns «&nbsp;fine&nbsp;» on exactly what it exists to catch.*** The threshold prepared
+from words was 0.10, six times too high.
+
+> **Density measures how much ASCII surrounds the text, which is not the question. Use the
+> SHARE&nbsp;: `pairs / characters that could be a lead (U+00C0–U+00FF)`.**
+
+```python
+def lisible(texte, seuil=0.5):
+    tetes = len(TETE_RE.findall(texte))      # U+00C0-U+00FF, le DENOMINATEUR
+    if not tetes:
+        return True                          # 0/0 : rien a juger, donc lisible
+    return len(MOJIBAKE_RE.findall(texte)) / tetes < seuil
+```
+
+*Sane Latin puts a LETTER after an accent — share 0.00 measured, 0.33 worst composed. Mis-decoded
+text puts a continuation after every lead — 0.99 to 1.00, page-shaped or word-shaped alike.*
+**And a correctly decoded non-Latin page carries no lead at all: 0/0 is undecidable, and here it
+must read as LEGIBLE** — refusing by default would kill the adapter on every non-Latin board that
+decoded correctly, which is the whole population this check was written for.
+
+**And the false positive that started this correction does not occur on the real corpus**: zero
+non-breaking spaces in 115 000 characters, across pages carrying 1 565 and 159 accented characters.
+*It was an artefact of strings composed by the two sessions hunting the defect — the negative
+control written from the author's own model of the failure.*
+
 ## Two enumerators of similar size are not one enumerator — test MEMBERSHIP
 
 **Measured 2026-09-29 on `lambdaglobal.py` (#661).** Three figures:

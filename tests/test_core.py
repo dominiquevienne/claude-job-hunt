@@ -34218,7 +34218,16 @@ class APublicServiceRecruiterWhoseMinistryIsAHeadingAndNotAField(unittest.TestCa
         self.assertIn("5 post(s) emitted under 2 ministry(ies)", err)
         self.assertIn("**the page states no count**", err)
         self.assertIn("1 post(s) state no deadline", err)
-        self.assertIn("1 emitted post(s) state a deadline already past", err)
+        # **Ce compte DEPEND DU JOUR, donc il se derive de la fixture et ne se
+        # code pas en dur.** *La fixture porte une echeance au 2026-09-28 : le
+        # 28.09 le compte valait 1, le 29.09 il vaut 2, et `main` est passe au
+        # rouge pendant la nuit sans que personne ne touche au code.* Une
+        # assertion qui vieillit toute seule est une bombe a retardement : elle
+        # accuse la session suivante d'une regression qu'elle n'a pas commise.
+        aujourdhui = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        passees = sum(1 for r in rows if r.get("deadline") and r["deadline"] < aujourdhui)
+        self.assertGreaterEqual(passees, 1, "la fixture doit porter au moins une echeance passee")
+        self.assertIn("%d emitted post(s) state a deadline already past" % passees, err)
         self.assertIn("country VC is the user's stamp", err)
 
     def test_the_open_on_filter_says_it_is_ours(self):
@@ -39043,6 +39052,45 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
                   "Où ? À Paris. ¿Quién? « Offre d'emploi »",
                   "Éducation · Santé · Bâtiment · Hôtellerie · Île-de-France"]:
             self.assertTrue(mod.lisible(t), t)
+
+    def test_a_page_shaped_text_is_judged_by_the_SHARE_and_not_by_density(self):
+        """**Le cas qui a failli etre casse par un correctif — mesure du 2026-09-29.**
+
+        Une page francophone REELLE est a ~1,5 % d'accentues : mal decodee, sa
+        DENSITE de paires ne vaut que 0,016, quand des MOTS non latins composes
+        en rendent 0,33 a 0,47. *Un seuil de densite regle sur des mots — 0,10
+        etait prepare — aurait laisse passer une page reelle mal decodee, donc
+        rendu «&nbsp;lisible&nbsp;» sur exactement ce que le controle existe pour
+        attraper.* **La PART, elle, vaut 0,99 dans les deux cas.**
+
+        Ce test reproduit la FORME d'une page : beaucoup d'ASCII, peu d'accentues.
+        """
+        mod = self._mod()
+        page = ("<nav>Home Jobs Companies Salary About Contact</nav> " * 40 +
+                "Développeur back-end à Genève · Société de conseil, réf. 4412. "
+                "Qualité, sécurité, rémunération à négocier.")
+        accentues = sum(1 for c in page if 0xC0 <= ord(c) <= 0xFF)
+        self.assertLess(accentues / len(page), 0.02)      # bien la forme d'une page
+        self.assertTrue(mod.lisible(page))
+        casse = page.encode("utf-8").decode("latin-1")
+        # **la densite de ce cas est ~0,016 : sous 0,10, donc un seuil de densite
+        # regle sur des mots l'aurait declare lisible.** La part le refuse.
+        paires = len(mod.MOJIBAKE_RE.findall(casse))
+        self.assertLess(paires / len(casse), 0.10, "la densite est bien SOUS 0,10")
+        self.assertFalse(mod.lisible(casse), "une page mal decodee doit etre refusee")
+
+    def test_a_text_with_no_possible_lead_is_legible_rather_than_condemned(self):
+        """**0/0 est indecidable, et l'indecidable ne condamne pas ici.**
+
+        Du cyrillique ou du birman SAIN ne porte aucun caractere en U+00C0-U+00FF :
+        il n'y a rien a juger. *Refuser par defaut ferait mourir l'adaptateur sur
+        tout board non latin correctement decode* — c'est `posting_de` qui tranche
+        ensuite, sur la STRUCTURE.
+        """
+        mod = self._mod()
+        for s in ("ХАБЭА-ын ажилтан", "အလုပ်ခေါ်စာ", "Maintenance Manager", ""):
+            self.assertEqual(len(mod.TETE_RE.findall(s)), 0, s)
+            self.assertTrue(mod.lisible(s), s)
 
     def test_the_advert_is_found_by_structure_and_never_by_a_keyword(self):
         """**Le dictionnaire d'interface contient tous les mots du domaine.**"""
