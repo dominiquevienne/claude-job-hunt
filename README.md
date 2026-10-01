@@ -820,6 +820,26 @@ Issues and pull requests welcome. Two rules:
    questions left blank, unconfirmed sends never recorded as sent. A change
    that makes the tool smoother by making it less honest will be declined.
 
+## Support the project
+
+**This plugin is free and open source, and it stays that way.** Nothing is gated
+behind a donation: no paid tier, no perks for sponsors, no feature that waits for
+money. The skills never mention funding in their output — if you only ever use
+it, that is a complete use of it.
+
+What donations actually pay for is the unglamorous half: **keeping the board
+adapters working**, and the AI compute that re-verification costs. Boards change
+their markup without notice, and an adapter nobody re-runs quietly turns into a
+confident wrong answer — which is the one failure this project is built to avoid.
+Re-verifying means running each adapter against the live site, and that is where
+the time and the compute go.
+
+- **GitHub Sponsors** — recurring: <https://github.com/sponsors/dominiquevienne>
+- **Ko-fi** — one-off: <https://ko-fi.com/gloomyspark>
+
+If you would rather contribute than donate, **a new board adapter or a dated
+re-verification is worth more than money** — see [Contributing](#contributing).
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
