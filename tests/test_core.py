@@ -40303,5 +40303,332 @@ class AFeedThatCONTAINSThePagerAndAWithholdingThatMustNotEatAStandard(unittest.T
         self.assertEqual(rc, mod.EXIT_GONE)
         self.assertEqual(lignes, [])
 
+class ACommentedRowIsNotAFieldAndAnArchiveIsNotAnInventory(unittest.TestCase):
+    '''**`kibriseleman.py`, 2026-10-02 (#721).** Northern Cyprus's «en büyük eleman
+    platformu». Three things, and the first is a correction of this repository's own
+    published card.
+
+    * **A TAG-STRIPPING EXTRACTOR READS HTML COMMENTS AS CONTENT.** Each advert page
+      carries **12 comments, about 8 500 bytes — a quarter of the page** — and the
+      field table's `Maaş` row lives inside one of them:
+
+          <!-- <tr><td>Maaş</td><td> TL</td></tr>-->
+
+      **So the board publishes NO salary: the row is disabled in the template.** *A
+      first reading of this host recorded «`Maaş: TL` — a currency with no amount»,
+      because `re.sub(r"<[^>]+>", " ", …)` turns commented-out markup into text. The
+      tell was a stray `-->` in the extracted string, and it was passed over.* **Read
+      as content, a comment fabricates a field the board has never displayed — which
+      is worse than a missing one**, because a missing field is visible and a
+      fabricated one is believed. *The card that claimed it is corrected in the same
+      change.*
+
+    * **the two enumerators share NOTHING, and the stale one is 380× the live one.**
+      The listing carries 8 adverts (ids 4489-4500); `/sitemap.xml` — which
+      `robots.txt` does not declare — carries 3 042 (ids 2-4407, `lastmod` max
+      2023-02-28), **intersection ZERO**. *Fifth board of five compared and the first
+      where the relation is EMPTY: Lambda 50/30 in 2 (#661), İş Kıbrıs 12/12 in 6
+      (#719), Work Link 12/20 in 4 (#722), Ekonomi Kıbrıs 21 ⊂ 50 (#726).* **A union
+      would turn 8 current vacancies into 3 050 rows of which 99.7 % are three and a
+      half years dead, and nothing on those pages would contradict it** — *no advert
+      page on this host states a date of any kind*, so the sitemap's `lastmod` is the
+      only dating that exists here. The archive is emitted only on an explicit
+      option, flagged and carrying that `lastmod`.
+
+    * **the age and sex criteria are not propagated** (#183), and they are NAMED only
+      when they were present AND filled — *declaring that we withheld what nobody
+      published would lie about us, not about the board.* **The law of Northern
+      Cyprus is NOT asserted**: the field treatment is carried over because
+      propagating an age or sex requirement serves no candidate.
+
+    Both ways: a commented `Maaş` yielding no salary AND a live one with an amount
+    carried AND a live bare currency flagged; disjointness measured and named, and a
+    CHANGED relation named differently; the archive absent by default and flagged
+    when asked; the criteria dropped when filled and not named when empty; no date
+    on the page giving `posted: None`; a mobile and a landline withheld while an ISO
+    reference survives; `--max` claiming nothing; another host refused (7); an empty
+    listing reported GONE rather than as a quiet zero.
+
+    **Mutated with the red named before each — seven for seven.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | comments no longer stripped | `'TL' != None` — a commented row becomes a salary |
+    | the archive unioned in by default | `3043 != 1` — 2023 adverts emitted as current |
+    | the `lastmod` dropped from archived rows | `None != '2023-02-28'` — the only dating lost |
+    | the criteria propagated | `'18 - 50 Arası'` found in a row |
+    | the criteria named when empty | `['Cinsiyet'] != None` — withholding what nobody posted |
+    | the phone rule narrowed to mobiles | `'0392 227 51 96'` leaks |
+    | `--max` allowed to speak of the board | `'NOTHING here is said'` missing |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_kel", os.path.join(SCRIPTS, "kibriseleman.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://www.kibriseleman.com"
+
+    # --- la table REELLE du 2026-10-02, le commentaire compris -------------
+    TABLE_REELLE = """<table class="table table-hover">
+    <tr><td width="100">Cinsiyet</td><td>Fark Etmez</td></tr>
+    <tr><td width="100">Yaş</td><td>18 - 50 Arası</td></tr>
+    <tr><td>Sektör/Bölüm/Pozisyon</td><td>Otelcilik / Temizlik / Temizlik Elemanı</td></tr>
+    <tr><td>Alınacak Kişi</td><td>1</td></tr>
+    <!-- <tr>
+            <td>Maaş</td>
+            <td> TL</td>
+         </tr>-->
+    </table>"""
+
+    def _annonce(self, titre="Temizlik personeli aranıyor.", table=None,
+                 employeur="Old Home Guest House", lieu="Lefkoşa, Lefkoşa",
+                 extra=""):
+        return ("<html><body><h1>%s</h1>"
+                '<div class="detail-top">Tam Zamanlı<br>%s<br>%s</div>'
+                "%s%s</body></html>"
+                % (titre, lieu, employeur,
+                   table if table is not None else self.TABLE_REELLE, extra))
+
+    @staticmethod
+    def _liste(paires):
+        return ("<html><body>" + "".join(
+            '<a href="/is-ilani/%s-%s.html">x</a>' % (i, s) for i, s in paires)
+            + "</body></html>")
+
+    @staticmethod
+    def _sitemap(triplets):
+        return ('<?xml version="1.0"?><urlset>' + "".join(
+            "<url><loc>https://www.kibriseleman.com/is-ilani/%s-%s.html</loc>"
+            "%s</url>" % (i, s, "<lastmod>%s</lastmod>" % d if d else "")
+            for i, s, d in triplets) + "</urlset>")
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CYN")):
+        pages = dict(pages)
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    def _pages(self, liste=None, sitemap=None, annonces=None):
+        liste = liste if liste is not None else [("4500", "temizlik-personeli-araniyor")]
+        sitemap = sitemap if sitemap is not None else [
+            ("1703", "lefkosada-acil-durum", "2023-02-28"),
+            ("1702", "magusa-bolgesinde", "2023-02-27"),
+        ]
+        p = {self.B + "/is-ilanlari": self._liste(liste),
+             self.B + "/sitemap.xml": self._sitemap(sitemap)}
+        for i, s in liste:
+            p[self.B + "/is-ilani/%s-%s.html" % (i, s)] = self._annonce()
+        for i, s, _d in sitemap:
+            p[self.B + "/is-ilani/%s-%s.html" % (i, s)] = self._annonce(
+                titre="Eski ilan", employeur="International")
+        for i, s, markup in (annonces or []):
+            p[self.B + "/is-ilani/%s-%s.html" % (i, s)] = markup
+        return p
+
+    # --- LE DEFAUT CORRIGE : un commentaire n'est pas un champ -------------
+    def test_a_commented_salary_row_never_becomes_a_field(self):
+        """**C'est la correction d'une carte publiee de ce depot.**
+
+        La ligne `Maaş` du tableau reel vit dans un commentaire HTML ; lue comme
+        du contenu elle fabrique un salaire que le board n'affiche pas.
+        """
+        mod = self._mod()
+        # la contre-epreuve du defaut : SANS retrait des commentaires, « TL » sort
+        brut = mod.text(self.TABLE_REELLE)
+        self.assertIn("Maaş", brut)
+        self.assertIn("-->", brut, "le `-->` est le temoin que le commentaire est lu")
+        # et avec le retrait, il n'y a plus rien
+        propre = mod.sans_commentaires(self.TABLE_REELLE)
+        self.assertNotIn("Maaş", mod.text(propre) or "")
+        self.assertNotIn("-->", mod.text(propre) or "")
+        paires, vus = mod.table_de(propre)
+        self.assertNotIn("maaş", paires)
+        self.assertEqual(mod.salaire_de(paires), (None, False))
+        # la ligne emise ne porte aucun salaire, et ne signale aucune monnaie nue
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIsNone(lignes[0]["salary"])
+        self.assertFalse(lignes[0]["salary_currency_without_amount"])
+
+    def test_a_live_salary_row_is_carried_and_a_live_bare_currency_is_flagged(self):
+        """**Les deux cas sont prets AVANT d'etre rencontres en clair.**
+
+        Si le board reactive la ligne : un montant se porte, une monnaie nue se
+        signale sans etre portee (#638/#655, #722).
+        """
+        mod = self._mod()
+        avec = self.TABLE_REELLE.replace(
+            "<!-- <tr>\n            <td>Maaş</td>\n            <td> TL</td>\n         </tr>-->",
+            "<tr><td>Maaş</td><td>30.000 TL</td></tr>")
+        self.assertNotIn("<!--", avec, "la fixture doit avoir decommente la ligne")
+        paires, _v = mod.table_de(mod.sans_commentaires(avec))
+        self.assertEqual(mod.salaire_de(paires), ("30.000 TL", False))
+        nue = self.TABLE_REELLE.replace(
+            "<!-- <tr>\n            <td>Maaş</td>\n            <td> TL</td>\n         </tr>-->",
+            "<tr><td>Maaş</td><td>TL</td></tr>")
+        paires, _v = mod.table_de(mod.sans_commentaires(nue))
+        self.assertEqual(mod.salaire_de(paires), (None, True))
+
+    # --- l'archive n'est pas un inventaire --------------------------------
+    def test_the_two_enumerators_are_disjoint_and_the_run_says_so(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("intersection 0", err)
+        self.assertIn("THE TWO ENUMERATORS ARE DISJOINT", err)
+        self.assertIn("2023-02-28", err)
+        self.assertIn("NEVER unioned in", err)
+
+    def test_a_relation_that_has_changed_is_named_differently(self):
+        """*Une relation mesuree une fois est datee, pas une propriete de l'hote.*"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(sitemap=[
+            ("4500", "temizlik-personeli-araniyor", "2026-10-01")]))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("the relation has", err.lower())
+        self.assertIn("CHANGED", err)
+        self.assertNotIn("DISJOINT", err)
+
+    def test_the_archive_is_absent_by_default_and_the_run_says_how_many(self):
+        """**8 annonces vivantes ne doivent pas devenir 3050 lignes mortes.**"""
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 1, [r["id"] for r in lignes])
+        self.assertTrue(all(not r["archived"] for r in lignes))
+        self.assertIn("were NOT emitted", err)
+        # aucune page d'archive n'a meme ete demandee
+        self.assertNotIn(self.B + "/is-ilani/1703-lefkosada-acil-durum.html", demandes)
+
+    def test_include_archive_flags_each_row_and_carries_its_lastmod(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, self._pages(),
+            argv=("jobs", "--country-code", "CYN", "--include-archive"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 3, [r["id"] for r in lignes])
+        arch = [r for r in lignes if r["archived"]]
+        self.assertEqual(len(arch), 2)
+        self.assertEqual(sorted(r["sitemap_lastmod"] for r in arch),
+                         ["2023-02-27", "2023-02-28"])
+        self.assertTrue(all(r["enumerated_by"] == "sitemap-archive" for r in arch))
+        vivantes = [r for r in lignes if not r["archived"]]
+        self.assertEqual([r["enumerated_by"] for r in vivantes], ["listing"])
+        self.assertTrue(all(r["sitemap_lastmod"] is None for r in vivantes))
+
+    # --- #183 : le critere ne se propage pas, et ne se declare pas a vide --
+    def test_the_age_and_sex_criteria_are_never_propagated(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False)
+        self.assertNotIn("18 - 50", blob)
+        self.assertNotIn("Fark Etmez", blob)
+        self.assertEqual(lignes[0]["criteria_not_propagated"], ["Cinsiyet", "Yaş"])
+
+    def test_the_criteria_are_not_named_when_the_board_left_them_empty(self):
+        """**Declarer avoir retenu ce que personne n'a depose mentirait sur NOUS.**
+
+        Un board pauvre ressemblerait a un board censure, et c'est nous qui
+        l'aurions ecrit.
+        """
+        mod = self._mod()
+        vide = ("<table><tr><td>Cinsiyet</td><td></td></tr>"
+                "<tr><td>Alınacak Kişi</td><td>1</td></tr></table>")
+        rc, lignes, err, _d = self._run(mod, self._pages(annonces=[
+            ("4500", "temizlik-personeli-araniyor", self._annonce(table=vide))]))
+        self.assertEqual(rc, 0, err)
+        self.assertIsNone(lignes[0]["criteria_not_propagated"])
+
+    # --- aucune date sur la page ------------------------------------------
+    def test_no_date_is_invented_because_the_page_states_none(self):
+        """*Le `lastmod` du sitemap est le SEUL datage de cet hote.*"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIsNone(lignes[0]["posted"])
+        self.assertIsNone(lignes[0]["sitemap_lastmod"])
+
+    # --- l'expurgation, dans les deux sens -------------------------------
+    def test_a_mobile_and_a_landline_are_withheld_and_a_standard_survives(self):
+        mod = self._mod()
+        for tel in ("0533 847 81 90", "0392 227 51 96", "+90 548 826 46 80",
+                    "05338800700"):
+            self.assertEqual(mod.scrub("Tel " + tel), "Tel [telephone withheld]", tel)
+        for intact in ("ISO 9001-2015", "ISO 22000-2018", "14.000m2"):
+            self.assertEqual(mod.scrub(intact), intact, intact)
+        self.assertEqual(mod.scrub("a@b.com"), "[e-mail withheld]")
+
+    def test_a_contact_in_an_advert_never_reaches_a_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(annonces=[
+            ("4500", "temizlik-personeli-araniyor",
+             self._annonce(employeur="Old Home 0533 847 81 90"))]))
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False)
+        self.assertNotIn("0533 847", blob)
+        self.assertIn("[telephone withheld]", blob)
+        self.assertTrue(lignes[0]["contacts_withheld"])
+
+    # --- nos options ne fabriquent pas un deficit de board ---------------
+    def test_max_caps_and_says_nothing_about_the_board(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, self._pages(liste=[("4500", "a"), ("4499", "b"), ("4498", "c")],
+                             annonces=[("4499", "b", self._annonce()),
+                                       ("4498", "c", self._annonce())]),
+            argv=("jobs", "--country-code", "CYN", "--max", "2"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 2)
+        self.assertIn("NOTHING here is said about what the board holds", err)
+        self.assertNotIn("No count is stated anywhere", err)
+
+    def test_the_prose_claim_is_never_taken_for_a_count(self):
+        """*«binlerce ilan» est de la prose : le board n'enonce aucun compte.*"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("No count is stated anywhere", err)
+        self.assertIn("is prose", err)
+
+    def test_the_country_code_is_stamped_on_every_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(lignes and all(r["country"] == "CYN" for r in lignes))
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/is-ilanlari")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+    def test_an_empty_listing_is_gone_not_a_quiet_zero(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(liste=[]))
+        self.assertEqual(rc, mod.EXIT_GONE)
+        self.assertEqual(lignes, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
