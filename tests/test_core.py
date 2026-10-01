@@ -39698,7 +39698,7 @@ class AFeedThatIsNotTheInventoryAndACurrencyWithoutAnAmount(unittest.TestCase):
     | only the feed enumerated | same, the pager-only adverts lost |
     | the clamp check skipped | `'CLAMPED' not found` — a pager that cannot advance passes for one that can |
     | `baseSalary.currency` carried when the amount is null | `'EUR' unexpectedly found` |
-    | the feed date dropped | `'DISAGREE' not found` — one date published, its provenance gone |
+    | the feed date dropped | `la date du flux manque` — one date published, its provenance gone. *First run it RAISED instead of failing (`None[:10]`), and a crash-red counts the same as an assertion-red in a sweep while saying nothing about what is missing: presence is now asserted before value.* |
     '''
 
     @staticmethod
@@ -39862,6 +39862,12 @@ class AFeedThatIsNotTheInventoryAndACurrencyWithoutAnAmount(unittest.TestCase):
         rc, lignes, err, _d = self._run(mod, self._pages())
         self.assertEqual(rc, 0, err)
         st = [r for r in lignes if r["id"] == "staff"][0]
+        # **La PRESENCE s'asserte avant la valeur**, sinon la mutation qui retire la
+        # date fait LEVER le test (`None[:10]` -> TypeError) au lieu de le faire
+        # echouer : un rouge de crash et un rouge d'assertion se comptent pareil
+        # dans un balayage, et seul le second dit ce qui manque.
+        self.assertIsNotNone(st["posted"], "la date de l'annonce manque")
+        self.assertIsNotNone(st["feed_published"], "la date du flux manque")
         self.assertEqual(st["posted"][:10], "2025-10-03")
         self.assertEqual(st["feed_published"][:10], "2026-03-10")
         self.assertIn("DISAGREE", err)
