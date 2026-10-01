@@ -39479,7 +39479,7 @@ class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
 
     | the mutation | the red obtained |
     | :-- | :-- |
-    | the empty-page end removed (fixed page count) | `2 != 3` — the third page never read |
+    | the empty-page end removed (fixed page count) | `3 != 4` — the third page never read. *First run GREEN on a fixture of two full pages: «stop on empty» and «stop after page 2» then give the SAME result, so the branch was unreachable. **This is the fixture-sizing defect found on `iskibris` an hour earlier and repeated here** — writing a lesson is not applying it.* |
     | the repetition check removed | no `SystemExit` — the walk loops on a clamped pager |
     | the `ld+json` block taken by position | `None != 'Depo Personeli'` — the WebSite block read |
     | expired adverts dropped | `0 != 2` — the board's own filing discarded |
@@ -39547,14 +39547,26 @@ class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
         return rc, lignes, err.getvalue(), demandes
 
     def _pages(self, p3=None, **kw):
-        """Deux pages pleines, une troisieme VIDE : la fin de la marche."""
+        """TROIS pages pleines, une quatrieme VIDE.
+
+        **La fixture est STRICTEMENT plus grande que le seuil qu'elle doit faire
+        tirer**, et ce n'est pas une precaution de style : avec deux pages pleines,
+        «&nbsp;s'arreter sur une page vide&nbsp;» et «&nbsp;s'arreter apres la page 2&nbsp;»
+        rendent le MEME resultat, donc la mutation qui fige le compte de pages
+        passe VERTE. *C'est le defaut de dimensionnement releve une heure plus tot
+        sur `iskibris` — fixture a egalite avec le seuil — et repete ici dans
+        l'adaptateur suivant.*
+        """
         p = {self.B + "/is-ilanlari": self._liste(["depo-personeli-lefkosa-25115",
                                                    "asci-diger-25112"]),
              self.B + "/is-ilanlari?sayfa=2": self._liste(["musteri-lefkosa-25113"]),
-             self.B + "/is-ilanlari?sayfa=3": p3 if p3 is not None else self._liste([])}
+             self.B + "/is-ilanlari?sayfa=3": p3 if p3 is not None
+             else self._liste(["garson-girne-25110"]),
+             self.B + "/is-ilanlari?sayfa=4": self._liste([])}
         for s, t in (("depo-personeli-lefkosa-25115", "Depo Personeli"),
                      ("asci-diger-25112", "Aşçı"),
-                     ("musteri-lefkosa-25113", "Müşteri Temsilcisi")):
+                     ("musteri-lefkosa-25113", "Müşteri Temsilcisi"),
+                     ("garson-girne-25110", "Garson")):
             p[self.B + "/is-ilanlari/" + s] = self._advert(titre=t, **kw)
         return p
 
@@ -39563,10 +39575,10 @@ class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
         mod = self._mod()
         rc, lignes, err, demandes = self._run(mod, self._pages())
         self.assertEqual(rc, 0, err)
-        self.assertEqual(len(lignes), 3, [r["id"] for r in lignes])
+        self.assertEqual(len(lignes), 4, [r["id"] for r in lignes])
         self.assertEqual(len([u for u in demandes if "/is-ilanlari" == u.split("?")[0].rsplit("/", 1)[0] + "/is-ilanlari"
-                              or u.endswith("/is-ilanlari") or "sayfa=" in u]), 3)
-        self.assertIn("3 advert(s) enumerated", err)
+                              or u.endswith("/is-ilanlari") or "sayfa=" in u]), 4)
+        self.assertIn("4 advert(s) enumerated", err)
         self.assertIn("No count is stated anywhere", err)
 
     def test_a_page_repeating_its_predecessor_stops_the_walk(self):
@@ -39599,7 +39611,7 @@ class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
         mod = self._mod()
         rc, lignes, err, _d = self._run(mod, self._pages())
         self.assertEqual(rc, 0, err)
-        self.assertEqual(len(lignes), 3)
+        self.assertEqual(len(lignes), 4)
         self.assertTrue(all(r["valid_through"] for r in lignes))
         self.assertIn("already past", err)
         self.assertIn("never dropped in silence", err)
