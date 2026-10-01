@@ -39653,5 +39653,249 @@ class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
 
 
 
+class AFeedThatIsNotTheInventoryAndACurrencyWithoutAnAmount(unittest.TestCase):
+    '''**`worklinkcy.py`, 2026-10-01 (#722).** Northern Cyprus. Four things, and
+    the first closes a form this repository met three times in three days:
+
+    * **a clamped pager of 12 and a feed of 20 overlapping in FOUR, whose union is
+      exactly the 28 the board states.** `?page=2`, `?page=3`, `?page=4` each return
+      the SAME slugs and the same "Showing 1 – 12 of 28 results" — *a pager one can
+      SEE is not a pager that advances*, and the 2026-09-18 card recorded its links
+      as a pager for that reason. **And the feed is not the inventory either**: RSS
+      with 20 items, missing 8 that the clamped page 1 carries.
+
+      *Third occurrence after Lambda 50/30 (#661) and İş Kıbrıs 12/12 (#719) — a
+      form, not three accidents — and the sharpest, because a FEED is the artefact
+      most likely to be taken for the whole.* **What is new is that the union is
+      VERIFIABLE: the board states 28 and the union is 28**, where the first two
+      boards stated nothing and the honest report was "the size is not established";
+    * **the salary is a template default and carrying it would invent one.**
+      `baseSalary` reads `{"currency": "EUR", "minValue": null, "maxValue": null}`
+      and the rendered page prints no salary. *A currency without a value is not a
+      salary*, so nothing is carried and the run counts how many adverts declare
+      one. **Third variant of #638/#655**: there the currency was WRONG, here there
+      is nothing for it to be wrong about;
+    * **the two sources disagree on the date by five months** — `/tr/jobs/barber`
+      has `datePosted` 2025-10-03 and the feed `pubDate` 2026-03-10. **Neither is
+      adjudicated**: both travel, each named by its source, and the run counts the
+      disagreements. *Picking one silently would publish a date whose provenance
+      nobody could recover, and the disagreement is itself the finding;*
+    * **the `JobPosting` is chosen among THREE `ld+json` blocks by `@type`** —
+      `BreadcrumbList`, `WebSite`, `JobPosting` — never by position.
+
+    Both ways: the union emitted with each record naming its enumerator; either
+    enumerator alone losing what the other holds; the stated total asserted against
+    the union and contradicted when it differs; the clamp detected by one extra
+    request; a currency without an amount carried as nothing but flagged; an amount
+    that EXISTS carried as the string; two dates both present and the disagreement
+    counted; another host refused (7).
+
+    **Mutated with the red named before each — five for five.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | only the pager enumerated | `'3 distinct' not found` — the feed's adverts lost |
+    | only the feed enumerated | same, the pager-only adverts lost |
+    | the clamp check skipped | `'CLAMPED' not found` — a pager that cannot advance passes for one that can |
+    | `baseSalary.currency` carried when the amount is null | `'EUR' unexpectedly found` |
+    | the feed date dropped | `la date du flux manque` — one date published, its provenance gone. *First run it RAISED instead of failing (`None[:10]`), and a crash-red counts the same as an assertion-red in a sweep while saying nothing about what is missing: presence is now asserted before value.* |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_wlc", os.path.join(SCRIPTS, "worklinkcy.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://www.worklinkcy.com"
+
+    @classmethod
+    def _liste(cls, slugs, enonce=3):
+        liens = "".join('<a href="/tr/jobs/%s">x</a>' % s for s in slugs)
+        compte = ('<span class="result-count">Showing 1 – %d of %d results</span>'
+                  % (len(slugs), enonce)) if enonce else ""
+        pager = '<a href="?page=2">2</a><a href="?page=3">3</a>'
+        return "<html><body>" + liens + compte + pager + "</body></html>"
+
+    @classmethod
+    def _flux(cls, items):
+        """RSS 2.0, titres et descriptions en CDATA comme le site les sert."""
+        corps = ""
+        for slug, date in items:
+            corps += ("<item><title><![CDATA[%s]]></title>"
+                      "<link>%s/tr/jobs/%s</link><guid>%s/tr/jobs/%s</guid>"
+                      "<pubDate>%s</pubDate>"
+                      "<description><![CDATA[Un texte.]]></description></item>"
+                      % (slug.title(), cls.B, slug, cls.B, slug, date))
+        return '<?xml version="1.0"?><rss version="2.0"><channel>' + corps + "</channel></rss>"
+
+    @staticmethod
+    def _advert(titre="Barber", employeur="Egos Barber", poste="2025-10-03T20:32:40+03:00",
+                devise="EUR", montant=None, desc="Appelez le 0533 123 45 67 pour postuler"):
+        """TROIS blocs ld+json, le JobPosting en dernier comme sur le site."""
+        bs = {"@type": "MonetaryAmount", "currency": devise, "unitText": "MONTHLY",
+              "minValue": montant, "maxValue": montant}
+        blocs = [
+            {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": []},
+            {"@context": "https://schema.org", "@type": "WebSite", "name": "Work Link"},
+            {"@context": "https://schema.org", "@type": "JobPosting", "title": titre,
+             "hiringOrganization": {"@type": "Organization", "name": employeur},
+             "jobLocation": {"@type": "Place", "address": {
+                 "@type": "PostalAddress", "addressLocality": "Kyrenia,",
+                 "addressCountry": "Turkish Republic of Northern Cyprus"}},
+             "employmentType": "Full Time", "datePosted": poste,
+             "validThrough": "2025-11-17", "baseSalary": bs,
+             "description": "<p>" + desc + "</p>"},
+        ]
+        return "<html><head>" + "".join(
+            '<script type="application/ld+json">%s</script>' % json.dumps(b, ensure_ascii=False)
+            for b in blocs) + "</head></html>"
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CY")):
+        pages = dict(pages)
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    def _pages(self, enonce=3, clampe=True, **kw):
+        """Pager: {staff, nail}. Flux: {barber, staff}. Union: 3, intersection 1."""
+        p1 = self._liste(["staff", "nail"], enonce=enonce)
+        p = {self.B + "/tr/jobs": p1,
+             self.B + "/tr/jobs?page=2": p1 if clampe else self._liste(["autre"], enonce=enonce),
+             self.B + "/tr/feed/jobs": self._flux([
+                 ("barber", "Tue, 10 Mar 2026 13:47:50 +0200"),
+                 ("staff", "Tue, 10 Mar 2026 10:00:00 +0200")])}
+        for s in ("staff", "nail", "barber", "autre"):
+            p[self.B + "/tr/jobs/" + s] = self._advert(titre=s.title(), **kw)
+        return p
+
+    def test_the_union_of_a_clamped_pager_and_a_feed_matches_the_stated_total(self):
+        """**12 et 20 se recoupant en 4, et l'union vaut les 28 enonces.**
+
+        Ici 2 et 2 se recoupant en 1, union 3, enonce 3.
+        """
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual({r["id"] for r in lignes}, {"staff", "nail", "barber"})
+        self.assertIn("3 distinct", err)
+        self.assertIn("1 in common", err)
+        self.assertIn("the board states 3 and the union is exactly 3", err)
+        self.assertIn("TOGETHER are complete", err)
+
+    def test_either_enumerator_alone_loses_what_the_other_holds(self):
+        """**Et c'est la perte que l'union evite — muette autrement.**"""
+        mod = self._mod()
+        pages = self._pages()
+        pages[self.B + "/tr/feed/jobs"] = self._flux([])          # pager seul
+        rc, lignes, err, _d = self._run(mod, pages)
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("barber", {r["id"] for r in lignes})
+        pages = self._pages()
+        pages[self.B + "/tr/jobs"] = self._liste([], enonce=3)    # flux seul
+        rc, lignes, err, _d = self._run(mod, pages)
+        self.assertEqual(rc, mod.EXIT_PARTIAL)                    # page 1 vide : pas un board vide
+        self.assertIn("not an empty board", err)
+
+    def test_a_union_that_misses_the_stated_total_is_said_not_smoothed(self):
+        """**Si l'union n'atteint pas le compte enonce, quelque chose enumere ailleurs.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(enonce=9))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("the board states 9 and the union is 3", err)
+        self.assertIn("NOT complete", err)
+
+    def test_the_clamp_is_detected_by_one_extra_request(self):
+        """**Un pager qu'on VOIT n'est pas un pager qui avance.**"""
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages(clampe=True))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("THE PAGER IS CLAMPED", err)
+        self.assertEqual(len([u for u in demandes if "page=2" in u]), 1)
+        # et s'il avance, le run DIT que la marche est devenue incomplete
+        rc, lignes, err, _d = self._run(mod, self._pages(clampe=False))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("pager ADVANCED", err)
+        self.assertIn("now incomplete", err)
+
+    def test_a_currency_without_an_amount_is_carried_as_nothing_but_counted(self):
+        """**Une monnaie sans valeur n'est pas un salaire&nbsp;: c'est un gabarit.**
+
+        L'emettre declarerait un chiffre que le board n'a jamais publie, sur chacune
+        de ses annonces.
+        """
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(all(r["salary"] is None for r in lignes))
+        self.assertTrue(all(r["salary_currency_without_amount"] for r in lignes))
+        self.assertNotIn("EUR", json.dumps(lignes, ensure_ascii=False))
+        self.assertIn("currency with NO amount", err)
+        # et un montant qui EXISTE est porte comme la chaine, sans la monnaie
+        rc, lignes, err, _d = self._run(mod, self._pages(montant=1200))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(lignes[0]["salary"], "1200")
+        self.assertNotIn("EUR", json.dumps(lignes, ensure_ascii=False))
+
+    def test_two_dates_that_disagree_both_travel_and_are_counted(self):
+        """**Choisir en silence publierait une date sans provenance recuperable.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        st = [r for r in lignes if r["id"] == "staff"][0]
+        # **La PRESENCE s'asserte avant la valeur**, sinon la mutation qui retire la
+        # date fait LEVER le test (`None[:10]` -> TypeError) au lieu de le faire
+        # echouer : un rouge de crash et un rouge d'assertion se comptent pareil
+        # dans un balayage, et seul le second dit ce qui manque.
+        self.assertIsNotNone(st["posted"], "la date de l'annonce manque")
+        self.assertIsNotNone(st["feed_published"], "la date du flux manque")
+        self.assertEqual(st["posted"][:10], "2025-10-03")
+        self.assertEqual(st["feed_published"][:10], "2026-03-10")
+        self.assertIn("DISAGREE", err)
+        # une annonce que le flux ne nomme pas n'a pas de date de flux, et ce n'est pas un desaccord
+        na = [r for r in lignes if r["id"] == "nail"][0]
+        self.assertIsNone(na["feed_published"])
+
+    def test_the_jobposting_is_chosen_among_three_blocks_by_type(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(all(r["title"] for r in lignes), lignes)
+        self.assertTrue(all(r["employer"] == "Egos Barber" for r in lignes))
+
+    def test_a_telephone_in_the_description_is_withheld(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[telephone withheld]", lignes[0]["description"])
+        self.assertNotIn("0533", json.dumps(lignes, ensure_ascii=False))
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/tr/jobs")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
