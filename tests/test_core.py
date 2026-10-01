@@ -39201,5 +39201,241 @@ class TwoEnumeratorsAndADecodeThatReturnsTextInsteadOfRaising(unittest.TestCase)
             mod.request("https://example.org/jobs/x")
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
+class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase):
+    '''**`iskibris.py`, 2026-10-01 (#719).** Northern Cyprus's reference portal.
+    Five things, and the first is #661's lesson met in its most seductive form:
+
+    * **the two lists of facets have the SAME SIZE and DIFFERENT MEMBERS.** The
+      sitemap names 12 `/quick-links/` slugs (6 sectors + 6 districts); the home
+      page's `jobsStats` counts 12 (the same 6 sectors + 6 *other* facets:
+      education, health, internship, mass-media, part-time, student).
+      **Intersection 6, union 18.** *Twelve against twelve invites the inference
+      harder than 50 against 30 did on Lambda — equal cardinals look like
+      agreement.* Walking either list alone loses adverts the other serves, so
+      the run reads BOTH at runtime and walks their union;
+    * **the adverts are not where the sitemap puts them, nor on `/jobs`.** The
+      sitemap holds **zero** `/jobs/<id>`; `/jobs` ships `pageProps` with only an
+      empty `query` — no link, no `ld+json`, no pager — because it fetches in the
+      browser. *Counting links there returns zero, and that zero is about the
+      markup, not the board.* They live in `/quick-links/<slug>`, server-rendered
+      with a Laravel paginator;
+    * **the pager is CLAMPED: `?page=2` returns `current_page: 1` and the same 24
+      ids.** So the run asks each facet once and reports how far short of the
+      stated total it fell, rather than looping on a pager that cannot advance;
+    * **`--max` must not fabricate a board shortfall, and must cap where it says.**
+      *Both were defects in the first draft.* Tested only between facets, `--max 6`
+      emitted **23** adverts; and the shortfall note then reported «42 short» —
+      **a false witness manufactured by our own option**, which reads exactly like
+      a measured one;
+    * **and the run's own overlap figures are downstream of the clamp.** 77 of 187
+      adverts came from more than one facet; of the six districts, 0 appeared under
+      two and 98 under none. *That looks like «disjoint but not exhaustive» — and
+      the clamp forbids concluding it*, since an advert past position 24 of its
+      district page is invisible. **A witness downstream of a filter cannot see the
+      filter**, and the run says so instead of publishing the tidier half.
+
+    Both ways: the union emitted with each record naming the facet that served it;
+    walking one list alone losing what the other holds; `?page=2` never requested;
+    a clamped facet reported short rather than retried; `--max` capping exactly AND
+    suppressing the board-shortfall claim; `jobsFetchError: True` counted as
+    unreadable rather than empty; an advert served by two facets emitted once;
+    `api.iskibris.com` never sent (7).
+
+    **Mutated with the red named before each — five for five.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | only the sitemap's slugs walked | `18 != 12` — the home page's six facets lost |
+    | only the home page's slugs walked | `18 != 12` — the six district pages lost |
+    | `--max` checked between facets only | `24 != 6` — the cap does not cap |
+    | the board-shortfall note kept under `--max` | `'short in total' unexpectedly found` |
+    | the dedupe removed | `3 != 2` — one advert emitted twice |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_iskib", os.path.join(SCRIPTS, "iskibris.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://www.iskibris.com"
+
+    # le sitemap NOMME six secteurs et six districts
+    SM_SLUGS = ["sales-jobs", "jobs-in-nicosia", "logistics-jobs"]
+    # l'accueil COMPTE six secteurs et six AUTRES facettes — meme taille, membres differents
+    HOME_SLUGS = ["sales-jobs", "logistics-jobs", "student-jobs"]
+
+    @classmethod
+    def _sitemap(cls, slugs=None):
+        s = slugs if slugs is not None else cls.SM_SLUGS
+        return "\n".join([cls.B + "/", cls.B + "/jobs"] +
+                         [cls.B + "/quick-links/" + x for x in s]) + "\n"
+
+    @classmethod
+    def _home(cls, slugs=None):
+        s = slugs if slugs is not None else cls.HOME_SLUGS
+        d = {"props": {"pageProps": {
+            "jobsStats": {x: 7 for x in s}, "featuredJobs": [],
+            "featuredJobsError": False, "jobStatsErrors": {}}}}
+        return ('<html><body><script id="__NEXT_DATA__" type="application/json">'
+                + json.dumps(d, ensure_ascii=False) + "</script></body></html>")
+
+    @staticmethod
+    def _advert(ident, titre="Satış Temsilcisi", ville="Lefkoşa"):
+        return {"id": ident, "title": titre, "custom_title_translation": "Sales Representative",
+                "company_name": "Örnek Ltd", "company_logo": None, "city_name": ville,
+                "place_name": ville, "education_name": "Lise", "is_cv_required": 1,
+                "status": "active", "created_at": "2026-09-30T13:46:05.000000Z",
+                "updated_at": "2026-09-30T13:46:19.000000Z",
+                "job_title": {"id": 1, "titleEN": "Sales Representative", "titleTR": "Satış"}}
+
+    @classmethod
+    def _facette(cls, ids, total=None, erreur=False, last_page=1):
+        """Une page de facette : le paginateur Laravel dans `__NEXT_DATA__`."""
+        d = {"props": {"pageProps": {
+            "jobs": {"data": [cls._advert(i) for i in ids],
+                     "total": total if total is not None else len(ids),
+                     "per_page": 24, "last_page": last_page, "current_page": 1,
+                     "next_page_url": "https://api.iskibris.com/api/jobs/quick-links?page=2"},
+            "jobsFetchError": erreur, "query": {"slug": "x"}, "slug_name": "Satış"}}}
+        return ('<html><body><script id="__NEXT_DATA__" type="application/json">'
+                + json.dumps(d, ensure_ascii=False) + "</script></body></html>")
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CY")):
+        pages = dict(pages)
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    def _pages(self, **kw):
+        p = {self.B + "/sitemap.txt": self._sitemap(kw.get("sm_slugs")),
+             self.B + "/": self._home(kw.get("home_slugs"))}
+        # 25983 est servie par DEUX facettes : elle ne doit sortir qu'une fois
+        p[self.B + "/quick-links/sales-jobs"] = self._facette([25983, 25981], total=49, last_page=3)
+        p[self.B + "/quick-links/jobs-in-nicosia"] = self._facette([25983, 25974], total=149, last_page=7)
+        p[self.B + "/quick-links/logistics-jobs"] = self._facette([25960])
+        p[self.B + "/quick-links/student-jobs"] = self._facette([25949])
+        return p
+
+    def test_the_union_of_two_equally_sized_facet_lists_is_walked(self):
+        """**Douze contre douze : des cardinaux EGAUX aux membres differents.**
+
+        Le sitemap nomme trois slugs, l'accueil trois — deux en commun, donc
+        QUATRE distincts. *Aucun compte ne distingue «&nbsp;meme taille&nbsp;» de
+        «&nbsp;memes membres&nbsp;».*
+        """
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("4 distinct", err)                      # l'union
+        self.assertIn("2 in common", err)
+        self.assertIn("Same size, different members", err)
+        facettes = {u.rsplit("/", 1)[-1] for u in demandes if "/quick-links/" in u}
+        self.assertEqual(facettes, {"sales-jobs", "jobs-in-nicosia",
+                                    "logistics-jobs", "student-jobs"})
+
+    def test_walking_one_list_alone_loses_what_the_other_serves(self):
+        """**C'est la perte que l'union evite, et elle est muette autrement.**"""
+        mod = self._mod()
+        # l'accueil seul : on perd le district que seul le sitemap nomme
+        rc, lignes, err, _d = self._run(mod, self._pages(sm_slugs=[]))
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("25974", json.dumps(lignes))         # l'annonce du district
+        # le sitemap seul : on perd la facette que seul l'accueil compte
+        rc, lignes, err, _d = self._run(mod, self._pages(home_slugs=[]))
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("25949", json.dumps(lignes))         # l'annonce de student-jobs
+
+    def test_an_advert_served_by_two_facets_is_emitted_once(self):
+        """**25983 est dans `sales-jobs` ET dans `jobs-in-nicosia`.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        ids = [r["id"] for r in lignes]
+        self.assertEqual(len(ids), len(set(ids)), ids)
+        self.assertEqual(ids.count("25983"), 1)
+        self.assertIn("served by more than one facet", err)
+
+    def test_the_clamped_pager_is_never_asked_for_a_second_page(self):
+        """**`?page=2` rend `current_page: 1`, donc on ne le demande pas.**
+
+        Et le manque se DIT contre le total enonce, au lieu de boucler.
+        """
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertFalse([u for u in demandes if "page=" in u], demandes)
+        self.assertIn("THE PAGER IS CLAMPED", err)
+        self.assertIn("sales-jobs: 2 emitted, the facet states 49", err)
+        # et la limite du temoin est dite, pas tue
+        self.assertIn("downstream of the clamp", err.lower())
+
+    def test_max_caps_where_it_says_and_claims_no_board_shortfall(self):
+        """**Les deux defauts du premier jet, et ils se lisaient comme des mesures.**
+
+        Teste entre facettes seulement, `--max 6` emettait 23 annonces&nbsp;; et la
+        note de manque annoncait alors «&nbsp;42 short&nbsp;» — **un faux temoin
+        fabrique par notre propre option**, indiscernable d'un manque mesure.
+        """
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(),
+                                        argv=("jobs", "--country-code", "CY", "--max", "2"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 2, [r["id"] for r in lignes])
+        self.assertIn("stopped by --max", err)
+        # **AUCUNE affirmation sur ce que les facettes servent**
+        self.assertNotIn("short in total", err)
+        self.assertNotIn("THE PAGER IS CLAMPED", err)
+        self.assertIn("this run's cap, not the board's pager", err)
+
+    def test_a_facet_whose_own_fetch_failed_is_not_an_empty_facet(self):
+        """**Le site DIT que sa requete a echoue : ce n'est pas un zero du board.**"""
+        mod = self._mod()
+        pages = self._pages()
+        pages[self.B + "/quick-links/logistics-jobs"] = self._facette([], erreur=True)
+        rc, lignes, err, _d = self._run(mod, pages)
+        self.assertEqual(rc, 0, err)
+        self.assertIn("jobsFetchError", err)
+        self.assertIn("not an empty facet", err)
+
+    def test_the_api_host_is_never_sent(self):
+        """**Ses regles OUVRENT et l'application rend un 403 STATIQUE.**
+
+        Empreinte stable sur deux lectures : un refus applicatif, pas un defi — donc
+        la borne 2 n'est pas en cause, et on ne l'appelle pas pour autant.
+        """
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://api.iskibris.com/api/jobs/quick-links?page=2")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+    def test_neither_enumerator_naming_a_facet_is_not_an_empty_board(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(sm_slugs=[], home_slugs=[]))
+        self.assertEqual(rc, mod.EXIT_PARTIAL)
+        self.assertIn("they changed shape", err)
+        self.assertIn("not an empty board", err)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
