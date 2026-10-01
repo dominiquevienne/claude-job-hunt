@@ -39440,5 +39440,218 @@ class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase)
 
 
 
+class APagerThatAdvancesAndABoardThatStoppedPublishing(unittest.TestCase):
+    '''**`kktcportal.py`, 2026-10-01 (#724).** Northern Cyprus's regional portal.
+    Four things, and the first is notable for being the absence of a defect:
+
+    * **the pager ADVANCES.** Of the stop-rule family this repository has collected
+      — clamp, crush, reset, announce — *this board exhibits none*: page 1 and
+      page 2 share no advert, page 17 carries 6, page 18 carries none. **So the
+      walk ends on an empty page and no count is stated anywhere**: the 390 read is
+      what the pager served, not what the site claims, and the run says which.
+      *The repetition check is kept anyway — it costs one comparison, and its
+      absence is what the family is made of;*
+    * **the advert carries the `JobPosting`, the list carries almost nothing** — a
+      title and a link, no employer and no date. The page ships **two** `ld+json`
+      blocks, the other an `Organization`/`WebSite` pair, so the block is chosen by
+      its `@type` and never by its position: *choosing by position works today and
+      empties every field the day the order changes, without raising;*
+    * **a premise of the 2026-09-18 card no longer holds, and it is recorded.**
+      That reading reported aberrant list dates («26/05/1779»). Measured today the
+      list markup carries **no** `jj/mm/aaaa` date at all — zero, not an aberrant
+      one. *Either the site changed or the figure described something else*; either
+      way the date comes from the advert's `datePosted`;
+    * **the board is DORMANT, which is not BROKEN.** Every advert emitted is past
+      its `validThrough`, and the newest `datePosted` is 2026-07-09 — twelve weeks
+      old. Ids descend, so the first page carries the newest. **The route works and
+      the site has stopped publishing**, and the run states that with the board's
+      own date as the bound. *Reporting a dormant board as empty or broken would be
+      a claim about our tooling disguised as a claim about the market.*
+
+    Both ways: pages that differ walked to the empty one; a page repeating its
+    predecessor stopping the walk (6) rather than looping; the `JobPosting` chosen
+    among two blocks by `@type`; an expired advert emitted and counted, never
+    dropped; every-expired reported as dormancy with the newest date; a telephone
+    number in the description withheld; `--max` capping and claiming nothing about
+    the board; another host refused (7).
+
+    **Mutated with the red named before each — five for five.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the empty-page end removed (fixed page count) | `3 != 4` — the third page never read. *First run GREEN on a fixture of two full pages: «stop on empty» and «stop after page 2» then give the SAME result, so the branch was unreachable. **This is the fixture-sizing defect found on `iskibris` an hour earlier and repeated here** — writing a lesson is not applying it.* |
+    | the repetition check removed | no `SystemExit` — the walk loops on a clamped pager |
+    | the `ld+json` block taken by position | `None != 'Depo Personeli'` — the WebSite block read |
+    | expired adverts dropped | `0 != 2` — the board's own filing discarded |
+    | the dormancy note suppressed | `'DORMANT' not found` — stale read as live |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_kktc", os.path.join(SCRIPTS, "kktcportal.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://kktcportal.net"
+
+    @staticmethod
+    def _liste(slugs):
+        return "<html><body>" + "".join(
+            '<a href="/is-ilanlari/%s">x</a>' % s for s in slugs) + "</body></html>"
+
+    @staticmethod
+    def _advert(titre="Depo Personeli", employeur="Edip Elektronik LTD",
+                poste="2026-07-09T15:19:14.000Z", jusqu="2026-08-23T15:19:14.000Z",
+                desc="Başvuru: 0533 123 45 67 numarasından", inverse=False):
+        """Deux blocs `ld+json` ; `inverse` met le JobPosting en PREMIER.
+
+        L'ordre par defaut est celui du site : Organization/WebSite d'abord.
+        """
+        autre = [{"@context": "https://schema.org", "@type": "Organization", "name": "KKTC Portal"},
+                 {"@context": "https://schema.org", "@type": "WebSite", "name": "KKTC Portal"}]
+        jp = {"@context": "https://schema.org", "@type": "JobPosting", "title": titre,
+              "hiringOrganization": {"@type": "Organization", "name": employeur},
+              "jobLocation": {"@type": "Place", "address": {
+                  "@type": "PostalAddress", "addressLocality": "Lefkoşa",
+                  "addressRegion": "KKTC", "addressCountry": "CY"}},
+              "employmentType": "Tam-Zamanlı", "datePosted": poste, "validThrough": jusqu,
+              "description": "<p>" + desc + "</p>"}
+        blocs = [jp, autre] if inverse else [autre, jp]
+        return "<html><head>" + "".join(
+            '<script type="application/ld+json">%s</script>' % json.dumps(b, ensure_ascii=False)
+            for b in blocs) + "</head></html>"
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CY")):
+        pages = dict(pages)
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    def _pages(self, p3=None, **kw):
+        """TROIS pages pleines, une quatrieme VIDE.
+
+        **La fixture est STRICTEMENT plus grande que le seuil qu'elle doit faire
+        tirer**, et ce n'est pas une precaution de style : avec deux pages pleines,
+        «&nbsp;s'arreter sur une page vide&nbsp;» et «&nbsp;s'arreter apres la page 2&nbsp;»
+        rendent le MEME resultat, donc la mutation qui fige le compte de pages
+        passe VERTE. *C'est le defaut de dimensionnement releve une heure plus tot
+        sur `iskibris` — fixture a egalite avec le seuil — et repete ici dans
+        l'adaptateur suivant.*
+        """
+        p = {self.B + "/is-ilanlari": self._liste(["depo-personeli-lefkosa-25115",
+                                                   "asci-diger-25112"]),
+             self.B + "/is-ilanlari?sayfa=2": self._liste(["musteri-lefkosa-25113"]),
+             self.B + "/is-ilanlari?sayfa=3": p3 if p3 is not None
+             else self._liste(["garson-girne-25110"]),
+             self.B + "/is-ilanlari?sayfa=4": self._liste([])}
+        for s, t in (("depo-personeli-lefkosa-25115", "Depo Personeli"),
+                     ("asci-diger-25112", "Aşçı"),
+                     ("musteri-lefkosa-25113", "Müşteri Temsilcisi"),
+                     ("garson-girne-25110", "Garson")):
+            p[self.B + "/is-ilanlari/" + s] = self._advert(titre=t, **kw)
+        return p
+
+    def test_the_walk_ends_on_an_empty_page_and_claims_no_stated_count(self):
+        """**Le pager AVANCE : trois pages lues, la troisieme vide.**"""
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 4, [r["id"] for r in lignes])
+        self.assertEqual(len([u for u in demandes if "/is-ilanlari" == u.split("?")[0].rsplit("/", 1)[0] + "/is-ilanlari"
+                              or u.endswith("/is-ilanlari") or "sayfa=" in u]), 4)
+        self.assertIn("4 advert(s) enumerated", err)
+        self.assertIn("No count is stated anywhere", err)
+
+    def test_a_page_repeating_its_predecessor_stops_the_walk(self):
+        """**Le verrou n'existe pas ICI, et le controle est garde quand meme.**
+
+        C'est de l'absence de ce controle que la famille clamp/crush/reset est faite.
+        """
+        mod = self._mod()
+        # la page 3 re-sert ce que la page 2 a servi
+        rc, lignes, err, _d = self._run(
+            mod, self._pages(p3=self._liste(["musteri-lefkosa-25113"])))
+        self.assertEqual(rc, mod.EXIT_PARTIAL)
+        self.assertIn("stopped advancing", err)
+
+    def test_the_jobposting_is_chosen_by_type_and_not_by_position(self):
+        """**La page porte DEUX blocs ; l'autre est Organization/WebSite.**
+
+        Choisir par position marche aujourd'hui et vide tous les champs le jour ou
+        l'ordre change — sans rien lever.
+        """
+        mod = self._mod()
+        for inverse in (False, True):
+            rc, lignes, err, _d = self._run(mod, self._pages(inverse=inverse))
+            self.assertEqual(rc, 0, err)
+            self.assertEqual(lignes[0]["title"], "Depo Personeli", inverse)
+            self.assertEqual(lignes[0]["employer"], "Edip Elektronik LTD", inverse)
+
+    def test_an_expired_advert_is_emitted_counted_and_never_dropped(self):
+        """**Le board le liste : le jeter remplacerait sa declaration par la notre.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 4)
+        self.assertTrue(all(r["valid_through"] for r in lignes))
+        self.assertIn("already past", err)
+        self.assertIn("never dropped in silence", err)
+
+    def test_every_advert_expired_is_reported_as_dormant_not_broken(self):
+        """**DORMANT n'est pas CASSE, et la borne est la date DU BOARD.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("DORMANT, not broken", err)
+        self.assertIn("2026-07-09", err)
+        # et un board VIVANT ne doit pas etre declare dormant
+        futur = "2099-01-01T00:00:00.000Z"
+        rc, lignes, err, _d = self._run(mod, self._pages(jusqu=futur))
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("DORMANT", err)
+
+    def test_a_telephone_number_in_the_description_is_withheld(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("[telephone withheld]", lignes[0]["description"])
+        self.assertNotIn("0533", json.dumps(lignes, ensure_ascii=False))
+
+    def test_max_caps_and_claims_nothing_about_the_board(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(),
+                                        argv=("jobs", "--country-code", "CY", "--max", "1"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 1)
+        self.assertIn("stopped by --max", err)
+        self.assertIn("NOTHING here is said about what the board holds", err)
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/is-ilanlari")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
