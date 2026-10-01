@@ -6,6 +6,14 @@ Skills that run a job search end to end, honestly.
 
 **Start here, and pick the line that describes you.**
 
+**Or watch it first.** [Twenty-one minutes, from `job-setup` to a first cover
+letter](https://youtu.be/ntmcqfnx-K8) — the install, a first job scan and a
+first application, in one pass. *Recorded 1 October 2026 and showing
+**v1.244.1**; this README changes most days, so the screens will drift from
+it.*
+
+[![claude-job-hunt — setup, first job scan and cover letter with Claude Code](https://img.youtube.com/vi/ntmcqfnx-K8/maxresdefault.jpg)](https://youtu.be/ntmcqfnx-K8)
+
 **In an app — Claude in your browser or on your desktop.** Install the plugin
 and say *"find me some jobs"*. **Nothing else to install.** The board sweeps,
 the scoring, the ledger and the documents-as-markdown all work with what is
