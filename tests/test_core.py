@@ -39247,7 +39247,7 @@ class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase)
     | :-- | :-- |
     | only the sitemap's slugs walked | `18 != 12` — the home page's six facets lost |
     | only the home page's slugs walked | `18 != 12` — the six district pages lost |
-    | `--max` checked between facets only | `24 != 6` — the cap does not cap |
+    | `--max` checked between facets only | `5 != 2` — the cap does not cap. *First run GREEN: with two adverts per facet the outer break fired at exactly the cap, so the inner branch was never reached — a NON-EXERCISED guard, not an inert one. The fixture now carries five adverts against a cap of two.* |
     | the board-shortfall note kept under `--max` | `'short in total' unexpectedly found` |
     | the dedupe removed | `3 != 2` — one advert emitted twice |
     '''
@@ -39330,7 +39330,10 @@ class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase)
         p = {self.B + "/sitemap.txt": self._sitemap(kw.get("sm_slugs")),
              self.B + "/": self._home(kw.get("home_slugs"))}
         # 25983 est servie par DEUX facettes : elle ne doit sortir qu'une fois
-        p[self.B + "/quick-links/sales-jobs"] = self._facette([25983, 25981], total=49, last_page=3)
+        # **CINQ annonces pour un plafond de DEUX** : sans cela le `break` exterieur suffit
+        # et la branche interieure n'est jamais atteinte — un vert de garde NON EXERCEE.
+        p[self.B + "/quick-links/sales-jobs"] = self._facette(
+            [25983, 25981, 25971, 25963, 25957], total=49, last_page=3)
         p[self.B + "/quick-links/jobs-in-nicosia"] = self._facette([25983, 25974], total=149, last_page=7)
         p[self.B + "/quick-links/logistics-jobs"] = self._facette([25960])
         p[self.B + "/quick-links/student-jobs"] = self._facette([25949])
@@ -39346,7 +39349,7 @@ class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase)
         mod = self._mod()
         rc, lignes, err, demandes = self._run(mod, self._pages())
         self.assertEqual(rc, 0, err)
-        self.assertIn("4 distinct", err)                      # l'union
+        self.assertIn("4 distinct", err)                      # l'union des SLUGS
         self.assertIn("2 in common", err)
         self.assertIn("Same size, different members", err)
         facettes = {u.rsplit("/", 1)[-1] for u in demandes if "/quick-links/" in u}
@@ -39385,7 +39388,7 @@ class TwoFacetListsOfEqualSizeAndAClampDownstreamOfTheWitness(unittest.TestCase)
         self.assertEqual(rc, 0, err)
         self.assertFalse([u for u in demandes if "page=" in u], demandes)
         self.assertIn("THE PAGER IS CLAMPED", err)
-        self.assertIn("sales-jobs: 2 emitted, the facet states 49", err)
+        self.assertIn("sales-jobs: 5 emitted, the facet states 49", err)
         # et la limite du temoin est dite, pas tue
         self.assertIn("downstream of the clamp", err.lower())
 
