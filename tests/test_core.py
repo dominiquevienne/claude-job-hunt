@@ -40699,7 +40699,12 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
     stopping with the reason named; a real TL salary surviving the telephone rule while
     a mobile and a landline are withheld; `--max` claiming nothing; another host refused.
 
-    **Mutated with the red named before each — eight for eight.**
+    **Mutated with the red named before each — NINE for nine, and the sweep caught
+    three of these guards before they were declared.** *Each red landed on the right
+    test, but an EARLIER bare assertion fired first, so the red said nothing about what
+    had happened — the same «expected red derived from the formula rather than the
+    defect» that #721's sweep caught an hour earlier. Every assertion in this class now
+    carries a message that NAMES the defect.*
 
     | the mutation | the red obtained |
     | :-- | :-- |
@@ -40710,6 +40715,7 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
     | the server's clamp ignored | the walk paginates on what we asked, not what was granted |
     | a 401 retried instead of stopping | a control treated as a puzzle |
     | the phone rule widened to nine digits | a 6-figure TL salary destroyed |
+    | a signature header actually SENT | `X-Request-Signature` posted in the request |
     | `--max` allowed to speak of the board | our own cap sold as a board shortfall |
     '''
 
@@ -40815,9 +40821,9 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
         sur des NULL (#722), ligne COMMENTEE (#721), et ici la chaine `"0.00"`.
         """
         mod = self._mod()
-        self.assertIsNone(mod.montant("0.00"))
-        self.assertIsNone(mod.montant("0"))
-        self.assertIsNone(mod.montant(None))
+        self.assertIsNone(mod.montant("0.00"), "une paye de zero a ete publiee")
+        self.assertIsNone(mod.montant("0"), "une paye de zero a ete publiee")
+        self.assertIsNone(mod.montant(None), "une paye de zero a ete publiee")
         self.assertEqual(mod.montant("61000.00"), "61000.00")
         data = [self._advert(ident=1, slug="a", sal_min="0.00", sal_max="0.00"),
                 self._advert(ident=2, slug="b", sal_min=None, sal_max=None),
@@ -40832,7 +40838,7 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
     def test_the_2099_sentinel_is_never_a_deadline_and_a_real_one_is(self):
         mod = self._mod()
         self.assertEqual(mod.echeance_de({"expires_at": "2099-12-31 23:59:59"}),
-                         (None, True))
+                         (None, True), "la sentinelle 2099 a ete publiee")
         self.assertEqual(mod.echeance_de({"expires_at": "2026-02-19 22:41:21"}),
                          ("2026-02-19 22:41:21", False))
         self.assertEqual(mod.echeance_de({"expires_at": None}), (None, False))
@@ -40871,7 +40877,9 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
         mod = self._mod()
         for code in (401, 403):
             rc, lignes, err, _d = self._run(mod, lambda _u, c=code: (c, ""))
-            self.assertEqual(rc, mod.EXIT_REFUSED, err)
+            self.assertEqual(rc, mod.EXIT_REFUSED,
+                             "un controle EXIGE doit etre un mur (exit 7), pas une "
+                             "panne ordinaire — obtenu %r sur %s" % (rc, err))
             self.assertIn("now ENFORCED", err)
             self.assertIn("defeating an anti-automation control", err)
             self.assertIn("not solved", err)
