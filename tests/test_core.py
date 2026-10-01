@@ -40349,7 +40349,14 @@ class ACommentedRowIsNotAFieldAndAnArchiveIsNotAnInventory(unittest.TestCase):
     reference survives; `--max` claiming nothing; another host refused (7); an empty
     listing reported GONE rather than as a quiet zero.
 
-    **Mutated with the red named before each — seven for seven.**
+    **Mutated with the red named before each — seven for seven, and the sweep caught
+    TWO of these guards before they were declared.** *The `lastmod` case produced a
+    `TypeError` by sorting `None` — a **crash-red**, which counts like an assertion-red
+    while saying nothing about what is missing — so presence is now asserted before
+    value. And the archive case red on the right test with the wrong MESSAGE, because
+    its expected red had been derived from the formula instead of the defect; both reds
+    now NAME what happened («archived 2023 advert(s) emitted as current», «the only
+    dating this host has»).*
 
     | the mutation | the red obtained |
     | :-- | :-- |
@@ -40515,8 +40522,12 @@ class ACommentedRowIsNotAFieldAndAnArchiveIsNotAnInventory(unittest.TestCase):
         mod = self._mod()
         rc, lignes, err, demandes = self._run(mod, self._pages())
         self.assertEqual(rc, 0, err)
-        self.assertEqual(len(lignes), 1, [r["id"] for r in lignes])
-        self.assertTrue(all(not r["archived"] for r in lignes))
+        archivees = [r["id"] for r in lignes if r["archived"]]
+        self.assertEqual(archivees, [], "archived 2023 advert(s) emitted as current "
+                                        "without --include-archive: %s" % archivees)
+        self.assertEqual(len(lignes), 1,
+                         "the archive was unioned into the live listing: %d row(s) "
+                         "instead of 1" % len(lignes))
         self.assertIn("were NOT emitted", err)
         # aucune page d'archive n'a meme ete demandee
         self.assertNotIn(self.B + "/is-ilani/1703-lefkosada-acil-durum.html", demandes)
@@ -40530,6 +40541,13 @@ class ACommentedRowIsNotAFieldAndAnArchiveIsNotAnInventory(unittest.TestCase):
         self.assertEqual(len(lignes), 3, [r["id"] for r in lignes])
         arch = [r for r in lignes if r["archived"]]
         self.assertEqual(len(arch), 2)
+        # **La PRESENCE avant la VALEUR** : trier des `None` leve une `TypeError`,
+        # et un rouge qui PLANTE compte comme un rouge d'assertion tout en ne
+        # disant rien de ce qui manque.
+        manquants = [r["id"] for r in arch if not r["sitemap_lastmod"]]
+        self.assertEqual(manquants, [], "archived row(s) without their sitemap "
+                                        "lastmod, which is the only dating this "
+                                        "host has: %s" % manquants)
         self.assertEqual(sorted(r["sitemap_lastmod"] for r in arch),
                          ["2023-02-27", "2023-02-28"])
         self.assertTrue(all(r["enumerated_by"] == "sitemap-archive" for r in arch))
