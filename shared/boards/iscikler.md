@@ -1,9 +1,9 @@
-# Board measurement — iş-cikler (`iscikler.com`, Northern Cyprus): a Vite/React shell whose **API is now READ — `GET /api/jobs` answers 200 to the declared client with NO forged header**, states a total of 28 and KEEPS it, and whose pager advances honestly; the signature and fingerprint headers its own client sends are NOT enforced, so nothing was defeated; no adapter yet
+# Board measurement — iş-cikler (`iscikler.com`, Northern Cyprus): a Vite/React shell whose **API is now READ — `GET /api/jobs` answers 200 to the declared client with NO forged header**, states a total of 28 and KEEPS it, and whose pager advances honestly; the signature and fingerprint headers its own client sends are NOT enforced, so nothing was defeated; **`iscikler.py` reads it, asserts the stated total, and signs nothing**
 
 <!-- verified: 2026-10-02 -->
 
 <!-- hosts: iscikler.com -->
-<!-- script: none -->
+<!-- script: iscikler.py -->
 <!-- countries: CYN -->
 <!-- content: measured · **the rules file is served (`state: read`, `certain: True`, group `*`, NO Crawl-delay — 2 s are ours). THE API IS READ, and it is the route: the shell (200, 8 557 B) names three content-hashed bundles; `/assets/index-Ci11pkKW.js` (1 088 752 B) names the base `https://iscikler.com/api` and 88 endpoints. `GET /api/jobs?per_page=3&page=1` answers **200 to `Claude-User` with no forged header** (3 510 B, md5 50b042e18a68) and returns `{success, data, meta}`. **THE BOARD STATES A TOTAL AND KEEPS IT: `meta.total` = 28, and one page returns 28 DISTINCT ids** — the first of these Northern Cyprus boards with a witness that holds. The pager ADVANCES: `per_page=20&page=2` returns 8 (20+8=28, `last_page` 2) and `page=99` returns 0 honestly; **`per_page=100` is CLAMPED to 50 by the server, which says so in its own `meta.per_page`**. 24 fields per advert, no contact field in the listing. `salary_min`: a real TL amount on 11 (20 000-120 000), the string `"0.00"` on 10, `null` on 7. `expires_at`: the sentinel `2099-12-31 23:59:59` on 9, and **19 of the 28 carry a deadline already PAST while all 28 are `status: approved`**. `created_at` 2026-01-15 to 2026-08-18; 4 cities, 4 employment types; 6 descriptions carry an e-mail and 3 a telephone** · 2026-10-02 -->
 <!-- content: measured · **`iscikler.com` (200 ×2, 8 557 B, md5 a7b861f7f9a0 identical) is a Vite/React shell (`<div id="root">`, one bundle) with no card, count or link; `_robots.allowed('iscikler.com','/')` → open, certain** · 2026-09-18 -->
@@ -80,7 +80,7 @@ already settled (#724): the board lists it, so we emit it and we say the deadlin
 `created_at` runs 2026-01-15 to 2026-08-18 — **the newest advert is six weeks old, so this board is
 live, not dormant** (unlike `ekonomikibris`, 21 months, and `kktcportal`, 12 weeks).
 
-### What an adapter would do
+### What the adapter does
 
 ```
 route   : http — `GET /api/jobs?per_page=50&page=N` until the stated total is reached
@@ -95,8 +95,7 @@ NEVER   : no signature is computed and no fingerprint is forged. If the server e
 
 **Re-measured 2026-10-02 by the declared client, the guard on each exact path first,
 `bin/fetch-body.py`, provenance beside every body.** *The content-hashed bundle was fetched in the
-same pass as the shell that names it — such a chunk 404s once the site redeploys.* *A measurement,
-not an adapter.*
+same pass as the shell that names it — such a chunk 404s once the site redeploys.* *The measurement; the adapter is `skills/job-scan/scripts/iscikler.py`.*
 
 ```
 _robots.verdict('iscikler.com')   state: read, certain: True, group '*', delay: None

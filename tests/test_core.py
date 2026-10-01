@@ -40648,5 +40648,302 @@ class ACommentedRowIsNotAFieldAndAnArchiveIsNotAnInventory(unittest.TestCase):
         self.assertEqual(rc, mod.EXIT_GONE)
         self.assertEqual(lignes, [])
 
+class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.TestCase):
+    '''**`iscikler.py`, 2026-10-02 (#720).** Northern Cyprus's React portal, read
+    through its own JSON API. Four things:
+
+    * **NOTHING IS SIGNED AND NOTHING IS FORGED, and that is the point.** The site's
+      bundle signs every request — `X-Request-Timestamp`, `X-Request-Nonce`,
+      `X-Request-Signature` (a hash of the body), `X-Client-Fingerprint`
+      (`btoa(navigator.userAgent + navigator.language)`). *A per-request signature plus
+      a browser fingerprint is a mechanism to ensure requests come from the official
+      client, so computing it would be **defeating an anti-automation control** — borne
+      2, for our HTTP client exactly as for the browser route.* **The question was never
+      whether we could compute it: it was whether the control is ENFORCED**, and one
+      honest request as the declared client answered it — **200, unforged**. *So a
+      401/403 is a WALL and the adapter stops on it* (exit 7, with the reason named),
+      **never a puzzle to solve.**
+
+    * **the board STATES a total and KEEPS it, so the run ASSERTS it.** `meta.total`
+      was 28 and one page returned 28 distinct ids — *the first Northern Cyprus host in
+      this repository whose witness can be asserted rather than merely noted* (İş Kıbrıs
+      #719, KKTC Portal #724, Ekonomi Kıbrıs #726 and Kıbrıs Eleman #721 state nothing,
+      or state prose). **A shortfall is reported as a shortfall (exit 6), never passed
+      off as the whole inventory.**
+
+    * **`per_page` is clamped BY THE SERVER, which declares the clamp in its own
+      `meta.per_page`** — 100 requested, 50 granted. *So the walk follows what the
+      server grants, not what we asked.* **A pager driven by our own request size would
+      skip rows while looking perfectly healthy.**
+
+    * **three sentinels, each of which would publish something the board never said.**
+      `salary_min`/`salary_max` hold the string **`"0.00"` on 10 of 28** — *a wage of
+      zero is not a wage*; `salary_min` is `null` on 7 — honest absence; `expires_at`
+      holds **`2099-12-31 23:59:59` on 9 of 28**, a sentinel for «none» that as a date
+      is false precision. **The zero is the FOURTH mechanism of the salary family** —
+      #638/#655 a currency that was WRONG, #722 a currency on NULL values, #721 a row
+      COMMENTED OUT, here `"0.00"`. *Four hosts, four mechanisms, one rule.*
+
+    **And the board does not expire its adverts**: 19 of 28 were past their
+    `expires_at` while all 28 were `status: approved`, so past deadlines are emitted and
+    NAMED — dropping them would substitute our judgement for the board's own filing
+    (#724).
+
+    **The 11 real salaries are 5- and 6-figure TL (20 000 - 120 000), exactly the digit
+    range where a nine-digit rule destroyed 113 of 115 Burmese salaries.** *Measured,
+    not assumed: the anchored rule matches none of them.*
+
+    Both ways: the total asserted when it holds AND a shortfall exiting 6; the server's
+    clamp followed; `"0.00"` dropped AND a real amount carried; the 2099 sentinel
+    dropped AND a real deadline carried; past deadlines emitted and counted; a 401
+    stopping with the reason named; a real TL salary surviving the telephone rule while
+    a mobile and a landline are withheld; `--max` claiming nothing; another host refused.
+
+    **Mutated with the red named before each — eight for eight.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | `"0.00"` carried as a salary | a wage of zero published |
+    | the 2099 sentinel carried as a deadline | a 2099 date published as a deadline |
+    | past deadlines dropped | the board's own filing discarded |
+    | the stated total no longer asserted | a shortfall passed off as the inventory |
+    | the server's clamp ignored | the walk paginates on what we asked, not what was granted |
+    | a 401 retried instead of stopping | a control treated as a puzzle |
+    | the phone rule widened to nine digits | a 6-figure TL salary destroyed |
+    | `--max` allowed to speak of the board | our own cap sold as a board shortfall |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_isc", os.path.join(SCRIPTS, "iscikler.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _advert(ident=83, slug="quartz-medya-muhasebe", titre="Muhasebe sorumlusu",
+                sal_min="0.00", sal_max="0.00", expire="2099-12-31 23:59:59",
+                cree="2026-07-25 18:05:40", desc="Basvuru: munhal@quartz.com",
+                statut="approved"):
+        return {"id": ident, "slug": slug, "title": titre,
+                "company_name": "Quartz Medya", "employer_name": "Quartz",
+                "company_website": None, "location": "İskele",
+                "employment_type": "part-time", "category": "Muhasebe",
+                "experience_level": None, "education_level": None,
+                "salary_min": sal_min, "salary_max": sal_max,
+                "created_at": cree, "expires_at": expire, "status": statut,
+                "views": 75, "description": desc, "requirements": None}
+
+    def _reponse(self, data, total=None, per_page=50, page=1, succes=True):
+        total = len(data) if total is None else total
+        return json.dumps({"success": succes, "data": data,
+                           "meta": {"current_page": page, "per_page": per_page,
+                                    "total": total,
+                                    "last_page": max(1, -(-total // max(1, per_page)))}},
+                          ensure_ascii=False)
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CYN")):
+        """`pages` : une fonction url -> (code, corps), ou un dict page -> corps."""
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if callable(pages):
+                return pages(url)
+            # **`per_page=50` CONTIENT « page=50 »** : sans l'ancre sur `?`/`&`,
+            # toute requete se resout a la page 50 et le banc lit des pages vides.
+            m = re.search(r"[?&]page=(\d+)", url)
+            n = int(m.group(1)) if m else 1
+            return (200, pages[n]) if n in pages else (200, self._reponse([], total=0))
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    # --- le temoin enonce s'ASSERTE -----------------------------------------
+    def test_a_stated_total_that_holds_is_asserted_and_said_to_hold(self):
+        mod = self._mod()
+        data = [self._advert(ident=i, slug="s%d" % i) for i in range(1, 4)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=3)})
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 3)
+        self.assertIn("the board STATES a total of 3", err)
+        self.assertIn("the stated total HOLDS", err)
+
+    def test_a_shortfall_against_the_stated_total_exits_partial_and_says_so(self):
+        """**Un manque se DIT&nbsp;: il ne se fait pas passer pour l'inventaire.**
+
+        La fixture est STRICTEMENT plus grande que le manque qu'elle doit faire
+        apparaitre&nbsp;: 3 lues contre 9 annoncees, donc « 6 short » ne peut pas
+        etre satisfait par un hasard de cardinal.
+        """
+        mod = self._mod()
+        data = [self._advert(ident=i, slug="s%d" % i) for i in range(1, 4)]
+        # page 1 rend 3 sur un total annonce de 9 ; page 2 n'ajoute rien
+        rc, lignes, err, _d = self._run(mod, {
+            1: self._reponse(data, total=9),
+            2: self._reponse(data, total=9, page=2)})
+        self.assertEqual(rc, mod.EXIT_PARTIAL, err)
+        self.assertIn("3 distinct id(s) read against a stated total of 9", err)
+        self.assertIn("6 SHORT", err)
+        self.assertIn("not what the board holds", err)
+
+    def test_the_walk_follows_the_clamp_the_server_declares(self):
+        """**Le serveur accorde 50 quand on demande davantage, et il l'ANNONCE.**"""
+        mod = self._mod()
+        data = [self._advert(ident=i, slug="s%d" % i) for i in range(1, 4)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=3, per_page=7)})
+        self.assertEqual(rc, 0, err)
+        self.assertIn("7 GRANTED", err)
+        self.assertIn("the server declares its own clamp", err)
+
+    # --- les trois sentinelles ---------------------------------------------
+    def test_a_zero_salary_is_never_carried_and_a_real_one_is(self):
+        """**Une paye de zero n'est pas une paye.**
+
+        Quatrieme mecanisme de la famille&nbsp;: monnaie FAUSSE (#638/#655), monnaie
+        sur des NULL (#722), ligne COMMENTEE (#721), et ici la chaine `"0.00"`.
+        """
+        mod = self._mod()
+        self.assertIsNone(mod.montant("0.00"))
+        self.assertIsNone(mod.montant("0"))
+        self.assertIsNone(mod.montant(None))
+        self.assertEqual(mod.montant("61000.00"), "61000.00")
+        data = [self._advert(ident=1, slug="a", sal_min="0.00", sal_max="0.00"),
+                self._advert(ident=2, slug="b", sal_min=None, sal_max=None),
+                self._advert(ident=3, slug="c", sal_min="61000.00", sal_max="71000.00")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=3)})
+        self.assertEqual(rc, 0, err)
+        par = {r["id"]: r["salary"] for r in lignes}
+        self.assertIsNone(par["1"], "une paye de zero a ete publiee")
+        self.assertIsNone(par["2"])
+        self.assertEqual(par["3"], "61000.00 - 71000.00")
+
+    def test_the_2099_sentinel_is_never_a_deadline_and_a_real_one_is(self):
+        mod = self._mod()
+        self.assertEqual(mod.echeance_de({"expires_at": "2099-12-31 23:59:59"}),
+                         (None, True))
+        self.assertEqual(mod.echeance_de({"expires_at": "2026-02-19 22:41:21"}),
+                         ("2026-02-19 22:41:21", False))
+        self.assertEqual(mod.echeance_de({"expires_at": None}), (None, False))
+        data = [self._advert(ident=1, slug="a", expire="2099-12-31 23:59:59"),
+                self._advert(ident=2, slug="b", expire="2026-02-19 22:41:21")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=2)})
+        self.assertEqual(rc, 0, err)
+        par = {r["id"]: r for r in lignes}
+        self.assertIsNone(par["1"]["deadline"], "la sentinelle 2099 a ete publiee")
+        self.assertTrue(par["1"]["deadline_sentinel"])
+        self.assertEqual(par["2"]["deadline"], "2026-02-19 22:41:21")
+        self.assertFalse(par["2"]["deadline_sentinel"])
+        self.assertIn("deadline sentinel", err)
+        self.assertNotIn("2099", json.dumps(lignes, ensure_ascii=False))
+
+    def test_a_past_deadline_is_emitted_and_named_never_dropped(self):
+        """**Le board la classe `approved`&nbsp;: la jeter remplacerait son classement
+        par le notre** (#724)."""
+        mod = self._mod()
+        data = [self._advert(ident=i, slug="s%d" % i, expire="2026-02-19 22:41:21")
+                for i in range(1, 4)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=3)})
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 3, "des annonces echues ont ete jetees")
+        self.assertIn("3 emitted advert(s) state a deadline already past", err)
+        self.assertIn("never dropped", err)
+        self.assertTrue(all(r["status"] == "approved" for r in lignes))
+
+    # --- borne 2 : un controle EXIGE est un mur ---------------------------
+    def test_an_enforced_signature_stops_the_route_and_is_not_solved(self):
+        """**On ne calcule pas la signature et on ne forge pas d'empreinte.**
+
+        *Le candidat n'est pas un moyen&nbsp;; et un controle exige est un mur, pas une
+        enigme a resoudre.*
+        """
+        mod = self._mod()
+        for code in (401, 403):
+            rc, lignes, err, _d = self._run(mod, lambda _u, c=code: (c, ""))
+            self.assertEqual(rc, mod.EXIT_REFUSED, err)
+            self.assertIn("now ENFORCED", err)
+            self.assertIn("defeating an anti-automation control", err)
+            self.assertIn("not solved", err)
+            self.assertEqual(lignes, [])
+
+    def test_no_signature_or_fingerprint_header_is_ever_sent(self):
+        """*Le contrôle est dans le CODE, pas dans la discipline.*"""
+        mod = self._mod()
+        with io.open(os.path.join(SCRIPTS, "iscikler.py"),
+                     encoding="utf-8") as fh:
+            src = fh.read()
+        envoi = src.split("def request(", 1)[1].split("\ndef ", 1)[0]
+        for interdit in ("X-Request-Signature", "X-Request-Nonce",
+                         "X-Request-Timestamp", "X-Client-Fingerprint"):
+            self.assertNotIn('"%s":' % interdit, envoi,
+                             "%s est POSE dans la requete" % interdit)
+            self.assertNotIn("'%s':" % interdit, envoi)
+
+    # --- l'expurgation, et le piege birman -------------------------------
+    def test_a_real_tl_salary_survives_the_telephone_rule(self):
+        """**5 et 6 chiffres&nbsp;: exactement la plage ou la regle birmane detruisait.**"""
+        mod = self._mod()
+        for sal in ("20000.00", "52738.00", "61000.00", "90000.00", "110000.00",
+                    "120000.00", "99998.00"):
+            self.assertEqual(mod.scrub(sal), sal, "salaire detruit: %r" % sal)
+
+    def test_a_mobile_and_a_landline_in_a_description_are_withheld(self):
+        mod = self._mod()
+        for tel in ("0533 847 81 90", "0392 227 51 96", "+90 548 826 46 80"):
+            self.assertEqual(mod.scrub("Tel " + tel), "Tel [telephone withheld]", tel)
+        data = [self._advert(ident=1, slug="a",
+                             desc="Basvuru: munhal@quartz.com veya 0533 847 81 90")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=1)})
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False)
+        self.assertNotIn("munhal@quartz.com", blob)
+        self.assertNotIn("0533 847", blob)
+        self.assertIn("[e-mail withheld]", blob)
+        self.assertIn("[telephone withheld]", blob)
+        self.assertTrue(lignes[0]["contacts_withheld"])
+
+    # --- nos options ne fabriquent pas un deficit de board ---------------
+    def test_max_caps_and_says_nothing_about_the_board(self):
+        mod = self._mod()
+        data = [self._advert(ident=i, slug="s%d" % i) for i in range(1, 6)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=5)},
+                                        argv=("jobs", "--country-code", "CYN",
+                                              "--max", "2"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 2)
+        self.assertIn("NOTHING here is said about what the board holds", err)
+        self.assertNotIn("the stated total HOLDS", err)
+
+    def test_the_country_code_is_stamped_on_every_row(self):
+        mod = self._mod()
+        data = [self._advert(ident=1, slug="a")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=1)})
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(lignes and all(r["country"] == "CYN" for r in lignes))
+
+    def test_a_success_false_payload_is_broken_not_empty(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, lambda _u: (200, self._reponse([], total=0, succes=False)))
+        self.assertEqual(rc, mod.EXIT_BROKEN)
+        self.assertIn("success=False", err)
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/api/jobs")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
