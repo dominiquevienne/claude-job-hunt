@@ -39897,5 +39897,411 @@ class AFeedThatIsNotTheInventoryAndACurrencyWithoutAnAmount(unittest.TestCase):
 
 
 
+class AFeedThatCONTAINSThePagerAndAWithholdingThatMustNotEatAStandard(unittest.TestCase):
+    '''**`ekonomikibris.py`, 2026-10-02 (#726).** The vacancy notices of a Northern
+    Cyprus economy newspaper. Four things, and the first is the reason this adapter
+    reads two enumerators when one would have served today:
+
+    * **THE FEED CONTAINS THE PAGER — and containment is MEASURED at every run,
+      never assumed.** This is the fourth board whose two enumerators were compared
+      and the FIRST where one holds the other: *Lambda 50/30 intersecting in 2
+      (#661), Is Kibris 12/12 in 6 (#719), Work Link 12/20 in 4 (#722)* — in none
+      of those did either side contain the other; here feed 50 ⊃ pager 21, with 29
+      besides. **Three near-misses could have hardened into «never trust a feed»,
+      which is the same error with the sign reversed.** *So the run intersects
+      IDENTIFIERS and says what it found, and a pager-only identifier is fetched
+      from its own notice page rather than dropped — the day the relation changes
+      costs one request per surprise instead of a silent loss;*
+    * **the AJAX pager is CLAMPED and the stop is NAMED.** It answers, it answers
+      FULL — 15 identifiers — and it adds none. *A pager one can SEE is not a pager
+      that advances;* a clamp reported as an exhausted pager is a claim about the
+      board made out of our own walk;
+    * **a `ld+json` block that RAISES is not a block that is ABSENT.** The notice
+      page's third block, a `NewsArticle`, fails `json.loads` with «Invalid control
+      character» on a raw newline inside a string and parses with `strict=False`.
+      *The repository's decode lesson inverted: there a broken decode returned TEXT
+      and read like absent content; here a block that is PRESENT raises and reads
+      like absent data;*
+    * **the withholding is anchored on what the country NUMBERS, because a loose
+      rule misrepresents the board.** A pattern broad enough to catch a TRNC
+      landline also catches `9001-2015` and `22000-2018` — **ISO standard
+      references** — and `[telephone withheld]` stamped over a quality
+      certification is a claim about the employer the board never made. *Measured
+      in both directions on the real corpus: the anchored rule bites the same 17
+      bodies and leaves both citations intact.* **And `14.000m2` is why no salary
+      is mined from the prose: the only money-shaped string in 50 bodies is a FLOOR
+      AREA in square metres** — this board states no salary, so the row carries
+      none rather than guess one.
+
+    Both ways: the relation measured and named; a pager-only id fetched and
+    emitted; a clamp named at the page where it bites, after the pager has really
+    ADVANCED once (so «stop on no-new» cannot be satisfied by «stop after page 2»);
+    a strict-raising block read; a landline AND a mobile withheld while an ISO
+    reference and a floor area survive; the employer derived from the board's title
+    convention and ABSENT when the convention is absent; no `JobPosting` pretended;
+    dormancy stated with the board's own date and a live board not declared
+    dormant; an unparseable `pubDate` carried raw; `--max` capping and claiming
+    nothing; another host refused (7).
+
+    **Mutated with the red named before each — eight for eight.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the pager-only id dropped instead of fetched | `51 != 52` — the surprise lost in silence |
+    | the clamp check removed | `AJAX page 12` reached — the walk runs to its bound |
+    | `strict=False` made strict | `None != 'Pager Only Ltd'` — a present block read as absent |
+    | the phone rule widened to the loose form | `'9001-2015'` withheld — an ISO citation stamped |
+    | the phone rule narrowed to mobiles only | `'0392 227 51 96'` emitted — the landline leaks |
+    | the employer guessed past the convention | `'Bir baslik' != None` — a name fabricated |
+    | the dormancy note suppressed | `'DORMANT' not found` — stale read as live |
+    | `--max` allowed to speak of the board | `'NOTHING here is said'` missing |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_eko", os.path.join(SCRIPTS, "ekonomikibris.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    B = "https://www.ekonomikibris.com"
+
+    # --- des fixtures PRISES DANS LA MESURE, jamais inventees ---------------
+    # Les contacts, la norme ISO et la surface viennent du corpus reel du
+    # 2026-10-02 : une fixture inventee porte les valeurs de celui qui l'ecrit,
+    # donc jamais celles qui le prennent en defaut.
+    CORPS_REEL = (
+        "Kuzey Kıbrıs'ta iş arayan veya iş değiştirmek "
+        "isteyenler için yeni bir fırsat.\n"
+        "Toplam 14.000m2 (4.500m²e kapalı) alanda üretim yapilmakta, "
+        "ISO 9001-2015 ve ISO 22000-2018 belgelidir.\n"
+        "Başvuru için : munhal@levent.com\n"
+        "Tel: 0548 838 10 53 / 0392 227 51 96\n")
+
+    @staticmethod
+    def _item(ident, slug, titre, pub="Mon, 06 Jan 2025 10:54:35 +0300", corps="x"):
+        return (
+            "<item>\n<title><![CDATA[%s]]></title>\n"
+            "<description><![CDATA[chapeau]]></description>\n"
+            "<content:encoded><![CDATA[%s]]></content:encoded>\n"
+            "<link>https://www.ekonomikibris.com/%s/%s/</link>\n"
+            "<pubDate>%s</pubDate>\n</item>" % (titre, corps, slug, ident, pub))
+
+    def _flux(self, items):
+        return ('<rss xmlns:content="http://purl.org/rss/1.0/modules/content/" '
+                'version="2.0"><channel><title>İş İlanları</title>'
+                + "".join(items) + "</channel></rss>")
+
+    @staticmethod
+    def _liste(paires):
+        return "<html><body>" + "".join(
+            '<a href="https://www.ekonomikibris.com/%s/%s/">x</a>' % (s, i)
+            for i, s in paires) + "</body></html>"
+
+    @staticmethod
+    def _avis(titre="Pager Only Ltd münhal duyurusu - Kıbrıs iş ilanları",
+              corps="Bir avis.", brut=True):
+        """Trois blocs ; le `NewsArticle` porte un saut de ligne BRUT dans une chaine.
+
+        C'est ce caractere de controle qui fait lever `json.loads` strict — donc
+        `brut=True` est le cas du site, et `brut=False` la contre-epreuve.
+        """
+        autres = ('<script type="application/ld+json">'
+                  '{"@context":"https://schema.org","@type":"Organization","name":"Ekonomi"}'
+                  '</script>'
+                  '<script type="application/ld+json">'
+                  '{"@context":"https://schema.org","@type":"BreadcrumbList",'
+                  '"itemListElement":[]}</script>')
+        c = corps + ("\n" if brut else " ") + "Devami."
+        na = ('{"@context":"https://schema.org","@type":"NewsArticle",'
+              '"headline":"%s","articleBody":"%s",'
+              '"datePublished":"2025-01-06T10:19:36+03:00"}' % (titre, c))
+        return ("<html><head>" + autres
+                + '<script type="application/ld+json">' + na + "</script></head></html>")
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "CYN")):
+        pages = dict(pages)
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if url not in pages:
+                return 404, ""
+            return 200, pages[url]
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    def _pages(self, items=None, page_ids=None, ajax=None, avis=None):
+        """Le flux, la liste, l'AJAX — et le pager AVANCE avant de se clamper.
+
+        **La page 2 de l'AJAX apporte un identifiant NEUF, la page 3 n'en apporte
+        aucun.** C'est la correction du defaut de #724 : avec un seul palier,
+        « s'arreter quand rien n'est neuf » et « s'arreter apres la page 2 » sont
+        la meme assertion, et la mutation reste VERTE.
+        """
+        items = items if items is not None else [
+            self._item("53097", "levent-munhal-duyurusu",
+                       "Levent Şirketler Grubu münhal duyurusu - "
+                       "Kıbrıs iş ilanları", corps=self.CORPS_REEL),
+            self._item("53094", "odtu-munhal-duyurusu",
+                       "ODTÜ Kuzey Kıbrıs Kampusu münhal duyurusu - "
+                       "Kıbrıs iş ilanları"),
+            self._item("53090", "sokmar-munhal-duyurusu",
+                       "Şokmar Süpermarket münhal duyurusu - "
+                       "Kıbrıs iş ilanları"),
+        ]
+        page_ids = page_ids if page_ids is not None else [("53097", "levent-munhal-duyurusu")]
+        p = {self.B + "/rss_is-ilanlari_70.xml": self._flux(items),
+             self.B + "/is-ilanlari/": self._liste(page_ids)}
+        # page 2 : un identifiant NEUF -> le pager avance pour de bon
+        # page 3 : rien de neuf        -> le clamp mord ICI, pas au premier palier
+        a = ajax if ajax is not None else {
+            2: [("53094", "odtu-munhal-duyurusu")],
+            3: [("53094", "odtu-munhal-duyurusu")],
+        }
+        for n, paires in a.items():
+            p[self.B + "/template/prime/news-category-ajax.php?katid=70&page=%d" % n] = \
+                self._liste(paires)
+        for slug, ident, markup in (avis or []):
+            p[self.B + "/%s/%s/" % (slug, ident)] = markup
+        return p
+
+    # --- la relation, mesuree et nommee ------------------------------------
+    def test_the_relation_between_the_two_enumerators_is_measured_each_run(self):
+        """**On intersecte des IDENTIFIANTS, jamais des cardinaux.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 3, [r["id"] for r in lignes])
+        self.assertIn("intersection 2", err)
+        self.assertIn("feed-only 1", err)
+        self.assertIn("pager-only 0", err)
+        self.assertIn("the feed CONTAINS the pager", err)
+        self.assertIn("measured, not assumed", err)
+
+    def test_a_pager_only_identifier_is_fetched_and_never_dropped(self):
+        """**Le jour ou la relation change, la surprise coute une requete.**
+
+        Elle ne coute PAS une perte silencieuse — et c'est tout l'interet de
+        mesurer la relation au lieu de la supposer.
+        """
+        mod = self._mod()
+        surprise = ("pager-only-munhal-duyurusu", "99999",
+                    self._avis(titre="Pager Only Ltd münhal duyurusu - "
+                                     "Kıbrıs iş ilanları"))
+        pages = self._pages(
+            page_ids=[("53097", "levent-munhal-duyurusu"),
+                      ("99999", "pager-only-munhal-duyurusu")],
+            avis=[surprise])
+        rc, lignes, err, demandes = self._run(mod, pages)
+        self.assertEqual(rc, 0, err)
+        self.assertIn("THE RELATION HAS CHANGED", err)
+        self.assertIn("pager-only 1", err)
+        # la ligne existe, et elle a ete lue sur SA page
+        self.assertIn(self.B + "/pager-only-munhal-duyurusu/99999/", demandes)
+        ids = [r["id"] for r in lignes]
+        self.assertIn("99999", ids, ids)
+        self.assertEqual(len(lignes), 4, ids)
+        extra = [r for r in lignes if r["id"] == "99999"][0]
+        self.assertEqual(extra["employer"], "Pager Only Ltd")
+        self.assertEqual(extra["enumerated_by"], "pager")
+
+    def test_the_clamp_is_named_at_the_page_where_it_bites(self):
+        """**Le pager AVANCE a la page 2 et se clampe a la 3.**
+
+        Avec un seul palier, « rien de neuf » et « apres la page 2 » seraient la
+        meme assertion — le defaut de #724, vert sous mutation.
+        """
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("CLAMPED at AJAX page 3", err)
+        self.assertIn("adds none", err)
+        # la page 2 a bien ete lue ET a bien apporte du neuf
+        self.assertIn("AJAX page 2: 1 identifier(s), 1 new", err)
+        self.assertIn("AJAX page 3: 1 identifier(s), 0 new", err)
+        # et la marche ne va pas au-dela du clamp
+        self.assertNotIn(self.B + "/template/prime/news-category-ajax.php?katid=70&page=4",
+                         demandes)
+
+    # --- le bloc qui leve --------------------------------------------------
+    def test_a_ldjson_block_that_raises_strictly_is_read_not_skipped(self):
+        """**Un bloc qui LEVE n'est pas un bloc ABSENT.**"""
+        mod = self._mod()
+        # le caractere de controle est la : `json.loads` strict leve ICI
+        markup = self._avis(brut=True)
+        bloc = re.findall(
+            r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', markup, re.S)[-1]
+        with self.assertRaises(ValueError):
+            json.loads(bloc)                      # la contre-epreuve du defaut
+        self.assertEqual(json.loads(bloc, strict=False)["@type"], "NewsArticle")
+        # et l'adaptateur le lit
+        self.assertEqual(mod.article_de(markup).get("headline"),
+                         "Pager Only Ltd münhal duyurusu - "
+                         "Kıbrıs iş ilanları")
+        self.assertIn("Devami.", mod.article_de(markup).get("articleBody"))
+
+    # --- l'expurgation, dans les DEUX sens --------------------------------
+    def test_the_withholding_takes_both_a_mobile_and_a_landline(self):
+        """**2 corps sur 50 portent un FIXE : une regle mobile seule les laisse fuir.**"""
+        mod = self._mod()
+        for brut in ("0533 847 81 90", "+90 548 826 46 80", "05338800700",
+                     "+905338700057", "0392 227 51 96", "0392 680 88 88",
+                     "+90 542 860 4000", "0548 893 53 22"):
+            self.assertEqual(mod.scrub("Tel: " + brut), "Tel: [telephone withheld]",
+                             "non retenu: %r" % brut)
+        self.assertEqual(mod.scrub("Yaz: a@b.com"), "Yaz: [e-mail withheld]")
+
+    def test_the_withholding_leaves_a_standard_reference_and_a_floor_area_intact(self):
+        """**`[telephone withheld]` sur «ISO 9001-2015» est une affirmation fausse.**
+
+        Le board n'a jamais ecrit de telephone la : il a cite une certification.
+        Et `14.000m2` est une SURFACE — le seul motif monetaire des 50 corps, et
+        ce n'est pas de l'argent, d'ou l'absence de tout salaire dans la ligne.
+        """
+        mod = self._mod()
+        for intact in ("ISO 9001-2015", "ISO 22000-2018", "14.000m2",
+                       "4.500", "2015-2018", "257 kelime"):
+            self.assertEqual(mod.scrub(intact), intact, "detruit: %r" % intact)
+
+    def test_no_contact_survives_in_an_emitted_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False)
+        self.assertNotIn("munhal@levent.com", blob)
+        self.assertNotIn("0548 838 10 53", blob)
+        self.assertNotIn("0392 227 51 96", blob)
+        self.assertIn("[e-mail withheld]", blob)
+        self.assertIn("[telephone withheld]", blob)
+        # et la norme ET la surface ont survecu a l'expurgation
+        self.assertIn("9001-2015", blob)
+        self.assertIn("14.000m2", blob)
+        self.assertTrue(all(r["contacts_withheld"] for r in lignes))
+
+    # --- l'employeur : la convention, et RIEN hors d'elle ------------------
+    def test_the_employer_comes_from_the_boards_own_title_convention(self):
+        mod = self._mod()
+        self.assertEqual(
+            mod.employeur_de("Şokmar Süpermarket münhal duyurusu - "
+                             "Kıbrıs iş ilanları"),
+            "Şokmar Süpermarket")
+        self.assertEqual(
+            mod.employeur_de("ODTÜ Kuzey Kıbrıs Kampusu münhal "
+                             "duyuruları"),
+            "ODTÜ Kuzey Kıbrıs Kampusu")
+
+    def test_a_title_without_the_convention_carries_no_employer_at_all(self):
+        """**Deviner hors du motif fabriquerait un nom d'employeur.**
+
+        Ce qui est pire que de n'en porter aucun : un champ vide se voit, un nom
+        faux se croit.
+        """
+        mod = self._mod()
+        for hors in ("Bir baslik", "Kıbrıs iş ilanları",
+                     "", None):
+            self.assertIsNone(mod.employeur_de(hors), "fabrique sur %r" % hors)
+        rc, lignes, err, _d = self._run(mod, self._pages(items=[
+            self._item("1", "autre-chose", "Bir baslik sans convention")]))
+        self.assertEqual(rc, 0, err)
+        self.assertIsNone(lignes[0]["employer"])
+        self.assertEqual(lignes[0]["title"], "Bir baslik sans convention")
+
+    # --- ne pas feindre une structure que le board n'a pas ----------------
+    def test_a_notice_is_not_a_jobposting_and_the_row_says_so(self):
+        """**Des champs vides donneraient a un gabarit de PRESSE l'apparence
+        d'une annonce structuree dont les champs manqueraient.**"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        for r in lignes:
+            self.assertEqual(r["markup"], "NewsArticle")
+            self.assertFalse(r["structured_posting"])
+            for absent in ("salary", "valid_through", "employment_type",
+                           "salary_currency_without_amount"):
+                self.assertNotIn(absent, r, absent)
+
+    def test_an_unparseable_pubdate_is_carried_raw_and_never_dropped(self):
+        """*On ne jette pas une date qu'on ne sait pas analyser.*"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(items=[
+            self._item("1", "a-munhal-duyurusu", "A münhal duyurusu",
+                       pub="pas une date du tout")]))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(lignes[0]["posted"], "pas une date du tout")
+
+    # --- dormant n'est pas casse ------------------------------------------
+    def test_a_dormant_board_is_reported_with_its_own_date_not_as_broken(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("DORMANT, not broken", err)
+        self.assertIn("2025-01-06", err)
+
+    def test_a_live_board_is_never_declared_dormant(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(items=[
+            self._item("1", "a-munhal-duyurusu", "A münhal duyurusu",
+                       pub="Tue, 29 Sep 2026 10:00:00 +0300")]))
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("DORMANT", err)
+
+    # --- nos propres options ne fabriquent pas un deficit de board --------
+    def test_max_caps_and_says_nothing_whatever_about_the_board(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, self._pages(), argv=("jobs", "--country-code", "CYN", "--max", "2"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 2)
+        self.assertIn("stopped by --max", err)
+        self.assertIn("NOTHING here is said about what the board holds", err)
+        self.assertNotIn("No count is stated anywhere", err)
+
+    def test_without_max_the_run_states_that_the_board_states_no_count(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("No count is stated anywhere", err)
+
+    def test_feed_only_reads_the_feed_alone_and_measures_no_relation(self):
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(
+            mod, self._pages(), argv=("jobs", "--country-code", "CYN", "--feed-only"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 3)
+        self.assertNotIn("relation measured THIS RUN", err)
+        self.assertEqual([u for u in demandes if "ajax" in u or u.endswith("/is-ilanlari/")], [])
+
+    def test_the_country_code_is_stamped_on_every_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages())
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(lignes and all(r["country"] == "CYN" for r in lignes))
+
+    def test_another_host_is_never_sent(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as cm:
+            mod.request("https://example.org/is-ilanlari/")
+        self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
+
+    def test_a_feed_without_items_is_gone_not_empty(self):
+        """*Une route qui ne porte plus rien est un 3, pas un zero tranquille.*"""
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, self._pages(items=[]))
+        self.assertEqual(rc, mod.EXIT_GONE)
+        self.assertEqual(lignes, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
