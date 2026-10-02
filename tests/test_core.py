@@ -41002,7 +41002,16 @@ class ARefusalReadOnTheWrongHostAndAnUndefinedStoredAsAValue(unittest.TestCase):
     reference `TKR/09/26/46` surviving; `--max` claiming nothing; a 401 refusing
     without forging.
 
-    **Mutated with the red named before each — nine for nine.**
+    **Mutated with the red named before each — TEN for ten, and the sweep taught two
+    things.** *The host-check mutation red on the right test but said nothing useful,
+    because its expected red had been derived from the shape of the assertion
+    (`SystemExit`) instead of from the DEFECT; it now names what happened — and what it
+    reports is sharper than expected: with the check removed the adapter does not merely
+    fail to refuse, it **actually leaves for `www.bast.af`** and dies on the network in 2
+    instead of refusing in 7.* **The repository's own network guard caught that same
+    mutation «&nbsp;trying to leave the machine 7 time(s)&nbsp;»** — *a second, independent red
+    for the same defect, and a reminder that the host check must stay BEFORE the robots
+    gate, since the gate itself resolves names.*
 
     | the mutation | the red obtained |
     | :-- | :-- |
@@ -41014,6 +41023,7 @@ class ARefusalReadOnTheWrongHostAndAnUndefinedStoredAsAValue(unittest.TestCase):
     | the 2040 outlier dropped | the board's own filing discarded |
     | the `gender` field propagated | a sex requirement reaches a row |
     | the prose scrubbed as well | «Female candidates are encouraged» deleted |
+    | the phone rule returned to its decorative 2-3-3 form | `0700 123 456` emitted |
     | `--max` allowed to speak of the board | our own cap sold as a board shortfall |
     '''
 
@@ -41098,7 +41108,16 @@ class ARefusalReadOnTheWrongHostAndAnUndefinedStoredAsAValue(unittest.TestCase):
                       "https://example.org/api/get_post_jobs"):
             with self.assertRaises(SystemExit) as cm:
                 mod.request(autre)
-            self.assertEqual(cm.exception.code, mod.EXIT_REFUSED, autre)
+            # **Le rouge doit NOMMER le defaut** : sans le controle d'hote,
+            # l'adaptateur part vraiment sur le reseau et meurt en 2 au lieu de
+            # refuser en 7 — et c'est `www.bast.af`, dont les regles nous
+            # refusent par ecrit, qu'il aurait interroge.
+            self.assertEqual(
+                cm.exception.code, mod.EXIT_REFUSED,
+                "%s a ete INTERROGE au lieu d'etre refuse (code %r) : cet "
+                "adaptateur ne doit parler qu'a %s, et les regles de la facade "
+                "ne sont pas celles qui s'appliquent"
+                % (autre, cm.exception.code, mod.HOST))
         # et la marche n'interroge QUE db.bast.af
         rc, lignes, err, demandes = self._run(
             mod, {1: self._reponse([self._advert()], total=1, encore=False)})
