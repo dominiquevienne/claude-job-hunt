@@ -34695,6 +34695,66 @@ class ACutThatTakesTheMeasureAndNotTheCharacterCount(unittest.TestCase):
         self.assertEqual(lost, [], "these cells drop the count their card states: " + ", ".join(lost[:8]))
         self.assertEqual(checked, kept)
 
+class AHeaderCommentThatLosesItsTerminatorFallsBackInSilence(unittest.TestCase):
+    """**`shared/boards/*.md`, 2026-10-02.** A reordering pass dropped the ` -->` of the
+    `content:` line on four cards. Nothing broke loudly: `read_cards()` builds its header
+    dict with `h.setdefault(key, value)`, so an unterminated line stops matching `HEADER`
+    and **the parser silently uses the OLDER `content:` line below it** — the page then
+    rendered the previous measurement and a date two weeks stale, with correct ratios and
+    a green suite.
+
+    **The existing repository sweep cannot see it, by construction.** It searches
+    `<!--\\s*content:\\s*(.*?)\\s*-->` with `re.S`, so across a missing terminator it
+    simply matches into the NEXT comment's `-->` and concatenates the two lines; the
+    counts are still in there, so it passes. The editing script used the same pattern,
+    which is why its own verification agreed with it. *Two instruments, one blind spot —
+    so this guard is anchored to the LINE, which is the one thing the broken form cannot
+    satisfy.*
+
+    Both ways: the repository as it stands, and a crafted card that must be caught."""
+
+    def _boards(self):
+        return pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+
+    @staticmethod
+    def _unterminated(text):
+        """Header lines that open a comment and do not close it on the same line."""
+        out = []
+        for i, line in enumerate(text.split("\n"), 1):
+            s = line.strip()
+            if re.match(r"^<!--\s*[a-z][a-z-]*:", s) and not s.endswith("-->"):
+                out.append((i, s[:60]))
+        return out
+
+    def test_every_header_comment_of_every_card_closes_on_its_own_line(self):
+        d = self._boards()
+        offenders, lines, cards = [], 0, 0
+        for card in sorted(d.glob("*.md")):
+            text = card.read_text(encoding="utf-8")
+            cards += 1
+            lines += sum(1 for l in text.split("\n")
+                         if re.match(r"^<!--\s*[a-z][a-z-]*:", l.strip()))
+            for n, frag in self._unterminated(text):
+                offenders.append(f"{card.name}:{n} {frag}")
+        self.assertEqual(offenders, [], "header comments left open: " + "; ".join(offenders))
+        # the guard must not go inert if the header form ever changes: it has a population
+        self.assertGreater(cards, 100, cards)
+        self.assertGreater(lines, cards, f"{lines} header lines over {cards} cards")
+
+    def test_a_card_whose_terminator_is_gone_is_caught_and_a_sound_one_is_not(self):
+        sound = ("# Board\n"
+                 "<!-- countries: CYN -->\n"
+                 "<!-- content: measured **8 emitted, the site states 8** · 2026-10-02 -->\n")
+        self.assertEqual(self._unterminated(sound), [])
+        broken = sound.replace("· 2026-10-02 -->", "· 2026-10-02")
+        self.assertNotEqual(broken, sound)
+        caught = self._unterminated(broken)
+        self.assertEqual([n for n, _ in caught], [3], caught)
+        # and the reason it matters: setdefault then prefers whatever comes next
+        two = broken + "<!-- content: measured **an older reading** · 2026-09-18 -->\n"
+        first = re.search(r"<!--\s*content:\s*(.*?)\s*-->", two, re.S).group(1)
+        self.assertIn("2026-09-18", first, "the span regex swallows the next comment — the blind spot")
+
 class ReplantingABranchAsksGitNothingItCannotKnow(unittest.TestCase):
     """**`bin/replant.py`, 2026-09-22 (#861).** Two sessions appending a guard
     class to the end of `tests/test_core.py` and a row to
