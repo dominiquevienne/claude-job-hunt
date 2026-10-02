@@ -1028,6 +1028,36 @@ growth of its own denominator. **And where the denominator is small, publish
 the composition rather than the quotient**: `20 : 2`, never 91 %, because the
 number a reader would need to check the claim has already been divided away.
 
+**And the `content:` line leads with what the measurement ESTABLISHED, not with
+how it was taken.** The emitted count against the stated count, and what the
+route does not return, come first; the method — the hour, the size, the
+fingerprint, the paths walked — follows. **The method stays whole; it simply
+stops being first.**
+
+The reason is mechanical, and it is not visible from the card. A country page
+composes its «&nbsp;what it covers&nbsp;» cell from the first whole sentences of
+this line, so a card that leads with its method fills the cell with its method —
+and **the witness of the measurement is not rendered at all.** Three cards were
+reordered in a single day for exactly this, `govt-lc.md`, `publicservice-go-ke.md`
+and `jobnet-mm.md` (#867, #874, #878), and **no measurement was rewritten in any
+of the three: only the order of the sentences.**
+
+> **The author of a card cannot see this defect from the card.** It is correct,
+> complete and well written. It shows only from the PAGE — that is, in somebody
+> else's work — which is why this is a rule here instead of a fourth pull
+> request.
+
+*And no guard is posed for it, deliberately.* «&nbsp;A `content:` line carrying no
+figure in its first two hundred characters&nbsp;» would catch all three above and
+**redden legitimate cards that have no count to state** — a mute host, a site
+that serves no list, a card whose whole finding is that there is nothing to
+count. Separating those two populations is the measurement that has not been
+made; until it is, the guard would fail in the expensive direction, by accusing
+the cards that did the honest thing. **What would lift it is a count of the cards
+whose `content:` line legitimately holds no figure** — if that set turns out to
+be nameable and small, it becomes an explicit list that can only shrink, checked
+in both directions, like the one in `tests/test_core.py` for unpaced adapters.
+
 **No card carries this line yet, and that is deliberate.** Writing one requires
 having run the examination; the declaration exists so that the day someone does,
 the result has somewhere to live that is not a published artefact — which is
