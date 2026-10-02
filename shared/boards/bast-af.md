@@ -1,9 +1,9 @@
-# Board measurement — Bast.af (`www.bast.af`, Afghanistan): «Find Jobs, Careers & Employment Opportunities in Kabul» — **the route is `db.bast.af/api/get_post_jobs`, a DIFFERENT HOST that publishes no `robots.txt`, and it states 11 adverts and KEEPS it**; `www.bast.af` refuses `/api/` in writing and that refusal does NOT govern the data host, which is the whole finding; nothing is signed and nothing had to be defeated; no adapter yet
+# Board measurement — Bast.af (`www.bast.af`, Afghanistan): «Find Jobs, Careers & Employment Opportunities in Kabul» — **the route is `db.bast.af/api/get_post_jobs`, a DIFFERENT HOST that publishes no `robots.txt`, and it states 11 adverts and KEEPS it**; `www.bast.af` refuses `/api/` in writing and that refusal does NOT govern the data host, which is the whole finding; nothing is signed and nothing had to be defeated; **`bastaf.py` reads it, asserts the stated total, and talks to `db.bast.af` ALONE**
 
 <!-- verified: 2026-10-02 -->
 
 <!-- hosts: www.bast.af, db.bast.af -->
-<!-- script: none -->
+<!-- script: bastaf.py -->
 <!-- countries: AF -->
 <!-- content: measured · **11 adverts, and the board's own stated total HOLDS: `GET https://db.bast.af/api/get_post_jobs` answers 200 with `total_jobs: 11`, and the walk reads 11 distinct ids across two pages (10 then 1), `?page=99` returning an empty `data` with `has_more_pages: false`. WHAT THE ROUTE DOES NOT RETURN: nothing server-side — `/`, `/jobs` AND `/job-list` all serve one identical 4 871 B SPA shell with no advert and no count, and the declared sitemap carries 14 hand-written section URLs and ZERO advert, so neither is an enumerator. AND THE ROUTE LIVES ON A HOST THE RULES OF `www` DO NOT GOVERN: `www.bast.af` refuses `/api/` IN WRITING, but the data host `db.bast.af` publishes no rules at all, so reading `www`'s refusal as the verdict would have declared an open board closed. 34 fields per advert, `job_status: active` on 11/11, `countries: AF` on 11/11, `post_date` 2025-10-12 → 2026-09-08, zero past deadlines; the literal string `"undefined"` is stored as a VALUE on six fields (`number_Of_vacancy` truthy on 11 and real on 2, `email` truthy on 10 and real on 4); `gender` is posed on 3 of 11 and is not propagated (#183); nothing is signed — `Bearer` only when a user is logged in. METHOD: `www.bast.af/robots.txt` 485 B (`state: read`, `certain: True`, group `*`, `Crawl-delay: 1`, `Disallow: /candidates-dashboard/ /employers-dashboard/ /admin/ /api/ /private/`); the shell md5 `cc04db6aba3e` is IDENTICAL to the 2026-09-17 reading, so unchanged in two weeks; it carries two `ld+json` (a `WebSite` and an invented `@type: JobBoard`, not a schema.org type) and one bundle `/assets/index-7d427d26.js` (2 843 014 B) naming `baseURL: "https://db.bast.af/api"`; `bast.af/sitemap.xml` 2 949 B, every `lastmod` 2024-01-15; `db.bast.af/robots.txt` HTTP 404 → `state: absent`, `certain: True`, no `Crawl-delay`, so 2 s are ours; 27 resources requested through one wrapper, the public pair being `get_post_jobs` and `post_jobs/<id>`; list body 169 690 B** · 2026-10-02 -->
 <!-- content: measured · **the root (200, 4 871 B, md5 cc04db6aba3e identical on two reads) is a JavaScript shell titled «Jobs in Afghanistan | Bast.af …» with no card, no count and no JobPosting in its markup; `_robots.allowed('www.bast.af','/')` → open, certain; whether the route the shell calls serves the client, or only a tab, is the adapter's first line** · 2026-09-17 -->
@@ -100,7 +100,20 @@ sentinel meaning «&nbsp;none&nbsp;».*
 *And zero of the 11 are past their deadline, with `job_status: active` on all 11 — so this board, unlike
 the four Northern Cyprus ones, neither expires nor accumulates stale adverts.*
 
-### What an adapter would do
+### And the telephone rule was DECORATIVE until a guard reached for it
+
+**Afghan mobiles group 4-3-3** — `0700 123 456`, `+93 7xx xxx xxx`. *A first draft of the
+adapter's rule counted `7\d` then three then three, so it could not match a real number at
+all.* **It was not too wide, it was UNREACHABLE: an expurgation rule that cannot fire, whose
+comment nonetheless claimed the discipline.** *Found by the guard, not by re-reading — and on
+the REAL corpus the corrected rule finds `+93775934920` twice in advert 755's
+`job_requirement`, which the decorative version would have emitted.*
+
+*Both directions measured: the five real Afghan forms are caught, and `TKR/09/26/46`,
+`2026-09-08`, `ISO 9001`, `Grade C, Step 4 - 6` and `2040-07-01` are untouched — none of the
+9 real advert references is destroyed.*
+
+### What the adapter does
 
 ```
 route   : http — GET https://db.bast.af/api/get_post_jobs?page=N until has_more_pages is false

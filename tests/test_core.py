@@ -40953,5 +40953,340 @@ class AStatedTotalThatHoldsAndThreeSentinelsThatMustNotBePublished(unittest.Test
             mod.request("https://example.org/api/jobs")
         self.assertEqual(cm.exception.code, mod.EXIT_REFUSED)
 
+class ARefusalReadOnTheWrongHostAndAnUndefinedStoredAsAValue(unittest.TestCase):
+    '''**`bastaf.py`, 2026-10-02 (#643).** Afghanistan's Kabul generalist. Four
+    things, and the first would have closed an open board:
+
+    * **`robots.txt` BINDS A HOST, NOT A BRAND.** `www.bast.af` publishes
+      `Disallow: /api/` to the `*` group that applies to us — *read as the verdict on
+      the data route that is a refusal written in the rules (borne 1), blocking every
+      route including the browser.* **But the bundle names
+      `baseURL: "https://db.bast.af/api"`, and `db.bast.af` publishes NO `robots.txt`
+      at all** (404 → `state: absent`, `certain: True`). *So the data host never
+      refused us.* **§3 bis already says to guard the exact URL host included — but its
+      canonical case is a sitemap on a sibling whose rules are merely ABSENT; here they
+      are PRESENT and negative, which is far more convincing and just as wrong.** *A
+      refusal read on the wrong host is a false closure, and nothing downstream
+      contradicts it.* The adapter talks to `db.bast.af` and refuses every other host,
+      **`www.bast.af` included**.
+
+    * **THE LITERAL STRING `"undefined"` IS STORED AS A VALUE** — a JavaScript artefact
+      persisted. `number_Of_vacancy` truthy on 11 and real on **2**; `email` truthy on
+      10 and real on **4**. *`if x` cannot tell the difference: `"undefined"` is a
+      non-empty string.* **And `email` is a CONTACT field, so `withheld_fields` written
+      on `if x` would declare we withheld a recruiter's address on SIX adverts where
+      nobody deposited one** — a lie about our discretion, identical in the output
+      either way.
+
+    * **a systematic SENTINEL is not an isolated ABERRANT value.** `closing_date`
+      carries `2040-07-01` on **1 of 11**, among dates running 2026-10-18 to
+      2027-06-02 — *contrast `iscikler` (#720), whose `2099-12-31` sat on 9 of 28.*
+      **The discriminant is the SHARE: a sentinel is dropped because the board never
+      meant it as a date; an outlier is CARRIED and COUNTED, because the board did mean
+      it.**
+
+    * **#183 takes the FIELD and leaves the PROSE.** `gender` is posed on 3 of 11 and
+      is withheld. *But on these same 11, «&nbsp;male&nbsp;»/«&nbsp;female&nbsp;» appear only in the
+      adverts' own text, and several times as the OPPOSITE of a criterion* —
+      «&nbsp;Female candidates are highly encouraged to apply&nbsp;», «&nbsp;gender parity&nbsp;»,
+      «&nbsp;female obstetricians and gynecologists&nbsp;». **Scrubbing the prose would
+      delete an encouragement to apply and a medical specialty.** *§2 sexies: the
+      structured criterion is ours to drop, the advert is not ours to edit.*
+
+    Both ways throughout: `db.bast.af` accepted AND `www.bast.af` refused with its
+    reason; the floor rejecting `"undefined"` AND accepting a real value; the total
+    asserted when it holds AND a shortfall exiting 6; the pager following
+    `has_more_pages` AND stopping on a page that adds nothing; the 2040 outlier carried
+    AND named; the `gender` field absent from every row AND the prose intact; JSON
+    inside a string decoded AND an unparseable one carried raw; a mobile withheld AND a
+    reference `TKR/09/26/46` surviving; `--max` claiming nothing; a 401 refusing
+    without forging.
+
+    **Mutated with the red named before each — nine for nine.**
+
+    | the mutation | the red obtained |
+    | :-- | :-- |
+    | the host check dropped | `www.bast.af` would be queried, whose rules refuse us |
+    | the `"undefined"` floor removed | a withheld contact declared where none was posted |
+    | `withheld_fields` written on `if x` | the same lie, by the other route |
+    | the stated total no longer asserted | a shortfall passed off as the inventory |
+    | `has_more_pages` ignored | the walk runs to its safety bound |
+    | the 2040 outlier dropped | the board's own filing discarded |
+    | the `gender` field propagated | a sex requirement reaches a row |
+    | the prose scrubbed as well | «Female candidates are encouraged» deleted |
+    | `--max` allowed to speak of the board | our own cap sold as a board shortfall |
+    '''
+
+    @staticmethod
+    def _mod():
+        spec = importlib.util.spec_from_file_location(
+            "_bast", os.path.join(SCRIPTS, "bastaf.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _advert(ident=861, titre="Project Manager – DRR", gender="any",
+                email="takhar.hr@akdn.org", vacancy="undefined",
+                closing="2027-02-04", provinces='["Kunduz Province"]',
+                guideline="<p>APPLICATION</p><p>Female candidates are highly "
+                          "encouraged to apply. Send to hr@akdn.org or 0700 123 456</p>",
+                reference="TKR/09/26/46"):
+        return {"id": ident, "job_title": titre,
+                "company": {"id": 235, "company_name": "Aga Khan Foundation"},
+                "contract_type": {"id": 2, "name": "full time"},
+                "job_category": {"id": 39, "name": "other"},
+                "education_level": {"id": 9, "education_level": "Bachelor’s Degree"},
+                "job_type": "full_time", "countries": "AF",
+                "provinces": provinces, "gender": gender, "email": email,
+                "submission_email": None, "apply_online_link": None,
+                "number_Of_vacancy": vacancy, "contract_duration": "undefined",
+                "probation_period": "3 months", "reference": reference,
+                "experiance": "8", "post_date": "2026-09-08",
+                "closing_date": closing, "job_status": "active",
+                "salary_range": "As per Salary Scale",
+                "job_description": "<p>POSITION OBJECTIVE</p><p>Lead the project.</p>",
+                "job_requirement": "<p>Master's degree required.</p>",
+                "submission_guideline": guideline,
+                "application_type": "submission_email"}
+
+    @staticmethod
+    def _reponse(data, total=None, page=1, encore=None):
+        total = len(data) if total is None else total
+        encore = (page * 10 < total) if encore is None else encore
+        return json.dumps({"status": "Jobs fetched successfully",
+                           "total_jobs": total, "data": data, "promoted": [],
+                           "pagination": {"current_page": page, "last_page":
+                                          max(1, -(-total // 10)), "per_page": 10,
+                                          "total": total,
+                                          "has_more_pages": encore}},
+                          ensure_ascii=False)
+
+    def _run(self, mod, pages, argv=("jobs", "--country-code", "AFG")):
+        demandes = []
+
+        def faux_request(url):
+            demandes.append(url)
+            if callable(pages):
+                return pages(url)
+            m = re.search(r"[?&]page=(\d+)", url)
+            n = int(m.group(1)) if m else 1
+            return (200, pages[n]) if n in pages else (200, self._reponse([], total=0))
+
+        mod.request = faux_request
+        out, err = io.StringIO(), io.StringIO()
+        vrai_out, vrai_err, rc = sys.stdout, sys.stderr, 0
+        sys.stdout, sys.stderr = out, err
+        try:
+            mod.main(list(argv))
+        except SystemExit as e:
+            rc = e.code or 0
+        finally:
+            sys.stdout, sys.stderr = vrai_out, vrai_err
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+        return rc, lignes, err.getvalue(), demandes
+
+    # --- LE DEFAUT CENTRAL : un refus lu sur le mauvais hote --------------
+    def test_the_data_host_is_queried_and_the_facade_host_is_refused(self):
+        """**`www.bast.af` refuse `/api/` PAR ECRIT&nbsp;; il n'est pas l'hote des
+        donnees, et ses regles ne sont pas celles qui s'appliquent.**"""
+        mod = self._mod()
+        self.assertEqual(mod.HOST, "db.bast.af")
+        # l'hote de la facade est refuse comme n'importe quel autre
+        for autre in ("https://www.bast.af/api/get_post_jobs",
+                      "https://bast.af/api/get_post_jobs",
+                      "https://example.org/api/get_post_jobs"):
+            with self.assertRaises(SystemExit) as cm:
+                mod.request(autre)
+            self.assertEqual(cm.exception.code, mod.EXIT_REFUSED, autre)
+        # et la marche n'interroge QUE db.bast.af
+        rc, lignes, err, demandes = self._run(
+            mod, {1: self._reponse([self._advert()], total=1, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(demandes)
+        hotes = {urllib.parse.urlsplit(u).netloc for u in demandes}
+        self.assertEqual(hotes, {"db.bast.af"}, hotes)
+
+    # --- le plancher, dans les DEUX sens ---------------------------------
+    def test_the_floor_rejects_the_stored_undefined_and_accepts_a_real_value(self):
+        mod = self._mod()
+        for faux in ("undefined", "UNDEFINED", " undefined ", "null", "", None, "n/a"):
+            self.assertFalse(mod.rempli(faux), "accepte a tort: %r" % faux)
+        for vrai in ("2", "3 months", "TKR/09/26/46", "takhar.hr@akdn.org", 0):
+            self.assertTrue(mod.rempli(vrai), "rejete a tort: %r" % vrai)
+        self.assertIsNone(mod.valeur("undefined"))
+        self.assertEqual(mod.valeur(" 2 "), "2")
+
+    def test_a_contact_is_never_declared_withheld_when_none_was_posted(self):
+        """**Le mensonge porte sur NOUS, pas sur le board.**
+
+        `email` vaut la chaine `"undefined"` sur 6 annonces de 11&nbsp;: un
+        `withheld_fields` ecrit sur `if x` declarerait une adresse retenue que
+        personne n'a deposee, et la sortie est identique dans les deux cas.
+        """
+        mod = self._mod()
+        data = [self._advert(ident=1, email="undefined"),
+                self._advert(ident=2, email="takhar.hr@akdn.org")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=2, encore=False)})
+        self.assertEqual(rc, 0, err)
+        par = {r["id"]: r for r in lignes}
+        self.assertIsNone(par["1"]["withheld_fields"],
+                          "un contact est declare retenu alors que le champ vaut "
+                          "la chaine 'undefined'")
+        self.assertIn("email", par["2"]["withheld_fields"] or [])
+
+    def test_the_undefined_string_never_reaches_a_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, {1: self._reponse([self._advert(vacancy="undefined")], total=1, encore=False)})
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False).lower()
+        self.assertNotIn('"undefined"', blob)
+        self.assertIsNone(lignes[0]["vacancies"])
+        self.assertIsNone(lignes[0]["contract_duration"])
+        self.assertEqual(lignes[0]["probation_period"], "3 months")
+
+    # --- le temoin enonce -------------------------------------------------
+    def test_a_stated_total_that_holds_is_asserted(self):
+        mod = self._mod()
+        data = [self._advert(ident=i) for i in range(1, 4)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=3, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertIn("the board STATES a total of 3", err)
+        self.assertIn("the stated total HOLDS", err)
+
+    def test_a_shortfall_exits_partial_and_says_so(self):
+        """*La fixture est STRICTEMENT plus grande que le manque&nbsp;: 3 lues contre
+        9 annoncees, donc «&nbsp;6 SHORT&nbsp;» ne peut pas venir d'un hasard de cardinal.*"""
+        mod = self._mod()
+        data = [self._advert(ident=i) for i in range(1, 4)]
+        rc, lignes, err, _d = self._run(mod, {
+            1: self._reponse(data, total=9, encore=True),
+            2: self._reponse(data, total=9, page=2, encore=False)})
+        self.assertEqual(rc, mod.EXIT_PARTIAL, err)
+        self.assertIn("3 distinct id(s) read against a stated total of 9", err)
+        self.assertIn("6 SHORT", err)
+        self.assertIn("not what the board holds", err)
+
+    def test_the_walk_follows_has_more_pages(self):
+        mod = self._mod()
+        rc, lignes, err, demandes = self._run(mod, {
+            1: self._reponse([self._advert(ident=i) for i in range(1, 11)],
+                             total=11, encore=True),
+            2: self._reponse([self._advert(ident=11)], total=11, page=2, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 11, [r["id"] for r in lignes])
+        self.assertIn("has_more_pages", err)
+        self.assertNotIn("page=3", " ".join(demandes))
+
+    # --- aberrante vs sentinelle -----------------------------------------
+    def test_an_isolated_implausible_deadline_is_carried_and_named(self):
+        """**Une aberrante se PORTE&nbsp;; une sentinelle systematique se jette.**"""
+        mod = self._mod()
+        data = [self._advert(ident=1, closing="2040-07-01")] + \
+               [self._advert(ident=i, closing="2027-02-04") for i in range(2, 12)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=11, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 11, "une annonce a ete jetee sur sa date")
+        par = {r["id"]: r for r in lignes}
+        self.assertEqual(par["1"]["deadline"], "2040-07-01",
+                         "la valeur aberrante a ete jetee au lieu d'etre portee")
+        self.assertIn("carry a deadline in 2040", err)
+        self.assertIn("CARRIED as the board filed it", err)
+
+    # --- #183 : le champ, pas la prose -----------------------------------
+    def test_the_gender_field_is_withheld_and_named(self):
+        mod = self._mod()
+        data = [self._advert(ident=1, gender="female"),
+                self._advert(ident=2, gender="any")]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=2, encore=False)})
+        self.assertEqual(rc, 0, err)
+        par = {r["id"]: r for r in lignes}
+        self.assertNotIn("gender", par["1"], "le champ gender est porte dans la ligne")
+        self.assertIn("gender", par["1"]["withheld_fields"] or [])
+        # `any` n'est pas un critere : il ne se declare pas retenu
+        self.assertNotIn("gender", par["2"]["withheld_fields"] or [])
+        self.assertIn("posed a sex requirement", err)
+
+    def test_the_boards_own_prose_is_served_untouched(self):
+        """**Expurger la prose supprimerait un encouragement a candidater.**
+
+        Sur le corpus reel, «&nbsp;female&nbsp;» est plusieurs fois l'INVERSE d'un
+        critere&nbsp;: parite, specialite medicale, population servie.
+        """
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, {1: self._reponse([self._advert(ident=1, gender="female")],
+                                   total=1, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Female candidates are highly encouraged to apply",
+                      lignes[0]["how_to_apply"] or "",
+                      "la prose du board a ete expurgee")
+
+    # --- provinces : du JSON dans une chaine -----------------------------
+    def test_json_inside_a_string_is_decoded_and_an_unparseable_one_is_kept(self):
+        mod = self._mod()
+        self.assertEqual(mod.provinces_de('["Kabul"]'), ["Kabul"])
+        self.assertEqual(mod.provinces_de('["Kunduz Province","Takhar"]'),
+                         ["Kunduz Province", "Takhar"])
+        self.assertEqual(mod.provinces_de("Kabul"), "Kabul")   # porte brut
+        self.assertIsNone(mod.provinces_de("undefined"))
+        self.assertIsNone(mod.provinces_de(None))
+
+    # --- l'expurgation, dans les deux sens -------------------------------
+    def test_a_mobile_is_withheld_and_an_advert_reference_survives(self):
+        mod = self._mod()
+        for tel in ("0700 123 456", "+93 700 123 456", "0788 456 789"):
+            self.assertEqual(mod.scrub("Tel " + tel), "Tel [telephone withheld]", tel)
+        for intact in ("TKR/09/26/46", "2026-09-08", "ISO 9001", "Grade C, Step 4 - 6"):
+            self.assertEqual(mod.scrub(intact), intact, "detruit: %r" % intact)
+        self.assertEqual(mod.scrub("hr@akdn.org"), "[e-mail withheld]")
+
+    def test_no_contact_survives_in_a_row_body(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, {1: self._reponse([self._advert(ident=1)], total=1, encore=False)})
+        self.assertEqual(rc, 0, err)
+        blob = json.dumps(lignes, ensure_ascii=False)
+        self.assertNotIn("hr@akdn.org", blob)
+        self.assertNotIn("takhar.hr", blob)
+        self.assertNotIn("0700 123", blob)
+        self.assertIn("[e-mail withheld]", blob)
+        self.assertIn("[telephone withheld]", blob)
+        self.assertTrue(lignes[0]["contacts_withheld"])
+        self.assertIn("TKR/09/26/46", blob, "la reference d'annonce a ete detruite")
+
+    # --- nos options, et un refus du serveur -----------------------------
+    def test_max_caps_and_says_nothing_about_the_board(self):
+        mod = self._mod()
+        data = [self._advert(ident=i) for i in range(1, 6)]
+        rc, lignes, err, _d = self._run(mod, {1: self._reponse(data, total=5, encore=False)},
+                                        argv=("jobs", "--country-code", "AFG", "--max", "2"))
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(lignes), 2)
+        self.assertIn("NOTHING here is said about what the board holds", err)
+        self.assertNotIn("the stated total HOLDS", err)
+
+    def test_a_credential_demand_refuses_and_is_not_forged(self):
+        mod = self._mod()
+        for code in (401, 403):
+            rc, lignes, err, _d = self._run(mod, lambda _u, c=code: (c, ""))
+            self.assertEqual(rc, mod.EXIT_REFUSED,
+                             "un refus d'identifiant doit sortir en 7, obtenu %r" % rc)
+            self.assertIn("will not forge", err)
+
+    def test_the_country_code_is_stamped_on_every_row(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(
+            mod, {1: self._reponse([self._advert()], total=1, encore=False)})
+        self.assertEqual(rc, 0, err)
+        self.assertTrue(lignes and all(r["country"] == "AFG" for r in lignes))
+
+    def test_an_empty_endpoint_is_gone_not_a_quiet_zero(self):
+        mod = self._mod()
+        rc, lignes, err, _d = self._run(mod, lambda _u: (404, ""))
+        self.assertEqual(rc, mod.EXIT_GONE)
+        self.assertEqual(lignes, [])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
