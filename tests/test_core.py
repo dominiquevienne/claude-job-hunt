@@ -42480,5 +42480,507 @@ class ASinceFilterKeepsWhatItCannotDate(_Fit1JobHarness):
         self.assertIsNone(
             [a for a in payload["ads"] if a["job_id"] == "6290"][0]["posted"])
 
+
+class _DiDataHarness(unittest.TestCase):
+    """The fixture is the **real** markup of 2026-10-05, both card forms kept.
+
+    *The two forms of one `<span>` are this board's whole signal, so a
+    simplified fixture would delete the thing under test. The container class
+    strings, the `<!-- -->` React separators and the Flight payload's echo are
+    copied rather than paraphrased.*
+    """
+
+    OPEN_BADGE = '<span class="hidden">Not available</span>'
+    SHUT_BADGE = ('<span class="inline-flex items-center rounded-md '
+                  'bg-yellow-200 px-2 py-1 text-xs font-medium text-yellow-900 '
+                  'opacity-100">Not available</span>')
+    OPEN_CLS = "rounded-xl px-4 pb-6 pt-8 text-center shadow-lg shadow-[#EFF6FC] "
+    SHUT_CLS = ("rounded-xl px-4 pb-6 pt-8 text-center shadow-lg "
+                "shadow-[#EFF6FC] cursor-not-allowed opacity-60")
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import didata
+        self.m = didata
+
+    def _card(self, title, place="Remote", kind="Full-time", slug=None,
+              cls=None, badge=None):
+        """One card. `slug=None` is the closed shape: `href="#"`."""
+        if cls is None:
+            cls = self.OPEN_CLS if slug else self.SHUT_CLS
+        if badge is None:
+            badge = self.OPEN_BADGE if slug else self.SHUT_BADGE
+        href = "/careers/%s" % slug if slug else "#"
+        return (
+            '<div class="%s"><div class="flow-root"><div>'
+            '<h3 class="text-primary text-lg font-bold tracking-tight">%s</h3>'
+            '%s'
+            '<p class="mb-6 mt-4 text-base"><span class="font-semibold">'
+            'Location:</span> <!-- -->%s<!-- --> <br/>'
+            '<span class="font-semibold">Type:</span> <!-- -->%s</p>'
+            '<a class="text-primary_blue hover:font-medium" href="%s">'
+            'View job description→</a></div></div></div>'
+            % (cls, title, badge, place, kind, href))
+
+    def _listing(self, cards, sections=("IT",), echo=True):
+        """The careers page. `echo=True` reproduces the Flight payload, which
+        repeats every card as an escaped string — the doubling trap."""
+        head = "".join(
+            '<div class="bg-primary_blue mx-auto mt-8 w-2/3 rounded-xl py-3 '
+            'text-center text-white sm:w-1/3 md:w-1/6 md:py-4">'
+            '<h2 class="text-xl">%s</h2></div>' % s for s in sections[:1])
+        body = head + "".join(cards)
+        payload = ""
+        if echo:
+            payload = ('<script>self.__next_f.push([1,"%s"])</script>'
+                       % body.replace('"', '\\"'))
+        return "<html><body>%s%s</body></html>" % (body, payload)
+
+    def _sitemap_index(self, child="https://swissdidata.com/sitemap-0.xml"):
+        return ('<?xml version="1.0"?><sitemapindex><sitemap><loc>%s</loc>'
+                '</sitemap></sitemapindex>' % child)
+
+    def _sitemap_child(self, slugs, locales=("fr", "de"), index=True,
+                       locale_only=("seulement-en-fr",)):
+        """The child sitemap. **It carries `/careers` itself and the locale
+        copies**, both of which must be dropped before counting."""
+        locs = []
+        if index:
+            locs.append("https://swissdidata.com/careers")
+            for lg in locales:
+                locs.append("https://swissdidata.com/%s/careers" % lg)
+        for s in slugs:
+            locs.append("https://swissdidata.com/careers/%s" % s)
+            for lg in locales:
+                locs.append("https://swissdidata.com/%s/careers/%s" % (lg, s))
+        # **A slug that exists ONLY under a locale path.** Without it the set
+        # dedup absorbs every locale copy and a guard on the path pattern is
+        # INERT — measured: loosening the pattern to accept `/fr/` changed no
+        # count at all, because `/fr/careers/back-end` yields the same slug.
+        for s in locale_only:
+            for lg in locales:
+                locs.append("https://swissdidata.com/%s/careers/%s" % (lg, s))
+        return ('<?xml version="1.0"?><urlset>%s</urlset>'
+                % "".join("<url><loc>%s</loc></url>" % u for u in locs))
+
+    def _ad(self, h1="Backend - Laravel", title="Backend - Laravel | DiData",
+            place="Remote", kind="Full-time", exp=None, token="backendev26"):
+        """An ad page. **There is no availability field on it, by
+        measurement** — an open one and a closed one differ in nothing."""
+        bits = ['<h1 class="x">%s</h1>' % h1,
+                '<p><span class="font-semibold">Location:</span> '
+                '<!-- -->%s</p>' % place,
+                '<p><span class="font-semibold">Type:</span> '
+                '<!-- -->%s</p>' % kind]
+        if exp:
+            bits.append('<p><span class="font-semibold">Experience:</span> '
+                        '<!-- -->%s</p>' % exp)
+        if token:
+            bits.append('<p>Put this in the subject of your application '
+                        'email: <!-- -->%s</p>' % token)
+        bits.append('<a href="mailto:x@example.invalid">apply</a>')
+        return ("<html><head><title>%s</title></head><body>%s</body></html>"
+                % (title, "".join(bits)))
+
+    def _run(self, listing, child=None, index=None, ads=None, **kw):
+        """Drive `cmd_list` over canned pages. Returns (code, payload, stderr).
+
+        *`argparse`, `contextlib`, `io` and `json` are imported here: the test
+        module imports none of the four at top level, and a harness that
+        raises `NameError` on the path it drives is the guard that raises
+        instead of guarding.*
+        """
+        import argparse
+        import contextlib
+        import io
+        import json
+        out, err = io.StringIO(), io.StringIO()
+        asked = []
+
+        def faux_get(url):
+            asked.append(url)
+            if url is None:
+                # **A crash-red and an assertion-red count the same and only
+                # the second says what is missing.** Without this the D9
+                # mutation raised `AttributeError` inside the harness instead
+                # of failing the case that names the defect.
+                return 404, ""
+            if url.endswith("/sitemap.xml"):
+                return (200, index) if index is not None else (503, "")
+            if url.endswith(".xml"):
+                return (200, child) if child is not None else (503, "")
+            if "/careers/" in url:
+                slug = url.rstrip("/").rsplit("/", 1)[-1]
+                page = (ads or {}).get(slug)
+                return (200, page) if page is not None else (404, "")
+            return 200, listing
+
+        base = dict(fetch=False, all=False)
+        base.update(kw)
+        vrai = self.m.get
+        self.m.get = faux_get
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                self.m.cmd_list(argparse.Namespace(**base))
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            self.m.get = vrai
+        body = json.loads(out.getvalue()) if out.getvalue().strip() else {}
+        return code, body, err.getvalue(), asked
+
+    def _standard(self):
+        """Six cards: four open, two closed — **strictly more than one of
+        each**, so a branch cannot pass by never being reached twice."""
+        return [self._card("Frontend Developer", slug="front-end"),
+                self._card("Backend Developer", slug="back-end"),
+                self._card("Automation Engineer", slug="automation-engineer"),
+                self._card("Marketing Specialist", slug="marketing-specialist"),
+                self._card("Graphic Designer", place="Remote", kind="Part-time"),
+                self._card("Sales Manager")]
+
+
+class AFieldWithTwoFormsIsThisBoardsClosureSignal(_DiDataHarness):
+    """**#864, DiData, measured 2026-10-05.** The request reports
+    `<span class="hidden">Not available</span>` *«present on all 14 cards — a
+    hidden, empty field, **NOT a closure signal**»*. It is the signal, in its
+    **other form**: a visible yellow badge, on a card whose container carries
+    `cursor-not-allowed opacity-60` and whose anchor is `href="#"`.
+
+    **Three markers, and the adapter requires them to agree.** *Three
+    redundant markers that disagree mean the markup changed, and guessing
+    which one still means what is how a closed position is reported as open —
+    an error that costs the candidate an application and announces nothing.*
+
+    *And it is not an error in #864: on 2026-09-22 eleven of fourteen were
+    open, so the form that carries the meaning was barely on the page. The
+    same shape as a guard that cannot fire.*
+    """
+
+    def test_the_hidden_form_is_open_and_the_visible_badge_is_closed(self):
+        code, payload, err, _ = self._run(self._listing(self._standard()))
+        self.assertEqual(payload["open"], 4, err)
+        self.assertEqual(payload["closed"], 2, err)
+        shut = [r for r in payload["ads"] if r["status"] == "closed"]
+        self.assertEqual(sorted(r["title"] for r in shut),
+                         ["Graphic Designer", "Sales Manager"])
+        self.assertTrue(all(r["slug"] is None for r in shut),
+                        "a closed card's anchor is href='#', so it has no slug")
+        self.assertEqual(code, 0, err)
+
+    def test_each_closed_card_carries_all_three_markers(self):
+        _c, payload, err, _ = self._run(self._listing(self._standard()))
+        for r in payload["ads"]:
+            with self.subTest(title=r["title"]):
+                want = r["status"] == "closed"
+                self.assertEqual(r["status_markers"],
+                                 {"badge_visible": want,
+                                  "container_greyed": want,
+                                  "anchor_dead": want})
+
+    def test_markers_that_disagree_emit_no_status_and_exit_partial(self):
+        """**The refusal to decide**, and it is the direction that matters:
+        between inventing an opening and refusing to answer, only one of the
+        two announces itself."""
+        boiteux = self._card("Half Closed", slug="half-closed",
+                             cls=self.SHUT_CLS, badge=self.OPEN_BADGE)
+        code, payload, err, _ = self._run(
+            self._listing(self._standard() + [boiteux]))
+        # **The named assertion first.** *A mutation that makes one marker
+        # enough went red on `assertEqual(code, EXIT_PARTIAL)` — real, and
+        # attributed to the exit code rather than to the refusal to decide.*
+        odd = [r for r in payload["ads"] if r["title"] == "Half Closed"][0]
+        self.assertIsNone(odd["status"],
+                          "a card whose markers disagree gets NO status: "
+                          "stderr was " + err)
+        self.assertIn("markers DISAGREE", err)
+        self.assertIn("Half Closed", err)
+        self.assertEqual(payload["undecided"], 1)
+        self.assertEqual(code, self.m.EXIT_PARTIAL, err)
+
+    def test_a_board_with_no_closed_card_still_prints_the_control_line(self):
+        """**The negative control.** A line that only appears when something
+        is wrong cannot be distinguished from a line that never appears."""
+        ouverts = [c for c in self._standard()[:4]]
+        _c, payload, err, _ = self._run(self._listing(ouverts))
+        self.assertEqual(payload["closed"], 0)
+        self.assertIn("every card's three markers agree", err)
+
+    def test_the_href_count_is_the_open_count_and_not_the_board(self):
+        _c, payload, err, _ = self._run(self._listing(self._standard()))
+        self.assertEqual(payload["hrefs_seen"], payload["open"])
+        self.assertLess(payload["hrefs_seen"], payload["cards_seen"],
+                        "the whole finding is that these two differ")
+        self.assertIn("That is not a shortfall", err)
+
+
+class TheFlightPayloadDoublesEveryCountTakenOnTheBody(_DiDataHarness):
+    """`self.__next_f` **repeats the cards as escaped strings**: «Not
+    available» occurs 28 times in the live body and 14 times in its rendering.
+    *A count taken without stripping `<script>` is exactly double*, and the
+    payload also names a build artefact that looks like a slug."""
+
+    def test_a_count_on_the_raw_body_is_double_and_the_rendering_halves_it(self):
+        """**Said precisely, because the mutation sweep made the loose version
+        lie.** A first draft asserted `cards_seen == 6` here as though the
+        CARD pattern were what the payload could inflate. *It is not: the
+        payload escapes its quotes (`class=\\"…`), so the pattern cannot match
+        a copy, and dropping the `<script>` strip changed that count by
+        nothing.*
+
+        **What the payload DOES inflate is every count taken on the raw
+        text** — «Not available» occurs twice per card in the body and once
+        per card in the rendering — which is the figure a reader reaches for
+        when asking «how many openings are there».
+        """
+        page = self._listing(self._standard(), echo=True)
+        brut = page.count("Not available")
+        rendu = self.m.rendered(page).count("Not available")
+        self.assertEqual(rendu, 6, "one per card in the rendering")
+        self.assertEqual(brut, 12, "two per card in the body: the payload "
+                                   "echoes every card, and a count taken "
+                                   "here is exactly double")
+        # **And the pattern's immunity is asserted rather than assumed**, so
+        # that a payload which one day stops escaping its quotes fails here
+        # instead of doubling a board silently.
+        self.assertEqual(len(self.m.CARD.findall(page)), 6,
+                         "the CARD pattern needs `class=\"`, which the "
+                         "escaped copy does not have")
+        _c, payload, err, _ = self._run(page)
+        self.assertEqual(payload["cards_seen"], 6, "stderr: " + err)
+
+    def test_a_slug_shaped_name_in_the_payload_is_not_emitted(self):
+        page = self._listing(self._standard(), echo=False)
+        page = page.replace(
+            "</body>",
+            '<script>self.__next_f.push([1,"/careers/page-2ab93bb6ffa11502"])'
+            '</script></body>')
+        _c, payload, _e, _ = self._run(page)
+        self.assertNotIn("page-2ab93bb6ffa11502",
+                         [r["slug"] for r in payload["ads"]])
+
+
+class AnInclusionBetweenSharedKeysProvesNothing(_DiDataHarness):
+    """**The trap that would have passed.** All the linked slugs are in the
+    sitemap, so slug-against-slug is a clean inclusion and a reader who stops
+    there concludes the sitemap is the enumerator.
+
+    **It is not: the closed cards carry no slug, so the comparison cannot
+    reach them** — and on the live board two of them answer to nothing the
+    sitemap names. *A clean inclusion between the keys the two sides SHARE
+    says nothing about the records that have no key.*
+    """
+
+    def _both(self, extra=("content-writer", "documentation-specialist")):
+        lies = ["front-end", "back-end", "automation-engineer",
+                "marketing-specialist"]
+        return (self._sitemap_index(),
+                self._sitemap_child(lies + list(extra)))
+
+    def test_the_size_is_not_established_while_cards_carry_no_slug(self):
+        index, child = self._both()
+        _c, payload, err, _ = self._run(self._listing(self._standard()),
+                                        child=child, index=index)
+        self.assertFalse(payload["board_size_established"])
+        self.assertIn("the size of this board is NOT established", err)
+        self.assertIn("carry no slug", err)
+
+    def test_the_witness_drops_the_locale_paths_and_the_index_itself(self):
+        index, child = self._both()
+        _c, payload, err, _ = self._run(self._listing(self._standard()),
+                                        child=child, index=index)
+        self.assertEqual(payload["sitemap_declares"], 6,
+                         "six slugs: /careers itself and the /fr/ and /de/ "
+                         "copies of all of them are dropped")
+        self.assertIn("a detail page the listing does not link (2)", err)
+
+    def test_sitemap_only_slugs_are_emitted_with_no_status_not_open(self):
+        index, child = self._both()
+        _c, payload, err, _ = self._run(self._listing(self._standard()),
+                                        child=child, index=index, all=True)
+        venus = [r for r in payload["ads"] if r["enumerator"] == "sitemap"]
+        self.assertEqual(sorted(r["slug"] for r in venus),
+                         ["content-writer", "documentation-specialist"])
+        self.assertTrue(all(r["status"] is None for r in venus),
+                        "the listing is the only thing that states "
+                        "availability, and it does not mention these")
+        self.assertEqual(payload["not_on_listing"], 2)
+
+    def test_the_two_nulls_are_counted_apart_and_all_exits_zero(self):
+        """**Collapsing them makes the partial exit fire on every `--all`
+        run**, and a warning that always fires is no better than one that
+        never does — and harder to remove, because it looks prudent."""
+        index, child = self._both()
+        code, payload, _e, _ = self._run(self._listing(self._standard()),
+                                         child=child, index=index, all=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["undecided"], 0)
+        self.assertEqual(payload["not_on_listing"], 2)
+
+    def test_a_named_child_sitemap_that_fails_is_incomplete_not_absent(self):
+        """**An unavailable witness is not a witness that agrees**, and a
+        PARTIAL one is worse than none: it would under-declare."""
+        _c, payload, err, _ = self._run(self._listing(self._standard()),
+                                        child=None,
+                                        index=self._sitemap_index())
+        self.assertIsNone(payload["sitemap_declares"])
+        self.assertIn("INCOMPLETE and not absent", err)
+
+    def test_an_unreadable_index_leaves_the_comparison_unmade(self):
+        _c, payload, err, _ = self._run(self._listing(self._standard()),
+                                        child=None, index=None)
+        self.assertIsNone(payload["sitemap_declares"])
+        self.assertIn("no witness this run", err)
+
+
+class TheAdPageCarriesNoAvailabilitySignalOnThisBoard(_DiDataHarness):
+    """Measured 2026-10-05 on two positions the listing marks «Not
+    available»: `/careers/content-writer` and
+    `/careers/application-engineer-ch` both answer 200 with a full page and
+    **no notice of any kind** — identical in shape to `/careers/back-end`,
+    which is open.
+
+    **`fit1job.md`, delivered the same day, is the exact mirror**: there the
+    signal is on the ad page and the listing drops the advertisement. *Two
+    hosts, opposite answers — so where a host states availability is a
+    property of that host, found rather than assumed.*
+    """
+
+    def test_the_ad_page_yields_no_status_and_says_why(self):
+        import argparse
+        import contextlib
+        import io
+        import json
+        page = self._ad()
+        vrai = self.m.get
+        self.m.get = lambda _u: (200, page)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                self.m.cmd_ad(argparse.Namespace(
+                    url="https://swissdidata.com/careers/back-end"))
+        finally:
+            self.m.get = vrai
+        row = json.loads(out.getvalue())
+        self.assertIsNone(row["status"])
+        self.assertFalse(row["detail_says_availability"])
+        self.assertIn("no availability signal", row["status_note"])
+        self.assertEqual(row["apply_subject_token"], "backendev26")
+        self.assertIn("tracks the employer's edit",
+                      row["apply_subject_token_measures"])
+
+    def test_the_card_title_and_the_page_title_are_different_strings(self):
+        """*Card «Backend Developer», `h1` «Backend - Laravel».* A ledger
+        keyed on the title would see two positions, so the slug is the key."""
+        index, child = (self._sitemap_index(),
+                        self._sitemap_child(["back-end"], index=False))
+        _c, payload, _e, _ = self._run(
+            self._listing([self._card("Backend Developer", slug="back-end")]),
+            child=child, index=index, ads={"back-end": self._ad()},
+            fetch=True)
+        row = payload["ads"][0]
+        self.assertEqual(row["title"], "Backend Developer")
+        self.assertEqual(row["detail_title"], "Backend - Laravel")
+        self.assertNotEqual(row["title"], row["detail_title"])
+        self.assertEqual(row["id"], "didata:back-end")
+
+    def test_a_card_with_no_slug_is_never_fetched(self):
+        """**No URL is invented for a closed card.** Guessing one from the
+        title is the join this adapter refuses to make."""
+        _c, payload, _e, asked = self._run(
+            self._listing([self._card("Sales Manager")]),
+            child=self._sitemap_child([], index=False),
+            index=self._sitemap_index(), fetch=True)
+        self.assertEqual(payload["ads"][0]["detail"],
+                         "none — this card carries no link and no slug")
+        # `u is None` is part of the filter on purpose: without it a mutation
+        # that drops the guard raises `TypeError` inside the test instead of
+        # failing it, and a crash-red does not say what is missing.
+        self.assertEqual([u for u in asked if u is None or "/careers/" in u],
+                         [], "no URL is invented for a card with no slug")
+
+    def test_no_date_is_derived_anywhere(self):
+        """**An empty field is a question, a wrong date is an answer.** This
+        board publishes none, so the row carries none."""
+        _c, payload, _e, _ = self._run(
+            self._listing(self._standard()),
+            child=self._sitemap_child(["back-end"], index=False),
+            index=self._sitemap_index(), ads={"back-end": self._ad()},
+            fetch=True)
+        self.assertTrue(all(r["posted"] is None for r in payload["ads"]))
+        self.assertTrue(all("publishes no date" in r["posted_measures"]
+                            for r in payload["ads"]))
+
+
+class ALocalePathIsTheSamePositionAndIsRefused(_DiDataHarness):
+    """`/fr/careers/back-end` is «Développeur·se Backend - Laravel» with
+    `lang="fr"` — a different document (md5 `1ff46239b4c7` against
+    `561669b7955b`) and the **same** position. *The path says so, so it is
+    dropped; the slug suffix does not, so `-de` is named and not resolved.*
+    """
+
+    def test_a_locale_path_is_refused_by_ad(self):
+        import contextlib
+        import io
+        for bad in ("https://swissdidata.com/fr/careers/back-end",
+                    "https://swissdidata.com/de/careers/back-end",
+                    "https://example.com/careers/back-end",
+                    "https://swissdidata.com/careers"):
+            with self.subTest(url=bad):
+                err = io.StringIO()
+                # **The envelope is stubbed even though nothing should reach
+                # it**: without this, a mutation that drops the host check
+                # went red on the suite's own network guard (#282) instead of
+                # on the assertion below — a real red, wrongly attributed.
+                vrai = self.m.get
+                self.m.get = lambda _u: (200, self._ad())
+                try:
+                    with contextlib.redirect_stdout(io.StringIO()), \
+                            contextlib.redirect_stderr(err):
+                        with self.assertRaises(SystemExit) as caught:
+                            self.m.cmd_ad(
+                                __import__("argparse").Namespace(url=bad))
+                finally:
+                    self.m.get = vrai
+                self.assertEqual(caught.exception.code, self.m.EXIT_BROKEN)
+                self.assertIn("DEFAULT locale", err.getvalue())
+
+    def test_the_default_path_is_accepted(self):
+        """**The other direction**: a refusal that refuses everything is not a
+        check on the shape of a URL."""
+        import argparse
+        import contextlib
+        import io
+        vrai = self.m.get
+        self.m.get = lambda _u: (200, self._ad())
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                self.m.cmd_ad(argparse.Namespace(
+                    url="https://swissdidata.com/careers/back-end"))
+        finally:
+            self.m.get = vrai
+
+    def test_a_slug_that_is_gone_exits_gone_and_not_partial(self):
+        """A card can outlive its page — `/careers/sales-manager` answered
+        **404** on 2026-10-05."""
+        import argparse
+        import contextlib
+        import io
+        vrai = self.m.get
+        self.m.get = lambda _u: (404, "")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    self.m.cmd_ad(argparse.Namespace(
+                        url="https://swissdidata.com/careers/sales-manager"))
+        finally:
+            self.m.get = vrai
+        self.assertEqual(caught.exception.code, self.m.EXIT_GONE)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
