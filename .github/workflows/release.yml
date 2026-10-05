@@ -64,6 +64,12 @@ on:
 permissions:
   contents: write
   actions: read
+  # **`main` n'accepte plus d'ecriture directe (#967, route 1 choisie par le
+  # proprietaire).** Il n'y a pas d'organisation sur ce depot — `owner.type`
+  # vaut `User` — donc aucun acteur `Integration` n'est nommable dans une
+  # derogation de ruleset : la seule implementation possible est que ce
+  # workflow passe lui-meme par une pull request. D'ou cette permission.
+  pull-requests: write
 
 concurrency:
   group: release
@@ -178,18 +184,68 @@ jobs:
           title=$(git log -1 --format='%s')
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: release $next"
-          git tag -a "v$next" -m "v$next — $title"
-          # **`--atomic`, et ce n'est pas de la prudence.** Sans lui, un push
-          # concurrent fait passer le tag et refuser la branche : il reste un tag
-          # dont le commit n'est sur aucune branche, `git describe` l'ignore, le
-          # tir suivant recalcule le même numéro et meurt sur `tag already
-          # exists` — deux fois par jour jusqu'à ce qu'un humain le supprime.
-          git push --atomic origin HEAD:main --follow-tags
+          branche="release/v$next"
+          # **REPRISE AVANT TOUT, et c'est ce qui rend ce step relançable.** Le
+          # chemin ci-dessous pousse branche ET tag en UN push atomique, puis
+          # fusionne : la fusion est donc une SECONDE opération, et si elle rate
+          # il reste un tag que `git describe` ne voit pas — il ne considère que
+          # les tags accessibles depuis HEAD. Le tir suivant recalculerait alors
+          # le MÊME numéro et mourrait sur `tag already exists`, exactement
+          # l'état dont on ne sort pas seul que décrivait l'ancien commentaire.
+          # Donc : si le tag existe déjà au distant, on ne le recrée pas — on
+          # FINIT le travail commencé.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$next" >/dev/null 2>&1; then
+            echo "::notice::v$next existe deja au distant — un tir precedent a pousse sans fusionner ; on finit au lieu de recommencer."
+            git fetch --force origin "refs/tags/v$next:refs/tags/v$next"
+          else
+            git commit -am "chore: release $next"
+            git tag -a "v$next" -m "v$next — $title"
+            # **`--atomic` reste, et pour la raison d'avant** : sans lui un push
+            # concurrent fait passer le tag et refuser la branche. La CIBLE
+            # change — une branche de release, que rien ne protège, au lieu de
+            # `main` qui n'accepte plus d'écriture directe — l'exigence non :
+            # branche et tag passent ensemble ou pas du tout.
+            git push --atomic origin "HEAD:refs/heads/$branche" "refs/tags/v$next"
+          fi
+          # **La PR, idempotente : créée si absente, puis fusionnée.** Elle ne
+          # portera AUCUN check — un push au `GITHUB_TOKEN` ne déclenche aucun
+          # workflow, et `core` n'a jamais tourné sur un commit de release. C'est
+          # pourquoi aucune règle de statuts requis ne doit être posée sur
+          # `main` : elle refuserait cette fusion pour toujours, en silence.
+          if ! gh pr view "$branche" --json number >/dev/null 2>&1; then
+            gh pr create --base main --head "$branche" \
+              --title "chore: release $next" \
+              --body "Bump automatique vers v$next (#967 : main n'accepte plus d'ecriture directe). Le tag v$next est deja pousse et pointe le commit de cette branche ; il devient un ancetre de main a la fusion, donc git describe le trouve."
+          fi
+          # **La fusion se RÉESSAIE, parce que GitHub calcule la fusionnabilité
+          # PARESSEUSEMENT.** Juste après `gh pr create`, `mergeable_state` vaut
+          # `unknown` et la fusion est refusée pour une raison qui n'est pas un
+          # conflit : c'est un retard de calcul, pas une propriété de la PR
+          # (#293 l'a déjà payé — « la première lecture rend `unknown`, la
+          # seconde `dirty` ou `clean` »). Six essais sur une minute, puis on
+          # tranche sur l'ÉTAT et non sur le code de retour.
+          fusionnee=no
+          for essai in 1 2 3 4 5 6; do
+            if gh pr merge "$branche" --merge --delete-branch; then fusionnee=yes; break; fi
+            etat=$(gh pr view "$branche" --json state -q .state 2>/dev/null || echo INCONNU)
+            if [ "$etat" = "MERGED" ]; then fusionnee=yes; break; fi
+            echo "essai $essai : pas encore fusionnable (etat $etat) — nouvelle tentative dans 10 s"
+            sleep 10
+          done
+          [ "$fusionnee" = yes ] || {
+            echo "::error::la PR de release n'est ni fusionnee ni fusionnable apres 6 essais (etat $etat) — main ne porte pas le bump et le tag v$next attend au distant ; le prochain tir reprendra ce meme numero par le chemin de reprise, il ne mourra pas sur 'tag already exists'."; exit 1; }
+          # **Et on VÉRIFIE que `main` porte le tag, au lieu de le supposer.**
+          git fetch --force origin main
+          git merge-base --is-ancestor "v$next" origin/main || {
+            echo "::error::v$next n'est pas un ancetre de origin/main apres fusion — l'etat est a moitie applique, et c'est la seule chose que ce step ne doit pas laisser passer en silence."; exit 1; }
           # **The window's commits ARE the notes, in full.** Subject as a
           # heading, message body underneath — these bodies carry the reasoning,
           # and a release that keeps only first lines throws it away.
-          notes=$(git log --format='### %s%n%n%b' "${{ steps.moved.outputs.last }}"..HEAD^)
+          # **`v$next^` et non `HEAD^`.** Sur le chemin de reprise on n'a pas
+          # commité, donc `HEAD` n'est pas le commit de release et `HEAD^`
+          # désignerait un commit de trop. Le parent du TAG est le dernier
+          # commit réel dans les deux cas.
+          notes=$(git log --format='### %s%n%n%b' "${{ steps.moved.outputs.last }}".."v$next^")
           # **`%b` carries the trailers, and this repository is public.** The
           # attribution footer puts a `Claude-Session:` URL on every commit;
           # without this line the first automated release would publish
@@ -205,7 +261,12 @@ jobs:
             echo "::warning::notes ${#notes} chars — falling back to subjects"
             notes=$(printf '%s\n\n%s\n' \
               "_The full commit messages exceed what a release body can hold (${#notes} characters): only subjects are listed here. The detail is in \`git log\`._" \
-              "$(git log --format='- %s' "${{ steps.moved.outputs.last }}"..HEAD^)")
+              "$(git log --format='- %s' "${{ steps.moved.outputs.last }}".."v$next^")")
           fi
-          printf '%s\n' "$notes" | gh release create "v$next" \
-            --title "v$next — $title" --notes-file -
+          # **Idempotent aussi : sur le chemin de reprise la release existe deja.**
+          if gh release view "v$next" >/dev/null 2>&1; then
+            echo "::notice::la release v$next existe deja — rien a publier."
+          else
+            printf '%s\n' "$notes" | gh release create "v$next" \
+              --title "v$next — $title" --notes-file -
+          fi
