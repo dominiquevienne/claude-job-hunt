@@ -43516,6 +43516,55 @@ class ARefusalIsAttributedToTheTokenTheRequestWouldCarry(unittest.TestCase):
         finally:
             rendre()
 
+    # **A SECOND HOST, MEASURED INDEPENDENTLY — and a second FORM of the
+    # closing group.** `cd` measured `www.glassdoor.es` on 2026-10-06, after
+    # this fix was written: **eleven path forms, 11/11 refused under both
+    # tokens and 11/11 MISATTRIBUTED** — `rule: '/'`, `kind: 'host-closed'`,
+    # and the reason naming this project — while the same paths asked under
+    # `claude-user` carry **eleven different narrow rules under `*`**.
+    #
+    # *The denominator that counts is the objects measured TWICE, and it is
+    # now two hosts.* And Glassdoor files twelve AI crawlers into **one
+    # multi-agent group** of this shape, which is a different FORM from
+    # `randstad.es`'s single-name group — the fix is exercised on both,
+    # because «a measurement on one tenant is not a measurement of a family».
+    GLASSDOOR = ("User-agent: *\n"
+                 "Disallow: /Empleos/*_IP*.htm*\n"
+                 "Disallow: /job-listing/details.htm?*\n"
+                 "Disallow: /api/\n"
+                 "Allow: /empresas/\n"
+                 "\nUser-agent: GPTBot\nUser-agent: ClaudeBot\n"
+                 "User-agent: anthropic-ai\nUser-agent: CCBot\nDisallow: /\n")
+
+    def test_a_multi_agent_closing_group_attributes_each_path_to_its_own_rule(self):
+        """**The second form, and the fix was written before this host
+        existed.** A group naming four crawlers at once closed everything in
+        `claudebot`'s name; each refused path now carries the narrow `*` rule
+        that actually refuses it, and the two open paths stay open."""
+        R, rendre = self._stub(self.GLASSDOOR)
+        try:
+            attendu = {
+                "/Empleos/madrid-empleos_IP2.htm": "/Empleos/*_IP*.htm*",
+                "/job-listing/details.htm?jl=1": "/job-listing/details.htm?*",
+                "/api/x": "/api/",
+            }
+            for chemin, regle in attendu.items():
+                with self.subTest(path=chemin):
+                    a = R.allowed("g.example", chemin)
+                    self.assertIs(a["allowed"], False, "still refused")
+                    self.assertEqual(a.get("group"), "*")
+                    self.assertEqual(a.get("kind"), "disallow")
+                    self.assertEqual(a.get("rule"), regle)
+            # The paths that refute a closure, and the reason this is not one.
+            for ouvert in ("/", "/empresas/"):
+                with self.subTest(path=ouvert):
+                    self.assertIs(R.allowed("g.example", ouvert)["allowed"],
+                                  True)
+            self.assertEqual(R._token_agents("g.example", "/api/x"),
+                             ("claude-user",))
+        finally:
+            rendre()
+
     def test_the_two_tuples_hold_the_same_tokens(self):
         """**The invariant that makes two tuples safe**, rather than merging
         them: `FETCH_TOKENS` is the SET a request can present as and its order
