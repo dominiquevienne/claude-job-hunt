@@ -63,7 +63,15 @@ __all__ = ["LD", "blocks", "objects", "postings", "absent_reason", "Absence",
 # **Attribute-agnostic, quote-agnostic, case-insensitive**, in that order of
 # importance. It matches `type="application/ld+json"`, `type='…'`, an unquoted
 # attribute, `LD+JSON`, and the attribute appearing after others on the tag.
-LD = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>",
+# **ET LE `+` PEUT ETRE UNE ENTITE HTML — #941, HelloWork, mesure du 2026-10-01 et
+# reproduite le 05.10.** Le site ecrit `type="application/ld&#x2B;json"`. Un motif qui
+# cherche le `+` LITTERAL ne matche pas, et le resultat se lit exactement comme
+# «cette page ne porte pas de JSON-LD» — le faux negatif parfait de
+# `zero-lien-nest-pas-zero-contenu`, applique a un attribut `type`. Les trois formes
+# d'entite sont nommees plutot qu'un `html.unescape` de la page : desechapper tout
+# le corps abimerait le JSON lui-meme, et un decodage casse ne leve pas, il rend du
+# texte ou ce qu'on cherche n'est plus. 78 scripts partagent ce lecteur.
+LD = re.compile(r"<script[^>]*application/ld(?:\+|&#x0*2[bB];|&#0*43;|&plus;)json[^>]*>(.*?)</script>",
                 re.S | re.I)
 
 
