@@ -245,3 +245,28 @@ This adapter reads only the site's own public landing pages and ad pages, at
 human pace, for one person's job search. The cap and the closed sitemap are
 documented above rather than engineered around, and the query-string guard in
 `fetch()` is there so that stays true after the next edit.
+
+## `TELECOMMUTE` is a declaration, and the visible chip is the measure
+
+**Measured 2026-10-05 over 12 ads of the `data-analyst` facet (#942).** `jobLocationType`
+appears on **one** of the twelve, and that ad's visible criteria chip reads *Télétravail
+occasionnel*. With the two witnesses in the issue — 83927007 (*occasionnel*) and 83939563
+(*partiel*) — that is **three ads carrying `TELECOMMUTE`, three of them not complete, and no
+counter-example**. One of them reached scoring as fully remote and passed a commute filter
+with no warning at all.
+
+**The disagreement runs both ways.** Ad 82986866 shows *Télétravail partiel* with
+`jobLocationType` **absent**: the field over-states remote work where it appears and
+under-states it where it does not. So the adapter reads the chip and lets it decide;
+`jobLocationType` alone never sets `remote` to `True`, and a `TELECOMMUTE` the chip does not
+confirm yields `None` — unknown — rather than `False`, which would assert «&nbsp;on site&nbsp;»
+just as unmeasured. The mode read sits beside it in `remote_mode`, and the raw declaration in
+`remote_declared`.
+
+**And the second finding has its own denominator: 3 of the 12 carry a region and no
+locality** — `addressRegion` with no `addressLocality` and no postcode — which made
+«&nbsp;town to be established&nbsp;» invisible to a commute filter. `location_precision` now says
+which of the two the card holds.
+
+*What is NOT established: how often this board emits `TELECOMMUTE` for genuinely complete
+remote work. Three ads, none complete, is a direction and not a rate.*
