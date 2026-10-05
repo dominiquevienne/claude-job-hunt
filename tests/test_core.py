@@ -2308,6 +2308,62 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
         self.assertIn("does not generalise", src[i:i + 3000])
 
 
+class TheTypeAttributeCanEncodeItsPlusAsAnEntity(unittest.TestCase):
+    """**#941, HelloWork — measured 2026-10-01, reproduced on `main` 2026-10-05.** The site
+    writes `type="application/ld&#x2B;json"`. A pattern looking for the LITERAL `+` does not
+    match, `postings()` returns nothing, and **the result reads exactly like «&nbsp;this page
+    carries no JSON-LD&nbsp;»** — the perfect false negative of `zero-lien-nest-pas-zero-contenu`,
+    moved onto a `type` attribute. Exercised against the live ad before and after: `hellowork.py
+    ad 76221493` aborted with «&nbsp;no `ld+json` block was extracted at all&nbsp;» and reads the
+    posting once the alternation is in.
+
+    **Why three named entities and not `html.unescape` on the page.** Unescaping the whole body
+    would corrupt the JSON it is trying to reach, and *a broken decode does not raise — it
+    returns text, and the text it returns no longer contains what you were looking for.* The
+    forms are therefore enumerated: hex (`&#x2B;`, any case, leading zeros), decimal (`&#43;`),
+    and the named `&plus;`.
+
+    **78 scripts share this reader**, so the same site-side change elsewhere is covered by the
+    one line — which is also why the negative half matters: a pattern loosened too far would
+    start matching script tags that are not JSON-LD at all, on every one of them."""
+
+    BLOC = '{"@context":"https://schema.org","@type":"JobPosting","title":"Data Analyst H/F"}'
+
+    def _page(self, type_attr):
+        return '<html><body><script type=%s>%s</script></body></html>' % (type_attr, self.BLOC)
+
+    def test_every_encoding_of_the_plus_is_found(self):
+        formes = ['"application/ld+json"', '"application/ld&#x2B;json"', '"application/ld&#x2b;json"',
+                  '"application/ld&#x02B;json"', '"application/ld&#43;json"', '"application/ld&#043;json"',
+                  '"application/ld&plus;json"', "'application/ld&#x2B;json'",
+                  '"APPLICATION/LD&#X2B;JSON"', 'application/ld&#x2B;json']
+        for f in formes:
+            with self.subTest(forme=f):
+                blocs = _ldjson.blocks(self._page(f))
+                self.assertEqual(len(blocs), 1, f)
+                self.assertIn("JobPosting", blocs[0])
+        # and the posting is actually readable, not merely matched
+        self.assertEqual(len(_ldjson.postings(self._page('"application/ld&#x2B;json"'))), 1)
+
+    def test_a_script_that_is_not_json_ld_is_still_not_matched(self):
+        # the half that a too-loose pattern would break, on all 78 scripts at once
+        for f in ['"application/json"', '"text/javascript"', '"application/ld-json"',
+                  '"application/ldjson"', '"application/xld+json"']:
+            with self.subTest(forme=f):
+                self.assertEqual(_ldjson.blocks(self._page(f)), [], f)
+        self.assertEqual(_ldjson.blocks('<script>var ld_json = 1;</script>'), [])
+
+    def test_the_absence_message_is_what_made_this_findable(self):
+        # `absent_reason()` is what told the reporter the markup had changed rather than
+        # blaming the board — the diagnosis, not the extraction, is what must not regress.
+        page = '<html><body><script type="application/ld%sjson">%s</script></body></html>' % (
+            "&#x2B;", self.BLOC)
+        self.assertEqual(len(_ldjson.postings(page)), 1)
+        muet = '<html><body><p>JobPosting</p></body></html>'
+        self.assertEqual(_ldjson.postings(muet), [])
+        raison = _ldjson.absent_reason(muet)
+        self.assertTrue(raison, "absent_reason() ne dit plus rien sur une page sans bloc")
+
 class LdJsonMalformations(unittest.TestCase):
     r"""One case per specimen, each named with the site it came from. #127.
 
