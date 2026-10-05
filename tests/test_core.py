@@ -42982,5 +42982,207 @@ class ALocalePathIsTheSamePositionAndIsRefused(_DiDataHarness):
             self.m.get = vrai
         self.assertEqual(caught.exception.code, self.m.EXIT_GONE)
 
+
+class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
+    """**#998, found by `cd` on 2026-10-05 while measuring Emprego Xunta.**
+    `bin/country-boards.py` fell back to matching the bare word `browser` or
+    `navigateur` **anywhere** in a card and printed the board's access as
+    *«route navigateur (déclarée en prose)»* — onto **published country
+    pages**.
+
+    **It labelled 7 cards of 502 and it was RIGHT on two of them.** `softy` and
+    `linkedin` really are browser adapters; the other five claimed nothing, and
+    one carried the word by **quoting our own doctrine** — *a card that cites
+    the rule got labelled by it.*
+
+    > **A heuristic that is correct on the cases people check is harder to
+    > remove than one that is simply wrong.** *Whoever verified it landed on
+    > `softy` or `linkedin`, saw a correct label, and concluded the rule
+    > worked* — the same shape as «la forme la plus solide d'une cause fausse
+    > est une cause vraie mais insuffisante».
+
+    **The guard is not deleted in silence: it is replaced by this class**, which
+    asserts the new semantics in both directions — no card may take the label
+    from its prose, and the two cases the rule was accidentally right about stay
+    right **by declaration**.
+    """
+
+    TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "bin", "country-boards.py")
+    BOARDS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "shared", "boards")
+    PROSE = "route navigateur (déclarée en prose)"
+    # The seven the rule labelled on 2026-10-05, measured by calling the
+    # tool's own `access_of` on every card rather than re-deriving its logic.
+    LABELLED = ("africa-jobconnect", "careers-gy", "jobeo-ch", "jwennjob",
+                "linkedin", "sociumjob", "softy")
+    # **The two it was accidentally right about, and they do NOT get a
+    # declaration.** #998 asked for `route: browser` on them; the guard of
+    # #264 (`AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse`) reddens such
+    # a line with no count above zero and no date, and neither card has ever
+    # measured a board size. *A count is not invented to satisfy a format*, so
+    # they read «non déclaré» — true of their FIELDS — and the declaration
+    # they are owed is a measurement this change cannot manufacture.
+    DECLARED = ()
+
+    def _cb(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cb_998", self.TOOL)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cards(self, mod, texts):
+        """Fixture cards in a temp dir — *a bench reproduces the structure it
+        needs rather than borrowing the one in use.*"""
+        import tempfile
+        d = tempfile.mkdtemp()
+        for name, body in texts.items():
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        return {c["path"].rsplit("/", 1)[-1][:-3]: c
+                for c in mod.read_cards(d)}
+
+    def test_no_card_in_the_repository_takes_its_label_from_its_prose(self):
+        """The corpus half, and it is a scan over the real cards because the
+        label was printed onto real pages."""
+        mod = self._cb()
+        cards = mod.read_cards(self.BOARDS)
+        self.assertGreater(len(cards), 400,
+                           f"only {len(cards)} cards read; 502 were there on "
+                           f"2026-10-05, so the walk narrowed")
+        guilty = [c["path"] for c in cards
+                  if (mod.access_of(c) or ("",))[0] == self.PROSE]
+        self.assertEqual(guilty, [], "a card is still labelled from its prose")
+
+    def test_the_five_that_claimed_nothing_now_read_undeclared(self):
+        """**The direction that was wrong.** None of these five ever claimed a
+        browser route; `jobeo-ch` measures that its board declares 1 130
+        adverts and 20 are reachable, and says nothing about a browser."""
+        mod = self._cb()
+        cards = {c["path"].rsplit("/", 1)[-1][:-3]: c
+                 for c in mod.read_cards(self.BOARDS)}
+        for name in self.LABELLED:
+            if name in self.DECLARED:
+                continue
+            with self.subTest(card=name):
+                self.assertIn(name, cards, "the card was renamed or removed")
+                self.assertEqual(mod.access_of(cards[name])[0], "non déclaré")
+
+    def test_the_two_it_was_right_about_lose_the_label_and_that_is_correct(self):
+        """**The half of #998 that is declined, with the measurement that
+        declines it.** The issue asks for an explicit `route: browser` on
+        `softy` and `linkedin`, so the two cases the rule was accidentally
+        right about stay right by declaration.
+
+        **The repository forbids that line.** #264's guard reddens a
+        `route: browser` with no count above zero and no date — *a browser
+        route to nothing is not a coverage* — and neither card has ever
+        measured a board size. **Tried: both lines were added, and the suite
+        went red with four complaints naming exactly that.**
+
+        *Inventing a count would also have moved `classify()` from
+        `reverifier` to `fait` and inflated the FR ratio on a published page —
+        against the owner's decision of 2026-09-19 that Softy «reste à
+        construire». A worse defect than the one the issue reports.*
+
+        So they read «non déclaré», which is true of their FIELDS, their prose
+        still says what they are, and **what they are owed is a measurement
+        this change cannot manufacture.**
+        """
+        mod = self._cb()
+        cards = {c["path"].rsplit("/", 1)[-1][:-3]: c
+                 for c in mod.read_cards(self.BOARDS)}
+        for name in ("softy", "linkedin"):
+            with self.subTest(card=name):
+                self.assertEqual(mod.access_of(cards[name])[0], "non déclaré")
+                self.assertIsNone(cards[name]["h"].get("route"),
+                                  "no `route:` line is written here: see the "
+                                  "docstring, #264 would redden it")
+                self.assertEqual(mod.classify(cards[name])[0], "reverifier",
+                                 "and no ratio moves")
+        # **The refusal is asserted by DRIVING the rule, not by citing it.**
+        fixtures = self._cards(mod, {
+            "sanscompte": "# No count\n\n<!-- verified: 2026-10-05 -->\n"
+                          "<!-- hosts: e.example -->\n<!-- script: none -->\n"
+                          "<!-- countries: XX -->\n<!-- route: browser -->\n",
+        })
+        self.assertIsNone(mod.route_of(fixtures["sanscompte"]),
+                          "a countless browser route is not a coverage")
+        self.assertEqual(mod.access_of(fixtures["sanscompte"])[0],
+                         "non déclaré",
+                         "and `access_of` does not invent a label for it "
+                         "either — the branch that did was removed as "
+                         "unreachable")
+
+    def test_a_card_that_quotes_the_doctrine_is_not_labelled_by_it(self):
+        """**The specimen that produced the issue.** `cd`'s card carried the
+        word twice without claiming anything — once about *the board's* result
+        table paginating in a browser, once quoting our own rule."""
+        mod = self._cb()
+        cards = self._cards(mod, {
+            "cite": "# Cites the rule\n\n<!-- verified: 2026-10-05 -->\n"
+                    "<!-- hosts: a.example -->\n<!-- script: none -->\n"
+                    "<!-- countries: XX -->\n"
+                    "<!-- content: measured · 12 ads · 2026-10-05 -->\n\n"
+                    "A `Disallow` aimed at our path blocks every route, "
+                    "**browser included** (borne 1), and the board's own "
+                    "result table paginates in a browser.\n",
+            "muette": "# Says nothing\n\n<!-- verified: 2026-10-05 -->\n"
+                      "<!-- hosts: b.example -->\n<!-- script: none -->\n"
+                      "<!-- countries: XX -->\n"
+                      "<!-- content: measured · 3 ads · 2026-10-05 -->\n",
+        })
+        for name in ("cite", "muette"):
+            with self.subTest(card=name):
+                self.assertEqual(mod.access_of(cards[name])[0], "non déclaré")
+        self.assertIn("browser", cards["cite"]["text"],
+                      "if the word is gone the fixture proves nothing")
+
+    def test_a_declared_http_route_is_not_read_as_undeclared(self):
+        """**A latent gap, and it is declared latent.** `access_of` reports a
+        declared `route: http` — the state the #949 campaign produces most
+        often: measured, route known, adapter not written.
+
+        **Population in the repository today: ZERO**, asserted below. *So this
+        branch repairs no card. The «68 cards reading non déclaré» of #998 are
+        a DIFFERENT set: not one of them carries a `route:` line at all* —
+        which is the figure this case exists to stop anyone from re-deriving
+        from the issue text.
+        """
+        mod = self._cb()
+        cards = self._cards(mod, {
+            "mesuree": "# Measured, no adapter\n\n<!-- verified: 2026-10-05 -->\n"
+                       "<!-- hosts: c.example -->\n<!-- script: none -->\n"
+                       "<!-- countries: XX -->\n"
+                       "<!-- route: http · 1 130 · 2026-09-08 -->\n"
+                       "<!-- content: measured · 1 130 ads · 2026-09-08 -->\n",
+        })
+        label, basis = mod.access_of(cards["mesuree"])
+        self.assertTrue(label.startswith("HTTP — route déclarée"), label)
+        self.assertIn("1130", label.replace(" ", ""))
+        self.assertIn("2026-09-08", label)
+        self.assertEqual(basis, "`route: http`")
+        reels = [c["path"] for c in mod.read_cards(self.BOARDS)
+                 if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
+        self.assertEqual(reels, [], "the branch is latent today; if a card "
+                                    "reaches it, this sentence is stale and "
+                                    "the figure must be remeasured")
+
+    def test_a_route_none_still_outranks_everything(self):
+        """**The half that must not change.** `route: none` primes over
+        `script:` (#404) and over any route this class touches."""
+        mod = self._cb()
+        cards = self._cards(mod, {
+            "morte": "# Dead\n\n<!-- verified: 2026-10-05 -->\n"
+                     "<!-- hosts: d.example -->\n<!-- script: d.py -->\n"
+                     "<!-- countries: XX -->\n"
+                     "<!-- route: none · nothing served · 2026-09-21 -->\n"
+                     "It runs in a browser, allegedly.\n",
+        })
+        label, _b = mod.access_of(cards["morte"])
+        self.assertTrue(label.startswith("route: none"), label)
+        self.assertEqual(mod.classify(cards["morte"])[0], "infaisable")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
