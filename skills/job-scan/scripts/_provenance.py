@@ -399,3 +399,146 @@ def vendor_headers(headers):
         if v:
             out[h] = str(v)[:120]
     return out
+
+
+# **The mirror of `VENDOR_HEADERS`, and it is the harder direction.** — #999
+#
+# Those six name *who answered* and nothing about who asked. What follows names
+# *what was asked* and nothing about who asked it — and that is new in this
+# module, because until a POST existed every request was fully described by its
+# URL, and a URL is composed by us.
+#
+# **A request body is the first thing here that can carry a candidate's own
+# search**: their trade, their city, the employer they are chasing. The
+# provenance sidecar sits in the repository's reach, and the repository is
+# public.
+#
+# So the rule is not *be careful with the body*. It is:
+#
+#     **the SCHEMA is recorded and the VALUES are not.**
+#
+# Field names are the board's form, not the candidate's answer. Lengths and a
+# count describe the shape of what went out. **And the digest is taken over the
+# NAMES, never over the body** — which is the half that looks like a redaction
+# and is not: `q=plombier` has a dozen bits of entropy, so an md5 of a search
+# body is a dictionary lookup away from the term it was meant to hide. *A digest
+# of a low-entropy secret is not a redaction, and naming it `sent_md5` would be
+# the `withheld_fields` lie in a new place: a claim of discretion we would not
+# have.*
+#
+# **The assumption, stated rather than left implicit:** a field NAME belongs to
+# the board. That is true of a form POST and it is what this treats as safe; a
+# name is still capped and elided past the cap, because the assumption is an
+# assumption.
+
+# **A field that is PRESENT is not a field that is FILLED, and `if x` cannot
+# tell them apart.** The literal strings below are values that real boards
+# store: measured 2026-10-02, `email` arrived true on 10 ads and real on 4,
+# `number_Of_vacancy` true on 11 and real on 2, because the sentinel was the
+# four-character string `"undefined"`. A summary that counted those as values
+# would report a candidate's details withheld where the candidate typed
+# nothing.
+UNVALUED = ("", "undefined", "null", "none", "nil", "nan", "-")
+
+SENT_NAME_CAP = 64
+SENT_FIELD_CAP = 60
+
+
+def _valued(v):
+    return str(v).strip().lower() not in UNVALUED
+
+
+def _cap(name):
+    name = str(name)
+    if len(name) <= SENT_NAME_CAP:
+        return name
+    # A name past the cap is not printed: the assumption that a name is the
+    # board's schema is weakest exactly where the name is long and odd.
+    return f"<elided, {len(name)} chars>"
+
+
+def sent_summary(raw, *, content_type=None):
+    """What may be recorded about a request body. **Schema, never values.**
+
+    `raw` must be `bytes` — the same refusal `describe()` makes, for the same
+    reason: a `str` would make `sent_bytes` a character count.
+
+    Returns keys prefixed `sent_`, all of them safe to publish:
+
+        sent_bytes          length of the body as sent
+        sent_content_type   what we declared it as
+        sent_parsed         "form" · "json" · None when it could not be read
+        sent_fields         the names, sorted            — the board's schema
+        sent_field_count
+        sent_valued_fields  the names that carried a value under the floor
+        sent_value_lengths  {name: [len, …]}             — shape, not content
+        sent_schema_md5     md5 over the NAMES only      — comparable, inert
+        sent_values         present ONLY when something was actually withheld
+
+    **That last line is the `withheld_fields` lesson.** A record that says
+    *values withheld* on a body where every field was empty would be lying
+    about our own discretion, in the one direction no guard outside this file
+    can check — the sidecar reads the same either way. So the sentence is
+    derived from the measured set and is **absent** when that set is empty.
+
+    A body this cannot parse — multipart, binary, a content type we were not
+    told — yields `sent_parsed: None` and no field names at all. *Guessing
+    field boundaries out of bytes we do not understand is how a value ends up
+    recorded as a name.*
+    """
+    if not isinstance(raw, (bytes, bytearray)):
+        raise TypeError(
+            f"raw must be bytes, got {type(raw).__name__} — encoding it here "
+            f"would make `sent_bytes` a character count, the same confusion "
+            f"`describe()` refuses.")
+    raw = bytes(raw)
+    ct = (content_type or "").split(";")[0].strip().lower()
+    out = {"sent_bytes": len(raw), "sent_content_type": content_type or None}
+
+    pairs, parsed = [], None
+    if ct == "application/x-www-form-urlencoded":
+        try:
+            import urllib.parse
+            pairs = urllib.parse.parse_qsl(raw.decode("utf-8"),
+                                           keep_blank_values=True)
+            parsed = "form"
+        except Exception:                                       # noqa: BLE001
+            parsed = None
+    elif ct == "application/json":
+        try:
+            doc = json.loads(raw.decode("utf-8"))
+            if isinstance(doc, dict):
+                pairs = [(k, v) for k, v in doc.items()]
+                parsed = "json"
+        except Exception:                                       # noqa: BLE001
+            parsed = None
+
+    out["sent_parsed"] = parsed
+    if parsed is None:
+        # **No names invented from bytes we could not read.** The size and the
+        # declared type are facts; a field list would not be.
+        return out
+
+    lengths, valued = {}, []
+    for k, v in pairs[:SENT_FIELD_CAP]:
+        name = _cap(k)
+        lengths.setdefault(name, []).append(len(str(v)))
+        if _valued(v) and name not in valued:
+            valued.append(name)
+    names = sorted(lengths)
+    out["sent_fields"] = names
+    out["sent_field_count"] = len(pairs)
+    out["sent_value_lengths"] = lengths
+    out["sent_valued_fields"] = sorted(valued)
+    out["sent_schema_md5"] = hashlib.md5(
+        "\n".join(names).encode("utf-8")).hexdigest()
+    if len(pairs) > SENT_FIELD_CAP:
+        out["sent_fields_truncated"] = len(pairs) - SENT_FIELD_CAP
+    if valued:
+        out["sent_values"] = (
+            f"{len(valued)} field(s) carried a value and it is NOT recorded "
+            f"here — a request body can hold the candidate's own search terms, "
+            f"and this file is within the repository's reach. Names, lengths "
+            f"and a digest OF THE NAMES are above; there is no digest of the "
+            f"body, because an md5 of `q=<one word>` is a dictionary lookup.")
+    return out

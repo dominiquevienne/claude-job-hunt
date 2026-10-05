@@ -128,14 +128,42 @@ NEVER   : the contacts. 297/297 carry one, so the withholding rule runs BEFORE
 no count: the board states no total; 297 is ours, agreed by two enumerators
 ```
 
-### A tooling gap this board is the first to hit
+### A tooling gap this board is the first to hit — CLOSED THE SAME DAY (#999)
 
-**`bin/fetch-body.py` can only GET** — no `--data`, no `--method`. *This is the first board of the
-campaign whose search is a POST, so the repository's own disciplined fetcher cannot measure it.*
-**The single POST was therefore made by a scratchpad client that reproduces its four disciplines
-explicitly** — guard on the exact URL, declared identity from `_ua.UA`, the HTTP code tested, and
-provenance written beside the body — *rather than quietly dropping them, which is what an ad-hoc
-script does by default.* **Reported rather than patched: `fetch-body.py` is shared tooling.**
+**`bin/fetch-body.py` could only GET** — no `--data`, no `--method`. *This was the first board of
+the campaign whose search is a POST, so the repository's own disciplined fetcher could not measure
+it.* **The single POST was therefore made by a scratchpad client that reproduces its four
+disciplines explicitly** — guard on the exact URL, declared identity from `_ua.UA`, the HTTP code
+tested, and provenance written beside the body — *rather than quietly dropping them, which is what
+an ad-hoc script does by default.* **Reported rather than patched: `fetch-body.py` is shared
+tooling.**
+
+**And then the tool learned to POST — #999, the same day — so this measurement was RETAKEN with
+it, end to end:**
+
+```
+GET  …/busca-emprego-en-galicia                        200   32 811 B   form_build_id harvested
+POST …/busca-emprego-en-galicia?ajax_form=1            200  777 851 B   --method POST --form ×4
+     insert command                                         478 961 characters of table
+     597 <tr>  ·  297 distinct offer identifiers           equal to the hand measurement
+```
+
+**Every figure equals the one taken by hand**, which is the only reason this paragraph is a
+corroboration rather than a second reading: *a tool and a scratchpad client agreeing on 777 851
+bytes, 597 rows and 297 identifiers is a pair of provenances, not one claim twice.*
+
+**And the provenance now names what was SENT without naming the sender** — `method`, the field
+names, their value lengths, and a digest **over the names**; no value, and deliberately no digest
+of the body, since an md5 of `q=<one word>` is a dictionary lookup. *A POST body is the first thing
+in that tool that could carry a candidate's own search.*
+
+> **One trap met on the way, and it is this card's own family.** The 777 851 bytes are Drupal's
+> AJAX JSON, so the table's HTML is **escaped inside it**: every `<` arrives as a JSON `\uXXXX`
+> escape, so a search for the literal `<tr` finds **0** in the raw body while the escaped form
+> finds **597**. A first count on the raw text
+> returned **zero offers** on a body carrying 297 — *«a count taken on the wrong FORM of the string
+> returns zero and reads exactly like a route that carries nothing»*, which is why the figures
+> above are taken after `json.loads`.
 
 ### What this card does NOT say
 
