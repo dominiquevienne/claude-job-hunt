@@ -119,7 +119,7 @@ Linux, macOS and Windows on every push: `python3 -m unittest discover -s tests`.
 - [Install — macOS](#install--macos)
 - [Install — Windows](#install--windows)
 - [Updating](#updating)
-- [Check that it works](#check-that-it-works)
+- [If something looks wrong](#if-something-looks-wrong)
 - [Platform support](#platform-support)
 - [First run](#first-run)
 - [What it creates](#what-it-creates)
@@ -230,7 +230,8 @@ If `fc-list | grep -i "noto sans"` returns nothing after step 1, install the
 family manually from <https://fonts.google.com/noto/specimen/Noto+Sans> into
 `~/.local/share/fonts/`, then run `fc-cache -f`.
 
-Then go to [Check that it works](#check-that-it-works).
+Then go to [First run](#first-run) — or see [what is in place](#if-something-looks-wrong)
+first; it is a report, not a gate.
 
 ---
 
@@ -301,7 +302,8 @@ In Claude Code:
 /plugin install claude-job-hunt@claude-job-hunt
 ```
 
-Then go to [Check that it works](#check-that-it-works).
+Then go to [First run](#first-run) — or see [what is in place](#if-something-looks-wrong)
+first; it is a report, not a gate.
 
 ---
 
@@ -335,7 +337,7 @@ permission for `linkedin.com`, and log in there.
 > while Chrome runs on Windows — two different environments. Whether the
 > extension connects across that boundary depends on your setup and on the
 > version of Claude Code. **Test it first** (see
-> [Check that it works](#check-that-it-works), step 4). If it does not connect,
+> [If something looks wrong](#if-something-looks-wrong), step 4). If it does not connect,
 > everything except browser automation still works: you paste the ad text and
 > the plugin writes your documents. If browser automation matters to you, use
 > Route B.

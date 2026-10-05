@@ -34695,6 +34695,72 @@ class ACutThatTakesTheMeasureAndNotTheCharacterCount(unittest.TestCase):
         self.assertEqual(lost, [], "these cells drop the count their card states: " + ", ".join(lost[:8]))
         self.assertEqual(checked, kept)
 
+class ARenamedHeadingOrphansEveryLinkThatNamedIt(unittest.TestCase):
+    """**#947, measured 2026-10-05.** `README.md` carried **4** links to
+    `#check-that-it-works` and **no heading** that produced it. The heading was not
+    deleted: on 2026-09-03, commit `95cd676` **renamed** `## Check that it works` to
+    `## If something looks wrong`, and the four links stayed pointing at the old slug.
+
+    **Changing a label does not update the links that named it — it orphans them**, and
+    this is the second time the repository has paid for that shape (the first was an index
+    line in `shared/boards/README.md`, where a translated board name created a duplicate
+    rather than updating the original).
+
+    **It is invisible by construction.** GitHub renders a dead in-page anchor as a perfectly
+    ordinary link: it is blue, it is clickable, it scrolls nowhere. No build fails, no test
+    fails, and `test_every_cited_markdown_file_resolves` cannot see it — that guard checks
+    cited FILES, and the file here is the one the link lives in.
+
+    Both ways: the repository as it stands, and a crafted document whose heading is renamed
+    under its own link. The slug rule is pinned on a real anchor of the README
+    (`Install — Linux` → `install--linux`, the em dash dropped, leaving two hyphens) so that
+    a wrong slug function cannot make every link «&nbsp;resolve&nbsp;» or redden sound ones."""
+
+    @staticmethod
+    def _slug(heading):
+        s = re.sub(r"[^\w\s-]", "", heading.strip().lower(), flags=re.U)
+        return re.sub(r"\s", "-", s)
+
+    @classmethod
+    def _unresolved(cls, text):
+        headings = {cls._slug(m.group(1)) for m in re.finditer(r"^#{1,6}\s+(.*)$", text, re.M)}
+        return [a for a in re.findall(r"\]\(#([^)]+)\)", text) if a not in headings]
+
+    def test_the_slug_rule_matches_a_real_anchor_of_the_readme(self):
+        # if this is wrong, every other assertion in this class is meaningless
+        self.assertEqual(self._slug("Install — Linux"), "install--linux")
+        self.assertEqual(self._slug("If something looks wrong"), "if-something-looks-wrong")
+        self.assertEqual(self._slug("What you need"), "what-you-need")
+
+    def test_every_internal_anchor_of_every_tracked_markdown_resolves(self):
+        # imported here rather than at module scope: this file does not import subprocess,
+        # and the first version of this guard RAISED NameError on exactly the path it guards
+        # — the «garde qui leve au lieu de garder», found by running it and not by reading it.
+        import subprocess
+        root = pathlib.Path(SCRIPTS).parent.parent.parent
+        files = subprocess.run(["git", "-C", str(root), "ls-files", "*.md"],
+                               capture_output=True, text=True).stdout.split()
+        self.assertGreater(len(files), 1, files)
+        offenders, anchors = [], 0
+        for rel in files:
+            p = root / rel
+            if not p.exists():
+                continue
+            text = p.read_text(encoding="utf-8")
+            anchors += len(re.findall(r"\]\(#([^)]+)\)", text))
+            for a in sorted(set(self._unresolved(text))):
+                offenders.append(f"{rel} -> #{a}")
+        self.assertEqual(offenders, [], "links to a heading that does not exist: " + "; ".join(offenders))
+        # a population, so the guard cannot go green by finding nothing to check
+        self.assertGreater(anchors, 15, anchors)
+
+    def test_renaming_a_heading_under_its_own_link_is_caught(self):
+        sound = "# Doc\n\n- [Check that it works](#check-that-it-works)\n\n## Check that it works\n\nbody\n"
+        self.assertEqual(self._unresolved(sound), [])
+        renamed = sound.replace("## Check that it works", "## If something looks wrong")
+        self.assertNotEqual(renamed, sound)
+        self.assertEqual(self._unresolved(renamed), ["check-that-it-works"])
+
 class ACellThatLeadsWithItsMethodRendersNoWitness(unittest.TestCase):
     """**The guard #879 declined, posable now that its population is measured (#966).**
 
