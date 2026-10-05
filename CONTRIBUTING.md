@@ -150,3 +150,29 @@ This file holds what governs the repository. **What governs the work is in
 | `shared/plausible-and-false.md` | Fields that are present, plausible and false; which way a defect errs, and what catches it |
 | `shared/robots-policy.md` | What may be fetched, what a refusal means, and when a file is not a file |
 | `shared/boards/README.md` | Writing an adapter: the helpers to use rather than a pattern of your own |
+
+## Money, and why it comes last on this page
+
+**A new board adapter or a dated re-verification is worth more than money.** That
+is the order here, and it is not politeness: an adapter nobody re-runs quietly
+turns into a confident wrong answer, which is the one failure this project is
+built to avoid. Code and dated measurements are the contributions that fix that;
+money is not.
+
+If you would rather fund than build, there are two channels — and **nothing is
+gated behind either**: no paid tier, no perks for sponsors, no feature that waits
+for money, and no skill mentions funding in its output.
+
+- **GitHub Sponsors** — recurring: <https://github.com/sponsors/dominiquevienne>
+- **Ko-fi** — one-off: <https://ko-fi.com/gloomyspark>
+
+**What the money pays for is written once**, in
+[`README.md`, "Support the project"](README.md#support-the-project): the
+unglamorous half — keeping the board adapters working, and the AI compute that
+re-verification costs.
+
+*It is deliberately not repeated here.* The two addresses are stable identifiers
+and worth carrying on the page whose whole audience already wants to help; the
+prose around them is not, and **a funding block copied into two files drifts the
+day a channel changes** — the cost this repository already paid in #910, where a
+list frozen into 186 pages went stale without ever becoming visibly false.
