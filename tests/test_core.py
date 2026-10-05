@@ -35081,8 +35081,20 @@ class AGovernmentPageWhoseMarkupIsItsOwnAndWhoseClosedPostsStay(unittest.TestCas
         self.assertIn("3 post(s) emitted (3 read); **the page states no count**", err)
         self.assertIn("1 post(s) state no deadline", err)
         # the COUNT, not the sentence: «0 of the emitted post(s) state a deadline already past»
-        # satisfies a substring assertion just as well, and says the opposite
-        self.assertIn("1 of the emitted post(s) state a deadline already past", err)
+        # satisfies a substring assertion just as well, and says the opposite.
+        # **ET LE COMPTE SE DERIVE DE LA FIXTURE CONTRE LA DATE DU JOUR, jamais ecrit
+        # en dur** : la fixture porte une echeance au `2026-10-03`, donc le litteral
+        # `1` est devenu FAUX le 2026-10-05 sans qu'aucun push n'ait eu lieu — c'est
+        # la bombe a retardement que §4 bis documente (v1.244.0 sortie sur un verdict
+        # `core` perime pour exactement cette raison), et c'est sa SECONDE occurrence
+        # apres #732. Le plancher garde le controle d'aller inerte si un jour la
+        # fixture ne porte plus aucune echeance passee.
+        aujourdhui = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        passees = sum(1 for r in rows if r.get("deadline") and r["deadline"] < aujourdhui)
+        self.assertGreaterEqual(passees, 1,
+                                "la fixture doit porter au moins une echeance passee, "
+                                "sinon ce controle ne verifie plus rien")
+        self.assertIn("%d of the emitted post(s) state a deadline already past" % passees, err)
         self.assertIn("country AG is the user's stamp", err)
 
     def test_the_open_on_filter_says_it_is_ours(self):
