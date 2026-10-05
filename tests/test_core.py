@@ -34695,6 +34695,86 @@ class ACutThatTakesTheMeasureAndNotTheCharacterCount(unittest.TestCase):
         self.assertEqual(lost, [], "these cells drop the count their card states: " + ", ".join(lost[:8]))
         self.assertEqual(checked, kept)
 
+class ACellThatLeadsWithItsMethodRendersNoWitness(unittest.TestCase):
+    """**The guard #879 declined, posable now that its population is measured (#966).**
+
+    A country page composes its «&nbsp;ce qu'il couvre&nbsp;» cell from the first whole sentences
+    of a card's `content:` line, so a card that leads with its method — the hour, the size, the
+    `md5`, the rules file — fills the cell with its method and **renders no witness at all.**
+    #879 asked for a rule and REFUSED a guard, writing down why: «&nbsp;no figure in the first
+    two hundred characters&nbsp;» would also redden the cards that legitimately have **no count
+    to state**, and those would be the cards that did the honest thing.
+
+    **That population is now measured, and it is four.** Of 412 cards carrying a `content:`
+    line on 2026-10-05, 408 put a figure in the head and 4 do not — and all four are cards
+    whose whole finding is that there is nothing to count: a site that publishes no list, a
+    robots group that stops us, and two national systems that do not serve.
+
+    *The digit test alone could not have found them.* A first pass asked «&nbsp;no DIGIT
+    anywhere&nbsp;» and returned **zero**, which reads like «&nbsp;the protected population is
+    empty, pose the guard freely&nbsp;» — and is false: every card carries byte sizes, `md5`
+    fragments and dates. **What decides is a COUNT, not a digit**, and the four were separated
+    by reading them. A proxy that returns zero looks exactly like good news.
+
+    So the list below is explicit and **can only shrink**: a card that gains a count in its
+    head must leave it, and a card that loses one must be fixed rather than added. Checked by
+    exact set equality, which fails in BOTH directions — the shape of `UNPACED` in
+    `AnAdapterThatFetchesTwiceConsultsTheHostsRate` and of `MUTES` in
+    `ACardThatConcludesOpenAndCertainSaysNothingOfTheRate`."""
+
+    # Legitimately no count to state — they cannot lead with a figure. Shrink only.
+    SANS_COMPTE = ("calisma-gov-ct-tr", "founditgulf", "myanmarjob-gov", "shoghl-mcls")
+
+    HEAD = 200
+
+    def _cards(self):
+        spec = importlib.util.spec_from_file_location(
+            "_cb_966", str(pathlib.Path(SCRIPTS).parent.parent.parent / "bin" / "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        return mod, mod.read_cards(str(d))
+
+    @classmethod
+    def _split(cls, line):
+        """(a figure in the head, a figure anywhere) for one `content:` value."""
+        body = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d.*$", "", line or "")
+        return bool(re.search(r"\d", body[:cls.HEAD])), bool(re.search(r"\d", body))
+
+    def test_the_cards_without_a_head_figure_are_exactly_the_declared_ones(self):
+        _, cards = self._cards()
+        offenders, with_head = [], 0
+        for c in cards:
+            line = c["h"].get("content", "")
+            if not line:
+                continue
+            head, anywhere = self._split(line)
+            if head:
+                with_head += 1
+            elif anywhere:
+                offenders.append(c["name"])
+        # BOTH directions, by exact set equality — a shrink-only list
+        self.assertEqual(
+            sorted(offenders), sorted(self.SANS_COMPTE),
+            "a card gained or lost a figure in its `content:` head.\n"
+            "  gained one, remove it from SANS_COMPTE: %s\n"
+            "  lost one, fix the card (method last) rather than extend the list: %s"
+            % (sorted(set(self.SANS_COMPTE) - set(offenders)),
+               sorted(set(offenders) - set(self.SANS_COMPTE))))
+        # the guard must not go inert if the field or the generator changes shape
+        self.assertGreater(with_head, 300, with_head)
+
+    def test_a_head_that_loses_its_figure_is_caught_and_a_sound_one_is_not(self):
+        sound = "measured · 742 emitted, the site states 744 — two short; the rules file is served · 2026-10-05"
+        self.assertEqual(self._split(sound), (True, True))
+        method_first = ("measured · the rules file is served (`state: read`, `certain: True`, group `*`, no "
+                        "Crawl-delay) and it declares a sitemap, read twice, identical; " + "x" * 60
+                        + "; 742 emitted, the site states 744 · 2026-10-05")
+        self.assertGreater(len(method_first), self.HEAD)
+        self.assertEqual(self._split(method_first), (False, True))   # the #879 case
+        nothing = "measured · the site answers in the clear and publishes NO list · 2026-10-05"
+        self.assertEqual(self._split(nothing), (False, False))       # not an offender: nothing to count
+
 class AHeaderCommentThatLosesItsTerminatorFallsBackInSilence(unittest.TestCase):
     """**`shared/boards/*.md`, 2026-10-02.** A reordering pass dropped the ` -->` of the
     `content:` line on four cards. Nothing broke loudly: `read_cards()` builds its header
