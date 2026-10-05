@@ -708,6 +708,14 @@ usual. The only thing you lose is the automatic sweep. When you do that, the
 plugin notes what an adapter for that board would need; the report is saved in
 your workspace, and it is yours to post as an issue if you want it built.
 
+**And if you would rather just say where you are looking, that is what the pinned
+discussion asks.** [*Does it actually find you work? — and which country are you
+searching in*](https://github.com/dominiquevienne/claude-job-hunt/discussions/980)
+— **your answer decides which adapters get written next.** Coverage is uneven on
+purpose: it follows what people say they need. A 👍 on an `adapter` issue orders
+the boards that already have one; **naming your country is how a board that has
+no issue yet gets one at all.**
+
 ## Configuration
 
 `config.yml` holds the machine-readable settings — see
