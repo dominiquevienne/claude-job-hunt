@@ -187,6 +187,35 @@ def resolve_site(chosen):
         f"normal answer.")
 
 
+# **LE COMPTE QUI NE VIENT PAS DE NOTRE PROPRE EXTRACTION — #924.** Les deux hotes
+# impriment leur total dans un attribut : `data-cy="total-hits" title="36 offres
+# d'emploi"`. Mesure du 2026-10-05 : jobup `"Laravel"` -> 4 annonces pour un total
+# annonce de 4 ; jobup `developpeur` -> 20 pour 36 ; jobs.ch `entwickler` -> 20 pour
+# 511. **C'est ce temoin qui separe «la marche est finie» de «la pagination est
+# bloquee»**, la ou une page courte ne separe rien.
+#
+# **ET CE N'EST PAS `numberOfItems` DE L'`ItemList`, qui est un piege.** Sur la requete
+# etroite il vaut 4 et egale le total ; sur la large il vaut **20** quand le total est
+# **36** — c'est le compte DE LA PAGE, donc notre propre extraction sous un autre nom.
+# Il aurait eu l'air juste sur le cas qui a motive l'issue.
+TOTAL_HITS = re.compile(r'data-cy="total-hits"[^>]*title="\s*([\d\u00a0\u202f \']+)', re.I)
+
+# Mesuree, plus inferee : la requete large rend 20 annonces en page 1 pour 36 au total,
+# donc une page pleine en porte 20. L'issue la donnait comme deduite de 11 recherches.
+PAGE_FULL = 20
+
+
+def stated_total(body):
+    """The total the site prints beside its results — or None when unreadable."""
+    m = TOTAL_HITS.search(body or "")
+    if not m:
+        return None
+    try:
+        return int(re.sub(r"[^\d]", "", m.group(1)))
+    except ValueError:
+        return None
+
+
 def cmd_search(a):
     # **An invocation that cannot return anything must not be accepted.**
     # `search` with no filter fetches the bare listing, which serves no
@@ -228,6 +257,7 @@ def cmd_search(a):
     if not v["sweep"]:
         die(f"{site['host']}: {v['reason']}", 8 if v["sweep"] is None else 7)
     seen, rows, repeats, partial = set(), [], 0, False
+    board_total, pages_read, last_page, ended = None, 0, 0, "capped"
     for page in range(1, a.pages + 1):
         # **`location` goes into the URL.** It used to be applied only after
         # the fetch, by `drop_report`, so `--location Lausanne` alone
@@ -245,6 +275,9 @@ def cmd_search(a):
         status, body, _ = get(url)
         if status != 200:
             die(f"{url}: HTTP {status}")
+        pages_read = page
+        if page == 1:
+            board_total = stated_total(body)
         found = postings(body)
         if not found and page == 1:
             # #181: page 1 with no JobPosting used to print the three-causes
@@ -288,12 +321,42 @@ def cmd_search(a):
             # anything reading stdout, which is the whole chain. The other
             # early stop in this loop uses `break` and does reach the print;
             # two exits from one loop, and only one of them worked. #134.
+            # **UNE MARCHE A TROIS FINS, ET CELLE-CI EN MANQUAIT UNE — #924.**
+            # Mesure du 2026-09-28 : exit 6 sur 5 recherches sur 5 dont la page 1
+            # n'etait pas pleine, et aucune des 11 a page pleine. Quand il n'y a pas
+            # de page 2, ce site **renvoie la page 1** — la marche etait COMPLETE et
+            # l'outil annoncait «partiel». *Un avertissement qui tire toujours ne vaut
+            # pas mieux qu'un avertissement qui ne tire jamais, et il est plus dur a
+            # retirer parce qu'il a l'air prudent.*
+            if board_total is not None and len(rows) >= board_total:
+                note(f"page {page} repeats page {page - 1}: **the results end "
+                     f"there.** {len(rows)} emitted, board states "
+                     f"{board_total} — complete. When there is no page {page}, "
+                     f"this site serves page {page - 1} again; that is the end "
+                     f"of the results and not a pagination failure.")
+                ended = "complete"
+                break
+            if board_total is None and last_page < PAGE_FULL:
+                note(f"page {page} repeats page {page - 1}, and page "
+                     f"{page - 1} held {last_page} < {PAGE_FULL} — **the "
+                     f"results end there.** The site's own total could not be "
+                     f"read on this run, so this rests on the page being short "
+                     f"rather than on a count: weaker, and said so.")
+                ended = "complete-inferred"
+                break
             note(f"page {page} repeats page {page - 1} entirely — the "
                  f"pagination did not advance. Stopping rather than looping; "
                  f"{len(rows)} row(s) so far and they are good, and they are "
-                 f"on stdout below.")
+                 f"on stdout below."
+                 + (f" The board states {board_total}, so "
+                    f"{board_total - len(rows)} are missing."
+                    if board_total is not None else
+                    " The board's own total could not be read, so how many "
+                    "are missing is unknown."))
             partial = True
+            ended = "stuck"
             break
+        last_page = len(found)
         for p in found:
             row = card(a.site, p)
             if not row["id"] or row["id"] in seen:
@@ -317,7 +380,25 @@ def cmd_search(a):
         note(zero_note(a.site, what=a.term, where=a.location))
     stated = sum(1 for r in rows if r["salary_stated"])
     located = sum(1 for r in rows if r["location_text"])
-    note(f"{len(rows)} ad(s) over {a.pages} page(s). "
+    # **Et le plafond atteint n'est pas une fin si le total est atteint.** Avec
+    # `--pages 2` sur 36 annonces a 20 par page, la boucle epuise sa plage en ayant
+    # TOUT lu : «stopped at the --pages ceiling» serait exact sur la cause et faux
+    # sur le fait. Le temoin du site tranche ici aussi.
+    if ended == "capped" and board_total is not None and len(rows) >= board_total:
+        ended = "complete"
+    # **Trois fins, nommees.** «over {a.pages} page(s)» disait le PLAFOND et non ce
+    # qui a ete lu : une marche arretee en page 2 d'un plafond de 5 s'annoncait sur 5.
+    fin = {"complete": "ended by itself — the board's total was reached",
+           "complete-inferred": "ended by itself — inferred from a short page, "
+                                "the board's total being unreadable",
+           "stuck": "stopped: the pagination did not advance",
+           "capped": f"stopped at the --pages ceiling of {a.pages}"}[ended]
+    note(f"{len(rows)} ad(s) over {pages_read} page(s) read"
+         + (f" of {a.pages} asked" if pages_read != a.pages else "")
+         + f" — {fin}"
+         + (f"; board states {board_total}" if board_total is not None else
+            "; the board's own total was not readable")
+         + ". "
          f"salary: {stated} of {len(rows)} carry a figure — **the block is "
          f"present on all of them and empty on most** (#67). "
          f"location: {located} of {len(rows)}; the ad page does not carry it "

@@ -1924,6 +1924,140 @@ class EmbeddedIntermediate(unittest.TestCase):
                                     "see `_tls.check()` for what to do")
 
 
+class AWalkHasThreeEndsAndThisOneHadTwo(unittest.TestCase):
+    """**#924, jobup and jobs.ch — measured 2026-09-28, reproduced 2026-10-05.** When there
+    is no page 2, these sites **serve page 1 again**. The repeat branch read that as
+    «&nbsp;the pagination did not advance&nbsp;» and exited 6, *partial*, on **5 searches out of
+    5 whose page 1 was short** — and on none of the 11 whose page 1 was full. The walk was
+    complete; the tool said partial.
+
+    **This is the false zero with its polarity reversed.** The tool does not go quiet, it
+    cries wolf — and *«&nbsp;partial&nbsp;» on a complete result teaches a user to ignore a
+    signal that should alarm them.* A warning that always fires is no better than one that
+    never fires, and it is harder to remove because it looks prudent.
+
+    **The discriminant is a count that does NOT come from our own extraction.** Both hosts
+    print their total in `data-cy="total-hits" title="36 offres d'emploi"`. Measured
+    2026-10-05: jobup `"Laravel"` → 4 ads for a stated 4; jobup `developpeur` → 20 for 36;
+    jobs.ch `entwickler` → 20 for 511.
+
+    **And NOT `numberOfItems` of the `ItemList`, which is the trap:** it is 4 on the narrow
+    query, equal to the total, and **20 on the broad one where the total is 36** — the count
+    *of the page*, which is our own extraction under another name. It would have looked right
+    on the very case that motivated the issue.
+
+    Asserted through `cmd_search`, not through the helper: the word «&nbsp;partial&nbsp;» is
+    decided on the path, and a guard that exercises the function does not see a substitution
+    on the path (#942, one day earlier)."""
+
+    FULL = 20
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import jobup
+        self.jobup = jobup
+
+    def _args(self, **kw):
+        import argparse
+        base = dict(site="jobup", term="x", location=None, pages=2,
+                    limit=None, delay=0.0)
+        base.update(kw)
+        return argparse.Namespace(**base)
+
+    def _page(self, n, total=None, first=0):
+        """A listing page with `n` JobPosting blocks, and optionally the site's own total."""
+        ads = "".join(
+            '<script type="application/ld+json">{"@type":"JobPosting",'
+            '"title":"T%d","identifier":{"value":"id%d"},'
+            '"url":"https://www.jobup.ch/fr/emplois/detail/%d/"}</script>'
+            % (i, i, i) for i in range(first, first + n))
+        hits = ('<span data-cy="total-hits" title="%d offres d&#x27;emploi">x</span>' % total
+                if total is not None else "")
+        return "<html><body>%s%s</body></html>" % (hits, ads)
+
+    def _run(self, pages, **kw):
+        """Drive `cmd_search` over canned pages. Returns (exit code, stderr).
+
+        `io` and `contextlib` are imported here because this module imports
+        neither at top level — the first version of this harness raised
+        `NameError` on the very path it drives, which is the guard that raises
+        instead of guarding, and only running it shows that.
+        """
+        import contextlib
+        import io
+        err = io.StringIO()
+        appels = []
+
+        def faux_get(url):
+            appels.append(url)
+            return 200, pages[min(len(appels), len(pages)) - 1], {}
+
+        vrai_get = self.jobup.get
+        vrai_verdict = self.jobup.robots_verdict
+        self.jobup.get = faux_get
+        self.jobup.robots_verdict = lambda host: {"sweep": True, "reason": "test"}
+        code = 0
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                self.jobup.cmd_search(self._args(**kw))
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            self.jobup.get = vrai_get
+            self.jobup.robots_verdict = vrai_verdict
+        return code, err.getvalue()
+
+    def test_a_short_page_repeated_is_the_end_and_exits_zero(self):
+        court = self._page(4, total=4)
+        code, err = self._run([court, court])
+        self.assertEqual(code, 0, err)
+        self.assertIn("the results end there", err)
+        self.assertIn("4 emitted, board states 4 — complete", err)
+        self.assertNotIn("did not advance", err)
+
+    def test_a_full_page_repeated_is_still_partial_and_exits_six(self):
+        """The half that must NOT change: real stuck pagination."""
+        plein = self._page(self.FULL, total=100)
+        code, err = self._run([plein, plein])
+        self.assertEqual(code, 6, err)
+        self.assertIn("did not advance", err)
+        self.assertIn("board states 100", err)
+        self.assertIn("80 are missing", err)
+
+    def test_without_the_sites_total_a_short_page_still_ends_but_says_it_is_weaker(self):
+        court = self._page(4)                      # no total-hits at all
+        code, err = self._run([court, court])
+        self.assertEqual(code, 0, err)
+        self.assertIn("the results end there", err)
+        self.assertIn("rests on the page being short", err)
+
+    def test_without_the_sites_total_a_full_page_repeated_is_partial(self):
+        plein = self._page(self.FULL)
+        code, err = self._run([plein, plein])
+        self.assertEqual(code, 6, err)
+        self.assertIn("could not be read", err)
+
+    def test_the_final_note_names_which_of_the_three_ends_happened(self):
+        court = self._page(4, total=4)
+        _, fini = self._run([court, court])
+        self.assertIn("ended by itself", fini)
+        # the ceiling is a different end, and it is named as one
+        p1 = self._page(self.FULL, total=100)
+        p2 = self._page(self.FULL, total=100, first=self.FULL)
+        code, plafond = self._run([p1, p2])
+        self.assertEqual(code, 0, plafond)
+        self.assertIn("--pages ceiling", plafond)
+        self.assertIn("page(s) read", plafond)
+
+    def test_the_sites_total_is_read_and_number_of_items_is_not_used(self):
+        self.assertEqual(self.jobup.stated_total(self._page(2, total=36)), 36)
+        self.assertEqual(self.jobup.stated_total('title="1 234 offres" data-cy="total-hits"'), None)
+        self.assertIsNone(self.jobup.stated_total(self._page(2)))
+        self.assertIsNone(self.jobup.stated_total(""))
+        # the trap, named: numberOfItems is the PAGE count, not the total
+        src = open(os.path.join(SCRIPTS, "jobup.py"), encoding="utf-8").read()
+        self.assertNotIn('"numberOfItems"', src.split("def stated_total")[1][:400])
+
 class AnInvocationThatCannotSucceed(unittest.TestCase):
     """`jobup.py search` accepted a call that could only return zero. #126.
 
@@ -4123,9 +4257,19 @@ class PartialStillWritesWhatItKept(unittest.TestCase):
 
     class _Page:
         """One posting, returned for every page — which is what a board that
-        has stopped paginating looks like."""
+        has stopped paginating looks like.
 
-        BODY = ('<html><script type="application/ld+json">'
+        **And it now carries the board's own total, because #924 made that the
+        discriminant.** A single posting repeated with NO stated total is the
+        *end of the results* on this board — jobup serves page 1 again when
+        there is no page 2 — so without the total this fixture stopped reaching
+        the partial branch at all, and the guard went green on a path it no
+        longer exercised. One row against a stated 100 is unambiguously stuck
+        pagination, which is the case #134 is about.
+        """
+
+        BODY = ('<html><span data-cy="total-hits" title="100 offres">x</span>'
+                '<script type="application/ld+json">'
                 '{"@type":"JobPosting","identifier":{"value":"abc-1"},'
                 '"title":"X","hiringOrganization":{"name":"Y"},'
                 '"datePosted":"2026-09-01",'
