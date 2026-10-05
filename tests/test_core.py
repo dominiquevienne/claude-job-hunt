@@ -42003,5 +42003,482 @@ class ARefusalReadOnTheWrongHostAndAnUndefinedStoredAsAValue(unittest.TestCase):
         self.assertEqual(rc, mod.EXIT_GONE)
         self.assertEqual(lignes, [])
 
+
+class _Fit1JobHarness(unittest.TestCase):
+    """The shared fixture, built from the **real** markup of 2026-10-05.
+
+    *A fixture invented for the occasion carries the values of whoever writes
+    it, so this one is the live card's nesting copied byte for byte — one
+    `<li>` per advertisement, each wrapping a `<ul class="listing-icons">` of
+    further `<li>`s. That nesting is the trap the next class exists for, and a
+    simplified fixture would not have it.*
+    """
+
+    CARD = (
+        '\t\t<li  data-longitude="" data-latitude="" data-color="#" '
+        'data-title="{title}" data-image="x.png" data-company="" '
+        'data-address="" data-job_type="&lt;span&gt;Fixe&lt;/span&gt;" '
+        'data-job_id="{jid}" data-rate="" data-salary="" '
+        'data-job_type_class="fixe" >\n'
+        '\t\t\t<a href="https://www.fit1job.ch/poste/{slug}/" '
+        'class="left post-{jid} job_listing type-job_listing status-publish '
+        'job_listing_category-it job-type-fixe">\n'
+        '\t\t\t\t<div class="listing-logo"><img class="company_logo" '
+        'src="x" /></div>\n'
+        '\t\t\t\t<div class="listing-title">\n'
+        '\t\t\t\t\t<h4>{title}<div class="listing-types-list">'
+        '<span class="job-type fixe">Fixe</span></div></h4>\n'
+        '\t\t\t\t\t<ul class="listing-icons">\n'
+        '\t\t\t\t\t\t<li><i class="icon-material-outline-location-on"></i> '
+        '{place}</li>\n'
+        '\t\t\t\t\t\t<li><div class="listing-date"> '
+        '<time datetime="{date}">Publié le {date}</time></div></li>\n'
+        '\t\t\t\t\t\t<div class="listing-desc"><p>{teaser}</p>\n</div>\n'
+        '\t\t\t\t\t</ul>\n'
+        '\t\t\t\t</div>\n'
+        '\t\t\t</a>\n'
+        '\t\t</li>\n')
+
+    ADS = [
+        dict(jid="6328", slug="program-manager-fr-en-h-f",
+             title="Program Manager FR-EN (H/F)", date="2026-09-29",
+             place="Corminboeuf, Fribourg, Suisse", teaser="Notre client…"),
+        dict(jid="6302", slug="business-analyst-private-banking-fr-en",
+             title="Business Analyst Private Banking FR-EN", date="2026-09-10",
+             place="Rond-Point-de-Rive, Genève, Suisse", teaser="Une banque…"),
+        dict(jid="6290", slug="chef-de-projet-informatique",
+             title="Chef de projet informatique", date="2026-08-24",
+             place="St-Barthélemy, Vaud, Suisse", teaser="La construction…"),
+    ]
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import fit1job
+        self.m = fit1job
+
+    def _listing(self, ads, per_page=10, declare_cap=True):
+        cap = ' data-per_page="%d"' % per_page if declare_cap else ""
+        cards = "".join(self.CARD.format(**a) for a in ads)
+        return (
+            '<html><body><div class="listings-container">\n'
+            '<div class="job_listings " data-location="" data-keywords=""'
+            ' data-show_filters="false" data-show_pagination="false"'
+            '%s data-orderby="date" data-order="DESC" data-post_id="6328" >\n'
+            '<ul class="job_listings job-list full     new-layout " >\n'
+            '%s</ul></div></div>\n'
+            '<div class="small-footer">Copyright © Fit1Job 2026</div>\n'
+            '</body></html>' % (cap, cards))
+
+    def _sitemap(self, slugs, with_archive=True):
+        locs = ""
+        if with_archive:
+            locs += ("<url><loc>https://www.fit1job.ch/les-postes/</loc>"
+                     "<lastmod>2026-09-29T15:27:24+00:00</lastmod></url>")
+        for s in slugs:
+            locs += ("<url><loc>https://www.fit1job.ch/poste/%s/</loc>"
+                     "<lastmod>2026-09-18T00:00:00+00:00</lastmod></url>" % s)
+        return '<?xml version="1.0"?><urlset>%s</urlset>' % locs
+
+    def _ad_page(self, posted="2026-09-29T17:27:24+02:00",
+                 valid="2026-11-29T23:59:59+01:00", with_posting=True,
+                 broken=False, pad=4000):
+        """An advertisement page. `with_posting=False` is the RETIRED one.
+
+        **The retired page still carries Yoast's own blocks**, which is what
+        makes `absent_reason()` answer `no-jobposting` with `our_fault=False`
+        instead of reporting a reading failure — the whole discriminant.
+        """
+        yoast = ('<script type="application/ld+json">{"@context":'
+                 '"https://schema.org","@type":"WebPage","name":"Poste"}'
+                 '</script>')
+        jp = ""
+        if with_posting:
+            body = '{"@type":"JobPosting","title":"Program Manager FR-EN (H/F)"'
+            body += ',"datePosted":"%s","validThrough":"%s"' % (posted, valid)
+            body += ',"hiringOrganization":{"@type":"Organization","name":""}'
+            body += ',"description":"<p>Notre client…</p>","directApply":true}'
+            if broken:
+                # A lone backslash is NOT what this tests; an unparseable block
+                # with the word JobPosting in it is — `absent_reason()` then
+                # answers `unparseable`, `our_fault=True`.
+                body = body[:-1] + ',,}'
+            jp = '<script type="application/ld+json">%s</script>' % body
+        return ("<html><head><title>Poste</title></head><body>%s%s<p>%s</p>"
+                "</body></html>" % (yoast, jp, "x" * pad))
+
+    def _run(self, listing, sitemap=None, ad_pages=None, **kw):
+        """Drive `cmd_list` over canned pages. Returns (code, row list, stderr).
+
+        *`io`, `contextlib`, `argparse` and `json` are imported HERE: this
+        module imports none of the four at top level, and a harness that raises
+        `NameError` on the path it drives is the guard that raises instead of
+        guarding — found only by running it.*
+        """
+        import argparse
+        import contextlib
+        import io
+        import json
+        out, err = io.StringIO(), io.StringIO()
+        asked = []
+
+        def faux_get(url):
+            asked.append(url)
+            if url.endswith("job_listing-sitemap.xml"):
+                return (200, sitemap) if sitemap is not None else (503, "")
+            if "/poste/" in url:
+                slug = url.rstrip("/").rsplit("/", 1)[-1]
+                page = (ad_pages or {}).get(slug)
+                return (200, page) if page is not None else (404, "")
+            return 200, listing
+
+        base = dict(category=None, fetch=False, since=None)
+        base.update(kw)
+        vrai = self.m.get
+        self.m.get = faux_get
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                self.m.cmd_list(argparse.Namespace(**base))
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            self.m.get = vrai
+        payload = json.loads(out.getvalue()) if out.getvalue().strip() else {}
+        return code, payload, err.getvalue(), asked
+
+
+class ARetiredAdvertisementAnswersTwoHundredAndLosesItsBlock(_Fit1JobHarness):
+    """**#868, Fit1Job, measured 2026-10-05.** The example advertisement of the
+    request itself answers `200` with a complete 85 KB page — masthead, menu,
+    footer — and its `JobPosting` block is **gone**, with no «pourvu», no
+    «expiré», nothing a reader could see. It is in neither enumerator.
+
+    > **So the HTTP code carries no information about whether the position is
+    > open**, and the discriminant is the presence of the structured block.
+
+    *This is `shared/ats-open-check.md` step 1b on a host whose markup makes
+    the signal mechanical, and it is the reason this card is worth more than
+    this five-advertisement board is.*
+
+    **The asymmetry is asserted in both directions**, because only one of the
+    two errors announces itself: a page we failed to READ must never be
+    reported as a position that CLOSED. `_ldjson.absent_reason().our_fault` is
+    the value that separates them, and the adapter dies on it.
+    """
+
+    def test_a_retired_page_is_reported_retired_and_a_live_one_listed(self):
+        import contextlib
+        import io
+        pages = {"retiree": self._ad_page(with_posting=False),
+                 "vivante": self._ad_page()}
+
+        def faux_get(url):
+            slug = url.rstrip("/").rsplit("/", 1)[-1]
+            return 200, pages[slug]
+
+        vrai = self.m.get
+        self.m.get = faux_get
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                mort, _ = self.m.detail(
+                    "https://www.fit1job.ch/poste/retiree/", {"slug": "r"})
+                vif, _ = self.m.detail(
+                    "https://www.fit1job.ch/poste/vivante/", {"slug": "v"})
+        finally:
+            self.m.get = vrai
+        self.assertEqual(mort["status"], "retired")
+        self.assertIn("carries no JobPosting", mort["retired_evidence"])
+        self.assertIsNone(mort.get("valid_through"),
+                          "a retired advertisement has no horizon to report")
+        self.assertEqual(vif["status"], "listed")
+        self.assertEqual(vif["valid_through"], "2026-11-29T23:59:59+01:00")
+        self.assertEqual(vif["posted"], "2026-09-29T17:27:24+02:00")
+
+    def test_a_page_we_failed_to_read_is_never_called_a_retirement(self):
+        """**The direction that matters.** An unparseable block on a page that
+        says `JobPosting` is OUR failure; reporting it as a closed position
+        would be silent and permanent, so the adapter exits instead."""
+        import contextlib
+        import io
+
+        def faux_get(_url):
+            return 200, self._ad_page(broken=True)
+
+        vrai = self.m.get
+        self.m.get = faux_get
+        err = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(err):
+                with self.assertRaises(SystemExit) as caught:
+                    self.m.detail("https://www.fit1job.ch/poste/x/",
+                                  {"slug": "x"})
+        finally:
+            self.m.get = vrai
+        self.assertEqual(caught.exception.code, self.m.EXIT_BROKEN)
+        self.assertIn("failure to read", err.getvalue())
+        self.assertNotIn("retired", err.getvalue())
+
+    def test_a_missing_page_is_gone_and_not_retired(self):
+        """Three states, not two: `gone` (404), `retired` (200 without the
+        block) and `listed`. *Collapsing the first two would lose the finding,
+        because a 404 is the board agreeing with us and a 200 is not.*"""
+        import contextlib
+        import io
+
+        def faux_get(_url):
+            return 404, ""
+
+        vrai = self.m.get
+        self.m.get = faux_get
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):
+                row, err = self.m.detail(
+                    "https://www.fit1job.ch/poste/x/", {"slug": "x"})
+        finally:
+            self.m.get = vrai
+        self.assertEqual(row["status"], "gone")
+        self.assertEqual(err, "HTTP 404")
+
+
+class TheCardBoundIsTheAnchorAndNotTheFirstListItem(_Fit1JobHarness):
+    """**The trap, with its measurement.** Each card wraps a
+    `<ul class="listing-icons">` of further `<li>`s, so a non-greedy
+    `<li\\s+data-longitude=.*?</li>` ends at the card's own *location* item.
+
+    *Measured while writing the adapter: it found the right NUMBER of cards,
+    five correct titles, five correct towns — and `None` for the date on every
+    one of them.* **Which reads exactly like a board that publishes no dates.**
+
+    So the count is not the thing to assert. The thing to assert is that each
+    card yields the field that sits BEYOND the inner `</li>`, and the second
+    case below runs the wrong bound on the same fixture to show that it is the
+    bound and not the fixture.
+    """
+
+    def test_every_card_yields_the_field_beyond_the_inner_list_item(self):
+        """**The date is asserted BEFORE the exit code, on purpose.**
+
+        *Written the other way round, this case still went red under the wrong
+        bound — but from `assertEqual(code, 0)`, because every row lost its
+        date and the adapter exited 6. The red was real and its attribution
+        was wrong: the sentence naming the trap never ran.* **A table of
+        mutations can be exact in total and wrong on every line**, and the only
+        thing that separates the two is reading which assertion fired.
+        """
+        code, payload, err, _ = self._run(self._listing(self.ADS))
+        self.assertEqual(len(payload["ads"]), 3, err)
+        self.assertEqual([a["posted"] for a in payload["ads"]],
+                         ["2026-09-29", "2026-09-10", "2026-08-24"],
+                         "a date lost here is the inner `</li>` bound")
+        self.assertEqual([a["locality"] for a in payload["ads"]],
+                         ["Corminboeuf", "Rond-Point-de-Rive",
+                          "St-Barthélemy"])
+        self.assertEqual([a["job_id"] for a in payload["ads"]],
+                         ["6328", "6302", "6290"])
+        self.assertTrue(all(a["teaser"] for a in payload["ads"]),
+                        "the teaser also sits past the inner list")
+        # **And the wrong bound is not silent at runtime either**: with no
+        # date on any row the adapter names the missing field and exits 6.
+        # *Two layers, and the sweep that found this ordering defect is what
+        # showed the second one.*
+        self.assertEqual(code, 0, err)
+
+    def test_the_wrong_bound_finds_the_same_count_and_loses_the_date(self):
+        """**The negative control on the instrument itself**, so the bound is
+        justified by a measurement rather than by a comment. *The two regexes
+        agree on the count, which is why counting cards cannot find this.*"""
+        import re
+        page = self._listing(self.ADS)
+        juste = self.m.CARD.findall(page)
+        faux = re.findall(r"<li\s+data-longitude=.*?</li>", page, re.S)
+        self.assertEqual(len(juste), len(faux),
+                         "if the counts ever differ, this trap has changed "
+                         "shape and the comment above is stale")
+        self.assertTrue(all(self.m.CARD_DATE.search(c) for c in juste))
+        self.assertFalse(any(self.m.CARD_DATE.search(c) for c in faux),
+                         "the wrong bound is supposed to lose every date; if "
+                         "it keeps one, this case is proving nothing")
+        # And it keeps exactly the fields that sit before the inner list —
+        # which is why the wrong answer looks like a right one.
+        self.assertTrue(all(self.m.CARD_PLACE.search(c) for c in faux))
+
+
+class AFullListingIsCappedAndNotComplete(_Fit1JobHarness):
+    """**The three named ends, plus a fourth for a scoped read.** The page
+    declares its own cap — `data-per_page` — so completeness is decided against
+    the board's own figure and not against ours.
+
+    **The boundary is tested AT equality on purpose**, because the dangerous
+    mutation is `>=` becoming `>`: at exactly the cap it would call a truncated
+    page complete, and nothing downstream would contradict it. *This is not the
+    fixture-at-the-threshold defect of 2026-10-01 — there the threshold made a
+    branch unreachable; here equality IS the case under test, and it is tested
+    beside the two cases on either side of it.*
+    """
+
+    def test_fewer_cards_than_the_declared_cap_is_complete(self):
+        code, payload, err, _ = self._run(self._listing(self.ADS, per_page=10))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(payload["ended"], "complete")
+        self.assertEqual(payload["declared_per_page"], 10)
+        self.assertIn("therefore it is the whole board", err)
+
+    def test_exactly_the_declared_cap_is_capped(self):
+        code, payload, err, _ = self._run(self._listing(self.ADS, per_page=3))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(payload["ended"], "capped",
+                         "at exactly the cap the page is full, so the board is "
+                         "larger than what was read")
+        self.assertNotIn("therefore it is the whole board", err)
+
+    def test_more_cards_than_the_cap_is_also_capped(self):
+        code, payload, err, _ = self._run(self._listing(self.ADS, per_page=2))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(payload["ended"], "capped")
+
+    def test_a_capped_page_names_the_advertisements_it_did_not_reach(self):
+        """The witness earns its keep only here: the capped branch is where a
+        count that is not ours says how much is missing."""
+        sm = self._sitemap([a["slug"] for a in self.ADS] + ["un-quatrieme"])
+        code, payload, err, _ = self._run(self._listing(self.ADS, per_page=3),
+                                          sitemap=sm)
+        self.assertEqual(payload["ended"], "capped")
+        self.assertEqual(payload["sitemap_declares"], 4)
+        self.assertIn("un-quatrieme", err)
+        self.assertIn("load_more_jobs", err)
+
+    def test_no_declared_cap_claims_nothing(self):
+        """**An unreadable cap is not a complete page.** The container losing
+        its attribute is a markup change, and the honest answer is that
+        completeness cannot be decided from the card count alone."""
+        code, payload, err, _ = self._run(
+            self._listing(self.ADS, declare_cap=False))
+        self.assertEqual(payload["ended"], "unknown-cap")
+        self.assertIsNone(payload["declared_per_page"])
+        self.assertIn("the cap is unknown", err)
+        self.assertNotIn("therefore it is the whole board", err)
+
+    def test_a_category_read_is_complete_category_and_compares_nothing(self):
+        """**A bounded run does not answer «how many are there».** The first
+        draft printed «therefore it is the whole board» on
+        `/categorie-poste/it/` **and** compared that one taxonomy term against
+        a sitemap that enumerates all of them — rocken.py's lesson, with a
+        filter instead of a page limit.
+
+        *Neither showed up in the live output, because every advertisement on
+        the board carries `it` and the two agreed.* So the case is written with
+        a sitemap that is deliberately LARGER than the category.
+        """
+        sm = self._sitemap([a["slug"] for a in self.ADS] + ["un-poste-finance"])
+        code, payload, err, _ = self._run(self._listing(self.ADS, per_page=15),
+                                          sitemap=sm, category="it")
+        self.assertEqual(payload["ended"], "complete-category")
+        self.assertIn("not the whole board", err)
+        self.assertIn("No comparison is made", err)
+        self.assertNotIn("in the sitemap and not in the listing", err,
+                         "the other categories are not a gap")
+
+
+class TheWitnessDropsTheArchivePageItContains(_Fit1JobHarness):
+    """**`/les-postes/` is itself inside `/job_listing-sitemap.xml`.** Counting
+    `<loc>` therefore declares one advertisement more than exists — six for
+    five on 2026-10-05 — and the surplus would be read as one advertisement the
+    listing had missed.
+
+    *And an unreadable witness is not a witness that agrees.* A sitemap that
+    answers 503 must leave the comparison unmade rather than report zero, which
+    is the `None`-versus-`0` distinction `_robots.py` is built on.
+    """
+
+    def test_the_archive_page_is_not_counted_as_an_advertisement(self):
+        sm = self._sitemap([a["slug"] for a in self.ADS], with_archive=True)
+        code, payload, err, _ = self._run(self._listing(self.ADS), sitemap=sm)
+        self.assertEqual(payload["sitemap_declares"], 3,
+                         "four <loc> entries, three of which are "
+                         "advertisements")
+        self.assertIn("the two sets are identical", err)
+
+    def test_the_sets_are_compared_by_membership_and_not_by_count(self):
+        """**Two sets of the same size with different members.** The counts
+        agree and the boards do not — no total distinguishes them."""
+        sm = self._sitemap([self.ADS[0]["slug"], self.ADS[1]["slug"],
+                            "un-poste-que-le-listing-ne-montre-pas"])
+        code, payload, err, _ = self._run(self._listing(self.ADS), sitemap=sm)
+        self.assertEqual(payload["sitemap_declares"], len(payload["ads"]),
+                         "the cardinals are equal on purpose")
+        self.assertIn("un-poste-que-le-listing-ne-montre-pas", err)
+        self.assertIn("in the listing and not in the sitemap", err)
+
+    def test_an_unreadable_sitemap_is_not_a_count_of_zero(self):
+        code, payload, err, _ = self._run(self._listing(self.ADS),
+                                          sitemap=None)
+        self.assertIsNone(payload["sitemap_declares"])
+        self.assertIn("no witness this run", err)
+        self.assertNotIn("the two sets are identical", err)
+
+
+class APlaceOnTheCardIsSplitFromTheRight(_Fit1JobHarness):
+    """`Rond-Point-de-Rive, Genève, Suisse` — **the locality itself contains
+    hyphens and the field contains commas**, so the split is taken from the
+    right: country last, canton second to last, and everything else is the
+    town. A shape with too few parts is returned WHOLE rather than split, since
+    an unparsed place is a question and a wrongly split one is an answer.
+    """
+
+    def _place(self, raw):
+        card = self.CARD.format(jid="1", slug="s", title="T",
+                                date="2026-01-01", place=raw, teaser="t")
+        return self.m.place_of(card)
+
+    def test_three_parts_are_town_canton_country(self):
+        p = self._place("Rond-Point-de-Rive, Genève, Suisse")
+        self.assertEqual((p["locality"], p["region"], p["country"]),
+                         ("Rond-Point-de-Rive", "Genève", "Suisse"))
+
+    def test_a_town_that_contains_a_comma_keeps_it(self):
+        p = self._place("Le Mont, sur Lausanne, Vaud, Suisse")
+        self.assertEqual(p["locality"], "Le Mont, sur Lausanne")
+        self.assertEqual((p["region"], p["country"]), ("Vaud", "Suisse"))
+
+    def test_two_parts_leave_the_canton_empty_rather_than_guessing(self):
+        p = self._place("Genève, Suisse")
+        self.assertEqual((p["locality"], p["region"], p["country"]),
+                         ("Genève", None, "Suisse"))
+
+    def test_one_part_is_returned_whole_and_not_split(self):
+        p = self._place("Suisse romande")
+        self.assertEqual(p["locality"], "Suisse romande")
+        self.assertIsNone(p["country"],
+                          "naming a country we were not given is the error "
+                          "this branch exists to avoid")
+        self.assertEqual(p["place_raw"], "Suisse romande")
+
+
+class ASinceFilterKeepsWhatItCannotDate(_Fit1JobHarness):
+    """**Absent is not old.** A row with no date survives `--since`, and the
+    line says how many of how many — `_locations.drop_report`'s discipline
+    applied to a date filter."""
+
+    def test_the_filter_reduces_and_says_by_how_much(self):
+        code, payload, err, _ = self._run(self._listing(self.ADS),
+                                          since="2026-09-01")
+        self.assertEqual([a["job_id"] for a in payload["ads"]],
+                         ["6328", "6302"])
+        self.assertIn("2 of 3 kept", err)
+
+    def test_a_row_with_no_date_is_kept(self):
+        sans = dict(self.ADS[2])
+        page = self._listing(self.ADS[:2]).replace(
+            "</ul></div></div>",
+            self.CARD.format(**sans).replace(
+                '<time datetime="2026-08-24">Publié le 2026-08-24</time>',
+                "") + "</ul></div></div>")
+        code, payload, err, _ = self._run(page, since="2026-09-01")
+        ids = [a["job_id"] for a in payload["ads"]]
+        self.assertIn("6290", ids, "an undated row is kept, not dropped")
+        self.assertIsNone(
+            [a for a in payload["ads"] if a["job_id"] == "6290"][0]["posted"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
