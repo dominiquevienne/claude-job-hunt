@@ -300,9 +300,47 @@ def access_of(card):
         return f"refusé au client HTTP — {r['status']}, {when}, {tool}", r["line"]
     if script and script != "none":
         return "HTTP ordinaire (adaptateur)", "`script:` sans refus consigné"
-    if re.search(r"\b(browser|navigateur)\b", card["text"], re.I):
-        return "route navigateur (déclarée en prose)", "le mot dans la fiche"
-    return "non déclaré", "aucune ligne de refus, aucun script"
+    # **A DECLARED route, whatever it declares.** `route_of` above answers only
+    # for `browser` with a count above zero, because a browser route to nothing
+    # is not a coverage (#264). The two cases it deliberately drops still
+    # DECLARE something, and saying «non déclaré» of them would be false about
+    # the field:
+    #   * `route: http · <n> · <date>` — a measured HTTP route with no adapter
+    #     written yet, which is the state the #949 campaign produces most often.
+    #     **Population today: ZERO** — measured 2026-10-05 by calling this very
+    #     function on all 502 cards, 85 carry `route: http` and every one of
+    #     them also carries a script. *So this branch closes a LATENT gap and
+    #     repairs no card: the figure of «68 cards reading non déclaré» in #998
+    #     is a different set — none of the 70 carries a `route:` line at all.*
+    #
+    # **And NOT a countless `route: browser`**, which is what #998 asked for on
+    # `softy` and `linkedin`: the guard of #264 — `tests/test_core.py`,
+    # `AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse` — reddens a
+    # `route: browser` line with no count above zero AND no date, because a
+    # browser route to nothing is not a coverage. **Neither card has ever
+    # measured a board size, and a count is not invented to satisfy a format**,
+    # so the two read «non déclaré» below — which is true of their FIELDS, and
+    # their prose still says what they are. *The declaration they are owed is a
+    # measurement, and this function cannot manufacture one.*
+    rv = (h.get("route") or "").strip()
+    kind = ROUTE.match(rv)
+    if kind and kind.group(1) == "http":
+        count, when = kind.group(2), kind.group(3)
+        n = int(re.sub(r"\D", "", count)) if count and re.sub(r"\D", "", count) else None
+        return ("HTTP — route déclarée" + (f", {n} annonce(s)" if n else "")
+                + (f" au {when}" if when else ""), "`route: http`")
+    # **The prose fallback is GONE, and this is where it was.** It returned
+    # «route navigateur (déclarée en prose)» as soon as the bare word `browser`
+    # or `navigateur` appeared ANYWHERE in a card (#998, found by `cd` on
+    # 2026-10-05). It labelled **7 cards of 502** and it was RIGHT on two of
+    # them — `softy` and `linkedin` really are browser adapters — *which is
+    # exactly why it survived: anyone who checked it landed on a case where it
+    # worked.* The five it was wrong about claimed nothing, and one of them
+    # carried the word by **quoting our own doctrine**: a card that cites the
+    # rule got labelled by it. **A guard reversed is replaced by a test that
+    # asserts the new semantics, never deleted in silence** — see
+    # `tests/test_core.py`, `ALabelFromProseAssertsARouteNobodyDeclared`.
+    return "non déclaré", "aucune ligne de refus, aucun script, aucune `route:`"
 
 
 EMPTY = {"cards": 0, "fait": 0, "faisable": 0, "indetermine": 0, "reverifier": 0,
