@@ -88,6 +88,56 @@ carried the same sentence and is corrected with this card.
 The JSON service, where its path is permitted, remains the better route: it
 answers unauthenticated, with no key, no cookie and **no browser**.
 
+### The browser route for `jobs.bcv.ch`, and what it does NOT generalise to — #925
+
+**Measured 2026-10-05 in a real browser, no login, no cookie typed, no challenge met.**
+Guard taken on the exact host first: `jobs.bcv.ch` `/search/` and `/job/` are permitted,
+`/services/` refused — and `jobs.bcv.ch` is not `bcv.ch`, which resolves to `www.bcv.ch`
+and says nothing about this host.
+
+**The route, in the rendered page:**
+
+```
+GET /search/?q=&locale=fr_FR          in a browser
+a[href*="/job/"]                      -> one link per vacancy
+/job/<slug>/(\d+)(?:-xx_XX)?/?$        -> the requisition id
+deduplicate by id                     -> a tenant may link each ad twice
+```
+
+| re-measured | 2026-09-28 (the report) | **2026-10-05** |
+| :-- | :-- | :-- |
+| stated total, `q=` empty | 34 | **31** |
+| `a[href*="/job/"]` on the rendered page | **0** | **10** — one per tile, ids matching the text |
+| `&startrow=10` | repeats page 1 | **repeats page 1** — identical 10 ids, 0 new, still «1 à 10 sur 31 résultats» |
+| `q=IT` / `q=informatique` | 6 / 9, union 12 | **6 / 8, union 12 distinct**, every IT-domain id covered |
+
+**Two corrections to the report, and the first changes the route.** The tiles **are**
+`/job/` links in the rendered page — 10 of 10, immediately, stable from t=0 to t=12.5 s, so
+it is not a late-attachment artefact. *«&nbsp;A link extractor concludes zero on a page of 34
+posts&nbsp;» was true when measured and is not true now.* And the report's four-field text
+regex **loses the first tile**: 9 of 10 unfiltered, 7 of 8 on `q=informatique` — measured
+twice, both times short by exactly one. **So read the links, not the text**; the two methods
+agree id for id where both work, which is what makes either trustworthy.
+
+**The browser is still required here, and that is a separate fact from the links.** The
+server sends a 66 kB shell with **0** `/job/` links to a plain client (2026-10-05), which is
+why `list --host jobs.bcv.ch` still exits 8. **Rendered ≠ served**, and only the second is
+the adapter's business.
+
+**And the template predicts the ROUTE, not the PARSING.** Re-measured on
+`jobs.sicpa.com` the same day: `/search/` in a browser carries **40** `/job/` links for
+**20 distinct** ids — so each ad is linked twice there and once on BCV, and an extractor
+that does not deduplicate doubles its count. Its hrefs end `/job/<slug>/1393513233/` — a
+trailing slash, **no locale suffix**, a 10-digit id against BCV's 5 — and it carries **no
+tile text at all**: «&nbsp;Identifiant de la demande&nbsp;» is absent, so BCV's text regex
+returns nothing there. *One pattern does hold on both shapes, and it is the one written
+above; it was checked against both before being put here.*
+
+**So: «&nbsp;browser + `/search/` + links&nbsp;» is the route for a client-side tenant. The id
+pattern and the tile-text form are NOT platform properties, and this card does not claim
+them as any.**
+
+
 ```
 POST https://<host>/services/recruiting/v1/jobs
 {"locale": "fr_FR", "pageNumber": 0, "keywords": "analyste"}
