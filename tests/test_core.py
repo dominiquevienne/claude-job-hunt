@@ -1924,6 +1924,128 @@ class EmbeddedIntermediate(unittest.TestCase):
                                     "see `_tls.check()` for what to do")
 
 
+class ATenantThatEmitsNoJobTileLiIsNotATenantThatServesNothing(unittest.TestCase):
+    """**#989, measured 2026-10-05.** `jobs.sicpa.com` serves **40 `/job/` links in its raw
+    body** (97 390 B) and `TILE_RE` found **zero**: it requires
+    `<li class="job-tile job-id-N" data-url=…>`, which that tenant does not emit. The failure
+    then said «&nbsp;this tenant does not serve its list to a plain client&nbsp;» — **true for
+    `jobs.bcv.ch`** (66 kB shell, 0 links) **and false for this one**.
+
+    *A diagnosis that attributes an absence to the far end is irrefutable from here: while the
+    sentence names the host, it has the shape of a fact and nobody reopens it.* The tenant was
+    withholding nothing; our pattern was looking for markup it does not emit.
+
+    **And the risk of the fallback is not a failure, it is a DOUBLED COUNT.** Those 40 links
+    are **20 distinct ids** — each ad linked twice — against 10 for 10 on BCV. An extractor
+    that does not deduplicate returns 40: plausible, and only wrong. *That is the class just
+    rejected on `ItemList.numberOfItems`, which agreed with the total on the small case and
+    disagreed on the large one.*
+
+    **One case per FORM, because the second axis of a pattern is the shape of the data and
+    not yes/no** — fourth occurrence in five days, so the bench carries the forms rather than
+    relying on anyone noticing:
+
+        <li class="job-tile job-id-N" data-url=…>   jobs.fr.ch, and a brand sub-site path
+        <a href="…/job/<slug>/30662-fr_FR">         BCV: 5 digits, locale suffix, no slash
+        <a href="…/job/<slug>/1393513233/">         SICPA: 10 digits, no suffix, trailing slash
+        each ad linked twice                        the doubled count
+        <a href="/job/">                            no id: must not enter
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_sf_989", str(pathlib.Path(SCRIPTS) / "successfactors.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LI = ('<li class="job-tile job-id-%d" data-url="%s">'
+          '<a class="jobTitle-link" href="%s">%s</a></li>')
+
+    def test_the_li_form_is_read_exactly_as_before(self):
+        hw = self._mod()
+        body = "".join(self.LI % (i, "/job/T%d/%d-fr_FR" % (i, i),
+                                  "/job/T%d/%d-fr_FR" % (i, i), "Titre %d" % i)
+                       for i in (11, 12, 13))
+        got = hw.tiles(body)
+        self.assertEqual([t[0] for t in got], ["11", "12", "13"])
+        self.assertEqual(got[0][2], "Titre 11")
+
+    def test_a_brand_sub_site_path_still_counts(self):
+        """`/Police_Cantonale/job/…` on jobs.fr.ch — a pattern anchored on `/job/`
+        alone once read 23 of the 25 the page declared. That must not come back."""
+        hw = self._mod()
+        body = self.LI % (7, "/Police_Cantonale/job/Agent/7-fr_FR",
+                          "/Police_Cantonale/job/Agent/7-fr_FR", "Agent")
+        self.assertEqual([t[0] for t in hw.tiles(body)], ["7"])
+
+    def test_the_anchor_fallback_reads_both_href_shapes(self):
+        hw = self._mod()
+        bcv = '<a href="/job/Responsable-Broye/30662-fr_FR">Responsable</a>'
+        sicpa = '<a href="/job/Tirana-Java-Backend-Engineer/1393513233/">Java</a>'
+        self.assertEqual([t[0] for t in hw.tiles(bcv)], ["30662"])
+        self.assertEqual([t[0] for t in hw.tiles(sicpa)], ["1393513233"])
+        self.assertEqual(hw.tiles(sicpa)[0][2], "Java")
+
+    def test_an_ad_linked_twice_is_counted_once(self):
+        """The doubled count, which is the real risk of this fallback."""
+        hw = self._mod()
+        lien = '<a href="/job/Quito-HR/1434173533/">HR</a>'
+        body = (lien + lien) * 3 + '<a href="/job/Other/1393025833/">O</a>'
+        got = hw.tiles(body)
+        self.assertEqual(len(got), 2, got)
+        self.assertEqual([t[0] for t in got], ["1434173533", "1393025833"])
+
+    def test_a_job_link_without_an_id_cannot_enter(self):
+        hw = self._mod()
+        for nu in ('<a href="/job/">Mes offres</a>',
+                   '<a href="/job/saved/">Sauvegardees</a>',
+                   '<a href="/search/?q=job">Recherche</a>'):
+            with self.subTest(lien=nu):
+                self.assertEqual(hw.tiles(nu), [], nu)
+
+    def test_the_li_form_wins_so_no_tenant_changes_by_gaining_a_reader(self):
+        """A body with BOTH markups must be read by the `<li>` one — otherwise
+        `jobs.fr.ch` would silently change reader, and its fields come from the `<li>`."""
+        hw = self._mod()
+        body = (self.LI % (11, "/job/T/11-fr_FR", "/job/T/11-fr_FR", "Titre")
+                + '<a href="/job/Autre/999999/">Autre</a>')
+        got = hw.tiles(body)
+        self.assertEqual([t[0] for t in got], ["11"], "the anchor fallback ran anyway")
+
+    def test_the_failure_names_our_pattern_and_not_what_the_host_serves(self):
+        """**Asserted on the OUTPUT, by driving `list_html`, not on the source text.**
+        The first version of this case searched the file for «&nbsp;carried no tile in
+        either markup&nbsp;» and raised `ValueError: substring not found` — the phrase
+        exists in what the tool PRINTS and not in what it is written as, because the
+        f-string wraps across two lines. *A message is a property of the run, not of the
+        file*, and the same mistake would pass whenever a sentence happened to fit on
+        one line."""
+        import argparse
+        import contextlib
+        import io
+        hw = self._mod()
+        coquille = "<html><body><div id='app'></div></body></html>"
+        err = io.StringIO()
+        vrai = hw.get
+        hw.get = lambda url: (200, coquille)
+        code = None
+        try:
+            with contextlib.redirect_stderr(err):
+                hw.list_html(argparse.Namespace(host="jobs.bcv.ch", pages=1, keywords=None),
+                             why="test")
+        except SystemExit as e:
+            code = e.code
+        finally:
+            hw.get = vrai
+        sortie = err.getvalue()
+        self.assertEqual(code, 8, sortie)
+        self.assertIn("carried no tile in either markup we read", sortie)
+        self.assertIn("what we failed to recognise", sortie)
+        self.assertIn("a THIRD markup we have not met", sortie)
+        # the accusation #989 is about must be gone from what the user reads
+        self.assertNotIn("this tenant does not serve its list", sortie)
+
 class AWalkHasThreeEndsAndThisOneHadTwo(unittest.TestCase):
     """**#924, jobup and jobs.ch — measured 2026-09-28, reproduced 2026-10-05.** When there
     is no page 2, these sites **serve page 1 again**. The repeat branch read that as

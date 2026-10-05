@@ -67,6 +67,25 @@ ROWS = 25          # tiles per /search/ page on the tenants measured; `startrow`
 # and the exact URL is gated before it is fetched.
 TILE_RE = re.compile(r'<li class="job-tile job-id-(\d+)[^"]*"[^>]*?data-url="([^"]*/job/[^"]+)"',
                      re.S)
+# **UN LOCATAIRE PEUT NE PAS EMETTRE CE `<li>` DU TOUT — #989, mesure du 2026-10-05.**
+# `jobs.sicpa.com` sert **40 liens `/job/` dans son corps BRUT** (97 390 o), et `TILE_RE`
+# en trouvait ZERO : il exige `<li class="job-tile job-id-N" data-url=…>`, que ce locataire
+# n'emet pas. Le message d'echec disait alors «&nbsp;this tenant does not serve its list to
+# a plain client&nbsp;» — vrai pour `jobs.bcv.ch` (coquille de 66 ko, 0 lien), **faux pour
+# celui-la**. *Un diagnostic qui attribue une absence au lointain est irrefutable de chez
+# nous : tant que la phrase nomme l'hote, elle a la forme d'un fait et personne ne la
+# rouvre.* Le locataire ne retenait rien ; notre motif cherchait un balisage absent.
+#
+# **ET LE RISQUE DU REPLI N'EST PAS UN ECHEC, C'EST UN COMPTE DOUBLE.** Chez sicpa les
+# 40 liens ne font que **20 ids distincts** — chaque annonce est liee deux fois — contre
+# 10 pour 10 chez BCV. Un extracteur qui ne deduplique pas rend 40 : plausible, et
+# seulement faux. La deduplication de `tiles()` par `seen` couvre les deux formes.
+#
+# Les deux formes d'href mesurees, et le motif tient sur LES DEUX :
+#     BCV    /job/<slug>/30662-fr_FR      5 chiffres, suffixe de locale, pas de slash final
+#     SICPA  /job/<slug>/1393513233/     10 chiffres, aucun suffixe, slash final
+ANCHOR_RE = re.compile(r'<a[^>]*href="([^"]*/job/[^"]*)"[^>]*>(.*?)</a>', re.S | re.I)
+ANCHOR_ID_RE = re.compile(r'/job/.*?/(\d+)(?:-[a-z]{2}_[A-Z]{2})?/?$')
 TITLE_RE = re.compile(r'(?s)class="jobTitle-link[^"]*"[^>]*>\s*(.*?)\s*</a>')
 # `id="…-section-city-value"` and NOT the bare `section-city-value"`: the
 # label `<span>` beside it carries `aria-describedby="…-section-city-value"`,
@@ -292,7 +311,38 @@ def route_for(host):
 
 
 def tiles(body):
-    """`[(id, path, title, fields)]` for every job tile on a `/search/` page."""
+    """`[(id, path, title, fields)]` for every job tile on a `/search/` page.
+
+    **Two markups, and the `<li>` one is tried first** (#989). A tenant that emits it
+    is read exactly as before — `jobs.fr.ch`, whose ids come from the `<li>` class and
+    whose path is sometimes a brand sub-site. Only when that finds NOTHING does the bare
+    anchor form run, so no tenant changes behaviour by gaining a second reader.
+    """
+    out = _tiles_from_li(body)
+    return out if out else _tiles_from_anchors(body)
+
+
+def _tiles_from_anchors(body):
+    """The bare `<a href="…/job/…">` form — deduplicated by id, first link wins.
+
+    Dedup is the whole point: 40 links for 20 ids on the tenant that motivated this.
+    An id is required, so a bare `/job/` navigation link cannot enter.
+    """
+    out, seen = [], set()
+    for m in ANCHOR_RE.finditer(body):
+        path, inner = m.group(1), m.group(2)
+        got = ANCHOR_ID_RE.search(htmlmod.unescape(path))
+        if not got:
+            continue
+        jid = got.group(1)
+        if jid in seen:
+            continue
+        seen.add(jid)
+        out.append((jid, htmlmod.unescape(path), to_text(inner), {}))
+    return out
+
+
+def _tiles_from_li(body):
     out, seen = [], set()
     for m in TILE_RE.finditer(body):
         jid, path = m.group(1), m.group(2)
@@ -406,13 +456,22 @@ def list_html(a, why):
                   file=sys.stderr)
             return
         # **The state that was missing** — the false zero of #181 and #202.
-        die(f"[successfactors:{host}] route html — {SEARCH} returned no job "
-            f"tile ({anchor}). **This is NOT an empty board and NOT a zero**: "
-            f"this tenant does not serve its list to a plain client (measured "
-            f"on `jobs.bcv.ch`: a 66 kB shell, 0 `/job/` links), and "
+        # **La phrase dit ce que NOTRE outil n'a pas trouve, jamais ce que l'hote ne
+        # fait pas — #989.** Elle accusait le locataire de ne pas servir sa liste : vrai
+        # pour `jobs.bcv.ch`, faux pour `jobs.sicpa.com`, qui en servait 40 liens que
+        # notre motif ignorait. Un diagnostic qui nomme le lointain est irrefutable
+        # d'ici, et il a la forme d'un fait.
+        die(f"[successfactors:{host}] route html — {SEARCH} carried no tile in "
+            f"either markup we read ({anchor}): no `<li class=\"job-tile "
+            f"job-id-…\" data-url=…>`, and no `<a href=\"…/job/<slug>/<id>\">`. "
+            f"**This is NOT an empty board and NOT a zero**, and it does not "
+            f"say what this host serves — only what we failed to recognise in "
+            f"it. Two things look like this: a tenant that renders its list in "
+            f"the browser and sends a shell (`jobs.bcv.ch`: 66 kB, 0 `/job/` "
+            f"links, 2026-10-05), and a THIRD markup we have not met. "
             f"`{API}`, which would have listed it, is refused by its rules. "
-            f"INDETERMINATE — a browser route for this tenant is to be "
-            f"documented, not a count.", code=8)
+            f"INDETERMINATE — read the page and say which, before reading this "
+            f"as a closed board.", code=8)
     # **`rows_read` beside `kept`, and the pages** — a tile seen on two pages
     # is dropped by `seen`, and without this line the drop is invisible: on
     # `jobs.fr.ch` three pages of 25 emitted 73, and only this said why.
