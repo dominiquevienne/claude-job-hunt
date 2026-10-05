@@ -43034,13 +43034,22 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
 
     def _cards(self, mod, texts):
         """Fixture cards in a temp dir — *a bench reproduces the structure it
-        needs rather than borrowing the one in use.*"""
+        needs rather than borrowing the one in use.*
+
+        **And the card's name comes from `os.path.basename`, never from
+        `rsplit("/")`.** *The first version of this class split on `/` and
+        passed on ubuntu and macos in both Python versions — and failed on
+        **all four windows jobs**, where `path` carries backslashes and the
+        split returns the whole path. A key that is right on three platforms
+        and wrong on the fourth is the «one string, several forms» family
+        applied to a path separator, and only the CI matrix showed it.*
+        """
         import tempfile
         d = tempfile.mkdtemp()
         for name, body in texts.items():
             with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
                 fh.write(body)
-        return {c["path"].rsplit("/", 1)[-1][:-3]: c
+        return {os.path.splitext(os.path.basename(c["path"]))[0]: c
                 for c in mod.read_cards(d)}
 
     def test_no_card_in_the_repository_takes_its_label_from_its_prose(self):
@@ -43060,7 +43069,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         browser route; `jobeo-ch` measures that its board declares 1 130
         adverts and 20 are reachable, and says nothing about a browser."""
         mod = self._cb()
-        cards = {c["path"].rsplit("/", 1)[-1][:-3]: c
+        cards = {os.path.splitext(os.path.basename(c["path"]))[0]: c
                  for c in mod.read_cards(self.BOARDS)}
         for name in self.LABELLED:
             if name in self.DECLARED:
@@ -43091,7 +43100,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         this change cannot manufacture.**
         """
         mod = self._cb()
-        cards = {c["path"].rsplit("/", 1)[-1][:-3]: c
+        cards = {os.path.splitext(os.path.basename(c["path"]))[0]: c
                  for c in mod.read_cards(self.BOARDS)}
         for name in ("softy", "linkedin"):
             with self.subTest(card=name):
