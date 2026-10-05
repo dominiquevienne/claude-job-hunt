@@ -5,7 +5,7 @@
 <!-- hosts: www.cvbankas.lt, cvbankas.lt -->
 <!-- script: cvbankas.py -->
 <!-- countries: LT -->
-<!-- content: measured · rules read twice and certain — the only Anthropic names refused are `anthropic-ai` and `Claude-Web`, names no request from here carries; `*` refused ten account and social paths and nothing of the board; `identity()` answers `claude-user`, `verdict()` sweeps — and the transport answers 200: the root is the listing, «Rodoma 9 113 skelbimų», page 1 carries 142 VIP cards, pages 2–181 carry 50 each and the last 21 — 142 + 179 × 50 + 21 = 9 113, exactly the stated figure; the advertisement page carries a JobPosting in microdata · 2026-09-12 12:32 UTC -->
+<!-- content: measured · the transport answers 200: the root is the listing, «Rodoma 9 113 skelbimų», page 1 carries 142 VIP cards, pages 2–181 carry 50 each and the last 21 — 142 + 179 × 50 + 21 = 9 113, exactly the stated figure; the advertisement page carries a JobPosting in microdata. Rules read twice and certain — the only Anthropic names refused are `anthropic-ai` and `Claude-Web`, names no request from here carries; `*` refused ten account and social paths and nothing of the board; `identity()` answers `claude-user`, `verdict()` sweeps · 2026-09-12 12:32 UTC -->
 <!-- witness: the listing's own «Rodoma N skelbimų», read on every page and printed beside the distinct count — the full walk of 181 pages, 2026-09-12 12:40:29–12:59:59 UTC: «9 111 emitted, site states 9 113 — 2 short» — and the page arithmetic 142 + 179 × 50 + 21 = 9 113 measured on pages 1, 2, 3 and 181 -->
 
 **Shipped 2026-09-12 — measured in lot 6 of #233, shipped the same hour.**
