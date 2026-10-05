@@ -1924,6 +1924,73 @@ class EmbeddedIntermediate(unittest.TestCase):
                                     "see `_tls.check()` for what to do")
 
 
+class AnAbsenceOnACareersPageIsNotAClosure(unittest.TestCase):
+    """**#903, measured 2026-09-23.** Step 1b called «&nbsp;the role is missing from the
+    employer's careers page&nbsp;» a **strong signal** of closure, guarded by one clause:
+    *first confirm the page actually listed something.* **Two things invalidate the
+    inference, and the second one SATISFIES that clause.**
+
+    *(a)* the page lists nothing — a client-rendered shell, which the clause catches;
+    *(b)* the page lists, it is fresh, and it still does not carry the ad: **7 named,
+    dated openings all published that same day, carrying neither of the employer's two
+    board ads from that day**, with the sibling ad verified live, apply button active.
+    *If the careers page were authoritative both would be closed; one demonstrably was
+    not.* An employer can publish on a board a population their own site does not carry.
+
+    **The cost is asymmetric and runs the wrong way:** a false «&nbsp;closed&nbsp;» writes
+    `discarded` on a live ad, and a `discarded` does not reopen — the skill does not
+    reverse a decision it did not take. So this guard holds the doctrine in place, the way
+    `test_the_empty_message_names_three_causes` holds jobup's three causes.
+
+    **And the repository carried no verdict resting on this inference** — searched
+    2026-10-05: the only two places that draw closure from a careers-page absence are the
+    rule and its citation, both corrected here. *What the defect produced lives in users'
+    ledgers, which we do not have, and a `discarded` does not reopen — so the list of
+    affected hosts is empty HERE and that is a measurement, not a reassurance.*"""
+
+    def _skill(self):
+        root = pathlib.Path(SCRIPTS).parent.parent.parent
+        return (root / "skills" / "cover-letter" / "SKILL.md").read_text(encoding="utf-8")
+
+    def _check(self):
+        root = pathlib.Path(SCRIPTS).parent.parent.parent
+        return (root / "shared" / "ats-open-check.md").read_text(encoding="utf-8")
+
+    def test_step_1b_names_both_invalidating_cases_and_not_only_the_shell(self):
+        s = self._skill()
+        i = s.index("missing from the employer's careers page")
+        window = s[i:i + 2600]
+        # (a) the shell — the case the old clause already caught
+        self.assertIn("lists nothing at all", window)
+        # (b) the case that SATISFIES the old clause, which is why it was missed
+        self.assertIn("it is fresh, and it still does not carry the ad", window)
+        self.assertIn("satisfies", self._check()[
+            self._check().index("second case invalidates it"):][:900])
+
+    def test_the_rule_no_longer_calls_it_a_strong_signal_on_its_own(self):
+        s = self._skill()
+        i = s.index("missing from the employer's careers page")
+        window = s[i:i + 300]
+        self.assertIn("INDICATION whose", window)
+        self.assertIn("never a verdict on its own", window)
+
+    def test_the_sibling_control_is_given_because_a_rule_without_one_is_advice(self):
+        """The half that makes it usable: what to DO when the ad is absent."""
+        s = self._skill()
+        i = s.index("missing from the employer's careers page")
+        window = s[i:i + 2600]
+        self.assertIn("the control is the SIBLING", window)
+        self.assertIn("carries neither while one is live", window)
+        # and the #989 lesson, on the employer's side this time
+        self.assertIn("look at what ITS markup", window)
+
+    def test_the_asymmetric_cost_is_stated_where_the_decision_is_taken(self):
+        s = self._skill()
+        i = s.index("missing from the employer's careers page")
+        window = s[i:i + 2600]
+        self.assertIn("does not reopen", window)
+        self.assertIn("#596", window, "the counter-case must stay named")
+
 class ATenantThatEmitsNoJobTileLiIsNotATenantThatServesNothing(unittest.TestCase):
     """**#989, measured 2026-10-05.** `jobs.sicpa.com` serves **40 `/job/` links in its raw
     body** (97 390 B) and `TILE_RE` found **zero**: it requires

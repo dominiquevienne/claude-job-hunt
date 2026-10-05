@@ -225,9 +225,20 @@ Measured unauthenticated with a desktop user-agent, 2026-08-27:
 | `/search/?q=<terms>` | `200`, navigation shell only |
 | `/search/rss/?q=` | `200`, 65 993 B — **the HTML shell, not a feed** |
 
-**Step 1b treats "the role is missing from the employer's careers page, while
-that page lists their other openings" as a strong signal of closure. On this
-host that inference is invalid**, because the page lists nothing at all. A
+**Step 1b used to treat "the role is missing from the employer's careers page,
+while that page lists their other openings" as a strong signal of closure. On
+this host that inference is invalid**, because the page lists nothing at all.
+
+> **And a second case invalidates it where this one does not — #903, measured
+> 2026-09-23.** A careers page answering 200 with **7 named, dated openings, all
+> published that same day**, carried **neither** of the employer's **two** board
+> ads from that day, and the sibling ad was verified live. *That page satisfies
+> the clause «&nbsp;first confirm the page actually listed something&nbsp;» and the
+> inference is still wrong*, because an employer can publish on a board a
+> population their own site does not carry. **The control is the sibling ad:** if
+> the page carries neither while one is live, this host's careers page is not a
+> witness of closure. Step 1b now says «&nbsp;indication&nbsp;», not «&nbsp;strong
+> signal&nbsp;». A
 fetched summary saying *"the page does not display actual job listings"* means
 *nothing was rendered*, not *the employer has no openings* — and reading it the
 second way concludes "closed" from a page that was never read.

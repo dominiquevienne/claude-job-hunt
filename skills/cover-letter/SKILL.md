@@ -302,14 +302,41 @@ When either at-risk signal holds, verify **before drafting**.
    table. **A check that counts `JobPosting` blocks calls the first one open
    and the second one open too.**
 
-2. **A role missing from the employer's careers page is a strong signal, not a
-   weak one**, when that page is listing their other openings. Do not file it as
-   a note and carry on. **The clause carries the whole rule: first confirm the
-   page actually listed something.** A client-rendered careers site returns a
-   navigation shell with no openings at all, for anyone, always — SAP
-   SuccessFactors does exactly this — and reading that emptiness as closure
-   concludes from a page you never saw. `shared/ats-open-check.md` gives the
-   detection rule and the vacancy URL that does answer.
+2. **A role missing from the employer's careers page is an INDICATION whose
+   meaning depends on the host — never a verdict on its own.** It was written
+   here as «&nbsp;a strong signal&nbsp;» and that was too strong: **two different
+   things invalidate it, and the second one satisfies the guard clause that was
+   supposed to catch the first.**
+
+   **(a) The page lists nothing at all.** A client-rendered careers site returns
+   a navigation shell with no openings, for anyone, always — SAP SuccessFactors
+   does exactly this — and reading that emptiness as closure concludes from a
+   page you never saw. `shared/ats-open-check.md` gives the detection rule and
+   the vacancy URL that does answer. *First confirm the page actually listed
+   something.*
+
+   **(b) The page lists, it is fresh, and it still does not carry the ad.** An
+   employer can publish on a board a population their own site does not carry.
+   Measured 2026-09-23 (#903): a careers page answering 200 with **7 named,
+   dated, clickable openings, all published that same day**, carrying **neither**
+   of the employer's **two** board ads from that same day — and the sibling ad was
+   **verified live** in the browser, apply button active, no expiry. **If the
+   careers page were authoritative, both would be closed; one demonstrably was
+   not.** *2 of 2, one employer, one day — the gap is measured, its cause is not.*
+
+   **So the control is the SIBLING, and it is cheap:** find another ad from the
+   same employer on the same board and ask whether the careers page carries
+   **that** one. If it carries neither while one is live, **this host's careers
+   page is not a witness of closure** — say so and verify the ad itself instead.
+   *And before writing that a page does not carry the ad, look at what ITS markup
+   uses to carry openings: an employer who publishes elsewhere and one who
+   publishes in a markup we do not read look exactly alike.*
+
+   **The cost is asymmetric and runs the wrong way:** a false «&nbsp;closed&nbsp;»
+   writes `discarded` on a live ad, **and a `discarded` does not reopen** — this
+   skill does not reverse a decision it did not take. #596 is the counter-case
+   where the careers page *was* the right witness, so the three together say it
+   is an indication, never an answer.
 3. **Report the result at the gate as a finding**, naming the route you used **and
    how many witnesses spoke**. If you could not verify, say that in those words
    — never let silence imply the ad is live.
