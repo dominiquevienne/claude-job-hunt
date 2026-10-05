@@ -1,5 +1,13 @@
 # claude-job-hunt
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-light.png">
+    <img src=".github/assets/logo-light.png" width="440" alt="claude-job-hunt">
+  </picture>
+</p>
+
 Skills that run a job search end to end, honestly.
 
 ---
@@ -13,6 +21,8 @@ first application, in one pass. *Recorded 1 October 2026 and showing
 it.*
 
 [![claude-job-hunt — setup, first job scan and cover letter with Claude Code](https://img.youtube.com/vi/ntmcqfnx-K8/maxresdefault.jpg)](https://youtu.be/ntmcqfnx-K8)
+
+**Straight to the first board scan:** [6:40](https://youtu.be/ntmcqfnx-K8?t=400).
 
 **In an app — Claude in your browser or on your desktop.** Install the plugin
 and say *"find me some jobs"*. **Nothing else to install.** The board sweeps,
