@@ -2308,6 +2308,95 @@ class SmartRecruitersIsAnOverrideNotASilence(unittest.TestCase):
         self.assertIn("does not generalise", src[i:i + 3000])
 
 
+class TelecommuteIsADeclarationAndTheVisibleChipIsTheMeasure(unittest.TestCase):
+    """**#942, HelloWork — measured 2026-10-05 over 12 ads.** `jobLocationType` appears on
+    **one** of the twelve, and that ad's visible chip reads *Télétravail occasionnel*. With the
+    issue's two witnesses (83927007 *occasionnel*, 83939563 *partiel*) that is **three ads
+    carrying `TELECOMMUTE`, three not complete, and no counter-example.** An on-site Paris job
+    reached scoring as fully remote and passed a commute filter with no warning.
+
+    **And the disagreement runs BOTH ways:** ad 82986866 shows *Télétravail partiel* with
+    `jobLocationType` **absent**, so the field over-states remote work where it appears and
+    under-states it where it does not. The chip therefore decides, and the field alone never
+    sets `remote` True again. `TELECOMMUTE` unconfirmed is **None** — unknown — rather than
+    False, because False would assert «&nbsp;on site&nbsp;», which is equally unmeasured.
+
+    **The chip is read from the page's TEXT, not its markup**, and that is a defect of this
+    change caught by exercising it: the pattern that found the chip in stripped text found
+    NOTHING in raw HTML, because tags and entities sit between the words. *A pattern tried on
+    one form had not been tried on the other* — the same shape as #941, one commit later.
+
+    Second measurement, with its own denominator: **3 of the 12 carry a region and no
+    locality**, which made «&nbsp;town to be established&nbsp;» invisible. `location_precision`
+    now says which of the two a card holds."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_hw_942", str(pathlib.Path(SCRIPTS) / "hellowork.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _page(self, chip_html="", extra=""):
+        return ('<html><body>%s<script type="application/ld+json">'
+                '{"@type":"JobPosting","title":"T"%s}</script></body></html>'
+                % (chip_html, extra))
+
+    def test_the_chip_decides_and_telecommute_alone_never_says_true(self):
+        hw = self._mod()
+        for chip, attendu in (("complet", True), ("total", True),
+                              ("partiel", False), ("occasionnel", False)):
+            with self.subTest(chip=chip):
+                page = self._page("<span>Télétravail %s</span>" % chip)
+                self.assertIs(hw.remote_from({"jobLocationType": "TELECOMMUTE"}, page), attendu)
+                # the chip wins even when the field is absent
+                self.assertIs(hw.remote_from({}, page), attendu)
+                self.assertEqual(hw.remote_mode(page), chip)
+        # declared and unconfirmed: unknown, NOT True and NOT False
+        nu = self._page()
+        self.assertIsNone(hw.remote_from({"jobLocationType": "TELECOMMUTE"}, nu))
+        # nothing declared and nothing shown stays False, as before this change
+        self.assertIs(hw.remote_from({}, nu), False)
+
+    def test_the_card_itself_carries_it_and_not_only_the_helper(self):
+        """**The call site, not the helper.** Mutating `card_from_ad` back to
+        `jobLocationType == "TELECOMMUTE"` left the assertions above GREEN, because they
+        exercise `remote_from()` directly while the mutation lives in the line that USES
+        it. *Testing `f()` says nothing about what the path does with it, and the path is
+        what writes the card* — so the defect of #942 is asserted here, through the card."""
+        hw = self._mod()
+        occasionnel = self._page("<span>Télétravail occasionnel</span>",
+                                 ',"jobLocationType":"TELECOMMUTE"')
+        c = hw.card_from_ad("83032494", occasionnel)
+        self.assertIs(c["remote"], False, "the ad of #942 is back to remote True")
+        self.assertEqual(c["remote_mode"], "occasionnel")
+        self.assertEqual(c["remote_declared"], "TELECOMMUTE")
+        # and the unconfirmed declaration reaches the card as unknown, never True
+        nu = self._page(extra=',"jobLocationType":"TELECOMMUTE"')
+        self.assertIsNone(hw.card_from_ad("1", nu)["remote"])
+
+    def test_the_chip_is_found_through_tags_and_entities(self):
+        hw = self._mod()
+        # the three real shapes: plain, split by a tag, and entity-encoded accents
+        for forme in ("<span>Télétravail partiel</span>",
+                      "<span>Télétravail</span> <b>partiel</b>",
+                      "<span>T&eacute;l&eacute;travail partiel</span>",
+                      "<li class=x>T&#233;l&#233;travail&nbsp;partiel</li>"):
+            with self.subTest(forme=forme):
+                self.assertEqual(hw.remote_mode(self._page(forme)), "partiel", forme)
+        # and no chip is still no chip
+        self.assertIsNone(hw.remote_mode(self._page("<span>Temps plein</span>")))
+        self.assertIsNone(hw.remote_mode(""))
+
+    def test_a_region_without_a_locality_says_so(self):
+        hw = self._mod()
+        def precision(addr):
+            page = self._page(extra=',"jobLocation":{"address":%s}' % json.dumps(addr))
+            return hw.card_from_ad("1", page)["location_precision"]
+        self.assertEqual(precision({"addressLocality": "Nice", "addressRegion": "PACA"}), "locality")
+        self.assertEqual(precision({"addressRegion": "Île-de-France"}), "region")
+        self.assertIsNone(precision({"addressCountry": "FR"}))
+
 class TheTypeAttributeCanEncodeItsPlusAsAnEntity(unittest.TestCase):
     """**#941, HelloWork — measured 2026-10-01, reproduced on `main` 2026-10-05.** The site
     writes `type="application/ld&#x2B;json"`. A pattern looking for the LITERAL `+` does not

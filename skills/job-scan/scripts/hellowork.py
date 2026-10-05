@@ -216,6 +216,55 @@ def job_posting(page):
     return None
 
 
+# **`jobLocationType: TELECOMMUTE` N'EST PAS «REMOTE» SUR CE BOARD — #942.** Mesure du
+# 2026-10-05 sur 12 annonces : le champ apparait sur UNE, et sa puce visible dit
+# «Teletravail occasionnel». Avec les deux temoins de l'issue (83927007 occasionnel,
+# 83939563 partiel) cela fait TROIS annonces portant TELECOMMUTE, TROIS non completes,
+# et zero contre-exemple. **Et le desaccord va dans les DEUX sens** : 82986866 affiche
+# «Teletravail partiel» avec `jobLocationType` ABSENT, donc le champ sur-declare le
+# distanciel quand il est la et le sous-declare quand il n'y est pas.
+#
+# D'ou : la PUCE VISIBLE decide, et `jobLocationType` seul ne met plus jamais `remote`
+# a True. Quand il dit TELECOMMUTE sans puce pour le confirmer, `remote` vaut **None** —
+# inconnu — et non False : False affirmerait «sur site», ce qu'on ne sait pas non plus.
+# Le mode lu reste a cote, comme `cvonline.py` garde `remote_type` pres de `remote`.
+CHIP = re.compile(r"T[\u00e9e]l[\u00e9e]travail\s+(complet|total|partiel|occasionnel)", re.I)
+_COMPLET = ("complet", "total")
+
+
+def remote_mode(page):
+    """The visible criteria chip, normalised — or None when the page shows none.
+
+    **The chip is matched on the page's TEXT, not on its markup.** Measured
+    2026-10-05: the same pattern that found «Teletravail occasionnel» in the
+    stripped text found NOTHING in the raw HTML, because tags and entities sit
+    between the words — a pattern tried on one form had not been tried on the
+    other. Tags are dropped and entities unescaped for this match ONLY; the
+    body handed to the ld+json reader is untouched, since unescaping THAT is
+    exactly what would corrupt the JSON (#941).
+    """
+    if not page:
+        return None
+    texte = html.unescape(re.sub(r"<[^>]+>", " ", page))
+    m = CHIP.search(texte)
+    return m.group(1).lower() if m else None
+
+
+def remote_from(d, page):
+    """True only when the VISIBLE chip says the remote work is complete.
+
+    `TELECOMMUTE` without a chip to confirm it is `None`, not True: it is a
+    declaration this board was measured to emit for partial and occasional
+    remote work alike.
+    """
+    mode = remote_mode(page)
+    if mode:
+        return mode in _COMPLET
+    if (d or {}).get("jobLocationType") == "TELECOMMUTE":
+        return None
+    return False
+
+
 def card_from_ad(ident, page):
     d = job_posting(page)
     if not d:
@@ -250,11 +299,21 @@ def card_from_ad(ident, page):
         "city": clean(addr.get("addressLocality")),
         "region": clean(addr.get("addressRegion")),
         "postal_code": clean(addr.get("postalCode")),
+        # **Une region sans ville rend «ville a etablir» INVISIBLE — #942.** Mesure du
+        # 2026-10-05 : 3 annonces sur 12 portent une region et AUCUNE ville. Le champ
+        # dit laquelle des deux precisions on a, pour que le filtre de trajet ne lise
+        # pas une region comme un lieu de travail.
+        "location_precision": ("locality" if clean(addr.get("addressLocality"))
+                               else "region" if clean(addr.get("addressRegion"))
+                               else None),
         # schema.org's time basis (FULL_TIME…), not the French contract type.
         # The listing card's CDI/CDD is the one to score on.
         "employment_type": ", ".join(emp) if isinstance(emp, list) else emp,
-        # Present only when the role is remote; absent, not "ONSITE", otherwise.
-        "remote": d.get("jobLocationType") == "TELECOMMUTE",
+        # **Never True from `jobLocationType` alone — #942.** The visible chip
+        # decides; TELECOMMUTE unconfirmed is None (unknown), never True.
+        "remote": remote_from(d, page),
+        "remote_mode": remote_mode(page),
+        "remote_declared": d.get("jobLocationType") or None,
         "salary_min": val.get("minValue"),
         "salary_max": val.get("maxValue"),
         "salary_value": val.get("value"),
