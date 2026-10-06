@@ -2214,6 +2214,11 @@ none of them yielded a board. Recorded so nobody repeats the work.
 | Finland | Työmarkkinatori | `robots.txt`: **`Disallow: /api/`** and `Disallow: /*/api/`. Explicit, and obeyed |
 | Norway | NAV | `arbeidsplassen.nav.no/stillinger/api/search` answers 200 with no key and `robots.txt` is open — **but it returns the raw Elasticsearch envelope** (`_shards`, `_index`, `took`, `_score`) and **429s after a dozen requests**. See below |
 | Italy | Cliclavoro | **No longer a board at all** — see below |
+| InPA (`inpa.gov.it`, Italy) (Italy) | `inpa-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
+| ClicLavoro (`cliclavoro.gov.it`, Italy) (Italy) | `cliclavoro-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
+| SIISL (`siisl.lavoro.gov.it`, Italy) (Italy) | `siisl-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
+| ClicLavoro Veneto (`cliclavoroveneto.it`, Italy) (Italy) | `cliclavoroveneto-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
+| Lavoro per te (`lavoroperte.regione.emilia-romagna.it`, Italy) (Italy) | `lavoroperte-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
 
 **Three different states, and they are not interchangeable.** *Inaccessible*
 (Portugal, Netherlands, Denmark, UK, Poland) is the operator's infrastructure.
