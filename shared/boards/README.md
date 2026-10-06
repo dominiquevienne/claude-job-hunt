@@ -2219,6 +2219,12 @@ none of them yielded a board. Recorded so nobody repeats the work.
 | SIISL (`siisl.lavoro.gov.it`, Italy) (Italy) | `siisl-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
 | ClicLavoro Veneto (`cliclavoroveneto.it`, Italy) (Italy) | `cliclavoroveneto-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
 | Lavoro per te (`lavoroperte.regione.emilia-romagna.it`, Italy) (Italy) | `lavoroperte-it.md` | **Measured 2026-10-06 (#949 tranche 1), no script yet — a public employment service, guarded host by host and open on every form.** |
+| Subito (`subito.it`, Italy) (Italy) | `subito.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| Bakeca (`bakeca.it`, Italy) (Italy) | `bakeca.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| Monster Italia (`monster.it`, Italy) (Italy) | `monster-it.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| HelpLavoro (`helplavoro.it`, Italy) (Italy) | `helplavoro.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| InfoJobs Italia (`infojobs.it`, Italy) (Italy) | `infojobs-it.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| Welcome to the Jungle (`welcometothejungle.com`, Italy) (Italy) | `welcometothejungle.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
 
 **Three different states, and they are not interchangeable.** *Inaccessible*
 (Portugal, Netherlands, Denmark, UK, Poland) is the operator's infrastructure.
