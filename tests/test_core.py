@@ -35267,7 +35267,13 @@ class ACellThatLeadsWithItsMethodRendersNoWitness(unittest.TestCase):
     `ACardThatConcludesOpenAndCertainSaysNothingOfTheRate`."""
 
     # Legitimately no count to state — they cannot lead with a figure. Shrink only.
-    SANS_COMPTE = ("calisma-gov-ct-tr", "founditgulf", "myanmarjob-gov", "shoghl-mcls")
+    # **`shoghl-mcls` left this set on 2026-10-06, and not by a retouch.**
+    # Its `content:` line of 21.09 — promoted to the top because the tooling
+    # read only the first, and an appended re-measurement is never the one it
+    # reads (#1036) — LEADS WITH A FIGURE. *A declared set is corrected when
+    # the object changes; that is what the exact equality in both directions
+    # is for, and it fired on the right side.*
+    SANS_COMPTE = ("calisma-gov-ct-tr", "founditgulf", "myanmarjob-gov")
 
     HEAD = 200
 
@@ -43350,6 +43356,145 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
                 self.assertIn(surface, doc,
                               "the closed vocabulary is not documented")
 
+class ALineAPPENDEDToACardIsNeverTheOneTheToolingReads(unittest.TestCase):
+    """**Found by `cd` on 2026-10-06, through a guard rather than by reading.**
+    `bin/country-boards.py:140` resolves a card's header with
+    `h.setdefault(...)`, so **the FIRST `content:` line wins** — and appending
+    a dated re-measurement at the bottom of a card, which is the conservative
+    gesture, is exactly what makes it invisible.
+
+    > **#963 was «the parser falls silently back to the OLDER line» through a
+    > missing terminator. This is the same fall, through ORDER.**
+
+    *What exposed it was `TheHeadingAgreesWithTheContentLine` refusing a
+    commit because the figures in an `h1` did not appear in «the» `content:`
+    line — the one it checks being the first. It complained about a heading;
+    what it was showing is that an append updates nothing.*
+
+    **Measured on `origin/main` the same night: 503 cards, 10 carry several
+    `content:` lines, and FIVE had a first line older than their own most
+    recent** — `shoghl-mcls` (4 days), `unegui` (12), `iskibris`,
+    `kktcportal` and `worklinkcy` (14 each). *`cd` had found one of the five
+    and said so; the other four came from counting.*
+
+    **And the order hid a second thing, which is why this is not only about
+    dates.** `unegui.md`'s newer line declared the state `re-measured` — **a
+    word the vocabulary does not contain** (`measured`, `assumed`,
+    `out-of-domain`, `indeterminate`). The format guard reads the FIRST line,
+    so an invalid state sat on the second one for twelve days without a
+    single test going red. *Its own prose says a Cloudflare challenge holds,
+    which is `indeterminate`; the word «RE-MEASURED» stays in the prose, so
+    nothing is lost.*
+    """
+
+    FIELDS = ("content", "witness", "verified", "route")
+
+    def _cards(self):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return sorted(p for p in glob.glob(os.path.join(root, "shared",
+                                                        "boards", "*.md"))
+                      if os.path.basename(p) != "README.md")
+
+    @staticmethod
+    def _lines(src, field):
+        return re.findall(r"^<!--\s*%s:\s*(.*?)\s*-->\s*$" % field, src,
+                          re.M)
+
+    @staticmethod
+    def _last_date(value):
+        found = re.findall(r"20\d\d-\d\d-\d\d", value)
+        return found[-1] if found else ""
+
+    def test_the_first_dated_line_is_the_most_recent_one(self):
+        """**The guard, over the real cards, on every dated header field.**
+
+        It does not forbid a card from carrying its history — several of them
+        do, deliberately, and that is how a measurement keeps its predecessor
+        beside it. It forbids the history from being read INSTEAD of the
+        measurement: whichever line the tooling takes must be the newest.
+        """
+        guilty, population = [], 0
+        for path in self._cards():
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for field in self.FIELDS:
+                vals = self._lines(src, field)
+                if len(vals) < 2:
+                    continue
+                population += 1
+                dates = [self._last_date(v) for v in vals]
+                recent = max((d for d in dates if d), default="")
+                if recent and dates[0] and dates[0] < recent:
+                    guilty.append(f"{os.path.basename(path)}:{field} "
+                                  f"reads {dates[0]} and carries {recent}")
+        # **The population counts itself**: a guard that found no card with
+        # several lines would pass while proving nothing, and ten cards had
+        # several on 2026-10-06.
+        self.assertGreaterEqual(
+            population, 8,
+            f"only {population} card/field pairs carry several lines; ten "
+            f"cards did on 2026-10-06, so either the convention changed or "
+            f"this walk narrowed")
+        self.assertEqual(guilty, [],
+                         "a card is read at a date older than its own most "
+                         "recent line — append it ABOVE, not below")
+
+    def test_every_content_line_declares_a_state_not_only_the_first(self):
+        """**The second half, and it is the one the order was hiding.** The
+        format guard uses `re.search`, so it sees the first line only; a state
+        word nobody recognises on a later line is invisible until that line is
+        promoted. *`re-measured` sat on `unegui.md` for twelve days.*"""
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "cb_1036", os.path.join(root, "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        states = ("measured", "assumed", "out-of-domain", "indeterminate")
+        bad, seen = [], 0
+        for path in self._cards():
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for i, val in enumerate(self._lines(src, "content")):
+                seen += 1
+                head = val.split("·")[0].strip().lower()
+                if head not in states:
+                    bad.append(f"{os.path.basename(path)} line {i}: "
+                               f"{head!r}")
+        self.assertGreaterEqual(seen, 400, f"only {seen} content lines read")
+        self.assertEqual(bad, [],
+                         "a `content:` line declares a state outside the "
+                         "vocabulary — and a line that is not read today can "
+                         "be read tomorrow")
+
+    def test_the_reader_really_does_take_the_first(self):
+        """**The mechanism, asserted rather than cited**, so that a future
+        change from `setdefault` to «last wins» makes the guard above stale
+        loudly instead of silently. *A guard built on a behaviour nobody
+        checks is a guard resting on a comment.*"""
+        import importlib.util
+        import tempfile
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "cb_1036b", os.path.join(root, "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "deux.md"), "w", encoding="utf-8") as fh:
+            fh.write("# Two lines\n\n"
+                     "<!-- verified: 2026-10-06 -->\n"
+                     "<!-- hosts: x.example -->\n"
+                     "<!-- script: none -->\n"
+                     "<!-- countries: XX -->\n"
+                     "<!-- content: measured · premiere · 2026-10-06 -->\n"
+                     "<!-- content: measured · seconde · 2026-09-01 -->\n")
+        cards = mod.read_cards(d)
+        self.assertEqual(len(cards), 1)
+        self.assertIn("premiere", cards[0]["h"]["content"])
+        self.assertNotIn("seconde", cards[0]["h"]["content"],
+                         "the reader no longer takes the first line, so the "
+                         "guard above is testing the wrong end of the file")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
