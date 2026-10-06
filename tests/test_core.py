@@ -45670,5 +45670,127 @@ class AMarkerInHostsIsNotAMachineNameAndTheGuardIsNotAskedAboutIt(unittest.TestC
                            "narrowed and nothing below means anything" % (vus, len(cartes)))
 
 
+class TheFirstDatedLineOfAFieldIsTheOneTheToolingReads(unittest.TestCase):
+    """**#963's family, and nothing asserted it until now — 2026-10-06.**
+    `read_cards()` does a `setdefault`, so when a card carries SEVERAL lines for
+    one header field **the FIRST one wins** and every later one is parsed by
+    nobody.
+
+    > **A new measurement that nothing reads has exactly the shape of a
+    > measurement made.** *It is in the file, it is dated, it is right, and no
+    > artefact carries it.*
+
+    **The defect was found TWICE independently the same day** — once through a
+    missing `-->` that made a line stop matching and silently fell back to the
+    `content:` line two weeks older, once through a re-measurement appended at
+    the BOTTOM of a card that never reached a page. **And the repair of that
+    morning re-introduced it**: four Cypriot cards had their fresh witness added
+    *below*, so the conservative gesture — add without removing — was exactly
+    the wrong one, and it reads as prudence.
+
+    *Measured on 2026-10-06 across `shared/boards/`: **41 fields carry more than
+    one dated line**, and exactly one card's first line is not its newest —
+    `README.md`, which `read_cards()` excludes by name.* **So the corpus
+    contains a real instance of the defect in the one file the tooling never
+    parses, and that is a negative case this guard gets for free rather than
+    inventing.** It is asserted in BOTH directions below: the README still
+    offends, and the exclusion is what keeps it out.
+
+    *The floor exists because an empty sweep and a clean sweep print the same
+    green — and the species is «non exercée», not «inerte».*
+    """
+
+    CHAMPS = ("content", "witness", "route", "route-http")
+    LIGNE = r"(?m)^<!--\s*(%s)\s*:\s*(.*?)\s*-->\s*$"
+    DATE = r"·\s*(20\d\d-\d\d-\d\d)\s*$"
+
+    def _boards(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(root, "shared", "boards")
+
+    def _dates(self, texte):
+        """`{champ: [dates, dans l'ordre du fichier]}` — ancré à la LIGNE.
+
+        **Never `re.S`**: a `.*?` in dotall steps over a missing `-->` and
+        matches to the NEXT comment's terminator, which is the blind spot the
+        two instruments of #963 shared.
+        """
+        import re
+        par = {}
+        for m in re.finditer(self.LIGNE % "|".join(self.CHAMPS), texte):
+            d = re.search(self.DATE, m.group(2))
+            par.setdefault(m.group(1), []).append(d.group(1) if d else None)
+        return par
+
+    def test_no_card_hides_its_newest_measurement_behind_an_older_one(self):
+        """**THE CENTRAL CASE.** *A later line is parsed by nobody, so a stale
+        first line is the one every artefact carries.*"""
+        import glob
+        coupables, examines = [], 0
+        for chemin in sorted(glob.glob(os.path.join(self._boards(), "*.md"))):
+            nom = os.path.basename(chemin)
+            if nom.upper() == "README.MD":
+                continue          # `read_cards()` excludes it BY NAME
+            with io.open(chemin, encoding="utf-8") as fh:
+                par = self._dates(fh.read())
+            for champ, dates in par.items():
+                vues = [d for d in dates if d]
+                if len(vues) < 2:
+                    continue
+                examines += 1
+                if vues[0] != max(vues):
+                    coupables.append("%s `%s:` reads %s while %s is present"
+                                     % (nom, champ, vues[0], max(vues)))
+        # **La PREUVE d'exercice avant le verdict** — un balayage vide et un
+        # balayage propre impriment le meme vert.
+        self.assertGreater(examines, 20,
+                           "only %d fields carry more than one dated line: this "
+                           "sweep is NOT EXERCISED, not green" % examines)
+        self.assertEqual(coupables, [],
+                         "a dated line is hidden behind an older one, and the "
+                         "older is what every artefact carries. Move the NEW "
+                         "line FIRST — do not add it below, which is how the "
+                         "#963 repair re-introduced the defect the same "
+                         "morning:\n  " + "\n  ".join(coupables))
+
+    def test_the_readme_really_does_offend_and_the_exclusion_is_what_saves_it(self):
+        """**The negative case the corpus gives for free.** *`README.md` carries
+        four dated `content:` lines whose first is NOT the newest — a real
+        instance of the defect in the one file `read_cards()` skips by name.*
+
+        **Asserted so that the day someone drops the exclusion, this says why it
+        existed** — and so that the day the README is tidied, the case fails
+        loudly instead of becoming inert.
+        """
+        chemin = os.path.join(self._boards(), "README.md")
+        self.assertTrue(os.path.exists(chemin), chemin)
+        with io.open(chemin, encoding="utf-8") as fh:
+            par = self._dates(fh.read())
+        vues = [d for d in par.get("content", []) if d]
+        self.assertGreater(len(vues), 1,
+                           "README.md no longer carries several dated `content:` "
+                           "lines, so the case above has lost its negative "
+                           "example and this guard must be re-grounded")
+        self.assertNotEqual(vues[0], max(vues),
+                            "README.md's first dated `content:` line is now its "
+                            "newest, so it has stopped being an instance of the "
+                            "defect — re-ground this case rather than delete it")
+
+    def test_the_line_anchor_is_what_makes_the_sweep_honest(self):
+        """**A missing `-->` must make a line STOP matching, not match across
+        the next comment.** *Both instruments of #963 shared one blind spot: a
+        `.*?` under `re.S` steps over the missing terminator and concatenates.*
+        """
+        import re
+        casse = ("<!-- content: measured · 2026-10-06\n"
+                 "<!-- witness: none · 2026-09-01 -->\n")
+        par = self._dates(casse)
+        self.assertNotIn("content", par,
+                         "an unterminated `content:` line still matched, so this "
+                         "sweep would read ACROSS a missing terminator — the "
+                         "shared blind spot of #963")
+        self.assertEqual([d for d in par.get("witness", []) if d], ["2026-09-01"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
