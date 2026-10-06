@@ -7,9 +7,9 @@
 <!-- countries: CYN -->
 <!-- content: measured · **`/jobs/` (200, 55 985 B) is READ at last and carries NO advert of this site: zero `<article>`, zero internal advert link, and its **11 `/job/<slug>` matches are menu items whose `href` is `https://apusthemes.com/wp-demo/superio/job/…` — the Superio theme's DEMO site on the vendor's own domain** (junior-graphic-designer-web, finance-manager-health, software-engineer…). Its whole visible text is that demo navigation («Job - Single 1» … «Job - Apply Email»), 298 characters. The declared sitemap is an INDEX of 8: post (79 `<loc>`, lastmod to **2026-01-06**, real Turkish articles on the KKTC job market), page, product, employer (10 `<loc>`, 9 real `/işveren/<slug>/` profiles, lastmod to 2025-01-24), apus_megamenu, category, employer_category, candidate_location — **and NOT ONE of the eight is a job sitemap; advert-shaped URLs across all of them: ZERO**. `/is-ilanlari/` (200, 111 362 B) still carries no `<article>` and no advert link The rules file is served (`state: read`, `certain: True`, group `*`, NO Crawl-delay — 2 s are ours) and it DECLARES `sitemap.xml`.** · 2026-10-02 -->
 <!-- content: measured · **`/is-ilanlari/` (200, 111 528 B, md5 acde7f199e9d / 3a2da960fe74 — a rendered element moves) is a WordPress 7.1 page with Elementor and no `<article>`, no ad link, no count; its JSON-LD `@graph` is Organization / WebSite / WebPage / Person / Article (dateModified 2023-09-20), no JobPosting; links `/jobs/`, `/is-olustur/` (post a job), `/giris-yap-kayit-ol/`; `_robots.allowed('kariyerkktc.com','/is-ilanlari/')` → open, certain** · 2026-09-18 -->
-<!-- witness: none — the page lists nothing · 2026-09-18 -->
-
 <!-- witness: none, and now for a MEASURED reason: no advert exists to count — the site's only job links belong to its theme vendor's demo · 2026-10-02 -->
+
+<!-- witness: none — the page lists nothing · 2026-09-18 -->
 
 **Found by the Northern Cyprus search of #606 (a country never searched),
 measured 2026-09-18 07:20–07:22 UTC by the declared client, the guard on the
