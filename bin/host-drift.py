@@ -90,13 +90,48 @@ def declared(path):
     Literal forms only: a template like `{tenant}.recruitee.com` names no host
     to ask about, and inventing a tenant to fill it in would be asking about a
     site that may not exist.
+
+    **AND THAT SAME ARGUMENT CONDEMNS A VALUE THAT IS NOT A NAME AT ALL — the
+    template filter only covered BRACES, so a marker without any went through.
+    #1074, 2026-10-06.** *Six cards of 523 declare one in `hosts:`, under two
+    spellings:* `per-tenant` on `applifly`, `oraclecloud`, `successfactors` and
+    `workday`, `per-country` on `michaelpage` and `tanqeeb`. **Measured by
+    calling this function on every card, and then by RUNNING `main()` with
+    `_robots.verdict` replaced by a recorder: 925 names reached the guard and
+    two of them were these.** *No request left the machine — `urlopen` was
+    replaced by a raise, and it did not fire.*
+
+    **Why a permissive verdict is the consequence, and why it is NOT measured
+    here:** since #283 (2026-09-13) any `robots.txt` read that does not succeed
+    is an ABSENCE of rules, hence OPEN. A name that cannot resolve would
+    therefore come back open, across four ATS families. *Asking the guard about
+    a non-host to prove it would be a pointless network act, and it is exactly
+    what the paragraph above says not to do: **the defect of an instrument is
+    not demonstrated by committing it.***
+
+    **The discriminant is mechanical and it is not the spelling: no dot in the
+    first segment.** *Grepping the string from the report would have found four
+    of the six — the specimen is `per-tenant`, the FORM is «a `hosts:` value
+    that is not a machine name».*
+
+    **And the refusal SPEAKS, unlike the brace filter above it.** *A value
+    dropped in silence is invisible the day there are thirty of them, and the
+    card that carries it is the only place the fix can happen.*
     """
     with open(path, encoding="utf-8") as f:
         src = f.read()
     m = HOSTS_RE.search(src[:4000])
     if not m:
         return None
-    out = [h.strip().lower() for h in m.group(1).split(",") if h.strip()]
+    out = []
+    for h in [x.strip().lower() for x in m.group(1).split(",") if x.strip()]:
+        if "." not in h.split("/")[0]:
+            # a MARKER, not a machine name — and the drop is ANNOUNCED
+            print("%s: `hosts:` carries %r, which is not a host name — not asked "
+                  "about. The card declares a family, and the host is per-tenant "
+                  "or per-country." % (os.path.basename(path), h), file=sys.stderr)
+            continue
+        out.append(h)
     for form in host_forms(src):
         if "{" in form:
             continue
