@@ -45792,5 +45792,233 @@ class TheFirstDatedLineOfAFieldIsTheOneTheToolingReads(unittest.TestCase):
         self.assertEqual([d for d in par.get("witness", []) if d], ["2026-09-01"])
 
 
+class EuresPublishesThreeTotalsThatDisagreeAndACeilingItDoesNotInvent(unittest.TestCase):
+    """**`eures.py`, 2026-10-07 (#1014) — the first USER-VOTED adapter of this
+    repository**, one 👍, which is the mechanism the owner imposed on 2026-09-13
+    when he required an issue per adapter before any code.
+
+    **THE CEILING IS FETCHED, NEVER DEFAULTED.** The host publishes
+    `jvse.max.faj.search.results` as `'10000'` on
+    `GET …/jv-searchengine/public/properties`, and the pager independently shows
+    1 000 pages of 10. *A limit we invented and a limit the host declares are
+    different objects: they print the same number today and only one of them
+    follows the host when it changes.* **So an unreadable property STOPS the walk
+    rather than substituting a figure of ours — ignorance does not liberate.**
+
+    **THREE OF THE HOST'S OWN TOTALS DISAGREE, AND NONE IS PUBLISHED AS THE SIZE
+    OF THE BOARD:**
+
+        getNumberOfJobs            2 603 942 (05.10)   2 633 317 (07.10)
+        numberRecords              1 940 004 (05.10)   1 967 698 (07.10)
+        POSITION_LOCATION facet    1 940 303 (05.10)   EXCEEDS numberRecords by 299
+        EURES_FLAG facet           1 940 004 (05.10)   partitions it EXACTLY
+
+    *One facet partitions the total cleanly, another overshoots it, and a third
+    endpoint reports some 665 000 more. **None of the gaps is explained and the
+    adapter keeps saying so**, which is the result rather than a reservation.*
+
+    **AND THE 299 IS NOT RECOMPUTED AGAINST TODAY'S TOTAL.** It was measured on
+    2026-10-05 against that day's `numberRecords`; pairing it with the 07.10
+    figure would be two numbers from two moments presented as one quantity. *On
+    that dated pair the discrepancy is 0,0154 %, so a 50-record sample expects
+    0,0077 of them and would need ~6 488 to hope for one — a negative there is
+    indistinguishable from a true negative, and none is drawn.*
+
+    **TWO HOSTS, TWO CADENCES, AND READING THE OBVIOUS ONE RUNS FIVE TIMES TOO
+    FAST.** `europa.eu` writes `Crawl-delay: 10` under `*` and the offers live
+    there; `eures.europa.eu` serves Drupal's stock file and writes none.
+    *Measured by handing the rules BODY to `delay_for`, which takes a body and not
+    a host: given a hostname it parses «europa.eu» AS a rules file and returns
+    None — a zero produced by the argument, the same shape as asking
+    `country-boards.py` for `LBN` when it wants an ISO2.*
+
+    **AN ADVERT IS NOT A POST** — `numberOfPosts` summed 156 over the 50 records
+    of page one with a maximum of 12. The ledger counts ADVERTS and the host's
+    own number travels beside it, **declared rather than suffered.**
+
+    **NO PAGE-ONE RATE IS A RATE OF THIS BOARD, AND THERE ARE NOW TWO READINGS IN
+    OPPOSITE DIRECTIONS:** `euresFlag` true on 42 of 50 on 05.10 against 83 844 of
+    1 940 004 in the host's own facet (a factor of twenty), and FALSE on all three
+    of the first three records on 07.10. *The default ordering is not neutral and
+    not even stable.*
+
+    **`_provenance.third_party()` IS DELIBERATELY NOT CALLED, AND THAT IS A
+    DECISION.** Exercised on both record shapes before being used: a field it
+    finds FILLED returns under `third_party_withheld`, one the board never filled
+    under `third_party_absent`. *The label is only true of fields an adapter
+    inspects and does NOT pass on — this one passes both employer fields through,
+    so declaring them would print «withheld» over values that are in the record.*
+    **And this board has no third-party contact field to withhold at all: no phone
+    key, no e-mail key, and an `employer.website` filled on 0 of 50** — a present
+    key is not a filled one, and that emptiness is the BOARD's.
+
+    *One case below exists because my own inspection script printed
+    `ledger_id[:14]` and I read the truncation as the host changing its id between
+    two page sizes. Measured at three page sizes: the id is IDENTICAL. **The
+    discrepancy was in my display.***
+
+    **One case per FORM.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_eures_1014", str(pathlib.Path(SCRIPTS) / "eures.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    JV = {"id": "OTk1NzM0IDE3", "title": "tecnico meccanico",
+          "description": "Scrivere a hr@example.it oppure +39 3401234567 — WhatsApp 3401234567",
+          "employer": {"name": "GI GROUP S.P.A.", "website": None},
+          "euresFlag": False, "numberOfPosts": 12,
+          "locationMap": {"it": ["ITC4C"], "": ["ZZZ"]},
+          "positionOfferingCode": "contract", "positionScheduleCodes": [],
+          "jobCategoriesCodes": ["http://data.europa.eu/esco/isco/C311"],
+          "creationDate": 1791280929000, "lastModificationDate": 1791324161000,
+          "availableLanguages": ["it"]}
+
+    def test_the_ceiling_is_fetched_and_an_unreadable_one_stops_the_walk(self):
+        """**A guessed limit and a published one print the same number today.**
+        *PRESENCE before VALUE, so the red names the missing property instead of
+        crashing on an arithmetic downstream.*"""
+        mod = self._mod()
+        self.assertEqual(mod.CEILING_KEY, "jvse.max.faj.search.results")
+        appels = []
+        mod.as_json = lambda url, body=None, what="": (appels.append(url),
+                                                       {mod.CEILING_KEY: "10000"})[1]
+        self.assertEqual(mod.ceiling(), 10000)
+        self.assertIn(mod.PROPS, appels, "the ceiling was not FETCHED from the host")
+        mod.as_json = lambda url, body=None, what="": {}
+        with self.assertRaises(SystemExit) as pris:
+            mod.ceiling()
+        self.assertEqual(pris.exception.code, 6,
+                         "an unreadable ceiling did not stop the walk")
+
+    def test_no_single_total_is_emitted_as_the_size_of_the_board(self):
+        """**The host's three totals disagree.** *Each travels under its OWN
+        name, and the record carries no `total` of ours.*"""
+        mod = self._mod()
+        sorties = []
+        mod.as_json = lambda url, body=None, what="": (
+            {"numberOfJobs": 2633317} if url == mod.NJOBS else
+            {mod.CEILING_KEY: "10000"} if url == mod.PROPS else
+            {"numberRecords": 1967698, "jvs": []})
+        import io as _io
+        import contextlib as _c
+        buf = _io.StringIO()
+        with _c.redirect_stdout(buf), _c.redirect_stderr(_io.StringIO()):
+            mod.cmd_totals(argparse.Namespace())
+        out = json.loads(buf.getvalue().strip())
+        self.assertEqual(out["getNumberOfJobs"], 2633317)
+        self.assertEqual(out["numberRecords"], 1967698)
+        self.assertEqual(out["declared_ceiling_per_query"], 10000)
+        for interdit in ("total", "size", "count"):
+            self.assertNotIn(interdit, out,
+                             "a key %r would read as THE size of a board whose own "
+                             "three totals disagree" % interdit)
+
+    def test_an_advert_is_not_a_post_and_the_ledger_counts_adverts(self):
+        """`numberOfPosts` summed 156 over 50 records, maximum 12. *One record,
+        one `ledger_id`; the host's number travels beside it under a name that
+        does not pretend to be a count of adverts.*"""
+        mod = self._mod()
+        r = mod.record(self.JV)
+        self.assertEqual(r["ledger_id"], "eures:OTk1NzM0IDE3")
+        self.assertEqual(r["posts"], 12)
+        self.assertNotIn("count", r)
+
+    def test_the_prose_is_scrubbed_and_withheld_fields_is_derived(self):
+        """*An e-mail, a `+39` run and a messaging handle in one description —
+        and `withheld_fields` is ABSENT when nothing was withheld, so a poor
+        advert never reads as a censored one.*"""
+        mod = self._mod()
+        r = mod.record(self.JV)
+        d = r["description"]
+        self.assertNotIn("hr@example.it", d)
+        self.assertNotIn("3401234567", d)
+        self.assertIn("Scrivere", d, "the advertisement was removed with its contacts")
+        self.assertEqual(r["withheld_fields"],
+                         ["description:e-mail", "description:messaging",
+                          "description:telephone"])
+        propre = dict(self.JV, description="Esperienza minima di quattro anni.")
+        self.assertNotIn("withheld_fields", mod.record(propre))
+
+    def test_a_present_employer_website_is_not_a_filled_one(self):
+        """**Filled on 0 of 50.** *`if x` cannot tell a present key from a filled
+        one, and a `withheld_fields` built on presence would claim we held back a
+        site nobody published — a lie about OUR discretion.*"""
+        mod = self._mod()
+        r = mod.record(self.JV)
+        self.assertIsNone(r["employer_site"])
+        self.assertEqual(r["employer"], "GI GROUP S.P.A.")
+        for sentinelle in ("", "   ", "undefined", "$undefined", "null", "N/A"):
+            jv = dict(self.JV, employer={"name": "X", "website": sentinelle})
+            self.assertIsNone(mod.record(jv)["employer_site"],
+                              "%r passed the floor, so the floor is a list of "
+                              "refusals and not a positive test" % sentinelle)
+
+    def test_no_street_or_postcode_can_enter_through_the_location_map(self):
+        """`locationMap` is keyed by country and holds NUTS codes. *A POSITIVE
+        floor reads the country and the codes and nothing else, so a key the host
+        adds tomorrow cannot arrive by default.*"""
+        mod = self._mod()
+        r = mod.record(self.JV)
+        self.assertEqual(r["places"], [{"country": "IT", "nuts": ["ITC4C"]}],
+                         "the empty country key was kept, or the floor is not positive")
+        # **The first writing of this assertion reddened on CORRECT code**: it
+        # looked for «phone» anywhere in the JSON and found it inside the scrub
+        # marker `[telephone withheld]`. *A pattern included in what it must
+        # exclude — here the guard accusing the adapter of carrying a field it had
+        # just removed.* So it tests KEYS, which is what the claim is about.
+        emis = json.dumps(r, ensure_ascii=False)
+        for champ in ("streetAddress", "postalCode", "phone", "email",
+                      "contactPhones", "latitude", "longitude"):
+            self.assertNotIn('"%s":' % champ, emis,
+                             "%r is a KEY of the emitted record" % champ)
+        self.assertIn("[telephone withheld]", emis,
+                      "the scrub marker is gone, so the case above would pass "
+                      "vacuously on a record that never had prose")
+
+    def test_the_dates_are_milliseconds_and_the_magnitude_is_checked(self):
+        """*Epoch MILLISECONDS here. A value that is plainly seconds must not be
+        divided by a thousand a second time, and anything outside a plausible
+        century is refused rather than emitted as 1970.*"""
+        mod = self._mod()
+        r = mod.record(self.JV)
+        self.assertEqual(r["created"], "2026-10-06T10:02:09Z")
+        self.assertIsNone(mod.epoch_ms(0))
+        self.assertIsNone(mod.epoch_ms(-1))
+        self.assertIsNone(mod.epoch_ms(1))
+        self.assertIsNone(mod.epoch_ms("1791280929000"))
+        self.assertEqual(mod.epoch_ms(1791280929), "2026-10-06T10:02:09Z",
+                         "a value in SECONDS was divided again")
+
+    def test_the_drupal_search_refusal_fires_on_one_host_and_not_the_other(self):
+        """**`/search/` is refused IN WRITING on `eures.europa.eu` and permitted
+        on `europa.eu`.** *A refusal that fires on one host and not on its sibling
+        is the only kind that demonstrates `robots.txt` binds a HOST and not a
+        brand — and it is reachable rather than decorative.*"""
+        mod = self._mod()
+        for u in ("https://eures.europa.eu/search/",
+                  "https://eures.europa.eu/search/node"):
+            with self.assertRaises(SystemExit) as pris:
+                mod.refuse_drupal_search(u)
+            self.assertEqual(pris.exception.code, 7, u)
+        # **The mutation that drops the host check made this loop red by an
+        # UNCAUGHT `SystemExit`, not by an assertion** — a crash counts as a red
+        # without saying what is missing. Caught here, so the red NAMES the
+        # defect: the refusal fired on a host whose rules do not carry it.
+        for u in ("https://europa.eu/search/",
+                  "https://europa.eu/eures/api/jv-searchengine/public/properties",
+                  "https://eures.europa.eu/eures/portal/jv-se/home"):
+            try:
+                got = mod.refuse_drupal_search(u)
+            except SystemExit as e:
+                self.fail("%s was REFUSED (exit %s), and the rule that refuses it "
+                          "is written on the OTHER host — `robots.txt` binds a "
+                          "host, not a brand" % (u, e.code))
+            self.assertIsNone(got, u)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
