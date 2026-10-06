@@ -45505,5 +45505,170 @@ class TheYoraDedupIsOnTheIdBecauseFourLocalesCarryTheSamePaths(unittest.TestCase
         self.assertIsNone(mod.refuse_api("https://yora.tj/sitemap.xml"))
 
 
+class AMarkerInHostsIsNotAMachineNameAndTheGuardIsNotAskedAboutIt(unittest.TestCase):
+    """**#1074, found by `ab` on 2026-10-06.** `bin/host-drift.py` handed the
+    `robots.txt` guard six values that are not host names.
+
+        'per-tenant'   applifly · oraclecloud · successfactors · workday
+        'per-country'  michaelpage · tanqeeb
+        6 occurrences on 523 cards, under TWO spellings, nothing else
+
+    **The cards are RIGHT and that is what makes the defect clean.**
+    `HostsAreDeclaredOrDeclaredInapplicable` chose those two tokens
+    deliberately — *«the two tokens that survive name genuinely unbounded
+    sets»* — so a marker in `hosts:` is a declaration, not junk. **Only the
+    report was wrong to ask the guard about one.**
+
+    **And the file already carried the argument that condemns it:** its
+    docstring drops TEMPLATES because *«inventing a tenant would be asking
+    about a site that may not exist»* — but the filter was `if "{" in form`, so
+    it covered braces only. *A marker without braces went straight through to
+    `verdict(h)`.*
+
+    **MEASURED IN BOTH HALVES, AND NO REQUEST LEFT THE MACHINE.** `declared()`
+    was called on every card, and then `main()` was RUN with `_robots.verdict`
+    replaced by a recorder and `urlopen` replaced by a raise:
+
+        avant   925 noms atteignent verdict, dont per-tenant x4, per-country x2
+        apres   919, retires exactement ces 6, aucun ajout,
+                et les AUTRES noms identiques occurrence par occurrence
+
+    *The first version of that bench wrote the module to a temp directory, where
+    `host-drift.py` resolves `shared/boards/` from its own location — so both
+    passes swept ZERO cards and the comparison printed «identical» by vacuity.
+    Hence the proof-of-exercise assertion below: a bench that has not reached
+    the guarded code must say NOT EXERCISED rather than compare.*
+
+    **Why the consequence is REASONED and is not measured here:** since #283 a
+    `robots.txt` read that does not succeed is an absence of rules, hence OPEN,
+    so a name that cannot resolve would come back permissive. *Asking the guard
+    about a non-host to prove it would be a pointless network act — **the defect
+    of an instrument is not demonstrated by committing it.***
+
+    **THE GUARD IS ON THE FORM, NOT ON THE TWO SPELLINGS**, and the tokens are
+    taken from the sibling class rather than copied: a second list of the same
+    vocabulary is how two copies of one rule begin.
+    """
+
+    CARTES = ("applifly", "oraclecloud", "successfactors", "workday",
+              "michaelpage", "tanqeeb")
+
+    def _hd(self):
+        import contextlib  # noqa: F401  (l'idiome du fichier : import local)
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "_hd_1074", os.path.join(root, "bin", "host-drift.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, root
+
+    def test_no_marker_reaches_the_guard_and_the_drop_is_announced(self):
+        """**THE CENTRAL CASE.** *A value dropped in silence is invisible the day
+        there are thirty of them — and the card that carries it is the only place
+        a fix can happen, so the message names the card.*"""
+        import contextlib
+        mod, root = self._hd()
+        dits = []
+        for nom in self.CARTES:
+            chemin = os.path.join(root, "shared", "boards", nom + ".md")
+            self.assertTrue(os.path.exists(chemin), chemin)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                out = mod.declared(chemin)
+            self.assertIsNotNone(out, "%s: declared() returned None" % nom)
+            for h in out:
+                self.assertIn(".", h.split("/")[0],
+                              "%s: %r reached the caller, and `verdict()` is the "
+                              "next thing the caller does with it" % (nom, h))
+            self.assertIn("not a host name", err.getvalue(),
+                          "%s: a value was dropped WITHOUT SAYING SO" % nom)
+            self.assertIn(nom, err.getvalue(),
+                          "%s: the refusal does not name the card that carries "
+                          "the value" % nom)
+            dits.append(err.getvalue())
+        self.assertEqual(len(dits), len(self.CARTES))
+
+    def test_the_guard_is_on_the_form_and_not_on_the_two_spellings(self):
+        """**A third spelling that does not exist today must be dropped too.**
+        *The specimen is `per-tenant`; the FORM is «a `hosts:` value that is not
+        a machine name», and a `grep` of the report's string would have found
+        four of the six.*"""
+        import contextlib
+        mod, _root = self._hd()
+        d = tempfile.mkdtemp()
+        try:
+            carte = os.path.join(d, "invente.md")
+            with io.open(carte, "w", encoding="utf-8") as fh:
+                fh.write("# x\n\n<!-- verified: 2026-10-06 -->\n"
+                         "<!-- hosts: per-region -->\n<!-- script: none -->\n"
+                         "<!-- countries: XX -->\n")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                out = mod.declared(carte)
+            self.assertEqual(out, [],
+                             "`per-region` — a spelling that exists nowhere in the "
+                             "repository — survived, so this filter is a list of "
+                             "known tokens and not a test of the FORM")
+            self.assertIn("per-region", err.getvalue())
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_real_host_and_a_template_are_untouched(self):
+        """**The half that must not change.** *A guard that drops a legitimate
+        host is the «mal décrite» species: it reddens on correct code and it is
+        removed as noise.*"""
+        import contextlib
+        mod, root = self._hd()
+        d = tempfile.mkdtemp()
+        try:
+            carte = os.path.join(d, "vrai.md")
+            with io.open(carte, "w", encoding="utf-8") as fh:
+                fh.write("# x\n\n<!-- verified: 2026-10-06 -->\n"
+                         "<!-- hosts: jobs.example.com, www.example.org -->\n"
+                         "<!-- script: none -->\n<!-- countries: XX -->\n")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                out = mod.declared(carte)
+            self.assertEqual(out, ["jobs.example.com", "www.example.org"])
+            self.assertEqual(err.getvalue(), "",
+                             "a legitimate host was announced as dropped")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_two_declared_tokens_are_a_subset_of_what_the_form_drops(self):
+        """**The two guards are TIED without the vocabulary being copied.**
+        *`HostsAreDeclaredOrDeclaredInapplicable.TOKENS` is the one place those
+        two words are declared; re-listing them here is how two copies of a rule
+        begin, and a doublon of a guard has no symptom either.*"""
+        tokens = HostsAreDeclaredOrDeclaredInapplicable.TOKENS
+        self.assertTrue(tokens, "the sibling class no longer declares its tokens")
+        for t in tokens:
+            self.assertNotIn(".", t.split("/")[0],
+                             "%r now contains a dot, so the form test would KEEP "
+                             "it and these two guards no longer agree" % t)
+
+    def test_the_bench_must_prove_it_reached_the_code_before_comparing(self):
+        """**Written because my own bench printed «identical» on 0 against 0.**
+        *It wrote the module to a temp directory, where the tool resolves
+        `shared/boards/` from its own location, so both passes swept nothing.*
+        **A sweep that reaches no card says NOT EXERCISED; it does not compare.**
+        """
+        import contextlib
+        import glob
+        mod, root = self._hd()
+        cartes = glob.glob(os.path.join(root, "shared", "boards", "*.md"))
+        self.assertGreater(len(cartes), 400,
+                           "only %d cards found: the population below would be "
+                           "NOT EXERCISED, not green" % len(cartes))
+        vus = 0
+        for chemin in cartes:
+            with contextlib.redirect_stderr(io.StringIO()):
+                out = mod.declared(chemin)
+            vus += len(out or [])
+        self.assertGreater(vus, 500,
+                           "declared() returned %d names over %d cards — the walk "
+                           "narrowed and nothing below means anything" % (vus, len(cartes)))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
