@@ -2231,6 +2231,9 @@ none of them yielded a board. Recorded so nobody repeats the work.
 | Umana (`umana.it`, Italy) (Italy) | `umana.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — served and readable, and its root enumerates NO vacancy, so the enumerator is unfound.** |
 | Randstad Italy (`randstad.it`, Italy) (Italy) | `randstad-it.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — the sitemap index `randstadfr.py` reads on its three fronts answers 404 here, so Italy is not the same route.** |
 | LavoroTurismo (`lavoroturismo.it`, Italy) (Italy) | `lavoroturismo.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — a Nuxt root, 4 578 characters of text in 1 662 277 B; the verdict is about the ROOT and not the advert pages.** |
+| Randstad Germany (`randstad.de`, Germany) (Germany) | `randstad-de.md` | **Measured 2026-10-06 (#949, Germany), no script for this country yet — the index `randstadfr.py` reads EXISTS here and its first advert file carries 5 000 distinct vacancies, so this country is one table entry; the adapter refuses it before any request.** |
+| Adecco Germany (`adecco.de`, Germany) (Germany) | `adecco-de.md` | **Measured 2026-10-06 (#949, Germany), no script yet — the `sitemap-jobs-<country>-<lang>.xml` pattern that works for FR, NO, FI and IT answers 404 here, so the route is unestablished.** |
+| kimeta (`kimeta.de`, Germany) (Germany) | `kimeta.md` | **Measured 2026-10-06 (#949, Germany), no script — the rules REFUSE our path in writing on both host forms (borne 1), so nothing was retrieved.** |
 
 **Three different states, and they are not interchangeable.** *Inaccessible*
 (Portugal, Netherlands, Denmark, UK, Poland) is the operator's infrastructure.
