@@ -43206,7 +43206,37 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         *The «68 cards reading non déclaré» of #998 are still a DIFFERENT set:
         not one of them carries a `route:` line at all* — which is the figure
         this case exists to stop anyone from re-deriving from the issue text, and
-        nothing above touches it.
+        nothing above touches it. **And it has AGED: measured by calling
+        `access_of` on all 511 cards on 2026-10-06, that label is on 77.** *A
+        figure in an issue body is an observation with a date, not a state of the
+        repository — so it re-derives from the call, never from the text.*
+
+        **ONE LAYER WAS ADDED ON 2026-10-06, AND THE MUTATION REFUTED THE OTHER
+        ONE I WAS ABOUT TO CLAIM.** *What was added is the per-card BASIS:
+        `access_of` ALREADY distinguishes the two ways a card leaves this branch,
+        and nothing asserted it — a written adapter answers ``script:` sans refus
+        consigné`, a withdrawn route answers «aucune ligne de refus, aucun
+        script, aucune `route:`». Proven by CONTRAST: giving `naydizdes.md` a
+        `route: browser` line leaves the whole previous class GREEN and reddens
+        this one naming the card and the reason.*
+
+        **I also wrote that «an empty corpus was a GREEN path that would have
+        silenced this class», and that is FALSE.** *Measured by making
+        `read_cards` return nothing for the real directory only — so the fixtures
+        kept working — **three sibling cases redden**, and one of them,
+        `test_no_card_in_the_repository_takes_its_label_from_its_prose`, already
+        carries the very floor I was adding, with the same constant: «0 not
+        greater than 400 : only 0 cards read; 502 were there on 2026-10-05, so
+        the walk narrowed».* **So the floor here would have been a SECOND COPY of
+        one rule in the same class** — which is how four copies start, and they
+        are then lost one at a time. It was removed; what remains refuses to read
+        an absence as an answer and points at the case that owns the count.
+
+        *The first version of that mutation returned `[]` for EVERY call, so it
+        broke the fixtures too — six reds and a CRASH, the old file reddening as
+        well — and it could say nothing about any blind spot. «`mut != src` does
+        not prove you hit the target», and a crash red counts as a red without
+        saying what is missing.*
         """
         mod = self._cb()
         cards = self._cards(mod, {
@@ -43221,7 +43251,20 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         self.assertIn("1130", label.replace(" ", ""))
         self.assertIn("2026-09-08", label)
         self.assertEqual(basis, "`route: http`")
-        reels = [c["path"] for c in mod.read_cards(self.BOARDS)
+        # **AN EMPTY `reels` BELOW MUST NOT BE READ AS A VERDICT ON AN EMPTY
+        # CORPUS** — the two print the same `[]`. **The FLOOR that measures the
+        # corpus is `test_no_card_in_the_repository_takes_its_label_from_its_
+        # prose`, in this same class, and it is NOT duplicated here**: it already
+        # fails with «only 0 cards read; 502 were there on 2026-10-05, so the
+        # walk narrowed». *A second copy of one rule is how four copies start,
+        # and they are then lost one at a time.* This line only refuses to read
+        # an absence as an answer.
+        corpus = mod.read_cards(self.BOARDS)
+        self.assertTrue(corpus, "read_cards returned nothing: the empty "
+                                "population below is NOT EXERCISED, not green — "
+                                "and the sibling case that owns the count says "
+                                "by how much the walk narrowed")
+        reels = [c["path"] for c in corpus
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
             sorted(pathlib.Path(p).name for p in reels), [],
@@ -43236,6 +43279,29 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
             "the docstring's figure is stale: name the new card here and say since "
             "when, and do NOT widen this to a count, which would stop telling you "
             "WHICH card arrived")
+        # **AND THE EMPTINESS NAMES ITS REASON, CARD BY CARD.** *This is the half
+        # the assertion above cannot carry: `[]` is the same `[]` whichever way a
+        # card left, and the two ways call for OPPOSITE conduct — an adapter
+        # written is a finished job, a route withdrawn is a card that was wrong.*
+        # **`access_of`'s BASIS already distinguishes them, and nothing asserted
+        # it** — so each departure is pinned by the basis that caused it, and the
+        # day one reverses (a deleted `script:`, a re-added false `route:`) the
+        # red says WHICH and WHY instead of «the population grew by one».
+        par_nom = {pathlib.Path(c["path"]).name: c for c in corpus}
+        for nom, base_attendue, pourquoi in (
+                ("isgar.md", "`script:` sans refus consigné", "adapter WRITTEN (#669)"),
+                ("yora.md", "`script:` sans refus consigné", "adapter WRITTEN (#665)"),
+                ("naydizdes.md", "aucune ligne de refus, aucun script, aucune `route:`",
+                 "route FALSE and WITHDRAWN (#671) — 2 222 `/item/` were the whole "
+                 "classifieds site, not a jobs section")):
+            self.assertIn(nom, par_nom, "%s left the repository entirely" % nom)
+            etiquette, base = mod.access_of(par_nom[nom])
+            self.assertEqual(
+                base, base_attendue,
+                "%s no longer leaves this branch for the reason recorded above "
+                "(%s). Its basis is now %r. The population may still be empty "
+                "and this is still a change: fix the card, or record the new "
+                "reason here" % (nom, pourquoi, base))
 
     def test_a_route_none_still_outranks_everything(self):
         """**The half that must not change.** `route: none` primes over
