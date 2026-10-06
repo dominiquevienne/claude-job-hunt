@@ -43153,11 +43153,19 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: ZERO**, asserted below. *So this
-        branch repairs no card. The «68 cards reading non déclaré» of #998 are
-        a DIFFERENT set: not one of them carries a `route:` line at all* —
-        which is the figure this case exists to stop anyone from re-deriving
-        from the issue text.
+        **Population in the repository today: ONE — `yora.md`, since 2026-10-06.**
+        *It was ZERO when this case was written on 2026-10-05, and the assertion
+        below said so and told whoever reached the branch that the sentence would
+        be stale. `yora.md` reached it: `route: http · 100 · 2026-10-06` beside
+        `script: none`, which is the state named above word for word.* **The
+        assertion keeps its job by naming the population rather than asserting it
+        empty — it still fires the day a SECOND card arrives, which is what makes
+        it a tripwire and not a tautology.**
+
+        *The «68 cards reading non déclaré» of #998 are still a DIFFERENT set:
+        not one of them carries a `route:` line at all* — which is the figure
+        this case exists to stop anyone from re-deriving from the issue text, and
+        nothing above touches it.
         """
         mod = self._cb()
         cards = self._cards(mod, {
@@ -43174,9 +43182,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         self.assertEqual(basis, "`route: http`")
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
-        self.assertEqual(reels, [], "the branch is latent today; if a card "
-                                    "reaches it, this sentence is stale and "
-                                    "the figure must be remeasured")
+        self.assertEqual(
+            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            "the declared population of this branch changed. It was EMPTY until "
+            "2026-10-06 and is now `yora.md` alone. A card appearing here is not "
+            "a defect — it is the #949 state «measured, route known, adapter not "
+            "written» arriving — but it means the docstring's figure is stale: "
+            "name the new card here and say since when, and do NOT widen this to "
+            "a count, which would stop telling you WHICH card arrived")
 
     def test_a_route_none_still_outranks_everything(self):
         """**The half that must not change.** `route: none` primes over
