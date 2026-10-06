@@ -43507,5 +43507,255 @@ class ALineAPPENDEDToACardIsNeverTheOneTheToolingReads(unittest.TestCase):
                          "the reader no longer takes the first line, so the "
                          "guard above is testing the wrong end of the file")
 
+
+class ARefusalIsAttributedToTheTokenTheRequestWouldCarry(unittest.TestCase):
+    """**#1024, measured by `cd` on `www.randstad.es` during the #949 Spain
+    pass.** The host publishes a `*` group with 23 facet `Disallow` lines and a
+    `User-agent: ClaudeBot` group with `Disallow: /` — the exact shape the
+    owner's decision of 2026-09-07 settles: *`claude-user` falls under `*` and
+    may read.*
+
+    Asked with the default tokens, a four-level facet path came back
+    `group: 'claudebot'`, `rule: '/'`, `kind: 'host-closed'` and *«a refusal
+    that names this project, not a general policy»* — **on a host whose `/`
+    and whose listing page both answer `True`.**
+
+    > **Both readings refuse, so no wrong fetch was ever authorised: the
+    > verdict was right and the ACCUSATION was false** — and false in the
+    > direction that manufactures a closure. *A session measuring a facet path
+    > there would reasonably write «randstad.es closes everything to us», and a
+    > closure costs the owner a decision under 2 sexies on top of our
+    > measurement.* And `kind` and `rule` are not prose: a card generator
+    > reads them.
+
+    **The report named one site; there were two, and the first fix was not
+    enough.** Both are asserted below, and so is the measurement that justified
+    the second — because «reordering the tuple» is the obvious repair and it
+    leaves the defect standing.
+    """
+
+    # `*` refuses a four-level facet; a named group closes everything to
+    # `ClaudeBot`. `claude-user` is permitted by `*` everywhere else.
+    RANDSTAD = ("User-agent: *\n"
+                "Disallow: /candidatos/ofertas-empleo/*/*/*/*/\n"
+                "\nUser-agent: ClaudeBot\nDisallow: /\n")
+    FACETTE = "/candidatos/ofertas-empleo/a/b/c/d/"
+    # A group naming one of `OUR_AGENTS` that is NOT a request token, with `*`
+    # open: both request tokens sweep, so whichever is tried first wins.
+    WEB = "User-agent: *\nAllow: /\n\nUser-agent: Claude-Web\nDisallow: /\n"
+    # Both request tokens refused BY NAME — the browser branch, which must not
+    # move.
+    DEUX = ("User-agent: *\nAllow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n"
+            "\nUser-agent: Claude-User\nDisallow: /\n")
+    MUR = "User-agent: *\nDisallow: /\n"
+
+    def _r(self):
+        import _robots
+        return _robots
+
+    def _stub(self, body):
+        """Point the module at a body instead of the network, and hand back a
+        restore. *Each case clears the cache both ways: a verdict kept between
+        two different fixtures is a bench sharing an object with what it
+        tests.*"""
+        R = self._r()
+        R._CACHE.clear()
+        R._ALIAS.clear()
+        vrai = R._fetch
+        R._fetch = lambda host: {"state": "read", "final": host,
+                                 "attempts": 1, "body": body}
+
+        def rendre():
+            R._fetch = vrai
+            R._CACHE.clear()
+            R._ALIAS.clear()
+        return R, rendre
+
+    def test_a_facet_refusal_is_not_reported_as_a_named_closure(self):
+        """The Done-when of #1024, on the structured fields and on the reason."""
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            a = R.allowed("h.example", self.FACETTE)
+            # **The refusal itself must NOT move.** Repairing an attribution by
+            # granting a permission would be the one outcome worse than the
+            # defect.
+            self.assertIs(a["allowed"], False,
+                          "the path is refused under both tokens and stays so")
+            self.assertEqual(a.get("group"), "*")
+            self.assertEqual(a.get("kind"), "disallow")
+            self.assertEqual(a.get("rule"),
+                             "/candidatos/ofertas-empleo/*/*/*/*/")
+            self.assertNotIn("names this project", a.get("reason") or "")
+            self.assertIn("aimed at everyone", a.get("reason") or "")
+            # And the host is NOT closed: the two paths that refute a closure.
+            for ouvert in ("/", "/candidatos/ofertas-empleo/"):
+                with self.subTest(path=ouvert):
+                    self.assertIs(R.allowed("h.example", ouvert)["allowed"],
+                                  True)
+        finally:
+            rendre()
+
+    def test_the_fallback_returns_the_one_token_a_request_would_carry(self):
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            self.assertEqual(R._token_agents("h.example", self.FACETTE),
+                             ("claude-user",))
+        finally:
+            rendre()
+
+    def test_reordering_the_tuple_alone_would_not_have_been_enough(self):
+        """**The measurement that justifies returning ONE token**, kept as a
+        case because «reorder the tuple» is the obvious repair and it leaves
+        the defect standing.
+
+        Asked with BOTH tokens, `group_for()` collects the named records that
+        exist — and here only `ClaudeBot` has one, so its `Disallow: /` comes
+        back as though it bound both, while `claude-user` in fact falls under
+        `*`. *A two-token question has no single honest answer on a host that
+        names one of them.*
+        """
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            token, dis, allow, matched = R.group_for(
+                self.RANDSTAD, agents=("claude-user", "claudebot"))
+            self.assertEqual(token, "claudebot")
+            self.assertEqual(dis, ["/"])
+            self.assertEqual(matched, ["claudebot"])
+            # Asked for the one token we would send, the answer is the `*`
+            # record — which is why the fallback is sliced to one.
+            token, dis, _a, matched = R.group_for(
+                self.RANDSTAD, agents=("claude-user",))
+            self.assertEqual(token, "*")
+            self.assertEqual(dis, ["/candidatos/ofertas-empleo/*/*/*/*/"])
+            self.assertEqual(matched, [])
+        finally:
+            rendre()
+
+    def test_the_sweep_token_is_the_one_we_would_send(self):
+        """**The second site, which the report did not name.** `verdict()`'s
+        retry after a named closure took the first token that sweeps, over
+        `FETCH_TOKENS` — so on a host naming `Claude-Web` with `*` open the
+        reason said *«swept as `claudebot`»* while `claude-user` was equally
+        permitted and is the token a request carries."""
+        R, rendre = self._stub(self.WEB)
+        try:
+            v = R.verdict("h3.example")
+            self.assertIs(v["sweep"], True)
+            self.assertEqual(v.get("sweep_token"), "claude-user")
+            self.assertIn("`claude-user`", v.get("reason") or "")
+            self.assertNotIn("swept as `claudebot`", v.get("reason") or "")
+        finally:
+            rendre()
+
+    def test_a_host_that_names_both_tokens_still_closes(self):
+        """**The direction that must not change.** When both request tokens are
+        refused by name, the ordinary route really is closed to us
+        specifically, and `identity()` must still say the browser branch
+        applies."""
+        R, rendre = self._stub(self.DEUX)
+        try:
+            a = R.allowed("h4.example", "/jobs/")
+            self.assertIs(a["allowed"], False)
+            ident = R.identity("h4.example", "/jobs/")
+            self.assertEqual(ident["state"], "browser")
+            self.assertIn("BY NAME", ident["reason"])
+        finally:
+            rendre()
+
+    def test_a_wall_at_star_is_still_a_wall(self):
+        """The other direction: nothing names us, everybody is refused, and
+        the attribution must stay `*`."""
+        R, rendre = self._stub(self.MUR)
+        try:
+            a = R.allowed("h5.example", "/jobs/")
+            self.assertIs(a["allowed"], False)
+            self.assertEqual(a.get("group"), "*")
+            self.assertNotIn("names this project", a.get("reason") or "")
+        finally:
+            rendre()
+
+    # **A SECOND HOST, MEASURED INDEPENDENTLY — and a second FORM of the
+    # closing group.** `cd` measured `www.glassdoor.es` on 2026-10-06, after
+    # this fix was written: **eleven path forms, 11/11 refused under both
+    # tokens and 11/11 MISATTRIBUTED** — `rule: '/'`, `kind: 'host-closed'`,
+    # and the reason naming this project — while the same paths asked under
+    # `claude-user` carry **eleven different narrow rules under `*`**.
+    #
+    # *The denominator that counts is the objects measured TWICE, and it is
+    # now two hosts.* And Glassdoor files twelve AI crawlers into **one
+    # multi-agent group** of this shape, which is a different FORM from
+    # `randstad.es`'s single-name group — the fix is exercised on both,
+    # because «a measurement on one tenant is not a measurement of a family».
+    GLASSDOOR = ("User-agent: *\n"
+                 "Disallow: /Empleos/*_IP*.htm*\n"
+                 "Disallow: /job-listing/details.htm?*\n"
+                 "Disallow: /api/\n"
+                 "Allow: /empresas/\n"
+                 "\nUser-agent: GPTBot\nUser-agent: ClaudeBot\n"
+                 "User-agent: anthropic-ai\nUser-agent: CCBot\nDisallow: /\n")
+
+    def test_a_multi_agent_closing_group_attributes_each_path_to_its_own_rule(self):
+        """**The second form, and the fix was written before this host
+        existed.** A group naming four crawlers at once closed everything in
+        `claudebot`'s name; each refused path now carries the narrow `*` rule
+        that actually refuses it, and the two open paths stay open."""
+        R, rendre = self._stub(self.GLASSDOOR)
+        try:
+            attendu = {
+                "/Empleos/madrid-empleos_IP2.htm": "/Empleos/*_IP*.htm*",
+                "/job-listing/details.htm?jl=1": "/job-listing/details.htm?*",
+                "/api/x": "/api/",
+            }
+            for chemin, regle in attendu.items():
+                with self.subTest(path=chemin):
+                    a = R.allowed("g.example", chemin)
+                    self.assertIs(a["allowed"], False, "still refused")
+                    self.assertEqual(a.get("group"), "*")
+                    self.assertEqual(a.get("kind"), "disallow")
+                    self.assertEqual(a.get("rule"), regle)
+            # The paths that refute a closure, and the reason this is not one.
+            for ouvert in ("/", "/empresas/"):
+                with self.subTest(path=ouvert):
+                    self.assertIs(R.allowed("g.example", ouvert)["allowed"],
+                                  True)
+            self.assertEqual(R._token_agents("g.example", "/api/x"),
+                             ("claude-user",))
+        finally:
+            rendre()
+
+    def test_the_two_tuples_hold_the_same_tokens(self):
+        """**The invariant that makes two tuples safe**, rather than merging
+        them: `FETCH_TOKENS` is the SET a request can present as and its order
+        means nothing; `PREFERRED_TOKENS` is the ORDER and every «first one
+        wins» loop reads it. *A token added to one and not the other would
+        quietly change which name a refusal carries.*"""
+        R = self._r()
+        self.assertEqual(set(R.FETCH_TOKENS), set(R.PREFERRED_TOKENS))
+        self.assertEqual(len(R.FETCH_TOKENS), len(R.PREFERRED_TOKENS))
+        self.assertEqual(R.PREFERRED_TOKENS[0], "claude-user",
+                         "the order IS the decision of 2026-09-07")
+
+    def test_no_index_into_fetch_tokens_remains(self):
+        """**Absolute, because a guard with one declared exception gets a
+        second one.** Every «which token» decision reads `PREFERRED_TOKENS`;
+        `FETCH_TOKENS` is only ever iterated to build or to count.
+
+        *Two of the three indexes removed to make this absolute were harmless
+        — «the other token», and a reason identical under both tokens when the
+        rules file itself was refused, measured. They are gone so that the
+        next index, which may not be harmless, has nowhere to hide.*
+        """
+        import inspect
+        R = self._r()
+        hors_doc = re.sub(r'"""(?:.|\n)*?"""', "", inspect.getsource(R))
+        hors_doc = re.sub(r"(?m)^\s*#.*$", "", hors_doc)
+        self.assertNotIn("FETCH_TOKENS[", hors_doc,
+                         "an index into the unordered tuple is back")
+        self.assertIn("PREFERRED_TOKENS[:1]", hors_doc,
+                      "the fallback no longer returns a single token")
+        self.assertGreaterEqual(hors_doc.count("for tok in PREFERRED_TOKENS"), 2,
+                                "both «first one wins» loops read the ordered "
+                                "tuple; there were two on 2026-10-06")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
