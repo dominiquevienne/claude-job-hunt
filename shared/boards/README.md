@@ -2225,6 +2225,12 @@ none of them yielded a board. Recorded so nobody repeats the work.
 | HelpLavoro (`helplavoro.it`, Italy) (Italy) | `helplavoro.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
 | InfoJobs Italia (`infojobs.it`, Italy) (Italy) | `infojobs-it.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
 | Welcome to the Jungle (`welcometothejungle.com`, Italy) (Italy) | `welcometothejungle.md` | **Measured 2026-10-06 (#949 tranche 2), no script yet.** |
+| Adecco Italy (`www.adecco.com/it-it`, Italy) (Italy) | `adecco-it.md` | **Measured 2026-10-06 (#949 tranche 3), no script for this country yet — `adecco.py` REFUSES Italy before any request, and the Italian sitemap exists with 6 260 distinct adverts, so this country is one table entry.** |
+| Gi Group (`gigroup.it`, Italy) (Italy) | `gigroup.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — served, 397 vacancy links on the root, and its `ld+json` nests under `@graph`.** |
+| Openjobmetis (`openjobmetis.it`, Italy) (Italy) | `openjobmetis.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — an antirobot interstitial served as HTTP 200 in 836 B; indeterminate, and borne 2 forbids defeating it by any route.** |
+| Umana (`umana.it`, Italy) (Italy) | `umana.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — served and readable, and its root enumerates NO vacancy, so the enumerator is unfound.** |
+| Randstad Italy (`randstad.it`, Italy) (Italy) | `randstad-it.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — the sitemap index `randstadfr.py` reads on its three fronts answers 404 here, so Italy is not the same route.** |
+| LavoroTurismo (`lavoroturismo.it`, Italy) (Italy) | `lavoroturismo.md` | **Measured 2026-10-06 (#949 tranche 3), no script yet — a Nuxt root, 4 578 characters of text in 1 662 277 B; the verdict is about the ROOT and not the advert pages.** |
 
 **Three different states, and they are not interchangeable.** *Inaccessible*
 (Portugal, Netherlands, Denmark, UK, Poland) is the operator's infrastructure.
