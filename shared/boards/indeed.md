@@ -355,14 +355,57 @@ closed three disjoint searches). The zero page was where the block was first
 seen, not the only page that has it: **the cut is the heading**, and the
 extraction snippet above makes it on every page.
 
-**Always check the banner before extracting:**
+**Always check the banner before extracting — AND the check must say WHICH PAGE
+it read, in the same output.** *The earlier form of this snippet was a bare
+predicate:*
 
 ```js
 /ne donne aucun résultat|aucun résultat|did not match any jobs/i.test(document.body.innerText)
 ```
 
-If it is true, the search returned **nothing** — record zero and move on,
-whatever the cards say.
+**A bare `false` conflates «there are results» with «this is not the results page
+at all» — a block page, an error page, an interstitial.** *Nothing raises,
+nothing is missing, and the procedure goes on to extract from a page that is not
+the board.* **And `document.body.innerText` can be structurally mute: measured on
+2026-10-06 on another template it returned 291 and 407 characters for pages whose
+`textContent` held 257 604 and 151 976, with sixty adverts in the DOM
+throughout** — so a banner can be present on the page and absent from the string
+this predicate reads.
+
+```js
+(() => {
+  const it = document.body.innerText || "", tc = document.body.textContent || "";
+  const src = tc.length > it.length ? tc : it;          // l'instrument se CHOISIT
+  return JSON.stringify({
+    // l'IDENTITE de la page, dans la MEME sortie que le verdict
+    titre: document.title, h1: ((document.querySelector('h1')||{}).innerText||"").slice(0,60),
+    // un TEMOIN POSITIF que c'est bien la page de resultats
+    est_la_page_de_resultats: !!document.querySelector('#jobsearch, [id^=job_], .jobsearch-ResultsList, [data-testid*=result]'),
+    innerText: it.length, textContent: tc.length,
+    aucun_resultat: /ne donne aucun résultat|aucun résultat|did not match any jobs/i.test(src)
+  });
+})()
+```
+
+**Lecture, et les trois cas ne se confondent plus&nbsp;:**
+
+| ce qui sort | ce que ça veut dire |
+| :-- | :-- |
+| témoin **vrai**, `aucun_resultat` **vrai** | la recherche ne rend RIEN — zéro, et on passe |
+| témoin **vrai**, `aucun_resultat` **faux** | il y a des résultats — on extrait |
+| témoin **faux** | **ce n'est pas la page des résultats** — on n'extrait pas, on ne consigne pas zéro, et on dit ce que `titre` et `h1` portaient |
+
+> **Un zéro consigné sans témoin positif est «&nbsp;un zéro qui affirme au lieu de
+> manquer&nbsp;»&nbsp;: la sortie d'un board vide et celle d'une page refusée sont
+> identiques.** *Et un compte pris sur une page de blocage n'échoue pas — il rend
+> ZÉRO, qui est un entier comme un autre.*
+
+*Le sens d'échec de la forme nue était favorable par CHANCE et non par
+construction&nbsp;: elle rend `false` sur une page muette, donc elle n'invente pas un
+zéro — mais elle laisse extraire d'une page quelconque, et elle rendrait `true` sur
+une page d'erreur dont le texte contient «&nbsp;aucun résultat&nbsp;».* **Relevé par `ab` en
+balayant les sept fiches qui portent `innerText`, et corrigé ici&nbsp;; `linkedin.md`
+porte déjà un témoin (`knownLanguage`) et n'est pas touché.**
 
 **2. `#salaryInfoAndJobType` mixes salary and workload** *(the selector itself
 is gone since 2026-09-21 — the reading is `baseSalary` in the JobPosting and
