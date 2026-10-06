@@ -44392,5 +44392,195 @@ class TheKorgarFilterIsASafetyConditionNotAnOptimisation(unittest.TestCase):
         self.assertNotIn("withheld_fields", r)
         self.assertNotIn("withheld", json.dumps(r, ensure_ascii=False))
 
+
+class ACellIsAFunctionOfTheCardsContentAlone(unittest.TestCase):
+    """**#1044 — one defect of the four reported was real, and the other three
+    are retracted here, mine included.**
+
+    | claim | verdict |
+    | :-- | :-- |
+    | `short()` centres its window on a number, so the cell has two shapes | **false** — `short()` is applied to the TAIL fragments only and never touches the head |
+    | the head is built two different ways, and one of them eats the `·` | **TRUE, and this is the defect** |
+    | the cell emits a double `… …` | **not a defect** — two marks, two meanings, and an existing guard asserts both |
+    | `salient()` marks fragments that do not start mid-word | **false** — measured, zero false marks |
+
+    **The real one.** `SENT_SPLIT_RE` splits on `\\s+·\\s+`, and the head used to
+    be `" ".join(...)` of those pieces — so the JOIN replaced every separator
+    the raw-slice fallback KEPT. *Measured on the corpus of 2026-10-06: **204
+    cards rendered `measured **…` against 174 rendered `measured · **…`**, and
+    the deciding factor was `len(head) < limit // 2` — whether the first
+    SENTENCE fits — with nothing to do with where a number sat.* The head is now
+    a slice, so **386 of 386 keep it**.
+
+    > **How the false cause got as far as an issue:** I grepped `short()`, read
+    > it, and reported it; the pilot wrote it into #1044 on my word. *A grep
+    > returns a BRANCH — a function has several and the extract does not say how
+    > many.* **Calling `covers_text` over the real corpus is what settled it**,
+    > and it is the same chain `CLAUDE.md` already describes.
+    """
+
+    LIMITE = 220
+
+    def _mod(self):
+        import importlib.util
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "cb_1044", os.path.join(racine, "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, racine
+
+    @staticmethod
+    def _contenu(card):
+        c = card["h"].get("content", "")
+        c = re.sub(r"\s*·\s*20\d\d-\d\d-\d\d(?:T[\d:]+Z?)?\s*$", "", c)
+        return c.replace("|", "\\|")
+
+    def _longues(self, mod, racine):
+        out = []
+        for c in mod.read_cards(os.path.join(racine, "shared", "boards")):
+            txt = self._contenu(c)
+            if txt and len(txt) > self.LIMITE:
+                out.append((os.path.basename(c["path"]), c, txt))
+        return out
+
+    def test_the_separator_treatment_is_uniform_over_the_corpus(self):
+        """**The Done-when, in the only form that can catch it: UNIFORMITY.**
+
+        *A guard demanding the `·` be PRESENT would also pass on a renderer that
+        invented one; this one asks that the cell agree with its card.*"""
+        mod, racine = self._mod()
+        longues = self._longues(mod, racine)
+        self.assertGreaterEqual(
+            len(longues), 300,
+            f"only {len(longues)} truncated cards; 378 were on 2026-10-06, so "
+            f"either the corpus shrank or this walk narrowed")
+        perdus, concernes = [], 0
+        for nom, card, txt in longues:
+            m = re.match(r"^(\w[\w-]*) · ", txt)
+            if not m:
+                continue
+            concernes += 1
+            rendu = mod.covers_text(card)
+            if not rendu.startswith(m.group(1) + " · "):
+                perdus.append(f"{nom}: card starts {m.group(0)!r}, cell starts "
+                              f"{rendu[:28]!r}")
+        self.assertGreaterEqual(concernes, 300,
+                                f"only {concernes} cards carry «word · »")
+        self.assertEqual(perdus, [],
+                         "a cell drops a separator its card carries — the head "
+                         "is being re-joined instead of sliced")
+
+    def test_the_head_is_a_SLICE_of_the_content_and_never_a_rejoin(self):
+        """**The structural assertion that makes «a function of the content
+        alone» mechanical** instead of a sentence.
+
+        *`balance()` legitimately appends a backtick or a bold run to close what
+        the cut left open — `eures.md` and `hosco.md` — so those closers come
+        off before comparing. Everything else must be a literal prefix.*"""
+        mod, racine = self._mod()
+        mauvais = []
+        for nom, card, txt in self._longues(mod, racine):
+            tete = mod.covers_text(card).split(" …")[0]
+            for _ in range(4):
+                if txt.startswith(tete):
+                    break
+                for ferm in ("**", "`"):
+                    if tete.endswith(ferm):
+                        tete = tete[: -len(ferm)]
+                        break
+                else:
+                    break
+            if not txt.startswith(tete):
+                mauvais.append(f"{nom}: head is not a prefix of its card")
+        self.assertEqual(mauvais, [],
+                         "a head is not a slice of its card's content")
+
+    def test_a_rejoin_of_the_pieces_would_be_caught(self):
+        """**The case written from the DEFECT, not from the formula** — «what
+        would this do wrong, and how would I see it?»
+
+        *Pinned on a synthetic card because the corpus walk cannot say WHICH
+        path a given card took; this one takes the path that used to re-join.*"""
+        mod, _ = self._mod()
+        phrase = "**" + ("the host answers 200 and the listing carries ten "
+                         "adverts " * 3).strip() + ".**"
+        card = {"h": {"content": f"measured · {phrase} and then a second "
+                                 f"sentence that pushes this card past the "
+                                 f"limit so the cell is truncated and a head "
+                                 f"has to be built. · 2026-10-06"}}
+        self.assertTrue(mod.covers_text(card).startswith("measured · "),
+                        "the separator did not survive the head")
+
+    def test_the_midword_mark_fires_on_a_cut_token_and_not_after_a_space(self):
+        """**The RETRACTION, pinned so the next session does not «fix» a sound
+        line.** I accused `salient()` of marking fragments that do not start
+        mid-word — «34 false of 87» — and that count was an artefact of my own
+        proxy: I asked whether the fragment's first WORD appears space-preceded
+        ANYWHERE in the card, which says nothing about THIS occurrence.
+
+        *Measured properly, on the actual character at each cut over the whole
+        corpus: **167 cuts fall after a space and 97 after a `.`, and nothing
+        else.** Every mark is a real mid-token cut — `js` out of `Next.js`, `py`
+        out of `jobsgovgy.py`.*"""
+        mod, racine = self._mod()
+        from collections import Counter
+        vus = Counter()
+        for _nom, card, txt in self._longues(mod, racine):
+            for rx in (mod.COUNT_RE, mod.STATED_RE):
+                m = rx.search(txt)
+                if not m:
+                    continue
+                frag = m.group(0).strip(" ,;·")
+                if not frag:
+                    continue
+                at = m.start() + m.group(0).index(frag[0])
+                if at == 0:
+                    continue
+                ch = txt[at - 1]
+                vus["espace" if ch.isspace() else "point" if ch == "."
+                    else f"autre:{ch!r}"] += 1
+        autres = {k: v for k, v in vus.items() if k.startswith("autre:")}
+        self.assertGreaterEqual(sum(vus.values()), 200,
+                                f"only {sum(vus.values())} cut points reached")
+        self.assertEqual(
+            autres, {},
+            "a salient fragment is now cut after something other than a space "
+            "or a `.` — the mark's condition must be re-measured before anyone "
+            "trusts it, and the figures above (167 / 97) are what it was")
+        # **AND THE MARK MUST FOLLOW FROM THE CUT, WHICH THE COUNT ABOVE DOES
+        # NOT CHECK.** The mutation `if at > 0 or True` — mark everything — came
+        # back GREEN on the distribution alone: it measures WHERE cuts fall, not
+        # that the mark agrees with them. *That is the «not exercised» species:
+        # the figures were right and the invariant was unguarded.* So the
+        # biconditional is asserted directly, on the fragments `salient()`
+        # actually returns.
+        faux_pos, faux_neg = [], []
+        for nom, card, txt in self._longues(mod, racine):
+            for frag in mod.salient(txt):
+                if frag.startswith("#"):          # un numero de ticket, pas un fragment coupe
+                    continue
+                nu = frag.lstrip("…")
+                at = txt.find(nu)
+                if at <= 0:
+                    continue
+                colle = not txt[at - 1].isspace()
+                if colle and not frag.startswith("…"):
+                    faux_neg.append(f"{nom}: cut after {txt[at-1]!r}, unmarked")
+                if frag.startswith("…") and not colle:
+                    faux_pos.append(f"{nom}: cut after a space, yet marked")
+        self.assertEqual(faux_neg, [],
+                         "a fragment cut INSIDE a word is offered as a beginning")
+        self.assertEqual(faux_pos, [],
+                         "a fragment cut after a space carries a mid-word mark")
+
+    def test_the_rendering_is_deterministic(self):
+        """The other half of «a function of its input»: no hidden state."""
+        mod, racine = self._mod()
+        for nom, card, _ in self._longues(mod, racine)[:40]:
+            with self.subTest(carte=nom):
+                self.assertEqual(mod.covers_text(card), mod.covers_text(card))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
