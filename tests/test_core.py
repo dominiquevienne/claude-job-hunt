@@ -44233,5 +44233,164 @@ class ARefusalIsAttributedToTheTokenTheRequestWouldCarry(unittest.TestCase):
                                 "both «first one wins» loops read the ordered "
                                 "tuple; there were two on 2026-10-06")
 
+
+class TheKorgarFilterIsASafetyConditionNotAnOptimisation(unittest.TestCase):
+    """**`korgar.py`, 2026-10-06 (#664).** The declared sitemap of a Tajik job
+    board carries **42 851 `<loc>`** and four URLs in five of them are CVs of
+    real people. The rules are **105 bytes with not one `Disallow`**, so
+    `_robots.allowed()` answers True on `/rezume/<slug>_<id>` exactly as on
+    `/vakanciya/<slug>_<id>`.
+
+    **So the filter is the whole adapter, and these cases are its guard rather
+    than an accessory.** An adapter that walked the sitemap unfiltered would
+    harvest 32 687 CVs; the mutation that removes either layer must redden here,
+    and the red must name the FILTER and not a count.
+
+    *Measured composition, by first path segment, 2026-10-06 06:01 UTC:*
+
+        /rezume      33 646   CVs            32 687 carry a terminal id
+        /vakanciya    6 701   advertisements  6 701 of 6 701 carry one
+        /vakancii     1 248   FACETS          0 carry one
+        /resume       1 248   FACETS          0 carry one
+
+    **AND THIS CORRECTS OUR OWN PUBLISHED FIGURE.** `korgar.md` said «/rezume/
+    33 646 + /resume/ 1 248 = 34 894 CVs» — two families added on the
+    RESEMBLANCE OF THEIR NAMES, when `/resume/` holds the CV section's facet
+    pages. *The repository already carried the lesson — «a name filter built
+    against one trap lets its inverse through; only the PATH sorts facets from
+    natures» — and the adapter is where it had to be applied.*
+
+    **One case per FORM, because the second axis of a pattern is the shape of
+    the data and not yes/no.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_korgar_664", str(pathlib.Path(SCRIPTS) / "korgar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SITEMAP = ("<?xml version='1.0' encoding='UTF-8'?><urlset>"
+               "<url><loc>https://korgar.tj/vakanciya/operator_221488</loc></url>"
+               "<url><loc>https://korgar.tj/vakanciya/kontent-menedzher_221486</loc></url>"
+               "<url><loc>https://korgar.tj/vakanciya/sborshik-pk_221469</loc></url>"
+               "<url><loc>https://korgar.tj/vakancii</loc></url>"
+               "<url><loc>https://korgar.tj/vakancii/kategorii</loc></url>"
+               "<url><loc>https://korgar.tj/vakancii/gorod/dushanbe</loc></url>"
+               "<url><loc>https://korgar.tj/rezume/3d-dizainer_39412</loc></url>"
+               "<url><loc>https://korgar.tj/rezume/front-end-razrabotchik_39427</loc></url>"
+               "<url><loc>https://korgar.tj/resume/gorod/khudzhand</loc></url>"
+               "<url><loc>https://korgar.tj/soiskatel</loc></url>"
+               "</urlset>")
+
+    def test_the_filter_keeps_the_advertisements_and_not_one_cv(self):
+        """The central case. **The fixture is strictly larger than the thing it
+        must make fire**: it carries all FOUR families, so neither layer can pass
+        by having nothing to reject."""
+        k = self._mod()
+        everything, section, found, rejected = k.adverts(self.SITEMAP)
+        self.assertEqual(len(everything), 10)
+        self.assertEqual([i for _, i in found], ["221488", "221486", "221469"])
+        kept = " ".join(u for u, _ in found)
+        for seg in k.CANDIDATE_SEGMENTS:
+            self.assertNotIn(
+                seg, kept,
+                f"a {seg} URL reached the emitted set. **This is the defect the filter "
+                f"exists to prevent: the rules of this host permit these paths and 32 687 "
+                f"of its sitemap's URLs are CVs of real people.**")
+
+    def test_a_facet_of_the_advert_section_is_not_an_advertisement(self):
+        """`/vakancii/...` is the plural — the city and category LISTS — and it
+        carries no terminal id. 1 248 of them, 0 with an id."""
+        k = self._mod()
+        _, section, found, _ = k.adverts(self.SITEMAP)
+        self.assertNotIn("/vakancii", " ".join(u for u, _ in found))
+        self.assertEqual(len(section), 3, "the section filter must match the SINGULAR only")
+
+    def test_the_terminal_id_is_the_second_layer_and_it_is_independent(self):
+        """Declared redundancy, exercised: a URL in the right section with NO
+        terminal id must not enter. *Today no such URL exists on this host; the
+        case is written because `/rezume` proves one layer is not enough — 959 of
+        its 33 646 are facets carrying no id.*"""
+        k = self._mod()
+        xml = self.SITEMAP.replace(
+            "</urlset>",
+            "<url><loc>https://korgar.tj/vakanciya/kategorii</loc></url></urlset>")
+        _, section, found, rejected = k.adverts(xml)
+        self.assertEqual(len(section), 4)
+        self.assertEqual(rejected, 1, "the id anchor must drop a section URL with no id")
+        self.assertEqual(len(found), 3)
+
+    def test_a_candidate_path_is_refused_even_though_the_rules_permit_it(self):
+        """**The refusal must be able to FIRE.** `_robots.allowed()` says True
+        here; the adapter says no, and that decision is the point."""
+        k = self._mod()
+        with self.assertRaises(SystemExit) as e:
+            k.refuse_candidate("https://korgar.tj/rezume/3d-dizainer_39412")
+        self.assertEqual(e.exception.code, k.EXIT_REFUSED)
+        # and it must NOT fire on an advertisement — a refusal that always fires
+        # is no better than one that never does
+        self.assertIsNone(k.refuse_candidate("https://korgar.tj/vakanciya/operator_221488"))
+
+    def test_a_zero_salary_is_not_stated_rather_than_zero(self):
+        """Measured 0 on two of the three advertisements read. `if x` would have
+        called that a filled field; a 0 TJS monthly salary in a ledger is worse
+        than a null."""
+        k = self._mod()
+        zero = {"@type": "MonetaryAmount", "currency": "TJS",
+                "value": {"@type": "QuantitativeValue", "value": 0, "unitText": "MONTH"}}
+        real = {"@type": "MonetaryAmount", "currency": "TJS",
+                "value": {"@type": "QuantitativeValue", "value": 4000, "unitText": "MONTH"}}
+        self.assertEqual(k.money(zero), (None, "TJS", "MONTH"))
+        self.assertEqual(k.money(real), (4000.0, "TJS", "MONTH"))
+        self.assertEqual(k.money(None), (None, None, None))
+
+    def test_no_street_address_and_no_postcode_is_ever_emitted(self):
+        """This host serves both inside `jobLocation.address`. They must not
+        reach a record, and the case asserts the ABSENCE OF THE KEYS rather than
+        the absence of a value — a null `postal_code` field would still be a
+        field that invites filling."""
+        k = self._mod()
+        posting = {"title": "Оператор",
+                   "hiringOrganization": {"name": "Acme"},
+                   "jobLocation": {"address": {
+                       "addressCountry": "TJ", "addressRegion": "Душанбе",
+                       "addressLocality": "Душанбе", "postalCode": "734000",
+                       "streetAddress": "ул. Примерная 1"}}}
+        r = k.record("https://korgar.tj/vakanciya/x_1", "1", posting)
+        flat = json.dumps(r, ensure_ascii=False)
+        for dropped in k.ADDRESS_DROPPED:
+            self.assertNotIn(dropped, r)
+        self.assertNotIn("734000", flat)
+        self.assertNotIn("Примерная", flat)
+        self.assertEqual(r["place"], "Душанбе")
+        self.assertEqual(r["country_code"], "TJ")
+
+    def test_the_placeholder_employer_becomes_null_and_the_host_string_is_kept(self):
+        """**A field PRESENT and FILLED with a constant is not a field with a
+        value.** `hiringOrganization.name` is the WORD «Компания» on 3 of 3, and
+        emitting it would have written a fabricated company into a ledger. The
+        host's string stays beside the null so that this drops nothing."""
+        k = self._mod()
+        self.assertEqual(k.published_employer({"name": k.EMPLOYER_PLACEHOLDER}),
+                         (None, k.EMPLOYER_PLACEHOLDER))
+        self.assertEqual(k.published_employer({"name": "Бовар Савдо"}),
+                         ("Бовар Савдо", "Бовар Савдо"))
+        self.assertEqual(k.published_employer({}), (None, None))
+        self.assertEqual(k.published_employer("Acme"), (None, None))
+
+    def test_the_record_claims_no_withheld_field_because_nothing_was_withheld(self):
+        """Four patterns over every string field of the `JobPosting` and over the
+        visible text of all three pages returned ZERO. **A record saying it had
+        withheld a contact nobody deposited would lie about our own discretion in
+        the one direction no guard outside the adapter can check.**"""
+        k = self._mod()
+        r = k.record("https://korgar.tj/vakanciya/x_1", "1",
+                     {"title": "T", "description": "d",
+                      "hiringOrganization": {"name": k.EMPLOYER_PLACEHOLDER}})
+        self.assertNotIn("withheld_fields", r)
+        self.assertNotIn("withheld", json.dumps(r, ensure_ascii=False))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
