@@ -43159,14 +43159,20 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: ONE — `yora.md`, since 2026-10-06.**
-        *It was ZERO when this case was written on 2026-10-05, and the assertion
-        below said so and told whoever reached the branch that the sentence would
-        be stale. `yora.md` reached it: `route: http · 100 · 2026-10-06` beside
-        `script: none`, which is the state named above word for word.* **The
-        assertion keeps its job by naming the population rather than asserting it
-        empty — it still fires the day a SECOND card arrives, which is what makes
-        it a tripwire and not a tautology.**
+        **Population in the repository today: TWO — `isgar.md` and `yora.md`,
+        both since 2026-10-06.**
+        *It was ZERO when this case was written on 2026-10-05, ONE a few hours
+        later when `yora.md` arrived, and TWO on the same day when `isgar.md`
+        did. Each time the assertion fired and said what to do, which is the
+        whole point of naming the population rather than asserting it empty.*
+        **It fires again the day a THIRD card arrives — and the instruction is
+        unchanged: name it here, say since when, and do NOT widen this to a
+        count, because the count would stop telling you WHICH card arrived.**
+        *The two differ in what they are owed, and that is why naming them is
+        worth more than counting them: `yora.md` declares 100 adverts from a
+        sitemap whose roundness is unexplained, `isgar.md` declares 412 from a
+        host that publishes `{page, limit, total, totalPages}` in every response
+        and honours `?page=N`.*
 
         *The «68 cards reading non déclaré» of #998 are still a DIFFERENT set:
         not one of them carries a `route:` line at all* — which is the figure
@@ -43189,13 +43195,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            sorted(pathlib.Path(p).name for p in reels), ["isgar.md", "yora.md"],
             "the declared population of this branch changed. It was EMPTY until "
-            "2026-10-06 and is now `yora.md` alone. A card appearing here is not "
-            "a defect — it is the #949 state «measured, route known, adapter not "
-            "written» arriving — but it means the docstring's figure is stale: "
-            "name the new card here and say since when, and do NOT widen this to "
-            "a count, which would stop telling you WHICH card arrived")
+            "2026-10-06, then `yora.md` alone, and is now `isgar.md` + `yora.md`. "
+            "A card appearing here is not a defect — it is the #949 state "
+            "«measured, route known, adapter not written» arriving — but it means "
+            "the docstring's figure is stale: name the new card here and say since "
+            "when, and do NOT widen this to a count, which would stop telling you "
+            "WHICH card arrived")
 
     def test_a_route_none_still_outranks_everything(self):
         """**The half that must not change.** `route: none` primes over
