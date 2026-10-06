@@ -24,12 +24,24 @@ sitemap would harvest **32 687 CVs of real people**. No `/rezume/` or `/resume/`
 URL has ever been fetched from here and none will be.
 
 TWO LAYERS, AND THEY ARE INDEPENDENT ON PURPOSE. `ADVERT_RE` requires the
-`/vakanciya/` segment AND a terminal `_<digits>`. Either alone would work today —
-`/vakancii` does not contain `/vakanciya/`, and the 6 701 all carry ids — so the
-redundancy is declared rather than silent: the first layer sorts the SECTION, the
-second sorts an ADVERT from a facet of the same section. *`/rezume` is the proof
-that one layer is not enough: 959 of its 33 646 are facets carrying no id, so a
-section filter alone does not sort natures.*
+`/vakanciya/` segment AND a terminal `_<digits>`. The first layer sorts the
+SECTION, the second sorts an ADVERT from a facet of the same section. *`/rezume`
+is the proof that one layer is not enough: 959 of its 33 646 are facets carrying
+no id, so a section filter alone does not sort natures.*
+
+**AND THE MUTATION BENCH CORRECTED WHAT THIS PARAGRAPH FIRST CLAIMED.** It said
+«either layer alone would work today», and the mutation that removes the section
+layer was predicted GREEN. It came back RED, and the measurement says why:
+
+    intact            section=3   emitted=[221488, 221486, 221469]   rejected=0
+    section layer off section=5   emitted=[221488, 221486, 221469]   rejected=2
+
+*The EMITTED set is identical — the prediction was right about what comes out —
+and the red comes from the bench pinning `len(section)` and `rejected`, i.e. the
+first layer for ITSELF rather than through the second.* **So the bench is stronger
+than the paragraph claimed, and it is the paragraph that was corrected.** A red
+that is not the one predicted is a second finding, not a confirmation; here the
+finding was in my own description.
 
 A CORRECTION OF OUR OWN PUBLISHED FIGURE, 2026-10-06. `korgar.md` said «/rezume/
 33 646 + /resume/ 1 248 = 34 894 CVs, 81.4 %». That added two families on the
