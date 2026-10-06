@@ -6,11 +6,11 @@
 <!-- script: worklinkcy.py -->
 <!-- countries: CYN -->
 <!-- route: http -->
+<!-- content: measured · **the rules file is served (`state: read`, `certain: True`) on `/`, `/tr/jobs` and `/tr/feed/jobs` and writes no Crawl-delay — 2 s are ours. THE PAGER IS CLAMPED: `?page=2`, `?page=3`, `?page=4` each return the SAME 12 slugs and the same «Showing 1 – 12 of 28 results», though the page renders pager links — a pager one can SEE is not a pager that advances. AND THE FEED IS NOT THE INVENTORY: `/tr/feed/jobs` is RSS 2.0 with 20 `<item>`, holding 20 of 28 and missing 8 that page 1 carries. pager 12, feed 20, intersection 4, union 28. The advert (86 376 B) carries THREE `ld+json` blocks — `BreadcrumbList`, `WebSite`, `JobPosting` — so the block is chosen by `@type`; its `baseSalary` reads `{currency: EUR, minValue: null, maxValue: null}` and the rendered page prints NO salary** · 2026-10-01 -->
+<!-- witness: the board's own «of 28», and the union of the two enumerators is exactly 28 — so completeness is VERIFIED here, where Lambda (#661) and İş Kıbrıs (#719) stated no total and could only report that their size was not established. Neither enumerator alone reaches it · 2026-10-01 -->
+
 <!-- content: measured · **`/tr/jobs` (200, 357 323 B, md5 bd546ef2f6ab / 1faa6d672fd0 — a rendered element moves) lists ads as `/tr/jobs/<slug>` (10 distinct on the first page), a pager `?page=2`, `?page=3`, and a feed `/tr/feed/jobs`; no count stated, no JobPosting; `_robots.allowed('www.worklinkcy.com','/tr/jobs')` → open, certain** · 2026-09-18 -->
 <!-- witness: none — the list states no count · 2026-09-18 -->
-
-<!-- content: measured · **the rules file is served (`state: read`, `certain: True`) on `/`, `/tr/jobs` and `/tr/feed/jobs` and writes no Crawl-delay — 2 s are ours. THE PAGER IS CLAMPED: `?page=2`, `?page=3`, `?page=4` each return the SAME 12 slugs and the same «Showing 1 – 12 of 28 results», though the page renders pager links — a pager one can SEE is not a pager that advances. AND THE FEED IS NOT THE INVENTORY: `/tr/feed/jobs` is RSS 2.0 with 20 `<item>`, holding 20 of 28 and missing 8 that page 1 carries. pager 12 · feed 20 · intersection 4 · union 28. The advert (86 376 B) carries THREE `ld+json` blocks — `BreadcrumbList`, `WebSite`, `JobPosting` — so the block is chosen by `@type`; its `baseSalary` reads `{currency: EUR, minValue: null, maxValue: null}` and the rendered page prints NO salary** · 2026-10-01 -->
-<!-- witness: the board's own «of 28», and the union of the two enumerators is exactly 28 — so completeness is VERIFIED here, where Lambda (#661) and İş Kıbrıs (#719) stated no total and could only report that their size was not established. Neither enumerator alone reaches it · 2026-10-01 -->
 
 ## Adapter delivered 2026-10-01 — and this closes a form met three times in three days
 

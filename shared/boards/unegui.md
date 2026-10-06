@@ -5,10 +5,10 @@
 <!-- hosts: www.unegui.mn -->
 <!-- script: none -->
 <!-- countries: MN -->
-<!-- content: indeterminate · **`/ajil/` answers HTTP 403, 5 657 B, md5 c4803b639521 / 0993c3d41b29 — «Just a moment...», a Cloudflare managed challenge (the `revolico` class) — under the declared identity, twice; `_robots.allowed('www.unegui.mn','/ajil/')` → open, certain (the rules file is served, the pages are not); nothing of the section was read** · 2026-09-17 -->
-<!-- witness: none — nothing was served · 2026-09-17 -->
-<!-- content: re-measured · **the challenge HOLDS twelve days on: `/ajil/` answers HTTP 403, 5 654 B on two reads, md5 fa08ea528785 / 298b785ee232 — `<title>Just a moment...</title>`, `cf_chl` ×10, `challenge` ×8, `cdn-cgi` ×1. AND THE MOVING FINGERPRINT IS NOW EXPLAINED rather than merely observed: the two bodies differ at byte 407, in a per-request CSP nonce (`nonce-d7PNRbilvUdN6SZ6fVblzr` / `nonce-lNGmJUFoegEAhUSeRsf1Sn`) — so the classification rests on the CONTENT, not on the movement. `_robots.allowed` → open, certain, on `/ajil/` and on `/`** · 2026-09-29 -->
+<!-- content: indeterminate · **RE-MEASURED 2026-09-29, and the challenge HOLDS twelve days on: `/ajil/` answers HTTP 403, 5 654 B on two reads, md5 fa08ea528785 / 298b785ee232 — `<title>Just a moment...</title>`, `cf_chl` ×10, `challenge` ×8, `cdn-cgi` ×1. AND THE MOVING FINGERPRINT IS NOW EXPLAINED rather than merely observed: the two bodies differ at byte 407, in a per-request CSP nonce (`nonce-d7PNRbilvUdN6SZ6fVblzr` / `nonce-lNGmJUFoegEAhUSeRsf1Sn`) — so the classification rests on the CONTENT, not on the movement. `_robots.allowed` → open, certain, on `/ajil/` and on `/`** · 2026-09-29 -->
 
+<!-- witness: none — nothing was served · 2026-09-17 -->
+<!-- content: indeterminate · **`/ajil/` answers HTTP 403, 5 657 B, md5 c4803b639521 / 0993c3d41b29 — «Just a moment...», a Cloudflare managed challenge (the `revolico` class) — under the declared identity, twice; `_robots.allowed('www.unegui.mn','/ajil/')` → open, certain (the rules file is served, the pages are not); nothing of the section was read** · 2026-09-17 -->
 ## Re-measured 2026-09-29 — the challenge holds, and why that is not a fingerprint argument
 
 **Two reads of the exact path under the declared identity, the guard taken first:**
