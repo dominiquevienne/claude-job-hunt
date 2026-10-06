@@ -6,11 +6,11 @@
 <!-- script: kktcportal.py -->
 <!-- countries: CYN -->
 <!-- route: http -->
-<!-- content: measured · **`/is-ilanlari` (200, 375 033 B, md5 d0f24e297e25 / 1cdab24cea82 — a rendered element moves) lists 24 distinct ads as `/is-ilanlari/<slug>-<district>-<id>` with a pager `?sayfa=2`, `?sayfa=3` … `?sayfa=17` (at most 17 × 24 = 408, not stated); no JobPosting; `_robots.allowed('kktcportal.net','/is-ilanlari')` → open, certain** · 2026-09-18 -->
-<!-- witness: none — no count stated; the pager bounds the list (17 pages) · 2026-09-18 -->
 <!-- content: measured · **the rules file is served (`state: read`, `certain: True`) and writes no Crawl-delay — 2 s are ours. THE PAGER ADVANCES: `/is-ilanlari` 200 (374 788 B) 24 adverts, `?sayfa=2` 200 (386 467 B) 24 sharing NONE with page 1, `?sayfa=17` 200 (271 426 B) 6, `?sayfa=18` 200 (232 719 B) **0 — the walk's end**: 390 adverts read, where 17 × 24 bounded it at 408. Of the clamp/crush/reset/announce family this board exhibits NONE. The advert (256 092 B) carries TWO `ld+json` blocks — an Organization/WebSite pair and the `JobPosting` — so the block is chosen by `@type`, never by position; it gives title, hiringOrganization, jobLocation, employmentType, datePosted, validThrough, description. The LIST carries a title and a link, no employer and NO date** · 2026-10-01 -->
 <!-- witness: none stated — 390 is what the pager SERVED, bounded by 17 pages and ended by an empty one; the run says which. And `emitted + unreachable + unread == enumerated` holds · 2026-10-01 -->
 
+<!-- content: measured · **`/is-ilanlari` (200, 375 033 B, md5 d0f24e297e25 / 1cdab24cea82 — a rendered element moves) lists 24 distinct ads as `/is-ilanlari/<slug>-<district>-<id>` with a pager `?sayfa=2`, `?sayfa=3` … `?sayfa=17` (at most 17 × 24 = 408, not stated); no JobPosting; `_robots.allowed('kktcportal.net','/is-ilanlari')` → open, certain** · 2026-09-18 -->
+<!-- witness: none — no count stated; the pager bounds the list (17 pages) · 2026-09-18 -->
 ## Adapter delivered 2026-10-01 — and two findings that are about the board, not the route
 
 ```
