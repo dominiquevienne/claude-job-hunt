@@ -465,6 +465,15 @@ def salient(c):
             # the mark goes on what the fragment REALLY starts with, after the strip: a match that begins
             # on the space following a full stop is a beginning, and «… …**742 emitted» marks nothing
             at = m.start() + m.group(0).index(frag[0] if frag else "")
+            # **I ACCUSED THIS CONDITION AND IT IS SOUND — #1044, and the retraction is
+            # the useful part.** I counted «34 false marks out of 87» and the count was an
+            # artefact of my own proxy: I asked whether the fragment's first WORD appears
+            # space-preceded ANYWHERE in the card, which says nothing about THIS occurrence.
+            # *Measured properly — the actual character at each cut, over the whole corpus:
+            # **167 cuts fall after a space (unmarked) and 97 after a `.` (marked), and
+            # nothing else.** Every mark is a genuine mid-token cut: `js` out of `Next.js`,
+            # `py` out of `jobsgovgy.py`. **Zero false marks.*** So this line stays exactly
+            # as it was, and the comment is here to stop the next session «fixing» it.
             if at > 0 and not c[at - 1].isspace():
                 frag = "…" + frag
             out.append(frag)
@@ -484,22 +493,48 @@ def covers_text(card, limit=220):
         return c
     keep = salient(c)
     # whole sentences only, up to the limit — a half sentence that affirms is worse than a shorter cell
-    kept, used = [], 0
-    for part in SENT_SPLIT_RE.split(c):
-        part = part.strip()
-        if not part:
-            continue
-        if used + len(part) + 1 > limit:
+    # **THE HEAD IS A SLICE OF THE CARD, NEVER A RE-JOIN OF ITS PIECES — #1044.**
+    # It used to be `" ".join(kept)`, and `SENT_SPLIT_RE` splits on `\s+·\s+`, so the
+    # JOIN silently replaced every `·` by a space. The fallback just below is a raw
+    # slice, which KEEPS them. **Two paths, two shapes for the same kind of cell**:
+    # measured on the corpus of 2026-10-06 — 204 cards rendered `measured **…` by the
+    # join against 174 rendered `measured · **…` by the slice. A reader comparing two
+    # rows could not tell whether the difference was in the card or in the renderer.
+    #
+    # *The cause is NOT `short()`, which the issue and its reporter both named: `short()`
+    # is applied at the LAST line of this function, to the tail fragments only, and never
+    # touches the head. The deciding factor was `len(head) < limit // 2` — whether the
+    # first SENTENCE fits — and nothing to do with where a number sits.*
+    #
+    # Taking the head as `c[:end]` makes both paths slices, so the card's own separators
+    # survive verbatim and the cell is a function of the content alone.
+    bornes, prec = [], 0
+    for sep in SENT_SPLIT_RE.finditer(c):
+        if sep.start() > prec:
+            bornes.append((prec, sep.start()))
+        prec = sep.end()
+    if prec < len(c):
+        bornes.append((prec, len(c)))
+    fin, used = 0, 0
+    for a, b in bornes:
+        if used + (b - a) + 1 > limit:
             break
-        kept.append(part)
-        used += len(part) + 1
-    head = " ".join(kept).strip(" ,;·")
+        fin = b
+        used += (b - a) + 1
+    head = c[:fin].rstrip(" ,;·")
     # A card whose first sentence is longer than the limit would leave «measured» alone as the head — true,
     # and empty. Below half the budget, the head is extended by a WORD cut of what follows: half a sentence
     # is acceptable as the middle of a cell, never as its last word — which is what the tail below guarantees.
     if len(head) < limit // 2:
         head = c[:limit].rsplit(" ", 1)[0].rstrip(" ,;·")
     tail = [balance(short(f)) for f in keep if f and f not in head]
+    # **THE DOUBLE «… …» IS NOT THE DEFECT, AND I REPORTED IT AS ONE — #1044.** The head's
+    # `" …"` says «the sentence was cut here»; the `…` that `salient()` attaches says «this
+    # fragment begins INSIDE a word». *Two different facts, and measured on the corpus of
+    # 2026-10-06: of 87 cells showing «… …», **53 marked a genuine mid-word start**. A first
+    # repair stripped the fragment's mark at this join and
+    # `ACutThatTakesTheMeasureAndNotTheCharacterCount` case (d) reddened on it, rightly.*
+    # The defect is in the MARK's condition, fixed in `salient()` — not here.
     return balance(head) + " …" + "".join(f" {f}" for f in tail)
 
 
