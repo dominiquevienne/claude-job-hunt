@@ -43159,15 +43159,23 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: TWO — `naydizdes.md` and
-        `yora.md`. It was THREE for part of 2026-10-06 and `isgar.md` LEFT.**
-        *And the reason it left is the best one available: `isgar.py` was
-        written, so the card declares a `script:` and `access_of` reports «HTTP
-        ordinaire (adaptateur)» instead. **This branch counts the state
-        «measured, route known, adapter NOT written», so a card leaving it is the
-        #949 campaign finishing a job rather than anything going wrong** — which
-        is why this assertion fires in BOTH directions and why neither direction
-        is a defect.*
+        **Population in the repository today: ONE — `yora.md`.** It was EMPTY
+        when this case was written on 2026-10-05, grew to THREE inside
+        2026-10-06, and fell back to one. **The two departures had OPPOSITE
+        reasons, and that is the strongest argument this design has:**
+
+            isgar.md     left because the ADAPTER WAS WRITTEN — the card now
+                         declares a `script:`, so the state ADVANCED and the
+                         #949 campaign finished a job
+            naydizdes.md left because the ROUTE WAS FALSE AND WITHDRAWN — its
+                         `route: http · 2222` counted a sitemap of ALL
+                         categories, 0 of whose entries are the jobs the section
+                         actually lists, so the state was never true
+
+        *A count cannot tell those two apart: both subtract one. **Naming them
+        can**, and that is why this assertion lists the cards and why widening it
+        to a number would destroy exactly the information the branch exists to
+        carry.* It fires in both directions and neither is a defect.
         *The growth rate is now measured rather than guessed: ZERO when this case
         was written on 2026-10-05, THREE within twenty-four hours, all from the
         same #949 cluster. The instruction below — name them, never widen to a
@@ -43208,12 +43216,11 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels),
-            ["naydizdes.md", "yora.md"],
-            "the declared population of this branch changed. It was EMPTY until "
-            "2026-10-06, grew to THREE within the day, and is now TWO because "
-            "`isgar.md` LEFT — it declares a `script:`, so it moved out of the "
-            "state this case counts. "
+            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            "the declared population of this branch changed. EMPTY until "
+            "2026-10-06, THREE within the day, then TWO, and now ONE. The two "
+            "departures had OPPOSITE reasons and a count cannot tell them "
+            "apart — which is why this names rather than counts. "
             "A card appearing here is not a defect — it is the #949 state "
             "«measured, route known, adapter not written» arriving — but it means "
             "the docstring's figure is stale: name the new card here and say since "
