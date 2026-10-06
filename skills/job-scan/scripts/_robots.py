@@ -1184,6 +1184,24 @@ def verdict(host, agents=None):
                 f"path)` before concluding that any particular path is closed."
                 + _named_note(matched, out.get("group_conflict")))
         else:
+            # **A wall that also sets a rate says so, and says it as a
+            # wall.** — #1006. This is the branch the `Crawl-delay` used to
+            # jump over: appended to `allow`, it took the whitelist branch
+            # above and printed *«This is a whitelist, not a wall»* about a
+            # host that closes everything. *The delay belongs in the sentence
+            # — it is a real fact about the host — but it is not a
+            # permission, and the two were being read as one.*
+            rate = out.get("crawl_delay")
+            # **The number is rendered, not quoted as the file's own line.**
+            # `crawl_delay` is a float by design, so an f-string prints
+            # `10.0` where the file wrote `10` — and writing
+            # «`Crawl-delay: 10.0`» presents our parse as the host's text. A
+            # small thing, and the same family as every other place where a
+            # figure acquires a provenance it does not have.
+            avec = (f" The group also asks for {rate:g}s between requests — "
+                    f"**a rate, not a permission**: it conditions the "
+                    f"requests a permitted path would take, and here no path "
+                    f"is permitted." if rate else "")
             out["reason"] = (
                 (f"this host closes everything to `User-agent: {token}` — "
                  f"**a refusal that names this project**, not a general "
@@ -1191,6 +1209,7 @@ def verdict(host, agents=None):
                  if token != "*" else
                  "this host's robots.txt is `User-agent: * / Disallow: /` — "
                  "everything closed, evenly. Not swept.")
+                + avec
                 + _named_note(matched, out.get("group_conflict")))
     elif dis:
         # **`sweep` answers "is this host closed in one block". It cannot
@@ -1302,6 +1321,51 @@ def _groups(body):
     return out
 
 
+def _sort_rule(kind, value, dis, allow):
+    """Put one directive where it belongs — **and nowhere when it is not a
+    path.** — #1006
+
+    **The defect this replaces was an `else` used as a catch-all**:
+
+        (dis if kind == "disallow" else allow).append(value)
+
+    `_groups()` emits three kinds — `disallow`, `allow`, `crawl-delay` — so
+    that `else` appended the STRING `"10"` of a `Crawl-delay: 10` to the list
+    of **permissions**. Measured by `cd` on 2026-10-05 on Hosco, both ways:
+    `allow == ['10']` with the delay line, `[]` without, on a file carrying no
+    `Allow:` at all.
+
+    **The verdict was safe and only the prose lied**, which is why this is
+    worth writing down rather than fixing in a panic: `_match_len('10', '/')`
+    is `-1`, so `"10"` can never match any path and nothing we decide changed.
+    What changed was the `reason`, which read *«except 1 named path family:
+    `10`. **This is a whitelist, not a wall**»* **about a host that closes
+    everything and merely asks us to slow down** — §2 quater exactly, a false
+    gloss on a correct verdict, contradicting nothing, and **leaning toward
+    PERMITTED.**
+
+    **`allow` is named rather than `crawl-delay` being special-cased**, and
+    that is the whole point: the danger is not the directive we know about, it
+    is the next one added to `_groups()`, which would land in the permissions
+    by default. *A deny-list is a bet that you enumerated the problem; an
+    allow-list is a bet that you enumerated the need — and the two failure
+    modes are not symmetric.* Here a kind we forget to name produces a
+    **missing rule**, visible and reported; the `else` produced a **false
+    permission**, invisible.
+
+    **And the issue named one site. There were FOUR** — 1337, 1568, 1578 and
+    1655 before this change, two of them spelled `d`/`a` rather than
+    `dis`/`allow`, so a `grep` for the spelling in the report finds half of
+    them. *Fixing the one that was reported would have left three and closed
+    the issue* — «un contrôle de conformité se pose sur l'ensemble des
+    CONCERNÉS, jamais sur l'ensemble des participants».
+    """
+    if kind == "disallow":
+        dis.append(value)
+    elif kind == "allow":
+        allow.append(value)
+
+
 def _named_note(matched, conflict):
     """What to add when more than one record of ours applies. Issue #117."""
     if len(matched) < 2:
@@ -1334,7 +1398,7 @@ def _records_disagree(body, matched):
             if n not in names:
                 continue
             for kind, value in rules:
-                (d if kind == "disallow" else a).append(value)
+                _sort_rule(kind, value, d, a)
         seen.add((tuple(sorted(set(d))), tuple(sorted(set(a)))))
     return len(seen) > 1
 
@@ -1565,7 +1629,7 @@ def group_for(body, agents=OUR_AGENTS):
         dis, allow = [], []
         for _names, rules in star:
             for kind, value in rules:
-                (dis if kind == "disallow" else allow).append(value)
+                _sort_rule(kind, value, dis, allow)
         return "*", dis, allow, []
 
     per = {}
@@ -1575,7 +1639,7 @@ def group_for(body, agents=OUR_AGENTS):
                 continue
             d, a = per.setdefault(n, ([], []))
             for kind, value in rules:
-                (d if kind == "disallow" else a).append(value)
+                _sort_rule(kind, value, d, a)
 
     dis = []
     for n in matched:
@@ -1652,7 +1716,7 @@ def _star_group(body):
         if "*" not in names:
             continue
         for kind, value in rules:
-            (dis if kind == "disallow" else allow).append(value)
+            _sort_rule(kind, value, dis, allow)
     return dis, allow
 
 

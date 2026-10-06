@@ -43159,11 +43159,19 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: ZERO**, asserted below. *So this
-        branch repairs no card. The «68 cards reading non déclaré» of #998 are
-        a DIFFERENT set: not one of them carries a `route:` line at all* —
-        which is the figure this case exists to stop anyone from re-deriving
-        from the issue text.
+        **Population in the repository today: ONE — `yora.md`, since 2026-10-06.**
+        *It was ZERO when this case was written on 2026-10-05, and the assertion
+        below said so and told whoever reached the branch that the sentence would
+        be stale. `yora.md` reached it: `route: http · 100 · 2026-10-06` beside
+        `script: none`, which is the state named above word for word.* **The
+        assertion keeps its job by naming the population rather than asserting it
+        empty — it still fires the day a SECOND card arrives, which is what makes
+        it a tripwire and not a tautology.**
+
+        *The «68 cards reading non déclaré» of #998 are still a DIFFERENT set:
+        not one of them carries a `route:` line at all* — which is the figure
+        this case exists to stop anyone from re-deriving from the issue text, and
+        nothing above touches it.
         """
         mod = self._cb()
         cards = self._cards(mod, {
@@ -43180,9 +43188,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         self.assertEqual(basis, "`route: http`")
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
-        self.assertEqual(reels, [], "the branch is latent today; if a card "
-                                    "reaches it, this sentence is stale and "
-                                    "the figure must be remeasured")
+        self.assertEqual(
+            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            "the declared population of this branch changed. It was EMPTY until "
+            "2026-10-06 and is now `yora.md` alone. A card appearing here is not "
+            "a defect — it is the #949 state «measured, route known, adapter not "
+            "written» arriving — but it means the docstring's figure is stale: "
+            "name the new card here and say since when, and do NOT widen this to "
+            "a count, which would stop telling you WHICH card arrived")
 
     def test_a_route_none_still_outranks_everything(self):
         """**The half that must not change.** `route: none` primes over
@@ -43356,6 +43369,160 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
                 self.assertIn(surface, doc,
                               "the closed vocabulary is not documented")
 
+class ANonPathDirectiveNeverReachesThePermissions(unittest.TestCase):
+    """**#1006, measured by `cd` on 2026-10-05 while adding Hosco.** The
+    sort used an `else` as a catch-all —
+
+        (dis if kind == "disallow" else allow).append(value)
+
+    — and `_groups()` emits three kinds, so a `Crawl-delay: 10` appended the
+    **string `"10"` to the list of PERMISSIONS**.
+
+    **The verdict was safe and only the prose lied**, which is why it is worth
+    a guard rather than a panic: `_match_len('10', '/')` is `-1`, so `"10"`
+    can never match a path. What came out instead was *«except 1 named path
+    family: `10`. **This is a whitelist, not a wall**»* **about a host that
+    closes everything and merely asks us to slow down** — a false gloss on a
+    correct verdict, contradicting nothing, and leaning toward PERMITTED.
+
+    > **And the issue named one site. There were FOUR.** Two were spelled
+    > `d`/`a` rather than `dis`/`allow`, so a grep for the spelling in the
+    > report finds half of them — *fixing the one that was reported would have
+    > left three and closed the issue.*
+
+    **The second shape the report did not name is the one that was not purely
+    cosmetic:** a host with a REAL whitelist and a delay printed *«except 2
+    named path families: `/jobs/`, `10`»* — an inflated count and an invented
+    family, on a verdict a reader uses to decide whether to write an adapter.
+    """
+
+    MUR = "User-agent: *\nDisallow: /\nCrawl-delay: 10\n"
+    MUR_SEUL = "User-agent: *\nDisallow: /\n"
+    LISTE = "User-agent: *\nDisallow: /\nAllow: /jobs/\nCrawl-delay: 10\n"
+
+    def _r(self):
+        import _robots
+        return _robots
+
+    def _verdict(self, body):
+        """A verdict from a body, no network — the module's own stub point."""
+        R = self._r()
+        R._CACHE.clear()
+        R._ALIAS.clear()
+        vrai = R._fetch
+        R._fetch = lambda host: {"state": "read", "final": host,
+                                 "attempts": 1, "body": body}
+        try:
+            return R.verdict("h.example")
+        finally:
+            R._fetch = vrai
+            R._CACHE.clear()
+            R._ALIAS.clear()
+
+    def test_a_crawl_delay_is_not_a_permission_in_any_of_the_four_sorts(self):
+        """**All four, because the report named one.** `group_for` answers for
+        the `*` group and for a named one; `_star_group` answers separately;
+        and a fourth site sorts the per-agent rules."""
+        R = self._r()
+        token, dis, allow, _x = R.group_for(self.MUR)
+        self.assertEqual(allow, [],
+                         "a Crawl-delay reached the permissions of group_for")
+        self.assertEqual(dis, ["/"])
+        self.assertEqual(R._star_group(self.MUR), (["/"], []),
+                         "a Crawl-delay reached the permissions of _star_group")
+        # **A named group too**, which is the site a grep for `dis`/`allow`
+        # misses because it is spelled `d`/`a`.
+        nomme = ("User-agent: Claude-User\nDisallow: /\nCrawl-delay: 7\n")
+        token, dis, allow, _x = R.group_for(nomme)
+        self.assertEqual(allow, [], "the per-agent sort still catches all")
+
+    def test_the_delay_itself_is_not_lost(self):
+        """**The other direction, and `cd` retracted a first impression here**
+        — it had printed the key `delay` instead of `crawl_delay`. A fix that
+        dropped the directive on the floor would pass the case above and break
+        the one host that asked us to slow down."""
+        R = self._r()
+        self.assertEqual(R.delay_for(self.MUR), 10.0)
+        self.assertIsNone(R.delay_for(self.MUR_SEUL))
+        self.assertEqual(self._verdict(self.MUR)["crawl_delay"], 10.0)
+
+    def test_a_wall_with_a_delay_reads_as_a_wall(self):
+        """The Done-when of #1006, asserted on the output, because the output
+        is the only place this defect was ever visible."""
+        v = self._verdict(self.MUR)
+        self.assertIs(v["sweep"], False)
+        self.assertEqual(v["allow"], [])
+        self.assertNotIn("whitelist, not a wall", v["reason"])
+        self.assertIn("everything closed, evenly", v["reason"])
+        self.assertIn("a rate, not a permission", v["reason"])
+        # **The number is rendered, not quoted as the host's own line.**
+        # `crawl_delay` is a float, so an f-string prints `10.0` where the
+        # file wrote `10`, and quoting that back as the file's text gives our
+        # parse a provenance it does not have.
+        self.assertIn("10s between requests", v["reason"])
+        self.assertNotIn("10.0", v["reason"])
+
+    def test_a_wall_with_no_delay_says_nothing_about_a_rate(self):
+        """**The negative control.** A sentence that always appears cannot be
+        distinguished from one that never does."""
+        v = self._verdict(self.MUR_SEUL)
+        self.assertIn("everything closed, evenly", v["reason"])
+        self.assertNotIn("a rate, not a permission", v["reason"])
+        self.assertNotIn("between requests", v["reason"])
+
+    def test_a_real_whitelist_counts_only_its_real_families(self):
+        """**The shape the report did not name.** Before the fix this said
+        *«except 2 named path families: `/jobs/`, `10`»* — a count wrong by
+        one and a family that does not exist, on a host whose whitelist is
+        genuine."""
+        v = self._verdict(self.LISTE)
+        self.assertEqual(v["allow"], ["/jobs/"])
+        self.assertIn("except 1 named path family", v["reason"])
+        self.assertIn("`/jobs/`", v["reason"])
+        self.assertNotIn("`10`", v["reason"])
+        # And it is still correctly called a whitelist — the branch is right,
+        # it was only being fed a phantom.
+        self.assertIn("whitelist, not a wall", v["reason"])
+
+    def test_the_bogus_entry_could_never_have_matched_a_path(self):
+        """**Why this was prose and not a permission**, asserted rather than
+        repeated from the report: the value cannot match, so no decision moved
+        — which is exactly what makes a false gloss undetectable by
+        comparison."""
+        R = self._r()
+        self.assertEqual(R._match_len("10", "/"), -1)
+        self.assertEqual(R._match_len("10", "/jobs/10"), -1)
+        self.assertGreater(R._match_len("/", "/"), 0)
+
+    def test_no_sort_site_uses_else_as_a_catch_all_any_more(self):
+        """The corpus half: a fifth site added tomorrow must not reintroduce
+        it. *The docstring of `_sort_rule` quotes the defect, so the search is
+        for live code and skips the quotation.*"""
+        import inspect
+        R = self._r()
+        src = inspect.getsource(R)
+        hors_doc = re.sub(r'"""(?:.|\n)*?"""', "", src)
+        self.assertNotIn('if kind == "disallow" else', hors_doc,
+                         "an `else` catch-all is back in the sort")
+        self.assertGreaterEqual(hors_doc.count("_sort_rule(kind, value"), 4,
+                                "the four sort sites were four on 2026-10-05; "
+                                "if this drops, one has been rewritten by hand")
+
+    def test_a_directive_that_is_neither_goes_nowhere(self):
+        """**The allow-list is named rather than `crawl-delay` special-cased**,
+        and this is the case that says why: a kind nobody named lands in
+        neither list. *A deny-list would have had to enumerate the problem; an
+        allow-list enumerates the need, and its failure announces itself as a
+        missing rule instead of a false permission.*"""
+        R = self._r()
+        dis, allow = [], []
+        R._sort_rule("sitemap", "https://h.example/sitemap.xml", dis, allow)
+        R._sort_rule("host", "h.example", dis, allow)
+        R._sort_rule("content-signal", "ai-train=no", dis, allow)
+        self.assertEqual((dis, allow), ([], []))
+        R._sort_rule("allow", "/jobs/", dis, allow)
+        R._sort_rule("disallow", "/admin/", dis, allow)
+        self.assertEqual((dis, allow), (["/admin/"], ["/jobs/"]))
 class ALineAPPENDEDToACardIsNeverTheOneTheToolingReads(unittest.TestCase):
     """**Found by `cd` on 2026-10-06, through a guard rather than by reading.**
     `bin/country-boards.py:140` resolves a card's header with
