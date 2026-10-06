@@ -7,6 +7,7 @@
 <!-- countries: CH -->
 <!-- content: measured · 5 advertisements emitted against 5 declared by the board's own Yoast job sitemap, identical by MEMBERSHIP and not only by count, and against a cap of 10 that the listing container declares on itself (`data-per_page`) — so the page is not full and the five are the whole board; the route returns no employer (the field is present and empty on all five), no `jobLocation` at all, no salary and no `employmentType`, and the town, canton and contract type exist on the listing card only; a RETIRED advertisement is returned by neither enumerator and still answers HTTP 200, read by `fit1job.py list --fetch` · 2026-10-05 -->
 <!-- witness: the Yoast job sitemap `/job_listing-sitemap.xml`, written by a different plugin from the one that renders the listing, so it is not our own extraction under another name — **and it has never been read on a case where the two should differ**, which needs the listing capped at ten and this board has five -->
+<!-- closure: detail · the ad page LOSES its `JobPosting` block and still answers 200 with a full 85 kB and no visible notice; the listing and the Yoast job sitemap simply omit it, so neither enumerator can distinguish a retired ad from one that never existed · 2026-10-05 -->
 
 **Requested in #868, and the request's premises were re-measured rather than
 repeated.** *Two of them did not hold, and one of the two is the reason this

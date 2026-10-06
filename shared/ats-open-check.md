@@ -597,9 +597,73 @@ whole reason it can ship.
   claim this file cannot support; *"one witness, and it is the board"* is.
 - **A `200` with no content is our request until proven otherwise.** Change one
   parameter and ask again before recording a host as mute.
+- **Never read one board's closure surface onto another, and never trust a
+  surface the card has not named.** *WHERE a host declares a post is gone is a
+  property of THAT host — measured on the detail page AND on the listing before
+  either is believed, and recorded in the card's `closure:` line. Two boards
+  measured the same afternoon answered in opposite directions, so there is no
+  default to fall back on.*
 - **A host that is not listed here is not a failure.** Say you could not verify
   and why, then carry on. Adding a host means testing its **closed** state, not
   just its open one — that is the whole difference between the two entries above.
+
+## WHERE a host declares a post is gone is a property of THAT host
+
+**#1003, measured on two boards taken the same afternoon of 2026-10-05 — Fit1Job
+(#868) and DiData (#864). They answer this question in OPPOSITE directions, and
+the pair is the dénominateur that makes it a rule rather than an anecdote: 2
+hosts, 2 opposite answers, same question, same day.**
+
+| | where the host declares that a post is gone | and what the other surface says |
+| :-- | :-- | :-- |
+| **Fit1Job** | on the **DETAIL page**, by *losing its `JobPosting` block* | the listing and the sitemap simply omit it |
+| **DiData** | on the **LISTING only**, by three agreeing markers | the detail page is **indistinguishable** from an open one |
+
+> **So "the page is still standing" carries no information, and neither does
+> "the page looks normal".** *On one host the structured block is the
+> discriminant and the prose says nothing; on the other the prose and the
+> structure both say nothing, and only the listing knows.*
+
+### The two failure shapes, named — because they look nothing alike
+
+1. **A `200` that lost its structured block.** The page answers in full — 85 kB
+   on Fit1Job — with **no visible notice**: no "filled", no "expired", nothing a
+   reader would see. *WP Job Manager emits the block for a published listing and
+   drops it when the listing is unpublished; nothing else on the page changes.*
+   **The absence of the block is the signal, so an extractor that merely fails
+   to find a block cannot tell this from a parse error** — which is why the
+   absence must be attributed before it is believed.
+2. **A detail page identical whether open or closed.** Same `h1`, same
+   `Type:`/`Location:`, same application token, no notice — measured on DiData
+   on two posts the listing marks unavailable. **Here the detail page is not a
+   weak witness, it is NO witness**, and only the listing can answer.
+
+**And the cost of assuming is asymmetric in the direction that hurts.** *Reading
+Fit1Job's rule onto DiData declares every closed post OPEN — the plugin drafts
+for a vacancy that is gone. Reading DiData's rule onto Fit1Job declares every
+post UNVERIFIABLE — and a row quietly discarded on a maybe is an opportunity the
+candidate never hears about.*
+
+> **This is #903 one turn later and from the other end.** *#903 established that
+> an absence on an employer's career page is an INDICATION whose meaning depends
+> on the host. This establishes the same thing for the board's own two
+> surfaces — and neither surface is a verdict on its own until the card says
+> which one this host uses.*
+
+**The declared field is `closure:`, and it is read by a guard** — `tests/test_core.py`,
+`ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt`. *A card field that nothing
+reads is a field that drifts while the suite stays green, so the vocabulary is
+closed and the population is checked against the scripts that actually emit a
+closure status.*
+
+```
+<!-- closure: detail · <how the surface was read> · <YYYY-MM-DD> -->
+surfaces : listing | detail | both | neither
+```
+
+*`neither` is a real answer and not a gap&nbsp;: it says the host publishes no
+availability signal on either surface, which is a measurement and the strongest
+possible reason not to infer closure at all.*
 
 ## Investigated and rejected — do not investigate a third time
 
