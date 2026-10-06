@@ -34,12 +34,53 @@ promoted to a success.
 `ClaudeBot` to give it `Crawl-delay: 5` and forbids it nothing — named,
 allowed, conditioned.
 
+**5. It POSTs when a board's search is a POST.** — #999, reported by `cd` on
+2026-10-05 while measuring Emprego Xunta (Galicia), the first board of the #949
+campaign whose search is not a GET.
+
+    bin/fetch-body.py https://host.example/search -o s.html \\
+        --method POST --form q=plombier --form page=1
+
+**Until then this tool only did GET, so that one board forced the single thing
+`CLAUDE.md` §3 bis forbids: a hand-rolled fetch.** *The rule had a hole, and
+the hole produced the behaviour the rule was written against.* The alternative
+— a POST in each adapter — was declined on a precedent rather than on taste:
+**two adapters once failed to send our declaration, and the audit counted what
+obeyed rather than what escaped.** Four disciplines that live in one place can
+be mutated; four disciplines copied ninety-nine times get dropped one at a
+time.
+
+**The guard does not change in kind, and that is a statement about
+`robots.txt` rather than an omission:** the file speaks about paths, not about
+methods, so the verdict that governs a GET of `/search` governs a POST of
+`/search`. There is no second question to ask and no flag to ask it with.
+`Crawl-delay` is honoured the same way.
+
+**A POST'S PROVENANCE IS INCOMPLETE WITHOUT WHAT WAS SENT — AND THAT IS THE
+TRAP**
+
+A GET is fully described by its URL, and we compose the URL. A request body is
+the first thing in this tool that **can carry the candidate's own search** —
+their trade, their city, the employer they are chasing — and the sidecar sits
+in the repository's reach.
+
+So the body is recorded as a **schema**: field names, their count, the length
+of each value, and a digest **over the names**. Never a value, and
+**deliberately no digest of the body**: `q=plombier` carries a dozen bits, so
+an md5 there is a dictionary lookup away from the term it was meant to hide.
+The rule and its floor live in `_provenance.sent_summary`, with the guard that
+mutating it reddens.
+
 WHAT IT REFUSES
 
 A path the rules refuse is **not fetched**, and there is no flag for that.
 `--allow-refusal` is about the *HTTP* status: it lets a 4xx/5xx body be saved
 for study, which is legitimate and was never the problem — the problem was
 calling it a success.
+
+**A method this tool does not know is refused rather than passed through.** A
+`--method DELETE` would be a write against somebody else's host, and nothing in
+measuring a board needs one.
 """
 
 import argparse
@@ -57,7 +98,7 @@ sys.path.insert(0, os.path.join(
     "skills", "job-scan", "scripts"))
 
 from _provenance import (record, rules_refusal, save,  # noqa: E402
-                         transport_failure, vendor_headers)
+                         sent_summary, transport_failure, vendor_headers)
 import _tls                           # noqa: E402
 from _robots import (allowed, full_path, rules_fingerprint,  # noqa: E402
                      verdict, wire_url)
@@ -191,11 +232,76 @@ def main():
                    help="emit the provenance record on stdout instead of the "
                         "path — so a caller need not parse prose or re-read a "
                         "file it just wrote")
+    # **GET and POST, and nothing else.** A method this tool does not know is
+    # refused rather than forwarded: `DELETE` against somebody else's host is
+    # not a measurement, and no board needs one. #999.
+    p.add_argument("--method", default="GET", choices=("GET", "POST"),
+                   help="GET (default) or POST — a board whose search is a "
+                        "POST is measured with this, not by hand")
+    p.add_argument("--form", action="append", metavar="NAME=VALUE",
+                   help="one form field; repeat for each. Builds an "
+                        "`application/x-www-form-urlencoded` body. **Values "
+                        "never reach the provenance file** — see "
+                        "`_provenance.sent_summary`")
+    p.add_argument("--data", metavar="BODY|@FILE",
+                   help="the raw request body, or @path to read it from a "
+                        "file. Pair it with --content-type")
+    p.add_argument("--content-type",
+                   help="declared Content-Type of the body "
+                        "(default: application/x-www-form-urlencoded)")
     a = p.parse_args()
 
     if not a.sitemaps and not a.out:
         print("ERROR: -o is required unless --sitemaps", file=sys.stderr)
         return EXIT_HTTP
+
+    # **The combinations that can only mean a mistake are refused in the code,
+    # not left to discipline** — and the refusal says which one.
+    if a.form and a.data:
+        print("ERROR: --form and --data both given; the body would be one of "
+              "them and the record would describe the other",
+              file=sys.stderr)
+        return EXIT_HTTP
+    if a.method == "GET" and (a.form or a.data):
+        print("ERROR: a body was given with --method GET. A GET carries its "
+              "whole request in the URL, which is why its provenance is "
+              "complete; pass --method POST.", file=sys.stderr)
+        return EXIT_HTTP
+    if a.method == "POST" and not (a.form or a.data):
+        print("ERROR: --method POST with no --form and no --data. An empty "
+              "POST is almost always a forgotten argument; pass --data '' if "
+              "it is really what the board wants.", file=sys.stderr)
+        return EXIT_HTTP
+
+    payload, ctype = None, None
+    if a.form:
+        bad = [f for f in a.form if "=" not in f]
+        if bad:
+            print(f"ERROR: --form wants NAME=VALUE, got {bad[0]!r}",
+                  file=sys.stderr)
+            return EXIT_HTTP
+        pairs = [tuple(f.split("=", 1)) for f in a.form]
+        payload = urllib.parse.urlencode(pairs).encode("utf-8")
+        ctype = a.content_type or "application/x-www-form-urlencoded"
+    elif a.data is not None:
+        if a.data.startswith("@"):
+            try:
+                with open(a.data[1:], "rb") as fh:
+                    payload = fh.read()
+            except OSError as e:
+                print(f"ERROR: --data {a.data}: {e}", file=sys.stderr)
+                return EXIT_HTTP
+        else:
+            payload = a.data.encode("utf-8")
+        ctype = a.content_type or "application/x-www-form-urlencoded"
+
+    # **Computed once, here, and attached to whichever record is written.** A
+    # POST that fails at the transport must still say what it tried to send:
+    # the class of record changes, the question «what went out» does not.
+    sent = sent_summary(payload, content_type=ctype) if payload is not None \
+        else {}
+    if a.method != "GET":
+        sent = dict(sent, method=a.method)
     parts = urllib.parse.urlsplit(a.url)
     if not parts.netloc:
         print(f"ERROR: {a.url} has no host", file=sys.stderr)
@@ -222,7 +328,15 @@ def main():
                           # probed; recording it says which of the two closed
                           # the door.
                           outcome=("indeterminate" if code == EXIT_UNKNOWN
-                                   else "refused"))
+                                   else "refused"),
+                          # **Nested, and named for what it is.** Nothing left
+                          # the machine here, so flat `sent_*` keys would
+                          # claim a request that never happened — the same
+                          # reason this record carries `token` as «what we
+                          # WOULD have presented» rather than as an identity a
+                          # host saw. The schema still belongs in the record:
+                          # it says which search was refused.
+                          **({"would_have_sent": sent} if sent else {}))
         return code
 
     if a.sitemaps:
@@ -272,7 +386,24 @@ def main():
     # *use the default*. **Verification stays whole**: `verify=False` is never
     # the alternative, which is the whole point of that module.
     ctx = _tls.context_for(parts.netloc)
-    req = urllib.request.Request(wire_url(a.url), headers={"User-Agent": UA})
+    heads_out = {"User-Agent": UA}
+    if ctype:
+        heads_out["Content-Type"] = ctype
+    # **`method=` is passed explicitly, and the reason is narrower than it
+    # first looked.** The draft of this comment said an empty `--data ''` would
+    # go out as a GET «because the body is empty» — **the test written to
+    # assert that refuted it**: `urllib` keys on `data is not None`, so
+    # `data=b""` is already a POST without `method=`. *A claim about a library
+    # is a measurement like any other, and this one was mine and wrong.*
+    #
+    # What `method=` really protects is the case where `payload` is `None` on a
+    # POST path — a future `--method POST` that reaches here with no body. Then
+    # `urllib` would send a GET while the record said POST, and **nothing in
+    # the output would disagree.** The argument list refuses that combination
+    # above; this is the second layer, and it is declared as a redundancy
+    # rather than presented as a fix.
+    req = urllib.request.Request(wire_url(a.url), data=payload,
+                                 headers=heads_out, method=a.method)
     try:
         with urllib.request.urlopen(req, timeout=a.timeout,
                                     context=ctx) as r:
@@ -290,7 +421,11 @@ def main():
         # exception away; nothing could then say whether the host had refused,
         # timed out or reset. #179.
         if a.out:
-            transport_failure(a.out, url=a.url, error=e, agent=UA)
+            # **What it tried to send, on the record that has no answer.** The
+            # frame is already `attempted_at`: a DNS failure means nothing
+            # reached the wire, and the honest reading of `sent_*` here is
+            # «what was handed to the transport».
+            transport_failure(a.out, url=a.url, error=e, agent=UA, **sent)
         return EXIT_HTTP
 
     if status != 200 and not a.allow_refusal:
@@ -313,7 +448,7 @@ def main():
                # **Who answered, not only that we were refused.** Without
                # these the record can say *the same 25-byte body* and no more,
                # and 25 bytes of a standard sentence is expected to be shared.
-               vendor=heads)
+               vendor=heads, **sent)
         return EXIT_HTTP
 
     # **The rate a measurement was taken at belongs in the record.** It was
@@ -332,9 +467,17 @@ def main():
                crawl_delay_s=delay, vendor=heads,
                final_url=(landed if landed and landed != a.url else None),
                content_encoding=undone,
-               encoded_bytes=(wire if undone else None))
+               encoded_bytes=(wire if undone else None), **sent)
+    # **The method is in the line when it is not a GET**, and so is the shape
+    # of what went out — because a reader of this line is deciding whether the
+    # measurement is reproducible, and a POST is not reproducible from its URL.
+    how = ""
+    if a.method != "GET":
+        how = (f", {a.method} of {sent.get('sent_bytes', 0)} bytes"
+               f"{' in ' + ', '.join(sent['sent_fields']) if sent.get('sent_fields') else ''}"
+               f" (values not recorded)")
     print(f"[fetch-body] {a.out} — HTTP {rec['status']}, {rec['bytes']} bytes, "
-          f"md5 {rec['md5'][:12]}, as {shown_token()}, "
+          f"md5 {rec['md5'][:12]}, as {shown_token()}{how}, "
           f"{rec['fetched_at']}", file=sys.stderr)
     if a.json:
         print(json.dumps(rec, ensure_ascii=False, sort_keys=True))
