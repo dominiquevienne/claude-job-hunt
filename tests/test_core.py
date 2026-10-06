@@ -43159,18 +43159,26 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: ONE — `yora.md`.** It was EMPTY
-        when this case was written on 2026-10-05, grew to THREE inside
-        2026-10-06, and fell back to one. **The two departures had OPPOSITE
-        reasons, and that is the strongest argument this design has:**
+        **Population in the repository today: EMPTY.** It was empty when this
+        case was written on 2026-10-05, grew to THREE inside 2026-10-06, and is
+        empty again at the end of that same day. **The three departures had TWO
+        OPPOSITE reasons, and that is the strongest argument this design has:**
 
             isgar.md     left because the ADAPTER WAS WRITTEN — the card now
                          declares a `script:`, so the state ADVANCED and the
                          #949 campaign finished a job
+            yora.md      left the same way, a few hours later: `script: yora.py`
+                         (#665), 100 distinct adverts out of 416 `<loc>`
             naydizdes.md left because the ROUTE WAS FALSE AND WITHDRAWN — its
                          `route: http · 2222` counted a sitemap of ALL
                          categories, 0 of whose entries are the jobs the section
                          actually lists, so the state was never true
+
+        **So an EMPTY population here means two different things at once — «no
+        card is in that state» and «the two cards that were got there by
+        opposite routes» — and only the list above says which.** *An assertion
+        that had been widened to `0` would read as «nothing to do» on the very
+        day one route was withdrawn as false and two adapters were delivered.*
 
         *A count cannot tell those two apart: both subtract one. **Naming them
         can**, and that is why this assertion lists the cards and why widening it
@@ -43216,9 +43224,11 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            sorted(pathlib.Path(p).name for p in reels), [],
             "the declared population of this branch changed. EMPTY until "
-            "2026-10-06, THREE within the day, then TWO, and now ONE. The two "
+            "2026-10-06, THREE within the day, and EMPTY again by its end: "
+            "`isgar.md` and `yora.md` left because their ADAPTERS WERE WRITTEN, "
+            "`naydizdes.md` because its ROUTE WAS FALSE and was withdrawn. The "
             "departures had OPPOSITE reasons and a count cannot tell them "
             "apart — which is why this names rather than counts. "
             "A card appearing here is not a defect — it is the #949 state "
@@ -45244,6 +45254,189 @@ class AnEmptyWithholdingProvesNothingUnlessWeSayWhatWeLookedFor(unittest.TestCas
                 self.assertIn("_provenance.third_party", src,
                               f"{nom} no longer calls the shared mechanism, so "
                               f"the mechanism is available and unused")
+
+class TheYoraDedupIsOnTheIdBecauseFourLocalesCarryTheSamePaths(unittest.TestCase):
+    """**`yora.py`, 2026-10-06 (#665).** A Tajik board whose declared sitemap
+    carries **416 `<loc>`, every one of them distinct as a string**, for **100
+    advertisements**:
+
+        416 <loc>    ALL DISTINCT — and that is exactly what makes it dangerous
+        400          /<locale>/vacancies/<id> over /en /uz /ru /tj
+        100          DISTINCT ids — a 4.00x over-count by LANGUAGE, measured
+         16          static pages, four per locale
+
+    **«All the URLs are distinct» says nothing about the number of OBJECTS**, so
+    the dedup on the numeric id — the only part of the URL the four locales share
+    — is what the first case pins. *Without it the adapter emits 400 records for
+    100 adverts and every count printed downstream is four times the truth: a
+    plausible number, and only false.*
+
+    **AND THE TWO DATE FIELDS OF THIS BOARD POINT OPPOSITE WAYS, WHICH IS WHY
+    `posted` MUST COME FROM THE ADVERT AND NEVER FROM THE SITEMAP.**
+
+        sitemap <lastmod>        416 of 416 inside the SECOND of our own request
+                                 (six values over three milliseconds) -> dates NOTHING
+        JobPosting datePosted    IDENTICAL on two fetches of the same advert, and
+                                 2026-07-06 / 2026-10-01 / 2026-10-06 on three -> REAL
+
+    *The discriminant for the second was fetching the SAME advertisement TWICE,
+    not noticing that the values «looked spread»: a microsecond-precision
+    timestamp dated today is exactly what a render artefact looks like.*
+
+    **THE TWO EXPURGATION REMEDIES, AND NO SINGLE PATTERN COVERS.** Measured on
+    three advertisements — the smallest, the median and the largest of the 100:
+
+        description  e-mail on 3 of 3 · messaging on 2 of 3 · `+992` on 1 of 3 ·
+                     an ANCHORED nine-digit run on **0 of 3**   -> SCRUBBED
+        jobLocation  `address.streetAddress` on 2 of 3          -> DROPPED
+
+    *The card this adapter was written from had read ONE advertisement and
+    reported «1 e-mail and 1 anchored nine-digit run» — it named neither the
+    street nor the universality. A card names what it looked for; the class is
+    measured.* **And the anchored nine-digit run touching 0 of 3 here is the
+    reason all four patterns run: a scrubber built on the one pattern this
+    board's prose happens not to use would be green and inert.**
+
+    **One case per FORM.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_yora_665", str(pathlib.Path(SCRIPTS) / "yora.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # Four locales, the SAME two ids, plus the static pages that must not be
+    # taken for advertisements. Written strictly larger than the thing it
+    # exercises: 8 advert URLs for 2 objects, so the 4.00x is visible and a
+    # fixture at parity with the seam cannot hide an unreached branch.
+    SITEMAP = ("<?xml version='1.0' encoding='UTF-8'?><urlset>"
+               + "".join(
+                   "<url><loc>https://yora.tj/%s/vacancies/%s</loc>"
+                   "<lastmod>2026-10-06T12:26:46.839Z</lastmod></url>" % (loc, i)
+                   for loc in ("en", "uz", "ru", "tj") for i in ("1106713", "1522086"))
+               + "".join(
+                   "<url><loc>https://yora.tj/%s%s</loc></url>" % (loc, path)
+                   for loc in ("en", "uz", "ru", "tj")
+                   for path in ("", "/vacancies", "/privacy-policy", "/delete-account"))
+               + "</urlset>")
+
+    # The largest of the three read, with the hazards it really carries: a street
+    # in the address, an e-mail and two `+992` runs in the prose.
+    AD = {"@type": "JobPosting", "title": "Sales floor worker",
+          "datePosted": "2026-10-06T11:11:20.511121Z", "directApply": True,
+          "hiringOrganization": {"@type": "Organization", "name": 'ZAO "Shiver"'},
+          "jobLocation": {"@type": "Place", "address": {
+              "@type": "PostalAddress", "addressLocality": "Dushanbe",
+              "streetAddress": "ul. Rudaki 137", "postalCode": "734003"}},
+          "description": "Zvonite +992 44 600123 ili +992446001234, "
+                         "rezyume na hr@example.tj, Telegram: @shiver_hr"}
+
+    def test_the_dedup_is_on_the_id_and_four_locales_are_one_advertisement(self):
+        """**THE CENTRAL CASE.** 8 advertisement URLs over 4 locales are 2
+        objects. *Removing the dedup publishes 400 for a board of 100.*"""
+        mod = self._mod()
+        every, per, by_id = mod.adverts(self.SITEMAP)
+        self.assertEqual(len(every), 24, "the fixture itself did not parse")
+        self.assertEqual(sum(per.values()), 8, "the advertisement filter moved")
+        self.assertEqual(sorted(by_id), ["1106713", "1522086"],
+                         "the four locales were not collapsed onto the id")
+        self.assertEqual(len(by_id), 2,
+                         "8 locale URLs were emitted as more than 2 advertisements")
+        # the locale actually read is the one whose URL survives the collapse
+        self.assertTrue(all("/%s/" % mod.READ_LOCALE in u for u in by_id.values()),
+                        "the surviving URL is not the locale the adapter declares")
+
+    def test_a_static_page_is_not_an_advertisement(self):
+        """`/en`, `/en/vacancies`, `/en/privacy-policy`, `/en/delete-account`
+        share the host and the locale and carry no id. *The pattern requires a
+        terminal numeric id, so a listing page cannot enter the ledger.*"""
+        mod = self._mod()
+        _, _, by_id = mod.adverts(self.SITEMAP)
+        self.assertNotIn("", by_id)
+        for u in by_id.values():
+            self.assertRegex(u, r"^https://yora\.tj/en/vacancies/\d+$")
+
+    def test_the_street_is_dropped_on_the_path_the_data_really_takes(self):
+        """**Exercised through `record()`, not only through `place()`** — a guard
+        on the function does not see a substitution on the path. `streetAddress`
+        arrives on 2 of the 3 measured and `postalCode` with it."""
+        mod = self._mod()
+        r = mod.record("https://yora.tj/en/vacancies/1522086", "1522086", self.AD)
+        self.assertEqual(r["place"], "Dushanbe", "the locality was lost with the street")
+        emis = json.dumps(r, ensure_ascii=False)
+        for champ in mod.ADDRESS_DROPPED:
+            self.assertNotIn(champ, emis, "%s reached the record" % champ)
+        self.assertNotIn("Rudaki", emis, "a street address was emitted as a place")
+        self.assertNotIn("734003", emis, "a postcode was emitted")
+
+    def test_all_four_patterns_run_because_no_single_one_covers(self):
+        """e-mail 3/3, messaging 2/3, `+992` 1/3, **anchored nine digits 0/3**.
+        *A scrubber built on the pattern this prose happens not to use is green
+        and inert.*"""
+        mod = self._mod()
+        r = mod.record("https://yora.tj/en/vacancies/1522086", "1522086", self.AD)
+        d = r["description"]
+        self.assertNotIn("hr@example.tj", d, "an e-mail survived the scrub")
+        self.assertNotIn("+992", d, "a telephone survived the scrub")
+        self.assertNotIn("446001234", d, "a nine-digit run survived the scrub")
+        self.assertNotIn("@shiver_hr", d, "a messaging handle survived the scrub")
+        self.assertIn("rezyume", d, "the advertisement was removed with its contacts")
+        self.assertEqual(r["withheld_fields"],
+                         ["description:e-mail", "description:messaging",
+                          "description:telephone"])
+
+    def test_withheld_fields_is_absent_when_nothing_was_withheld(self):
+        """**It is DERIVED.** *A `withheld_fields` naming what nobody ever
+        deposited lies about OUR discretion, not about the board — and a poor
+        board then reads as a censored one.*"""
+        mod = self._mod()
+        propre = dict(self.AD, description="Opyt raboty ot dvuh let.")
+        r = mod.record("https://yora.tj/en/vacancies/1106713", "1106713", propre)
+        self.assertNotIn("withheld_fields", r)
+        self.assertEqual(r["description"], "Opyt raboty ot dvuh let.")
+
+    def test_the_date_comes_from_the_advert_and_never_from_the_sitemap(self):
+        """The sitemap's `lastmod` is **416 of 416** inside the second of our own
+        request; `datePosted` is identical on two fetches of the same advert.
+        *PRESENCE before VALUE, so a dropped date reddens by its own assertion
+        and not by a crash downstream.*"""
+        mod = self._mod()
+        r = mod.record("https://yora.tj/en/vacancies/1522086", "1522086", self.AD)
+        self.assertIn("posted", r)
+        self.assertIsNotNone(r["posted"], "the advertisement's own date was dropped")
+        self.assertEqual(r["posted"], "2026-10-06T11:11:20.511121Z")
+        self.assertNotIn("2026-10-06T12:26:46.839Z", json.dumps(r),
+                         "the sitemap's render-time lastmod entered a record")
+
+    def test_a_board_with_no_salary_emits_no_salary_field_at_all(self):
+        """None of the three advertisements carries `baseSalary`,
+        `employmentType` or `validThrough`. *Emitting them as nulls invites
+        filling; `korgar.md` — same country, same week — DOES carry a
+        `baseSalary`, so a shared standard does not predict which of its fields
+        a host fills.*"""
+        mod = self._mod()
+        r = mod.record("https://yora.tj/en/vacancies/1522086", "1522086", self.AD)
+        for champ in ("salary", "baseSalary", "employment_type", "valid_through"):
+            self.assertNotIn(champ, r)
+        self.assertEqual(r["employer"], 'ZAO "Shiver"')
+
+    def test_the_api_refusal_can_fire_and_the_allow_inside_it_does_not(self):
+        """`Disallow: /api` is written for `*`, so borne 1 closes it to EVERY
+        route — **and `/api/avatar` is allowed by its own rule, a whitelist
+        inside a blacklist.** *Exercised in BOTH directions: a refusal that
+        cannot fire is worse than an absent one.*"""
+        mod = self._mod()
+        for u in ("https://yora.tj/api", "https://yora.tj/api/jobs",
+                  "https://yora.tj/api/v1/vacancies"):
+            with self.assertRaises(SystemExit) as pris:
+                mod.refuse_api(u)
+            self.assertEqual(pris.exception.code, 7, "%s was not refused with 7" % u)
+        # and it must NOT fire on these
+        self.assertIsNone(mod.refuse_api("https://yora.tj/api/avatar/12"))
+        self.assertIsNone(mod.refuse_api("https://yora.tj/en/vacancies/1522086"))
+        self.assertIsNone(mod.refuse_api("https://yora.tj/sitemap.xml"))
 
 
 if __name__ == "__main__":
