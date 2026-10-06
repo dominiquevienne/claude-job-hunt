@@ -43159,8 +43159,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: TWO — `isgar.md` and `yora.md`,
-        both since 2026-10-06.**
+        **Population in the repository today: THREE — `isgar.md`,
+        `naydizdes.md` and `yora.md`, all three since 2026-10-06.**
+        *The growth rate is now measured rather than guessed: ZERO when this case
+        was written on 2026-10-05, THREE within twenty-four hours, all from the
+        same #949 cluster. The instruction below — name them, never widen to a
+        count — stands while naming still tells you more than counting; the day
+        this list is long enough that nobody reads it, that is the finding, and
+        it should be replaced by a per-card assertion rather than by a number.*
         *It was ZERO when this case was written on 2026-10-05, ONE a few hours
         later when `yora.md` arrived, and TWO on the same day when `isgar.md`
         did. Each time the assertion fired and said what to do, which is the
@@ -43195,9 +43201,11 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), ["isgar.md", "yora.md"],
+            sorted(pathlib.Path(p).name for p in reels),
+            ["isgar.md", "naydizdes.md", "yora.md"],
             "the declared population of this branch changed. It was EMPTY until "
-            "2026-10-06, then `yora.md` alone, and is now `isgar.md` + `yora.md`. "
+            "2026-10-06, then `yora.md`, then `isgar.md`, and is now those two "
+            "plus `naydizdes.md` — THREE in under twenty-four hours. "
             "A card appearing here is not a defect — it is the #949 state "
             "«measured, route known, adapter not written» arriving — but it means "
             "the docstring's figure is stale: name the new card here and say since "
