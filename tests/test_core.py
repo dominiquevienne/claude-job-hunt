@@ -43159,8 +43159,15 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: THREE — `isgar.md`,
-        `naydizdes.md` and `yora.md`, all three since 2026-10-06.**
+        **Population in the repository today: TWO — `naydizdes.md` and
+        `yora.md`. It was THREE for part of 2026-10-06 and `isgar.md` LEFT.**
+        *And the reason it left is the best one available: `isgar.py` was
+        written, so the card declares a `script:` and `access_of` reports «HTTP
+        ordinaire (adaptateur)» instead. **This branch counts the state
+        «measured, route known, adapter NOT written», so a card leaving it is the
+        #949 campaign finishing a job rather than anything going wrong** — which
+        is why this assertion fires in BOTH directions and why neither direction
+        is a defect.*
         *The growth rate is now measured rather than guessed: ZERO when this case
         was written on 2026-10-05, THREE within twenty-four hours, all from the
         same #949 cluster. The instruction below — name them, never widen to a
@@ -43202,10 +43209,11 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
             sorted(pathlib.Path(p).name for p in reels),
-            ["isgar.md", "naydizdes.md", "yora.md"],
+            ["naydizdes.md", "yora.md"],
             "the declared population of this branch changed. It was EMPTY until "
-            "2026-10-06, then `yora.md`, then `isgar.md`, and is now those two "
-            "plus `naydizdes.md` — THREE in under twenty-four hours. "
+            "2026-10-06, grew to THREE within the day, and is now TWO because "
+            "`isgar.md` LEFT — it declares a `script:`, so it moved out of the "
+            "state this case counts. "
             "A card appearing here is not a defect — it is the #949 state "
             "«measured, route known, adapter not written» arriving — but it means "
             "the docstring's figure is stale: name the new card here and say since "
@@ -44581,6 +44589,163 @@ class ACellIsAFunctionOfTheCardsContentAlone(unittest.TestCase):
             with self.subTest(carte=nom):
                 self.assertEqual(mod.covers_text(card), mod.covers_text(card))
 
+
+
+class IsgarDropsNamedContactsAndScrubsProseAndTakesAChunkAtItsDeclaredLength(unittest.TestCase):
+    """**`isgar.py`, 2026-10-06 (#669).** A Turkmen board that carries contacts in
+    NAMED fields AND in free text at once — the first of its cluster where both
+    are true — measured on the 18 of page 1:
+
+        company.phone    +993 on 18 of 18        a NAMED field, every advert
+        company.email    an e-mail on 10 of 18   a NAMED field
+        contactPhones    key present on 13       a NAMED field, conditional
+        description      +993 on 6 of 18         FREE TEXT
+        descriptionTm    +993 on 6 of 18         FREE TEXT
+
+    **So named fields are DROPPED and prose is SCRUBBED — two remedies, because a
+    field whose meaning is known is removed, and prose cannot be removed without
+    removing the advertisement.**
+
+    **AND TWO OF THESE CASES EXIST BECAUSE THE ADAPTER LEAKED A COORDINATE WHILE
+    IT WAS BEING WRITTEN.** `description` holds `"$3e"` — an RSC reference, not
+    text — and resolving it from a table built out of every `^<id>:<value>` line
+    returned a slab of the payload's own JSON: `"isActive":true, …,
+    "latitude":37.96665317634351, "longitude":58.33…`. *The stream puts
+    everything on ONE line, so «to end of line» read **77 434** characters for a
+    chunk declaring **1 259**.* The floor is positive twice over — the `T<hex>,`
+    prefix must be there, and only the DECLARED number of characters is taken —
+    and the mutation that removes either half must redden here.
+
+    *The leak was introduced by the fix that resolved references at all: before
+    it the field held `"$3e"`, which was wrong and harmless. It was caught because
+    a checker written for CONTACTS ran again and its coordinate line went from 0
+    to 2.* **A correctness fix can open a disclosure, and only re-running the
+    check sees it.**
+
+    **One case per FORM.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_isgar_669", str(pathlib.Path(SCRIPTS) / "isgar.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    AD = {"id": "d91f07d4-bb31-425e-9f89-df797a5158a6", "number": 3782,
+          "headline": "Söwda wekili", "headlineTm": "Söwda wekili",
+          "description": "Jaň ediň +993 65 123456 ýa-da hr@example.tm",
+          "descriptionTm": "WhatsApp: +99365123456",
+          "salaryFrom": 3500, "salaryTo": 8000, "salaryType": "range", "showSalary": True,
+          "status": "active", "viewsCount": 128, "applicationsCount": 2,
+          "publishedAt": "2026-10-05T12:31:39.930Z", "expiresAt": "2026-11-04T12:31:39.927Z",
+          "updatedAt": "2026-10-06T06:30:00.015Z",
+          "location": {"name": "Aşgabat", "region": None, "parentId": 1,
+                       "latitude": 37.96665317634351, "longitude": 58.3319889754057},
+          "latitude": 37.96665317634351, "longitude": 58.3319889754057,
+          "company": {"name": "Tudana", "isVerified": True, "isAnonymous": False,
+                      "phone": "+993 65 123456", "email": "hr@example.tm",
+                      "website": "https://example.tm",
+                      "userId": "20098f46-f1c6-4fea-85ef-000000000000",
+                      "brandBannerUrl": "/api/v1/uploads/files/companies/12345678/x.png",
+                      "description": "Bize ýazyň: ofis@example.tm"}}
+
+    def test_a_named_contact_field_is_dropped_and_named_as_withheld(self):
+        k = self._mod()
+        r = k.record(dict(self.AD, showContacts=True))
+        flat = json.dumps(r, ensure_ascii=False)
+        self.assertNotIn("hr@example.tm", flat)
+        self.assertNotIn("65 123456", flat)
+        self.assertNotIn("phone", r.get("employer", {}))
+        self.assertNotIn("email", r.get("employer", {}))
+        self.assertEqual(r["withheld_fields"], ["company.email", "company.phone"])
+
+    def test_the_posters_consent_decides_nothing(self):
+        """`showContacts` is true on 13 of 18 and the `contactPhones` key is
+        present on the same 13, the two agreeing on 18 of 18 — so it PREDICTS
+        where a contact is. **It must not decide whether we publish one.**"""
+        k = self._mod()
+        for consent in (True, False):
+            r = k.record(dict(self.AD, showContacts=consent, contactPhones=["+993 65 123456"]))
+            self.assertEqual(r["poster_shows_contacts"], consent)
+            self.assertNotIn("65 123456", json.dumps(r, ensure_ascii=False))
+            self.assertIn("contactPhones", r["withheld_fields"])
+
+    def test_withheld_fields_is_absent_when_nothing_was_withheld(self):
+        """Two of the 36 walked carried no contact at all. **A record naming a
+        withheld field there would lie about our own discretion, in the one
+        direction no guard outside the adapter can check.**"""
+        k = self._mod()
+        bare = {"id": "x", "headline": "T", "company": {"name": "Acme"}}
+        r = k.record(bare)
+        self.assertNotIn("withheld_fields", r)
+        self.assertNotIn("withheld", json.dumps(r, ensure_ascii=False))
+
+    def test_the_scrubber_touches_only_the_named_text_fields(self):
+        """`company.userId` and `company.brandBannerUrl` both match «eight
+        anchored digits» — the shape of a Turkmen number — while one is a UUID
+        block and the other a URL path fragment. *A non-anchored rule over the
+        whole record destroyed 314 of 314 advert ids on a Madrid board.*"""
+        k = self._mod()
+        r = k.record(dict(self.AD, showContacts=False))
+        flat = json.dumps(r, ensure_ascii=False)
+        self.assertNotIn("withheld]", r.get("id", ""))
+        self.assertEqual(r["id"], self.AD["id"])
+        self.assertEqual(r["number"], 3782)
+        self.assertIn("2026-10-05T12:31:39.930Z", flat)   # a date is not a phone number
+        self.assertEqual(r["employer"]["website"], "https://example.tm")
+
+    def test_no_coordinate_is_ever_emitted(self):
+        """Present on 1 of the 18, and on the `location` sub-object. A coordinate
+        is not a place name, and the case asserts the ABSENCE OF THE KEYS."""
+        k = self._mod()
+        r = k.record(dict(self.AD, showContacts=False))
+        flat = json.dumps(r, ensure_ascii=False)
+        for key in k.COORDS:
+            self.assertNotIn(key, flat)
+        self.assertNotIn("37.9666", flat)
+        self.assertNotIn("58.3319", flat)
+        self.assertEqual(r["place"], "Aşgabat")
+
+    def test_a_text_chunk_is_taken_at_its_declared_length(self):
+        """**The case that exists because of the leak.** The stream is one line,
+        so a chunk read «to end of line» took 77 434 characters for a chunk
+        declaring 1 259 and published the payload's own JSON — coordinates
+        included — as a description."""
+        k = self._mod()
+        prose = "a" * 10
+        pl = ('3e:T%x,%s{"isActive":true,"latitude":37.96665317634351,'
+              '"longitude":58.3319889754057}' % (len(prose), prose))
+        table = k.chunks(pl)
+        self.assertEqual(table.get("3e"), prose)
+        self.assertNotIn("latitude", table.get("3e", ""))
+        got, status = k.resolve("$3e", table)
+        self.assertEqual((got, status), (prose, "resolved"))
+
+    def test_a_non_text_chunk_never_resolves_to_prose(self):
+        """A DATA chunk is written `<id>:[…]` or `<id>:{…}` and carries no
+        `T<hex>,`. **A reference pointing at one comes back UNRESOLVED**, and the
+        caller omits the field rather than publishing a slab."""
+        k = self._mod()
+        table = k.chunks('40:[{"id":1,"latitude":37.9}]\n41:{"a":1}')
+        self.assertEqual(table, {})
+        self.assertEqual(k.resolve("$40", table), (None, "unresolved"))
+        r = k.record({"id": "x", "description": "$40"}, table)
+        self.assertNotIn("description", r)
+        self.assertEqual(r["unresolved_fields"], ["description"])
+
+    def test_a_wire_sentinel_is_not_a_filled_field(self):
+        """`held()` is the floor. `$undefined` and `$3e` are wire values, not
+        content — **and the test is a POSITIVE condition, not membership of a
+        refusal list**, so a new sentinel of the same shape is excluded without
+        anyone curating the list."""
+        k = self._mod()
+        for sentinel in ("$undefined", "$3e", "undefined", "null", "", "   "):
+            self.assertFalse(k.held(sentinel), sentinel)
+        self.assertTrue(k.held("+993 65 123456"))
+        self.assertTrue(k.held(["x"]))
+        self.assertFalse(k.held([]))
+        self.assertFalse(k.held(["$undefined"]))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
