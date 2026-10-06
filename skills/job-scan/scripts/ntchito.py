@@ -61,6 +61,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots                                                  # noqa: E402
+import _provenance                                              # noqa: E402
 
 EXIT_BROKEN = 2
 EXIT_REFUSED = 7
@@ -78,6 +79,26 @@ PACE = 2.0        # no Crawl-delay is written, so the pace is ours
 # as a false inclusion.
 JOB_TERMS = ("job vacancy in malawi", "internationally recruited",
              "internship", "visa sponsorship job")
+
+# **The third-party fields this board MIGHT carry, inspected by NAME — #1007.**
+# Measured 2026-10-06: all three empty on 5 of 5, and no address anywhere in the
+# payload. *So the withheld list is legitimately empty here — and that is exactly
+# why the names are declared: the tri-state puts them under `absent` with
+# `inspected` non-empty, instead of leaving an empty list to be read either way.*
+# **On JobToday the silence would have been the lie; here it is true and says so.**
+# **AND `_job_location` IS NOT ONE OF THEM — my own list was wrong and the
+# mechanism said so.** I put it here on a 5-record sample where it was empty on
+# 5 of 5, and the tri-state then reported `contacts_exposed: True` on a real
+# record. Measured properly on 20: **filled on 17**, holding TOWN names —
+# «Lilongwe», «Blantyre & Lilongwe». *It is the workplace's town, which the
+# doctrine KEEPS, not a third party's datum; withholding it was over-withholding
+# and the false claim was mine, not the board's.*
+#
+# **The five-record sample was also biased, not merely small: those five were
+# all grants, and grants carry no workplace.** A rate taken from the first page
+# by date measured the kind of record, not the field.
+INSPECT = ("meta._application", "meta._company_name",
+           "meta._company_website", "meta._company_twitter")
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -184,6 +205,7 @@ def row(rec, ts_by_id):
     meta = rec.get("meta") or {}
     noms = [ts_by_id.get(i, {}).get("name") for i in (rec.get("job-types") or [])]
     sal = (meta.get("_job_salary") or "").strip() or None
+    tp = _provenance.third_party(rec, INSPECT)
     return {
         "source": "ntchito",
         "country": "MW",
@@ -200,10 +222,15 @@ def row(rec, ts_by_id):
         # free text, and on this board it is sometimes a GRANT amount — so it
         # travels as the host's own string and is never read as a salary
         "amount_text": sal,
-        # **A POSITIVE statement about the route, not an empty list.** See the
-        # module docstring: the silence here is true, and it says so.
-        "contacts_exposed": False,
-        "withheld_fields": [],
+        # the TOWN, which the doctrine keeps — measured filled on 17 of 20
+        "location_text": (meta.get("_job_location") or "").strip() or None,
+        # **A POSITIVE statement about the route, DERIVED and not asserted.**
+        # It used to be a hardcoded `False` — true on this board and a claim
+        # nothing checked. Now it follows the tri-state of #1007, so the day
+        # this host starts filling `_application` the row says so by itself.
+        "contacts_exposed": bool(tp["third_party_withheld"]),
+        "withheld_fields": tp["third_party_withheld"],
+        **tp,
     }
 
 

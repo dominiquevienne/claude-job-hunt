@@ -438,14 +438,124 @@ def vendor_headers(headers):
 # four-character string `"undefined"`. A summary that counted those as values
 # would report a candidate's details withheld where the candidate typed
 # nothing.
+# **AND A DENY-LIST OF SENTINELS IS DEFEATED BY ONE CHARACTER — #1007.** The
+# tuple below was the floor, and it was a list of strings to REJECT: so
+# `"$undefined"` — a real stored value, measured by `cd` — folded to nothing in
+# it and counted as a value. *A deny-list bets you enumerated the problem; the
+# problem here is a sentinel someone else spells.*
+#
+# So the floor is POSITIVE and it judges the value's CORE, not its text: strip
+# everything that is not a letter or a digit, lower-case it, and ask whether
+# what remains IS a placeholder word. One extra character no longer matters.
+#
+#     "$undefined"  -> "undefined"          placeholder   (the specimen)
+#     "N/A" / "n/a" -> "na"                 placeholder   (the old list MISSED it)
+#     "(null)"      -> "null"               placeholder
+#     "--"          -> ""                   placeholder
+#     "undefined behaviour in C" -> "undefinedbehaviourinc"   A VALUE
+#     "0"           -> "0"                  A VALUE — see below
+#
+# **`0` and `false` are NOT placeholders**, deliberately: they are what a count
+# of zero and a boolean false look like, and a floor that ate them would drop
+# real data to avoid a sentinel. *The cost of that choice is that a board using
+# the string `"0"` as its own sentinel is not caught — written here so the next
+# session widens it on a MEASUREMENT rather than on a hunch.*
+PLACEHOLDER_WORDS = frozenset((
+    "undefined", "null", "none", "nil", "nan", "na", "unknown", "tbd",
+    "empty", "blank", "unspecified",
+))
+
+# Kept so an older caller still resolves, and so a grep for it lands here.
 UNVALUED = ("", "undefined", "null", "none", "nil", "nan", "-")
 
 SENT_NAME_CAP = 64
 SENT_FIELD_CAP = 60
 
 
+def _core(v):
+    """A value's alphanumeric core, folded — `$undefined` becomes `undefined`.
+
+    *Written with `str.isalnum` and not `re`, because this module does not
+    import `re` and the first version did: it PARSED, and raised `NameError`
+    the moment it ran. Found by calling it on the null case, which is the only
+    way that species shows — §4 ter's fourth, «la garde qui lève».*
+
+    And `isalnum` keeps non-Latin letters, so a Cyrillic or Greek value has a
+    core and survives the floor instead of folding to nothing.
+    """
+    return "".join(c for c in str(v).strip().lower() if c.isalnum())
+
+
+def placeholder(v):
+    """True when the value is a placeholder, judged on its CORE.
+
+    A container is never a placeholder: an empty one is ABSENT, and a filled
+    one is a value whose shape we do not read here.
+    """
+    if isinstance(v, (dict, list, tuple, set)):
+        return False
+    c = _core(v)
+    return c == "" or c in PLACEHOLDER_WORDS
+
+
+def valued(v):
+    """**The POSITIVE floor**: a value is anything that is not a placeholder."""
+    return not placeholder(v)
+
+
 def _valued(v):
-    return str(v).strip().lower() not in UNVALUED
+    """The old name, now answering through the positive floor."""
+    return valued(v)
+
+
+# **THE TRI-STATE THAT MAKES A SILENT OUTPUT READABLE — #1007.**
+#
+# A board that hands over a person and a board that hands over nothing both
+# produce an EMPTY list of withheld fields, and nothing in the output separates
+# them. *That is the recorded defect taken from its worse end: there the output
+# ASSERTED a discretion we had not exercised, which is a lie one can check;
+# here the output is SILENT, and there is no claim to check.*
+#
+# So the answer is not a better list of withheld names — it is to emit what was
+# LOOKED FOR beside what was dropped:
+#
+#     inspected   every field name the adapter asked about        <- the PROOF we looked
+#     withheld    those present and carrying a real value
+#     absent      those we asked about and the board did not send
+#     placeheld   present, but holding a placeholder
+#
+# **`withheld: []` with a non-empty `inspected` means «we looked and the board
+# sent nothing».** An adapter that emits no `inspected` at all is then visibly
+# a different thing from one that emits an empty `withheld` — which is the
+# whole point, and it is why `inspected` is NOT optional.
+def third_party(record, fields):
+    """Classify the third-party fields an adapter declares it inspects.
+
+    `fields` is an iterable of dotted paths («company.hiringManager.image») or
+    of segment tuples. The VALUE side is never returned: only names.
+    """
+    inspected, withheld, absent, placeheld = [], [], [], []
+    for path in fields:
+        segs = tuple(path.split(".")) if isinstance(path, str) else tuple(path)
+        name = ".".join(segs)
+        inspected.append(name)
+        cur = record
+        for seg in segs:
+            cur = cur.get(seg) if isinstance(cur, dict) else None
+            if cur is None:
+                break
+        if cur is None or (isinstance(cur, (dict, list, tuple, set)) and not cur):
+            absent.append(name)
+        elif placeholder(cur):
+            placeheld.append(name)
+        else:
+            withheld.append(name)
+    return {
+        "third_party_inspected": inspected,
+        "third_party_withheld": withheld,
+        "third_party_absent": absent,
+        "third_party_placeholder": placeheld,
+    }
 
 
 def _cap(name):

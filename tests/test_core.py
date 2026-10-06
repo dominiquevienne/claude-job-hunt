@@ -45092,5 +45092,159 @@ class MostOfAnAggregatorIsNotJobsAndTheHostSaysWhich(unittest.TestCase):
         self.assertEqual(r["amount_text"], "Grants of up to EUR 60,000")
 
 
+class AnEmptyWithholdingProvesNothingUnlessWeSayWhatWeLookedFor(unittest.TestCase):
+    """**#1007 — the mechanism, and the floor it rests on.**
+
+    A board that hands over a person and a board that hands over nothing both
+    produce an EMPTY list of withheld fields, and nothing in the output
+    separates them. *That is `declarer-avoir-retenu-ce-que-personne-na-depose`
+    from its worse end: there the output ASSERTED a discretion we had not
+    exercised — a lie one can check — and here it is SILENT, with no claim to
+    check and nothing false in it.*
+
+    **So what was LOOKED FOR is emitted beside what was dropped**, and an empty
+    `withheld` with a non-empty `inspected` means «we looked and the board sent
+    nothing». Measured on the two real boards:
+
+        JobToday   inspected 6   withheld 6   -> it ships a person
+        Ntchito    inspected 4   withheld 0   placeholder 4
+
+    **AND THE FLOOR IS POSITIVE, because a deny-list is defeated by one
+    character.** `"$undefined"` is a real stored value (`cd`, 2026-10-02): a
+    tuple of sentinels that knows `undefined` does not know `$undefined`. The
+    floor now folds a value to its alphanumeric CORE and asks whether what
+    remains IS a placeholder word.
+
+    *Written rule: `shared/third-party-fields.md`.*
+    """
+
+    def _pv(self):
+        import importlib.util
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "pv_1007", os.path.join(racine, "skills", "job-scan", "scripts",
+                                    "_provenance.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, racine
+
+    def test_the_specimen_that_defeated_the_deny_list_is_caught(self):
+        """**The case the issue exists for, and the CONTRAST is measured rather
+        than asserted:** the old tuple is still in the module, so the test can
+        show it does not contain what the floor now catches."""
+        pv, _ = self._pv()
+        for v in ("$undefined", "N/A", "n/a", "(null)", "--", "  ", ""):
+            with self.subTest(valeur=v):
+                self.assertTrue(pv.placeholder(v), f"{v!r} passed the floor")
+                self.assertFalse(pv.valued(v))
+        # the contrast: what the deny-list it replaced would have let through
+        for v in ("$undefined", "N/A", "(null)", "--"):
+            with self.subTest(ancien=v):
+                self.assertNotIn(str(v).strip().lower(), pv.UNVALUED,
+                                 f"{v!r} was already in the old tuple, so this "
+                                 f"case no longer shows the improvement")
+
+    def test_zero_and_false_are_values_and_that_is_deliberate(self):
+        """*A floor that ate them would drop real data to avoid a sentinel — a
+        count of zero and a boolean false are what they look like.*"""
+        pv, _ = self._pv()
+        for v in (0, "0", False, "false", "no"):
+            with self.subTest(valeur=v):
+                self.assertTrue(pv.valued(v), f"{v!r} was eaten as a placeholder")
+
+    def test_a_real_string_that_contains_a_sentinel_word_survives(self):
+        """**The direction that costs if the fold is too greedy.** «undefined
+        behaviour in C» folds to a long core that is not a placeholder word."""
+        pv, _ = self._pv()
+        for v in ("undefined behaviour in C", "Nanaimo", "Nairobi",
+                  "None of the above applies", "Нет данных", "Ναι"):
+            with self.subTest(valeur=v):
+                self.assertTrue(pv.valued(v), f"{v!r} was folded into a sentinel")
+
+    def test_the_tri_state_separates_the_two_boards(self):
+        """**The Done-when.** The same call, two payloads, and the outputs must
+        not be confusable."""
+        pv, _ = self._pv()
+        champs = ["a.secret", "a.point", "b.photo"]
+        livre = {"a": {"secret": "Alejandro C.", "point": {"lat": 1}},
+                 "b": {"photo": "https://img/x.jpg"}}
+        rien = {"a": {"secret": "", "point": {}}, "b": {}}
+        p = pv.third_party(livre, champs)
+        n = pv.third_party(rien, champs)
+        self.assertEqual(p["third_party_inspected"], champs)
+        self.assertEqual(sorted(p["third_party_withheld"]), sorted(champs),
+                         "a payload carrying all three withheld fewer")
+        self.assertEqual(n["third_party_withheld"], [],
+                         "a payload carrying nothing claimed a withholding")
+        self.assertEqual(n["third_party_inspected"], champs,
+                         "the empty case lost the PROOF that we looked, which "
+                         "is the one thing that makes it readable")
+        self.assertNotEqual(p["third_party_withheld"], n["third_party_withheld"])
+        # and the empty-withheld case is NOT the same object as «no inspection»
+        muet = pv.third_party(rien, [])
+        self.assertEqual(muet["third_party_inspected"], [])
+        self.assertNotEqual(n["third_party_inspected"],
+                            muet["third_party_inspected"],
+                            "«we looked and found nothing» and «we looked for "
+                            "nothing» produce the same output — the defect")
+
+    def test_a_placeholder_is_neither_withheld_nor_counted_as_a_value(self):
+        """Its own bucket: a present-but-placeholder field is a measurement
+        about the board, and calling it withheld would claim a discretion."""
+        pv, _ = self._pv()
+        r = pv.third_party({"m": {"app": "$undefined", "name": "Real Ltd"}},
+                           ["m.app", "m.name", "m.gone"])
+        self.assertEqual(r["third_party_placeholder"], ["m.app"])
+        self.assertEqual(r["third_party_withheld"], ["m.name"])
+        self.assertEqual(r["third_party_absent"], ["m.gone"])
+
+    def test_the_declaration_follows_the_record_not_the_board(self):
+        """A record carrying none of them declares none."""
+        pv, _ = self._pv()
+        r = pv.third_party({}, ["x.y", "z"])
+        self.assertEqual(r["third_party_withheld"], [])
+        self.assertEqual(sorted(r["third_party_absent"]), ["x.y", "z"])
+
+    def test_no_withheld_VALUE_is_ever_returned(self):
+        """Only names travel. *A mechanism that returned the values it dropped
+        would be the defect wearing the fix's clothes.*"""
+        pv, _ = self._pv()
+        r = pv.third_party({"a": {"secret": "Alejandro C.",
+                                  "point": {"lat": 40.47, "lng": -3.70}}},
+                           ["a.secret", "a.point"])
+        texte = json.dumps(r)
+        for v in ("Alejandro", "40.47", "-3.70"):
+            with self.subTest(valeur=v):
+                self.assertNotIn(v, texte)
+
+    def test_the_written_rule_names_the_four_fields_and_the_adapters_USE_it(self):
+        """**The other half of the Done-when: «the same payload re-read from the
+        written rule yields the same four fields named».**
+
+        *And the mechanism must be USED, not merely available — a helper no
+        adapter calls is a field nothing reads, which stays green forever.*"""
+        _pv, racine = self._pv()
+        doc = os.path.join(racine, "shared", "third-party-fields.md")
+        self.assertTrue(os.path.exists(doc), "the written rule is missing")
+        with open(doc, encoding="utf-8") as fh:
+            texte = fh.read()
+        for champ in ("company.hiringManager.image",
+                      "company.hiringManager.lastOnline",
+                      "addressInfo.coordinates", "addressInfo.ghash"):
+            with self.subTest(champ=champ):
+                self.assertIn(champ, texte,
+                              "the rule no longer names this field, so the "
+                              "payload cannot be re-derived from it")
+        self.assertIn("company.hiringManager.name", texte)
+        for nom in ("jobtoday.py", "ntchito.py"):
+            chemin = os.path.join(racine, "skills", "job-scan", "scripts", nom)
+            with open(chemin, encoding="utf-8") as fh:
+                src = fh.read()
+            with self.subTest(adaptateur=nom):
+                self.assertIn("_provenance.third_party", src,
+                              f"{nom} no longer calls the shared mechanism, so "
+                              f"the mechanism is available and unused")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
