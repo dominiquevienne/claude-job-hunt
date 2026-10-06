@@ -44935,5 +44935,162 @@ class ABoardThatShipsAPersonMustNotProduceASilentOutput(unittest.TestCase):
                               f"the module no longer states {phrase!r}")
 
 
+class MostOfAnAggregatorIsNotJobsAndTheHostSaysWhich(unittest.TestCase):
+    """**#674, Ntchito Malawi — everything is one post type and most of it is
+    not a job.**
+
+    `job_listing` holds vacancies, tenders, grants, fellowships, scholarships
+    and consultancies alike. The host's own `job-types` taxonomy separates
+    them and **states a count per term**, which is a witness that is not our
+    extraction. Measured 2026-10-06:
+
+        jobs      Internationally Recruited 314, Job Vacancy in Malawi 202,
+                  Internship 12, VISA Sponsorship Job 4            ~532
+        NOT jobs  Tender 192, Grants 165+111+60, Trainings 79,
+                  PhD & Postdoc 53, Consultancy 42, Opportunity 28,
+                  Scholarships 10                                  ~740
+
+    > **Emitting the post type as «jobs» would inflate the count by more than
+    > half**, and the first page by date was entirely grants and fellowships.
+    > *Exercised: 19 of the first 22 records were skipped as not jobs.*
+
+    **The ids are this installation's, not the plugin's**, so the classifier
+    matches TERM NAMES read at runtime — a hardcoded `63` would silently mean
+    something else the day a term is re-created. *And the names arrive HTML-
+    escaped («Grants for NGOs &amp; Institutions»), so comparing against a
+    plain string finds nothing and reports «no such term» — a statement about
+    our comparison, not about the host.*
+    """
+
+    TERMES = [
+        {"id": 60, "name": "Internationally Recruited", "count": 314},
+        {"id": 59, "name": "Job Vacancy in Malawi", "count": 202},
+        {"id": 61, "name": "Tender", "count": 192},
+        {"id": 63, "name": "Grants for NGOs &amp; Institutions", "count": 111},
+        {"id": 6, "name": "Internship", "count": 12},
+        {"id": 81, "name": "VISA Sponsorship Job", "count": 4},
+    ]
+
+    def _mod(self):
+        import importlib.util
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        chemin = os.path.join(racine, "skills", "job-scan", "scripts",
+                              "ntchito.py")
+        spec = importlib.util.spec_from_file_location("nt_674", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, chemin
+
+    def _ts(self, mod):
+        """The terms as the module would hold them: names already unescaped."""
+        return [{"id": t["id"], "name": mod.unescape(t["name"]),
+                 "count": t["count"]} for t in self.TERMES]
+
+    def test_the_split_is_by_term_NAME_and_not_by_id(self):
+        """**The Done-when.** The same names under DIFFERENT ids must split the
+        same way; a classifier keyed on ids passes with the real ids and fails
+        here, which is the whole point."""
+        mod, _ = self._mod()
+        jid, nid, jn, nn = mod.split(self._ts(mod))
+        self.assertEqual(jid, {60, 59, 6, 81})
+        self.assertEqual(nid, {61, 63})
+        self.assertEqual((jn, nn), (532, 303))
+        # the same taxonomy, renumbered: only the NAMES are stable
+        renum = [dict(t, id=t["id"] + 5000) for t in self._ts(mod)]
+        jid2, nid2, jn2, nn2 = mod.split(renum)
+        self.assertEqual(jid2, {5060, 5059, 5006, 5081},
+                         "the split follows the ids, so it breaks the day this "
+                         "installation renumbers a term")
+        self.assertEqual((jn2, nn2), (532, 303))
+
+    def test_an_escaped_term_name_is_compared_decoded(self):
+        """*One string, several forms.* `&amp;` arrives escaped; a raw compare
+        would report «no such term» about our own comparison."""
+        mod, _ = self._mod()
+        self.assertEqual(mod.unescape("Grants for NGOs &amp; Institutions"),
+                         "Grants for NGOs & Institutions")
+        self.assertEqual(mod.unescape("Tender &#038; More"), "Tender & More")
+        self.assertEqual(mod.unescape(None), "")
+
+    def test_a_term_nobody_measured_is_not_a_job(self):
+        """**The allow-list fails as a MISSING row, never as a false
+        inclusion** — a term the host adds later is not a job until someone
+        measures it. *A deny-list would have bet we enumerated the problem.*"""
+        mod, _ = self._mod()
+        ts = self._ts(mod) + [{"id": 999, "name": "Volunteering", "count": 7}]
+        jid, nid, _jn, nn = mod.split(ts)
+        self.assertNotIn(999, jid, "an unmeasured term was taken for a job")
+        self.assertIn(999, nid)
+        self.assertEqual(nn, 310)
+
+    def test_a_record_carrying_a_non_job_term_is_recognised_as_such(self):
+        """`kinds_of` is what `--kind jobs` consults, and a record may carry
+        several terms — one real read showed three."""
+        mod, _ = self._mod()
+        jid, nid, _a, _b = mod.split(self._ts(mod))
+        emploi = {"job-types": [60]}
+        bourse = {"job-types": [63]}
+        trois = {"job-types": [63, 61, 60]}
+        aucun = {"job-types": []}
+        self.assertEqual(mod.kinds_of(emploi, jid, nid), ([60], []))
+        self.assertEqual(mod.kinds_of(bourse, jid, nid), ([], [63]))
+        j, n = mod.kinds_of(trois, jid, nid)
+        self.assertEqual((sorted(j), sorted(n)), ([60], [61, 63]),
+                         "a record with both kinds must report both")
+        self.assertEqual(mod.kinds_of(aucun, jid, nid), ([], []))
+
+    def test_the_row_states_the_absence_of_contacts_POSITIVELY(self):
+        """**The JobToday lesson (#1005) taken from the other end.** There the
+        silence was the lie; here the silence is TRUE — `_application`,
+        `_company_name` and `_job_location` were empty on 5 of 5 and the
+        payload held no address.
+
+        *An empty `withheld_fields` is exactly what a careless adapter on a
+        board that DOES ship a person would also produce, so the row carries
+        `contacts_exposed` as a positive statement about the route rather than
+        leaving an empty list to be read either way.*"""
+        mod, _ = self._mod()
+        r = mod.row({"id": 1, "title": {"rendered": "Driver &amp; Guard"},
+                     "link": "https://ntchito.com/job/x/", "date": "2026-10-06",
+                     "job-types": [60], "meta": {}},
+                    {60: {"name": "Internationally Recruited"}})
+        self.assertIn("contacts_exposed", r)
+        self.assertIs(r["contacts_exposed"], False)
+        self.assertEqual(r["withheld_fields"], [])
+        self.assertEqual(r["title"], "Driver & Guard",
+                         "the title is emitted still escaped")
+        self.assertEqual(r["kinds"], ["Internationally Recruited"])
+
+    def test_a_filled_advert_is_EMITTED_and_flagged_not_dropped(self):
+        """`_filled` is the LISTING's availability flag — the `closure:
+        listing` surface of #1003. *Dropping the row would make a closed
+        advert indistinguishable from one that never existed.*"""
+        mod, _ = self._mod()
+        pris = mod.row({"id": 2, "title": {"rendered": "T"}, "job-types": [],
+                        "meta": {"_filled": "1"}}, {})
+        libre = mod.row({"id": 3, "title": {"rendered": "T"}, "job-types": [],
+                         "meta": {"_filled": "0"}}, {})
+        # **PRESENCE before VALUE.** The mutation that DROPS a filled record
+        # made this case red by a `TypeError` on `None[...]` — a crash counts
+        # as a red and does not say what is missing. Asserted first, the red
+        # names the defect instead of merely occurring.
+        self.assertIsNotNone(pris, "a filled advert was dropped instead of "
+                                   "being emitted with its flag")
+        self.assertIsNotNone(libre)
+        self.assertIs(pris["filled"], True)
+        self.assertIs(libre["filled"], False)
+        self.assertEqual(pris["id"], 2, "a filled advert was dropped")
+
+    def test_a_grant_amount_is_never_emitted_as_a_salary(self):
+        """`_job_salary` is free text here and one real value was «Grants of up
+        to EUR 60,000 per organization». It travels as the host's own string
+        under a name that does not call it a salary."""
+        mod, _ = self._mod()
+        r = mod.row({"id": 4, "title": {"rendered": "T"}, "job-types": [],
+                     "meta": {"_job_salary": "Grants of up to EUR 60,000"}}, {})
+        self.assertNotIn("salary", r)
+        self.assertEqual(r["amount_text"], "Grants of up to EUR 60,000")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
