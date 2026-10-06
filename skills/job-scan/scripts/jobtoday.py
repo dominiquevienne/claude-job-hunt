@@ -82,6 +82,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots                                                  # noqa: E402
+import _provenance                                              # noqa: E402
 
 EXIT_BROKEN = 2
 # **7, not 3 — the suite enforces one meaning per code across every adapter.**
@@ -211,20 +212,14 @@ def pages_declared(props):
 def withheld_of(job):
     """The names of the fields THIS record carried and we did not emit.
 
-    *Derived from presence, never hardcoded: a record without `ghash` declares
-    no `ghash`, because claiming to withhold what nobody deposited lies about
-    our discretion rather than about the board.*
+    **Now a call into the shared mechanism — `shared/third-party-fields.md`,
+    #1007.** It used to be a local walk with a deny-list of empties, and it
+    was right on this board; what it could not do is make an EMPTY result
+    readable. *The tri-state does: what was LOOKED FOR travels beside what was
+    dropped, so «we looked and the board sent nothing» stops being
+    indistinguishable from «our rule looked for the wrong thing».*
     """
-    out = []
-    for path in DROP:
-        cur = job
-        for seg in path:
-            cur = cur.get(seg) if isinstance(cur, dict) else None
-            if cur is None:
-                break
-        if cur not in (None, "", {}, []):
-            out.append(".".join(path))
-    return out
+    return _provenance.third_party(job, [".".join(p) for p in DROP])
 
 
 def salary_of(job):
@@ -254,6 +249,7 @@ def row(job, host, country):
     addr = job.get("addressInfo") or {}
     co = job.get("company") or {}
     hm = co.get("hiringManager") if isinstance(co.get("hiringManager"), dict) else {}
+    tp = withheld_of(job)
     return {
         "source": "jobtoday",
         "country": country.upper(),
@@ -280,7 +276,11 @@ def row(job, host, country):
         "immediate_start": job.get("immediateStart"),
         "posted_seconds_ago": job.get("postedSecondsAgo"),
         "create_date": job.get("createDate") or None,
-        "withheld_fields": withheld_of(job),
+        # **The tri-state, not a bare list — #1007.** `withheld_fields` stays
+        # for the readers that already use it; `third_party_*` is what makes an
+        # empty one mean something.
+        "withheld_fields": tp["third_party_withheld"],
+        **tp,
     }
 
 
