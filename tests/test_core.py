@@ -43369,6 +43369,311 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
                 self.assertIn(surface, doc,
                               "the closed vocabulary is not documented")
 
+class APostBodyIsRecordedAsASchemaAndNeverAsValues(unittest.TestCase):
+    """**#999, and it is the mirror of `VENDOR_HEADERS`.** Those six headers
+    name *who answered* and nothing about who asked. `sent_summary` names
+    *what was asked* and nothing about who asked it — and that is new, because
+    until `bin/fetch-body.py` learned to POST every request was fully described
+    by a URL, and a URL is composed by us.
+
+    **A request body is the first thing in this tool that can carry a
+    candidate's own search** — their trade, their city, the employer they are
+    chasing — and the sidecar sits in the repository's reach.
+
+    > **So the schema is recorded and the values are not.** *And the digest is
+    > taken over the NAMES: an md5 of `q=plombier` is a dictionary lookup away
+    > from the term it was meant to hide, so calling one `sent_md5` would be a
+    > claim of discretion we would not have.*
+    """
+
+    FORM = "application/x-www-form-urlencoded"
+
+    def _p(self):
+        sys.path.insert(0, SCRIPTS)
+        import _provenance
+        return _provenance
+
+    def test_a_value_never_reaches_the_record(self):
+        import json
+        p = self._p()
+        rec = p.sent_summary(b"q=plombier&lugar=Lugo&page=1",
+                             content_type=self.FORM)
+        blob = json.dumps(rec, ensure_ascii=False)
+        for secret in ("plombier", "Lugo"):
+            with self.subTest(value=secret):
+                self.assertNotIn(secret, blob)
+        # And the names ARE there, because they belong to the board's form:
+        # a record that dropped them too could not say which search was run.
+        self.assertEqual(rec["sent_fields"], ["lugar", "page", "q"])
+        self.assertEqual(rec["sent_value_lengths"]["q"], [8])
+
+    def test_the_digest_is_over_the_names_and_there_is_no_body_digest(self):
+        """**The half that looks like a redaction and is not.** Two bodies with
+        the same fields and different values must give the SAME digest — which
+        proves it is a digest of the schema, and that a reader cannot use it to
+        test a guess at the search term."""
+        import hashlib
+        p = self._p()
+        a = p.sent_summary(b"q=plombier&page=1", content_type=self.FORM)
+        b = p.sent_summary(b"q=infirmiere&page=9", content_type=self.FORM)
+        self.assertEqual(a["sent_schema_md5"], b["sent_schema_md5"])
+        self.assertEqual(
+            a["sent_schema_md5"],
+            hashlib.md5("page\nq".encode("utf-8")).hexdigest())
+        for rec in (a, b):
+            self.assertNotIn("sent_md5", rec,
+                             "a digest of the body would be reversible on a "
+                             "one-word search")
+
+    def test_a_field_present_and_empty_claims_no_withholding(self):
+        """**The `withheld_fields` lesson, in the one direction no outside
+        guard can check.** A record saying *values withheld* on a body where
+        every field was empty would lie about our own discretion, and the
+        sidecar reads the same either way.
+
+        *The sentinel is the literal string `undefined` — measured 2026-10-02,
+        where `email` arrived true on 10 ads and real on 4 because the value
+        was those nine characters.*
+        """
+        p = self._p()
+        rec = p.sent_summary(b"q=&lugar=undefined&page=",
+                             content_type=self.FORM)
+        self.assertEqual(rec["sent_valued_fields"], [])
+        self.assertNotIn("sent_values", rec,
+                         "nothing was withheld, so nothing may be claimed")
+        # The field is PRESENT — that is a fact and it is kept — and the nine
+        # characters of `undefined` are counted as a length, not as a value.
+        self.assertEqual(rec["sent_fields"], ["lugar", "page", "q"])
+        self.assertEqual(rec["sent_value_lengths"]["lugar"], [9])
+
+    def test_the_claim_appears_when_something_really_was_withheld(self):
+        """**The other direction**, or the test above would pass on a helper
+        that never makes the claim at all."""
+        p = self._p()
+        rec = p.sent_summary(b"q=plombier", content_type=self.FORM)
+        self.assertIn("sent_values", rec)
+        self.assertIn("1 field(s) carried a value", rec["sent_values"])
+
+    def test_an_unparsable_body_invents_no_field_names(self):
+        """*Guessing field boundaries out of bytes we do not understand is how
+        a value ends up recorded as a name.* The size and the declared type are
+        facts; a field list would not be."""
+        p = self._p()
+        for raw, ct in ((b"\x00\x01binaire", "multipart/form-data; boundary=x"),
+                        (b"<xml/>", "application/xml"),
+                        (b"q=plombier", None),
+                        (b"{not json", "application/json"),
+                        (b'["a","b"]', "application/json")):
+            with self.subTest(content_type=ct):
+                rec = p.sent_summary(raw, content_type=ct)
+                self.assertIsNone(rec["sent_parsed"])
+                self.assertEqual(rec["sent_bytes"], len(raw))
+                self.assertNotIn("sent_fields", rec)
+                self.assertNotIn("sent_values", rec)
+
+    def test_a_long_field_name_is_elided_with_its_length(self):
+        """**A name is assumed to be the board's schema, and the assumption is
+        weakest where the name is long and odd** — `q[plombier]=1` would carry
+        the term in the key. The cap does not make that safe; it stops the
+        unbounded case and says so."""
+        p = self._p()
+        rec = p.sent_summary(("x" * 200 + "=1").encode(), content_type=self.FORM)
+        self.assertEqual(rec["sent_fields"], ["<elided, 200 chars>"])
+
+    def test_a_str_body_is_refused_like_describe_refuses_one(self):
+        p = self._p()
+        with self.assertRaises(TypeError) as caught:
+            p.sent_summary("q=plombier", content_type=self.FORM)
+        self.assertIn("character count", str(caught.exception))
+
+    def test_the_field_cap_reports_what_it_dropped(self):
+        p = self._p()
+        body = "&".join(f"f{i}=1" for i in range(p.SENT_FIELD_CAP + 7))
+        rec = p.sent_summary(body.encode(), content_type=self.FORM)
+        self.assertEqual(rec["sent_field_count"], p.SENT_FIELD_CAP + 7)
+        self.assertEqual(rec["sent_fields_truncated"], 7)
+        self.assertEqual(len(rec["sent_fields"]), p.SENT_FIELD_CAP)
+
+
+class TheFetcherLearnedToPostAndTheGuardDidNotChangeInKind(unittest.TestCase):
+    """**#999, reported by `cd` on 2026-10-05 on Emprego Xunta** — the first
+    board of the #949 campaign whose search is a POST. `bin/fetch-body.py` only
+    did GET, so that board forced the one thing `CLAUDE.md` §3 bis forbids: a
+    hand-rolled fetch. *The rule had a hole and the hole produced the behaviour
+    the rule was written against.*
+
+    **The guard does not change in kind, and that is a statement about
+    `robots.txt` rather than an omission**: the file speaks about paths, not
+    about methods, so the verdict governing a GET of `/search` governs a POST
+    of `/search`.
+
+    Measured end to end the same day with the tool itself: `POST
+    …/busca-emprego-en-galicia?ajax_form=1` → **200, 777 851 bytes, 597
+    `<tr>`, 297 distinct offer identifiers** — every figure equal to the ones
+    `cd` had taken by hand with a scratchpad client.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(repo, "bin", "fetch-body.py")
+        spec = importlib.util.spec_from_file_location("fetch_body_999", path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _run(self, argv, tool=None):
+        """Drive `main()` with an argv. Returns (exit code, stderr).
+
+        *`contextlib` and `io` are imported here — this module imports neither
+        at top level, and a harness that raises `NameError` on the path it
+        drives is the guard that raises instead of guarding.*
+        """
+        import contextlib
+        import io
+        m = tool or self._tool()
+        err, out = io.StringIO(), io.StringIO()
+        real = sys.argv
+        sys.argv = ["fetch-body.py"] + argv
+        try:
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                code = m.main()
+        except SystemExit as e:                                 # argparse
+            code = e.code
+        finally:
+            sys.argv = real
+        return code, err.getvalue() + out.getvalue()
+
+    def test_a_body_with_get_is_refused_and_says_why(self):
+        """**The envelope is stubbed to raise, and that is the real assertion
+        here.** *`assertEqual(code, 2)` alone is INERT for this one: the tool
+        answers 2 on a transport failure too, so dropping the refusal left the
+        code at 2 and the case only failed on the message — measured by the
+        mutation sweep.* A refusal that does not refuse must be caught by the
+        request it lets through, not by the number it returns."""
+        m = self._tool()
+
+        def jamais(*a, **k):                                    # noqa: ANN001
+            raise AssertionError(
+                "a request left the machine: a body was given with "
+                "--method GET and the refusal did not fire")
+
+        m.urllib.request.urlopen = jamais
+        code, err = self._run(["https://h.example/s", "-o", "/tmp/x999",
+                               "--form", "q=plombier"], tool=m)
+        self.assertEqual(code, 2)
+        self.assertIn("--method GET", err)
+        self.assertIn("whole request in the URL", err)
+
+    def test_post_with_no_body_is_refused(self):
+        code, err = self._run(["https://h.example/s", "-o", "/tmp/x999",
+                               "--method", "POST"])
+        self.assertEqual(code, 2)
+        self.assertIn("forgotten argument", err)
+
+    def test_form_and_data_together_are_refused(self):
+        code, err = self._run(["https://h.example/s", "-o", "/tmp/x999",
+                               "--method", "POST", "--form", "q=1",
+                               "--data", "q=2"])
+        self.assertEqual(code, 2)
+        self.assertIn("the record would describe the other", err)
+
+    def test_a_form_field_without_an_equals_is_refused(self):
+        code, err = self._run(["https://h.example/s", "-o", "/tmp/x999",
+                               "--method", "POST", "--form", "qplombier"])
+        self.assertEqual(code, 2)
+        self.assertIn("NAME=VALUE", err)
+
+    def test_a_method_outside_get_and_post_is_refused(self):
+        """**A method this tool does not know is refused rather than
+        forwarded.** `DELETE` against somebody else's host is not a
+        measurement, and no board needs one."""
+        code, err = self._run(["https://h.example/s", "-o", "/tmp/x999",
+                               "--method", "DELETE"])
+        self.assertNotEqual(code, 0)
+        self.assertIn("invalid choice", err.lower())
+
+    def test_what_passing_method_explicitly_actually_protects(self):
+        """**This case was written to assert something false, and it refuted
+        it.** The first version said an empty `--data ''` would go out as a GET
+        «because the body is empty», and that `method=` repaired it.
+
+        **Measured here: `urllib` keys on `data is not None`**, so `data=b""`
+        is already a POST with no `method=` at all. *A claim about a library is
+        a measurement like any other, and that one was mine and wrong — the
+        comment in `fetch-body.py` now says so.*
+
+        What `method=` really protects is the case below: a POST path reached
+        with **no body**, where `urllib` sends a GET while the record says
+        POST and nothing in the output disagrees. The argument list refuses
+        that combination; this is the second layer, declared as a redundancy.
+        """
+        import urllib.request
+        vide = urllib.request.Request("https://h.example/s", data=b"",
+                                      headers={"User-Agent": "x"})
+        self.assertEqual(vide.get_method(), "POST",
+                         "an EMPTY body is already a POST — this is the "
+                         "sentence the first draft got backwards")
+        sans = urllib.request.Request("https://h.example/s",
+                                      headers={"User-Agent": "x"})
+        self.assertEqual(sans.get_method(), "GET")
+        force = urllib.request.Request("https://h.example/s",
+                                       headers={"User-Agent": "x"},
+                                       method="POST")
+        self.assertEqual(force.get_method(), "POST",
+                         "and THIS is what the explicit method buys: no body, "
+                         "and the wire still says what the record says")
+
+    def test_the_guard_closes_a_post_before_anything_leaves(self):
+        """**The guard is taken on the exact path, host included, and nothing
+        about a POST changes that** — and the record it leaves names what would
+        have gone out WITHOUT claiming it did."""
+        import json
+        import tempfile
+        m = self._tool()
+        appels = []
+        m.allowed = lambda host, path, **k: appels.append((host, path)) or {
+            "allowed": False, "reason": "refused by the rules (test)",
+            "path": path, "host": host, "requested_host": host}
+        m.rules_fingerprint = lambda host: {"state": "read"}
+
+        def jamais(*a, **k):                                    # noqa: ANN001
+            raise AssertionError("a request left the machine on a refused path")
+
+        m.urllib.request.urlopen = jamais
+        d = tempfile.mkdtemp()
+        out = os.path.join(d, "body.html")
+        code, err = self._run([
+            "https://h.example/s", "-o", out, "--method", "POST",
+            "--form", "q=plombier"], tool=m)
+        self.assertEqual(code, 7, err)
+        self.assertEqual(len(appels), 1, "the guard is asked exactly once")
+        self.assertEqual(appels[0][1], "/s", "on the exact path")
+        with open(out + ".provenance.json", encoding="utf-8") as fh:
+            rec = json.load(fh)
+        self.assertIn("would_have_sent", rec,
+                      "nothing left, so the schema is nested and named for "
+                      "what it is")
+        self.assertNotIn("sent_bytes", rec,
+                         "flat `sent_*` keys would claim a request that never "
+                         "happened")
+        self.assertEqual(rec["would_have_sent"]["sent_fields"], ["q"])
+        self.assertNotIn("plombier", json.dumps(rec, ensure_ascii=False))
+
+    def test_a_get_record_gains_no_sent_fields_at_all(self):
+        """**The negative control on the convention.** A GET has no body, so a
+        `sent_bytes: 0` would be a field that exists to say nothing — and the
+        rule here is that a field occurring once is either a convention or a
+        mistake."""
+        import inspect
+        m = self._tool()
+        src = inspect.getsource(m.main)
+        self.assertIn("if payload is not None", src,
+                      "the summary is computed only when there is a body")
+        self.assertIn('if a.method != "GET"', src,
+                      "and `method` is recorded only when it is not the "
+                      "default, so a GET record is unchanged")
 class ANonPathDirectiveNeverReachesThePermissions(unittest.TestCase):
     """**#1006, measured by `cd` on 2026-10-05 while adding Hosco.** The
     sort used an `else` as a catch-all —
@@ -43662,6 +43967,256 @@ class ALineAPPENDEDToACardIsNeverTheOneTheToolingReads(unittest.TestCase):
         self.assertNotIn("seconde", cards[0]["h"]["content"],
                          "the reader no longer takes the first line, so the "
                          "guard above is testing the wrong end of the file")
+
+
+class ARefusalIsAttributedToTheTokenTheRequestWouldCarry(unittest.TestCase):
+    """**#1024, measured by `cd` on `www.randstad.es` during the #949 Spain
+    pass.** The host publishes a `*` group with 23 facet `Disallow` lines and a
+    `User-agent: ClaudeBot` group with `Disallow: /` — the exact shape the
+    owner's decision of 2026-09-07 settles: *`claude-user` falls under `*` and
+    may read.*
+
+    Asked with the default tokens, a four-level facet path came back
+    `group: 'claudebot'`, `rule: '/'`, `kind: 'host-closed'` and *«a refusal
+    that names this project, not a general policy»* — **on a host whose `/`
+    and whose listing page both answer `True`.**
+
+    > **Both readings refuse, so no wrong fetch was ever authorised: the
+    > verdict was right and the ACCUSATION was false** — and false in the
+    > direction that manufactures a closure. *A session measuring a facet path
+    > there would reasonably write «randstad.es closes everything to us», and a
+    > closure costs the owner a decision under 2 sexies on top of our
+    > measurement.* And `kind` and `rule` are not prose: a card generator
+    > reads them.
+
+    **The report named one site; there were two, and the first fix was not
+    enough.** Both are asserted below, and so is the measurement that justified
+    the second — because «reordering the tuple» is the obvious repair and it
+    leaves the defect standing.
+    """
+
+    # `*` refuses a four-level facet; a named group closes everything to
+    # `ClaudeBot`. `claude-user` is permitted by `*` everywhere else.
+    RANDSTAD = ("User-agent: *\n"
+                "Disallow: /candidatos/ofertas-empleo/*/*/*/*/\n"
+                "\nUser-agent: ClaudeBot\nDisallow: /\n")
+    FACETTE = "/candidatos/ofertas-empleo/a/b/c/d/"
+    # A group naming one of `OUR_AGENTS` that is NOT a request token, with `*`
+    # open: both request tokens sweep, so whichever is tried first wins.
+    WEB = "User-agent: *\nAllow: /\n\nUser-agent: Claude-Web\nDisallow: /\n"
+    # Both request tokens refused BY NAME — the browser branch, which must not
+    # move.
+    DEUX = ("User-agent: *\nAllow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n"
+            "\nUser-agent: Claude-User\nDisallow: /\n")
+    MUR = "User-agent: *\nDisallow: /\n"
+
+    def _r(self):
+        import _robots
+        return _robots
+
+    def _stub(self, body):
+        """Point the module at a body instead of the network, and hand back a
+        restore. *Each case clears the cache both ways: a verdict kept between
+        two different fixtures is a bench sharing an object with what it
+        tests.*"""
+        R = self._r()
+        R._CACHE.clear()
+        R._ALIAS.clear()
+        vrai = R._fetch
+        R._fetch = lambda host: {"state": "read", "final": host,
+                                 "attempts": 1, "body": body}
+
+        def rendre():
+            R._fetch = vrai
+            R._CACHE.clear()
+            R._ALIAS.clear()
+        return R, rendre
+
+    def test_a_facet_refusal_is_not_reported_as_a_named_closure(self):
+        """The Done-when of #1024, on the structured fields and on the reason."""
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            a = R.allowed("h.example", self.FACETTE)
+            # **The refusal itself must NOT move.** Repairing an attribution by
+            # granting a permission would be the one outcome worse than the
+            # defect.
+            self.assertIs(a["allowed"], False,
+                          "the path is refused under both tokens and stays so")
+            self.assertEqual(a.get("group"), "*")
+            self.assertEqual(a.get("kind"), "disallow")
+            self.assertEqual(a.get("rule"),
+                             "/candidatos/ofertas-empleo/*/*/*/*/")
+            self.assertNotIn("names this project", a.get("reason") or "")
+            self.assertIn("aimed at everyone", a.get("reason") or "")
+            # And the host is NOT closed: the two paths that refute a closure.
+            for ouvert in ("/", "/candidatos/ofertas-empleo/"):
+                with self.subTest(path=ouvert):
+                    self.assertIs(R.allowed("h.example", ouvert)["allowed"],
+                                  True)
+        finally:
+            rendre()
+
+    def test_the_fallback_returns_the_one_token_a_request_would_carry(self):
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            self.assertEqual(R._token_agents("h.example", self.FACETTE),
+                             ("claude-user",))
+        finally:
+            rendre()
+
+    def test_reordering_the_tuple_alone_would_not_have_been_enough(self):
+        """**The measurement that justifies returning ONE token**, kept as a
+        case because «reorder the tuple» is the obvious repair and it leaves
+        the defect standing.
+
+        Asked with BOTH tokens, `group_for()` collects the named records that
+        exist — and here only `ClaudeBot` has one, so its `Disallow: /` comes
+        back as though it bound both, while `claude-user` in fact falls under
+        `*`. *A two-token question has no single honest answer on a host that
+        names one of them.*
+        """
+        R, rendre = self._stub(self.RANDSTAD)
+        try:
+            token, dis, allow, matched = R.group_for(
+                self.RANDSTAD, agents=("claude-user", "claudebot"))
+            self.assertEqual(token, "claudebot")
+            self.assertEqual(dis, ["/"])
+            self.assertEqual(matched, ["claudebot"])
+            # Asked for the one token we would send, the answer is the `*`
+            # record — which is why the fallback is sliced to one.
+            token, dis, _a, matched = R.group_for(
+                self.RANDSTAD, agents=("claude-user",))
+            self.assertEqual(token, "*")
+            self.assertEqual(dis, ["/candidatos/ofertas-empleo/*/*/*/*/"])
+            self.assertEqual(matched, [])
+        finally:
+            rendre()
+
+    def test_the_sweep_token_is_the_one_we_would_send(self):
+        """**The second site, which the report did not name.** `verdict()`'s
+        retry after a named closure took the first token that sweeps, over
+        `FETCH_TOKENS` — so on a host naming `Claude-Web` with `*` open the
+        reason said *«swept as `claudebot`»* while `claude-user` was equally
+        permitted and is the token a request carries."""
+        R, rendre = self._stub(self.WEB)
+        try:
+            v = R.verdict("h3.example")
+            self.assertIs(v["sweep"], True)
+            self.assertEqual(v.get("sweep_token"), "claude-user")
+            self.assertIn("`claude-user`", v.get("reason") or "")
+            self.assertNotIn("swept as `claudebot`", v.get("reason") or "")
+        finally:
+            rendre()
+
+    def test_a_host_that_names_both_tokens_still_closes(self):
+        """**The direction that must not change.** When both request tokens are
+        refused by name, the ordinary route really is closed to us
+        specifically, and `identity()` must still say the browser branch
+        applies."""
+        R, rendre = self._stub(self.DEUX)
+        try:
+            a = R.allowed("h4.example", "/jobs/")
+            self.assertIs(a["allowed"], False)
+            ident = R.identity("h4.example", "/jobs/")
+            self.assertEqual(ident["state"], "browser")
+            self.assertIn("BY NAME", ident["reason"])
+        finally:
+            rendre()
+
+    def test_a_wall_at_star_is_still_a_wall(self):
+        """The other direction: nothing names us, everybody is refused, and
+        the attribution must stay `*`."""
+        R, rendre = self._stub(self.MUR)
+        try:
+            a = R.allowed("h5.example", "/jobs/")
+            self.assertIs(a["allowed"], False)
+            self.assertEqual(a.get("group"), "*")
+            self.assertNotIn("names this project", a.get("reason") or "")
+        finally:
+            rendre()
+
+    # **A SECOND HOST, MEASURED INDEPENDENTLY — and a second FORM of the
+    # closing group.** `cd` measured `www.glassdoor.es` on 2026-10-06, after
+    # this fix was written: **eleven path forms, 11/11 refused under both
+    # tokens and 11/11 MISATTRIBUTED** — `rule: '/'`, `kind: 'host-closed'`,
+    # and the reason naming this project — while the same paths asked under
+    # `claude-user` carry **eleven different narrow rules under `*`**.
+    #
+    # *The denominator that counts is the objects measured TWICE, and it is
+    # now two hosts.* And Glassdoor files twelve AI crawlers into **one
+    # multi-agent group** of this shape, which is a different FORM from
+    # `randstad.es`'s single-name group — the fix is exercised on both,
+    # because «a measurement on one tenant is not a measurement of a family».
+    GLASSDOOR = ("User-agent: *\n"
+                 "Disallow: /Empleos/*_IP*.htm*\n"
+                 "Disallow: /job-listing/details.htm?*\n"
+                 "Disallow: /api/\n"
+                 "Allow: /empresas/\n"
+                 "\nUser-agent: GPTBot\nUser-agent: ClaudeBot\n"
+                 "User-agent: anthropic-ai\nUser-agent: CCBot\nDisallow: /\n")
+
+    def test_a_multi_agent_closing_group_attributes_each_path_to_its_own_rule(self):
+        """**The second form, and the fix was written before this host
+        existed.** A group naming four crawlers at once closed everything in
+        `claudebot`'s name; each refused path now carries the narrow `*` rule
+        that actually refuses it, and the two open paths stay open."""
+        R, rendre = self._stub(self.GLASSDOOR)
+        try:
+            attendu = {
+                "/Empleos/madrid-empleos_IP2.htm": "/Empleos/*_IP*.htm*",
+                "/job-listing/details.htm?jl=1": "/job-listing/details.htm?*",
+                "/api/x": "/api/",
+            }
+            for chemin, regle in attendu.items():
+                with self.subTest(path=chemin):
+                    a = R.allowed("g.example", chemin)
+                    self.assertIs(a["allowed"], False, "still refused")
+                    self.assertEqual(a.get("group"), "*")
+                    self.assertEqual(a.get("kind"), "disallow")
+                    self.assertEqual(a.get("rule"), regle)
+            # The paths that refute a closure, and the reason this is not one.
+            for ouvert in ("/", "/empresas/"):
+                with self.subTest(path=ouvert):
+                    self.assertIs(R.allowed("g.example", ouvert)["allowed"],
+                                  True)
+            self.assertEqual(R._token_agents("g.example", "/api/x"),
+                             ("claude-user",))
+        finally:
+            rendre()
+
+    def test_the_two_tuples_hold_the_same_tokens(self):
+        """**The invariant that makes two tuples safe**, rather than merging
+        them: `FETCH_TOKENS` is the SET a request can present as and its order
+        means nothing; `PREFERRED_TOKENS` is the ORDER and every «first one
+        wins» loop reads it. *A token added to one and not the other would
+        quietly change which name a refusal carries.*"""
+        R = self._r()
+        self.assertEqual(set(R.FETCH_TOKENS), set(R.PREFERRED_TOKENS))
+        self.assertEqual(len(R.FETCH_TOKENS), len(R.PREFERRED_TOKENS))
+        self.assertEqual(R.PREFERRED_TOKENS[0], "claude-user",
+                         "the order IS the decision of 2026-09-07")
+
+    def test_no_index_into_fetch_tokens_remains(self):
+        """**Absolute, because a guard with one declared exception gets a
+        second one.** Every «which token» decision reads `PREFERRED_TOKENS`;
+        `FETCH_TOKENS` is only ever iterated to build or to count.
+
+        *Two of the three indexes removed to make this absolute were harmless
+        — «the other token», and a reason identical under both tokens when the
+        rules file itself was refused, measured. They are gone so that the
+        next index, which may not be harmless, has nowhere to hide.*
+        """
+        import inspect
+        R = self._r()
+        hors_doc = re.sub(r'"""(?:.|\n)*?"""', "", inspect.getsource(R))
+        hors_doc = re.sub(r"(?m)^\s*#.*$", "", hors_doc)
+        self.assertNotIn("FETCH_TOKENS[", hors_doc,
+                         "an index into the unordered tuple is back")
+        self.assertIn("PREFERRED_TOKENS[:1]", hors_doc,
+                      "the fallback no longer returns a single token")
+        self.assertGreaterEqual(hors_doc.count("for tok in PREFERRED_TOKENS"), 2,
+                                "both «first one wins» loops read the ordered "
+                                "tuple; there were two on 2026-10-06")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

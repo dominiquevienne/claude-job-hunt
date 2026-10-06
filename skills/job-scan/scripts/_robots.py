@@ -1255,8 +1255,16 @@ def verdict(host, agents=None):
     # one whose own record — or `*` — permits `/` carries the sweep, and the
     # reason says under which name. A refusal by `*` is untouched: nothing
     # names us, everybody is refused, and the sweep stays closed.
+    # **`PREFERRED_TOKENS`, not `FETCH_TOKENS` — the first one that sweeps
+    # WINS, so the order decides who is named.** — #1024, second site.
+    # Measured on a group naming `Claude-Web` (one of `OUR_AGENTS`, not a
+    # request token) with `*` open: both request tokens sweep, the first was
+    # taken, and the reason said *«swept as `claudebot`»* on a host where
+    # `claude-user` is equally permitted and is the token a request would
+    # actually carry. *The verdict was right and the name attached to it was
+    # not — and `identity()` says `claude-user` about the same host.*
     if agents == OUR_AGENTS and out["sweep"] is False and token != "*":
-        for tok in FETCH_TOKENS:
+        for tok in PREFERRED_TOKENS:
             alone = verdict(final, agents=(tok,))
             if alone["sweep"] is True:
                 out["sweep"] = True
@@ -1741,6 +1749,30 @@ def _match_len(pattern, path):
 # driven by a person's request and that is the token which says so; `ClaudeBot`
 # is the fallback for a host that refuses the first by name and permits the
 # second. Same order as `identity()`, which is the point of the alignment.
+#
+# **AND THE DIVISION OF LABOUR BETWEEN THE TWO TUPLES IS THE FIX OF #1024, so
+# it is written here rather than left to be inferred:**
+#
+#     FETCH_TOKENS       the SET of tokens a request can present as.
+#                        Membership and cardinality only — `tok in
+#                        FETCH_TOKENS`, `len(FETCH_TOKENS)`, building a
+#                        per-token dict. **Its order means nothing**, and
+#                        indexing it is forbidden by a guard in tests/.
+#     PREFERRED_TOKENS   the ORDER. Every «first one that wins» loop and
+#                        every «the one we would send» index reads this.
+#
+# *They were two tuples holding the same two tokens in opposite orders, and
+# twice — `_token_agents`'s fallback and `verdict`'s named-group retry — the
+# code that needed the ORDER read the one that does not have one.* **Both
+# times the verdict stayed right and the attribution named `claudebot`, the
+# token that makes a refusal look personal.**
+#
+# **Converging the orders was the other option and it was declined**: two
+# identical tuples invite the next reader to delete one as redundant, and the
+# distinction above — a set and an order — would go with it. *What is guarded
+# instead is the invariant that matters: the two hold the SAME tokens, so a
+# token added to one and not the other fails loudly rather than quietly
+# changing which name a refusal carries.*
 PREFERRED_TOKENS = ("claude-user", "claudebot")
 
 
@@ -1759,7 +1791,53 @@ def _token_agents(host, path):
     for tok in PREFERRED_TOKENS:
         if allowed(host, path, agents=(tok,))["allowed"]:
             return (tok,)
-    return FETCH_TOKENS
+    # **`PREFERRED_TOKENS` on the fallback too — #1024, the reported site.**
+    # This returned `FETCH_TOKENS`, whose first element is `claudebot`, so a
+    # path refused under BOTH tokens came back attributed to the group that
+    # NAMES this project: `group: 'claudebot'`, `rule: '/'`,
+    # `kind: 'host-closed'`, and a reason reading *«a refusal that names this
+    # project, not a general policy»*.
+    #
+    # Measured on `www.randstad.es`, 2026-10-05, by `cd`: the same path asked
+    # under `claude-user` answers `group: '*'`, `rule:
+    # '/candidatos/ofertas-empleo/*/*/*/*/'`, `kind: 'disallow'` — a
+    # four-level facet, on a host whose `/` and whose listing page both
+    # answer `True`.
+    #
+    # **Both readings refuse, so no wrong fetch was ever authorised: the
+    # verdict was right and the ACCUSATION was false** — and false in the
+    # direction that manufactures a closure. *A session measuring a facet path
+    # there would reasonably write «randstad.es closes everything to us», and
+    # a closure costs the owner a decision under 2 sexies on top of our
+    # measurement.*
+    #
+    # `kind` and `rule` are not prose: they are structured fields a card
+    # generator reads.
+    #
+    # **AND REORDERING THE TUPLE IS NOT ENOUGH — measured, after trying it.**
+    # With `('claude-user', 'claudebot')` the attribution was still
+    # `group: 'claudebot'`, `kind: 'host-closed'`, because the cause is one
+    # level down: `group_for()` given TWO tokens collects the named records
+    # that exist, and on this host only `claudebot` has one — so the named
+    # group's `Disallow: /` comes back as though it bound both, while
+    # `claude-user` in fact falls under `*`.
+    #
+    # *A two-token question has no single honest answer on a host that names
+    # one of them.* So the fallback returns **the one token a request would
+    # carry**, and the refusal reported is that token's own — which is what
+    # the docstring above promises: «a real rule behind it». `claude-user`
+    # refused by `*` at a four-level facet IS a real rule, and a truer one
+    # than `/` borrowed from a group we would not present as.
+    #
+    # *What is NOT touched, and is named rather than left as a surprise:*
+    # `group_for()` still picks the shortest matched name when several named
+    # records match at once (`token = sorted(matched, key=len)[0]`), whose
+    # comment assumes «where the records agree it makes no difference which is
+    # quoted». **With a single-token question `matched` holds at most one
+    # name, so no call in this module reaches that choice** — `identity()`
+    # also asks token by token. It is a latent trap, not a live one, and
+    # changing it blind would be a prediction standing in for a measurement.
+    return PREFERRED_TOKENS[:1]
 
 
 def _allowed_by_rules(host, path, agents=None):
@@ -2208,10 +2286,17 @@ def identity(host, path="/"):
         out["token"] = ("claude-user" if "claude-user" in permitted
                         else permitted[0])
         out["state"] = "http"
+        # **«The other token», said as that rather than by index.** — #1024.
+        # `FETCH_TOKENS[0] if token == FETCH_TOKENS[1] else FETCH_TOKENS[1]`
+        # is correct whatever the order, so nothing was wrong here; it is
+        # rewritten because the GUARD below can then be absolute — no index
+        # into `FETCH_TOKENS` anywhere — and an absolute guard catches a
+        # future index that is NOT harmless.
+        autre = next((t for t in FETCH_TOKENS if t != out["token"]), None)
         out["reason"] = (
             f"`{out['token']}` may fetch this path"
-            + (f" (`{FETCH_TOKENS[0] if out['token'] == FETCH_TOKENS[1] else FETCH_TOKENS[1]}` "
-               f"may not)" if len(permitted) == 1 else "")
+            + (f" (`{autre}` may not)"
+               if len(permitted) == 1 and autre else "")
             + ". Ordinary HTTP, no browser.")
         return out
     if unknown == len(FETCH_TOKENS):
@@ -2249,9 +2334,16 @@ def identity(host, path="/"):
         # files that shape as host-closed. `allowed()` synthesises `rule: /`
         # for that shape; nothing was WRITTEN, so no rule is named here.
         out["rule"] = None
+        # **`PREFERRED_TOKENS[0]`, and the change is declared harmless with
+        # its measurement** — #1024. When the rules file itself was refused,
+        # both tokens get the SAME reason: measured on a stubbed `refused`
+        # state, the two strings are identical, so this index never named the
+        # wrong token. It changes because the guard below forbids indexing
+        # `FETCH_TOKENS` at all, and a guard with one declared exception is a
+        # guard somebody will add a second exception to.
         out["reason"] = (
             "the rules file itself was refused, so no group was read — "
-            + (per[FETCH_TOKENS[0]].get("reason") or "").split("\n")[0]
+            + (per[PREFERRED_TOKENS[0]].get("reason") or "").split("\n")[0]
             + " **Not the browser branch**: that needs rules that permit, and "
               "none were read.")
         return out
