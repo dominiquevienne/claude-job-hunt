@@ -44747,5 +44747,186 @@ class IsgarDropsNamedContactsAndScrubsProseAndTakesAChunkAtItsDeclaredLength(uni
         self.assertFalse(k.held([]))
         self.assertFalse(k.held(["$undefined"]))
 
+
+class ABoardThatShipsAPersonMustNotProduceASilentOutput(unittest.TestCase):
+    """**#1005, JobToday — the expurgation is named by FIELD because no pattern
+    can see what this board hands over.**
+
+    Every advert carries `company.hiringManager` with `name`, `image` and
+    `lastOnline`, and `addressInfo` with `coordinates`, `ghash`, `itemId` and a
+    `display.fullName` that is a STREET address. The same payload holds **no
+    contact address and not one key matching phone, email or tel**.
+
+    > *A rule written around the FORMS of contact finds nothing here and would
+    > record «nothing withheld» on a board that ships a named individual, their
+    > photograph and the time they were last online.* **It is the mirror of
+    > claiming a withholding nobody deposited, and it is the worse half: the
+    > dishonest output is the SILENT one.**
+
+    **And the pattern fails in BOTH directions at once, measured:** a plain
+    e-mail regex over the facet page returns **seven** matches and not one is a
+    contact — a Sentry DSN, an obfuscated token, and the filename
+    `share-pict-1200x630@2x.jpg`.
+
+    **What is kept and dropped was decided by the owner on 2026-10-06 (#1007)
+    and is not ours to revisit:** `hiringManager.name` is KEPT, `image` and
+    `lastOnline` DROPPED. *Two more were added by MEASURING rather than by
+    reading the issue — `addressInfo.display` (a street address, more precise
+    than the coordinates the issue did name) and `addressInfo.itemId` (the
+    geohash again, equal to `ghash` on every record). An issue names the
+    specimen; the class is measured.*
+    """
+
+    def _mod(self):
+        import importlib.util
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        chemin = os.path.join(racine, "skills", "job-scan", "scripts",
+                              "jobtoday.py")
+        spec = importlib.util.spec_from_file_location("jt_1005", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod, chemin
+
+    # One record in the shape the host really serves, trimmed: the envelope, the
+    # manager, and all four location fields.
+    @staticmethod
+    def _job(**bouge):
+        j = {
+            "key": "xGDg87",
+            "canonicalUrl": "/es/trabajo/camareros-as-xGDg87",
+            "role": "Camarero/a",
+            "companyName": "Club Zurko",
+            "address": "Fuencarral-El Pardo, Madrid, Comunidad de Madrid, España",
+            "postedSecondsAgo": 597,
+            "company": {"hiringManager": {"name": "Alejandro C.",
+                                          "image": "https://img/x.jpg",
+                                          "lastOnline": 1791269148759}},
+            "addressInfo": {"countryCode": "es", "ghash": "539940",
+                            "itemId": "539940",
+                            "coordinates": {"lat": 40.47, "lng": -3.70},
+                            "display": {"fullName": "36 Avenida de Monforte de "
+                                                    "Lemos, 28029, Madrid"},
+                            "type": "point"},
+            "salary": {"from": 26000, "to": 93000, "currencyCode": "EUR",
+                       "period": "YEARLY", "isValid": True},
+        }
+        j.update(bouge)
+        return j
+
+    def test_the_output_is_never_silent_about_a_person_it_was_given(self):
+        """**The Done-when of #1005.** The record carries NOTHING a contact
+        pattern can match, and the emitted row must STILL name what it withheld.
+        *This is the one case that distinguishes a board handing over a person
+        from a board handing over nothing.*"""
+        mod, _ = self._mod()
+        j = self._job()
+        brut = json.dumps(j)
+        # the premise: no contact shape anywhere in this record
+        self.assertEqual(re.findall(r'"[a-zA-Z]*(?:phone|email|tel)[a-zA-Z]*"\s*:',
+                                    brut), [],
+                         "the fixture has a contact-shaped key, so it no longer "
+                         "exercises the case this guard exists for")
+        r = mod.row(j, "jobtoday.com", "es")
+        self.assertTrue(r["withheld_fields"],
+                        "a record carrying a name, a photograph, a last-online "
+                        "stamp and a street address produced an EMPTY "
+                        "withheld_fields — the silent output this guard exists "
+                        "to forbid")
+        for champ in ("company.hiringManager.image",
+                      "company.hiringManager.lastOnline",
+                      "addressInfo.coordinates", "addressInfo.ghash",
+                      "addressInfo.display", "addressInfo.itemId"):
+            with self.subTest(champ=champ):
+                self.assertIn(champ, r["withheld_fields"])
+
+    def test_the_value_of_a_withheld_field_never_reaches_the_row(self):
+        """Naming is not enough: the NAME is emitted and the VALUE is not."""
+        mod, _ = self._mod()
+        r = mod.row(self._job(), "jobtoday.com", "es")
+        texte = json.dumps(r, ensure_ascii=False)
+        for valeur in ("https://img/x.jpg", "1791269148759", "40.47", "-3.70",
+                       "539940", "Avenida de Monforte"):
+            with self.subTest(valeur=valeur):
+                self.assertNotIn(valeur, texte,
+                                 "a withheld VALUE reached the row")
+        # and the one the owner decided to KEEP is there
+        self.assertEqual(r["hiring_manager_name"], "Alejandro C.")
+
+    def test_the_declaration_follows_the_record_and_not_the_board(self):
+        """**A field PRESENT is not a field the board always sends.** A record
+        without `ghash` must declare no `ghash`, because naming what was never
+        there lies about our discretion rather than about the host. *A list
+        hardcoded instead of derived passes the case above and fails here.*"""
+        mod, _ = self._mod()
+        maigre = self._job(addressInfo={"countryCode": "es"},
+                           company={"hiringManager": {"name": "Ana P."}})
+        r = mod.row(maigre, "jobtoday.com", "es")
+        self.assertEqual(r["withheld_fields"], [],
+                         "fields were declared withheld on a record that "
+                         "carried none of them")
+        self.assertEqual(r["hiring_manager_name"], "Ana P.")
+        # **An intermediate PRESENT but EMPTY counts as absent** — and this
+        # fixture must thin the COMPANY too. A first version left it intact, so
+        # `image` and `lastOnline` were legitimately declared and the case
+        # accused sound code: *the fixture, not the function, was the defect.*
+        vide = self._job(addressInfo={"ghash": "", "coordinates": {}},
+                         company={"hiringManager": {"name": "Ana P."}})
+        self.assertEqual(mod.row(vide, "jobtoday.com", "es")["withheld_fields"],
+                         [], "a field present-but-empty was declared withheld")
+
+    def test_the_section_is_chosen_by_item_type_and_never_by_index(self):
+        """*On 2026-10-06 sections 0 and 1 were empty and the jobs sat in
+        section 2 — a fact about that page, not about the host.* A fixture that
+        puts the jobs FIRST and something else third must still find them."""
+        mod, _ = self._mod()
+        data = {"props": {"pageProps": {"feed": {"sections": [
+            {"items": [{"type": "job", "payload": self._job()}]},
+            {"items": []},
+            {"items": [{"type": "carousel", "payload": {"key": "nope"}}]},
+        ]}, "pagination": {"pages": [1, 2, 3]}}}}
+        jobs, props = mod.jobs_of(data)
+        self.assertEqual([j["key"] for j in jobs], ["xGDg87"],
+                         "the walk is keyed on a section INDEX, so it finds "
+                         "what happened to be third rather than what is a job")
+        self.assertEqual(mod.pages_declared(props), 3,
+                         "`pagination` is read from `feed` — it sits at "
+                         "`pageProps`")
+
+    def test_a_salary_travels_with_its_period_or_not_at_all(self):
+        """The board flags its own validity, and three periods appeared on one
+        page — so a figure without its period means nothing."""
+        mod, _ = self._mod()
+        bon = mod.salary_of(self._job())
+        self.assertEqual(bon["period"], "YEARLY")
+        self.assertEqual((bon["from"], bon["to"], bon["currency"]),
+                         (26000, 93000, "EUR"))
+        invalide = self._job(salary={"from": 10, "to": 20, "period": "MONTHLY",
+                                     "isValid": False})
+        self.assertIsNone(mod.salary_of(invalide),
+                          "`isValid: false` was emitted anyway")
+        sans_periode = self._job(salary={"from": 10, "to": 20, "isValid": True})
+        self.assertIsNone(mod.salary_of(sans_periode),
+                          "a figure was emitted without its period")
+
+    def test_the_module_states_the_decision_and_the_fields_it_withholds(self):
+        """*The three lines the owner decided must be readable where the work
+        happens, and the two measured additions must say they were measured.*"""
+        _mod, chemin = self._mod()
+        with open(chemin, encoding="utf-8") as fh:
+            src = fh.read()
+        # **Whitespace-collapsed and case-folded, because a docstring WRAPS.**
+        # A first version looked for the contiguous lower-case «named by FIELD»
+        # and «street address»: the module writes the first across a newline and
+        # the second in capitals, so the assertion accused a module that says
+        # both. *A phrase composed across lines does not exist in the file —
+        # the same trap as an f-string split in two.*
+        plat = " ".join(src.split()).lower()
+        for phrase in ("lastonline", "keep", "drop", "#1007",
+                       "named by field", "street address"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, plat,
+                              f"the module no longer states {phrase!r}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
