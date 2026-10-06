@@ -7,9 +7,9 @@
 <!-- countries: CYN -->
 <!-- content: measured · **THE ROUTE IS THE RSS FEED, NOT THE PAGE: `/is-ilanlari/` (200, 56 151 B) carries 21 notices as `/<slug>/<id>/`; its «Daha Fazla Getir» button is AJAX (`data-page="2"`, `data-url=.../news-category-ajax.php?katid=70`) and that pager is CLAMPED — pages 2, 3, 4 and 5 each return 15 ids and ZERO new. `/rss_is-ilanlari_70.xml` (200, 100 917 B) carries 50 `<item>`, and the pager's 21 are ALL inside it: intersection 21, pager-only 0, feed-only 29, union 50. `/is-ilanlari/page/2/` answers 404 and `?sayfa=2` is ignored. The notice page (68 274 B) carries THREE `ld+json` blocks, the third a `NewsArticle` with `articleBody`, `headline`, `datePublished`, `wordCount` — it raises under a STRICT parser (a raw control character in a string) and parses with `strict=False` The rules file is served (`state: read`, `certain: True`) on `/`, `/is-ilanlari/`, the RSS and the AJAX endpoint, and writes no Crawl-delay — 2 s are ours.** · 2026-10-02 -->
 <!-- content: measured · **`/is-ilanlari/` (200, 56 151 B, md5 36e906941497 / b68fa58ee731 — a rendered element moves) lists 21 distinct `…-munhal-duyurusu-…` notices as news posts (universities' and companies' vacancy announcements), category links `/kibris-ekonomi/`, `/kibris-haberleri/`; no count stated, no pager link found on the first page, no JobPosting; `_robots.allowed('www.ekonomikibris.com','/is-ilanlari/')` → open, certain** · 2026-09-18 -->
-<!-- witness: none — the section states no count · 2026-09-18 -->
-
 <!-- witness: no count stated anywhere; the FEED is the enumerator at 50 and it strictly CONTAINS the clamped pager's 21, which is the first of four boards where containment actually holds · 2026-10-02 -->
+
+<!-- witness: none — the section states no count · 2026-09-18 -->
 
 ## The adapter — one request for the 50 notices, and the containment re-measured at every run
 

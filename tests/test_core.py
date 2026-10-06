@@ -35267,7 +35267,13 @@ class ACellThatLeadsWithItsMethodRendersNoWitness(unittest.TestCase):
     `ACardThatConcludesOpenAndCertainSaysNothingOfTheRate`."""
 
     # Legitimately no count to state — they cannot lead with a figure. Shrink only.
-    SANS_COMPTE = ("calisma-gov-ct-tr", "founditgulf", "myanmarjob-gov", "shoghl-mcls")
+    # **`shoghl-mcls` left this set on 2026-10-06, and not by a retouch.**
+    # Its `content:` line of 21.09 — promoted to the top because the tooling
+    # read only the first, and an appended re-measurement is never the one it
+    # reads (#1036) — LEADS WITH A FIGURE. *A declared set is corrected when
+    # the object changes; that is what the exact equality in both directions
+    # is for, and it fired on the right side.*
+    SANS_COMPTE = ("calisma-gov-ct-tr", "founditgulf", "myanmarjob-gov")
 
     HEAD = 200
 
@@ -43153,11 +43159,19 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         declared `route: http` — the state the #949 campaign produces most
         often: measured, route known, adapter not written.
 
-        **Population in the repository today: ZERO**, asserted below. *So this
-        branch repairs no card. The «68 cards reading non déclaré» of #998 are
-        a DIFFERENT set: not one of them carries a `route:` line at all* —
-        which is the figure this case exists to stop anyone from re-deriving
-        from the issue text.
+        **Population in the repository today: ONE — `yora.md`, since 2026-10-06.**
+        *It was ZERO when this case was written on 2026-10-05, and the assertion
+        below said so and told whoever reached the branch that the sentence would
+        be stale. `yora.md` reached it: `route: http · 100 · 2026-10-06` beside
+        `script: none`, which is the state named above word for word.* **The
+        assertion keeps its job by naming the population rather than asserting it
+        empty — it still fires the day a SECOND card arrives, which is what makes
+        it a tripwire and not a tautology.**
+
+        *The «68 cards reading non déclaré» of #998 are still a DIFFERENT set:
+        not one of them carries a `route:` line at all* — which is the figure
+        this case exists to stop anyone from re-deriving from the issue text, and
+        nothing above touches it.
         """
         mod = self._cb()
         cards = self._cards(mod, {
@@ -43174,9 +43188,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         self.assertEqual(basis, "`route: http`")
         reels = [c["path"] for c in mod.read_cards(self.BOARDS)
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
-        self.assertEqual(reels, [], "the branch is latent today; if a card "
-                                    "reaches it, this sentence is stale and "
-                                    "the figure must be remeasured")
+        self.assertEqual(
+            sorted(pathlib.Path(p).name for p in reels), ["yora.md"],
+            "the declared population of this branch changed. It was EMPTY until "
+            "2026-10-06 and is now `yora.md` alone. A card appearing here is not "
+            "a defect — it is the #949 state «measured, route known, adapter not "
+            "written» arriving — but it means the docstring's figure is stale: "
+            "name the new card here and say since when, and do NOT widen this to "
+            "a count, which would stop telling you WHICH card arrived")
 
     def test_a_route_none_still_outranks_everything(self):
         """**The half that must not change.** `route: none` primes over
@@ -43499,6 +43518,299 @@ class TheFetcherLearnedToPostAndTheGuardDidNotChangeInKind(unittest.TestCase):
         self.assertIn('if a.method != "GET"', src,
                       "and `method` is recorded only when it is not the "
                       "default, so a GET record is unchanged")
+class ANonPathDirectiveNeverReachesThePermissions(unittest.TestCase):
+    """**#1006, measured by `cd` on 2026-10-05 while adding Hosco.** The
+    sort used an `else` as a catch-all —
+
+        (dis if kind == "disallow" else allow).append(value)
+
+    — and `_groups()` emits three kinds, so a `Crawl-delay: 10` appended the
+    **string `"10"` to the list of PERMISSIONS**.
+
+    **The verdict was safe and only the prose lied**, which is why it is worth
+    a guard rather than a panic: `_match_len('10', '/')` is `-1`, so `"10"`
+    can never match a path. What came out instead was *«except 1 named path
+    family: `10`. **This is a whitelist, not a wall**»* **about a host that
+    closes everything and merely asks us to slow down** — a false gloss on a
+    correct verdict, contradicting nothing, and leaning toward PERMITTED.
+
+    > **And the issue named one site. There were FOUR.** Two were spelled
+    > `d`/`a` rather than `dis`/`allow`, so a grep for the spelling in the
+    > report finds half of them — *fixing the one that was reported would have
+    > left three and closed the issue.*
+
+    **The second shape the report did not name is the one that was not purely
+    cosmetic:** a host with a REAL whitelist and a delay printed *«except 2
+    named path families: `/jobs/`, `10`»* — an inflated count and an invented
+    family, on a verdict a reader uses to decide whether to write an adapter.
+    """
+
+    MUR = "User-agent: *\nDisallow: /\nCrawl-delay: 10\n"
+    MUR_SEUL = "User-agent: *\nDisallow: /\n"
+    LISTE = "User-agent: *\nDisallow: /\nAllow: /jobs/\nCrawl-delay: 10\n"
+
+    def _r(self):
+        import _robots
+        return _robots
+
+    def _verdict(self, body):
+        """A verdict from a body, no network — the module's own stub point."""
+        R = self._r()
+        R._CACHE.clear()
+        R._ALIAS.clear()
+        vrai = R._fetch
+        R._fetch = lambda host: {"state": "read", "final": host,
+                                 "attempts": 1, "body": body}
+        try:
+            return R.verdict("h.example")
+        finally:
+            R._fetch = vrai
+            R._CACHE.clear()
+            R._ALIAS.clear()
+
+    def test_a_crawl_delay_is_not_a_permission_in_any_of_the_four_sorts(self):
+        """**All four, because the report named one.** `group_for` answers for
+        the `*` group and for a named one; `_star_group` answers separately;
+        and a fourth site sorts the per-agent rules."""
+        R = self._r()
+        token, dis, allow, _x = R.group_for(self.MUR)
+        self.assertEqual(allow, [],
+                         "a Crawl-delay reached the permissions of group_for")
+        self.assertEqual(dis, ["/"])
+        self.assertEqual(R._star_group(self.MUR), (["/"], []),
+                         "a Crawl-delay reached the permissions of _star_group")
+        # **A named group too**, which is the site a grep for `dis`/`allow`
+        # misses because it is spelled `d`/`a`.
+        nomme = ("User-agent: Claude-User\nDisallow: /\nCrawl-delay: 7\n")
+        token, dis, allow, _x = R.group_for(nomme)
+        self.assertEqual(allow, [], "the per-agent sort still catches all")
+
+    def test_the_delay_itself_is_not_lost(self):
+        """**The other direction, and `cd` retracted a first impression here**
+        — it had printed the key `delay` instead of `crawl_delay`. A fix that
+        dropped the directive on the floor would pass the case above and break
+        the one host that asked us to slow down."""
+        R = self._r()
+        self.assertEqual(R.delay_for(self.MUR), 10.0)
+        self.assertIsNone(R.delay_for(self.MUR_SEUL))
+        self.assertEqual(self._verdict(self.MUR)["crawl_delay"], 10.0)
+
+    def test_a_wall_with_a_delay_reads_as_a_wall(self):
+        """The Done-when of #1006, asserted on the output, because the output
+        is the only place this defect was ever visible."""
+        v = self._verdict(self.MUR)
+        self.assertIs(v["sweep"], False)
+        self.assertEqual(v["allow"], [])
+        self.assertNotIn("whitelist, not a wall", v["reason"])
+        self.assertIn("everything closed, evenly", v["reason"])
+        self.assertIn("a rate, not a permission", v["reason"])
+        # **The number is rendered, not quoted as the host's own line.**
+        # `crawl_delay` is a float, so an f-string prints `10.0` where the
+        # file wrote `10`, and quoting that back as the file's text gives our
+        # parse a provenance it does not have.
+        self.assertIn("10s between requests", v["reason"])
+        self.assertNotIn("10.0", v["reason"])
+
+    def test_a_wall_with_no_delay_says_nothing_about_a_rate(self):
+        """**The negative control.** A sentence that always appears cannot be
+        distinguished from one that never does."""
+        v = self._verdict(self.MUR_SEUL)
+        self.assertIn("everything closed, evenly", v["reason"])
+        self.assertNotIn("a rate, not a permission", v["reason"])
+        self.assertNotIn("between requests", v["reason"])
+
+    def test_a_real_whitelist_counts_only_its_real_families(self):
+        """**The shape the report did not name.** Before the fix this said
+        *«except 2 named path families: `/jobs/`, `10`»* — a count wrong by
+        one and a family that does not exist, on a host whose whitelist is
+        genuine."""
+        v = self._verdict(self.LISTE)
+        self.assertEqual(v["allow"], ["/jobs/"])
+        self.assertIn("except 1 named path family", v["reason"])
+        self.assertIn("`/jobs/`", v["reason"])
+        self.assertNotIn("`10`", v["reason"])
+        # And it is still correctly called a whitelist — the branch is right,
+        # it was only being fed a phantom.
+        self.assertIn("whitelist, not a wall", v["reason"])
+
+    def test_the_bogus_entry_could_never_have_matched_a_path(self):
+        """**Why this was prose and not a permission**, asserted rather than
+        repeated from the report: the value cannot match, so no decision moved
+        — which is exactly what makes a false gloss undetectable by
+        comparison."""
+        R = self._r()
+        self.assertEqual(R._match_len("10", "/"), -1)
+        self.assertEqual(R._match_len("10", "/jobs/10"), -1)
+        self.assertGreater(R._match_len("/", "/"), 0)
+
+    def test_no_sort_site_uses_else_as_a_catch_all_any_more(self):
+        """The corpus half: a fifth site added tomorrow must not reintroduce
+        it. *The docstring of `_sort_rule` quotes the defect, so the search is
+        for live code and skips the quotation.*"""
+        import inspect
+        R = self._r()
+        src = inspect.getsource(R)
+        hors_doc = re.sub(r'"""(?:.|\n)*?"""', "", src)
+        self.assertNotIn('if kind == "disallow" else', hors_doc,
+                         "an `else` catch-all is back in the sort")
+        self.assertGreaterEqual(hors_doc.count("_sort_rule(kind, value"), 4,
+                                "the four sort sites were four on 2026-10-05; "
+                                "if this drops, one has been rewritten by hand")
+
+    def test_a_directive_that_is_neither_goes_nowhere(self):
+        """**The allow-list is named rather than `crawl-delay` special-cased**,
+        and this is the case that says why: a kind nobody named lands in
+        neither list. *A deny-list would have had to enumerate the problem; an
+        allow-list enumerates the need, and its failure announces itself as a
+        missing rule instead of a false permission.*"""
+        R = self._r()
+        dis, allow = [], []
+        R._sort_rule("sitemap", "https://h.example/sitemap.xml", dis, allow)
+        R._sort_rule("host", "h.example", dis, allow)
+        R._sort_rule("content-signal", "ai-train=no", dis, allow)
+        self.assertEqual((dis, allow), ([], []))
+        R._sort_rule("allow", "/jobs/", dis, allow)
+        R._sort_rule("disallow", "/admin/", dis, allow)
+        self.assertEqual((dis, allow), (["/admin/"], ["/jobs/"]))
+class ALineAPPENDEDToACardIsNeverTheOneTheToolingReads(unittest.TestCase):
+    """**Found by `cd` on 2026-10-06, through a guard rather than by reading.**
+    `bin/country-boards.py:140` resolves a card's header with
+    `h.setdefault(...)`, so **the FIRST `content:` line wins** — and appending
+    a dated re-measurement at the bottom of a card, which is the conservative
+    gesture, is exactly what makes it invisible.
+
+    > **#963 was «the parser falls silently back to the OLDER line» through a
+    > missing terminator. This is the same fall, through ORDER.**
+
+    *What exposed it was `TheHeadingAgreesWithTheContentLine` refusing a
+    commit because the figures in an `h1` did not appear in «the» `content:`
+    line — the one it checks being the first. It complained about a heading;
+    what it was showing is that an append updates nothing.*
+
+    **Measured on `origin/main` the same night: 503 cards, 10 carry several
+    `content:` lines, and FIVE had a first line older than their own most
+    recent** — `shoghl-mcls` (4 days), `unegui` (12), `iskibris`,
+    `kktcportal` and `worklinkcy` (14 each). *`cd` had found one of the five
+    and said so; the other four came from counting.*
+
+    **And the order hid a second thing, which is why this is not only about
+    dates.** `unegui.md`'s newer line declared the state `re-measured` — **a
+    word the vocabulary does not contain** (`measured`, `assumed`,
+    `out-of-domain`, `indeterminate`). The format guard reads the FIRST line,
+    so an invalid state sat on the second one for twelve days without a
+    single test going red. *Its own prose says a Cloudflare challenge holds,
+    which is `indeterminate`; the word «RE-MEASURED» stays in the prose, so
+    nothing is lost.*
+    """
+
+    FIELDS = ("content", "witness", "verified", "route")
+
+    def _cards(self):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return sorted(p for p in glob.glob(os.path.join(root, "shared",
+                                                        "boards", "*.md"))
+                      if os.path.basename(p) != "README.md")
+
+    @staticmethod
+    def _lines(src, field):
+        return re.findall(r"^<!--\s*%s:\s*(.*?)\s*-->\s*$" % field, src,
+                          re.M)
+
+    @staticmethod
+    def _last_date(value):
+        found = re.findall(r"20\d\d-\d\d-\d\d", value)
+        return found[-1] if found else ""
+
+    def test_the_first_dated_line_is_the_most_recent_one(self):
+        """**The guard, over the real cards, on every dated header field.**
+
+        It does not forbid a card from carrying its history — several of them
+        do, deliberately, and that is how a measurement keeps its predecessor
+        beside it. It forbids the history from being read INSTEAD of the
+        measurement: whichever line the tooling takes must be the newest.
+        """
+        guilty, population = [], 0
+        for path in self._cards():
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for field in self.FIELDS:
+                vals = self._lines(src, field)
+                if len(vals) < 2:
+                    continue
+                population += 1
+                dates = [self._last_date(v) for v in vals]
+                recent = max((d for d in dates if d), default="")
+                if recent and dates[0] and dates[0] < recent:
+                    guilty.append(f"{os.path.basename(path)}:{field} "
+                                  f"reads {dates[0]} and carries {recent}")
+        # **The population counts itself**: a guard that found no card with
+        # several lines would pass while proving nothing, and ten cards had
+        # several on 2026-10-06.
+        self.assertGreaterEqual(
+            population, 8,
+            f"only {population} card/field pairs carry several lines; ten "
+            f"cards did on 2026-10-06, so either the convention changed or "
+            f"this walk narrowed")
+        self.assertEqual(guilty, [],
+                         "a card is read at a date older than its own most "
+                         "recent line — append it ABOVE, not below")
+
+    def test_every_content_line_declares_a_state_not_only_the_first(self):
+        """**The second half, and it is the one the order was hiding.** The
+        format guard uses `re.search`, so it sees the first line only; a state
+        word nobody recognises on a later line is invisible until that line is
+        promoted. *`re-measured` sat on `unegui.md` for twelve days.*"""
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "cb_1036", os.path.join(root, "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        states = ("measured", "assumed", "out-of-domain", "indeterminate")
+        bad, seen = [], 0
+        for path in self._cards():
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for i, val in enumerate(self._lines(src, "content")):
+                seen += 1
+                head = val.split("·")[0].strip().lower()
+                if head not in states:
+                    bad.append(f"{os.path.basename(path)} line {i}: "
+                               f"{head!r}")
+        self.assertGreaterEqual(seen, 400, f"only {seen} content lines read")
+        self.assertEqual(bad, [],
+                         "a `content:` line declares a state outside the "
+                         "vocabulary — and a line that is not read today can "
+                         "be read tomorrow")
+
+    def test_the_reader_really_does_take_the_first(self):
+        """**The mechanism, asserted rather than cited**, so that a future
+        change from `setdefault` to «last wins» makes the guard above stale
+        loudly instead of silently. *A guard built on a behaviour nobody
+        checks is a guard resting on a comment.*"""
+        import importlib.util
+        import tempfile
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "cb_1036b", os.path.join(root, "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "deux.md"), "w", encoding="utf-8") as fh:
+            fh.write("# Two lines\n\n"
+                     "<!-- verified: 2026-10-06 -->\n"
+                     "<!-- hosts: x.example -->\n"
+                     "<!-- script: none -->\n"
+                     "<!-- countries: XX -->\n"
+                     "<!-- content: measured · premiere · 2026-10-06 -->\n"
+                     "<!-- content: measured · seconde · 2026-09-01 -->\n")
+        cards = mod.read_cards(d)
+        self.assertEqual(len(cards), 1)
+        self.assertIn("premiere", cards[0]["h"]["content"])
+        self.assertNotIn("seconde", cards[0]["h"]["content"],
+                         "the reader no longer takes the first line, so the "
+                         "guard above is testing the wrong end of the file")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
