@@ -43193,5 +43193,163 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         self.assertTrue(label.startswith("route: none"), label)
         self.assertEqual(mod.classify(cards["morte"])[0], "infaisable")
 
+
+class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
+    """**#1003, from a pair measured the same afternoon of 2026-10-05.** Fit1Job
+    declares a post gone on the **DETAIL page**, by losing its `JobPosting`
+    block while still answering 200 with a full 85 kB and no visible notice.
+    DiData declares it on the **LISTING only**, and its detail page is
+    indistinguishable from an open one.
+
+    > **Two hosts, two OPPOSITE answers, same question, same day — which is the
+    > dénominateur that makes this a rule and not an anecdote.** *So "the page is
+    > still standing" carries no information, and there is no default to fall
+    > back on.*
+
+    **And the cost of assuming is asymmetric in the direction that hurts:**
+    reading Fit1Job's rule onto DiData declares every closed post OPEN, and the
+    plugin drafts for a vacancy that is gone.
+
+    *The scope is MEASURED and not assumed: the cards bound by this guard are
+    exactly those whose declared script emits a closure status, found by the
+    pattern below — not every card that happens to contain the word.*
+    """
+
+    SURFACES = ("listing", "detail", "both", "neither")
+    _MOTS = r"(retired|closed|expired|unavailable|filled|gone)"
+    # A status EMITTED, never the word in prose. The four forms are the ones
+    # this repository actually uses; `row["status"] = "retired"` is the one a
+    # first pattern missed, and it is `fit1job.py:334` — half of the very pair
+    # this guard exists for.
+    EMET = re.compile(
+        r'(?:"status(?:_\w+)?"\s*:\s*'
+        r'|\[\s*"status(?:_\w+)?"\s*\]\s*=\s*'
+        r'|\bstatus(?:_\w+)?\s*=\s*'
+        r'|\breturn\s+)"' + _MOTS + '"', re.I)
+
+    def _root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _cards(self):
+        import glob
+        return sorted(p for p in glob.glob(os.path.join(
+            self._root(), "shared", "boards", "*.md"))
+            if os.path.basename(p) != "README.md")
+
+    def _scripts_that_emit(self):
+        """The measured scope: basenames of shipped scripts that emit a closure
+        status."""
+        import glob
+        out = set()
+        for p in glob.glob(os.path.join(self._root(), "skills", "job-scan",
+                                        "scripts", "*.py")):
+            with open(p, encoding="utf-8") as fh:
+                if self.EMET.search(fh.read()):
+                    out.add(os.path.basename(p))
+        return out
+
+    @staticmethod
+    def _header(src, field):
+        return re.findall(r"^<!--\s*%s:\s*(.*?)\s*-->\s*$" % field, src, re.M)
+
+    def test_the_pattern_that_finds_the_scope_is_proven_in_both_directions(self):
+        """**The scope-finding pattern is itself a guard, so it is exercised on
+        a case that must answer yes AND one that must answer no.**
+
+        *A first version of it matched `"status": "closed"` and missed
+        `row["status"] = "retired"` — so it found DiData, missed Fit1Job, and
+        would have reported a population of ONE for a rule whose whole point is
+        a PAIR. A pattern tried on one positive has not been tried.*
+        """
+        oui = ['row["status"] = "retired"', '"status": "closed"',
+               'row["status_detail"] = "gone"', 'return "closed", marks',
+               '    status = "expired"']
+        non = ['# the advertisement is retired',
+               'retired = [r for r in rows]',
+               'if row["status"] == "retired":',
+               '"status": state',
+               'note("this advertisement is retired.")']
+        for s in oui:
+            with self.subTest(doit_matcher=s):
+                self.assertTrue(self.EMET.search(s), f"faux negatif: {s!r}")
+        for s in non:
+            with self.subTest(ne_doit_pas=s):
+                self.assertIsNone(self.EMET.search(s), f"faux positif: {s!r}")
+
+    def test_every_card_whose_script_emits_a_closure_status_names_its_surface(self):
+        """The Done-when of #1003, over the real corpus."""
+        emet = self._scripts_that_emit()
+        # **The population counts itself.** A guard that found no such script
+        # would pass while proving nothing; there were TWO on 2026-10-06.
+        self.assertGreaterEqual(
+            len(emet), 2,
+            f"only {sorted(emet)} emit a closure status; two did on "
+            f"2026-10-06 (didata.py, fit1job.py), so either the pattern "
+            f"narrowed or a script stopped declaring one")
+        manquantes, vues = [], 0
+        for path in self._cards():
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            decl = self._header(src, "script")
+            if not decl:
+                continue
+            noms = {s for s in re.split(r"[,\s]+", decl[0]) if s}
+            if not (noms & emet):
+                continue
+            vues += 1
+            lignes = self._header(src, "closure")
+            if not lignes:
+                manquantes.append(f"{os.path.basename(path)} (script "
+                                  f"{sorted(noms & emet)}) carries no "
+                                  f"`closure:` line")
+                continue
+            surface = lignes[0].split("\u00b7")[0].strip().lower()
+            if surface not in self.SURFACES:
+                manquantes.append(f"{os.path.basename(path)}: surface "
+                                  f"{surface!r} is outside "
+                                  f"{self.SURFACES}")
+        self.assertGreaterEqual(vues, 2, f"only {vues} cards reached")
+        self.assertEqual(manquantes, [],
+                         "a card measures closure and does not name the "
+                         "SURFACE it read it on — see shared/ats-open-check.md")
+
+    def test_the_two_measured_hosts_name_DIFFERENT_surfaces(self):
+        """**The finding itself, asserted rather than described.** If a later
+        edit made both cards say the same surface, every sentence of the
+        doctrine would still read correctly and the measurement behind it would
+        be gone."""
+        lu = {}
+        for nom in ("fit1job.md", "didata.md"):
+            p = os.path.join(self._root(), "shared", "boards", nom)
+            with open(p, encoding="utf-8") as fh:
+                lignes = self._header(fh.read(), "closure")
+            self.assertTrue(lignes, f"{nom} carries no `closure:` line")
+            lu[nom] = lignes[0].split("\u00b7")[0].strip().lower()
+        self.assertEqual(lu["fit1job.md"], "detail")
+        self.assertEqual(lu["didata.md"], "listing")
+        self.assertNotEqual(
+            lu["fit1job.md"], lu["didata.md"],
+            "the pair measured OPPOSITE answers; if they now agree, the "
+            "dénominateur that made this a rule is gone")
+
+    def test_the_doctrine_names_both_failure_shapes(self):
+        """*Naming one shape and not the other is the failure mode this issue
+        exists to prevent: the two look nothing alike, and a reader who knows
+        only the first reads a block-less 200 as a parse error.*"""
+        p = os.path.join(self._root(), "shared", "ats-open-check.md")
+        with open(p, encoding="utf-8") as fh:
+            doc = fh.read()
+        for phrase in ("lost its structured block",
+                       "identical whether open or closed",
+                       "property of THAT host"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, doc,
+                              "the step-1b doctrine no longer names this")
+        for surface in self.SURFACES:
+            with self.subTest(surface=surface):
+                self.assertIn(surface, doc,
+                              "the closed vocabulary is not documented")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -7,6 +7,7 @@
 <!-- countries: CH -->
 <!-- content: measured · 14 cards emitted from the listing, of which 8 open and 6 marked «Not available» by three markers that agree on 14 of 14, against 8 hrefs (exactly the open ones) and 13 `/careers/<slug>` pages in the declared sitemap — three enumerators, and the size of this board is NOT established because 6 cards carry no slug at all; the route returns no `JobPosting`, no `ld+json` and no date of any kind on the listing or on 7 ad pages read, so the ledger's date stays empty, and the ad page carries no availability signal whatsoever, read by `didata.py list --all --fetch` · 2026-10-05 -->
 <!-- witness: the declared sitemap `/sitemap.xml` → `sitemap-0.xml`, 288 URL of which 42 under `/careers` and 13 `/careers/<slug>` pages in the default locale — **and it is a witness that cannot arbitrate**: it nests cleanly inside the listing's slugs, which says nothing about the six cards that have no slug -->
+<!-- closure: listing · three markers on the listing card agree on 14 of 14 (badge visible, container greyed, anchor dead) and the DETAIL page is indistinguishable from an open one — same `h1`, same `Type:`/`Location:`, same application token, no notice — measured on two posts the listing marks unavailable · 2026-10-05 -->
 
 **Requested in #864, and the premises were re-measured rather than repeated.**
 *The most important one was wrong in the direction that hides work.*
