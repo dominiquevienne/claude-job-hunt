@@ -6,6 +6,36 @@
 <!-- script: wttj.py -->
 <!-- countries: FR -->
 <!-- witness: SECOND READING, not conclusive. 88 913 on 2026-09-05 against 88 222 on 2026-09-02, +691. **42 637 entries carry a recent `lastmod`, so the net is 1.6 % of the movement** — weaker than turijobs at 12.3 % or platsbanken at 9 %. **And the argument closes on both branches**: if those dates are real the net is a sixtieth of the gross; if they are regeneration stamps the flow is not legible at all. What it does establish: 8 × 10 000 + 8 913 across nine `job-listings-*` children, union equal to the raw sum, and the index's fifteen other children are not advertisements · 2026-09-05 -->
+## `countries: FR` IS NOT AN OMISSION — THE ADAPTER HAS NO COUNTRY PARAMETER (#1085)
+
+**Read 2026-10-07 from this adapter's own `argparse`: its only selector is
+`--locale {fr,en}`, and the help text of that option says, in its own words, «the
+URL's language — NOT the job's country».** *There is no country option, and
+`use_board`-style front table does not exist here either.*
+
+**So this card claims France and nothing else, and it CANNOT claim more without a
+new mechanism.** *What this file already records is why: the `/fr/` prefix is a
+LANGUAGE — six `/fr/` adverts sampled at random came out in Cologne, Rio de
+Janeiro and Fort-de-France.*
+
+> **FORTY-FOUR country pages carried this board as «indirect» — a claim the PAGE
+> made that this repository never made.** *The promise a `warn` row makes on those
+> pages is «à exercer avec le paramètre de ce pays avant d'y compter», and that
+> parameter does not exist, so the promise could not be kept even in principle.*
+
+**Measured distribution, 2026-10-07 (#1085): of the 46 carried `warn` rows across
+45 pages, 44 are THIS board under three different labels, 2 are synthesis lines
+about ATS families — a different object — and 0 are independent claims.** *So it
+was never 46 verifications: one claim, confirmed false by the tool's own
+documentation, replicated 44 times.* **And the three labels produce TWO different
+row keys** — 26 carry the hostname, 18 carry prose where a hostname would be — *so
+a single uniform correction would have replaced 26 and DUPLICATED 18.*
+
+**What would let this card claim another country:** a country selector on
+`wttj.py`, or a measured count for that country taken from the sitemaps the
+adapter already walks. **Neither exists today, and until one does, a page that
+shows this board as «indirect» is wrong.**
+
 **Re-tested 2026-09-02: the discovery half still works without a browser.** `robots.txt` answers 200 (216 bytes, `text/plain`) and the index it advertises, `/sitemaps/index.xml.gz`, answers 200 with **24 sub-sitemaps**. The split this file documents — plain HTTP to discover, browser to read — is unchanged.
 
 **88 222 ads** in the site's own sitemaps, about **two thirds of them
