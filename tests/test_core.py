@@ -46224,5 +46224,156 @@ class SubitoRefusesTheSiblingCategoryWherePeopleOfferThemselves(unittest.TestCas
         self.assertEqual(rates, 1, "a broken object was skipped in silence")
 
 
+class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCase):
+    """**#1094 point 1, 2026-10-07 — a PROPOSED format, and the guard that makes it
+    checkable.**
+
+        familles d'ATS dont `setup.md` dit « The employers they would work for »   13
+        adaptateurs expedies                                                      313
+        registre partage                                                            0
+
+    **Thirteen shipped families are INERT until somebody supplies an identifier,
+    and the failure is silent: a wrong tenant answers 200 with ZERO
+    advertisements.** *`bin/host-drift.py` already says it — «inventing a tenant
+    would be asking about a site that may not exist».*
+
+    **THE KEY IS `(family, identifier)` AND NEVER THE EMPLOYER NAME, and the first
+    entry demonstrates it instead of arguing it:** `gmk` is *Groep
+    Maatschappelijke Kinderopvang*, **itself a merger of Akros, Impuls, Combiwel
+    and Elan** — four names for one tenant. *A name-keyed registry makes
+    duplicates that NO COUNT shows.*
+
+    **AND THE FIELD THAT MAKES A ROW USABLE RATHER THAN MERELY TRUE IS
+    `adapter_param`, because the parameter differs by family — measured:**
+
+        --tenant   recruitee · taleez · personio · flatchr
+        --host     umantis · oraclecloud
+
+    *So a registry with one `tenant` column is wrong by the tenth entry.* **The
+    case below checks the registry against the ADAPTER'S OWN `argparse`, which is
+    what keeps this guard from being the inert «every row has a date» kind the
+    pilot warned about** — it can only pass if the row's flag really exists in the
+    code.
+
+    **AND THE INVERSE DIRECTION IS ASSERTED TOO: a duplicate `employer_label` must
+    be ACCEPTED.** *Several ATS for one employer is the normal case — by country,
+    by subsidiary, by trade — and the alternative is that somebody adds a
+    uniqueness guard on the label later and it reddens on a correct registry: the
+    «mal décrite» species, which accuses sound data.*
+
+    *A `state: dead` row keeps its place rather than being deleted, because
+    removal guarantees rediscovery — but it carries `recheck_after`, or it becomes
+    a stale interdiction whose symptom is the absence of symptom.*
+    """
+
+    CHAMPS = ("family", "identifier", "adapter_param", "employer_label",
+              "state", "checked", "verified_by")
+
+    def _rows(self):
+        import glob
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        chemin = os.path.join(root, "shared", "employer-ats.md")
+        self.assertTrue(os.path.exists(chemin), chemin)
+        with io.open(chemin, encoding="utf-8") as fh:
+            texte = fh.read()
+        rows = []
+        for ligne in texte.splitlines():
+            if not ligne.startswith("| ") or ligne.startswith("| :--") \
+                    or ligne.startswith("| family"):
+                continue
+            cells = [c.strip() for c in ligne.strip().strip("|").split("|")]
+            if len(cells) != len(self.CHAMPS):
+                continue
+            if not re.fullmatch(r"[a-z0-9_-]+", cells[0]):
+                continue      # a documentation table, not the registry
+            rows.append(dict(zip(self.CHAMPS, cells)))
+        return rows, root
+
+    def test_every_row_names_the_command_that_proved_it(self):
+        """**NOT «every row has a date»**, which is the inert form. *A row's
+        `verified_by` must be a COMMAND — «re-verifying means RUNNING the adapter,
+        not re-reading it» — and the red NAMES the row.*"""
+        import re
+        rows, _ = self._rows()
+        self.assertGreaterEqual(len(rows), 2,
+                                "%d row(s) parsed: this case is NOT EXERCISED, not "
+                                "green" % len(rows))
+        sans = []
+        for r in rows:
+            if not re.fullmatch(r"20\d\d-\d\d-\d\d", r["checked"]):
+                sans.append("%s/%s: `checked` is %r and not a date"
+                            % (r["family"], r["identifier"], r["checked"]))
+            if ".py" not in r["verified_by"]:
+                sans.append("%s/%s: `verified_by` names no COMMAND — a reasoning is "
+                            "not a verification" % (r["family"], r["identifier"]))
+        self.assertEqual(sans, [], "\n  ".join([""] + sans))
+
+    def test_the_key_is_family_and_identifier_and_it_is_unique(self):
+        """*`gmk` is stable; «Groep Maatschappelijke Kinderopvang» — a merger of
+        four — is not. A duplicate key is a duplicate no count shows.*"""
+        rows, _ = self._rows()
+        cles = [(r["family"], r["identifier"]) for r in rows]
+        doubles = sorted({c for c in cles if cles.count(c) > 1})
+        self.assertEqual(doubles, [],
+                         "duplicate key(s) %s — `(family, identifier)` is THE key, "
+                         "and a row a guard must be taught to ignore is a row in "
+                         "the wrong file" % doubles)
+
+    def test_a_duplicate_employer_label_is_accepted(self):
+        """**The inverse direction, and it is the one that protects the format.**
+        *Several ATS for one employer is the normal case, so a uniqueness guard on
+        the label would redden on a correct registry.*"""
+        rows, _ = self._rows()
+        faux = [dict(rows[0]), dict(rows[0])]
+        faux[1]["family"] = "taleez"
+        faux[1]["identifier"] = "autre-tenant"
+        cles = [(r["family"], r["identifier"]) for r in faux]
+        self.assertEqual(len(set(cles)), 2, "the fixture does not test what it says")
+        self.assertEqual(faux[0]["employer_label"], faux[1]["employer_label"])
+        # the key is distinct, so this pair MUST be legal
+        doubles = sorted({c for c in cles if cles.count(c) > 1})
+        self.assertEqual(doubles, [],
+                         "two ATS for one employer were rejected, and that is the "
+                         "normal case rather than an error")
+
+    def test_the_declared_parameter_exists_in_the_adapters_argparse(self):
+        """**THE CASE THAT CANNOT BE INERT**: it reads the ADAPTER'S OWN source.
+        *`--tenant` for recruitee, `--host` for oraclecloud — measured, not
+        assumed, and a row naming a flag the code does not accept is a row nobody
+        can use.*"""
+        rows, root = self._rows()
+        for r in rows:
+            src = os.path.join(root, "skills", "job-scan", "scripts",
+                               r["family"] + ".py")
+            self.assertTrue(os.path.exists(src),
+                            "%s names family %r and there is no %s"
+                            % (r["identifier"], r["family"], os.path.basename(src)))
+            with io.open(src, encoding="utf-8") as fh:
+                code = fh.read()
+            flag = r["adapter_param"].strip("`")
+            self.assertIn('"%s"' % flag, code,
+                          "%s/%s declares %r and %s.py's argparse does not accept "
+                          "it — the row is true and unusable"
+                          % (r["family"], r["identifier"], flag, r["family"]))
+
+    def test_a_dead_row_carries_an_hour_or_it_is_a_stale_interdiction(self):
+        """*Removal guarantees rediscovery, so a dead pair keeps its row — but a
+        marked-dead row without an hour makes a session skip it forever, and a
+        session that skips it looks exactly like a session behaving well.*"""
+        rows, _ = self._rows()
+        for r in rows:
+            if r["state"].startswith("dead"):
+                self.assertIn("recheck_after", r["state"],
+                              "%s/%s is dead with no `recheck_after`: that is a "
+                              "stale interdiction, and its symptom is the absence "
+                              "of symptom" % (r["family"], r["identifier"]))
+        # and the live rows must say `live`, so `state` cannot drift into prose
+        for r in rows:
+            self.assertTrue(r["state"].startswith(("live", "dead")),
+                            "%s/%s has state %r, which is neither `live` nor `dead`"
+                            % (r["family"], r["identifier"], r["state"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
