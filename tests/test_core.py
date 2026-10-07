@@ -46020,5 +46020,209 @@ class EuresPublishesThreeTotalsThatDisagreeAndACeilingItDoesNotInvent(unittest.T
             self.assertIsNone(got, u)
 
 
+class SubitoRefusesTheSiblingCategoryWherePeopleOfferThemselves(unittest.TestCase):
+    """**`subito.py`, 2026-10-07 (#1061).** A generalist Italian classifieds board
+    whose employment section has a SIBLING category for job SEEKERS, and whose
+    advertiser carries a named telephone.
+
+    **THE KORGAR QUESTION, ASKED AGAIN AND ANSWERED FROM THE BYTES ALREADY HELD.**
+    `cerco-lavoro` — «I am looking for work» — appears **15 times** in the offers
+    section's own payload, and all fifteen are SEO cross-links to a separate
+    category. *Those are people offering THEMSELVES.*
+
+        les 42 annonces du jeu de resultats   42 sur 42 sous /offerte-lavoro/
+        `cerco-lavoro`                        15 liens SOEURS, 0 resultat
+
+    **Nothing in this host's rules forbids that category — exactly as korgar's
+    105-byte file forbade nothing while exposing 34 894 CVs.** *A host that forbids
+    nothing has not consented to our taking everything it exposes, and what decides
+    is what the object CONTAINS.* So the filter is a SAFETY condition and
+    `refuse_seekers()` is reachable rather than decorative.
+
+    **THE ADVERTISER, COUNTED OVER THE 42 OF PAGE ONE AND NEVER REPRODUCED:**
+
+        advertiser.phone     REMPLI sur 8 de 42       un champ dont le SENS est connu
+        advertiser.userId    9 chiffres sur 42 de 42  un identifiant de PERSONNE
+        advertiser.shopName  rempli sur 6             un nom de SOCIETE
+        advertiser.name      rempli sur 17 — TOUJOURS quand shopName manque (17/17),
+                             1 a 4 mots, **9 des 17 sans aucune marque de societe**
+
+    **`phone` is DROPPED, `userId` is never emitted, and `name` is not reproduced
+    either** — on nine of seventeen it cannot be shown to be a business, and two
+    bodies say «sono un privato». *The record says WHAT the advertiser is, not WHO.*
+
+    **AND THE DIGIT RULE TOUCHES THE PROSE ONLY, FOR A REASON MEASURED HERE RATHER
+    THAN TRANSPORTED: the advert id is 9 digits on 42 of 42 and `userId` is 9
+    digits on 42 of 42.** *A rule let loose on the record destroys both — the
+    Madrid defect, where the same rule unanchored destroyed an offer id on 314 of
+    314, and the Burmese one, where «nine digits» destroyed 113 salaries of 115.*
+
+    **A STREET IN THE PROSE, AND `via` IS ALSO AN ITALIAN PREPOSITION.** One body
+    reads `Via Spluga 2`; four say «via email», «VIA MAIL», «via whatsapp». *The
+    pattern was measured on the REAL corpus before being written — 4 prepositional
+    uses against 1 street — and it excludes the known objects by name and requires
+    a capitalised street name, so its cost is to MISS a street and never to
+    fabricate one.*
+
+    **AND THE MONEY FIELD IS NOT CALLED A SALARY.** The host labels it «Prezzo»,
+    and 8 000 sits on an hourly cleaning post where 24 000 and 30 000 sit on full
+    ones: *annual, monthly and a rate are not distinguishable on three readings, so
+    `price_declared` claims no unit.*
+
+    **One case per FORM.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_subito_1061", str(pathlib.Path(SCRIPTS) / "subito.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    AD = {"urn": "id:ad:8235f67c-1758-440d-9dd2-f63dbc5cb4df:list:663585891",
+          "subject": "Infermiere", "date": "2026-10-07 08:24:59",
+          "body": "Turni in Via Spluga 2, inviare il CV via email a hr@example.it "
+                  "oppure 340 123 4567. Retribuzione 13 euro l'ora.",
+          "advertiser": {"name": "Mario Rossi", "userId": "123456789",
+                         "company": False, "type": 0, "phone": "3401234567"},
+          "geo": {"town": "Aversa", "city": "Caserta", "region": "Campania",
+                  "uri": "/aversa", "label": "Aversa (CE)"},
+          "features": {"/price": {"type": "number", "uri": "/price", "label": "Prezzo",
+                                  "values": [{"key": "8000", "value": "8000 €"}]},
+                       "/contract_type": {"values": [{"key": "zzzzzother"}]}},
+          "urls": {"default": "https://www.subito.it/offerte-lavoro/x-663585891.htm"}}
+
+    def test_the_seekers_category_is_refused_and_the_offers_one_is_not(self):
+        """**THE CENTRAL CASE.** *Nothing in the rules forbids `cerco-lavoro`, and
+        that is not a permission — walking it would put individuals' own postings
+        into a jobs ledger.*"""
+        mod = self._mod()
+        for u in ("https://www.subito.it/annunci-italia/vendita/cerco-lavoro/",
+                  "https://www.subito.it/annunci-lombardia/vendita/cerco-lavoro/bergamo/",
+                  "https://www.subito.it/annunci-italia/vendita/cerco-lavoro/?q=badanti"):
+            with self.assertRaises(SystemExit) as pris:
+                mod.refuse_seekers(u)
+            self.assertEqual(pris.exception.code, 7, u)
+        for u in ("https://www.subito.it/annunci-italia/vendita/offerte-lavoro/",
+                  "https://www.subito.it/offerte-lavoro/x-663182290.htm"):
+            try:
+                got = mod.refuse_seekers(u)
+            except SystemExit as e:
+                self.fail("%s was refused (exit %s) — it is the OFFERS category"
+                          % (u, e.code))
+            self.assertIsNone(got)
+
+    def test_the_named_phone_is_dropped_and_the_user_id_never_emitted(self):
+        """`phone` filled on 8 of 42 and `userId` 9 digits on 42 of 42. *A field
+        whose MEANING is known is dropped, not scrubbed; a person's identifier is
+        not emitted at all.*"""
+        mod = self._mod()
+        r = mod.record(self.AD)
+        emis = json.dumps(r, ensure_ascii=False)
+        # **I wrote the substring form of this assertion TWICE in two days** — on
+        # EURES yesterday it found «phone» inside `[telephone withheld]`, and here
+        # it finds it inside `"advertiser:phone"`, the withholding DECLARATION.
+        # *A pattern included in what it must exclude, with the guard accusing the
+        # adapter of carrying a field it had just dropped.* **So KEYS are tested as
+        # keys and VALUES as values** — and the repetition is why this is written
+        # down rather than remembered.
+        for cle in ("userId", "phone", "name", "shopId"):
+            self.assertNotIn('"%s":' % cle, emis, "%r is a KEY of the record" % cle)
+        for valeur in ("3401234567", "123456789", "Mario Rossi"):
+            self.assertNotIn(valeur, emis, "the VALUE %r reached the record" % valeur)
+        self.assertIn("advertiser:phone", r["withheld_fields"])
+
+    def test_a_name_that_cannot_be_shown_to_be_a_company_is_not_reproduced(self):
+        """Filled on 17 of 42, ALWAYS when `shopName` is absent, and **9 of the 17
+        carry no company marker**. *So the record says WHAT the advertiser is, not
+        WHO — and the withholding is DERIVED from the name being there.*"""
+        mod = self._mod()
+        r = mod.record(self.AD)
+        self.assertNotIn("Mario", json.dumps(r, ensure_ascii=False))
+        self.assertIn("advertiser:name", r["withheld_fields"])
+        self.assertIs(r["advertiser_is_company"], False)
+        # a shopName IS a business by construction, so it travels
+        boutique = dict(self.AD, advertiser=dict(self.AD["advertiser"],
+                                                 shopName="UMANA S.P.A.", phone=None))
+        r2 = mod.record(boutique)
+        self.assertEqual(r2["employer"], "UMANA S.P.A.")
+        self.assertNotIn("advertiser:name", r2.get("withheld_fields", []))
+        self.assertNotIn("advertiser:phone", r2.get("withheld_fields", []))
+
+    def test_the_digit_rule_never_touches_the_identifiers(self):
+        """**The advert id and `userId` are both nine digits on 42 of 42.** *A rule
+        let loose on the record destroys both — 314 of 314 in Madrid, 113 salaries
+        of 115 in Burma.*"""
+        mod = self._mod()
+        r = mod.record(self.AD)
+        self.assertEqual(r["ledger_id"], "subito:663585891")
+        self.assertEqual(r["id"], "663585891")
+        self.assertIn("663585891", r["url"])
+        self.assertEqual(r["uuid"], "8235f67c-1758-440d-9dd2-f63dbc5cb4df")
+        # **The mutation that let `scrub` loose on the URL came back GREEN**, so the
+        # four assertions above are a REGRESSION guard and not a live one: nothing
+        # routes an identifier through the scrubber today, and the id happens not to
+        # match the Italian-mobile shape. *The real protection is the SHAPE of the
+        # pattern, so that is what is asserted — broaden `TEL_RE` to a bare nine
+        # digits and this reddens.*
+        for ident in ("663585891", "123456789", "662904894", "663182290"):
+            self.assertIsNone(mod.TEL_RE.search(ident),
+                              "TEL_RE matches %r — the advert id and `userId` are both "
+                              "nine digits on 42 of 42, so a pattern that matches them "
+                              "destroys the ledger key wherever it is applied" % ident)
+        self.assertIsNotNone(mod.TEL_RE.search("340 123 4567"),
+                             "TEL_RE no longer matches a real Italian mobile, so the "
+                             "case above would pass by matching NOTHING")
+
+    def test_a_street_goes_and_an_italian_preposition_stays(self):
+        """`Via Spluga 2` on one body of 42; «via email» on four. *The negative case
+        comes from the REAL corpus, not from a string composed for the occasion.*"""
+        mod = self._mod()
+        r = mod.record(self.AD)
+        d = r["description"]
+        self.assertNotIn("Via Spluga", d, "a street survived in the prose")
+        self.assertIn("[street withheld]", d)
+        self.assertIn("body:street", r["withheld_fields"])
+        self.assertNotIn("hr@example.it", d)
+        self.assertNotIn("340 123 4567", d)
+        self.assertIn("Retribuzione", d, "the advertisement went with its contacts")
+        # the REAL negative: four prepositional uses, none of them a street
+        for vrai in ("inviare il CV via email entro il 15",
+                     "scrivere VIA MAIL o via whatsapp al numero",
+                     "contattare via telefono dopo le 18"):
+            out, w = mod.scrub(vrai)
+            self.assertNotIn("body:street", w,
+                             "%r was read as a street — `via` is also a preposition"
+                             % vrai)
+            self.assertNotIn("[street withheld]", out)
+
+    def test_the_money_field_does_not_claim_a_unit(self):
+        """The host labels it «Prezzo», and 8 000 sits on an hourly post. *Annual,
+        monthly and a rate are not distinguishable on three readings.*"""
+        mod = self._mod()
+        r = mod.record(self.AD)
+        # **PRESENCE before VALUE**: the mutation that renames this field reddened by
+        # a `KeyError` rather than by an assertion, and a crash counts as a red
+        # without saying what is missing.
+        self.assertIn("price_declared", r,
+                      "the money field was renamed; a name that claims a unit the "
+                      "host does not state is what this case exists to refuse")
+        self.assertEqual(r["price_declared"], "8000")
+        for interdit in ("salary", "salary_eur", "wage", "annual"):
+            self.assertNotIn(interdit, r,
+                             "%r claims a unit the host does not state" % interdit)
+
+    def test_an_object_that_will_not_parse_is_a_gap_and_not_an_absence(self):
+        """*The payload is read by balanced braces anchored on `"urn"`, and 42 of 42
+        parsed on the body held. An object that stops parsing tomorrow must be
+        VISIBLE rather than skipped.*"""
+        mod = self._mod()
+        bon = '{"urn": "id:ad:x:list:1", "subject": "a"}'
+        casse = '{"urn": "id:ad:y:list:2", "subject": }'
+        ads, rates = mod.adverts("prefixe " + bon + " milieu " + casse + " fin")
+        self.assertEqual(len(ads), 1)
+        self.assertEqual(rates, 1, "a broken object was skipped in silence")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
