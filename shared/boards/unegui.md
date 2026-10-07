@@ -1,11 +1,12 @@
 # Board measurement — Unegui jobs (`www.unegui.mn/azhild-avna/`, Mongolia): **the tab is served WITHOUT A CLICK and the board states 7 761 adverts** — and the path three dated readings had been challenged on, `/ajil/`, is a **404**: the Cloudflare interstitial was standing in front of a URL that does not exist, so «the challenge holds» was true about the transport and silent about the board
 
-<!-- verified: 2026-10-06 -->
+<!-- verified: 2026-10-07 -->
 
 <!-- hosts: www.unegui.mn -->
 <!-- script: none -->
 <!-- countries: MN -->
-<!-- route: browser · 7937 · 2026-10-06 -->
+<!-- route: browser · 8012 · 2026-10-07 -->
+<!-- content: measured · **8 012 at the heading against 7 937 yesterday, and 12 keys on the advert's `JobPosting` — which is NESTED IN `@graph` exactly as `somon-tj.md`.** The reserve this card carried («no advert page was fetched on this host») is LIFTED: one advert taken FROM the list and never composed answers in a tab, its single `ld+json` block having only `@context` and `@graph` as root keys, so `@type` read at the root is NULL and a check posed there publishes «this page carries no JobPosting»; inside are BreadcrumbList, JobPosting and WebPage, and `baseSalary` is present. The `route:` count is corrected 7 937 → 8 012 with that reason. TWO page loads at a slow pace were NOT blocked, where a jump to `?page=133` was blocked at the second load yesterday — which does not establish what the threshold is · 2026-10-07 -->
 <!-- content: measured · **THE PATH WAS WRONG, AND THE CHALLENGE WAS STANDING IN FRONT OF A 404.** Read in a tab on 2026-10-06, `/ajil/` renders `<title>Хуудас алга байна</title>` («page not found») over a body whose heading is `404 Алдаа` — *so the three dated readings of 2026-09-17, 2026-09-29 and 2026-10-05 were all true about the TRANSPORT and all taken on a URL that does not exist: an HTTP 403 masked a 404, and «the challenge holds» could never have become a statement about this board.* **The real path was found by the LINK TEXT of that very 404 page, `Ажлын зар` («job advertisements»), which points to `/azhild-avna/` — not guessed, read.** AND THE BROWSER IS SERVED WITHOUT A CLICK, ON BOTH PATHS: no interstitial, no interaction, so borne 2 is respected rather than worked around and the 2026-09-07 decision applies — the rules open our path, the transport refuses the declared client, the tab renders. *The HTTP client still gets the challenge on the REAL path too: 403, 5 696 B, md5 4d0ee214c826 — and the 42-byte difference from `/ajil/`'s 5 654 B is the challenge page embedding the requested path, so its size varies with the URL and a size comparison between two paths of the same host proves nothing.* **THE BOARD STATES ITS OWN COUNT, IN TWO SEPARATE ELEMENTS: the heading reads `Ажлын зар 7,761` and a filter button reads `7,761 зар харуулах` — so 7 761 is the host's witness and not our extraction, and it is carried twice.** *Site-wide, a search placeholder states `125,483 Зар байна` for all categories.* **Our own extraction is 12 adverts in the list element at first render, against 7 761 stated — a PARTIAL, declared partial, and the scroll or pagination behaviour is NOT established** (the page carries a `Loading` status, so the list is not necessarily complete when first read). *Eight sub-categories carry their own counts — restaurant/café 1 462, sales 1 262, construction 984, services 656, manufacturing 617, security 402, transport/customs/warehouse 285, tourism/hotel 282 — which SUM to 5 950 of 7 761 beside a «show all» button, so that decomposition is partial too and is published as partial rather than as a check.* **THE ADVERT SHAPE, read from the list: a title, a VIP flag, A SALARY (single values and ranges, in millions of tögrög — `сая ₮`), a description excerpt, A POSTER DISPLAY NAME, a date-and-location string that goes down to the KHOROO (sub-district), and a detail link `/adv/<id>_<slug>/`.** *Facets offered: salary min and max, working time in five values, experience, professional level.* **AND THE EXPURGATION QUESTION IS SETTLED BY FIELD BEFORE ANY ADAPTER EXISTS: this is a classifieds site, so the poster display name is a given name of a private individual on the examples seen, and the location resolves below city level — both are fields to trim, while the salary is published by the poster and is the field this board gives that few others do. No value of either is reproduced in this card.** *The rules, re-read: 908 B, `state: read`, `certain: True`, 15 `Disallow` and no `Allow`, no `Crawl-delay`, one sitemap declared; `/azhild-avna/` → `allowed=True` with `rule=None`, and the guard exercised in both directions refuses `/profile/login/` by `/profile`. Two of the fifteen are `/ru/` and `/en/`, so the host closes its Russian and English locales to `*` while leaving the Mongolian one open, and `/map/` is refused — which puts `/map/azhild-avna/`, offered by the page, out of reach.* **A FAMILY POINTER, NAMED AND NOT ESTABLISHED: the footer names `larixonclassifieds.com` and `larixon.com`, a platform vendor this repository has never recorded. `somon.tj` (Tajikistan) is filed with the SAME shape — a classifieds vacancies section behind a «Just a moment...» challenge at 5 649 B — so whether the two share that platform, and therefore whether this browser route transposes, is the NEXT measurement and is claimed here as neither true nor false.** · 2026-10-06 -->
 <!-- witness: partial and the WALK IS NOW BLOCKED — **60 adverts in the list at first render, not the 12 this card recorded**, and the board states **7 937** in the SAME TWO elements that agreed before (heading `Ажлын зар 7,937` and button `7,937 зар харуулах`), against 7 761 twice earlier the same day. *So the agreement of the two counters HELD across a second reading on this instance while the sister instance `somon-tj.md` disagrees and its gap MOVES — the contrast is now two readings deep on each side.* **Pagination is DECLARED in the DOM — `?page=2`, `?page=3`, `?page=133` — and it is NOT established by SERVING: the request for `?page=133` was answered by a Cloudflare block page («Sorry, you have been blocked»), the SECOND page load this session made on this host.** *Borne 2 forbids defeating it and forbids asking anyone to, so nothing was retried: 2 page loads before the block is the only measurement this crossing produces, and it does not get repeated. Whether the threshold is the RATE or the deep `?page=` request is not distinguishable without crossing it again.* · 2026-10-06 -->
 <!-- witness: partial — **the board states 7 761 in TWO separate elements** (its `Ажлын зар 7,761` heading and a `7,761 зар харуулах` filter button), so the witness is the HOST's and not our extraction; **our extraction is 12 adverts in the list at first render**, and the scroll or pagination behaviour is not established, so the walk is declared PARTIAL rather than complete. The eight sub-category counts sum to 5 950 of 7 761 beside a «show all» button, so they are a partial decomposition and not a check · 2026-10-06 -->
@@ -14,6 +15,58 @@
 <!-- witness: none — nothing was served · 2026-09-17 -->
 <!-- content: measured · **60 adverts at first render on `/azhild-avna/`, where this card recorded 12 — and the pagination this card called «not established» IS declared, while serving it is still not established because the attempt was BLOCKED.** *Read in a tab, guard taken on both host forms and three exact paths in a turn distinct from the retrieval; the rules file here is READ (`state: read`, unlike `somon-tj.md`'s unreadable 403) and refuses nothing on our paths, so `claude-user` / http — and the transport refuses anyway, which is the 2026-09-07 decision's own case.* **THE ENUMERATOR IS A QUERY PARAMETER AND ITS LAST PAGE IS NAMED: `?page=2`, `?page=3` and `?page=133` are in the DOM of page 1, so 133 pages × 60 would be ~7 980 against 7 937 stated — CONSISTENT, and NOT a check, because page 133 never served.** ***And my own script computed that check anyway, from a page that had been BLOCKED: it counted 0 adverts on `?page=133` and printed «132 × 60 + 0 = 7 920 against 7 937 stated, écart −17» — a plausible, specific, arithmetically sound witness built on a refusal. It is DISCARDED here, named rather than quietly dropped: a blocked page returns a DOM, so a count taken on it does not fail, it returns zero — and zero entered a sum as if it were a tail.*** *That is «a broken decode returns text, not an error» moved onto a block page, and the only thing that caught it was the `h1` reading «Sorry, you have been blocked» beside the arithmetic.* **AND THE `innerText` TRAP OF THE SISTER INSTANCE REPRODUCES HERE, SO IT IS A PROPERTY OF THIS TEMPLATE AND NOT OF ONE HOST: `document.body.innerText` returns 291 characters while `textContent` returns 257 604**, with 60 adverts in the DOM throughout — *any emptiness or readability check built on `innerText` declares every page this template serves blank.* THE COUNTERS: heading and filter button both **7 937** (7 761 twice earlier today), so the `route:` count is corrected 7 761 → 7 937 with that reason — *a board counter is a reading with an hour, not a state.* WHAT IS STILL NOT ESTABLISHED: **no advert page was fetched on this host** — the walk was blocked before that, so the per-advert shape remains a statement about the LIST, and whether this instance serves the same `@graph`-nested `JobPosting` as `somon-tj.md` is UNREAD; the 8 sub-category counts summing to 5 950 of 7 761 were not re-measured; and the block's threshold is unknown by design. *No contact value is reproduced; counts only.* · 2026-10-06 -->
 <!-- content: indeterminate · **`/ajil/` answers HTTP 403, 5 657 B, md5 c4803b639521 / 0993c3d41b29 — «Just a moment...», a Cloudflare managed challenge (the `revolico` class) — under the declared identity, twice; `_robots.allowed('www.unegui.mn','/ajil/')` → open, certain (the rules file is served, the pages are not); nothing of the section was read** · 2026-09-17 -->
+
+## Measured 2026-10-07 — 8 012 at the heading, and the `JobPosting` is nested
+
+**The `Done when` this card's issue carried was: «a session that has NOT touched
+`www.unegui.mn` recently reads ONE advert page at a slow pace, to learn whether the
+`JobPosting` is nested in `@graph` as it is at Somon».** *It is answered, and the
+answer is yes.* **This reading was taken by the session that had not touched this
+host** — the one that measured it on 2026-10-06 was blocked at its second load.
+
+```
+liste /azhild-avna/      title reel, h1 « Ажлын зар 8,012 »        NON bloquee
+                         60 liens /adv/ distincts (la fiche en disait 12)
+annonce /adv/10464874_…  title et h1 reels, en mongol               NON bloquee
+                         UN bloc ld+json, clefs racine : @context, @graph
+                         @type a la RACINE : null
+                         dans @graph : BreadcrumbList · JobPosting · WebPage
+                         JobPosting : 12 clefs, baseSalary PRESENT
+innerText / textContent  291 / 252 683 sur la liste
+                         291 / 136 643 sur l'annonce
+```
+
+**THE IDENTITY OF THE PAGE WAS ASSERTED BEFORE ANYTHING WAS COUNTED, in the same
+output as every count.** *That control exists because of what this board produced
+yesterday: a script counted ZERO adverts on a blocked page and printed «132 × 60 + 0
+= 7 920 against 7 937, gap −17» — a blocked page returns a DOM, so a counter does not
+fail on it, it returns zero, and that zero entered a sum as the tail of an
+enumeration.* **Only the `h1` read beside the count caught it, and that is why the
+`h1` is in the block above.**
+
+**WHAT THE TEMPLATE PREDICTED AND WHAT IT DID NOT.** *The `@graph` nesting and the
+`innerText` defect transpose from `somon-tj.md` to here — the structure is a property
+of the Larixon template.* **The COUNTERS do not: Somon's two counters disagree by a
+gap that MOVES, Unegui's two agree.** *So the template predicted the ROUTE and the
+STRUCTURE, and said nothing about the counters.*
+
+**AND THE COUNTER MOVED IN A DAY: 7 937 → 8 012.** *A board counter is a reading with
+an hour and never a state; the `route:` line is corrected with that reason rather than
+left to age.*
+
+## What is NOT established, after this reading
+
+- **What the Cloudflare threshold is.** Two loads at a slow pace passed; a jump to
+  `?page=133` was blocked at the second load yesterday. *Whether the discriminant is
+  the RATE or the deep `?page=` request is not distinguishable without crossing it a
+  second time, so it is not distinguished* — borne 2, and the measurement does not get
+  redone.
+- **The per-advert field population.** ONE advert was read, as the criterion asked.
+  *`baseSalary` is present here; at Somon it was present on one of three, so it is
+  CONDITIONAL there and a single reading here cannot say which it is.*
+- **Whether a contact travels in the `description`.** Not examined on this host; at
+  Somon it did, on two of three, by two different patterns. *No contact value is
+  reproduced anywhere; counts only.*
 
 ## Measured 2026-10-06 — le défi tenait devant un 404, et l'onglet est servi SANS CLIC
 
