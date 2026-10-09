@@ -46363,15 +46363,28 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
         session that skips it looks exactly like a session behaving well.*"""
         rows, _ = self._rows()
         for r in rows:
-            if r["state"].startswith("dead"):
+            # **UN TROISIEME ETAT, AJOUTE PAR MESURE ET NON PAR DESIGN — #1094
+            # point 2, 08.10.2026.** `successfactors / jobs.bcv.ch` rend **exit 8** :
+            # ses regles refusent `/services/` PAR ECRIT, la route HTML permise ne
+            # portait aucune tuile dans les deux balisages lus, et l adaptateur le dit
+            # lui-meme — « This is NOT an empty board and NOT a zero… only what we
+            # failed to recognise in it ». **Ecrire cette ligne `dead` placerait au
+            # centre du registre le faux zero qu il existe pour empecher**, donc
+            # `indeterminate` porte `recheck_after` exactement comme `dead`.
+            if r["state"].startswith(("dead", "indeterminate")):
                 self.assertIn("recheck_after", r["state"],
-                              "%s/%s is dead with no `recheck_after`: that is a "
+                              "%s/%s is %s with no `recheck_after`: that is a "
                               "stale interdiction, and its symptom is the absence "
-                              "of symptom" % (r["family"], r["identifier"]))
+                              "of symptom" % (r["family"], r["identifier"],
+                                              r["state"].split()[0]))
         # and the live rows must say `live`, so `state` cannot drift into prose
         for r in rows:
-            self.assertTrue(r["state"].startswith(("live", "dead")),
-                            "%s/%s has state %r, which is neither `live` nor `dead`"
+            # le vocabulaire reste CLOS — trois valeurs NOMMEES, pour qu une
+            # quatrieme ne derive pas en prose
+            self.assertTrue(
+                r["state"].startswith(("live", "dead", "indeterminate")),
+                "%s/%s has state %r, which is none of `live`, `dead` or "
+                "`indeterminate`"
                             % (r["family"], r["identifier"], r["state"]))
 
 
