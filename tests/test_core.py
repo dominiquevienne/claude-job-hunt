@@ -46388,5 +46388,119 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
                             % (r["family"], r["identifier"], r["state"]))
 
 
+class ATrailingCommentHidAFamilyAndASiblingListWasReadAsEmployers(unittest.TestCase):
+    """**#1094 point 3, 09.10.2026 — deux défauts de `tenant_offer.employers_of`,
+    mesurés sur la config réelle du propriétaire et de directions OPPOSÉES.**
+
+    *La fonction existe pour une seule chose : «&nbsp;a tenant already configured
+    must never be offered again&nbsp;». Elle se trompait dans les deux sens.*
+
+        avant les correctifs   10 familles, 29 locataires
+        apres                   7 familles, 19 locataires   <- l'enumeration lue A L OEIL
+
+    **1. UN COMMENTAIRE DE FIN DE LIGNE FAISAIT DISPARAÎTRE LA FAMILLE ENTIÈRE.**
+    `greenhouse` et `ashby` portent leur justification en bout de ligne, et
+    `\\]\\s*$` ne peut alors pas atteindre la fin : la correspondance échoue
+    ENTIÈREMENT. *Cinq locataires rendus comme ABSENTS, et `scan` proposait donc
+    d'ajouter un locataire DÉJÀ configuré.* **C'est le miroir du défaut inverse —
+    un motif à jetons nus INGÈRE le commentaire et sur-compte (81 au lieu de 13) ;
+    un motif ANCRÉ devant un terminateur exigé OMET, et une omission ne s'annonce
+    pas.**
+
+    **2. LA FORME EN BLOC N'ÉTAIT PAS BORNÉE À LA CLÉ `employers:`, DONC ELLE
+    LISAIT LA LISTE DE BLOCAGE DU PROPRIÉTAIRE COMME DES EMPLOYEURS.** *Les motifs
+    `- host:` et `- "valeur"` matchaient n'importe quel élément de liste sous
+    n'importe quel board : sa liste d'agences REFUSÉES et sa liste de lieux de
+    recherche entraient comme des locataires.* **Une liste de REFUS lue comme une
+    liste d'EMPLOYEURS inverse sa décision, et c'est le défaut le plus grave des
+    deux.** *«&nbsp;Un nom de clé se lit comme une nature et il ne l'est pas&nbsp;»&nbsp;:
+    ce qui décide est le BLOC où la ligne se trouve.*
+
+    **La FORME du fixture vient du corpus réel&nbsp;; les VALEURS sont neutres,
+    parce que les vraies sont les refus du propriétaire et que le dépôt est
+    public.** *Un fixture inventé porte les valeurs de celui qui l'écrit — ici
+    c'est la forme qui compte, et elle est mesurée.*
+    """
+
+    CONFIG = (
+        "version: 1\n"
+        "boards:\n"
+        "  greenhouse:\n"
+        "    enabled: true\n"
+        '    employers: ["alpha", "beta"]  # beta ajoute le 2026-09-17 (68 postes)\n'
+        "  workday:\n"
+        "    enabled: true\n"
+        "    employers:\n"
+        '      - host: "gamma.wd3.myworkdayjobs.com"\n'
+        '        tenant: "gamma"\n'
+        '        site: "GammaCareers"\n'
+        "  linkedin:\n"
+        "    enabled: true\n"
+        "    blocklist:\n"
+        '      - "AgenceRefusee"\n'
+        '      - "AutreAgence"\n'
+        "    search_locations:\n"
+        '      - "Europe"\n'
+        "location:\n"
+        "  city: ailleurs\n"
+    )
+
+    def _lire(self):
+        import tempfile
+        mod = importlib.import_module("tenant_offer")
+        fd, chemin = tempfile.mkstemp(suffix=".yml")
+        with io.open(chemin, "w", encoding="utf-8") as fh:
+            fh.write(self.CONFIG)
+        os.close(fd)
+        try:
+            return mod.employers_of(chemin)
+        finally:
+            os.unlink(chemin)
+
+    def test_a_trailing_comment_does_not_hide_the_whole_family(self):
+        """*Le rouge NOMME la famille perdue, jamais un compte&nbsp;: un compte
+        qu'il faut juger n'est pas une garde.*"""
+        vus = self._lire()
+        self.assertIn("greenhouse", vus,
+                      "`greenhouse` a disparu ENTIEREMENT parce que sa ligne porte un "
+                      "commentaire de fin de ligne — une omission, et elle ne "
+                      "s'annonce pas")
+        self.assertEqual(sorted(vus["greenhouse"]), ["alpha", "beta"],
+                         "la liste en ligne est tronquee ou le commentaire est ingere")
+
+    def test_a_sibling_list_is_never_read_as_employers(self):
+        """**La direction qui compte&nbsp;: une liste de REFUS lue comme des
+        employeurs inverse la décision du propriétaire.**"""
+        vus = self._lire()
+        self.assertNotIn("linkedin", vus,
+                         "`linkedin` ne porte AUCUNE cle `employers:` — sa `blocklist` "
+                         "et ses `search_locations` ont ete lues comme des locataires, "
+                         "donc une liste de REFUS est devenue une liste d'EMPLOYEURS")
+        plats = sorted(v for s in vus.values() for v in s)
+        for interdit in ("AgenceRefusee", "AutreAgence", "Europe"):
+            self.assertNotIn(interdit, plats,
+                             "%r vient d'une liste soeur et il est entre comme "
+                             "locataire" % interdit)
+
+    def test_the_block_form_still_reads_what_it_is_for(self):
+        """*Le sens inverse&nbsp;: borner le bloc ne doit pas casser la forme en
+        bloc, sinon le correctif echange un defaut contre l'autre.*"""
+        vus = self._lire()
+        self.assertIn("workday", vus, "la forme en BLOC a cesse d'etre lue")
+        self.assertEqual(sorted(vus["workday"]),
+                         ["gamma.wd3.myworkdayjobs.com"],
+                         "le `- host:` du bloc `employers:` n'est plus lu")
+
+    def test_the_fixture_is_bigger_than_what_it_must_catch(self):
+        """*Une fixture dimensionnee A EGALITE avec ce qu'elle eprouve rend la
+        branche inatteignable&nbsp;: elle porte DEUX listes soeurs et DEUX
+        locataires en ligne, pas une de chaque.*"""
+        self.assertGreaterEqual(self.CONFIG.count('      - "'), 3,
+                                "la fixture ne porte pas assez d'elements de liste "
+                                "soeurs pour que la branche soit exercee")
+        self.assertIn("#", self.CONFIG,
+                      "la fixture ne porte aucun commentaire de fin de ligne : ce cas "
+                      "ne serait PAS EXERCE, pas vert")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
