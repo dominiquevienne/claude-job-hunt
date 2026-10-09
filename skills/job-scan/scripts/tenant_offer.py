@@ -193,26 +193,57 @@ def employers_of(cfg_path):
     **A tenant already configured must never be offered again**, and that is
     the only thing this is for.
     """
-    out, board = {}, None
+    out, board, emp = {}, None, None
     with open(cfg_path, encoding="utf-8") as fh:
         lines = fh.read().splitlines()
     for raw in lines:
         m = BOARD_RE.match(raw)
         if m:
-            board = m.group(1)
+            board, emp = m.group(1), None
             continue
         if board is None or (raw.strip() and not raw.startswith("  ")):
             if raw.strip() and not raw.startswith(" "):
                 board = None
             continue
-        m = re.match(r"\s+employers:\s*\[(.*)\]\s*$", raw)
+        # **UN COMMENTAIRE DE FIN DE LIGNE FAISAIT DISPARAITRE LA FAMILLE ENTIERE —
+        # mesure le 09.10.2026 sur la config du proprietaire.** `greenhouse` et `ashby`
+        # portent leur justification en bout de ligne (`# proton ajoute le 2026-09-17`),
+        # et `\]\s*$` ne peut alors pas atteindre la fin : la correspondance ECHOUE
+        # ENTIEREMENT, donc les 5 locataires de ces deux familles etaient rendus comme
+        # ABSENTS. **Et la consequence est visible par l utilisateur : `scan` proposait
+        # d ajouter un locataire DEJA configure.** C est le miroir du defaut inverse —
+        # un motif a jetons nus qui INGERE le commentaire sur-compte ; un motif ANCRE
+        # devant un terminateur exige OMET, et une omission ne s annonce pas.
+        m = re.match(r"\s+employers:\s*\[(.*?)\]\s*(?:#.*)?$", raw)
         if m:
             out.setdefault(board, set()).update(
                 v.strip().strip('"\'') for v in m.group(1).split(",") if v.strip())
             continue
+        # **LA FORME EN BLOC DOIT ETRE BORNEE A LA CLE `employers:` — SANS CA ELLE LIT
+        # LA LISTE DE BLOCAGE DU PROPRIETAIRE COMME DES EMPLOYEURS. Mesure du
+        # 09.10.2026 : sur sa config, cette fonction rendait DIX familles au lieu de
+        # sept — dont une liste d agences qu il REFUSE et une liste de lieux de
+        # recherche.** *Les deux motifs ci-dessous matchaient n importe quel `- valeur`
+        # sous n importe quel board. Une liste de REFUS lue comme une liste
+        # d EMPLOYEURS inverse sa decision, et `scan` jugeait ces noms « deja
+        # configures ».* **Un nom de cle se lit comme une nature et il ne l est pas :
+        # ce qui decide est le BLOC dans lequel la ligne se trouve.**
+        m = re.match(r"(\s+)employers:\s*$", raw)
+        if m:
+            emp = len(m.group(1))
+            continue
+        if emp is not None:
+            # on SORT du bloc des que la ligne n est pas un element de liste plus
+            # indente que la cle — une cle soeur, ou un retour au niveau du board
+            ind = len(raw) - len(raw.lstrip())
+            if raw.strip() and not raw.lstrip().startswith(("-", "#")) and ind <= emp:
+                emp = None
+        if emp is None:
+            continue
         m = re.match(r"\s+-\s+host:\s*\"?([^\"\s]+)\"?\s*$", raw)
         if m and board:
             out.setdefault(board, set()).add(m.group(1))
+            continue
         m = re.match(r"\s+-\s+\"?([A-Za-z0-9_.-]+)\"?\s*$", raw)
         if m and board:
             out.setdefault(board, set()).add(m.group(1))
