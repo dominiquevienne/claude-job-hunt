@@ -3,8 +3,9 @@
 **This file is a PROPOSAL.** It carries the format, the three decisions that had
 to be taken before the first entry, and **twenty-one entries verified by EXERCISING** — the two of point 1,
 plus the nineteen of point 2.
-*It carries none of the owner's employers: #1094 point 2 reads his `config.yml`,
-and that is his list, not ours.*
+*It carries the nineteen employers of point 2, read from the owner's `config.yml`
+under the reserve he lifted himself — and NOT his address, his thresholds or his
+document paths: the repository is public and indexed.*
 
 ## Why a registry at all, measured
 
@@ -133,7 +134,12 @@ wrong for the other, which is why `identifier` is a value and never a query.*
 
 ## The entries of point 2 — nineteen, read from the owner's `config.yml`, exercised 2026-10-08
 
-**Only the triple *(family, identifier, employer_label)* left that file.** Not his
+**What left that file is the key triple *(family, identifier, employer_label)* AND,
+inside `verified_by`, the parameters the invocation needs** — for `workday` the
+`--tenant` and the `--site`, and at least one `--site` is NOT derivable from the
+identifier. *An earlier version of this line claimed the triple ALONE, which the six
+`workday` witnesses exceed. The witness column exists so that re-verifying means
+RUNNING, so those parameters belong in it: the CLAIM was wrong, not the rows.* Not his
 address, not his thresholds, not his document paths — the repository is public and
 indexed. **And his configuration was not modified in passing:** the one pair that did
 not answer is recorded *here*, not corrected *there*.
@@ -220,8 +226,11 @@ session that finds this file without that key must not reach those five.*
 
 ## What this file does NOT contain, and why
 
-- **The owner's employers.** #1094 point 2 reads his `config.yml`; *he lifted the
-  pilot's reserve, and that does not make the gesture automatic.*
+- **Anything of the owner's beyond the nineteen pairs and the invocations that
+  re-run them** — his address, his thresholds, his document paths. *The nineteen
+  themselves ARE here, since 2026-10-08. This list claimed the opposite until
+  2026-10-11, and a file that says it does not carry what it carries cannot be
+  contradicted by any count.*
 - **Pointers from `config.yml`** (#1094 point 3) and **the migration of his file**
   (#1094 point 4). *They depend on this format, and migrating to a format that
   will still move is migrating twice.*
