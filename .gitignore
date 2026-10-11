@@ -49,3 +49,9 @@ __pycache__/
 
 # Règles locales, non partagées avec le plugin
 CLAUDE.md
+
+# ... et ses sauvegardes : le littéral nu ci-dessus ne couvre QUE le fichier.
+# Une sauvegarde prise DANS le dépôt le ferait paraître sale à tout pair, et
+# §4 prescrit d'attendre devant un arbre sale qui n'est pas le sien. Le motif
+# est absolu et non `*.bak-*` : les sauvegardes mesurées portent deux formes.
+CLAUDE.md.*
