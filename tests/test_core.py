@@ -46357,6 +46357,146 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
                           "it — the row is true and unusable"
                           % (r["family"], r["identifier"], flag, r["family"]))
 
+    def _flags_requis(self, root, famille, sous_commande):
+        """Les flags REQUIS de cette sous-commande, lus dans l'interface que
+        l'adaptateur DÉCLARE lui-même — `--help` sur la sous-commande que le
+        TÉMOIN nomme, jamais une table écrite ici.
+
+        *Une table `famille -> sous-commande` serait une surface de devinette, et
+        la devinette est exactement ce que ce registre existe pour supprimer :
+        son auteur a deviné deux fois en l'écrivant (`--company`, puis `--tenant`
+        pour umantis) et les deux fois l'adaptateur a refusé.*
+
+        **ET UN REGEX SUR LA SOURCE NE PEUT PAS RÉPONDRE : `--id` est requis par
+        `ats.py show` et PAS par `ats.py list`**, donc l'ensemble pris au niveau
+        du FICHIER sur-collecte et ferait passer une ligne conforme pour
+        incomplète — la quatrième espèce, qui accuse une donnée saine.
+
+        *Les crochets se retirent avec un compteur de PROFONDEUR et non par
+        `re.sub`, parce qu'argparse les imbrique pour un groupe mutuellement
+        exclusif : un reste d'imbrication ferait paraître REQUIS un flag
+        optionnel, et le coût de cette limite serait de FABRIQUER une détection
+        fausse au lieu d'en rater une.*
+        """
+        import subprocess
+        src = os.path.join(root, "skills", "job-scan", "scripts", famille + ".py")
+        self.assertTrue(os.path.exists(src), src)
+        r = subprocess.run([sys.executable, src, sous_commande, "--help"],
+                           capture_output=True, text=True, timeout=120)
+        self.assertEqual(
+            r.returncode, 0,
+            "`%s %s --help` rend %s — l'interface n'a pas été LUE, et un flag "
+            "absent d'une sortie vide se lirait comme un flag non requis\n%s"
+            % (os.path.basename(src), sous_commande, r.returncode,
+               (r.stderr or "")[:400]))
+        lignes = r.stdout.splitlines()
+        debut = next((i for i, l in enumerate(lignes)
+                      if l.startswith("usage:")), None)
+        self.assertIsNotNone(debut, "aucune ligne d'usage dans `%s %s --help`"
+                             % (famille, sous_commande))
+        usage = []
+        for l in lignes[debut:]:
+            if not l.strip():
+                break
+            usage.append(l)
+        plat, profondeur = [], 0
+        for ch in " ".join(usage):
+            if ch == "[":
+                profondeur += 1
+            elif ch == "]":
+                profondeur = max(0, profondeur - 1)
+            elif profondeur == 0:
+                plat.append(ch)
+        return set(re.findall(r"--[a-z0-9-]+", "".join(plat)))
+
+    def test_every_required_coordinate_beyond_the_key_lives_in_the_witness(self):
+        """**#1094 point 3, 11.10.2026 — LE TROU QUE LES CINQ CAS AU-DESSUS
+        LAISSENT, ET IL DÉCIDE DU POINT 3.** *Une ligne peut porter une date, un
+        témoin qui nomme une commande, une clef unique et un `adapter_param` que
+        l'adaptateur accepte — les cinq cas VERTS — et rester INUTILISABLE,
+        parce que l'invocation exige des coordonnées que la ligne ne porte nulle
+        part en colonne.*
+
+        **Mesuré le 11.10.2026 sur les 21 lignes, en interrogeant l'interface que
+        chaque adaptateur déclare :**
+
+            coordonnees a fournir EN PLUS de la clef                    lignes
+            aucune (recruitee, oraclecloud, successfactors, umantis)         4
+            une    (`ats`, qui exige `--provider`)                         11
+            deux   (`workday`, qui exige `--tenant` et `--site`)            6
+
+        **DONC LE POINTEUR PARTIEL DU POINT 3 EST VIDE, ET PAS SEULEMENT
+        PETIT** : l'ensemble où un pointeur RÉSOUT depuis les colonnes
+        structurées et l'ensemble où il RETIRE une redondance sont disjoints et
+        exhaustifs. *Les 4 où il résout n'ont rien à retirer — la clef EST
+        l'invocation entière ; les 17 où il y a quelque chose à retirer ne
+        résolvent pas, la coordonnée ne vivant que dans la PROSE de
+        `verified_by`, qui est un champ de TÉMOIN et non un magasin de
+        paramètres.*
+
+        **Ceci RÉTRACTE « le pointeur pour les familles à paramètre unique — 15
+        des 21 entrées », que j'ai écrit sur #1094 le 11.10 à 01:27** : le 15
+        comptait `ats` comme une famille à paramètre unique alors que son
+        `--provider` est REQUIS et ne vit que dans le témoin. *Et la direction de
+        l'erreur est celle qui fait paraître la décision de format du
+        propriétaire comme un cas de coin à six lignes, quand elle gouverne 17
+        des 21.*
+
+        *Ce que ce cas garde, et qui ne dépend d'AUCUNE décision : que chaque
+        coordonnée requise se retrouve dans le témoin, pour que « re-vérifier
+        veut dire LANCER » soit vrai mécaniquement plutôt que par discipline.
+        Le jour où les colonnes structurées existent, c'est ce cas-ci qui change
+        de côté — il ne devient pas inutile, il déménage.*
+
+        **RECOUVREMENT DÉCLARÉ avec
+        `test_the_declared_parameter_exists_in_the_adapters_argparse` :** celui-là
+        demande que le flag EXISTE dans la source, celui-ci qu'il soit REQUIS par
+        la sous-commande que le témoin nomme. *Le second est le plus fort là où le
+        témoin se parse, le premier couvre le cas où il ne se parse pas — ils ne
+        sont pas interchangeables, et le dire coûte une ligne quand le deviner
+        coûte une garde retirée.*
+        """
+        rows, root = self._rows()
+        self.assertGreaterEqual(len(rows), 2,
+                                "%d row(s) parsed: this case is NOT EXERCISED, not "
+                                "green" % len(rows))
+        cache, exercees, manques = {}, 0, []
+        for r in rows:
+            m = re.search(r"([a-z0-9_]+)\.py\s+([a-z][a-z0-9_-]*)",
+                          r["verified_by"])
+            self.assertIsNotNone(
+                m, "%s/%s : son témoin ne nomme aucune sous-commande, donc ce cas "
+                   "ne pourrait pas l'exercer — et une ligne NON EXERCÉE rend le "
+                   "même vert qu'une ligne conforme"
+                   % (r["family"], r["identifier"]))
+            famille, sous = m.group(1), m.group(2)
+            self.assertEqual(
+                famille, r["family"],
+                "%s/%s : le témoin lance `%s.py` et la colonne `family` dit %r"
+                % (r["family"], r["identifier"], famille, r["family"]))
+            if (famille, sous) not in cache:
+                cache[(famille, sous)] = self._flags_requis(root, famille, sous)
+            requis = cache[(famille, sous)]
+            cle = r["adapter_param"].strip("`")
+            self.assertIn(
+                cle, requis,
+                "%s/%s déclare la clef %s, que `%s.py %s` ne tient pas pour "
+                "REQUISE (requis : %s) — et alors la liste des coordonnées en "
+                "plus de la clef serait fausse"
+                % (r["family"], r["identifier"], cle, famille, sous,
+                   sorted(requis)))
+            for flag in sorted(requis - {cle}):
+                if flag not in r["verified_by"]:
+                    manques.append(
+                        "%s/%s : `%s.py %s` exige %s et le témoin ne le porte "
+                        "pas — la ligne est VRAIE et on ne peut pas la relancer"
+                        % (r["family"], r["identifier"], famille, sous, flag))
+            exercees += 1
+        self.assertEqual(exercees, len(rows),
+                         "%d ligne(s) exercée(s) sur %d parsée(s)"
+                         % (exercees, len(rows)))
+        self.assertEqual(manques, [], "\n  ".join([""] + manques))
+
     def test_a_dead_row_carries_an_hour_or_it_is_a_stale_interdiction(self):
         """*Removal guarantees rediscovery, so a dead pair keeps its row — but a
         marked-dead row without an hour makes a session skip it forever, and a
