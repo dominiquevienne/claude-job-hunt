@@ -53,5 +53,9 @@ CLAUDE.md
 # ... et ses sauvegardes : le littéral nu ci-dessus ne couvre QUE le fichier.
 # Une sauvegarde prise DANS le dépôt le ferait paraître sale à tout pair, et
 # §4 prescrit d'attendre devant un arbre sale qui n'est pas le sien. Le motif
-# est absolu et non `*.bak-*` : les sauvegardes mesurées portent deux formes.
+# est absolu pour couvrir une forme QUE NOUS N'AVONS PAS VUE : celles qui
+# existent ne portent qu'un seul préfixe, donc `*.bak-*` les aurait toutes
+# prises, et aucune ne vit dans le dépôt, seul endroit où ce motif ait une
+# juridiction. C'est une prudence, pas la réponse à un cas rencontré — ce
+# que la phrase ci-dessus dit déjà, au conditionnel.
 CLAUDE.md.*
