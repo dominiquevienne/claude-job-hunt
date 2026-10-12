@@ -73,23 +73,52 @@ ce que l'argparse PREND         --tenant : recruitee taleez personio flatchr
                                 --host   : umantis oraclecloud
 ```
 
-**So a registry with one `tenant` column is wrong by the tenth entry.** Every row
-carries `adapter_param` — *the flag name READ FROM THE ADAPTER'S `argparse`, never
-guessed.* I guessed twice while writing this file (`--company`, `--tenant` for
-umantis) and both guesses failed loudly; the field exists so the next reader does
-not have to guess at all.
+**So a registry with one `tenant` column is wrong by the tenth entry — and a
+registry with one FLAG column is wrong by the eleventh.** *`adapter_param` named ONE
+flag. Measured on the twenty-one rows by interrogating the interface each adapter
+DECLARES: **seventeen** need something beyond the key — eleven `ats` rows require
+`--provider` as well, six `workday` rows require `--tenant` and `--site`, and only
+four (`recruitee`, `oraclecloud`, `successfactors`, `umantis`) are invoked by the key
+alone.* I guessed twice while writing this file (`--company`, `--tenant` for umantis)
+and both guesses failed loudly; the column exists so the next reader does not have to
+guess at all.
+
+**SO THE ROW CARRIES `args`: the ENTIRE argument string that follows the
+sub-command.** *Decision of the owner, 2026-10-11, verbatim: «je valide ta
+proposition avec le fichier contentant les arguments en un bloc» (#1094 point 3).*
+
+```
+relancer une ligne  =  <family>.py <sous-commande> <args>
+```
+
+**`args` is DERIVED from `verified_by` and NEVER retyped**, and the guard gives it to
+that adapter's own `argparse`: a row whose arguments do not parse is a row nobody can
+re-run. *Why one free column rather than `provider`/`tenant`/`site` columns: there is
+NO schema to agree on, so a new ATS family with an unknown flag forces no change of
+format. That was the objection to answer — «migrating to a format that will still
+move is migrating twice», this file calling itself a proposal — and it falls because
+there is no longer a format to move.*
+
+**And it exposes nothing new, which is what decided it against the alternative:**
+every token `args` structures was ALREADY on the same row, in the prose of
+`verified_by`, because a witness must be a RUNNABLE command. *The alternative — zero
+parameters in the repository — cost the runnable witness, hence twenty-one claims
+nobody could test again.* **The sub-command stays in the witness, because it is NOT
+uniform** — `recruitee.py jobs`, `oraclecloud.py sites`, `list` for the other
+nineteen — *so `args` alone does not rebuild the invocation, and saying so beats
+implying otherwise.*
 
 ## The row format
 
 ```
-| family | identifier | adapter_param | employer_label | state | checked | verified_by |
+| family | identifier | args | employer_label | state | checked | verified_by |
 ```
 
 | field | rule |
 | :-- | :-- |
 | `family` | the adapter's filename without `.py` |
 | `identifier` | the value the adapter's own parameter takes — **the key, with `family`** |
-| `adapter_param` | the flag, read from that adapter's `argparse` |
+| `args` | the ENTIRE argument string following the sub-command — **DERIVED from `verified_by`**, never retyped, and it must PARSE in that adapter's own `argparse` |
 | `employer_label` | a human label, **NOT unique and never a key** |
 | `state` | `live` or `dead` + `recheck_after` |
 | `checked` | the date the row was last EXERCISED |
@@ -100,10 +129,10 @@ the adapter, not re-reading it» — `shared/boards/README.md`.*
 
 ## The entries — two from point 1, verified by EXERCISING, 2026-10-07
 
-| family | identifier | adapter_param | employer_label | state | checked | verified_by |
+| family | identifier | args | employer_label | state | checked | verified_by |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| recruitee | `gmk` | `--tenant` | Groep Maatschappelijke Kinderopvang (NL) | live | 2026-10-07 | `recruitee.py jobs --tenant gmk` → 3 advertisements in Amsterdam, `ledger_id` `recruitee:gmk:1803558` and two more, by the declared HTTP client |
-| oraclecloud | `ecwl.fa.us2.oraclecloud.com` | `--host` | ClubCorp (US) | live | 2026-10-07 | `oraclecloud.py sites --host ecwl.fa.us2.oraclecloud.com` → 2 sites, `CX` ORA_ACTIVE and `CX_2001` ORA_INACTIVE, by the declared HTTP client |
+| recruitee | `gmk` | `--tenant gmk` | Groep Maatschappelijke Kinderopvang (NL) | live | 2026-10-07 | `recruitee.py jobs --tenant gmk` → 3 advertisements in Amsterdam, `ledger_id` `recruitee:gmk:1803558` and two more, by the declared HTTP client |
+| oraclecloud | `ecwl.fa.us2.oraclecloud.com` | `--host ecwl.fa.us2.oraclecloud.com` | ClubCorp (US) | live | 2026-10-07 | `oraclecloud.py sites --host ecwl.fa.us2.oraclecloud.com` → 2 sites, `CX` ORA_ACTIVE and `CX_2001` ORA_INACTIVE, by the declared HTTP client |
 
 **Two entries and not three: a third family would have needed a third exercise and
 the margin did not carry it — stated rather than padded.** *And the first draft of
@@ -148,27 +177,27 @@ not answer is recorded *here*, not corrected *there*.
 in a turn distinct from the retrieval, interrogated with the single token a request
 carries (`claude-user`) and never with the set.
 
-| family | identifier | adapter_param | employer_label | state | checked | verified_by |
+| family | identifier | args | employer_label | state | checked | verified_by |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| ats | `scandit` | `--tenant` | Scandit (CH) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant scandit` → **13** advertisements, first *Accounts Payable (A/P) Specialist* |
-| ats | `canonical` | `--tenant` | Canonical (UK) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant canonical` → **311** advertisements, first *Accountant* |
-| ats | `proton` | `--tenant` | Proton (CH) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant proton` → **57**, first *Backend Engineer (VPN)*. *The config's own comment says 68 on 2026-09-17: a live board moves, and that is what `checked` is for.* |
-| ats | `frontify` | `--tenant` | Frontify (CH) | live | 2026-10-08 | `ats.py list --provider lever --tenant frontify` → exit 0, **0 postings**. **Established by a counter-test, not by the zero:** a bogus tenant (`zzz-aucun-board-ici`) dies **exit 4, «both 404»**, so Lever distinguishes an unknown tenant from an empty board. The board EXISTS and is currently empty. |
-| ats | `docker` | `--tenant` | Docker (US) | live | 2026-10-08 | `ats.py list --provider ashby --tenant docker` → **61**, first *Account Executive, Mid-Enterprise (West)* |
-| ats | `kraken.com` | `--tenant` | Kraken (US) | live | 2026-10-08 | `ats.py list --provider ashby --tenant kraken.com` → **80**, first *Staff Security Architect* |
-| ats | `nexthink` | `--tenant` | Nexthink (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant nexthink` → **70**, first *Field Marketing Intern*. **Reached only under the owner's own `override_robots: true`** — see the note below. |
-| ats | `swissquote` | `--tenant` | Swissquote (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant swissquote` → **47**, first *Financial Controller* |
-| ats | `sportradar` | `--tenant` | Sportradar (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant sportradar` → **98**, first *Lead DevSecOps Security Engineer* |
-| ats | `Evooq` | `--tenant` | Evooq (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant Evooq` → **9**, first *Application & Integration Manager*. *Case matters: the identifier is the path segment as served.* |
-| ats | `AudemarsPiguet` | `--tenant` | Audemars Piguet (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant AudemarsPiguet` → **84**, first *Stagiaire Simulation des chocs* |
-| workday | `swisscom.wd103.myworkdayjobs.com` | `--host` | Swisscom (CH) | live | 2026-10-08 | `workday.py list --host … --tenant swisscom --site SwisscomExternalCareers` → **20 on the first page**, first *Sales Manager Digital Media & LMS* |
-| workday | `logitech.wd5.myworkdayjobs.com` | `--host` | Logitech (CH) | live | 2026-10-08 | `workday.py list --host logitech.wd5.myworkdayjobs.com --tenant logitech --site logitech` → **20 on the first page**, first *E-Commerce Developer* |
-| workday | `richemont.wd3.myworkdayjobs.com` | `--host` | Richemont (CH) | live | 2026-10-08 | `workday.py list --host richemont.wd3.myworkdayjobs.com --tenant richemont --site richemont` → **20 on the first page**, first *Sales Associate Temporal Montblanc* |
-| workday | `lombardodier.wd3.myworkdayjobs.com` | `--host` | Lombard Odier (CH) | live | 2026-10-08 | `workday.py list --host lombardodier.wd3.myworkdayjobs.com --tenant lombardodier --site lombard_odier_careers` → **20 on the first page**, first *Collaborateur/-trice Trésor, Caisse* |
-| workday | `sunrise.wd3.myworkdayjobs.com` | `--host` | Sunrise (CH) | live | 2026-10-08 | `workday.py list --host sunrise.wd3.myworkdayjobs.com --tenant sunrise --site sunrise` → **20 on the first page**, first *Sales Agent Spreitenbach 20-40%* |
-| workday | `weforum.wd3.myworkdayjobs.com` | `--host` | World Economic Forum (CH) | live | 2026-10-08 | `workday.py list --host weforum.wd3.myworkdayjobs.com --tenant weforum --site Forum_Careers` → **14**, first *Senior Manager, Grant Governance* |
-| successfactors | `jobs.bcv.ch` | `--host` | Banque Cantonale Vaudoise (CH) | indeterminate + `recheck_after: 2026-11-08` | 2026-10-08 | `successfactors.py list --host jobs.bcv.ch` → **exit 8**. Its rules refuse `/services/` in writing, so the adapter took the permitted HTML route (`/search/`, `/job/`) and recognised **no tile in either markup**. Its own words: *«This is NOT an empty board and NOT a zero… only what we failed to recognise in it.»* **Not `dead`.** |
-| umantis | `jobs.bobst.com` | `--host` | Bobst (CH) | live | 2026-10-08 | `umantis.py list --host jobs.bobst.com` → **10**, first *Dessinateur bâtiment et technique* |
+| ats | `scandit` | `--provider greenhouse --tenant scandit` | Scandit (CH) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant scandit` → **13** advertisements, first *Accounts Payable (A/P) Specialist* |
+| ats | `canonical` | `--provider greenhouse --tenant canonical` | Canonical (UK) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant canonical` → **311** advertisements, first *Accountant* |
+| ats | `proton` | `--provider greenhouse --tenant proton` | Proton (CH) | live | 2026-10-08 | `ats.py list --provider greenhouse --tenant proton` → **57**, first *Backend Engineer (VPN)*. *The config's own comment says 68 on 2026-09-17: a live board moves, and that is what `checked` is for.* |
+| ats | `frontify` | `--provider lever --tenant frontify` | Frontify (CH) | live | 2026-10-08 | `ats.py list --provider lever --tenant frontify` → exit 0, **0 postings**. **Established by a counter-test, not by the zero:** a bogus tenant (`zzz-aucun-board-ici`) dies **exit 4, «both 404»**, so Lever distinguishes an unknown tenant from an empty board. The board EXISTS and is currently empty. |
+| ats | `docker` | `--provider ashby --tenant docker` | Docker (US) | live | 2026-10-08 | `ats.py list --provider ashby --tenant docker` → **61**, first *Account Executive, Mid-Enterprise (West)* |
+| ats | `kraken.com` | `--provider ashby --tenant kraken.com` | Kraken (US) | live | 2026-10-08 | `ats.py list --provider ashby --tenant kraken.com` → **80**, first *Staff Security Architect* |
+| ats | `nexthink` | `--provider smartrecruiters --tenant nexthink` | Nexthink (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant nexthink` → **70**, first *Field Marketing Intern*. **Reached only under the owner's own `override_robots: true`** — see the note below. |
+| ats | `swissquote` | `--provider smartrecruiters --tenant swissquote` | Swissquote (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant swissquote` → **47**, first *Financial Controller* |
+| ats | `sportradar` | `--provider smartrecruiters --tenant sportradar` | Sportradar (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant sportradar` → **98**, first *Lead DevSecOps Security Engineer* |
+| ats | `Evooq` | `--provider smartrecruiters --tenant Evooq` | Evooq (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant Evooq` → **9**, first *Application & Integration Manager*. *Case matters: the identifier is the path segment as served.* |
+| ats | `AudemarsPiguet` | `--provider smartrecruiters --tenant AudemarsPiguet` | Audemars Piguet (CH) | live | 2026-10-08 | `ats.py list --provider smartrecruiters --tenant AudemarsPiguet` → **84**, first *Stagiaire Simulation des chocs* |
+| workday | `swisscom.wd103.myworkdayjobs.com` | `--host swisscom.wd103.myworkdayjobs.com --tenant swisscom --site SwisscomExternalCareers` | Swisscom (CH) | live | 2026-10-08 | `workday.py list --host … --tenant swisscom --site SwisscomExternalCareers` → **20 on the first page**, first *Sales Manager Digital Media & LMS* |
+| workday | `logitech.wd5.myworkdayjobs.com` | `--host logitech.wd5.myworkdayjobs.com --tenant logitech --site logitech` | Logitech (CH) | live | 2026-10-08 | `workday.py list --host logitech.wd5.myworkdayjobs.com --tenant logitech --site logitech` → **20 on the first page**, first *E-Commerce Developer* |
+| workday | `richemont.wd3.myworkdayjobs.com` | `--host richemont.wd3.myworkdayjobs.com --tenant richemont --site richemont` | Richemont (CH) | live | 2026-10-08 | `workday.py list --host richemont.wd3.myworkdayjobs.com --tenant richemont --site richemont` → **20 on the first page**, first *Sales Associate Temporal Montblanc* |
+| workday | `lombardodier.wd3.myworkdayjobs.com` | `--host lombardodier.wd3.myworkdayjobs.com --tenant lombardodier --site lombard_odier_careers` | Lombard Odier (CH) | live | 2026-10-08 | `workday.py list --host lombardodier.wd3.myworkdayjobs.com --tenant lombardodier --site lombard_odier_careers` → **20 on the first page**, first *Collaborateur/-trice Trésor, Caisse* |
+| workday | `sunrise.wd3.myworkdayjobs.com` | `--host sunrise.wd3.myworkdayjobs.com --tenant sunrise --site sunrise` | Sunrise (CH) | live | 2026-10-08 | `workday.py list --host sunrise.wd3.myworkdayjobs.com --tenant sunrise --site sunrise` → **20 on the first page**, first *Sales Agent Spreitenbach 20-40%* |
+| workday | `weforum.wd3.myworkdayjobs.com` | `--host weforum.wd3.myworkdayjobs.com --tenant weforum --site Forum_Careers` | World Economic Forum (CH) | live | 2026-10-08 | `workday.py list --host weforum.wd3.myworkdayjobs.com --tenant weforum --site Forum_Careers` → **14**, first *Senior Manager, Grant Governance* |
+| successfactors | `jobs.bcv.ch` | `--host jobs.bcv.ch` | Banque Cantonale Vaudoise (CH) | indeterminate + `recheck_after: 2026-11-08` | 2026-10-08 | `successfactors.py list --host jobs.bcv.ch` → **exit 8**. Its rules refuse `/services/` in writing, so the adapter took the permitted HTML route (`/search/`, `/job/`) and recognised **no tile in either markup**. Its own words: *«This is NOT an empty board and NOT a zero… only what we failed to recognise in it.»* **Not `dead`.** |
+| umantis | `jobs.bobst.com` | `--host jobs.bobst.com` | Bobst (CH) | live | 2026-10-08 | `umantis.py list --host jobs.bobst.com` → **10**, first *Dessinateur bâtiment et technique* |
 
 ### Three things the EXERCISE taught the format, which point 1 could not have guessed
 
@@ -176,7 +205,11 @@ carries (`claude-user`) and never with the set.
 `**indeterminate**` and the guard refused it: `'**indeterminate**'` does not start
 with `indeterminate`.* **The red was correct — it is the same property that keeps
 `state` from drifting into prose, and bold is prose.** *So `state`, `checked` and
-`adapter_param` carry no emphasis; `employer_label` and `verified_by` may.*
+`args` carry no emphasis; `employer_label` and `verified_by` may.* **Backticks are not
+emphasis**: `args` and `identifier` carry theirs, and the guard strips them, which is
+the step a control of mine omitted on 2026-10-12 — it rendered `0 on 21` on
+twenty-one sound rows because the stored cell carries its backticks and the prose
+citing it does not.
 
 **0. «FAMILY» IS THE ADAPTER FILE, NOT THE ATS BRAND — and my first eleven rows got it
 wrong before the guard caught them.** *I wrote `greenhouse`, `lever`, `ashby` and
@@ -190,15 +223,22 @@ the command lives.**
 > kinds of adapter break that assumption** — `ats.py` is one file for four brands
 > (`--provider` + `--tenant`), `workday.py` needs three coordinates. *The key
 > `(family, identifier)` still holds; what does not hold is that the identifier alone
-> reconstructs the invocation.* **Naming the limit beats hiding it: a reader of this
-> table cannot rebuild the command without `verified_by`, and that is now true by
-> design rather than by accident.**
+> reconstructs the invocation.* **Naming the limit beats hiding it.**
+>
+> **CORRECTION, 2026-10-12 (#1094 point 3):** *this quote ended «a reader of this table
+> cannot rebuild the command without `verified_by`, and that is now true by design
+> rather than by accident». Half of it is now false and the half that remains is the
+> sub-command: the ARGUMENTS live in `args`, in a column, so the coordinates no longer
+> live only in prose — but `args` still does not carry the sub-command, which is not
+> uniform. A reader rebuilds `<family>.py` + the sub-command from `verified_by` and the
+> arguments from `args`.*
 
 **1. One `identifier` is not always enough — Workday needs THREE coordinates.** `--host`,
 `--tenant` and `--site`, and the site spelling is *case-preserving in the URL* while
 case-insensitive at the API. The key stays `(family, identifier)` with the **host** as
-identifier, because the host is what is unique; the other two ride in `verified_by` as
-part of the command that proved the row. *A format that had fixed one parameter per
+identifier, because the host is what is unique; the other two ride in `args` — and
+still in `verified_by`, which is the command that proved the row and the source `args`
+is derived from. *A format that had fixed one parameter per
 family would have had to be reopened here.*
 
 **2. A round number is a PAGE, not a board.** Five of the six Workday tenants returned
@@ -231,6 +271,10 @@ session that finds this file without that key must not reach those five.*
   themselves ARE here, since 2026-10-08. This list claimed the opposite until
   2026-10-11, and a file that says it does not carry what it carries cannot be
   contradicted by any count.*
-- **Pointers from `config.yml`** (#1094 point 3) and **the migration of his file**
-  (#1094 point 4). *They depend on this format, and migrating to a format that
-  will still move is migrating twice.*
+- **The migration of his file** (#1094 point 4), *which does not assign itself.*
+- **Point 3 is no longer in this list**, settled by the owner on 2026-10-11 and
+  delivered above as the `args` column. *And what it delivered is NOT the «partial
+  pointer» it was first written as: that set is EMPTY, not small. The four rows where a
+  pointer would RESOLVE from the structured columns have nothing to remove — the key IS
+  the whole invocation — and the seventeen that have something to remove do not resolve,
+  the coordinate living only in the PROSE of a witness field.*

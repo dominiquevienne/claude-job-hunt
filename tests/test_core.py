@@ -46243,17 +46243,25 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
     and Elan** — four names for one tenant. *A name-keyed registry makes
     duplicates that NO COUNT shows.*
 
-    **AND THE FIELD THAT MAKES A ROW USABLE RATHER THAN MERELY TRUE IS
-    `adapter_param`, because the parameter differs by family — measured:**
+    **AND THE FIELD THAT MAKES A ROW USABLE RATHER THAN MERELY TRUE IS `args` —
+    the ENTIRE argument string that follows the sub-command. Decision of the owner,
+    2026-10-11, verbatim «je valide ta proposition avec le fichier contentant les
+    arguments en un bloc» (#1094 point 3), and it REPLACES `adapter_param`, which
+    named ONE flag where seventeen of the twenty-one rows need more — measured by
+    interrogating the interface each adapter DECLARES:**
 
-        --tenant   recruitee · taleez · personio · flatchr
-        --host     umantis · oraclecloud
+        aucune coordonnee au-dela de la clef    recruitee oraclecloud
+                                                successfactors umantis       4
+        une   (`--provider`)                    ats                         11
+        deux  (`--tenant` et `--site`)          workday                      6
 
-    *So a registry with one `tenant` column is wrong by the tenth entry.* **The
-    case below checks the registry against the ADAPTER'S OWN `argparse`, which is
-    what keeps this guard from being the inert «every row has a date» kind the
-    pilot warned about** — it can only pass if the row's flag really exists in the
-    code.
+    *So a registry with one `tenant` column is wrong by the tenth entry, and a
+    registry with one FLAG column is wrong by the eleventh.* **`args` is DERIVED
+    from `verified_by` and never retyped — one case below REPLAYS that derivation,
+    another requires the identifier to be a flag VALUE in it, and a third gives the
+    arguments to the ADAPTER'S OWN `argparse`.** *That third is what keeps this
+    guard out of the inert «every row has a date» family the pilot warned about: it
+    can only pass if the adapter really accepts the invocation.*
 
     **AND THE INVERSE DIRECTION IS ASSERTED TOO: a duplicate `employer_label` must
     be ACCEPTED.** *Several ATS for one employer is the normal case — by country,
@@ -46266,7 +46274,7 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
     a stale interdiction whose symptom is the absence of symptom.*
     """
 
-    CHAMPS = ("family", "identifier", "adapter_param", "employer_label",
+    CHAMPS = ("family", "identifier", "args", "employer_label",
               "state", "checked", "verified_by")
 
     def _rows(self):
@@ -46337,165 +46345,226 @@ class TheEmployerAtsRegistryIsKeyedOnWhatTheAdapterActuallyTakes(unittest.TestCa
                          "two ATS for one employer were rejected, and that is the "
                          "normal case rather than an error")
 
-    def test_the_declared_parameter_exists_in_the_adapters_argparse(self):
-        """**THE CASE THAT CANNOT BE INERT**: it reads the ADAPTER'S OWN source.
-        *`--tenant` for recruitee, `--host` for oraclecloud — measured, not
-        assumed, and a row naming a flag the code does not accept is a row nobody
-        can use.*"""
+    def test_the_arguments_carry_the_identifier_as_a_flag_value(self):
+        """**LE CAS QUI TIENT LA CLEF ATTACHÉE À L'INVOCATION, et c'est ce que
+        l'ancien cas `adapter_param` DEVIENT.** *`adapter_param` a disparu avec la
+        décision du propriétaire du 11.10.2026 ; si rien ne l'avait remplacé, plus
+        RIEN ne lierait `identifier` à la commande qui l'utilise — une ligne pourrait
+        porter les arguments d'une AUTRE ligne et passer les six autres cas.*
+
+        **ET IL N'EST PAS SUBSUMÉ PAR L'ANALYSE RÉELLE, ce qui est la raison de son
+        existence :** `--host …` avec un vrai `U+2026` PARSE — `argparse` prend
+        n'importe quelle chaîne — donc seul ce cas-ci attrape un témoin ÉLIDÉ recopié
+        dans `args`. *Une ligne du registre porte exactement cette ellipse, et son
+        `args` a été comblé depuis la colonne `identifier` de la MÊME ligne : une
+        dérivation, pas un retapage.*
+
+        **L'identifiant doit être une VALEUR de drapeau et pas seulement une
+        sous-chaîne**, sans quoi `--tenant swisscom` satisferait une ligne dont la
+        clef est `swisscom.wd103.myworkdayjobs.com`.
+        """
         rows, root = self._rows()
+        self.assertGreaterEqual(len(rows), 2,
+                                "%d row(s) parsed: this case is NOT EXERCISED, not "
+                                "green" % len(rows))
+        sans = []
         for r in rows:
             src = os.path.join(root, "skills", "job-scan", "scripts",
                                r["family"] + ".py")
             self.assertTrue(os.path.exists(src),
                             "%s names family %r and there is no %s"
                             % (r["identifier"], r["family"], os.path.basename(src)))
-            with io.open(src, encoding="utf-8") as fh:
-                code = fh.read()
-            flag = r["adapter_param"].strip("`")
-            self.assertIn('"%s"' % flag, code,
-                          "%s/%s declares %r and %s.py's argparse does not accept "
-                          "it — the row is true and unusable"
-                          % (r["family"], r["identifier"], flag, r["family"]))
+            # la cellule porte ses accents graves là où le motif tourne, et les
+            # retirer est le geste qu'un contrôle a omis le 12.10.2026 : il rendait
+            # `0 sur 21` sur vingt-et-une lignes SAINES
+            ident = r["identifier"].strip("`")
+            mots = r["args"].strip("`").split()
+            valeurs = [mots[i] for i in range(1, len(mots))
+                       if mots[i - 1].startswith("--")]
+            if ident not in valeurs:
+                sans.append("%s/%s : `args` ne porte pas l'identifiant comme VALEUR "
+                            "d'un drapeau (valeurs lues : %s) — plus rien ne lie la "
+                            "clef à l'invocation"
+                            % (r["family"], ident, valeurs))
+        self.assertEqual(sans, [], "\n  ".join([""] + sans))
 
-    def _flags_requis(self, root, famille, sous_commande):
-        """Les flags REQUIS de cette sous-commande, lus dans l'interface que
-        l'adaptateur DÉCLARE lui-même — `--help` sur la sous-commande que le
-        TÉMOIN nomme, jamais une table écrite ici.
+    def _args_du_temoin(self, r):
+        """La sous-commande et les arguments tels que le TÉMOIN les porte : le
+        premier span entre accents graves qui lance `<family>.py <sous-commande>`,
+        puis le reste jusqu'à l'accent grave fermant — jamais la prose qui suit la
+        flèche.
 
-        *Une table `famille -> sous-commande` serait une surface de devinette, et
-        la devinette est exactement ce que ce registre existe pour supprimer :
-        son auteur a deviné deux fois en l'écrivant (`--company`, puis `--tenant`
-        pour umantis) et les deux fois l'adaptateur a refusé.*
+        *C'est la DÉRIVATION elle-même, rejouée. Une table `famille ->
+        sous-commande` écrite ici serait une surface de devinette, et la devinette
+        est exactement ce que ce registre existe pour supprimer : son auteur a deviné
+        deux fois en l'écrivant (`--company`, puis `--tenant` pour umantis) et les
+        deux fois l'adaptateur a refusé.*
+        """
+        m = re.search(r"`%s\.py\s+([a-z][a-z0-9_-]*)\s+([^`]*)`"
+                      % re.escape(r["family"]), r["verified_by"])
+        return (m.group(1), m.group(2).strip()) if m else None
 
-        **ET UN REGEX SUR LA SOURCE NE PEUT PAS RÉPONDRE : `--id` est requis par
-        `ats.py show` et PAS par `ats.py list`**, donc l'ensemble pris au niveau
-        du FICHIER sur-collecte et ferait passer une ligne conforme pour
-        incomplète — la quatrième espèce, qui accuse une donnée saine.
+    def test_the_arguments_are_derivable_from_the_witness(self):
+        """**« Les arguments se DÉRIVENT de la colonne témoin et ne se retapent
+        JAMAIS » reste une DISCIPLINE tant qu'aucune garde ne la tient** — et une
+        discipline sera enfreinte quand un générateur ne l'est pas. *Ce cas REJOUE la
+        dérivation et compare, donc il transforme la contrainte en contrôle.*
 
-        *Les crochets se retirent avec un compteur de PROFONDEUR et non par
-        `re.sub`, parce qu'argparse les imbrique pour un groupe mutuellement
-        exclusif : un reste d'imbrication ferait paraître REQUIS un flag
-        optionnel, et le coût de cette limite serait de FABRIQUER une détection
-        fausse au lieu d'en rater une.*
+        **UNE SEULE exception, DÉCLARÉE plutôt que tolérée** : un témoin peut ÉLIDER
+        une valeur pour un lecteur humain (`--host …`, un vrai `U+2026`), et la valeur
+        manquante est alors le contenu EXACT de la colonne `identifier` de la MÊME
+        ligne. *Combler depuis une autre colonne de la même ligne est une dérivation ;
+        taper la valeur serait un retapage, et la différence n'est visible que si la
+        règle est écrite.*
+
+        *RÉSIDU DÉCLARÉ : une seule ligne élide aujourd'hui, donc la branche de
+        complétion est exercée par elle seule. Le jour où ce témoin sera écrit en
+        entier, la branche cessera d'être exercée — et ce sera juste, l'exception
+        n'existant plus. Ce qui ne serait PAS juste est d'exiger qu'une élision
+        subsiste : ce serait rougir sur un registre devenu plus propre, la quatrième
+        espèce de §4 ter, celle qui accuse une donnée saine.*
+        """
+        rows, _ = self._rows()
+        self.assertGreaterEqual(len(rows), 2,
+                                "%d row(s) parsed: this case is NOT EXERCISED, not "
+                                "green" % len(rows))
+        ecarts = []
+        for r in rows:
+            d = self._args_du_temoin(r)
+            self.assertIsNotNone(
+                d, "%s/%s : son témoin ne porte aucune commande `%s.py <sous> …` "
+                   "entre accents graves, donc `args` ne se dérive de RIEN et ce cas "
+                   "ne pourrait pas l'exercer"
+                   % (r["family"], r["identifier"], r["family"]))
+            attendu = d[1]
+            # l'ellipse s'ecrit ECHAPPEE, comme ailleurs dans cette suite : en
+            # caractere litteral elle se lit comme une troncature de notre propre
+            # source, et le prochain lecteur qui « nettoie » la retire
+            if "\u2026" in attendu:
+                attendu = attendu.replace("\u2026",
+                                          r["identifier"].strip("`"), 1)
+            if " ".join(attendu.split()) != " ".join(r["args"].strip("`").split()):
+                ecarts.append("%s/%s : `args` ne se dérive pas de son témoin\n"
+                              "      témoin -> %s\n      args   -> %s"
+                              % (r["family"], r["identifier"], attendu,
+                                 r["args"].strip("`")))
+        self.assertEqual(ecarts, [], "\n  ".join([""] + ecarts))
+
+    # L'ESPION DE `parse_args` : il DÉLÈGUE à la vraie analyse puis lève, donc c'est
+    # l'`argparse` de l'ADAPTATEUR qui juge et jamais une table écrite ici. Un
+    # SOUS-PROCESSUS et jamais cet interpréteur — remplacer `parse_args` au niveau de
+    # la CLASSE est global, et une restauration manquée casserait la suite ailleurs
+    # qu'ici : le banc se DÉPLACE, il ne s'emprunte pas.
+    ESPION = r'''
+import argparse, importlib.util, os, sys
+
+chemin, sous, reste = sys.argv[1], sys.argv[2], sys.argv[3:]
+
+
+class _Analyse(BaseException):
+    """BaseException, pour qu'un `except Exception` de l'adaptateur ne l'avale pas."""
+
+
+_vrai = argparse.ArgumentParser.parse_args
+
+
+def _espion(self, *a, **k):
+    _vrai(self, *a, **k)      # la VRAIE analyse, par le code de l'adaptateur
+    raise _Analyse()          # ... puis on s'arrete AVANT tout appel reseau
+
+
+argparse.ArgumentParser.parse_args = _espion
+# l'adaptateur importe ses freres (`_child`) : lance en script, sys.path[0] EST son
+# dossier ; lu par importlib depuis ailleurs, il ne l'est pas, et le ModuleNotFound
+# qui s'ensuit se lirait comme un adaptateur casse.
+sys.path.insert(0, os.path.dirname(os.path.abspath(chemin)))
+spec = importlib.util.spec_from_file_location("_sous_essai", chemin)
+mod = importlib.util.module_from_spec(spec)
+sys.argv = [os.path.basename(chemin), sous] + reste
+try:
+    spec.loader.exec_module(mod)   # son `if __name__ == "__main__"` ne tire pas
+    mod.main()
+except _Analyse:
+    sys.exit(0)                    # analyse, et rien n'a ete recupere
+except SystemExit as e:
+    sys.exit(2 if (e.code or 0) else 4)
+sys.exit(3)                        # `parse_args` n'a JAMAIS ete appele
+'''
+
+    def test_the_arguments_parse_in_the_adapters_own_argparse(self):
+        """**#1094 point 3 — LE SIXIÈME CAS QUE LA DÉCISION DU PROPRIÉTAIRE EXIGE :
+        les arguments de chaque ligne sont donnés à l'`argparse` de l'adaptateur
+        LUI-MÊME, et rien n'est exécuté ni récupéré.**
+
+        *Les six familles construisent toutes leur analyseur DANS `main()` puis
+        dispatchent aussitôt : aucune fonction ne rend l'analyseur, donc on ne peut ni
+        l'importer ni l'interroger. Et `--help` ne répond que sur l'USAGE, qu'il
+        faudrait re-analyser soi-même avec un compteur de profondeur de crochets —
+        c'est-à-dire RÉIMPLÉMENTER `argparse` au lieu de l'interroger.*
+
+        **CE CAS REMPLACE
+        `test_every_required_coordinate_beyond_the_key_lives_in_the_witness`, ET CE
+        RETRAIT SE DÉCLARE AVEC SA MUTATION.** *L'ancien lisait l'usage de `--help`,
+        en retirait les crochets à la profondeur et vérifiait que chaque drapeau
+        REQUIS figurait dans la PROSE du témoin. L'analyse réelle le subsume et va
+        plus loin : un drapeau requis manquant, un drapeau INCONNU et une valeur hors
+        `choices` sortent tous en `SystemExit(2)` par le code de l'adaptateur, là où
+        l'ancien ne voyait que le premier — et son compteur de crochets était une
+        réimplémentation partielle d'`argparse` qui ne pouvait que divergir.*
+
+        **ET LE VERT S'ÉPROUVE AUTANT QUE LE ROUGE** : une sentinelle qui ne lèverait
+        jamais rendrait un vert IDENTIQUE, donc le code 3 — « `parse_args` n'a jamais
+        été appelé » — est un échec NOMMÉ, le code 4 — « sorti proprement sans
+        analyser » — en est un autre, et les lignes analysées se comptent contre les
+        lignes parsées.
+
+        *Limite déclarée : `args` est découpé sur les blancs, donc une valeur
+        contenant une espace ne se transmettrait pas telle quelle. Aucune des
+        vingt-et-une n'en porte, et le jour où l'une en portera, c'est le découpage
+        qui change — pas ce cas.*
         """
         import subprocess
-        src = os.path.join(root, "skills", "job-scan", "scripts", famille + ".py")
-        self.assertTrue(os.path.exists(src), src)
-        r = subprocess.run([sys.executable, src, sous_commande, "--help"],
-                           capture_output=True, text=True, timeout=120)
-        self.assertEqual(
-            r.returncode, 0,
-            "`%s %s --help` rend %s — l'interface n'a pas été LUE, et un flag "
-            "absent d'une sortie vide se lirait comme un flag non requis\n%s"
-            % (os.path.basename(src), sous_commande, r.returncode,
-               (r.stderr or "")[:400]))
-        lignes = r.stdout.splitlines()
-        debut = next((i for i, l in enumerate(lignes)
-                      if l.startswith("usage:")), None)
-        self.assertIsNotNone(debut, "aucune ligne d'usage dans `%s %s --help`"
-                             % (famille, sous_commande))
-        usage = []
-        for l in lignes[debut:]:
-            if not l.strip():
-                break
-            usage.append(l)
-        plat, profondeur = [], 0
-        for ch in " ".join(usage):
-            if ch == "[":
-                profondeur += 1
-            elif ch == "]":
-                profondeur = max(0, profondeur - 1)
-            elif profondeur == 0:
-                plat.append(ch)
-        return set(re.findall(r"--[a-z0-9-]+", "".join(plat)))
-
-    def test_every_required_coordinate_beyond_the_key_lives_in_the_witness(self):
-        """**#1094 point 3, 11.10.2026 — LE TROU QUE LES CINQ CAS AU-DESSUS
-        LAISSENT, ET IL DÉCIDE DU POINT 3.** *Une ligne peut porter une date, un
-        témoin qui nomme une commande, une clef unique et un `adapter_param` que
-        l'adaptateur accepte — les cinq cas VERTS — et rester INUTILISABLE,
-        parce que l'invocation exige des coordonnées que la ligne ne porte nulle
-        part en colonne.*
-
-        **Mesuré le 11.10.2026 sur les 21 lignes, en interrogeant l'interface que
-        chaque adaptateur déclare :**
-
-            coordonnees a fournir EN PLUS de la clef                    lignes
-            aucune (recruitee, oraclecloud, successfactors, umantis)         4
-            une    (`ats`, qui exige `--provider`)                         11
-            deux   (`workday`, qui exige `--tenant` et `--site`)            6
-
-        **DONC LE POINTEUR PARTIEL DU POINT 3 EST VIDE, ET PAS SEULEMENT
-        PETIT** : l'ensemble où un pointeur RÉSOUT depuis les colonnes
-        structurées et l'ensemble où il RETIRE une redondance sont disjoints et
-        exhaustifs. *Les 4 où il résout n'ont rien à retirer — la clef EST
-        l'invocation entière ; les 17 où il y a quelque chose à retirer ne
-        résolvent pas, la coordonnée ne vivant que dans la PROSE de
-        `verified_by`, qui est un champ de TÉMOIN et non un magasin de
-        paramètres.*
-
-        **Ceci RÉTRACTE « le pointeur pour les familles à paramètre unique — 15
-        des 21 entrées », que j'ai écrit sur #1094 le 11.10 à 01:27** : le 15
-        comptait `ats` comme une famille à paramètre unique alors que son
-        `--provider` est REQUIS et ne vit que dans le témoin. *Et la direction de
-        l'erreur est celle qui fait paraître la décision de format du
-        propriétaire comme un cas de coin à six lignes, quand elle gouverne 17
-        des 21.*
-
-        *Ce que ce cas garde, et qui ne dépend d'AUCUNE décision : que chaque
-        coordonnée requise se retrouve dans le témoin, pour que « re-vérifier
-        veut dire LANCER » soit vrai mécaniquement plutôt que par discipline.
-        Le jour où les colonnes structurées existent, c'est ce cas-ci qui change
-        de côté — il ne devient pas inutile, il déménage.*
-
-        **RECOUVREMENT DÉCLARÉ avec
-        `test_the_declared_parameter_exists_in_the_adapters_argparse` :** celui-là
-        demande que le flag EXISTE dans la source, celui-ci qu'il soit REQUIS par
-        la sous-commande que le témoin nomme. *Le second est le plus fort là où le
-        témoin se parse, le premier couvre le cas où il ne se parse pas — ils ne
-        sont pas interchangeables, et le dire coûte une ligne quand le deviner
-        coûte une garde retirée.*
-        """
         rows, root = self._rows()
         self.assertGreaterEqual(len(rows), 2,
                                 "%d row(s) parsed: this case is NOT EXERCISED, not "
                                 "green" % len(rows))
-        cache, exercees, manques = {}, 0, []
+        refus, analysees = [], 0
         for r in rows:
-            m = re.search(r"([a-z0-9_]+)\.py\s+([a-z][a-z0-9_-]*)",
-                          r["verified_by"])
+            d = self._args_du_temoin(r)
             self.assertIsNotNone(
-                m, "%s/%s : son témoin ne nomme aucune sous-commande, donc ce cas "
-                   "ne pourrait pas l'exercer — et une ligne NON EXERCÉE rend le "
-                   "même vert qu'une ligne conforme"
+                d, "%s/%s : son témoin ne nomme aucune sous-commande, donc ce cas ne "
+                   "pourrait pas l'exercer — et une ligne NON EXERCÉE rend le même "
+                   "vert qu'une ligne conforme"
                    % (r["family"], r["identifier"]))
-            famille, sous = m.group(1), m.group(2)
-            self.assertEqual(
-                famille, r["family"],
-                "%s/%s : le témoin lance `%s.py` et la colonne `family` dit %r"
-                % (r["family"], r["identifier"], famille, r["family"]))
-            if (famille, sous) not in cache:
-                cache[(famille, sous)] = self._flags_requis(root, famille, sous)
-            requis = cache[(famille, sous)]
-            cle = r["adapter_param"].strip("`")
-            self.assertIn(
-                cle, requis,
-                "%s/%s déclare la clef %s, que `%s.py %s` ne tient pas pour "
-                "REQUISE (requis : %s) — et alors la liste des coordonnées en "
-                "plus de la clef serait fausse"
-                % (r["family"], r["identifier"], cle, famille, sous,
-                   sorted(requis)))
-            for flag in sorted(requis - {cle}):
-                if flag not in r["verified_by"]:
-                    manques.append(
-                        "%s/%s : `%s.py %s` exige %s et le témoin ne le porte "
-                        "pas — la ligne est VRAIE et on ne peut pas la relancer"
-                        % (r["family"], r["identifier"], famille, sous, flag))
-            exercees += 1
-        self.assertEqual(exercees, len(rows),
-                         "%d ligne(s) exercée(s) sur %d parsée(s)"
-                         % (exercees, len(rows)))
-        self.assertEqual(manques, [], "\n  ".join([""] + manques))
+            sous = d[0]
+            src = os.path.join(root, "skills", "job-scan", "scripts",
+                               r["family"] + ".py")
+            self.assertTrue(os.path.exists(src),
+                            "%s names family %r and there is no %s"
+                            % (r["identifier"], r["family"],
+                               os.path.basename(src)))
+            p = subprocess.run(
+                [sys.executable, "-c", self.ESPION, src, sous]
+                + r["args"].strip("`").split(),
+                capture_output=True, text=True, timeout=120)
+            if p.returncode == 0:
+                analysees += 1
+            elif p.returncode == 3:
+                refus.append(
+                    "%s/%s : `parse_args` n'a JAMAIS été appelé, donc ce cas ne juge "
+                    "RIEN pour cette ligne et son vert serait celui d'une ligne "
+                    "conforme" % (r["family"], r["identifier"]))
+            else:
+                derniere = ((p.stderr or "").strip().splitlines() or [""])[-1]
+                refus.append(
+                    "%s/%s : `%s.py %s %s` n'analyse pas (code %s) — la ligne est "
+                    "VRAIE et on ne peut pas la relancer\n      %s"
+                    % (r["family"], r["identifier"], r["family"], sous,
+                       r["args"].strip("`"), p.returncode, derniere[:300]))
+        self.assertEqual(refus, [], "\n  ".join([""] + refus))
+        self.assertEqual(analysees, len(rows),
+                         "%d ligne(s) analysée(s) sur %d parsée(s)"
+                         % (analysees, len(rows)))
 
     def test_a_dead_row_carries_an_hour_or_it_is_a_stale_interdiction(self):
         """*Removal guarantees rediscovery, so a dead pair keeps its row — but a
