@@ -41,9 +41,13 @@ them strays into the other's subject, the other wins.
 - **Preference** — `preferred` · *since 2026-08-19 — former employer, and the
   product is one I know*
 
-**One value, three states, and it lives here rather than in the table below.**
-`preferred`, `excluded`, or the line absent — which means **not asked**, and is
-not the same as neutral. **A preference is not lifted**, which is exactly why it
+**One value, four states, and it lives here rather than in the table below.**
+`preferred`, `excluded`, `neither` — the neutral answer, *asked and declined* —
+or the line absent, which means **not asked** and is not the same as neutral.
+**The value is the FIRST thing after the dash**, in backticks or not: a bullet
+that merely *names* a value is not that value, so `neither preferred nor
+excluded` reads as `neither` and never as `preferred` (#1125).
+**A preference is not lifted**, which is exactly why it
 must not sit among the standing decisions: everything in that table carries a
 lifting date, and a field that never gets one would read as a decision nobody
 had ended.

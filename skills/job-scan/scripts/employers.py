@@ -56,6 +56,18 @@ DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 # row of that table carries a lifting date, and a preference is not lifted.
 PREF = re.compile(r"^\s*-\s*\**preference\**\s*[—:-]\s*(?P<rest>.*)$", re.I)
 PREF_VALUES = ("preferred", "excluded")
+# **La reponse neutre est une forme DECLAREE, pas une absence.** Celle que
+# la competence demande le plus souvent s'ecrit en anglais « neither
+# preferred nor excluded », et une correspondance de SOUS-CHAINE la lisait
+# `preferred` — la direction qui change la cadence et l'effort, et que la
+# competence repete au candidat comme SA propre decision (#1125).
+PREF_NEUTRAL = "neither"
+# Ancre sur le DEBUT du texte : une puce qui NOMME une valeur sans en ETRE
+# une n'est pas cette valeur. Les accents graves et l'emphase sont admis
+# devant, rien d'autre. Un jeton inconnu rend None, donc une sorte oubliee
+# produit une regle MANQUANTE et visible, jamais une fausse permission.
+PREF_DECLARED = re.compile(
+    r"""^[\s*_`'"]*(?P<value>preferred|excluded|neither)\b""", re.I)
 
 
 def fold(s):
@@ -147,28 +159,46 @@ def bullets(body):
     return [b for b in out if b]
 
 
+def declared_pref(text):
+    """La valeur qu'un texte DECLARE, ou None.
+
+    Anchored on purpose: `not preferred` and `neither preferred nor
+    excluded` DECLARE nothing positive, and a substring match read both as
+    `preferred`. Returns `neither` too, so "asked and declined" can be
+    written down instead of being inferred from an absence.
+    """
+    m = PREF_DECLARED.match(text or "")
+    return m.group("value").lower() if m else None
+
+
 def preference(body):
-    """`preferred`, `excluded`, or None for **never asked**.
+    """`preferred`, `excluded`, or None — and `asked` says which None.
 
     Read from the header bullets only. A preference found inside the standing
     decisions table is a misfiling and is reported as one: everything in that
     table ends, and this does not.
+
+    `value` is only ever a value the bullet DECLARES, anchored at the start
+    of its text. `asked` is true as soon as a `**Preference**` bullet
+    exists, because the bullet exists because the question was put: that is
+    what separates **asked and declined** from **never asked**, which no
+    reading of `value` alone can tell apart.
     """
-    out = {"value": None, "since": None, "reason": None, "misfiled": False}
+    out = {"value": None, "since": None, "reason": None, "misfiled": False,
+           "asked": False}
     for line in body.splitlines():
-        s = line.strip()
-        if s.startswith("|") and any(v in s.lower() for v in PREF_VALUES):
+        row = ROW.match(line.strip())
+        if row and any(declared_pref(c.strip())
+                       for c in row.group("cells").split("|")):
             out["misfiled"] = True
     for b in bullets(body):
         m = PREF.match("- " + b)
         if not m:
             continue
         rest = m.group("rest")
-        low = rest.lower()
-        for v in PREF_VALUES:
-            if v in low:
-                out["value"] = v
-                break
+        out["asked"] = True
+        v = declared_pref(rest)
+        out["value"] = v if v in PREF_VALUES else None
         d = DATE.search(rest)
         out["since"] = d.group(1) if d else None
         # Everything after the first separator that is not the date.
