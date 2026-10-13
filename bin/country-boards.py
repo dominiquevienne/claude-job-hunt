@@ -31,10 +31,10 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
                         undated «not feasible» is not a denominator, it is a re-check)
     écartés VALIDÉS     only what the owner validated (§2 sexies) — no card declares
                         such a validation today, so this is 0 and says so
-    écartés NON validés a `Disallow: /` written to `*` (bound 1), or a name with no
-                        delegation on two resolvers — a closure no route crosses,
-                        counted apart, out of «faisable», in «total», named, and
-                        still the owner's to validate
+    écartés NON validés what a card DECLARES in `excluded:` — a closure no route
+                        crosses, counted apart, out of «faisable», in «total», named,
+                        and still the owner's to validate. Never INFERRED from the
+                        card's prose (#1136): an exclusion is a declaration.
     total               every card declaring the country
 
     fait / faisable   = fait / (total - écartés datés et motivés)
@@ -78,9 +78,11 @@ DATE = re.compile(r"(20\d\d-\d\d-\d\d)")
 # and must not be followed by a byte unit. A card's «HTTP 429» and a bare
 # «429, 2026-09-18» still count. Nor may the three digits be the HEAD of a
 # number — «403 954 B» (2026-09-20, `ukgpro`): not followed by a space and
-# three more digits. (The negation case — «not NXDOMAIN» read by
-# NO_DELEGATION as a missing delegation, `dominica-gov-dm` the same day — has
-# no mechanical shape; the card is worded without the token instead.)
+# three more digits. (The negation case — «not NXDOMAIN» read as a missing
+# delegation, `dominica-gov-dm` the same day — was said here to have «no
+# mechanical shape», the card being worded without the token instead. It had
+# one: #1136 made the exclusion a DECLARED field, so no card has to avoid a
+# word any more, and this paragraph's workaround is retired with the pattern.)
 REFUSAL = re.compile(r"(?:HTTP\s*)?(?<!\d )(?<!\d\u202f)(?<!\d\u00a0)(?<!#)\b(403|429|451)\b(?!\s?(?:B|o|octets|bytes)\b)(?![ \u202f\u00a0]\d{3}\b)")
 TOOL = re.compile(r"(fetch-body\.py|_robots\.allowed|curl|browser|navigateur|a real browser)")
 
@@ -175,24 +177,39 @@ def refusal_of(card):
     return best
 
 
-WRITTEN_REFUSAL = re.compile(r"User-agent:\s*\*\s*\n\s*Disallow:\s*/\s*(?:\n|$)")
-NO_DELEGATION = re.compile(r"\bNXDOMAIN\b")
+EXCLUDED = re.compile(r"^\s*(.*?)\s*(?:·\s*(20\d\d-\d\d-\d\d))?\s*$", re.S)
 
 
 def excluded_of(card):
-    """A closure the card records that no route crosses — and that the owner
-    has NOT validated (§2 sexies): a `Disallow: /` written to `*` (bound 1),
-    or a name with no delegation on two resolvers. Returns (label, date) or
-    None. Neither is INDÉTERMINÉ (nothing is missing to decide) and neither
-    is faisable; they are counted apart, as «écartés NON validés»."""
-    text = card["text"]
-    if WRITTEN_REFUSAL.search(text):
-        return "refus écrit dans les règles — `User-agent: * / Disallow: /` (borne 1)", \
-            date_of(card["h"].get("verified", ""))
-    if NO_DELEGATION.search(text):
-        return "le nom ne résout pas — NXDOMAIN sur deux résolveurs", \
-            date_of(card["h"].get("verified", ""))
-    return None
+    """A closure the card DECLARES — `excluded: <raison> · YYYY-MM-DD` — that no
+    route crosses and that the owner has NOT validated (§2 sexies). Returns
+    (label, date) or None; the date falls back to the card's `verified:`.
+    Neither is INDÉTERMINÉ (nothing is missing to decide) and neither is
+    faisable; they are counted apart, as «écartés NON validés».
+
+    2026-10-13, #1136: this read the card's whole PROSE — `\bNXDOMAIN\b`
+    anywhere in `card["text"]`, and a `User-agent: * / Disallow: /` block
+    anywhere in it. Called on four fixtures, THREE of the four were wrong, and
+    all three in the PERMISSIVE direction, an écarté leaving `faisable` so the
+    quotient RISES: a `www.` with no delegation whose apex answers NOERROR
+    (`fedgroup-fr`, 1.7 point of flattery on FR alone), a card saying «this is
+    a 404 and NOT an NXDOMAIN» — the sentence concluding the opposite of the
+    pattern — and the exact refusal block quoted for ANOTHER host. An
+    exclusion is a DECLARATION, never an INTERPRETATION (§2 bis says it of its
+    own labels), so the remedy is not a finer pattern: it is this field, read
+    the way `override:` is read twelve lines below. The patterns are REMOVED
+    rather than narrowed — a guard with one declared exception gets a second.
+    A card that carries only the prose is no longer excluded, which puts it
+    back INTO the feasible denominator: the quotient falls, and that is the
+    cheap direction — the owner validates a closure, we never infer one."""
+    v = card["h"].get("excluded")
+    if v is None:
+        return None
+    m = EXCLUDED.match(v.strip())
+    if not m or not m.group(1).strip():
+        return None
+    return m.group(1).strip()[:160], \
+        m.group(2) or date_of(card["h"].get("verified", ""))
 
 
 ROUTE = re.compile(r"^\s*(browser|http|none)\s*(?:·\s*([\d\s\u202f,]+?)\s*(?:·\s*(20\d\d-\d\d-\d\d))?)?\s*$")
@@ -284,7 +301,7 @@ def access_of(card):
         return "HTTP, dérogation robots", "`override:` — " + (date_of(h["override"]) or "sans date")
     x = excluded_of(card)
     if x and not (h.get("script", "").strip() not in ("", "none")):
-        return x[0], "the card's own quotation of the rule, or of the DNS answer"
+        return x[0], "`excluded:` — " + (x[1] or "sans date")
     if h.get("content", "").strip().lower().startswith("indeterminate"):
         # the card's declared word outranks any status its prose mentions
         return "indéterminé — " + re.sub(r"^indeterminate\s*·\s*", "",
@@ -637,7 +654,7 @@ def render_md(iso2, t, all_cards):
         f"à REVÉRIFIER      {n['reverifier']}     sans date, ou refus sans date"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else ""),
         f"écartés VALIDÉS   0     aucune fiche ne déclare une exclusion validée par le propriétaire",
-        f"écartés NON validés {n['ecarte']}   refus écrit à `*` (borne 1) ou nom sans délégation — hors de «faisable», dans «total», à valider (§2 sexies)"
+        f"écartés NON validés {n['ecarte']}   exclusion DÉCLARÉE par la fiche (`excluded:`) — hors de «faisable», dans «total», à valider (§2 sexies)"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"NON FAISABLES     {n['infaisable']}     `route: none` daté et motivé — prime sur `script:` (#404, 13.09.2026 : un script qui ne rend rien ne compte pas)"
         + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else ""),
