@@ -2003,10 +2003,37 @@ adapter changes nothing here** — what is refused is not the access, it is the
 sweeping. `cadremploi.md` uses a browser because a script is blocked; nothing
 of the kind applies.
 
-**What remains true and useful:** individual ad pages are not disallowed to the
-retrieval class. That is exactly the `cover-letter <URL>` case — the user finds
-an ad, hands over the link, and the plugin does everything else. It needs no
-adapter and works today.
+**CORRECTION DU 2026-10-13, ET LE PARAGRAPHE QUI ÉTAIT ICI DISAIT LE
+CONTRAIRE : `/ad/` EST DÉSORMAIS REFUSÉ À `Claude-User` LUI AUSSI.** Il disait
+*« individual ad pages are not disallowed to the retrieval class… the
+`cover-letter <URL>` case… It needs no adapter and works today »* — une
+PERMISSION, donc la direction qui fait **AGIR à tort**, et la seule que
+personne n'audite.
+
+Mesuré en **EXÉCUTANT** la garde sur les chemins, un seul jeton à la fois, sur
+un `robots.txt` relu à `www.leboncoin.fr` le `2026-10-13T12:50:04Z` (HTTP 200,
+12 745 o, md5 `b7ec70c54a64`, as Claude-User) :
+
+| chemin | verdict | règle |
+| :-- | :-- | :-- |
+| `/` | `allowed=True` | — |
+| `/recherche` | `allowed=False` | `/recherche` |
+| **`/ad/offres_d_emploi/<id>`** | **`allowed=False`** | **`/ad/`** |
+| `/ad/voitures/<id>` | `allowed=True` | `Allow: /ad/voitures/` |
+
+`Claude-User` est toujours nommé dans la pile *AI SEARCH / RETRIEVAL*, et les
+règles de cette pile portent **17 `Disallow`**, dont `Disallow: /ad/` avec une
+seule dérogation — `Allow: /ad/voitures/`, les voitures et non les annonces
+d'emploi. **Donc la fiche par annonce est fermée par borne 1, et
+`cover-letter <URL>` sur un lien Leboncoin ne se propose plus.** Vérifié sur le
+bloc brut du fichier, pas sur la sortie de l'instrument.
+
+**Ce qui n'est PAS établi, et ne le sera jamais : lequel des deux a bougé.** Le
+fichier a pu changer depuis le 2026-08-31, ou la table de trois classes
+ci-dessus a pu le lire de travers ce jour-là. **Aucun corps du 31.08 n'a été
+conservé**, donc la question ne se tranche pas d'ici — et c'est le coût de
+« un refus ne laissait aucune trace », payé cette fois sur une lecture
+RÉUSSIE.
 
 **Worth carrying to other adapters:** this is the first site here to
 distinguish *user-initiated retrieval* from *training crawls*, and to allow the
@@ -2047,6 +2074,25 @@ France link does not 404 and does not say *"offre expirée"*. It returns **200**
 and a CV advertisement — a page with a title, prose and a call to action, which
 is exactly the shape a fetch-and-summarise step mistakes for an ad. If a user
 hands over a `monster.fr` URL, say the ad is gone; do not describe the page.
+
+**CORRECTION DU 2026-10-13 : `www.monster.com/fr/` NE NOUS REND PLUS 200, IL
+REND 403 DERRIÈRE UN DÉFI DATADOME.** Trois récupérations ce jour-là, 774
+octets chacune, md5 `9aeaf086a1db` puis `40fbad4aa880` puis `c8db33d9fb43` —
+**l'empreinte bouge à chaque requête**, donc aucune comparaison de md5 ne peut
+trancher la borne 0 ici. Le corps conservé avec `--allow-refusal` nomme
+`geo.captcha-delivery.com` et demande d'activer JS : c'est un contrôle
+antirobot, donc **borne 2 — il ne se déjoue pas et ne se confie pas à
+l'utilisateur du plugin**, et le renversement du 07.09 n'ouvre pas la voie
+navigateur. Les règles, elles, sont OUVERTES : `www.monster.fr/robots.txt` rend
+403, donc une *absence* de règles (décision du 13.09), et
+`www.monster.com/robots.txt` rend 200 sur un seul groupe `*` qui ne nous nomme
+pas et ne refuse pas `/fr/`.
+
+**Ce que cette correction ne dit pas :** que le CV advert ait disparu. Un défi
+ne dit **rien** de ce qu'il y a derrière — c'est le 403 mongol qui masquait un
+404 — donc ce qui est daté du 31.08 reste daté du 31.08, et ce qui est mesuré
+le 13.10 est une limite de **route**, pas un verdict sur le board. La conduite
+du paragraphe ci-dessus ne change pas.
 
 ### The US board accepts a French location and answers with Mississippi
 

@@ -534,7 +534,7 @@ an app… nothing else to install"*, while `setup.md` documents this step in
 | **Softy** | Yes — every AI agent, Anthropic twice | No | Yes — same rule for all | **Obey.** Browser adapter, by choice not constraint |
 | **Tecnoempleo** | Yes — six Anthropic agents named | No | Yes | **Obey.** No adapter, and there will not be one. Its ads still reach us through Empléate — see *When a refused board's ads reach us through an open one* |
 | **InfoJobs (ES)** | Yes — `ClaudeBot`, `Claude-SearchBot` **and `Claude-User`** | Yes — `developer.infojobs.net`, key required | Yes — every AI vendor, same treatment | **Obey.** The API is the only route |
-| **Leboncoin** | Yes — the sweep, not the fetch | No | Yes | **Obey.** Ad-by-ad via `cover-letter <URL>` already works |
+| **Leboncoin** | Yes — the sweep, **and the ad-by-ad fetch too since the 2026-10-13 re-measure** | No | Yes | **Obey.** `/recherche` *and* `/ad/` both come back `allowed=False` for `Claude-User` — borne 1, so no route is left and `cover-letter <URL>` on a Leboncoin link no longer works. The measurement is in `shared/boards/README.md` |
 | **AMS (AT)** | By omission | **None found** — see below | **No** — `LinkedInBot` allowed, all others refused | **Override, opt-in only** |
 
 ## AMS — the reasoning, in full
