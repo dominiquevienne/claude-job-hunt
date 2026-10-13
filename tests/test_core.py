@@ -46711,5 +46711,150 @@ class ATrailingCommentHidAFamilyAndASiblingListWasReadAsEmployers(unittest.TestC
                       "la fixture ne porte aucun commentaire de fin de ligne : ce cas "
                       "ne serait PAS EXERCE, pas vert")
 
+def _load_employers():
+    """Le nom du fichier est importable, mais il vit sous `skills/`, donc il se
+    charge par chemin comme les autres scripts de competence."""
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "skills", "job-scan", "scripts", "employers.py")
+    spec = importlib.util.spec_from_file_location("employers_mod", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+emp = _load_employers()
+
+
+class APreferenceThatIsOnlyNamedWasReadAsDeclared(unittest.TestCase):
+    """**#1125, 12.10.2026 — `preference()` lisait `preferred` dans une puce qui
+    disait « neither preferred nor excluded », par correspondance de SOUS-CHAINE
+    sur la puce entiere.**
+
+    *La reponse neutre est celle que la competence demande le plus souvent, et la
+    facon la plus naturelle de l'ecrire en anglais NOMME les deux mots.* L'ordre
+    etant `preferred` avant `excluded`, elle atterrissait TOUJOURS sur
+    `preferred` — la direction qui change la cadence, l'effort et l'ordre du
+    travail, et que la competence repete ensuite au candidat comme SA propre
+    decision.
+
+        avant   3 des 6 puces du rapport rendues FAUSSES, les 3 vers `preferred`
+        apres   3 FAUX -> JUSTES, 5 inchanges, aucune regression
+
+    **Et le defaut est une FORME, pas une chaine&nbsp;:** le controle `misfiled`
+    juste au-dessus avait la meme — `any(v in s.lower() ...)` sur chaque ligne de
+    table — donc une decision permanente qui MENTIONNE un des deux mots etait
+    signalee comme une preference mal classee. *Les deux se reparent par la meme
+    chose&nbsp;: un jeton DECLARE, ancre sur le DEBUT de son texte.*
+
+    **`asked` est le terme qui manquait.** Le gabarit disait deja que la ligne
+    absente veut dire « pas demande » et que ce « n'est pas la meme chose que
+    neutre » — sans offrir AUCUNE forme pour le neutre. Les deux etats rendaient
+    `value is None` et rien ne les separait, donc « demande et declinee » se
+    relisait comme « jamais demande » et la question se reposait.
+    """
+
+    # Les six puces du rapport, dont la FORME vient du corpus reel. Une seule
+    # paire est legitime : c'est le contraste qui fait la mesure, pas le compte.
+    NOMMEES = (
+        "- **Preference** - asked 2026-09-22: neither preferred nor excluded.\n",
+        "- **Preference** - **asked 2026-09-04, answered neither.**\n"
+        "  absence of a `preferred` / `excluded` line here means *declined*\n",
+        "- **Preference** - not preferred.\n",
+    )
+    DECLAREES = (
+        ("- **Preference** - `excluded`, 2026-09-23. Ne postule plus.\n",
+         "excluded"),
+        ("- **Preference** - `preferred` - *since 2026-08-19 - bon contact*\n",
+         "preferred"),
+    )
+
+    def test_a_value_that_is_only_named_is_never_read_as_declared(self):
+        """*Nommer n'est pas ETRE, et c'est la classe entiere du defaut&nbsp;:
+        toute puce qui cite une valeur sans en etre une.*"""
+        for corps in self.NOMMEES:
+            self.assertIsNone(
+                emp.preference(corps)["value"],
+                "une puce qui NOMME une valeur est lue comme cette valeur : %r"
+                % corps[:70])
+
+    def test_a_declared_value_is_still_read_in_both_genuine_forms(self):
+        """*Le correctif doit laisser passer ce qui passait&nbsp;: sans ce cas, une
+        garde qui refuse TOUT serait verte.*"""
+        for corps, attendu in self.DECLAREES:
+            self.assertEqual(attendu, emp.preference(corps)["value"], corps[:70])
+
+    def test_asked_separates_asked_and_declined_from_never_asked(self):
+        """*Deux etats que `value` seul ne distingue pas&nbsp;: les deux rendent
+        None, et l'un fait reposer la question au candidat.*"""
+        declinee = emp.preference(
+            "- **Preference** - `neither`, 2026-10-13. Demande et declinee.\n")
+        jamais = emp.preference("- **Address** - Rue de l'Exemple 1\n")
+        self.assertIsNone(declinee["value"])
+        self.assertTrue(declinee["asked"],
+                        "une puce de preference EXISTE, donc la question a ete "
+                        "posee : sans ce terme elle se repose")
+        self.assertIsNone(jamais["value"])
+        self.assertFalse(jamais["asked"])
+
+    def test_the_neutral_answer_has_a_declared_form_of_its_own(self):
+        """*Sans forme declaree, « asked and declined » ne s'ecrit que par une
+        ABSENCE, et une absence ne se distingue pas d'un oubli.*"""
+        self.assertEqual("neither", emp.declared_pref("`neither`, 2026-10-13"))
+        self.assertEqual("neither", emp.declared_pref(
+            "neither preferred nor excluded."))
+
+    def test_a_table_row_that_merely_names_a_value_is_not_a_misfiling(self):
+        """*Le controle `misfiled` portait la MEME forme que le defaut, donc il
+        accusait une decision permanente qui citait un des deux mots.*"""
+        mention = ("- **Preference** - `excluded`, 2026-09-23.\n\n"
+                   "| decision | until |\n|---|---|\n"
+                   "| ne pas citer le mot preferred dans une lettre "
+                   "| 2026-12-01 |\n")
+        self.assertFalse(emp.preference(mention)["misfiled"])
+
+    def test_a_table_cell_that_declares_one_still_is_a_misfiling(self):
+        """*Et les deux sens&nbsp;: la garde doit pouvoir TIRER, sinon elle est
+        inerte et son vert dit « je n'ai pas regarde ».*"""
+        declare = ("- **Address** - x\n\n| from | decision | lifted |\n"
+                   "|---|---|---|\n| 2026-09-01 | preferred | 2026-12-01 |\n")
+        self.assertTrue(emp.preference(declare)["misfiled"])
+
+    def test_the_pattern_refuses_a_value_that_is_not_at_the_start(self):
+        """*L'ancre est ce qui porte&nbsp;: une mutation qui retire le `^` doit
+        rougir ICI, et pas seulement sur une puce du corpus.*"""
+        self.assertIsNone(emp.declared_pref("asked, then preferred"))
+        self.assertEqual("preferred", emp.declared_pref("  **`preferred`** x"))
+
+    def test_no_substring_reading_of_a_value_survives_anywhere(self):
+        """**Garde ABSOLUE, et c'est voulu&nbsp;: un `grep` doit rendre ZERO.** *Le
+        defaut est une FORME — le rapport d'issue l'a trouve sous DEUX jeux de
+        noms de variables — donc une garde nommant le specimen laisserait passer
+        la copie suivante. Une garde a exception declaree en recoit une seconde,
+        et la seconde cite la premiere comme precedent.*"""
+        import inspect
+        src = inspect.getsource(emp)
+        self.assertIsNone(
+            re.search(r"for\s+\w+\s+in\s+PREF_VALUES\s*:", src),
+            "une boucle sur PREF_VALUES subsiste : quel que soit le nom de la "
+            "variable, c'est la forme qui lisait une MENTION comme une valeur")
+        corps = inspect.getsource(emp.preference)
+        self.assertIsNone(
+            re.search(r"\.(?:lower|casefold)\(", corps),
+            "preference() abaisse encore la casse d'un texte libre : la casse "
+            "est traitee par re.I DANS le motif ancre, donc il ne doit plus "
+            "rester de texte libre a comparer")
+
+    def test_the_fixture_exercises_the_branch_it_claims_to(self):
+        """*Une fixture qui ne porterait pas les deux mots rendrait ce cas NON
+        EXERCE, pas vert — et les deux rendent le meme vert au balayage.*"""
+        les_deux = [c for c in self.NOMMEES
+                    if "preferred" in c and "excluded" in c]
+        self.assertGreaterEqual(
+            len(les_deux), 2,
+            "le corpus ne porte pas assez de puces NOMMANT les deux valeurs "
+            "pour que la branche fautive soit atteinte")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
