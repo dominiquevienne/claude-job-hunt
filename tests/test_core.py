@@ -15544,10 +15544,25 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         # the two closures no route crosses — counted apart, named, out of
         # «faisable», in «total» — and a card that DECLARES itself indeterminate
         card("wall", "# Wall\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: wall.example -->\n"
-                     "<!-- script: none -->\n<!-- countries: ZZ -->\n\n```\nUser-agent: *\n"
+                     "<!-- script: none -->\n<!-- countries: ZZ -->\n"
+                     "<!-- excluded: refus écrit dans les règles — `User-agent: * / "
+                     "Disallow: /` (borne 1) · 2026-09-11 -->\n\n```\nUser-agent: *\n"
                      "Disallow: /\n```\n")
         card("dead", "# Dead\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: dead.example -->\n"
-                     "<!-- script: none -->\n<!-- countries: ZZ -->\n\n1.1.1.1 NXDOMAIN, 8.8.8.8 NXDOMAIN\n")
+                     "<!-- script: none -->\n<!-- countries: ZZ -->\n"
+                     "<!-- excluded: le nom ne résout pas — NXDOMAIN sur deux résolveurs "
+                     "· 2026-09-11 -->\n\n1.1.1.1 NXDOMAIN, 8.8.8.8 NXDOMAIN\n")
+        # #1136: the PROSE of a card no longer excludes it. This one carries BOTH
+        # removed patterns — a quoted `Disallow: /` block (for ANOTHER host) and
+        # the token NXDOMAIN inside a sentence that DENIES it — and declares no
+        # `excluded:`, so it stays IN «faisable». Before #1136 it left the
+        # denominator and the quotient rose.
+        card("ghost", "# Ghost\n\n<!-- verified: 2026-09-12 -->\n<!-- hosts: ghost.example -->\n"
+                      "<!-- script: none -->\n<!-- countries: ZZ -->\n"
+                      "<!-- content: measured · 7 ads · 2026-09-12 -->\n"
+                      "www.ghost.example is NXDOMAIN but the apex answers NOERROR; this is a\n"
+                      "404 and not an NXDOMAIN. The OTHER host serves:\n\n```\nUser-agent: *\n"
+                      "Disallow: /\n```\n")
         card("shell", "# Shell\n\n<!-- verified: 2026-09-11 -->\n<!-- hosts: s.example -->\n"
                       "<!-- script: none -->\n<!-- countries: ZZ -->\n"
                       "<!-- content: indeterminate · a shell, zero advertisements · 2026-09-11 -->\n")
@@ -15568,7 +15583,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
                          ["alpha", "beta", "delta", "gamma"])
         self.assertNotIn("`README`", out)
         self.assertNotIn("example.py", out)
-        self.assertIn("8 fiches, README exclu", out)       # the population, said
+        self.assertIn("9 fiches, README exclu", out)       # the population, said
         self.assertIn("| Board | Ce qu'il couvre | Accès | Statut | Mesuré |", out)
 
     def test_the_five_numbers_and_the_two_ratios_name_their_denominators(self):
@@ -15625,12 +15640,16 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("fait / total      1 / 4", out)
         self.assertIn("marché du pays", out)
 
-    def test_a_written_refusal_and_a_dead_name_are_excluded_apart_not_feasible(self):
-        """A `Disallow: /` to `*` (bound 1) and an NXDOMAIN on two resolvers
-        are closures no route crosses — neither INDÉTERMINÉ nor faisable —
-        counted apart as «écartés NON validés», named, out of the feasible
-        denominator and in the total; and `content: indeterminate` is the
-        card's own word, read as such."""
+    def test_only_a_declared_exclusion_is_counted_apart_never_the_cards_prose(self):
+        """An exclusion the card DECLARES in `excluded:` is a closure no route
+        crosses — neither INDÉTERMINÉ nor faisable — counted apart as «écartés
+        NON validés», named, out of the feasible denominator and in the total;
+        and `content: indeterminate` is the card's own word, read as such.
+
+        #1136: the two closures used to be INFERRED from the card's prose, and
+        three of four measured fixtures were wrong, all PERMISSIVE. `ghost`
+        carries both retired patterns and declares nothing, so it must stay IN
+        «faisable» — an exclusion is a DECLARATION, never an interpretation."""
         d = self._boards()
         _c, out, _e = self._run("ZZ", "--boards", d)
         self.assertIn("écartés NON validés 2", out)
@@ -15640,9 +15659,14 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — shell", out)
         # #232: the two dated, motivated exclusions leave the denominator;
         # the INDÉTERMINÉ (shell) stays — 0 / 1, not 0 / 0
-        self.assertIn("fait / faisable   0 / 1", out)
-        self.assertIn("fait / total      0 / 3", out)
+        self.assertIn("fait / faisable   0 / 2", out)     # shell + ghost
+        self.assertIn("fait / total      0 / 4", out)
         self.assertIn("écartés VALIDÉS   0", out)
+        # #1136, the direction that matters: a card whose PROSE carries both
+        # retired patterns is NOT excluded, so it is still in the denominator.
+        self.assertNotIn("ghost, wall", out)
+        self.assertNotIn("dead, ghost", out)
+        self.assertIn("ghost", out)
 
     def test_all_counts_per_member_and_never_prints_zero_for_an_unmapped_one(self):
         import tempfile
