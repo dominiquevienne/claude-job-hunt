@@ -15661,12 +15661,56 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         # the INDÉTERMINÉ (shell) stays — 0 / 1, not 0 / 0
         self.assertIn("fait / faisable   0 / 2", out)     # shell + ghost
         self.assertIn("fait / total      0 / 4", out)
-        self.assertIn("écartés VALIDÉS   0", out)
+        # `écartés VALIDÉS` est désormais possedé par
+        # test_the_validated_exclusion_count_declares_that_it_is_not_measured :
+        # l'assertion qui vivait ici ÉPINGLAIT le littéral codé en dur, donc elle
+        # consacrait le défaut, et la répéter ici serait un doublon de garde.
         # #1136, the direction that matters: a card whose PROSE carries both
         # retired patterns is NOT excluded, so it is still in the denominator.
         self.assertNotIn("ghost, wall", out)
         self.assertNotIn("dead, ghost", out)
         self.assertIn("ghost", out)
+
+    def test_the_validated_exclusion_count_declares_that_it_is_not_measured(self):
+        """`écartés VALIDÉS` printed a hard-coded `0` in a column where every
+        other number comes from `n[...]`, and the markdown render added the
+        sentence «aucune fiche ne déclare une exclusion validée par le
+        propriétaire» — a claim about the CORPUS. No FIELD can carry that
+        declaration: `excluded_of()` says in its own docstring that the field
+        declares an exclusion the owner has NOT validated, and §2 sexies
+        records his validations as CLASSES — a public employment service that
+        does not answer, an operator declaring its own platform closed — which
+        no card declares. So the `0` was not a measurement of the corpus but a
+        consequence of the SCHEMA, and it read as «we looked and found none»
+        on a page the owner READS: «un zéro qui affirme au lieu de manquer»,
+        in the direction that denies decisions he had actually granted.
+
+        The defect was a FORM and not a string — THREE sites, and the dues
+        line that carried it named only one: the head docstring (which even
+        asserted «this is 0 and says so»), `render_md`, and the HTML render,
+        which printed it BARE with no sentence at all. The HTML one is the one
+        he reads.
+
+        This guard asserts «not measured», so it must be RETIRED the day a
+        declared field exists — it is wrong the moment the count becomes real,
+        and that is said here rather than left for someone to discover."""
+        d = self._boards()
+        _c, out, _e = self._run("ZZ", "--boards", d)
+        lines = [l for l in out.splitlines() if "écartés VALIDÉS" in l]
+        self.assertEqual(len(lines), 1, out)
+        after = lines[0].split("écartés VALIDÉS", 1)[1].strip()
+        # la position qui compte est celle du COMPTE : le premier jeton après
+        # le libellé. Garde ABSOLUE — aucun chiffre ne s'y remet sans rougir.
+        self.assertFalse(after.split()[0].isdigit(),
+                         "un compte codé en dur là où rien n'est mesuré : " + lines[0])
+        self.assertTrue(after.startswith("NON MESURÉ"), lines[0])
+        # PLANCHER POSITIF, et non un ban de sous-chaîne : l'explication doit
+        # nommer le SCHÉMA. La première écriture interdisait «aucune fiche» et a
+        # ROUGI sur du code CORRECT — la phrase juste dit «… des CLASSES qu'aucune
+        # fiche ne déclare», qui est vraie — troisième espèce de §4 ter, «mal
+        # décrite». Un défaut est une FORME, pas une chaîne, et une chaîne n'est
+        # une valeur que si elle passe un test, jamais parce qu'elle manque à une liste.
+        self.assertIn("aucun CHAMP", lines[0])
 
     def test_all_counts_per_member_and_never_prints_zero_for_an_unmapped_one(self):
         import tempfile

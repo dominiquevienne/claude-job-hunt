@@ -29,8 +29,16 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
     INDÉTERMINÉS        no script, a refusal recorded WITH its date — named one by one
     à REVÉRIFIER        no script and no date, or a refusal with no date (#195 ①: an
                         undated «not feasible» is not a denominator, it is a re-check)
-    écartés VALIDÉS     only what the owner validated (§2 sexies) — no card declares
-                        such a validation today, so this is 0 and says so
+    écartés VALIDÉS     only what the owner validated (§2 sexies). NOT MEASURED, and
+                        the line SAYS so. No FIELD carries that declaration:
+                        `excluded:` declares, by its own docstring, an exclusion the
+                        owner has NOT validated, and his validations are CLASSES
+                        (§2 sexies) that no card declares. A hard-coded `0` sat in a
+                        column where every other number comes from `n[...]`, so it
+                        read as «we looked and found none» on a page HE reads — «un
+                        zéro qui affirme au lieu de manquer» — and it denied the very
+                        class validations he had granted. The HTML render carried it
+                        BARE, with no sentence at all. Retire this the day a field exists.
     écartés NON validés what a card DECLARES in `excluded:` — a closure no route
                         crosses, counted apart, out of «faisable», in «total», named,
                         and still the owner's to validate. Never INFERRED from the
@@ -653,7 +661,7 @@ def render_md(iso2, t, all_cards):
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else ""),
         f"à REVÉRIFIER      {n['reverifier']}     sans date, ou refus sans date"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else ""),
-        f"écartés VALIDÉS   0     aucune fiche ne déclare une exclusion validée par le propriétaire",
+        f"écartés VALIDÉS   NON MESURÉ     aucun CHAMP ne porte cette déclaration — `excluded:` déclare une exclusion que le propriétaire n'a PAS validée, et ses validations sont des CLASSES qu'aucune fiche ne déclare (§2 sexies)",
         f"écartés NON validés {n['ecarte']}   exclusion DÉCLARÉE par la fiche (`excluded:`) — hors de «faisable», dans «total», à valider (§2 sexies)"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"NON FAISABLES     {n['infaisable']}     `route: none` daté et motivé — prime sur `script:` (#404, 13.09.2026 : un script qui ne rend rien ne compte pas)"
@@ -702,7 +710,7 @@ def render_html(iso2, t, all_cards):
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else "") + "\n"
         f"à REVÉRIFIER      {n['reverifier']}"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else "") + "\n"
-        f"écartés VALIDÉS   0\nécartés NON validés {n['ecarte']}"
+        f"écartés VALIDÉS   NON MESURÉ — aucun CHAMP ne porte cette déclaration (§2 sexies)\nécartés NON validés {n['ecarte']}"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else "") + "\n"
         f"NON FAISABLES     {n['infaisable']}"
         + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else "") + "\n"
