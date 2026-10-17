@@ -315,6 +315,20 @@ def _looks_like_rules(body):
 _FETCH = "\0fetch"
 
 
+_SCHEMES = ("https", "http")
+
+
+def _rules_url(host, scheme=_SCHEMES[0]):
+    """The rules URL for a host — composed **in one place**.
+
+    Three call sites used to write `f"https://{host}/robots.txt"` separately:
+    the one that FETCHES and the two that REPORT. A scheme hard-coded at the
+    reporting sites does not fail — it **asserts** a URL that may never have
+    answered, which is the instrument taking the place of its object. #1142.
+    """
+    return f"{scheme}://{host}/robots.txt"
+
+
 def _fetch(host):
     """Read one host's file, and report **which host actually answered**.
 
@@ -326,9 +340,14 @@ def _fetch(host):
     """
     if (host, _FETCH) in _CACHE:
         return _CACHE[(host, _FETCH)]
-    url = f"https://{host}/robots.txt"
+    url = _rules_url(host)
     for attempt, timeout in enumerate(_TIMEOUTS, start=1):
         got = _fetch_once(url, host, timeout)
+        # **Which URL answered, stamped where every exit passes.** Without
+        # this the verdict's `url` is composed downstream from the host alone,
+        # so it can only ever name `https` — see `_rules_url`. #1142.
+        got.setdefault("url", url)
+        got.setdefault("scheme", _SCHEMES[0])
         # **Stamped here, not at each exit.** `_fetch_once` returns from ten
         # places; dating them one by one is a fix per call site, and the
         # eleventh would ship undated. This is the one point they all pass.
@@ -340,6 +359,28 @@ def _fetch(host):
         if (got["state"] != "unreachable"
                 or not got.get("transient", True)
                 or attempt == len(_TIMEOUTS)):
+            if got["state"] == "unreachable" and not got.get("status"):
+                # **The transport failed, so the QUESTION was never put — and
+                # a question never put is not an answer.** `fedgroup.fr`
+                # refuses 443 (errno 61, no TLS listener) and serves its
+                # rules on 80: the host's rules ARE readable, and reading
+                # only `https` reported `no-rules`, i.e. an absence by
+                # IGNORANCE where there was knowledge. The direction is
+                # PERMISSIVE: the same shape on a host serving `Disallow: /`
+                # on port 80 would open borne 1 with no symptom at all,
+                # because the output is well formed and cites #283 correctly.
+                # **A status is an ANSWER and earns no second scheme** — a
+                # 5xx arrives here too, carrying its code, and is excluded on
+                # that key alone. One try, same host, same path. #1142.
+                plain = _fetch_once(_rules_url(host, "http"), host,
+                                    _TIMEOUTS[0])
+                plain["read_at"] = _read_at()
+                plain["attempts"] = attempt + 1
+                plain.setdefault("url", _rules_url(host, "http"))
+                plain["scheme"] = "http"
+                if plain["state"] != "unreachable":
+                    _CACHE[(host, _FETCH)] = plain
+                    return plain
             if got["state"] == "unreachable":
                 # **The last attempt did not read the file — and since
                 # 2026-09-13 (#283) that is an absence of rules.** «toutes
@@ -450,11 +491,16 @@ def rules_fingerprint(host):
         # **It does not fetch to fill this in.** The caller is on a refusal
         # path; a record is not worth a request, and a guard in this
         # repository counts every request that leaves after a refusal.
-        return {"url": f"https://{host}/robots.txt",
+        # **The URL we WOULD ask, and the state says nobody asked it.** This
+        # one is not a claim about an answer, so composing the default is
+        # honest here — `_rules_url` keeps it from drifting from the fetcher.
+        return {"url": _rules_url(host),
                 "state": "not-read-in-this-process"}
     body = got.get("body")
     return {
-        "url": f"https://{host}/robots.txt",
+        # **The scheme that ANSWERED, not the one we tried first.** #1142.
+        "url": got.get("url") or _rules_url(host),
+        "scheme": got.get("scheme"),
         # **A host, and named as one.** `_fetch` reports *which host
         # answered*, not a URL; a key called `final_url` holding `ss.ge`
         # would be read as an address by everything downstream.
