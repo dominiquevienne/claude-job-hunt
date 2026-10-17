@@ -266,14 +266,16 @@ private board's `55.300` against its 28 099 ads: neither figure is an ad count.
 
 `url` is on every record, pointing to the source notice:
 
-| Host | Share of 300 | `robots.txt` |
+| Host | Share of 300 | What we have READ of `robots.txt` |
 | :-- | --: | :-- |
-| `cido.diba.cat` | 250 | **none published** — the request is refused outright |
+| `cido.diba.cat` | 250 | **not established** — both schemes timed out at the transport, measured 2026-10-17 (#1142) |
 | `administracion.gob.es` | 50 | Allows all bots, but **`Crawl-delay: 60` and `Visit-time: 0100-0645` GMT** |
 
-No rule refusing us has been READ on either host, so this is not `empleate.md`'s Tecnoempleo case — and on `cido.diba.cat` that is a statement about one scheme and not about the host. But
+No rule refusing us has been READ on either host, so this is not `empleate.md`'s Tecnoempleo case — and on `cido.diba.cat` nothing has been read either way. But
 `administracion.gob.es` asks for one request a minute inside a 5¾-hour
 overnight window, and **no unattended sweep here could honour that**.
+
+**What we have read of `cido.diba.cat`, and when.** On 2026-10-17 the rules file was asked on BOTH schemes and **neither answered**: `https` timed out through `_robots` (`no-rules-timeout`, no HTTP status, all three rungs), and `http://cido.diba.cat/robots.txt` timed out through `bin/fetch-body.py` at 23:54:14Z (`URLError`, `transport-failure`; provenance kept, body not). A timeout is **neither a refusal nor a permission** — it is indeterminate, so it is a measure to redo and not a verdict, and `source_url_fetch_constraints` stays absent for this host. The claim this replaced said "connection refused", which is not what the instrument reports today either.
 
 So the same rule applies for a different reason: **the ad URL emitted is always
 `empleate.gob.es`**, the source link is carried as `source_url` with its
