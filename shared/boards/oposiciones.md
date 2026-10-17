@@ -271,13 +271,13 @@ private board's `55.300` against its 28 099 ads: neither figure is an ad count.
 | `cido.diba.cat` | 250 | **none published** — the request is refused outright |
 | `administracion.gob.es` | 50 | Allows all bots, but **`Crawl-delay: 60` and `Visit-time: 0100-0645` GMT** |
 
-Neither host refuses us, so this is not `empleate.md`'s Tecnoempleo case. But
+No rule refusing us has been READ on either host, so this is not `empleate.md`'s Tecnoempleo case — and on `cido.diba.cat` that is a statement about one scheme and not about the host. But
 `administracion.gob.es` asks for one request a minute inside a 5¾-hour
 overnight window, and **no unattended sweep here could honour that**.
 
 So the same rule applies for a different reason: **the ad URL emitted is always
 `empleate.gob.es`**, the source link is carried as `source_url` with its
-constraint spelled out in `source_url_fetch_constraints`, and it is there for
+constraint spelled out in `source_url_fetch_constraints` **when the host publishes one**, and it is there for
 the user to click, not for a script to follow. See *When a refused board's ads
 reach us through an open one* in `shared/robots-policy.md` — this is the
 neighbouring case, where the door is open but only on stated terms.

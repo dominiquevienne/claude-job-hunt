@@ -4574,6 +4574,84 @@ class PresenceIsNotBehaviour(unittest.TestCase):
                          "the gate let the run continue")
 
 
+class AFetchConstraintQuotesTheHostOrIsNotEmitted(unittest.TestCase):
+    """#1142 point 4. A dict keyed by a hostname whose value says what that
+    host DOES is a verdict frozen in code, and a frozen verdict survives the
+    repair of the instrument that produced it. `SOURCE_HOSTS` carried
+    `cido.diba.cat` -> "no robots.txt published (connection refused on
+    /robots.txt)" from 2026-09-01, and #1145 made its own parenthesised cause
+    false: a refusal on 443 is one scheme's reading, and 80 was never asked.
+
+    The floor is POSITIVE. A value counts as a constraint only if it quotes
+    the host's own file AND names the directive that imposes it, which an
+    absence cannot do, no directive expressing one. A refusal list would have
+    to enumerate the wordings, and the next one arrives worded otherwise.
+
+    What this map holds is EMITTED, as `source_url_fetch_constraints`, so a
+    claim here reaches the record and not only the source.
+    """
+
+    QUOTED = "robots.txt:"
+    # Every directive a robots.txt can carry that imposes something on a
+    # client. An absence of rules is not among them and cannot be added.
+    DIRECTIVES = ("user-agent", "disallow", "allow", "crawl-delay",
+                  "visit-time", "request-rate", "sitemap", "clean-param",
+                  "host", "noindex")
+
+    def test_every_constraint_quotes_a_published_directive(self):
+        import oposiciones
+        hosts = oposiciones.SOURCE_HOSTS
+        self.assertTrue(hosts, "the map is empty, so this case cannot fire")
+        for host, value in sorted(hosts.items()):
+            self.assertIsInstance(value, str, host)
+            self.assertTrue(
+                value.startswith(self.QUOTED),
+                "SOURCE_HOSTS[{!r}] is emitted as a fetch constraint and does "
+                "not quote the host's own file: {!r}. A value here says what "
+                "the host PUBLISHES; what WE observed goes in a comment or on "
+                "the card, never into the record.".format(host, value))
+            named = [d for d in self.DIRECTIVES if d in value.lower()]
+            self.assertTrue(
+                named,
+                "SOURCE_HOSTS[{!r}] quotes `robots.txt` and names no "
+                "directive, so it imposes nothing: {!r}. An absence of rules "
+                "is not a constraint, it is our reading of one scheme at one "
+                "moment, and it is not emitted.".format(host, value))
+
+    def test_an_unknown_host_emits_nothing_rather_than_a_default(self):
+        """The floor above only governs what the map CONTAINS. A default on the
+        lookup would be emitted without ever appearing in the map, so the read
+        is asserted to carry no second argument -- a host we know nothing about
+        yields nothing, which is what "or nothing" means."""
+        import ast
+        import oposiciones
+        with io.open(oposiciones.__file__, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        reads = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            if (isinstance(fn, ast.Attribute) and fn.attr == "get"
+                    and isinstance(fn.value, ast.Name)
+                    and fn.value.id == "SOURCE_HOSTS"):
+                reads.append(node)
+        self.assertTrue(
+            reads, "no `SOURCE_HOSTS.get(...)` left to judge -- if the read "
+                   "moved, this case is no longer exercised and says nothing")
+        for node in reads:
+            self.assertEqual(
+                len(node.args), 1,
+                "`SOURCE_HOSTS.get` was given a default at line {}: it would "
+                "be emitted for every host absent from the map, which is the "
+                "frozen verdict coming back by a route the floor above cannot "
+                "see.".format(node.lineno))
+            self.assertEqual(
+                node.keywords, [],
+                "`SOURCE_HOSTS.get` was given a keyword at line {}; see "
+                "above.".format(node.lineno))
+
+
 class PartialStillWritesWhatItKept(unittest.TestCase):
     """`jobup.py search` announced rows on stderr and put none on stdout.
 
