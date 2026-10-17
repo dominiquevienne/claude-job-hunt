@@ -399,6 +399,139 @@ class RobotsPaths(unittest.TestCase):
         self.assertEqual(_robots._match_len("", "/anything"), -1)
 
 
+class RobotsOnTheOtherScheme(unittest.TestCase):
+    """A host can refuse 443 and serve its rules on 80 — #1142.
+
+    `fedgroup.fr`, measured 2026-10-17: `https://` is a connection refused
+    (errno 61, no TLS listener), `http://fedgroup.fr/robots.txt` answers 200.
+    **Its rules are readable**, and reading only `https` reported `no-rules`
+    with `certain: false` — an absence by IGNORANCE where there was
+    knowledge. There it was inert (the file is empty both ways). The shape
+    that is not inert is a host serving `Disallow: /` on port 80: #283 turns
+    an unread file into an open door, so **borne 1 would be crossed with no
+    symptom** — the output is well formed and cites the owner's decision
+    correctly.
+
+    The cases are paired on purpose. A transport failure never put the
+    question; **an HTTP status is an answer and earns no second scheme**, and
+    a 5xx arrives on the same `unreachable` state carrying its code, so only
+    the presence of `status` separates them.
+    """
+
+    HOTE = "banc-1142.invalid"
+    REGLES = "User-agent: *\nDisallow: /\n"
+
+    def setUp(self):
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+        self._once = _robots._fetch_once
+        # One attempt, so the retry backoff does not charge the suite seven
+        # seconds for a branch reached on the LAST attempt either way.
+        self._timeouts = _robots._TIMEOUTS
+        _robots._TIMEOUTS = (1,)
+        self.demande = []
+
+    def tearDown(self):
+        _robots._fetch_once = self._once
+        _robots._TIMEOUTS = self._timeouts
+        _robots._CACHE.clear()
+        _robots._ALIAS.clear()
+
+    def _poser(self, sur_http):
+        def faux(url, host, timeout):
+            self.demande.append(url)
+            if url.startswith("https://"):
+                return {"state": "unreachable",
+                        "why": "[Errno 61] Connection refused"}
+            return dict(sur_http, final=host)
+        _robots._fetch_once = faux
+
+    def test_a_transport_refusal_on_443_reads_the_rules_served_on_80(self):
+        self._poser({"state": "read", "status": 200, "bytes": 30,
+                     "body": self.REGLES})
+        got = _robots._fetch(self.HOTE)
+        # Without the fallback this is `no-rules` and the door opens.
+        self.assertEqual(got["state"], "read")
+        self.assertEqual(got["body"], self.REGLES)
+        self.assertTrue(any(u.startswith("http://") for u in self.demande),
+                        "le repli n'a pas ete tente : %r" % (self.demande,))
+
+    def test_the_verdict_names_the_scheme_that_ANSWERED(self):
+        self._poser({"state": "read", "status": 200, "bytes": 30,
+                     "body": self.REGLES})
+        _robots._fetch(self.HOTE)
+        empreinte = _robots.rules_fingerprint(self.HOTE)
+        # **It used to assert `https`, composed downstream from the host
+        # alone** — a URL that never answered, reported as the one that did.
+        self.assertEqual(empreinte["url"],
+                         "http://%s/robots.txt" % self.HOTE)
+        self.assertEqual(empreinte["scheme"], "http")
+
+    def test_rules_read_on_80_bind_so_borne_1_holds(self):
+        self._poser({"state": "read", "status": 200, "bytes": 30,
+                     "body": self.REGLES})
+        verdict = _robots.allowed(self.HOTE, "/offres",
+                                  agents=("claude-user",))
+        # The permissive direction is the whole gravity: this is the
+        # assertion that goes red when the fallback is removed.
+        self.assertIs(verdict["allowed"], False)
+
+    def test_an_http_status_is_an_answer_and_earns_no_second_scheme(self):
+        # A 5xx lands on `unreachable` TOO, and is retried as an incident —
+        # but the host answered, so the question WAS put. If the fallback
+        # fired here it would ask a second question after an answer, which
+        # is load, and it would let a 5xx on 443 be overruled by port 80.
+        self._poser({"state": "read", "status": 200, "body": self.REGLES})
+
+        def faux(url, host, timeout):
+            self.demande.append(url)
+            if url.startswith("https://"):
+                return {"state": "unreachable", "why": "HTTP 503",
+                        "status": 503, "transient": True}
+            return {"state": "read", "status": 200, "final": host,
+                    "body": self.REGLES}
+        _robots._fetch_once = faux
+        got = _robots._fetch(self.HOTE)
+        self.assertEqual(got["state"], "no-rules")
+        self.assertEqual(got["kind"], "no-rules-http-503")
+        self.assertEqual([u for u in self.demande
+                          if u.startswith("http://")], [])
+
+    def test_one_place_composes_a_rules_url_and_the_scheme_is_a_hole(self):
+        """**Absolute, and it costs removing correct code to keep it so.**
+
+        Three sites composed `f"https://{host}/robots.txt"`: the one that
+        FETCHES and the two that REPORT. A hard-coded scheme at a reporting
+        site does not fail — it ASSERTS. A declared exception here would earn
+        a second one, and a count somebody has to judge is not a guard.
+
+        Taken on the AST and never on the text: a docstring that MENTIONS the
+        old form is a `Constant`, an f-string is a `JoinedStr`, and a grep of
+        the source cannot tell prose from code — this very class's docstring
+        and `_rules_url`'s would both match.
+        """
+        import ast
+        with io.open(_robots.__file__, encoding="utf-8") as fichier:
+            arbre = ast.parse(fichier.read())
+        composeurs = []
+        for noeud in ast.walk(arbre):
+            if not isinstance(noeud, ast.JoinedStr):
+                continue
+            squelette = "".join(
+                p.value if isinstance(p, ast.Constant)
+                and isinstance(p.value, str) else "{}"
+                for p in noeud.values)
+            if "/robots.txt" in squelette:
+                composeurs.append((noeud.lineno, squelette))
+        self.assertEqual(len(composeurs), 1,
+                         "un seul site compose l'URL des regles : %r"
+                         % (composeurs,))
+        _ligne, squelette = composeurs[0]
+        self.assertTrue(squelette.startswith("{}://"),
+                        "le schema doit etre un TROU et pas un litteral : %r"
+                        % (squelette,))
+
+
 class RobotsLooksLikeRules(unittest.TestCase):
     """An absent `Content-Type` is not a declaration of HTML. Issue #96."""
 
@@ -1121,6 +1254,11 @@ class RobotsRetry(unittest.TestCase):
         self._sleep = _robots.time.sleep
         _robots.time.sleep = lambda _s: None
         self.calls = []
+        # **The URL, because since #1142 a fourth request can leave and it
+        # does NOT ask the same question**: three rungs on `https`, then one
+        # try on `http` for a host that refused the transport. Counting only
+        # timeouts cannot tell a repetition from a different question.
+        self.urls = []
 
     def tearDown(self):
         _robots._fetch_once = self._real
@@ -1129,14 +1267,28 @@ class RobotsRetry(unittest.TestCase):
     def _answer(self, state):
         def fake(url, host, timeout):
             self.calls.append(timeout)
+            self.urls.append(url)
             return {"state": state, "why": "x", "final": host}
         _robots._fetch_once = fake
 
     def test_an_unreachable_host_is_retried_with_widening_timeouts(self):
         self._answer("unreachable")
         got = _robots._fetch("slow.example")
-        self.assertEqual(self.calls, list(_robots._TIMEOUTS))
-        self.assertEqual(got["attempts"], len(_robots._TIMEOUTS))
+        # The ladder, unchanged and still the point: widening timeouts on the
+        # scheme we ask first.
+        rungs = len(_robots._TIMEOUTS)
+        self.assertEqual(self.calls[:rungs], list(_robots._TIMEOUTS))
+        self.assertTrue(all(u.startswith("https://")
+                            for u in self.urls[:rungs]))
+        self.assertEqual(got["attempts"], rungs)
+        # **And then ONE on the other scheme — #1142.** A transport failure
+        # never put the question, so `http://` is not the same question asked
+        # twice. It is one request, it fires only here, and when it fails too
+        # the verdict is the unchanged absence of rules.
+        self.assertEqual(len(self.calls), rungs + 1)
+        self.assertEqual(self.urls[rungs],
+                         "http://slow.example/robots.txt")
+        self.assertEqual(got["state"], "no-rules")
 
     def test_an_answer_is_not_repeated(self):
         for state in ("read", "absent", "refused", "unreadable"):
@@ -11660,7 +11812,9 @@ class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
         n = []
 
         def fail(*a, **k):
-            n.append(1)
+            # The URL and not a tally: the fourth request is the OTHER
+            # scheme, and a tally cannot tell it from a fourth retry. #1142.
+            n.append(getattr(a[0], "full_url", a[0]))
             raise _robots.urllib.error.URLError("no route")
 
         _robots.urllib.request.urlopen = fail
@@ -11672,7 +11826,11 @@ class TheRetryAsksAgainOnlyWhereAskingAgainCanHelp(unittest.TestCase):
             _robots._BACKOFF = back
             _robots._CACHE.clear()
             _robots._ALIAS.clear()
-        self.assertEqual(len(n), 3)
+        # Three rungs on `https` — the retry this case exists for — and then
+        # the single `http` try of #1142, which asks a different question.
+        self.assertEqual(len([u for u in n if u.startswith("https://")]), 3)
+        self.assertEqual([u for u in n if u.startswith("http://")],
+                         ["http://h.example/robots.txt"])
 
     def test_the_verdict_is_unchanged_by_asking_less(self):
         """Asking fewer times must not change the verdict — and since #283
