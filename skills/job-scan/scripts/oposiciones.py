@@ -98,16 +98,27 @@ ROWS = 100
 # Ours to supply. This endpoint injects nothing — see the module docstring.
 LIVE_FQ = "speStateId:1"
 
-# What the partner links are, and what reading them would cost. Neither host
-# refuses us, so this is not the `empleate.md` case — but `administracion.gob.es`
-# publishes a Crawl-delay of 60 seconds and a Visit-time window of 01:00–06:45
-# GMT, which no unattended fetch here could honour. The link is for the user to
-# click, not for a script to follow.
+# What the partner links are, and what reading them would cost. No rule
+# refusing us has been READ on either host, so this is not the `empleate.md`
+# case — but `administracion.gob.es` publishes a Crawl-delay of 60 seconds and
+# a Visit-time window of 01:00–06:45 GMT, which no unattended fetch here could
+# honour. The link is for the user to click, not for a script to follow.
+#
+# Every value here is QUOTED from what the host publishes, and the suite holds
+# that floor — #1142 point 4. The reason is that an entry keyed by a hostname
+# whose value states what the host DOES is a verdict frozen in code, and a
+# frozen verdict survives the repair of the instrument that produced it. This
+# map carried one until 2026-10-18: `cido.diba.cat` → "no robots.txt published
+# (connection refused on /robots.txt)", written 2026-09-01, and #1145 made its
+# own parenthesised cause false. A connection refused on 443 is our reading of
+# ONE scheme; port 80 has never been asked, by anyone, before or since. That is
+# a fact about our reading and not a constraint the host imposed, so it is not
+# emitted at all — the card says what we read, and the absent field is what
+# "no constraint established" looks like. Saying it here costs a comment; the
+# entry said it to every consumer of the record.
 SOURCE_HOSTS = {
     "administracion.gob.es":
         "robots.txt: Crawl-delay 60, Visit-time 0100-0645 GMT",
-    "cido.diba.cat":
-        "no robots.txt published (connection refused on /robots.txt)",
 }
 
 # open/master/allgroups. A1/A2/B/C1/C2/E are the funcionario grades,
