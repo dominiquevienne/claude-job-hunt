@@ -5369,6 +5369,74 @@ class ALedgerCellIsEscapedAtTheWriteNotRepairedAtTheRead(unittest.TestCase):
                 self.assertRegex(text, r"ledger\.py.? (?:escape|row)",
                                  "this writer does not name the escape")
 
+class AnAuthorisationShipsWithItsCondition(unittest.TestCase):
+    """**A permission transmitted without its condition reads exactly like a
+    permission.** The owner settled issue #184's terms-of-use objection on
+    16.10.2026 in one sentence that carries both halves — *we build the tool*
+    AND *we warn the user that it sits at the margin of the platform's terms*
+    — so a skill that ships the first half alone has published an
+    authorisation nobody gave.
+
+    **The paragraph this guards replaced one that had gone stale in the
+    direction with no symptom.** It said the writing milestones «&nbsp;are a
+    decision the repository owner takes separately&nbsp;», which was true the
+    day it was written and false from 16.10 onward: a session reading it would
+    have withdrawn politely from work that was authorised, and a session that
+    withdraws looks exactly like a session well conducted.
+
+    **The control is taken on the file FLATTENED, and that is the point of
+    this docstring.** `SKILL.md` wraps at about seventy-eight columns, so the
+    owner's verbatim is cut by a newline wherever it happens to fall: a motif
+    typed from intention returns ZERO on text that is present, and that zero
+    reads as «&nbsp;the warning is missing&nbsp;» on a file that carries it.
+    *Measured while writing this: the first form of the check asserted
+    `"nous le\\nprévenons"` and returned 0 on the paragraph it was reading.*
+
+    **What it does not assert**, so that nobody reads more into the green than
+    is there: the skill is milestone 1 and writes nothing, so design B is
+    checked as a WRITTEN BOUND and never as an exercised behaviour.
+    """
+
+    SKILL = ("skills", "linkedin-profile", "SKILL.md")
+
+    def _flat(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with io.open(os.path.join(root, *self.SKILL),
+                     encoding="utf-8") as fh:
+            raw = fh.read()
+        return re.sub(r"\s+", " ", raw), raw
+
+    def test_the_skill_carries_the_warning_and_the_owner_s_own_words(self):
+        flat, _ = self._flat()
+        verbatim = ("Lors de son utilisation par un utilisateur, nous le "
+                    "prévenons que cette fonction est en marge des conditions "
+                    "d'utilisation de la plateforme.")
+        self.assertIn(verbatim, flat,
+                      "the decision's own sentence is not in the skill")
+        self.assertIn("SAY IT, in the first message of the run", flat,
+                      "the skill does not tell the run to give the warning")
+        self.assertIn("margin of LinkedIn's terms of use", flat,
+                      "the warning does not say what it warns about")
+
+    def test_the_skill_states_design_b_and_leaves_a_closed(self):
+        flat, _ = self._flat()
+        self.assertIn("the agent fills, THE USER SAVES", flat)
+        self.assertIn("closed independently of LinkedIn", flat,
+                      "design A must be closed by OUR constraint, not only "
+                      "by the platform's")
+        for step in ("the agent PROPOSES the text", "the user VALIDATES it",
+                     "the agent FILLS the field", "the user SAVES"):
+            with self.subTest(step=step):
+                self.assertIn(step, flat)
+
+    def test_the_stale_sentence_is_gone_and_stays_gone(self):
+        """The negative half: a guard that only checks the warning is present
+        stays green while the contradiction sits two lines above it."""
+        flat, _ = self._flat()
+        self.assertNotIn("a decision the repository owner takes separately",
+                         flat)
+        self.assertNotIn("this skill does not take it for them", flat)
+
 class ATestNamespaceMatchesTheRealParser(unittest.TestCase):
     """A case that builds `argparse.Namespace` by hand bypasses argparse.
 
