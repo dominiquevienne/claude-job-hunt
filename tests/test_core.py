@@ -5437,6 +5437,151 @@ class AnAuthorisationShipsWithItsCondition(unittest.TestCase):
                          flat)
         self.assertNotIn("this skill does not take it for them", flat)
 
+class TheWritingMilestoneCarriesItsBoundsAndItsPositiveFloor(unittest.TestCase):
+    """**The milestone that WRITES cannot be the one that drops the bounds.**
+
+    Issue #184's survey milestone states design B as a written bound, which it
+    can do safely because it writes nothing. This skill fills fields, so the
+    same four steps are a BEHAVIOUR here, and the owner's three other
+    decisions of 08.09.2026 — «&nbsp;affûter&nbsp;», «&nbsp;lire avant toute
+    action&nbsp;», «&nbsp;il est indispensable de faire valider à
+    l'utilisateur&nbsp;» — are what the loop is bounded by.
+
+    **Objection 2 is treated as a POSITIVE floor and not as a list of
+    refusals**, and that is the one assertion here that is doctrinal rather
+    than clerical: the issue enumerates what must never be added — a figure, a
+    scope, a team size, a budget, a technology, a seniority — and a list of
+    refusals bets that the problem was enumerated. The next invented field is
+    the one nobody wrote down. So the file must say that a clause ships only
+    if it can name its source.
+
+    **The control strips the `>` prefixes BEFORE flattening, and that is the
+    whole method.** Flattening alone turns a two-line blockquote into
+    `… writing > anything …`: the stray `>` lands in the middle of the
+    sentence, so a motif that spans the wrap returns ZERO on text that is
+    present. *Measured by the pilot on 18.10.2026 on his own file, one second
+    after writing the verbatim he was looking for: flattened alone 0,
+    flattened with the `>` removed 1.* **And the exposure is the worst
+    possible — the rules of this repository live in quotation, so the blind
+    spot covers the owner's own verbatims, which this control exists to
+    protect.**
+
+    **What it does not assert**, so nobody reads more into the green: the
+    skill has never been run against a real profile. Running it reads and
+    writes the owner's own account, which is his decision and not a step a
+    session takes on its side. The four steps of design B are checked as
+    WRITTEN, and the only thing a suite can establish about a skill is that
+    the file says what it must say.
+    """
+
+    SKILL = ("skills", "linkedin-profile-write", "SKILL.md")
+
+    def _text(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with io.open(os.path.join(root, *self.SKILL), encoding="utf-8") as fh:
+            raw = fh.read()
+        full = re.sub(r"\s+", " ", re.sub(r"(?m)^>\s?", "", raw))
+        naive = re.sub(r"\s+", " ", raw)
+        return raw, full, naive
+
+    def test_the_stripper_runs_before_the_flattener_on_this_file(self):
+        """**The remedy, exercised on the real corpus rather than on a string
+        composed here.** A witness written by the author of the control
+        inherits the author's model of the defect; this one is taken from the
+        file's own blockquotes, and it is structural, so it survives a
+        rewrap."""
+        raw, full, naive = self._text()
+        lines = raw.split("\n")
+        pairs = [i for i in range(len(lines) - 1)
+                 if lines[i].startswith(">") and lines[i + 1].startswith(">")]
+        self.assertTrue(pairs, "this file has no multi-line blockquote, so "
+                               "the case below would pass on a flattener "
+                               "that does not strip anything")
+        i = pairs[0]
+        tail = lines[i].lstrip("> ").split()[-1]
+        head = lines[i + 1].lstrip("> ").split()[0]
+        self.assertIn("%s %s" % (tail, head), full,
+                      "the `>` prefix survived into the flattened text")
+        self.assertIn("%s > %s" % (tail, head), naive,
+                      "the naive form no longer carries the defect this "
+                      "guard describes")
+
+    def test_the_owner_s_four_decisions_are_in_the_file_verbatim(self):
+        _, full, _ = self._text()
+        for verbatim in (
+                "Oui, nous développons l'outil. Lors de son utilisation par "
+                "un utilisateur, nous le prévenons que cette fonction est en "
+                "marge des conditions d'utilisation de la plateforme.",
+                "lire avant toute action",
+                "il est indispensable de faire valider à l'utilisateur",
+                "les champs manquants devront aussi être remplis",
+                "affûter"):
+            with self.subTest(verbatim=verbatim[:40]):
+                self.assertIn(verbatim, full)
+
+    def test_design_b_is_a_behaviour_here_and_saving_stays_with_the_user(self):
+        _, full, _ = self._text()
+        for step in ("the agent PROPOSES the text", "the user VALIDATES it",
+                     "the agent FILLS the field", "the user SAVES"):
+            with self.subTest(step=step):
+                self.assertIn(step, full)
+        self.assertIn("closed independently of LinkedIn", full,
+                      "design A must be closed by OUR constraint, not only "
+                      "by the platform's")
+        self.assertIn("Never click Save, Submit, Post, Publish, Add or Done", full)
+        self.assertIn("exactly as validated", full,
+                      "a text improved between the validation and the "
+                      "keystroke was never the text that was approved")
+
+    def test_objection_two_ships_as_a_positive_floor(self):
+        _, full, _ = self._text()
+        self.assertIn("the floor is positive", full)
+        self.assertIn("only if it can name its source", full)
+        self.assertIn("list of EXAMPLES, not the test", full,
+                      "the enumeration of forbidden additions must be "
+                      "declared as examples, or it reads as the test")
+        self.assertIn("never filled in", full)
+
+    def test_the_reading_is_before_every_write_and_not_once(self):
+        _, full, _ = self._text()
+        self.assertIn("re-read the section you are about to touch", full)
+        self.assertIn("in the same action as the act", full)
+
+    def test_the_contact_fields_are_asked_and_never_pre_filled(self):
+        """The owner's single exception to «&nbsp;fill what is missing&nbsp;»."""
+        _, full, _ = self._text()
+        self.assertIn("« Remplir les champs manquants » ne doit pas devenir "
+                      "« publier des coordonnées personnelles »", full)
+        self.assertIn("ask explicitly whether it is to be filled", full)
+        self.assertIn("never pre-filled from `profile/`", full)
+
+    def test_the_two_most_read_fields_are_written_last(self):
+        _, full, _ = self._text()
+        self.assertIn("written LAST, from everything above", full)
+        self.assertIn("close the session, they do not open it", full)
+
+    def test_a_human_verification_stops_the_run(self):
+        _, full, _ = self._text()
+        self.assertIn("Never attempt it and never ask the user to defeat one",
+                      full)
+        self.assertIn("never trigger a dialog", full)
+
+    def test_the_batch_is_allowed_for_skills_and_refused_for_a_text(self):
+        """*A user who validates ten descriptions at once has read none of
+        them* — the asymmetry is the rule, so both halves are asserted."""
+        _, full, _ = self._text()
+        self.assertIn("A batch validation is acceptable for SKILLS", full)
+        self.assertIn("It is not acceptable for a TEXT", full)
+
+    def test_the_stale_sentence_of_the_first_milestone_is_not_copied_here(self):
+        """The negative half: this file was written by carrying paragraphs
+        over from the milestone that reads, and that file had carried a
+        sentence which went stale in the direction with no symptom."""
+        _, full, _ = self._text()
+        self.assertNotIn("a decision the repository owner takes separately",
+                         full)
+        self.assertNotIn("valoriser au maximum », elle est", full)
+
 class ATestNamespaceMatchesTheRealParser(unittest.TestCase):
     """A case that builds `argparse.Namespace` by hand bypasses argparse.
 

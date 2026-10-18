@@ -81,6 +81,17 @@ plugin says which folder before it writes anything in it.
   because a list would be right on the day it was written; and it never
   proposes a figure, a scope or a team size you have not stated, because a
   number nobody said has to be defended in the interview.*
+- **`linkedin-profile-write`** — **fill the profile, once you have seen the
+  gap.** Works from `linkedin-profile`'s difference, one post at a time, and
+  **never saves**: it proposes each text in the conversation, you validate it
+  there, it types exactly what you validated into the field, and you click
+  Save. *It sharpens rather than sells — it will restructure and condense what
+  you said and refuse to add a figure, a scope or a team size you did not say,
+  because a clause only ships if it can name the sentence it came from.* **It
+  re-reads the section just before writing it**, since a profile edited in
+  another tab is not the profile that was surveyed; and it **asks** before
+  touching a contact field, which is the one place where «&nbsp;fill what is
+  missing&nbsp;» is not the answer.
 - **`interview-rehearsal`** — **sit the interview before you sit it.** The
   agent plays the people across the table, with facets you are not told:
   technical depth, managerial and commercial instinct, warmth or hostility,
@@ -568,6 +579,7 @@ five PDFs remain as a fallback for anyone who prefers them.
 /interview-rehearsal <company>   # …or from the application in your ledger
 /linkedin-profile                # survey your LinkedIn and show what's missing
 /linkedin-watch                  # leads hiding in your network's posts
+/linkedin-profile-write          # fill it in — you validate, you save
 /job-report                      # applications sent this month
 /job-report --interviews         # the ones that reached a meeting
 /job-report --from 2026-07-01 --to 2026-07-31
