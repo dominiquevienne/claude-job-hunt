@@ -348,6 +348,12 @@ def _fetch(host):
         # so it can only ever name `https` — see `_rules_url`. #1142.
         got.setdefault("url", url)
         got.setdefault("scheme", _SCHEMES[0])
+        # **What was TRIED, which is not what ANSWERED.** `scheme` below is
+        # emptied when nobody answered; this one stays, because a reader of
+        # the record cannot otherwise tell "one scheme asked" from "both
+        # asked, neither reachable" — and a record that names only `https`
+        # is true and SILENT about the second request having left. #1142.
+        got.setdefault("schemes_tried", [_SCHEMES[0]])
         # **Stamped here, not at each exit.** `_fetch_once` returns from ten
         # places; dating them one by one is a fix per call site, and the
         # eleventh would ship undated. This is the one point they all pass.
@@ -378,6 +384,13 @@ def _fetch(host):
                 plain["attempts"] = attempt + 1
                 plain.setdefault("url", _rules_url(host, "http"))
                 plain["scheme"] = "http"
+                # **Both were asked, whichever is returned below.** The
+                # fallback can fail too, and then it is `got` that travels:
+                # stamping only `plain` would lose the second request on the
+                # exact path where knowing it was made is what a later
+                # reader needs. #1142.
+                got["schemes_tried"] = [_SCHEMES[0], "http"]
+                plain["schemes_tried"] = list(got["schemes_tried"])
                 if plain["state"] != "unreachable":
                     _CACHE[(host, _FETCH)] = plain
                     return plain
@@ -389,6 +402,16 @@ def _fetch(host):
                 # names what failed, the transport decides next, and a
                 # timeout earns the first request a 10 s wait.
                 got = dict(got, state="no-rules", kind=_failure_kind(got),
+                           # **Nobody answered, so no scheme is named.** A
+                           # status IS an answer and keeps its scheme (a 5xx
+                           # on 443 answered on 443); a transport failure
+                           # never put the question, and leaving `https`
+                           # here reported the scheme we tried FIRST under a
+                           # field whose comment says it names the one that
+                           # ANSWERED. Measured 18.10 on a host where
+                           # neither scheme replies. #1142.
+                           scheme=(got.get("scheme")
+                                   if got.get("status") else None),
                            why=f"the rules file could not be read after "
                                f"{attempt} attempt(s) ({got.get('why')}) — "
                                f"nothing was read, an absence of rules "
@@ -495,12 +518,17 @@ def rules_fingerprint(host):
         # one is not a claim about an answer, so composing the default is
         # honest here — `_rules_url` keeps it from drifting from the fetcher.
         return {"url": _rules_url(host),
+                # **Nothing was asked in this process, so nothing was tried.**
+                "schemes_tried": [],
                 "state": "not-read-in-this-process"}
     body = got.get("body")
     return {
         # **The scheme that ANSWERED, not the one we tried first.** #1142.
         "url": got.get("url") or _rules_url(host),
         "scheme": got.get("scheme"),
+        # **And what was asked, when nothing answered.** Without it the
+        # record cannot say whether the other scheme is still to interrogate.
+        "schemes_tried": list(got.get("schemes_tried") or ()),
         # **A host, and named as one.** `_fetch` reports *which host
         # answered*, not a URL; a key called `final_url` holding `ss.ge`
         # would be read as an address by everything downstream.

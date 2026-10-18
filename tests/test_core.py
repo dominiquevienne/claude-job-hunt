@@ -467,6 +467,53 @@ class RobotsOnTheOtherScheme(unittest.TestCase):
                          "http://%s/robots.txt" % self.HOTE)
         self.assertEqual(empreinte["scheme"], "http")
 
+    def test_when_no_scheme_answers_the_record_names_the_ones_TRIED(self):
+        """Measured 18.10.2026 on `cido.diba.cat`: BOTH schemes time out.
+
+        The record then held `scheme: "https"` — true, and silent about the
+        second request having left. The verdict is `no-rules` either way, so
+        the direction is inoffensive for the DOOR and costly for a MEASURE: a
+        reader of the record cannot tell whether port 80 is still to ask.
+        """
+        def faux(url, host, timeout):
+            self.demande.append(url)
+            return {"state": "unreachable", "why": "timed out"}
+        _robots._fetch_once = faux
+        got = _robots._fetch(self.HOTE)
+        self.assertEqual(got["state"], "no-rules")
+        empreinte = _robots.rules_fingerprint(self.HOTE)
+        # A positive floor: `scheme` counts only when a status proves someone
+        # answered, and no absence can satisfy that.
+        self.assertIsNone(empreinte["scheme"],
+                          "aucun schema n'a repondu, donc aucun ne se nomme")
+        self.assertEqual(empreinte["schemes_tried"], ["https", "http"])
+        self.assertEqual(len([u for u in self.demande
+                              if u.startswith("http://")]), 1)
+
+    def test_the_schemes_TRIED_are_the_ones_tried_and_not_a_constant(self):
+        """The pair is what makes the field a measure instead of a label.
+
+        A field hard-coded to both schemes would pass the case above and say
+        nothing; this one goes red on it.
+        """
+        def faux(url, host, timeout):
+            self.demande.append(url)
+            return {"state": "read", "status": 200, "bytes": 30,
+                    "body": self.REGLES, "final": host}
+        _robots._fetch_once = faux
+        _robots._fetch(self.HOTE)
+        premiere = _robots.rules_fingerprint(self.HOTE)
+        self.assertEqual(premiere["schemes_tried"], ["https"])
+        self.assertEqual(premiere["scheme"], "https")
+        _robots._CACHE.clear()
+        self.demande = []
+        self._poser({"state": "read", "status": 200, "bytes": 30,
+                     "body": self.REGLES})
+        _robots._fetch(self.HOTE)
+        seconde = _robots.rules_fingerprint(self.HOTE)
+        self.assertEqual(seconde["schemes_tried"], ["https", "http"])
+        self.assertEqual(seconde["scheme"], "http")
+
     def test_rules_read_on_80_bind_so_borne_1_holds(self):
         self._poser({"state": "read", "status": 200, "bytes": 30,
                      "body": self.REGLES})
