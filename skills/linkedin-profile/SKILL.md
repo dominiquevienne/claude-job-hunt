@@ -24,10 +24,44 @@ reading and the writing, and the later milestones write.*
 browser is not logged in, stop and say so — do not offer to log in, and never
 ask for a password.*
 
-**LinkedIn's user agreement restricts automated access to the service.** *This
+**LinkedIn's user agreement restricts automated access to the service, and the
+repository owner settled it on 16.10.2026: we build the function, and we tell
+the user.** His decision, verbatim, because a permission that derogates from a
+written rule travels whole or not at all: «&nbsp;Oui, nous développons l'outil.
+Lors de son utilisation par un utilisateur, nous le prévenons que cette fonction
+est en marge des conditions d'utilisation de la plateforme.&nbsp;»
+
+> **SAY IT, in the first message of the run, before reading anything:** this
+> feature operates at the margin of LinkedIn's terms of use; the account is the
+> user's own, the browser is their own, and they are the one who saves.
+
+**The warning is part of the decision and not an improvement on it.** *Shipping
+the function without it would be citing an authorisation without its condition —
+and a condition dropped in transit reads exactly like a permission.* **This
 milestone only reads pages the user is already looking at, which is the mildest
-form; the milestones that write are a decision the repository owner takes
-separately, and this skill does not take it for them.*
+form, and it owes the warning all the same:** *reading a logged-in account with
+a browser tool is already an automated interaction with the service, so «&nbsp;we
+only read&nbsp;» is a reason to keep the warning short, never to skip it.*
+
+**And the design is settled too — the agent fills, THE USER SAVES.** *Design A,
+the agent submitting the form, is closed independently of LinkedIn by a
+constraint of our own: modifying public content takes an explicit permission
+action by action, so no session submits the form for the account holder.* The
+sequence every later milestone obeys:
+
+```
+1. the agent PROPOSES the text   in the conversation, not in the form
+2. the user VALIDATES it          in the conversation
+3. the agent FILLS the field      with the text exactly as validated
+4. the user SAVES                 themselves, in LinkedIn
+```
+
+*Two gestures by the user, not one: the first is on the content, the second on
+the act.* **The bound is written in the milestone that READS rather than in the
+one that writes, on purpose** — *a milestone that opens by choosing its own
+design has already chosen A, and the paragraph this one replaces said the owner
+had yet to decide, which was true when it was written and stopped being true on
+16.10.*
 
 ## Step 1 — enumerate the fields, do not recall them
 
