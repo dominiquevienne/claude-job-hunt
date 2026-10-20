@@ -1332,6 +1332,13 @@ when this section loses the clause, the browser, or the responsibility.**
   rejections, and it is the right setting when time or income is short. This
   number is a **default, not a rule** — every application still passes a
   go/no-go gate where the user decides.
+- **Follow-up delay** (`AskUserQuestion`: 7 / 10 / 14 / 21 days), written to
+  `thresholds.stale_after`. Ask it in the user's terms — *after how many days
+  of silence would you like to be reminded that an application is waiting?* —
+  not as a threshold. Say the two things that bound it: a date an employer
+  promised **always wins** over this delay, so the setting never overrides a
+  commitment someone made; and nothing is sent automatically — `job-report`
+  produces the list and asks. 10 is the owner's decision of 2026-09-30 (#934).
 - **Resume length**: one page strict, or up to three pages with nothing cut.
 - **Compensation estimate**: on by default. Explain what it is before asking —
   at the go/no-go gate, an estimate of what the role pays and where they would

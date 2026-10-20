@@ -152,7 +152,7 @@ by the other.
 marker, or none falls in the window. A meeting nobody recorded looks exactly
 like a meeting that did not happen.
 
-### Follow-ups whose date has arrived
+### Follow-ups — TWO rules, and each line says which one brought it out
 
 **Run this whenever a report is produced**, and put the result at the top:
 
@@ -160,15 +160,43 @@ like a meeting that did not happen.
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/job-scan/scripts/ledger.py" due --within 3
 ```
 
-A `` `FU:YYYY-MM-DD` `` marker is a date **somebody promised in a conversation**
-— *"we will reply by the end of next week"*, *"relance le 14.09"* — and it is
-the one thing a chat transcript cannot keep. An overdue row is the most
-actionable line a report can carry.
+**This heading used to read «&nbsp;whose date has arrived&nbsp;», which
+described half of what the command does** — a sentence true of half a command
+ages without ever becoming false. There are two rules, they are not the same
+claim, and every line names its own:
 
-**When nothing comes back, say which of the two it is**: no row carries a
-follow-up date, or none has arrived. `ledger.py` prints that distinction
-itself; pass it on rather than reporting a clean sheet. `shared/interview-debrief.md`
-is where the marker gets written in the first place. Issue #69.
+| `rule` | what it means | the fields it answers with |
+| :-- | :-- | :-- |
+| `promised` | **somebody named a day** in a conversation — *"we will reply by the end of next week"*, *"relance le 14.09"* | `follow_up`, `days_to_date` — counts DOWN, can be negative |
+| `default` | the application was **sent and nothing came back** for long enough | `applied`, `days_since_applied` — counts UP, never negative |
+
+A promised date **wins**: a row that carries one never also comes out as
+stale, or one application would look like two. The `FU:` marker is the one
+thing a chat transcript cannot keep; `shared/interview-debrief.md` is where it
+gets written. Issues #69 and #934.
+
+**Say it to a person, not as a threshold** (#934 point 3, the owner's own
+example: *«&nbsp;Votre candidature pour le poste de X chez Y date de 12 jours.
+Souhaitez-vous relancer&nbsp;?&nbsp;»*). Write it in the user's language, one
+line per row, and let the rule choose the sentence:
+
+- `default` → *"Your application for **&lt;role&gt;** at **&lt;company&gt;** was
+  sent &lt;`days_since_applied`&gt; days ago and has had no answer. Would you
+  like to follow up?"*
+- `promised` → *"**&lt;company&gt;** said they would come back to you by
+  &lt;`follow_up`&gt;"* — then *"which was &lt;n&gt; days ago"* when
+  `days_to_date` is negative, or *"which is in &lt;n&gt; days"* when it is not.
+
+**Never print the delay itself at the user** — not *"past the 10-day
+threshold"*. It is a setting they may never have opened, and it explains
+nothing about their application. It belongs in the report only when they ask
+why a row came out, and then it comes with its provenance.
+
+**When nothing comes back, say which silence it is**: no row COULD be due —
+none carries a date at all — or none is due yet. `ledger.py` prints that
+distinction itself, with the delay it used and where that value came from
+(the command line, `thresholds.stale_after` in the workspace config, or the
+plugin default). Pass it on rather than reporting a clean sheet.
 
 ### It does not offer to enable a board, and that is deliberate
 

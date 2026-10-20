@@ -278,6 +278,15 @@ thresholds:
   # 55 is a deliberate, "apply broadly" setting; 70 is selective.
   apply_from: 55
 
+  # Days an application may wait with no answer before job-report lists it as
+  # one to follow up. 10 by the owner's decision of 2026-09-30 (#934).
+  #
+  # READ BY `ledger.py due`, which prints which number it used and from where:
+  # a key nobody reads has the shape of a setting that works (#198 is the
+  # precedent — a key that sat here "with a comment declaring it inert").
+  # An employer's own promised date always wins over this delay.
+  stale_after: 10
+
 compensation:
   # At the go/no-go gate, cover-letter estimates what the role pays and where
   # you would land in that range, given your fit and your record.

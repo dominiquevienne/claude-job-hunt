@@ -256,6 +256,60 @@ def due_entry(row_text, status, today, within, stale_after):
             "days_since_applied": age, "state": "stale"}
 
 
+def configured_stale_after():
+    """`(days, where)` for `thresholds.stale_after` — the DELAY's own meaning.
+
+    **Issue #934 point 2.** The flag alone gave the setting somewhere to
+    land; nothing read it, and #198 is this repository's precedent for the
+    cost — a key that sat in a `config.yml` *"with a comment declaring it
+    inert — no flag, no reader"*. A setting written that nothing reads has
+    exactly the shape of a setting that works: the user types 25, the report
+    keeps answering on 10, and no output disagrees with any other.
+
+    **The config is opened by `_override.threshold`, never here.** The guard
+    `test_only_this_one_adapter_reads_the_config` names four files and
+    refuses a fifth; building the path in this module would have widened that
+    door by one exception citing the four before it. Only what a DELAY means
+    lives here — that it is a whole number, and that it is at least a day.
+
+    **An ABSENT key is the ordinary case and returns `(None, where)`**, not a
+    refusal: the default travels with the plugin, and a user who never opened
+    that question is not misconfigured. A typo is no reason to refuse a
+    report either — it falls back, and says which value it refused and why.
+    """
+    try:
+        from _override import threshold
+    except Exception as exc:                      # the repli SAYS its type
+        return None, f"config door unavailable ({type(exc).__name__})"
+    raw, where = threshold("stale_after")
+    if raw is None:
+        return None, where
+    try:
+        n = int(raw)
+    except ValueError:
+        return None, f"{where} is not a whole number of days"
+    if n < 1:
+        return None, (f"{where} is under one day, which would make every "
+                      f"sent application due the moment it is recorded")
+    return n, where
+
+
+def resolve_stale_after(given):
+    """The delay AND where it came from — three provenances, never merged.
+
+    `argparse` carries `default=None` for exactly this: with `default=10`,
+    *not given* and *given as 10* are the same value, so a user who types
+    `--stale-after 10` would be told he is on the default. That is the
+    smallest version of «two provenances for one grandeur, no label».
+    """
+    if given is not None:
+        return given, f"--stale-after {given} on the command line"
+    n, where = configured_stale_after()
+    if n is not None:
+        return n, where
+    return 10, f"the plugin default of 10 day(s) — {where}"
+
+
 def carries_a_date(row_text, status):
     """Whether this row could EVER come out — the denominator of the zero.
 
@@ -279,13 +333,14 @@ def cmd_due(a):
     text = read(a.file)
     cols, rows = ads_table(text, a.file)
     today = dt.date.fromisoformat(a.today) if a.today else dt.date.today()
+    stale, stale_where = resolve_stale_after(a.stale_after)
     by_rule = {"promised": 0, "default": 0}
     dated = 0
     for r, d in zip(rows, parsed(cols, rows, a.file)):
         status = d.get("Status") or ""
         if carries_a_date(r, status):
             dated += 1
-        e = due_entry(r, status, today, a.within, a.stale_after)
+        e = due_entry(r, status, today, a.within, stale)
         if not e:
             continue
         by_rule[e["rule"]] += 1
@@ -302,13 +357,14 @@ def cmd_due(a):
     elif n == 0:
         note(f"nothing is due — {dated} of {len(rows)} row(s) carry a date, "
              f"and none falls within {a.within} day(s) of {today} or has "
-             f"been waiting {a.stale_after} day(s). **That is an answer, not "
-             f"a clean run.**")
+             f"been waiting {stale} day(s) ({stale_where}). **That is an "
+             f"answer, not a clean run.**")
     else:
         note(f"{n} row(s) to follow up: {by_rule['promised']} on a date the "
              f"employer promised (within {a.within} day(s) of {today}), "
-             f"{by_rule['default']} on the {a.stale_after}-day default. "
-             f"Each line names WHICH rule brought it out.")
+             f"{by_rule['default']} on the {stale}-day delay "
+             f"({stale_where}). Each line names WHICH rule brought it "
+             f"out, and the delay names where it came from.")
 
 
 def fingerprint(path):
@@ -462,9 +518,11 @@ def main():
             # **#934: N = 10 by the owner's decision of 2026-09-30.** It is a
             # flag so that the workspace setting has somewhere to land, and
             # the default travels with the plugin rather than with a run.
-            c.add_argument("--stale-after", type=int, default=10,
+            c.add_argument("--stale-after", type=int, default=None,
                            help="days an `applied` row may wait with no "
-                                "answer before it is to follow up")
+                                "answer before it is to follow up. "
+                                "Unset: `thresholds.stale_after` from "
+                                "the workspace config, else 10")
             c.add_argument("--within", type=int, default=3,
                            help="days ahead to include (default 3)")
             c.add_argument("--today", help="YYYY-MM-DD, for testing")
