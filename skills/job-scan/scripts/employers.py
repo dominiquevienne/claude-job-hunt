@@ -220,12 +220,18 @@ def cmd_lookup(a):
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
     except FileNotFoundError:
+        # **#1144, 2026-10-20: `ensure_ascii` belonged to `json.dumps`, not to
+        # `print`.** Misplaced, it raised a TypeError on the ONE path written
+        # to report «nothing is known» — so the branch never printed, stdout
+        # was EMPTY rather than degraded, and EXIT_NO_FILE became a 1. A
+        # caller reading an empty stdout as «nothing recorded» was right for
+        # the wrong reason.
         print(json.dumps({"file": path, "exists": False, "matched": None,
                           "note": "no employers.md — nothing is known about "
                                   "any employer, which is not the same as "
                                   "nothing being true. Say so rather than "
-                                  "proceeding as if it were checked."}),
-              ensure_ascii=False)
+                                  "proceeding as if it were checked."},
+                         ensure_ascii=False))
         return EXIT_NO_FILE
 
     want = fold(a.name)
