@@ -48127,5 +48127,142 @@ class TheAbsentEmployersFileSaysSoInsteadOfRaising(unittest.TestCase):
                          "json.dump/dumps: " + ", ".join(mauvais))
 
 
+class AFollowUpNamesWhichRuleBroughtItOut(unittest.TestCase):
+    """**«Due» without its rule is two findings printed the same way.**
+    #934, the owner's decision of 2026-09-30: *une candidature au statut
+    `applied` sans réponse depuis N jours devient « à relancer ». N = 10
+    jours par défaut, réglable.* A day an employer promised and a default
+    delay are not the same claim, and before this `ledger.py due` could only
+    say the first — a silent application never came out at all.
+
+    **`cmd_due` had NO case in this suite**, measured before writing one:
+    zero occurrences of `cmd_due` or `follow_up` in these 48 000 lines,
+    while two shared cards tell the user to rely on it. So the exercised run
+    below is the first thing that reads its output at all.
+
+    **The floor is POSITIVE and that is asserted on an INVENTED state.**
+    Only `applied` qualifies; the four states that must never come out are
+    not listed anywhere, because a list of refusals bets that we enumerated
+    the problem. The case feeds a `shortlisted 2026-09-01` row that exists
+    in no vocabulary: it must stay out by construction, not by having been
+    remembered.
+
+    **And the boundary is asserted in BOTH directions**, because a fixture
+    sitting exactly on the threshold cannot tell «fires at N» from «fires
+    above N» (§4 ter, 6): ten days comes out, nine does not.
+    """
+
+    HEAD = ("# Job pipeline\n\n## Ads\n\n"
+            "| ID | Role | Company | Location / mode | Posted | Match | Pay "
+            "| Status | Note |\n"
+            "| :-- | :-- | :-- | :-- | :-- | --: | :-- | :-- | :-- |\n")
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_ledger_due", os.path.join(SCRIPTS, "ledger.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _ledger(self, *rows):
+        import tempfile
+        fd, path = tempfile.mkstemp(suffix=".md")
+        os.close(fd)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(self.HEAD + "".join(r + "\n" for r in rows))
+        self.addCleanup(os.unlink, path)
+        return path
+
+    def _due(self, path, *extra):
+        import subprocess
+        import sys as _sys
+        return subprocess.run(
+            [_sys.executable, os.path.join(SCRIPTS, "ledger.py"), "due",
+             "--file", path, "--today", "2026-10-21", *extra],
+            capture_output=True, text=True, timeout=60)
+
+    def test_a_promised_date_outranks_the_default_and_the_row_comes_out_once(self):
+        """**Emitting it under both rules would make one application look
+        like two**, and the row that exposes this carries a send 31 days old
+        AND a date promised for tomorrow."""
+        import datetime as dt
+        mod = self._mod()
+        today = dt.date(2026, 10, 21)
+        both = mod.due_entry("| x | FU:2026-10-22 promised |",
+                            "applied 2026-09-20", today, 3, 10)
+        self.assertEqual(both["rule"], "promised")
+        self.assertEqual(both["follow_up"], "2026-10-22")
+        self.assertNotIn("days_since_applied", both,
+                         "the promised rule is answering with the default "
+                         "rule's field — one field, two grandeurs")
+
+    def test_only_applied_qualifies_and_an_invented_state_stays_out(self):
+        import datetime as dt
+        mod = self._mod()
+        today = dt.date(2026, 10, 21)
+        for status in ("shortlisted 2026-09-01", "todo",
+                       "rejected 2026-08-02", "no-go 2026-08-02",
+                       "discarded 2026-08-02"):
+            with self.subTest(status=status):
+                self.assertIsNone(
+                    mod.due_entry("| x | note |", status, today, 3, 10),
+                    f"{status!r} came out of the default rule")
+        self.assertEqual(
+            mod.due_entry("| x | note |", "applied 2026-10-01",
+                          today, 3, 10)["rule"], "default")
+
+    def test_the_boundary_fires_at_n_and_not_below(self):
+        import datetime as dt
+        mod = self._mod()
+        today = dt.date(2026, 10, 21)
+        ten = mod.due_entry("| x | n |", "applied 2026-10-11", today, 3, 10)
+        nine = mod.due_entry("| x | n |", "applied 2026-10-12", today, 3, 10)
+        self.assertIsNotNone(ten, "ten days did not come out")
+        self.assertEqual(ten["days_since_applied"], 10)
+        self.assertIsNone(nine, "nine days came out")
+
+    def test_the_two_zero_readings_are_two_sentences(self):
+        """**The point of #934 item 4.** «Nothing is due» and «nothing COULD
+        be» used to print one sentence, and a user cannot act on the first
+        the way he acts on the second."""
+        sans = self._ledger(
+            "| z:1 | Never sent | Soylent | UK | 2026-10 | 55 % | — | todo "
+            "| not sent |")
+        avec = self._ledger(
+            "| y:1 | Fresh | Initech | UK | 2026-10 | 75 % | — | applied "
+            "2026-10-19 | fresh |")
+        a, b = self._due(sans), self._due(avec)
+        self.assertEqual((a.returncode, b.returncode), (0, 0),
+                         (a.stderr[-200:], b.stderr[-200:]))
+        self.assertEqual((a.stdout, b.stdout), ("", ""), "a row came out")
+        self.assertIn("NO ROW CARRIES A DATE", a.stderr)
+        self.assertIn("nothing COULD be", a.stderr)
+        self.assertIn("nothing is due", b.stderr)
+        self.assertNotIn("NO ROW CARRIES A DATE", b.stderr,
+                         "a ledger that DOES carry a date is being reported "
+                         "as one that cannot have anything due")
+
+    def test_the_exercised_run_names_the_rule_on_every_line(self):
+        """The real path, end to end: a file on disk, the command as the
+        cards document it, and the lines read back from its stdout."""
+        import json as _json
+        path = self._ledger(
+            "| a:1 | Promise | Acme | UK | 2026-09 | 80 % | — | applied "
+            "2026-09-01 | FU:2026-10-15 agreed |",
+            "| a:3 | Silent | Initech | UK | 2026-09 | 75 % | — | applied "
+            "2026-10-01 | nothing since |",
+            "| a:4 | Fresh | Umbrella | UK | 2026-10 | 60 % | — | applied "
+            "2026-10-18 | fresh |")
+        out = self._due(path)
+        self.assertEqual(out.returncode, 0, out.stderr[-200:])
+        lignes = [_json.loads(l) for l in out.stdout.splitlines() if l.strip()]
+        self.assertEqual(len(lignes), 2, out.stdout)
+        self.assertEqual([l["rule"] for l in lignes], ["promised", "default"])
+        self.assertEqual(lignes[0]["days_to_date"], -6)
+        self.assertEqual(lignes[1]["days_since_applied"], 20)
+        self.assertIn("1 on the 10-day default", out.stderr)
+        self.assertIn("Each line names WHICH rule", out.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -271,7 +271,11 @@ column, the log and everything you say to the user follow the user's
 - **Never strip a `` `FU:YYYY-MM-DD` `` marker.** It is a **follow-up date the
   employer or the candidate named** — *"they will reply by the end of next
   week"*, *"relance le 14.09"* — and it is the one thing a chat transcript
-  cannot keep. `ledger.py due` lists the rows whose date has arrived.
+  cannot keep. `ledger.py due` lists the rows whose date has arrived — and,
+  since #934, also the `applied` rows that have waited the default delay with
+  no answer at all. **Each line says WHICH of the two rules brought it out**,
+  and a promised date outranks the default: a row carrying `FU:` follows ITS
+  date and never comes out twice.
 
   **It does not change the status and it is not an interview state.** A row
   carrying `FU:` is still `applied`; whether the ledger should record that an

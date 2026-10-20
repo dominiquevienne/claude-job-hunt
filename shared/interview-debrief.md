@@ -93,7 +93,10 @@ keeping.
 
 `shared/pipeline-format.md` records `` `FU:` `` as a marker no run strips.
 **`ledger.py due` lists the rows whose date has arrived**, so a promise made in
-a phone call is still visible a week later.
+a phone call is still visible a week later. Since #934 it also lists an
+`applied` row that nobody answered within the default delay, and each line
+names which of the two rules brought it out — **a promised date wins**, so a
+row carrying `FU:` is never reported twice.
 
 ```bash
 python3 "$S/ledger.py" due --within 3
