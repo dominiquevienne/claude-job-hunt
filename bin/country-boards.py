@@ -43,6 +43,12 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
                         crosses, counted apart, out of «faisable», in «total», named,
                         and still the owner's to validate. Never INFERRED from the
                         card's prose (#1136): an exclusion is a declaration.
+                        The count carries its DENOMINATOR — how many cards carry the
+                        field at all — because a dated `route: none` PRECEDES this
+                        field in `classify()` and lands in NON FAISABLES (#404). On
+                        `shared/boards` both are ZERO (0 of 550 cards, measured
+                        2026-10-20), so a bare `0` could not be told from «no card
+                        declares one», and only «the field is unused» is true.
     total               every card declaring the country
 
     fait / faisable   = fait / (total - écartés datés et motivés)
@@ -628,8 +634,15 @@ def table(cards, iso2):
     # indeterminate and the undated stay in, named apart. `fait + faisable`
     # was the flattery #195 ① forbids: it shrank with every host not read.
     # #404: a `route: none` card is dated and motivated by its own line — it leaves «faisable» too
+    # #1136, 2026-10-20 : le COMPTE des fiches PORTANT le champ, mesure a part du
+    # compte d'ecartes. Sur `shared/boards` les deux valent ZERO — 0 sur 550 — donc
+    # « ecartes NON valides 0 » ne distinguait pas « aucune fiche n'en declare » de
+    # « ce champ n'est utilise par personne », et seul le second est vrai. Un compte
+    # porte son denominateur (§4).
+    excl_field = sum(1 for c in own if (c["h"].get("excluded") or "").strip())
     faisable = total - n["ecarte"] - n["infaisable"]
     return {"lines": lines, "n": n, "total": total, "faisable": faisable,
+           "excl_field": excl_field,
             "world": world, "undeclared": undeclared,
             "named_ind": named_ind, "named_rev": named_rev,
             "named_exc": named_exc, "named_inf": named_inf, "named_ood": named_ood}
@@ -662,7 +675,7 @@ def render_md(iso2, t, all_cards):
         f"à REVÉRIFIER      {n['reverifier']}     sans date, ou refus sans date"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else ""),
         f"écartés VALIDÉS   NON MESURÉ     aucun CHAMP ne porte cette déclaration — `excluded:` déclare une exclusion que le propriétaire n'a PAS validée, et ses validations sont des CLASSES qu'aucune fiche ne déclare (§2 sexies)",
-        f"écartés NON validés {n['ecarte']}   exclusion DÉCLARÉE par la fiche (`excluded:`) — hors de «faisable», dans «total», à valider (§2 sexies)"
+        f"écartés NON validés {n['ecarte']} sur {t['excl_field']} fiche(s) portant le champ   exclusion DÉCLARÉE par la fiche (`excluded:`) — hors de «faisable», dans «total», à valider (§2 sexies) ; un `route: none` daté PRIME sur ce champ et compte en NON FAISABLES (#404), donc un 0 sur 0 dit que le champ n'est pas utilisé et non qu'aucune exclusion n'est déclarée"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else ""),
         f"NON FAISABLES     {n['infaisable']}     `route: none` daté et motivé — prime sur `script:` (#404, 13.09.2026 : un script qui ne rend rien ne compte pas)"
         + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else ""),
@@ -710,7 +723,7 @@ def render_html(iso2, t, all_cards):
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else "") + "\n"
         f"à REVÉRIFIER      {n['reverifier']}"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else "") + "\n"
-        f"écartés VALIDÉS   NON MESURÉ — aucun CHAMP ne porte cette déclaration (§2 sexies)\nécartés NON validés {n['ecarte']}"
+        f"écartés VALIDÉS   NON MESURÉ — aucun CHAMP ne porte cette déclaration (§2 sexies)\nécartés NON validés {n['ecarte']} sur {t['excl_field']} fiche(s) portant le champ"
         + (f" — {', '.join(t['named_exc'])}" if t["named_exc"] else "") + "\n"
         f"NON FAISABLES     {n['infaisable']}"
         + (f" — {', '.join(t['named_inf'])}" if t["named_inf"] else "") + "\n"

@@ -16208,6 +16208,93 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         # une valeur que si elle passe un test, jamais parce qu'elle manque à une liste.
         self.assertIn("aucun CHAMP", lines[0])
 
+    def _a_card_declaring_both_closures_and_one_declaring_only_the_field(self):
+        """A fixture directory of its OWN. The shared `_boards()` set is asserted
+        on by this class down to the very list of ISO2 codes it declares
+        («3 ISO2 declared by cards and absent from the members file: XX, YY, ZZ»),
+        so a card added there moves numbers that have nothing to do with this
+        guard — and a guard that has to edit its neighbours' expectations to go
+        green is a guard nobody will keep."""
+        import tempfile
+        d = tempfile.mkdtemp()
+
+        def card(name, body):
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+
+        # `both` has the exact shape of the SIX cards of #1136: a dated,
+        # motivated `route: none` citing the owner's decision of 2026-09-18 and
+        # its issue number — plus the `excluded:` field one might derive FROM it.
+        card("both", "# Both\n\n<!-- verified: 2026-09-19 -->\n"
+                     "<!-- hosts: both.example -->\n<!-- script: none -->\n"
+                     "<!-- countries: QQ -->\n"
+                     "<!-- route: none \u00b7 non faisable \u2014 d\u00e9cision du "
+                     "propri\u00e9taire du 18.09.2026, l'h\u00f4te ne r\u00e9sout pas, "
+                     "#741 \u00b7 2026-09-19 -->\n"
+                     "<!-- excluded: le nom ne r\u00e9sout pas \u2014 NXDOMAIN sur deux "
+                     "r\u00e9solveurs \u00b7 2026-09-19 -->\n")
+        card("exconly", "# Exc\n\n<!-- verified: 2026-09-19 -->\n"
+                        "<!-- hosts: exc.example -->\n<!-- script: none -->\n"
+                        "<!-- countries: QQ -->\n"
+                        "<!-- excluded: refus \u00e9crit dans les r\u00e8gles \u2014 "
+                        "`User-agent: * / Disallow: /` (borne 1) \u00b7 2026-09-19 -->\n")
+        return d
+
+    def test_a_declared_route_none_outranks_the_excluded_field_and_the_count_names_its_denominator(self):
+        """TWO declared closures can sit on the SAME card, and `classify()`
+        resolves that by the ORDER of its branches — `route: none` is tested
+        first and wins — which no fixture carried and no test pinned. The order
+        is load-bearing twice over.
+
+        #1136's last open «Done when» said «les 21 fiches redéclarent leur
+        exclusion», and the dues line derived from it said the SIX cards whose
+        `route:` already cites the owner's decision of 2026-09-18 should carry
+        `excluded:` derived from it. Measured 2026-10-20 by CALLING the module
+        on `shared/boards` (550 cards): all six already classify `infaisable`,
+        `excluded_of()` returns None for every one of them, and ZERO cards carry
+        an `excluded:` field at all — so deriving the field into those six moves
+        no number anywhere, and leaves two fields declaring one closure with the
+        one that DECIDES not being the one the counter reads. A doublon of
+        declaration has no symptom. This guard is what makes that mechanical
+        instead of remembered.
+
+        The second half is the counter. `écartés NON validés` printed a bare
+        count, and on the real corpus that count is `0` while the number of
+        cards carrying the field is ALSO `0` — so the line could not be told
+        from «no card declares a non-validated exclusion», and only «the field
+        is unused» is true. Same family as the hard-coded `écartés VALIDÉS`
+        the test above owns — «un zéro qui affirme au lieu de manquer» — and
+        the remedy is §4's: a count carries its DENOMINATOR.
+
+        Mutation named BEFORE it was run: swapping the two branches of
+        `classify()` moves `both` into `ecarte`, so NON FAISABLES falls to 0
+        and the écartés rise to 2 — this test goes RED on its own assertions,
+        not on an invariant."""
+        d = self._a_card_declaring_both_closures_and_one_declaring_only_the_field()
+        code, out, err = self._run("QQ", "--boards", d)
+        self.assertEqual(code, 0, err)
+        # (1) the PRECEDENCE, read on the lines themselves and never as a
+        # substring of the whole page: the card's name appears in its table row
+        # too, so «both is named» is only a claim about the line that names it.
+        # and the filter is ANCHORED at the start of the line: the sentence this
+        # very change added to the écartés line names «NON FAISABLES (#404)», so
+        # a substring filter matched TWO lines and this test went red on correct
+        # code — a motif tried on the form the data has at the POINT OF CALL.
+        inf = [l for l in out.splitlines() if l.startswith("NON FAISABLES")]
+        exc = [l for l in out.splitlines() if l.startswith("écartés NON validés")]
+        self.assertEqual(len(inf), 1, out)
+        self.assertEqual(len(exc), 1, out)
+        self.assertIn("both", inf[0])
+        self.assertNotIn("exconly", inf[0])
+        self.assertIn("exconly", exc[0])
+        self.assertNotIn("both", exc[0])
+        # (2) the count carries its DENOMINATOR: ONE écarté, but TWO cards carry
+        # the field — the pair is what makes a future 0 legible.
+        self.assertIn("écartés NON validés 1 sur 2 fiche(s) portant le champ", out)
+        # (3) and `both` leaves «faisable» once: 2 - 1 écarté - 1 non faisable
+        self.assertIn("fait / faisable   0 / 0", out)
+        self.assertIn("fait / total      0 / 2", out)
+
     def test_all_counts_per_member_and_never_prints_zero_for_an_unmapped_one(self):
         import tempfile
         d = self._boards()
