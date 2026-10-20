@@ -25,8 +25,11 @@ THE FIVE NUMBERS, AND WHY NOT TWO — #195, 2026-09-08 14:08
                         2026-09-12: a browser route measured to a count is a coverage,
                         decision of 2026-09-08 — «the same data by another layer»; a
                         route to nothing declares no such line)
-    faisable ÉTABLI     no script, a dated measurement, no refusal recorded
-    INDÉTERMINÉS        no script, a refusal recorded WITH its date — named one by one
+    faisable ÉTABLI     no script, a DECLARED `content:` line, no refusal recorded
+    INDÉTERMINÉS        no script, and one of THREE: a refusal recorded WITH its date,
+                        a `content: indeterminate`, or NO `content:` line AT ALL (#1155,
+                        2026-10-20: a date is not a declaration about a route, and the
+                        cell a reader sees said «faisable établi») — named one by one
     à REVÉRIFIER        no script and no date, or a refusal with no date (#195 ①: an
                         undated «not feasible» is not a denominator, it is a re-check)
     écartés VALIDÉS     only what the owner validated (§2 sexies). NOT MEASURED, and
@@ -384,7 +387,12 @@ def classify(card):
     **`route: none` is read FIRST** (#404, 2026-09-13): a card that declares a
     route to nothing is «non faisable» — dated by its own line, motivated by
     its own line — whatever its `script:` says. A script that yields nothing
-    does not count."""
+    does not count.
+
+    **And `faisable` requires a DECLARED `content:` line** (#1155,
+    2026-10-20): a card that carries only a date is `indetermine`, because the
+    cell a reader sees says «faisable établi» and a date is not a declaration
+    about a route."""
     h = card["h"]
     script = h.get("script", "").strip()
     measured = date_of(h.get("content", "")) or date_of(h.get("verified", ""))
@@ -409,8 +417,26 @@ def classify(card):
         if r.get("date"):
             return "indetermine", measured
         return "reverifier", measured
-    if measured:
+    if measured and (h.get("content") or "").strip():
         return "faisable", measured
+    if measured:
+        # **#1155, 2026-10-20: THE DEFAULT CASE OF THIS SORT MUST NOT ASSERT.**
+        # A dated card that declares NO `content:` line says nothing about its
+        # route, and `faisable` is read on the page as «faisable établi» — a
+        # positive claim. Three cards reached here: two whose name does not
+        # resolve (NXDOMAIN on two resolvers) and one carrying a written
+        # `Disallow: /` for `*`, i.e. borne 1 — so the page sent a reader to
+        # build an adapter where the doctrine forbids every route.
+        # **The fact lived in `witness:`, which this function never reads, and
+        # `refusal_of()` only matches lines carrying a 403/429/451** — neither
+        # a NXDOMAIN nor a `Disallow:` is one. The floor is POSITIVE and on a
+        # FIELD, never on the prose: #1136 removed the prose patterns on
+        # purpose, an exclusion being a DECLARATION and not an inference.
+        # `indetermine` and not a closure: `route: none` on a host WE judge
+        # dead is the owner's verdict (§2 sexies), and an indeterminate is a
+        # measurement to redo. Indeterminates COUNT in «faisable», so neither
+        # ratio moves — only the gloss stops claiming.
+        return "indetermine", measured
     return "reverifier", None
 
 
@@ -670,7 +696,7 @@ def render_md(iso2, t, all_cards):
         "```",
         f"fait              {n['fait']}     route livrée (`script:` nomme un .py, ou `route: browser` avec un compte)",
         f"mesuré sans refus {n['faisable']}     daté, aucun refus consigné (ex-«faisable établi» — ce n'est PAS le dénominateur, #232)",
-        f"INDÉTERMINÉS      {n['indetermine']}     refus consigné avec sa date"
+        f"INDÉTERMINÉS      {n['indetermine']}     refus daté, `content: indeterminate`, ou AUCUNE ligne `content:` — une date n'est pas une déclaration de route (#1155)"
         + (f" — {', '.join(t['named_ind'])}" if t["named_ind"] else ""),
         f"à REVÉRIFIER      {n['reverifier']}     sans date, ou refus sans date"
         + (f" — {', '.join(t['named_rev'])}" if t["named_rev"] else ""),
