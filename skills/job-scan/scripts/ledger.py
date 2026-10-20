@@ -208,6 +208,63 @@ def cmd_rows(a):
 
 
 FU_RE = re.compile(r"\bFU:(\d{4})-(\d{2})-(\d{2})\b")
+APPLIED_RE = re.compile(r"^applied\s+(\d{4})-(\d{2})-(\d{2})\b", re.I)
+
+
+def due_entry(row_text, status, today, within, stale_after):
+    """Which of the TWO rules — if either — makes this row come out, NAMED.
+
+    **«Due» without its rule is two findings printed the same way** (#934,
+    owner's decision of 2026-09-30, *N = 10 jours par défaut, réglable*): a
+    day an employer promised and a default delay are not the same claim, and
+    a user reading «due» cannot tell which one he is being shown.
+
+    **A promised date WINS, and the row is then never also stale.** An
+    employer who named a day outranks our delay, and emitting the row under
+    both rules would make one application look like two.
+
+    **The floor is POSITIVE: only `applied` qualifies.** Listing the four
+    states that must never come out — `rejected`, `no-go`, `discarded`,
+    `todo` — would be a list of refusals, and a list of refusals bets that
+    we enumerated the problem. A fifth state added upstream is excluded here
+    by construction rather than by having been remembered.
+
+    **The two rules answer with DIFFERENT fields on purpose.**
+    `days_to_date` counts DOWN to a promised day and can be negative;
+    `days_since_applied` counts UP from a send and never is. One field would
+    be two grandeurs under one name, which is how a number gets read as the
+    other one.
+    """
+    import datetime as dt
+    m = FU_RE.search(row_text)
+    if m:
+        when = dt.date(*map(int, m.groups()))
+        if (when - today).days > within:
+            return None
+        return {"rule": "promised", "follow_up": when.isoformat(),
+                "days_to_date": (when - today).days,
+                "state": "overdue" if when < today else "due"}
+    cell = (status or "").strip()
+    am = APPLIED_RE.search(cell)
+    if not am:
+        return None
+    since = dt.date(*map(int, am.groups()))
+    age = (today - since).days
+    if age < stale_after:
+        return None
+    return {"rule": "default", "applied": since.isoformat(),
+            "days_since_applied": age, "state": "stale"}
+
+
+def carries_a_date(row_text, status):
+    """Whether this row could EVER come out — the denominator of the zero.
+
+    A run that finds nothing has two readings and they are not the same
+    finding: *nothing is due*, or *nothing could be*. Without this, both
+    print one sentence.
+    """
+    return bool(FU_RE.search(row_text)
+                or APPLIED_RE.search((status or "").strip()))
 
 
 def cmd_due(a):
@@ -222,28 +279,36 @@ def cmd_due(a):
     text = read(a.file)
     cols, rows = ads_table(text, a.file)
     today = dt.date.fromisoformat(a.today) if a.today else dt.date.today()
-    n = 0
+    by_rule = {"promised": 0, "default": 0}
+    dated = 0
     for r, d in zip(rows, parsed(cols, rows, a.file)):
-        m = FU_RE.search(r)
-        if not m:
+        status = d.get("Status") or ""
+        if carries_a_date(r, status):
+            dated += 1
+        e = due_entry(r, status, today, a.within, a.stale_after)
+        if not e:
             continue
-        when = dt.date(*map(int, m.groups()))
-        if (when - today).days > a.within:
-            continue
-        n += 1
-        print(json.dumps({
+        by_rule[e["rule"]] += 1
+        print(json.dumps(dict({
             "id": d.get("ID", ""), "company": d.get("Company", ""),
             "role": d.get("Role", ""), "status": status_of(d),
-            "follow_up": when.isoformat(),
-            "days": (when - today).days,
-            "state": "overdue" if when < today else "due",
-        }, ensure_ascii=False))
-    if n == 0:
-        note(f"no follow-up falls within {a.within} day(s) of {today}. "
-             f"**That is an answer, not a clean run**: a row only appears here "
-             f"if somebody wrote `FU:` on it after a meeting.")
+        }, **e), ensure_ascii=False))
+    n = by_rule["promised"] + by_rule["default"]
+    if n == 0 and dated == 0:
+        note(f"NO ROW CARRIES A DATE — {len(rows)} row(s) read, none with a "
+             f"`FU:` marker and none with an `applied <date>` status. **This "
+             f"is not «nothing is due»: nothing COULD be.** The two readings "
+             f"used to print the same sentence.")
+    elif n == 0:
+        note(f"nothing is due — {dated} of {len(rows)} row(s) carry a date, "
+             f"and none falls within {a.within} day(s) of {today} or has "
+             f"been waiting {a.stale_after} day(s). **That is an answer, not "
+             f"a clean run.**")
     else:
-        note(f"{n} follow-up(s) due by {today} + {a.within} day(s).")
+        note(f"{n} row(s) to follow up: {by_rule['promised']} on a date the "
+             f"employer promised (within {a.within} day(s) of {today}), "
+             f"{by_rule['default']} on the {a.stale_after}-day default. "
+             f"Each line names WHICH rule brought it out.")
 
 
 def fingerprint(path):
@@ -394,6 +459,12 @@ def main():
         if name == "rows":
             c.add_argument("--status", default="todo")
         if name == "due":
+            # **#934: N = 10 by the owner's decision of 2026-09-30.** It is a
+            # flag so that the workspace setting has somewhere to land, and
+            # the default travels with the plugin rather than with a run.
+            c.add_argument("--stale-after", type=int, default=10,
+                           help="days an `applied` row may wait with no "
+                                "answer before it is to follow up")
             c.add_argument("--within", type=int, default=3,
                            help="days ahead to include (default 3)")
             c.add_argument("--today", help="YYYY-MM-DD, for testing")
