@@ -16087,7 +16087,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         _c, out, _e = self._run("XX", "--boards", d)
         self.assertIn("fait              1", out)
         self.assertIn("mesuré sans refus 1", out)      # ex-«faisable établi», #232
-        self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — delta", out)
+        self.assertIn("INDÉTERMINÉS      1     refus daté, `content: indeterminate`, ou AUCUNE ligne `content:` — une date n'est pas une déclaration de route (#1155) — delta", out)
         self.assertIn("à REVÉRIFIER      1     sans date, ou refus sans date — gamma", out)
         self.assertIn("total             4", out)
         # #232: the INDÉTERMINÉ (delta) and the à REVÉRIFIER (gamma) stay IN
@@ -16152,7 +16152,7 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         self.assertIn("— dead, wall", out)
         self.assertIn("refus écrit dans les règles", out)
         self.assertIn("NXDOMAIN sur deux résolveurs", out)
-        self.assertIn("INDÉTERMINÉS      1     refus consigné avec sa date — shell", out)
+        self.assertIn("INDÉTERMINÉS      1     refus daté, `content: indeterminate`, ou AUCUNE ligne `content:` — une date n'est pas une déclaration de route (#1155) — shell", out)
         # #232: the two dated, motivated exclusions leave the denominator;
         # the INDÉTERMINÉ (shell) stays — 0 / 1, not 0 / 0
         self.assertIn("fait / faisable   0 / 2", out)     # shell + ghost
@@ -47751,6 +47751,152 @@ class TwoCardsNamingOneHostForOneCountryCountThatSourceTwice(unittest.TestCase):
                              "le double compte")
         finally:
             self._memo = {}
+            shutil.rmtree(d, ignore_errors=True)
+
+
+class ACardThatDeclaresNothingIsIndeterminateAndNeverFeasibleEstablished(unittest.TestCase):
+    """**#1155, rapportee par `ab` le 20.10.2026 DEPUIS LA SORTIE — trois pages
+    pays bloquees — et la cause etablie ICI en EXECUTANT `classify()`, parce
+    qu'une cause de code qu'on n'a pas lancee entre comme RAPPORTEE (§4).**
+
+    La regeneration ecrivait **«mesure sans adaptateur — faisable etabli»** sur
+    `emploimali.net` et `bestjobs.mg`, NXDOMAIN sur deux resolveurs, et sur
+    `jobmada.com`, qui porte un `Disallow: /` ECRIT au groupe `*` — la borne 1,
+    celle qui bloque TOUTES les voies, navigateur compris. *La page envoyait
+    construire un adaptateur la ou la doctrine interdit d'aller.*
+
+    **CE QUE L'EXECUTION DONNE SUR LES TROIS FICHES, et c'est un cran plus
+    precis que «le cas par defaut est faux» :**
+
+        route_none_of   None        route_of   None        excluded_of   None
+        content         ''          refusal_of None        -> ('faisable', '2026-09-11')
+
+    *Les trois declarent leur fait dans `witness:`, un champ que `classify()`
+    ne consulte JAMAIS, et `refusal_of()` ne lit que des lignes portant un
+    403/429/451 : **ni un NXDOMAIN ni un `Disallow: /` n'y matchent**. La fiche
+    ne porte donc aucune declaration sur sa route, et la chute
+    `if measured: return "faisable"` transforme la seule presence d'une date en
+    une ASSERTION POSITIVE.*
+
+    **DISTRIBUTION DE LA BRANCHE SUR LE CORPUS (§4 ter, cinquieme espece), 550
+    fiches, 20.10.2026 :**
+
+        `faisable`                                   106
+          dont `content: measured …`                  89   <- declarent une mesure
+          dont `content: out-of-domain …`             12   <- declarent une CLASSE
+          dont AUCUNE ligne `content:`                 5   <- LA CHUTE PURE
+            bestjobs-mg · emploimali · jobmada           les trois de `ab`
+            saudi-labour-platforms · wantedly            deux de plus, meme branche
+
+    *Le compte recoupe le sien a l'unite : ses cinq cellules sont ESP 2 — deja
+    `indetermine`, honnete — plus MDG 2 et MLI 1.*
+
+    **POURQUOI LE CORRECTIF N'EST PAS DE RELIRE LA PROSE :** #1136 l'a retiree
+    expres, une exclusion est une DECLARATION et jamais une INTERPRETATION.
+    Donc le plancher est POSITIF et il porte sur un CHAMP — `faisable` exige une
+    ligne `content:` declaree — *«une chaine n'est une valeur que si elle passe
+    un test, jamais parce qu'elle manque a une liste»*. Les 12 `out-of-domain`
+    gardent leur classe, puisqu'ils declarent.
+
+    **POURQUOI `indetermine` ET PAS UNE FERMETURE :** ecrire `route: none` sur
+    un hote que NOUS jugeons mort est un verdict de fermeture, reserve au
+    proprietaire (§2 sexies), et un INDETERMINE n'est jamais un renoncement —
+    c'est une mesure a refaire. *La distinction `reverifier` pour une fiche SANS
+    date est conservee : ce qui bouge est le cas «datee mais muette».*
+
+    **MOUVEMENT DES DEUX TERMES, puisqu'un chiffre publie bouge :** les
+    indetermines COMPTENT dans `faisable`, donc `fait / faisable` et
+    `fait / total` ne bougent PAS d'une unite ; ce qui bouge est la ligne
+    `mesure sans refus` (-1 par fiche) et le `dont N indetermine(s)` (+1). *Le
+    quotient est intact et c'est la GLOSE qui cesse d'affirmer — exactement
+    l'ecart que `ab` a mesure.*
+    """
+
+    @staticmethod
+    def _racine():
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _outil(self):
+        spec = importlib.util.spec_from_file_location(
+            "_cb_1155", os.path.join(self._racine(), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _carte(dossier, nom, corps):
+        with io.open(os.path.join(dossier, nom + ".md"), "w", encoding="utf-8") as fh:
+            fh.write(corps)
+
+    def test_no_card_of_the_corpus_is_feasible_without_declaring_a_content_line(self):
+        """**LE CAS DU CORPUS, et il porte sa PREUVE D'EXERCICE.** *Le jour ou
+        plus aucune fiche n'est muette, l'invariant devient vrai par vacuite et
+        se lit comme un vert qui a cherche — donc la population de la branche
+        est comptee, et son absence rend NON EXERCE plutot que vert.*"""
+        mod = self._outil()
+        cartes = mod.read_cards(os.path.join(self._racine(), "shared", "boards"))
+        self.assertGreater(len(cartes), 400, "le corpus n'a pas ete lu")
+        muettes = [c for c in cartes if not (c["h"].get("content") or "").strip()]
+        self.assertTrue(
+            muettes,
+            "AUCUNE fiche muette dans le corpus : cette branche n'est plus "
+            "exercee, et ce cas ne prouve plus rien — il NE passe pas")
+        fautives = ["%s (witness: %s)" % (c["name"],
+                                          (c["h"].get("witness") or "(aucun)")[:60])
+                    for c in muettes if mod.classify(c)[0] == "faisable"]
+        self.assertEqual(
+            fautives, [],
+            "ces fiches ne declarent AUCUNE ligne `content:` et la page ecrit "
+            "pourtant «faisable etabli» sur elles : %s — une date n'est pas une "
+            "declaration sur la route (#1155)" % " ; ".join(fautives))
+
+    def test_the_default_output_of_the_sort_fails_visibly(self):
+        """**LES TROIS SORTIES, sur fixtures, parce que le corpus ne peut plus
+        exercer la branche fautive une fois le correctif pose.** *Et la moitie
+        qui ne doit PAS bouger est assertee avec l'autre : une garde qui ne
+        montre que son rouge ne dit pas ce qu'elle epargne.*"""
+        mod = self._outil()
+        d = tempfile.mkdtemp()
+        try:
+            tete = "<!-- script: none -->\n<!-- countries: XX -->\n"
+            self._carte(d, "declare", "# D\n\n<!-- verified: 2026-10-20 -->\n" + tete +
+                        "<!-- content: measured · 7 ads · 2026-10-20 -->\n")
+            self._carte(d, "muette", "# M\n\n<!-- verified: 2026-10-20 -->\n" + tete +
+                        "<!-- witness: none — the name does not resolve · 2026-10-20 -->\n")
+            self._carte(d, "sans-date", "# S\n\n" + tete +
+                        "Le nom ne resout pas, et rien n'est date.\n")
+            par = {c["name"]: c for c in mod.read_cards(d)}
+            self.assertEqual(mod.classify(par["declare"])[0], "faisable",
+                             "une fiche qui DECLARE une mesure cesserait d'etre "
+                             "faisable — la garde est trop large")
+            self.assertEqual(mod.classify(par["muette"])[0], "indetermine",
+                             "une fiche datee mais muette sur sa route rend "
+                             "encore une assertion POSITIVE")
+            self.assertEqual(mod.classify(par["sans-date"])[0], "reverifier",
+                             "le cas sans date a change de sortie — il doit "
+                             "rester `reverifier` (#195 ①)")
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_cell_a_reader_sees_never_claims_an_established_route(self):
+        """**LA GLOSE EST CE QUI A ETE RAPPORTE, donc elle est assertee la ou le
+        lecteur la lit.** *Epingler la seule classe laisserait passer un
+        `status_of()` qui continue d'ecrire la phrase : le defaut de #1155 est
+        une PHRASE dans une cellule publiee, pas un identifiant interne.*"""
+        mod = self._outil()
+        d = tempfile.mkdtemp()
+        try:
+            self._carte(d, "muette", "# M\n\n<!-- verified: 2026-10-20 -->\n"
+                        "<!-- script: none -->\n<!-- countries: XX -->\n"
+                        "<!-- witness: none — the name does not resolve · 2026-10-20 -->\n")
+            carte = mod.read_cards(d)[0]
+            cls, mesure = mod.classify(carte)
+            cellule = mod.status_of(carte, cls, mesure)
+            self.assertNotIn("faisable établi", cellule,
+                             "la cellule publiee affirme une route etablie sur "
+                             "une fiche qui n'en declare aucune : %r" % cellule)
+            self.assertIn("INDÉTERMINÉ", cellule, cellule)
+        finally:
             shutil.rmtree(d, ignore_errors=True)
 
 
