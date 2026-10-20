@@ -1,11 +1,30 @@
-# Employer ↔ ATS registry — the FORMAT, proposed and not decided (#1094 point 1)
+# Employer ↔ ATS registry — the FORMAT, DECIDED and implemented (#1094 points 1–3)
 
-**This file is a PROPOSAL.** It carries the format, the three decisions that had
-to be taken before the first entry, and **twenty-one entries verified by EXERCISING** — the two of point 1,
+**CORRECTION, 2026-10-21.** *This file said* **«This file is a PROPOSAL»** *and its
+title said* **«proposed and not decided»** *— and both had been false for nine days.*
+The owner decided the format on **2026-10-11**, verbatim: « je valide ta proposition
+avec le fichier contentant les arguments en un bloc », and `083d745f` implemented it
+on **2026-10-12** — the single `args` column that replaced `adapter_param`, which
+named ONE flag where seventeen of twenty-one rows need more.
+
+> **The reserve outlived the decision because the pass that implemented it edited the
+> TABLE and left the paragraph above it standing.** `git log -S'This file is a
+> PROPOSAL' -- shared/employer-ats.md` returns **one** commit — `31ee7982`, 2026-10-07
+> — and this file has been edited three times since. *A stale permission makes you act
+> wrongly and that shows; a stale interdiction makes you OBEY wrongly, and a session
+> that declines to write here looks exactly like a session being careful.* The decision
+> of 11.10 had already nearly been asked for a second time on this ground.
+
+**What the file carries:** the format, the three decisions that had to be taken
+before the first entry, and **twenty-one entries verified by EXERCISING** — the two of point 1,
 plus the nineteen of point 2.
 *It carries the nineteen employers of point 2, read from the owner's `config.yml`
 under the reserve he lifted himself — and NOT his address, his thresholds or his
 document paths: the repository is public and indexed.*
+
+**What is still open is point 4, and it is the OWNER'S**: pointing his own
+`config.yml` at this registry. *Nothing here waits on a decision about the format
+any more, and that is the whole of this correction.*
 
 ## Why a registry at all, measured
 
