@@ -2,11 +2,25 @@
 
 <!-- verified: 2026-09-13 -->
 
-<!-- hosts: www.profesia.sk, profesia.sk, www.profesia.cz, profesia.cz -->
+<!-- hosts: www.profesia.sk, profesia.sk -->
 <!-- script: profesia.py -->
-<!-- countries: SK CZ -->
+<!-- countries: SK -->
 <!-- content: measured · rules read twice and certain on both hosts (2 204 B on `.sk`, 2 201 B on `.cz`, the same file to a few lines: `*` refused 44 paths — language facets, forms, CV routes, `search_offers*form=` — no AI agent named; `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200: `/sitemap.php` (7 264 199 B on `.sk`, 645 638 B on `.cz`) holds 20 407 `<loc>` of which **14 749** advertisements `/praca/<employer>/O<id>` and 5 658 facets on `.sk`, 1 844 of which 1 094 `/prace/…/O<id>` and 750 facets on `.cz`; the listing pages' own search payload states `"count":14773` and `"count":1095` — 24 short and 1 short, two witnesses, neither corrected by the other; no JSON-LD on the advertisement, microdata `datePosted` and labels in two layouts, the employer's `C<id>` apart from the advertisement's `O<id>` · 2026-09-13 17:13 UTC -->
 <!-- witness: the listing page's own `"count":N … "scenario":"standard"` (14 773 on `.sk`, 1 095 on `.cz`, 2026-09-13 17:13 UTC) beside the sitemap's advertisement-shaped URLs (14 749, 1 094) — printed by `profesia.py list` as «n emitted, site states N — k short», never merged; the visible «10000 pracovných ponúk» is a capped popup and is never read -->
+
+**2026-10-20, #1102 — the Czech front leaves this card's HEADERS and stays in
+its prose.** `hosts:` names the board (`bin/host-drift.py`), and the board of
+`profesia.cz` is `profesia-cz.md`, which says so itself: *«this card exists so
+that the Czech host is counted for Czechia»* and *«Not a second adapter»*.
+Declared on BOTH cards, the one Czech source was emitted TWICE on the Czechia
+page — measured by running `bin/country-boards.py CZ`: two rows, `total 11`,
+`fait 10/10`, so the numerator was inflated as much as the denominator and no
+sum could show it. **Nothing measured here is withdrawn**: the rules, the two
+sitemap shapes and the 1 094 against 1 095 below are the SCRIPT's own
+documentation — one script, two hosts, `--host www.profesia.cz` — and they
+stay. What leaves is the COUNTING claim on Czechia, which `profesia-cz.md`
+carries. *A header dropped in silence would have been the suppression that
+#1102 point 2 forbids.*
 
 **Shipped 2026-09-13 under #343 — the first Slovak adapter, and its Czech
 twin under `--host`.** Every fetch under the declared identity, the guard on
