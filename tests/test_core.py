@@ -47900,5 +47900,110 @@ class ACardThatDeclaresNothingIsIndeterminateAndNeverFeasibleEstablished(unittes
             shutil.rmtree(d, ignore_errors=True)
 
 
+class TheAbsentEmployersFileSaysSoInsteadOfRaising(unittest.TestCase):
+    """**The one branch written to report «nothing is known» was the one that
+    raised.** `employers.py lookup` handed `ensure_ascii=False` to `print()`
+    instead of to `json.dumps(...)` — misplaced by a single parenthesis — so
+    the `FileNotFoundError` path died with a TypeError. #1144, reported
+    2026-10-17, measured and fixed 2026-10-20.
+
+    **stdout was EMPTY, not degraded.** A caller does not receive partial
+    JSON, it receives nothing, and `EXIT_NO_FILE` — which is 0, because an
+    absent file is an absence and not an error — became a 1 from a traceback.
+    A step treating "no output" as "nothing recorded" was right for the wrong
+    reason.
+
+    **Two instruments, and neither replaces the other.**
+
+      * the EXERCISED case runs the command against a workspace with no
+        `employers.md` and reads what was printed. **Nothing exercised this
+        branch before**: it was the one path in the module no case traversed,
+        which is how a defect reported on 2026-10-17 survived three days of
+        green suites — §4 ter, the «non exercée» species;
+      * the CORPUS scan asks the same question of every `.py` in the
+        repository through an AST, so the next misplaced `ensure_ascii`
+        cannot land in one of the sixty-five adapters either.
+
+    **The repro in the issue body does not reach the branch**, and that is
+    why the exercised case sets the environment rather than changing
+    directory: `DEFAULT_FILE` is built from `JOB_HUNT_HOME`, which has a
+    default, so running in an empty directory resolves the real workspace
+    file. Measured 2026-10-20: unset -> exit 0 and `exists: True` (56 677 o
+    read); `JOB_HUNT_HOME` on an empty directory -> the branch.
+
+    **The TYPE is asserted and never the message.** Python changed the
+    wording between the report and the fix — `'ensure_ascii' is an invalid
+    keyword argument for print()` became `print() got an unexpected keyword
+    argument 'ensure_ascii'` — and a case pinned to the sentence would have
+    gone red on a defect that had not moved. Here the assertion is stronger
+    still: the branch must SUCCEED, so no message is named at all.
+    """
+
+    def test_the_absent_file_prints_its_json_and_exits_zero(self):
+        import json as _json
+        import subprocess
+        import sys as _sys
+        import tempfile
+        vide = tempfile.mkdtemp()                     # carries no employers.md
+        out = subprocess.run(
+            [_sys.executable, os.path.join(SCRIPTS, "employers.py"),
+             "lookup", "--name", "Elekta"],
+            capture_output=True, text=True, timeout=60,
+            env=dict(os.environ, JOB_HUNT_HOME=vide))
+        self.assertEqual(out.returncode, 0,
+                         "EXIT_NO_FILE is 0; got %r with stderr %r"
+                         % (out.returncode, out.stderr[-200:]))
+        self.assertEqual(out.stderr, "", out.stderr[-200:])
+        self.assertTrue(out.stdout.strip(),
+                        "stdout is EMPTY: the branch printed nothing, which "
+                        "reads to a caller exactly like «nothing recorded»")
+        said = _json.loads(out.stdout)           # raises if it is not JSON
+        self.assertIs(said["exists"], False)
+        self.assertIsNone(said["matched"])
+        self.assertIn("nothing is known", said["note"])
+
+    def test_no_call_but_json_dump_is_handed_ensure_ascii(self):
+        """**Absolute, with no declared exception.** A guard carrying one
+        receives a second, and the second cites the first as precedent — so
+        the question asked here is not «is this print() dangerous» but «does
+        anything other than `json.dump`/`dumps` receive this keyword», which
+        a `grep` cannot answer: the keyword sits up to six lines below the
+        call it belongs to, and a line window renders forty-five false
+        positives on correct code (measured 2026-10-20, the «mal décrite»
+        species). An AST has no window."""
+        import ast
+        import glob
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        vus, mauvais = 0, []
+        for chemin in sorted(glob.glob(os.path.join(racine, "**", "*.py"),
+                                       recursive=True)):
+            if "__pycache__" in chemin:
+                continue
+            with open(chemin, encoding="utf-8") as fh:
+                arbre = ast.parse(fh.read(), filename=chemin)
+            for n in ast.walk(arbre):
+                if not isinstance(n, ast.Call):
+                    continue
+                if not any(k.arg == "ensure_ascii" for k in n.keywords):
+                    continue
+                vus += 1
+                f = n.func
+                nom = (f.attr if isinstance(f, ast.Attribute)
+                       else getattr(f, "id", "?"))
+                if nom not in ("dump", "dumps"):
+                    mauvais.append("%s:%d -> %s()"
+                                   % (os.path.relpath(chemin, racine),
+                                      n.lineno, nom))
+        # PROOF OF EXERCISE: a sweep that finds nothing must say so rather
+        # than pass by vacuity — 817 such calls on 2026-10-20, of which 810
+        # to `dumps` and 6 to `dump`.
+        self.assertGreater(vus, 600,
+                           "NOT EXERCISED: the sweep saw %d call(s) taking "
+                           "ensure_ascii" % vus)
+        self.assertEqual(mauvais, [],
+                         "ensure_ascii handed to something other than "
+                         "json.dump/dumps: " + ", ".join(mauvais))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
