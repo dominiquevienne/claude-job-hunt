@@ -47507,5 +47507,252 @@ class APreferenceThatIsOnlyNamedWasReadAsDeclared(unittest.TestCase):
             "pour que la branche fautive soit atteinte")
 
 
+class TwoCardsNamingOneHostForOneCountryCountThatSourceTwice(unittest.TestCase):
+    """**#1102, trouvee par `ab` le 10.10.2026, remesuree par le pilote, et
+    remesuree ICI le 20.10.2026 en LANCANT le generateur.**
+
+    **LA PREMISSE DE L'ISSUE EST SOUS-COMPTEE ET SON MECANISME EST FAUX.** Elle
+    annonce DEUX paires de fiches declarant le meme hote et impute le double
+    compte au generateur de page. Mesure du 20.10 sur `cc0aa52d` :
+
+        formes declarees par PLUS D'UNE fiche        12   (et non 2)
+        dont `per-tenant` / `per-country`             2   des MARQUEURS, #1074
+        `hosts` dans bin/country-boards.py            1   une DOCSTRING, ligne 14
+
+    **Le generateur ne lit pas `hosts:`** — l'applicabilite d'une fiche a une
+    page vient de `countries:`. *Donc un hote partage, a lui seul, ne gonfle
+    AUCUN denominateur, et la garde que le point 3 de l'issue demande — «le
+    `grep` doit rendre zero» — rougirait sur CINQ fiches `adecco` et SEPT
+    familles d'`ats.py` : l'espece «mal decrite» de §4 ter, rouge sur une
+    configuration saine, et on la retire comme du bruit.*
+
+    **CE QUI DOUBLE REELLEMENT UNE SOURCE EST UNE CONJONCTION DE TROIS
+    CONDITIONS**, et chacune est porteuse. Les trois relachements, sur le MEME
+    corpus et le meme jour :
+
+        hote reel ET meme script ET un pays commun     1 paire   <- profesia
+        sans la condition d'HOTE                      25 paires  ats.py x7, jobup/jobs-ch
+        sans la condition de SCRIPT                    6 paires  madrid, empleate, chile...
+        sans la condition de PAYS                      4 paires  les instances adecco
+
+    *Les 25, les 6 et les 4 sont legitimes par les conventions ECRITES du
+    depot — une fiche par instance pays d'un reseau, un script partage par
+    plusieurs boards. Retirer n'importe lequel des trois conjoncts accuse donc
+    du travail sain, et c'est pourquoi la garde porte les trois.*
+
+    **LA PAIRE MESUREE, ET ELLE EST ETABLIE EN LANCANT L'OUTIL ET NON EN LE
+    RELISANT :** `country-boards.py CZ` emet `profesia-cz` ET `profesia`,
+    `total 11`, `fait 10/10` — le front tcheque d'un SEUL script compte deux
+    fois, et il gonfle le numerateur AUTANT que le denominateur, donc aucune
+    assertion d'arithmetique ne le voit : la somme ferme des deux cotes.
+
+    **ET L'ARBITRAGE EST TRANCHE PAR LES FICHES ELLES-MEMES, pas par nous.**
+    Les deux sont du MEME commit `d8eb729b` (#343) — ce n'est pas une
+    extraction inachevee — et `profesia-cz.md` ecrit dans sa propre prose
+    *«this card exists so that the Czech host is counted for Czechia»* et
+    *«Not a second adapter»*. Donc le front tcheque reste a `profesia-cz.md`,
+    et `profesia.md` — dont `hosts:` NOMME LE BOARD (`host-drift.py`) — cesse
+    de nommer les formes `.cz` et le pays CZ. *La mesure du front tcheque reste
+    dans sa prose : rien n'est supprime en silence (§4, point 2 de l'issue).*
+
+    **CE QUE LA GARDE N'EXIGE PAS, ET IL FAUT LE DIRE :** sur SK les deux
+    fiches restent applicables apres le correctif, par deux hotes DIFFERENTS —
+    le `.cz` servant des annonces slovaques, raison mesuree et ecrite dans le
+    `content:` de `profesia-cz.md`. *Deux sources distinctes d'un meme script
+    sur une page sont la forme de `jobs-ch`/`jobup`, que le depot accepte ; ce
+    qui est un faux est le MEME hote compte deux fois.*
+
+    **LE LECTEUR EST CELUI DU DEPOT, et ce n'est pas un choix de confort :**
+    `declared()` de `bin/host-drift.py`, qui applique deja le filtre de FORME
+    et ANNONCE ce qu'il laisse tomber. *Mesure : `declared()` et le seul champ
+    `hosts:` rendent la MEME paire aujourd'hui, donc le choix ne change aucun
+    resultat — il evite un second parseur, et un second parseur est la
+    facon dont deux copies d'une regle commencent.*
+
+    **DISTRIBUTION DE LA BRANCHE SUR LE CORPUS, parce qu'une garde verte sur
+    une fixture peut etre MORTE sur le corpus (§4 ter, cinquieme espece) :** la
+    branche fautive est MESUREE a 1 paire sur le corpus de `cc0aa52d`, et vide
+    apres le correctif de `profesia.md`. *Le contraste est donc pris sur le
+    corpus REEL et non seulement sur une fixture ; et les fixtures ci-dessous
+    epinglent la NECESSITE des trois conjoncts, qu'un corpus propre ne peut
+    plus exercer.*
+    """
+
+    @staticmethod
+    def _racine():
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _hd(self):
+        spec = importlib.util.spec_from_file_location(
+            "_hd_1102", os.path.join(self._racine(), "bin", "host-drift.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _champ(src, nom):
+        m = re.search(r"(?im)^<!--\s*" + nom + r":\s*(.+?)\s*-->\s*$", src[:4000])
+        return m.group(1).strip() if m else ""
+
+    def _fiches(self, dossier):
+        """Chaque fiche en `(hotes, script, pays)`. **Les hotes viennent de
+        `declared()`**, donc le filtre de forme de #1074 s'applique sans etre
+        recopie ici."""
+        import contextlib
+        import glob
+        cache = getattr(self, "_memo", None)
+        if cache is None:
+            cache = self._memo = {}
+        if dossier in cache:
+            return cache[dossier]
+        mod = self._hd()
+        out = {}
+        for p in sorted(glob.glob(os.path.join(dossier, "*.md"))):
+            n = os.path.basename(p)
+            if n.lower() == "readme.md":
+                continue
+            src = io.open(p, encoding="utf-8", errors="replace").read()
+            with contextlib.redirect_stderr(io.StringIO()):
+                hotes = mod.declared(p) or []
+            out[n] = (set(hotes), self._champ(src, "script"),
+                      set(self._champ(src, "countries").split()))
+        cache[dossier] = out
+        return out
+
+    def _paires(self, dossier, hote=True, script=True, pays=True):
+        """Les paires de fiches que la conjonction retient. Les trois drapeaux
+        existent pour que la MUTATION de chaque conjonct soit un appel, et non
+        une reecriture de la garde."""
+        import itertools
+        f = self._fiches(dossier)
+        out = []
+        for a, b in itertools.combinations(sorted(f), 2):
+            ha, sa, ca = f[a]
+            hb, sb, cb = f[b]
+            if hote and not ha & hb:
+                continue
+            if script and not (sa and sa != "none" and sa == sb):
+                continue
+            if pays and not ca & cb:
+                continue
+            out.append((a, b, sorted(ha & hb), sa, sorted(ca & cb)))
+        return out
+
+    @staticmethod
+    def _dit(doubles):
+        """Le message. **Il vit dans UN seul endroit** : le cas du corpus et le
+        cas de fixture l'eprouvent par le meme chemin, sinon la phrase qu'on
+        verifie n'est pas celle qui sortira."""
+        return " ; ".join(
+            "%s et %s nomment %s, tous deux sous `%s`, et se recouvrent sur %s"
+            % (a, b, ", ".join(h) or "(aucun)", s or "(aucun)", " ".join(c) or "(aucun)")
+            for a, b, h, s, c in doubles)
+
+    @staticmethod
+    def _carte(dossier, nom, hotes, script, pays):
+        with io.open(os.path.join(dossier, nom), "w", encoding="utf-8") as fh:
+            fh.write("# x\n\n<!-- verified: 2026-10-20 -->\n"
+                     "<!-- hosts: %s -->\n<!-- script: %s -->\n"
+                     "<!-- countries: %s -->\n" % (hotes, script, pays))
+
+    def test_no_two_cards_name_one_host_for_one_country_with_one_script(self):
+        """**LE CAS DU CORPUS.** *Le plancher n'est pas un ornement : un dossier
+        qui ne se lit pas rendrait cette assertion vraie PAR VACUITE, et un vert
+        par vacuite se lit exactement comme un vert qui a cherche.*"""
+        dossier = os.path.join(self._racine(), "shared", "boards")
+        self.assertGreater(
+            len(self._fiches(dossier)), 400,
+            "le corpus des fiches n'a pas ete lu — ce cas n'est PAS exerce")
+        doubles = self._paires(dossier)
+        self.assertEqual(
+            doubles, [],
+            "le MEME hote est compte deux fois sur une page : %s — une page "
+            "compte des sources, et deux fiches qui nomment un hote sous un "
+            "seul script en emettent deux lignes (#1102)" % self._dit(doubles))
+
+    def test_each_of_the_three_conditions_is_load_bearing(self):
+        """**LA NECESSITE DES TROIS CONJONCTS, sur des fixtures.** Chaque paire
+        legitime ci-dessous est la forme d'une paire REELLE du depot, et elle
+        doit rester VERTE sous la conjonction tout en rougissant des que son
+        propre conjonct est retire. *Une garde dont on ne peut pas montrer que
+        chaque terme porte quelque chose est une garde dont un terme sera
+        retire par le prochain lecteur.*"""
+        marqueur = HostsAreDeclaredOrDeclaredInapplicable.TOKENS[0]
+        d = tempfile.mkdtemp()
+        try:
+            # deux boards distincts derriere un hote partage (madrid, empleate)
+            self._carte(d, "ha.md", "x.example.com", "a.py", "XA")
+            self._carte(d, "hb.md", "x.example.com", "b.py", "XA")
+            # un script partage par deux boards distincts (jobup / jobs-ch)
+            self._carte(d, "sa.md", "s1.example.com", "s.py", "XB")
+            self._carte(d, "sb.md", "s2.example.com", "s.py", "XB")
+            # les instances pays d'un reseau sous un portail commun (adecco x5)
+            self._carte(d, "ca.md", "p.example.com", "c.py", "XC")
+            self._carte(d, "cb.md", "p.example.com", "c.py", "XD")
+            # LE DEFAUT : un hote, un script, un pays commun (profesia)
+            self._carte(d, "da.md", "d.example.com", "d.py", "XE XF")
+            self._carte(d, "db.md", "d.example.com", "d.py", "XF")
+            # un MARQUEUR n'est pas un hote : ces deux-la ne s'apparient jamais
+            self._carte(d, "ma.md", marqueur, "m.py", "XG")
+            self._carte(d, "mb.md", marqueur, "m.py", "XG")
+
+            self.assertEqual(
+                self._fiches(d)["ma.md"][0], set(),
+                "%r a traverse le lecteur comme un nom de machine — le filtre "
+                "de forme de host-drift.py n'est pas celui qui tourne ici"
+                % marqueur)
+
+            def noms(**kw):
+                return {(a, b) for a, b, _h, _s, _c in self._paires(d, **kw)}
+
+            self.assertEqual(
+                noms(), {("da.md", "db.md")},
+                "la conjonction retient autre chose que le defaut : %s"
+                % self._dit(self._paires(d)))
+            self.assertIn(("da.md", "db.md"), noms(hote=False))
+            self.assertIn(("sa.md", "sb.md"), noms(hote=False),
+                          "sans la condition d'HOTE, deux boards distincts sur "
+                          "un script partage sont accuses — 25 paires sur le "
+                          "corpus du 20.10.2026")
+            self.assertNotIn(("ha.md", "hb.md"), noms(hote=False))
+            self.assertIn(("ha.md", "hb.md"), noms(script=False),
+                          "sans la condition de SCRIPT, deux boards distincts "
+                          "derriere un hote partage sont accuses — 6 paires")
+            self.assertNotIn(("sa.md", "sb.md"), noms(script=False))
+            self.assertIn(("ca.md", "cb.md"), noms(pays=False),
+                          "sans la condition de PAYS, les instances pays d'un "
+                          "reseau sont accusees — 4 paires")
+            self.assertNotIn(("ca.md", "cb.md"), noms())
+        finally:
+            self._memo = {}
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_message_names_the_two_cards_the_host_and_the_script(self):
+        """**PREUVE D'EXERCICE DE LA BRANCHE FAUTIVE, le jour ou le corpus est
+        propre.** *La branche a ete MESUREE rouge sur le corpus de `cc0aa52d` ;
+        une fois `profesia.md` corrige, plus aucune fiche ne l'atteint — et une
+        branche que rien n'atteint est l'espece que §4 ter nomme en cinquieme,
+        verte sur la fixture et morte sur le corpus. Cette fixture la garde
+        atteignable, et elle eprouve le MESSAGE : un rouge qui ne nomme pas les
+        deux fiches envoie chercher la paire a la main.*"""
+        d = tempfile.mkdtemp()
+        try:
+            self._carte(d, "avant-a.md", "www.exemple.cz, exemple.cz", "e.py", "CZ SK")
+            self._carte(d, "avant-b.md", "www.exemple.sk, www.exemple.cz", "e.py", "SK CZ")
+            doubles = self._paires(d)
+            self.assertEqual(len(doubles), 1, self._dit(doubles))
+            dit = self._dit(doubles)
+            for attendu in ("avant-a.md", "avant-b.md", "www.exemple.cz", "e.py", "CZ"):
+                self.assertIn(attendu, dit,
+                              "le message ne nomme pas %r" % attendu)
+            self.assertNotIn("www.exemple.sk", dit,
+                             "le message nomme un hote que les deux fiches ne "
+                             "partagent PAS — il decrit alors autre chose que "
+                             "le double compte")
+        finally:
+            self._memo = {}
+            shutil.rmtree(d, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
