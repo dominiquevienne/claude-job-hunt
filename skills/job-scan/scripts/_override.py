@@ -25,7 +25,7 @@ it must quote the SENTENCE — `no boards.<board>.override_robots: true in
 
 import os
 
-__all__ = ["enabled", "board_value", "contact"]
+__all__ = ["enabled", "board_value", "contact", "threshold"]
 
 
 def enabled(board):
@@ -69,3 +69,59 @@ def board_value(board, key):
 def contact(board):
     """The user's own contact address for a host that asks who is calling — `(value, where)`, the value for the wire only."""
     return board_value(board, "contact")
+
+
+def threshold(key):
+    """`(text, where)` for a `thresholds.<key>` scalar — THROUGH the one door.
+
+    **The guard `test_only_this_one_adapter_reads_the_config` named four
+    files and refused a fifth, and it was right to.** #934 point 2 needs
+    `thresholds.stale_after` in `ledger.py`, and the obvious move — build the
+    path there — would have widened the door by one exception citing the four
+    before it as precedent, *which reads as consistency*. So the DOOR stays
+    here and only the MEANING travels: this returns the raw text, and the
+    caller decides what a valid value for its own key is. Nothing about a
+    delay, a score or a length belongs in this file.
+
+    **Not `read_boards`**: that parser requires a `boards:` block and dies
+    without one, which is right for a board key and wrong here — a config
+    carrying only `thresholds:` is a config, and a missing block must be an
+    absent setting rather than a refusal.
+
+    `where` names what was consulted on every path, including the ones that
+    find nothing: a value that came from this file and a value that came from
+    a caller's own default read identically otherwise, and that is how a
+    figure acquires a provenance it never had.
+    """
+    from _secrets import _workspace
+    ws = _workspace()
+    if not ws:
+        return None, "no workspace resolved (JOB_HUNT_HOME unset, nothing remembered)"
+    path = os.path.join(ws, "config.yml")
+    if not os.path.exists(path):
+        return None, f"no config.yml at {path}"
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError as exc:
+        return None, f"{path} could not be read ({type(exc).__name__})"
+    inside = False
+    for raw in lines:
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if not raw.startswith((" ", "\t")):
+            # `boards:` takes indented keys too, so a reader that matched on
+            # the key alone would take it from anywhere in the file — which is
+            # how one board's setting silently becomes a global one.
+            inside = raw.rstrip() == "thresholds:"
+            continue
+        if not inside:
+            continue
+        name, _, val = raw.strip().partition(":")
+        if name.strip() != key:
+            continue
+        val = val.split("#", 1)[0].strip()
+        if val:
+            return val, f"thresholds.{key}: {val} in {path}"
+        return None, f"thresholds.{key} in {path} has no value"
+    return None, f"no thresholds.{key} in {path}"

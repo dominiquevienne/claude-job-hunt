@@ -48173,13 +48173,36 @@ class AFollowUpNamesWhichRuleBroughtItOut(unittest.TestCase):
         self.addCleanup(os.unlink, path)
         return path
 
-    def _due(self, path, *extra):
+    def _ws(self, config_text=None):
+        """A workspace of our own. **Not a convenience: an isolation.**
+
+        `ledger.py due` reads `thresholds.stale_after` since #934 point 2, and
+        `_secrets._workspace()` falls back to a REMEMBERED folder when
+        `JOB_HUNT_HOME` is unset — so a subprocess inheriting this
+        environment reads the real user's `config.yml`. Measured on
+        2026-10-21: the run below named
+        `/Users/.../job_applications/config.yml` in its own output. These
+        cases were green only because that file happens not to carry the key;
+        the day its owner sets it, the suite turns red for a reason that has
+        nothing to do with this code.
+        """
+        import tempfile
+        d = tempfile.mkdtemp()
+        if config_text is not None:
+            with open(os.path.join(d, "config.yml"), "w",
+                      encoding="utf-8") as fh:
+                fh.write(config_text)
+        return d
+
+    def _due(self, path, *extra, ws=None):
         import subprocess
         import sys as _sys
+        env = dict(os.environ)
+        env["JOB_HUNT_HOME"] = ws if ws is not None else self._ws()
         return subprocess.run(
             [_sys.executable, os.path.join(SCRIPTS, "ledger.py"), "due",
              "--file", path, "--today", "2026-10-21", *extra],
-            capture_output=True, text=True, timeout=60)
+            capture_output=True, text=True, timeout=60, env=env)
 
     def test_a_promised_date_outranks_the_default_and_the_row_comes_out_once(self):
         """**Emitting it under both rules would make one application look
@@ -48260,8 +48283,153 @@ class AFollowUpNamesWhichRuleBroughtItOut(unittest.TestCase):
         self.assertEqual([l["rule"] for l in lignes], ["promised", "default"])
         self.assertEqual(lignes[0]["days_to_date"], -6)
         self.assertEqual(lignes[1]["days_since_applied"], 20)
-        self.assertIn("1 on the 10-day default", out.stderr)
+        self.assertIn("1 on the 10-day delay", out.stderr)
+        self.assertIn("the plugin default of 10 day(s)", out.stderr)
         self.assertIn("Each line names WHICH rule", out.stderr)
+
+    # ---- #934 point 2 : le reglage de l'espace de travail -----------------
+
+    SILENT = ("| a:3 | Silent | Initech | UK | 2026-09 | 75 % | — | applied "
+              "2026-10-01 | nothing since |")
+
+    def test_the_workspace_setting_is_READ_and_governs_the_delay(self):
+        """**#934 point 2, and the half that makes the other half true.**
+
+        The flag alone gave the setting somewhere to land. Nothing read it —
+        and #198 is this repository's own precedent for the cost: a key that
+        sat in a user's `config.yml` *"with a comment declaring it inert — no
+        flag, no reader"*. A setting written that nothing reads has exactly
+        the shape of a setting that works: the user types 20, the report
+        keeps answering on 10, and no output disagrees with any other.
+
+        A 20-day row under a 20-day setting is the case that SEPARATES the
+        two: on the plugin default it comes out, on the setting it does not.
+        """
+        path = self._ledger(self.SILENT)
+        libre = self._due(path)
+        self.assertEqual(len(libre.stdout.splitlines()), 1, libre.stdout)
+
+        ws = self._ws("thresholds:\n  apply_from: 55\n  stale_after: 25\n")
+        tenu = self._due(path, ws=ws)
+        self.assertEqual(tenu.stdout.strip(), "", tenu.stdout)
+        self.assertIn("nothing is due", tenu.stderr)
+        self.assertIn("waiting 25 day(s)", tenu.stderr)
+        self.assertIn("thresholds.stale_after: 25 in ", tenu.stderr)
+
+    def test_an_explicit_flag_WINS_and_is_never_called_the_default(self):
+        """**`default=None` in the parser is what this case buys.**
+
+        With `default=10`, *not given* and *given as 10* are the same value,
+        so a user who types `--stale-after 10` would be told he is on the
+        default — and a configured 10 and a defaulted 10 would read alike.
+        Three provenances, three sentences, and the one that is a command
+        line says so.
+        """
+        path = self._ledger(self.SILENT)
+        ws = self._ws("thresholds:\n  stale_after: 25\n")
+        out = self._due(path, "--stale-after", "10", ws=ws)
+        self.assertEqual(len(out.stdout.splitlines()), 1,
+                         "the explicit flag lost to the configured value")
+        self.assertIn("--stale-after 10 on the command line", out.stderr)
+        self.assertNotIn("plugin default", out.stderr)
+        self.assertNotIn("thresholds.stale_after: 25", out.stderr)
+
+    def test_a_value_that_cannot_be_a_delay_falls_back_and_SAYS_WHY(self):
+        """A config is hand-written, so it carries typos — and the repli must
+        not be silent. **Zero is the dangerous one**: it is a whole number, it
+        parses, and it would make every application due the moment it is
+        recorded. Both refusals name the file and quote the value; neither
+        dies, because a typo in a threshold is no reason to refuse a report.
+        """
+        path = self._ledger(self.SILENT)
+        for brut, dit in (("0", "under one day"), ("dix", "not a whole number"),
+                          ("-3", "under one day")):
+            out = self._due(path, ws=self._ws(
+                "thresholds:\n  stale_after: %s\n" % brut))
+            self.assertEqual(out.returncode, 0, f"{brut}: {out.stderr[-200:]}")
+            self.assertIn("plugin default of 10", out.stderr, brut)
+            self.assertIn(dit, out.stderr, brut)
+
+    def test_the_same_word_under_another_block_changes_NOTHING(self):
+        """`boards:` also takes indented keys. A reader that matched on the
+        key alone would take `stale_after` from anywhere in the file, which is
+        how a board's setting becomes a global one."""
+        path = self._ledger(self.SILENT)
+        out = self._due(path, ws=self._ws(
+            "boards:\n  jobup:\n    enabled: true\n    stale_after: 99\n"
+            "thresholds:\n  apply_from: 55\n"))
+        self.assertEqual(len(out.stdout.splitlines()), 1, out.stdout)
+        self.assertIn("plugin default of 10", out.stderr)
+        self.assertIn("no thresholds.stale_after in ", out.stderr)
+
+    def test_the_template_declares_the_key_AND_a_reader_exists(self):
+        """The #198 defect, for this key: declared and inert.
+
+        **This is deliberately NOT the general invariant**, and the reason is
+        measured, not assumed. Of the 35 scalar keys in
+        `templates/config.example.yml`, **12 are named nowhere in any `.py`
+        or `.sh`** — `apply_from`, `resume_length`, `work_modes`,
+        `home_base`… Those are read by a skill's PROSE, by the agent, and
+        they are perfectly sound. A repo-wide «every key has a code reader»
+        guard would be red on all twelve: the third species of §4 ter, red on
+        correct configuration, and it would be switched off within a day.
+
+        **What separates this key is what consumes it: arithmetic.**
+        `apply_from` is a number a human weighs; `stale_after` is an input to
+        a comparison a script performs, so a script must be the one to read
+        it. That is the line the guard draws, and it draws it for one key.
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "templates", "config.example.yml"),
+                  encoding="utf-8") as fh:        # `with`, #210 : une
+            tpl = fh.read()                       # poignee ouverte NOMME
+                                                  # le fichier sur stderr
+        self.assertIn("stale_after: 10", tpl, "the key has no documented home")
+        bloc = tpl.split("thresholds:", 1)[1].split("\n\n\n", 1)[0]
+        self.assertIn("stale_after", bloc,
+                      "the key is in the file but not under `thresholds:`, "
+                      "which is the only block the reader looks in")
+        with open(os.path.join(SCRIPTS, "ledger.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        # **the CALL, not the word.** The door guard makes exactly this
+        # point about itself: «a docstring that names the parser is not a
+        # read». Asserting the string `thresholds.stale_after` would stay
+        # green with the reading deleted and the docstring left behind.
+        self.assertIn('threshold("stale_after")', src,
+                      "the template declares a key that no code reads — the "
+                      "#198 defect, which is invisible in every output")
+        with open(os.path.join(SCRIPTS, "_override.py"),
+                  encoding="utf-8") as fh:
+            porte = fh.read()
+        self.assertIn("def threshold(", porte,
+                      "the reading moved out of the one file allowed to "
+                      "open the config")
+
+    def test_the_report_card_names_BOTH_rules_and_hides_the_delay(self):
+        """**#934 point 3.** The section used to be titled «follow-ups whose
+        date has arrived», which described the `promised` rule only — a
+        sentence true of half a command ages without ever becoming false.
+
+        And the wording owed to the user is the owner's own: *«&nbsp;Votre
+        candidature pour le poste de X chez Y date de 12 jours. Souhaitez-vous
+        relancer&nbsp;?&nbsp;»* — so the card must carry a sentence shape, and
+        must forbid printing the delay itself, which is a setting the reader
+        may never have opened and explains nothing about his application.
+        """
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "job-report", "SKILL.md"),
+                  encoding="utf-8") as fh:
+            card = fh.read()
+        plat = re.sub(r"\s+", " ", card)
+        self.assertNotIn("### Follow-ups whose date has arrived", card,
+                         "the heading still names one of the two rules")
+        for owed in ("days_since_applied", "days_to_date", "promised",
+                     "Would you like to follow up?", "where that value came "
+                     "from"):
+            self.assertIn(owed, plat, owed)
+        self.assertIn("Never print the delay itself at the user", plat)
 
 
 if __name__ == "__main__":
