@@ -10881,11 +10881,22 @@ class ATarpitIsNotATransportFailure(unittest.TestCase):
         return srv.getsockname()[1]
 
     def test_a_connection_accepted_and_then_silent_reads_as_silence(self):
+        import socket as _s
         import urllib.error
         import urllib.request
         mod = self._mod()
         port = self._tarpit()
-        with self.assertRaises((urllib.error.URLError, TimeoutError)) as pris:
+        # **On the 3.9 floor `socket.timeout` is NOT a `TimeoutError`.** The
+        # two were merged in 3.10; on 3.9 the read timeout arrives here
+        # UNWRAPPED and a tuple naming only `TimeoutError` is red on the
+        # floor while the code under test is right — `transport_fact` names
+        # both, which is why only this case moved. **The local suite cannot
+        # see this**: on 3.14 `socket.timeout is TimeoutError`, so the
+        # discriminant does not exist here. The matrix saw it — #1143, run
+        # 39503995770, 3 of 9 jobs red and all three on 3.9, the same single
+        # case on ubuntu, windows and macos.
+        with self.assertRaises((urllib.error.URLError, TimeoutError,
+                                _s.timeout)) as pris:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
         self.assertEqual(mod.transport_fact(pris.exception), "silence",
                          repr(pris.exception))
