@@ -61,6 +61,7 @@ from _decode import decode_body
 from _ldjson import absent_reason, postings
 
 from _match import classify as mark, share
+import socket
 import sys
 import time
 import urllib.error
@@ -153,6 +154,93 @@ def sweep_exit_code(truncated):
     return 6 if truncated else 0
 
 
+FACTS = {
+    "name": "the name did not resolve, so nothing was asked",
+    "refused": "the connection was refused, so nothing was read",
+    "silence": "nothing came back before the deadline",
+    "other": "the transport failed in a way this script does not name",
+}
+
+
+def transport_fact(exc):
+    """Which transport fact we OBSERVED — never what the host «does».
+
+    **Three different facts used to print one sentence** (#1143, 2026-10-20).
+    `urllib` wraps the real cause in `URLError.reason`, and a name that does
+    not resolve, a refused connection and a host that reads nothing back are
+    three findings, not one. `other` is NAMED rather than folded into its
+    nearest neighbour: when a sort has a default case, the one that fails
+    visibly is the one to pick, and this default would produce a false
+    DIAGNOSIS rather than a false permission.
+    """
+    reason = getattr(exc, "reason", exc)
+    if isinstance(reason, socket.gaierror):
+        return "name"
+    if isinstance(reason, ConnectionRefusedError):
+        return "refused"
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return "silence"
+    return "other"
+
+
+def connection_probe(host, port=443, timeout=10):
+    """One TCP connect, carrying NO identity: no request, no `User-Agent`.
+
+    It exists because the exception cannot answer the question. A read
+    timeout and a CONNECT timeout both surface as `TimeoutError`, so
+    «nothing came back» does not establish that the host accepted us — and
+    that difference IS the finding: a host that refuses the connection is a
+    transport fact, a host that ACCEPTS it and reads nothing back is
+    answering our identity with silence.
+
+    Taken ONCE per host and only after the HTTP attempts have already
+    failed, so it is a measurement and not a retry — and it sends nothing
+    that could be varied, which is what #1143 point 4 forbids.
+    """
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True, None
+    except OSError as exc:
+        return False, exc
+
+
+def silence_report(url, host, probe_ok, why=None):
+    """The line a sweep prints when nothing came back, and it is a FUNCTION
+    so that it can be exercised: a message is a property of the RUN, and a
+    case that looks for it in the source asserts the wrong object.
+    """
+    if probe_ok:
+        return (f"{url}: no HTTP status on the retry either, and NOTHING on "
+                f"this host has answered us. A plain TCP connect to "
+                f"{host}:443 SUCCEEDS, so the name resolves and the host "
+                f"accepts us: what we observed is a host that takes our "
+                f"connection and reads nothing back to us. This is NOT an "
+                f"empty board and NOT a board that is down — neither was "
+                f"measured. What this does NOT establish is why, and nothing "
+                f"further is sent from here.")
+    return (f"{url}: no HTTP status on the retry either, and a plain TCP "
+            f"connect to {host}:443 fails too ({why}). What we observed is a "
+            f"transport that does not reach this host; what follows is "
+            f"INCOMPLETE.")
+
+
+def sweep_ending(truncated, unanswered):
+    """THREE endings, where the old pair could not tell two of them apart:
+    `complete` · `truncated`, the host answered and then stopped ·
+    `unanswered`, the host accepted every connection and answered none.
+
+    **The exit code stays 6 for both partial endings, and that is a choice
+    with a declared residue.** 6 is this repository's code for a partial
+    result and both endings are partial, so a caller reading only the status
+    still cannot tell WHICH partial ending it got; that discriminant lives
+    in the line. Inventing a fourth code would be a contract change this
+    issue did not ask for — it asks that the REPORT carry the third ending.
+    """
+    if unanswered:
+        return "unanswered"
+    return "truncated" if truncated else "complete"
+
+
 def die(msg, code=2):
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(code)
@@ -215,6 +303,8 @@ class Session:
         self.jar = {}
         self.last = 0.0
         self.truncated = False
+        self.answered = 0
+        self.unanswered = False
 
     def get(self, path, referer=None, retry=True):
         url = f"https://{self.s['host']}{path}"
@@ -238,24 +328,33 @@ class Session:
                     k, _, v = raw.split(";")[0].partition("=")
                     self.jar[k.strip()] = v.strip()
                 self.last = time.time()
+                self.answered += 1
                 return decode_body(r.read(), r.headers)[0]
         except urllib.error.HTTPError as exc:
             self.last = time.time()
+            self.answered += 1          # a status IS an answer, 404 included
             if exc.code == 404:
                 return None
             die(f"{url}: HTTP {exc.code}")
         except (urllib.error.URLError, OSError) as exc:
-            # No status code. This is the platform going quiet, not a page.
+            # No status code, and WHICH fact it was decides the reading.
             self.last = time.time()
+            fact = transport_fact(exc)
             if retry:
-                note(f"{url}: no HTTP status ({exc}) — one slow retry, then "
-                     f"the sweep stops. This is never a retry loop.")
+                note(f"{url}: no HTTP status, {FACTS[fact]} ({exc}) — one "
+                     f"slow retry, then the sweep stops. This is never a "
+                     f"retry loop.")
                 time.sleep(15)
                 return self.get(path, referer=referer, retry=False)
             self.truncated = True
-            note(f"{url}: no HTTP status on the retry either. The platform "
-                 f"has stopped answering this host; what follows is "
-                 f"INCOMPLETE.")
+            if fact == "silence" and not self.answered:
+                ok, why = connection_probe(self.s["host"])
+                self.unanswered = bool(ok)
+                note(silence_report(url, self.s["host"], ok, why))
+            else:
+                note(f"{url}: no HTTP status on the retry either "
+                     f"({FACTS[fact]}). What we read from this host stops "
+                     f"here; what follows is INCOMPLETE.")
             return None
 
 
@@ -396,6 +495,11 @@ def cmd_count(a):
     sess = Session(a.site, a.delay)
     _, meta = read_list(sess, a.site, a.keyword, a.location, 1)
     if not meta:
+        if sess.unanswered:
+            die("no analytics payload because NOTHING answered: this host "
+                "accepted our connection and sent nothing back. This is "
+                "neither an empty search nor markup that moved — neither "
+                "was measured.")
         die("no analytics payload on the result list — either the search "
             "returned nothing or the markup moved. Re-verify stepstone.md.")
     report_mix(meta, a.site)
@@ -464,8 +568,14 @@ def cmd_search(a):
                  f"points. Trust the payload for the shape of the board and "
                  f"treat the per-card flags as suspect on this search — a "
                  f"keyword in another language does exactly this.")
-    if sess.truncated:
-        note("THE SWEEP IS INCOMPLETE — the platform stopped answering. "
+    ending = sweep_ending(sess.truncated, sess.unanswered)
+    if ending == "unanswered":
+        note("THE SWEEP RAN NOTHING — this host accepted our connection on "
+             "every attempt and sent nothing back. Do not read this as an "
+             "empty board, and do not read it as a board that is down: "
+             "NEITHER was measured. Re-running changes nothing by itself.")
+    elif ending == "truncated":
+        note("THE SWEEP IS INCOMPLETE — the host answered and then stopped. "
              "Re-run later at a slower --delay rather than immediately.")
     sys.exit(sweep_exit_code(sess.truncated))
 

@@ -10823,6 +10823,128 @@ class AnInterruptedSweepDoesNotExitSuccess(unittest.TestCase):
         self.assertEqual(self._fn()(False), 0)
 
 
+class ATarpitIsNotATransportFailure(unittest.TestCase):
+    """**A host that accepts our connection and never answers, and a host the
+    transport cannot reach, used to print the same sentence** — so a run could
+    not tell «this board is down» from «this board does not answer us».
+    #1143, reported 2026-10-17, measured 2026-10-20.
+
+    *Totaljobs answers plain `curl` in 2 s and reads nothing back for this
+    adapter's `User-Agent`, timing out at 20–25 s.* **Nothing here touches
+    that host and nothing here varies a `User-Agent`**: the measurement
+    already exists in the issue, and trying strings until one passes is what
+    point 4 of its Done-when forbids. The specimen below is a loopback socket.
+
+    **Why a probe rather than the exception.** A read timeout and a CONNECT
+    timeout both surface as `TimeoutError`, so «nothing came back» does not
+    establish that the host accepted us — and that difference is the whole
+    finding. The probe is one TCP connect, carries no identity, and is taken
+    once per host after the HTTP attempts have already failed.
+
+    **What this class does NOT cover, so that it is not a second copy of a
+    guard that exists:** the exit code. `sweep_exit_code` is asserted both
+    ways next door, and it deliberately stays 6 for both partial endings —
+    the discriminant between them lives in the line, and that residue is
+    declared in `sweep_ending`'s own docstring rather than left silent.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_stepstone_tarpit", os.path.join(SCRIPTS, "stepstone.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _tarpit(self):
+        """A real socket that ACCEPTS and never writes — **not a fabricated
+        exception**, which is what the Done-when asks for: the timeout has to
+        come from a connection that was actually established."""
+        import socket as _s
+        import threading
+        srv = _s.socket(_s.AF_INET, _s.SOCK_STREAM)
+        srv.setsockopt(_s.SOL_SOCKET, _s.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(4)
+        tenues = []
+
+        def accepte():
+            while True:
+                try:
+                    conn, _ = srv.accept()
+                except OSError:
+                    return
+                tenues.append(conn)       # held open, never written to
+
+        threading.Thread(target=accepte, daemon=True).start()
+        self.addCleanup(srv.close)
+        self.addCleanup(lambda: [c.close() for c in tenues])
+        return srv.getsockname()[1]
+
+    def test_a_connection_accepted_and_then_silent_reads_as_silence(self):
+        import socket as _s
+        import urllib.error
+        import urllib.request
+        mod = self._mod()
+        port = self._tarpit()
+        # **On the 3.9 floor `socket.timeout` is NOT a `TimeoutError`.** The
+        # two were merged in 3.10; on 3.9 the read timeout arrives here
+        # UNWRAPPED and a tuple naming only `TimeoutError` is red on the
+        # floor while the code under test is right — `transport_fact` names
+        # both, which is why only this case moved. **The local suite cannot
+        # see this**: on 3.14 `socket.timeout is TimeoutError`, so the
+        # discriminant does not exist here. The matrix saw it — #1143, run
+        # 39503995770, 3 of 9 jobs red and all three on 3.9, the same single
+        # case on ubuntu, windows and macos.
+        with self.assertRaises((urllib.error.URLError, TimeoutError,
+                                _s.timeout)) as pris:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1)
+        self.assertEqual(mod.transport_fact(pris.exception), "silence",
+                         repr(pris.exception))
+        ok, why = mod.connection_probe("127.0.0.1", port, timeout=5)
+        self.assertTrue(ok, "the probe could not establish what the real "
+                            "socket just did: accept us. %r" % (why,))
+
+    def test_a_closed_port_reads_as_refused_and_the_probe_says_so(self):
+        """**The direction that keeps the reading honest**: if the probe
+        passed on anything, «the host accepts us» would be free."""
+        import socket as _s
+        mod = self._mod()
+        sock = _s.socket()
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+        sock.close()                                # nothing listens now
+        ok, why = mod.connection_probe("127.0.0.1", port, timeout=5)
+        self.assertFalse(ok, "the probe accepted a closed port")
+        self.assertEqual(mod.transport_fact(why), "refused", repr(why))
+
+    def test_the_three_endings_are_three_and_the_specific_one_wins(self):
+        """A pair cannot carry three states, and `unanswered` is the stronger
+        reading: it is reached only with `truncated` already true."""
+        mod = self._mod()
+        self.assertEqual(mod.sweep_ending(False, False), "complete")
+        self.assertEqual(mod.sweep_ending(True, False), "truncated")
+        self.assertEqual(mod.sweep_ending(True, True), "unanswered")
+        self.assertEqual(len({mod.sweep_ending(False, False),
+                              mod.sweep_ending(True, False),
+                              mod.sweep_ending(True, True)}), 3)
+
+    def test_the_line_says_what_we_saw_and_not_what_the_host_does(self):
+        """**A message is a property of the RUN**, so it is built by a
+        function and asserted by CALLING it — a case that looks for it in the
+        source asserts the wrong object (§4 ter)."""
+        mod = self._mod()
+        silence = mod.silence_report("https://h/x", "h", True)
+        injoignable = mod.silence_report("https://h/x", "h", False, "refused")
+        self.assertNotEqual(silence, injoignable)
+        for du in ("accepts us", "NOT an empty board",
+                   "NOT a board that is down", "does NOT establish"):
+            with self.subTest(du=du):
+                self.assertIn(du, silence)
+        self.assertIn("does not reach this host", injoignable)
+        self.assertNotIn("stopped answering", silence)
+
+
+
 class TheAdvertisementAddressIsBuiltInOnePlace(unittest.TestCase):
     r"""**`jobivoire.py` built its advertisement URL inline at three call
     sites**, and on 2026-09-08 the board moved `/job/details/<id>` to
