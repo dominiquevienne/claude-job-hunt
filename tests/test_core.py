@@ -11384,10 +11384,16 @@ class HiringCafeOverrideIsReadFromConfigAndBoundedToItsHost(unittest.TestCase):
         self.assertIn("override_robots", text)
 
     def test_the_callers_that_do_not_read_the_key_say_so(self):
-        """`ats.py resolve` and `workday.py resolve` print the same refusal
-        and never read the key: the honest line is that this command does
-        not, `hiringcafe.py search` does — not an instruction that would
-        change nothing there."""
+        """The refusal names what the command does NOT read, and the honest
+        line is that this command does not read the key while
+        `hiringcafe.py search` does — not an instruction that would change
+        nothing there.
+
+        *`workday.py resolve` still prints this refusal. `ats.py resolve` no
+        longer does: #1167 moved it to `shared/employer-ats.md`. This case
+        exercises `_hiringcafe.refusal` itself, so it was GREEN either way —
+        and a docstring naming two callers when one has left is a false gloss
+        on a sound verdict, which conflicts with nothing.*"""
         sys.path.insert(0, SCRIPTS)
         import _hiringcafe
         text = _hiringcafe.refusal("ats", "resolving an employer")
@@ -48889,6 +48895,174 @@ class AConfigPointerResolvesThroughTheRegistryOrSaysWhichItCouldNot(
         self.assertIn("--provider smartrecruiters",
                       par_id["canonical"]["command"],
                       "the command is the registry\'s, verbatim")
+
+
+class AnEmployerNameIsASearchAndAnAbsentRowIsNotAnAbsentATS(unittest.TestCase):
+    """`ats.py resolve` — #1167, and the contract is on BOTH of its answers.
+
+    The command used to die at its first executable statement — #123's
+    refusal, which is JUST and which nothing here works around — while eight
+    board cards named it as THE way to go from an employer to a tenant. A
+    reader of `greenhouse.md` followed the card, ran it, and got a refusal the
+    card had no reason to send them to. Since #1094 the question has a LOCAL
+    answer, so the sub-command reads `shared/employer-ats.md` and makes no
+    network call.
+
+    **The registry's key is `(family, identifier)` and a NAME is not a key**,
+    so this is a SEARCH over `employer_label` and it returns N rows. The guard
+    holds the two answers a user can actually get, and the second is the one
+    worth a test: a name the registry does not hold is a row NOBODY HAS FILED
+    — exit 1, and a sentence that says so — and never «&nbsp;this employer has
+    no ATS&nbsp;», which would be a zero nobody measured at the one place a
+    user cannot check it.
+
+    *PILOTED, not read, wherever the claim is about behaviour: a sub-command is
+    a property of the RUN. Reading the source is how a dead path survives — it
+    reads perfectly well — and it is how this one survived since #123.*
+
+    *Branch distribution over the REAL registry, measured 2026-10-21 and NOT
+    asserted: 21 rows and 21 labels, and every one of them reaches the «&nbsp;N
+    rows&nbsp;» branch. The «&nbsp;empty needle&nbsp;» and «&nbsp;unreadable
+    registry&nbsp;» branches are reached by FIXTURE ONLY — nothing in the corpus
+    takes them — so their green says «&nbsp;the fixture reached it&nbsp;» and
+    never «&nbsp;the corpus needs it&nbsp;».*
+    """
+
+    SCRIPTS_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "skills", "job-scan", "scripts")
+
+    def _lancer(self, *args, **kw):
+        """The tool, as a user runs it — utf-8 unless the case says otherwise."""
+        import subprocess
+        env = dict(os.environ, PYTHONIOENCODING=kw.get("encodage", "utf-8"))
+        return subprocess.run(
+            [sys.executable, os.path.join(self.SCRIPTS_DIR, "ats.py")] + list(args),
+            capture_output=True, text=True, env=env, cwd=self.SCRIPTS_DIR)
+
+    def _module(self):
+        chemin = os.path.join(self.SCRIPTS_DIR, "_employer_ats.py")
+        spec = importlib.util.spec_from_file_location("_employer_ats_1167", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _corps_resolve(self):
+        """`cmd_resolve`'s own AST node — the function, not the file."""
+        import ast
+        chemin = os.path.join(self.SCRIPTS_DIR, "ats.py")
+        arbre = ast.parse(io.open(chemin, encoding="utf-8").read())
+        for n in ast.walk(arbre):
+            if isinstance(n, ast.FunctionDef) and n.name == "cmd_resolve":
+                return n
+        self.fail("cmd_resolve has gone from ats.py")
+
+    # ---- the two answers a user gets ------------------------------------
+
+    def test_a_name_the_registry_holds_answers_with_its_date_and_its_witness(self):
+        """The fixture is the CORPUS: the needle is a label the registry
+        actually carries, so this cannot pass on a name of my own choosing."""
+        lignes, _ = self._module().rows()
+        self.assertIsNotNone(lignes, "the real registry must be readable here")
+        self.assertGreaterEqual(len(lignes), 1, "a registry with no row proves nothing")
+        etiquette = lignes[0]["employer_label"]
+
+        r = self._lancer("resolve", etiquette)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        sorties = [json.loads(l) for l in r.stdout.splitlines() if l.strip()]
+        self.assertGreaterEqual(len(sorties), 1, "one JSON line per candidate")
+        for o in sorties:
+            self.assertTrue(o["checked"], "every row carries its measure DATE")
+            self.assertTrue(o["verified_by"], "every row carries its WITNESS")
+            self.assertEqual(o["employer"], etiquette)
+            # a command is emitted only when it was DERIVED; otherwise the row
+            # says why, because a command without its sub-command looks launchable
+            if o["command"] is None:
+                self.assertIn("why_no_command", o)
+            else:
+                self.assertTrue(o["command"].startswith(o["family"] + ".py "))
+
+    def test_a_name_the_registry_does_not_hold_says_not_filed_and_never_no_ats(self):
+        r = self._lancer("resolve", "zzz-aucun-employeur-de-ce-nom-zzz")
+        self.assertEqual(r.returncode, 1,
+                         "an absent row REFUSES rather than answering empty")
+        self.assertEqual(r.stdout.strip(), "",
+                         "nothing may be printed that would look resolved")
+        dit = r.stderr.lower()
+        self.assertIn("not filed", dit, "the sentence must name what is missing")
+        for faux in ("has no ats", "does not use an ats", "no ats for"):
+            self.assertNotIn(faux, dit,
+                             "an unfiled row is NOT an employer without an ATS")
+
+    # ---- the two branches no corpus reaches -----------------------------
+
+    def test_an_empty_name_refuses_to_match_every_row(self):
+        """A POSITIVE floor on our own pattern: `"" in anything` is True, so an
+        empty needle would match every row and read as a resolved employer."""
+        trouve, ou = self._module().search("   ")
+        self.assertIsNone(trouve, "refusing to judge is not finding nothing")
+        self.assertIn("empty name", ou)
+
+    def test_an_unreadable_registry_is_indeterminate_and_not_an_empty_answer(self):
+        d = tempfile.mkdtemp()
+        trouve, ou = self._module().search(
+            "anything", path=os.path.join(d, "pas-de-registre.md"))
+        self.assertIsNone(trouve, "None and [] are different answers")
+        self.assertIn("no registry at", ou)
+
+    # ---- what the sub-command may not do -------------------------------
+
+    def test_the_subcommand_reaches_no_network_and_its_help_says_so(self):
+        import ast
+        interdits = {"fetch", "urlopen", "Request", "urlretrieve", "refusal"}
+        vus = set()
+        for n in ast.walk(self._corps_resolve()):
+            if isinstance(n, ast.Call):
+                f = n.func
+                nom = getattr(f, "id", None) or getattr(f, "attr", None)
+                if nom in interdits:
+                    vus.add(nom)
+        self.assertEqual(vus, set(),
+                         "`resolve` reads a file: it must call none of these")
+        aide = self._lancer("resolve", "--help")
+        self.assertEqual(aide.returncode, 0, aide.stderr)
+        # APLATI: argparse re-wraps a description, so «\u00a0MAKES NO NETWORK
+        # REQUEST\u00a0» arrives split across two lines. A composed needle
+        # against a wrapped rendering is a false zero — the motif is tried on
+        # the form the text has AT THE POINT OF CALL, never on the form it was
+        # typed in.
+        plat = " ".join(aide.stdout.split())
+        self.assertIn("NO NETWORK REQUEST", plat,
+                      "the claim must be where a user reads it")
+
+    def test_the_unreachable_path_is_gone_with_the_name_it_read(self):
+        """52 lines behind a `die` on line one, one of them reading a `raw`
+        that was never assigned — a NameError armed behind a dead path."""
+        import ast
+        noeud = self._corps_resolve()
+        charges = {n.id for n in ast.walk(noeud)
+                   if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        affectes = {n.id for n in ast.walk(noeud)
+                    if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+        self.assertNotIn("raw", charges - affectes,
+                         "`raw` is read and never assigned in this function")
+        source = io.open(os.path.join(self.SCRIPTS_DIR, "ats.py"),
+                         encoding="utf-8").read()
+        for mort in ("ssrHits", "attributed_org", "enriched_company_data"):
+            self.assertNotIn(mort, source,
+                             "the unreachable HiringCafe path must go with it")
+
+    def test_the_output_survives_the_default_windows_code_page(self):
+        """20 of the 21 witnesses carry `\u2192`. The OLD resolve could not meet
+        this — it died before printing — so moving it to the registry is what
+        creates the exposure, and #1166 holds the general question."""
+        lignes, _ = self._module().rows()
+        etiquette = lignes[0]["employer_label"]
+        r = self._lancer("resolve", etiquette, encodage="cp1252")
+        self.assertEqual(r.returncode, 0,
+                         "the row must encode on a default Windows console: "
+                         + r.stderr[-300:])
+        self.assertIn('"checked"', r.stdout)
 
 
 if __name__ == "__main__":

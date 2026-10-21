@@ -29,12 +29,17 @@ $ ats.py resolve "Nexthink"
 
 The resolver already knew the tenant. Only the reader was missing, so this is
 the cheapest adapter in the repository — and it closes the most common dead end
-the resolver produced. It now answers:
+the resolver produced. It now answers from `shared/employer-ats.md` — no network call since #1167 —
+one JSON line per row, each carrying its measurement date, its witness and the
+launchable command:
 
 ```
 $ ats.py resolve "Nexthink"
-{"provider": "smartrecruiters", "tenant": "nexthink", "company": "Nexthink"}
+{"employer": "Nexthink (CH)", "family": "ats", "identifier": "nexthink", "args": "--provider smartrecruiters --tenant nexthink", "state": "live", "checked": "2026-10-08", "verified_by": "...", "command": "ats.py list --provider smartrecruiters --tenant nexthink"}
 ```
+
+*The `verified_by` cell is elided here and only here: it is long and this card
+is not its home. The command above prints it in full.*
 
 ## Reading a board
 
@@ -96,8 +101,8 @@ a genuinely empty one.*
 
 So the script refuses on zero rather than reporting an empty board, and says
 both possibilities out loud. **Never report "they are not hiring" from this
-board without confirming the token**, with `ats.py resolve` or the employer's
-own careers URL. `bosch`, `visa`, `ubisoft` and `logitech` all return zero here
+board without confirming the token**, with `ats.py resolve` — when the row has
+been filed — or the employer's own careers URL. `bosch`, `visa`, `ubisoft` and `logitech` all return zero here
 — none of them is out of vacancies; none of them is a SmartRecruiters tenant.
 
 ## Traps

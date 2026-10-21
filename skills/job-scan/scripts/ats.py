@@ -27,8 +27,9 @@ Usage:
   ats.py ad   --provider greenhouse --tenant elastic --id 8148720
   ats.py resolve "Nexthink"        # employer name -> provider + tenant
 
-`resolve` asks HiringCafe, which records the ATS and tenant of every ad it
-indexes. It is a lookup aid for setup, not a sweep.
+`resolve` reads `shared/employer-ats.md`, the shared registry of employer ->
+ATS rows, and makes NO network request. A name it does not hold is a row
+nobody has filed, never an employer without an ATS (#1167).
 """
 
 import argparse
@@ -37,7 +38,8 @@ import json
 import os
 import re
 
-from _hiringcafe import refusal
+from _employer_ats import command as registry_command
+from _employer_ats import search as registry_search
 from _decode import decode_body
 from _ldjson import one
 import sys
@@ -567,8 +569,9 @@ def workable_list(tenant, want_content, _a=None):
     d = fetch(f"https://apply.workable.com/api/v1/widget/accounts/{tenant}{q}")
     if d is None:
         die(f"Workable has no account called {tenant!r} (HTTP 404). "
-            f"If that tenant came from `ats.py resolve`, do not simply run it "
-            f"again: resolve reads HiringCafe's `ats_tenant`, and HiringCafe "
+            f"If that tenant came from HiringCafe — which is where `ats.py "
+            f"resolve` read it before #1167 moved it to the registry — do "
+            f"not simply ask again: HiringCafe's `ats_tenant` "
             f"sometimes records a label rather than the slug Workable "
             f"answers to — 'inspired_thinking_group_(itg)' 404s here both raw "
             f"and percent-encoded, measured 2026-09-02. Take the slug from "
@@ -979,61 +982,62 @@ def cmd_ad(a):
 
 
 def cmd_resolve(a):
-    """Ask HiringCafe which ATS an employer uses, and under which tenant."""
-    # companyNames is the employer filter. searchQuery would search the ad text
-    # instead and returns near-nothing for a company name.
-    # **Refused, and not by this file's judgement.** The URL below is the
-    # shape `hiringcafe.com/robots.txt` closes to `User-agent: *`. This used
-    # to be built here with its own client and its own backoff, which is how
-    # one board came to behave differently depending on which script asked —
-    # and how the refusal stayed invisible in two files after #123 named a
-    # third. One constructor now, and it refuses. Issue #123.
-    die(refusal("ats", "resolving an employer through HiringCafe"), code=7)
+    """Employer name -> the ATS rows the SHARED REGISTRY holds for it.
 
-    m = re.search(r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', raw, re.S)
-    if not m:
-        die("hiringcafe's page shape changed — resolve by hand instead: open "
-            "the employer's careers page and read the tenant out of the URL.")
-    hits = (json.loads(m.group(1))["props"]["pageProps"].get("ssrHits") or [])
-    supported, other = {}, {}
-    for h in hits:
-        # HiringCafe's own name for each ATS. `teamtailor` and `join` were
-        # missing here long after their adapters shipped, so `resolve` answered
-        # "an ATS this script does not cover" about two providers it covers —
-        # a wrong answer that read like a limitation.
-        src = {"grnhse": "greenhouse", "lever": "lever", "eu_lever": "lever",
-               "ashby": "ashby",
-               "smartrecruiters": "smartrecruiters",
-               "workable": "workable",
-               "teamtailor": "teamtailor",
-               "join": "join"}.get(h.get("source"))
-        name = ((h.get("attributed_org") or {}).get("name")
-                or (h.get("enriched_company_data") or {}).get("name") or "?")
-        if src:
-            supported.setdefault((src, h.get("board_token")), name)
-        else:
-            other.setdefault((h.get("source"), h.get("board_token")), name)
-    for (provider, tenant), name in supported.items():
-        print(json.dumps({"provider": provider, "tenant": tenant,
-                          "company": name}, ensure_ascii=False))
-    if supported:
+    **This reads a file and makes no network request.** It used to ask
+    HiringCafe, and `hiringcafe.com/robots.txt` closes that shape to
+    `User-agent: *` with a `Disallow: /*?searchState=*` measured 2026-09-03
+    (#123). That refusal is JUST and nothing here works around it: the
+    question simply has a LOCAL answer since #1094 opened
+    `shared/employer-ats.md`, with a measurement date and a witness on every
+    row. `workday.py resolve` still refuses — only this one moved.
+
+    **The registry's key is `(family, identifier)` and a NAME is not a key**,
+    so this is a SEARCH and it returns N rows (#1167). The three answers are
+    kept apart, and the middle one is the whole point: N rows, NO ROW FILED
+    for this name, or a registry that could not be read. A name absent from
+    the registry is **not** an employer without an ATS — it is a row nobody
+    has measured, and saying the first would be a zero nobody measured, at
+    the one place the user cannot see it.
+
+        exit 0   at least one row — one JSON line each
+        exit 1   no row in the registry for this name, and the line says so
+        exit 2   the registry could not be read at all — INDETERMINATE
+    """
+    hits, where = registry_search(a.employer)
+    if hits is None:
+        die(f"INDETERMINATE — {where}. That is not {a.employer!r} having no "
+            f"ATS: it is a registry this run could not read, and an "
+            f"ignorance does not license a zero.", code=2)
+    for row in hits:
+        cmd, why = registry_command(row)
+        out = {"employer": row["employer_label"], "family": row["family"],
+               "identifier": row["identifier"], "args": row["args"],
+               "state": row["state"], "checked": row["checked"],
+               "verified_by": row["verified_by"], "command": cmd}
+        # A command emitted without its sub-command would LOOK launchable,
+        # so the row says why it has none instead of guessing one.
+        if cmd is None:
+            out["why_no_command"] = why
+        # `ensure_ascii=True`, DELIBERATELY and against this file's habit:
+        # this is the one output that prints `verified_by`, and 20 of the 21
+        # witnesses carry `\u2192`. Measured 2026-10-21 — under
+        # `PYTHONIOENCODING=cp1252`, the default Windows console code page,
+        # `ensure_ascii=False` raises UnicodeEncodeError and the command dies
+        # at exit 1 after its first row. The old `resolve` could not meet this
+        # because it died before printing anything, so moving it to the
+        # registry is what creates the exposure, and the fix belongs here. The
+        # escape is lossless JSON; #1166 holds the general question for the
+        # other 72 commands and this does not pre-empt its form.
+        print(json.dumps(out, ensure_ascii=True))
+    if hits:
         return
-    if other:
-        # Naming the ATS beats "not found": it tells the user why there is no
-        # adapter for this employer, and it is a fact rather than a shrug.
-        print(f"{a.employer!r} was found, but on an ATS this script does not "
-              "cover:", file=sys.stderr)
-        for (src, tenant), name in other.items():
-            print(f"  {name} -> {src} / {tenant}", file=sys.stderr)
-        print("Give cover-letter one of their ad URLs — it needs no adapter.",
-              file=sys.stderr)
-        sys.exit(1)
-    print(f"No board found for {a.employer!r}. The employer may use an ATS "
-          "HiringCafe does not index — that is not evidence they are not "
-          "hiring. Check their careers page by hand.", file=sys.stderr)
-    sys.exit(1)
-
-
+    die(f"no row in the registry for {a.employer!r} — {where}. The registry "
+        f"records the employers someone has MEASURED, so this says nothing "
+        f"about whether they use an ATS or whether they are hiring: it says "
+        f"the row is not filed. Read the tenant off the employer's own "
+        f"careers page, then file it with the date and the witness that "
+        f"prove it.", code=1)
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1077,7 +1081,16 @@ def main():
     ad.add_argument("--id", required=True)
     ad.set_defaults(func=cmd_ad)
 
-    rs = sub.add_parser("resolve", help="employer name -> provider and tenant")
+    rs = sub.add_parser(
+        "resolve",
+        help="employer name -> registry rows (reads a file, no network)",
+        description=(
+            "Search shared/employer-ats.md for an employer NAME and print one "
+            "JSON line per row, each with its measurement date and its "
+            "witness. READS A FILE AND MAKES NO NETWORK REQUEST. A name the "
+            "registry does not hold is a row nobody has filed (exit 1), not "
+            "an employer without an ATS; a registry that cannot be read is "
+            "INDETERMINATE (exit 2)."))
     rs.add_argument("employer")
     rs.set_defaults(func=cmd_resolve)
 

@@ -31,7 +31,7 @@ boards:
 ## Usage
 
 ```bash
-ats.py resolve "BaXian"                                  # employer -> tenant
+ats.py resolve "BaXian"      # -> registry rows; exit 1 if the row is unfiled
 ats.py list --provider join --tenant simplee-energy
 ats.py list --provider join --tenant baxian-group --with-description
 ats.py ad   --provider join --tenant hebu-shop --id 16646156
@@ -177,6 +177,9 @@ Cloudflare interstitial is how a board starts returning confident nonsense.
 
 **There is no directory, and no resolver on join.com.** Two routes:
 
-1. `ats.py resolve "<employer>"` — asks HiringCafe, which records `join` and the
-   tenant on every ad it indexes. This is how most tenants will be found.
+1. `ats.py resolve "<employer>"` — reads `shared/employer-ats.md`, with no
+   network call (#1167). **It only answers for rows someone has FILED, and no
+   `join` row is filed yet**, so today this route refuses with exit 1 and says
+   the row is missing — which is the honest answer, not «&nbsp;no tenant&nbsp;».
+   Before #1167 it asked HiringCafe, whose answer is refused in writing (#123).
 2. Read it off an ad URL: `join.com/companies/<tenant>/…`.

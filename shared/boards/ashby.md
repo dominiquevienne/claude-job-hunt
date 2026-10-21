@@ -191,10 +191,13 @@ per-posting endpoint). A ten-employer watchlist is ten requests.
 
 ## The `resolve` example above is refused, and correctly — 2026-09-08
 
-**`ats.py resolve` searches through HiringCafe, and
-`hiringcafe.com/robots.txt` refuses that URL shape to `User-agent: *`** —
-`Disallow: /*?searchState=*`, measured 2026-09-03, issue #123. **The adapter
-exits 7 and makes no request.**
+**`ats.py resolve` reads `shared/employer-ats.md` and makes no request.**
+It used to search HiringCafe, and `hiringcafe.com/robots.txt` refuses that URL
+shape to `User-agent: *` — `Disallow: /*?searchState=*`, measured 2026-09-03,
+issue #123. **That refusal stands and nothing works around it**; since #1167
+the question has a LOCAL answer instead. A name the registry does not hold is
+a row nobody has filed — exit 1, and the line says so — never an employer
+without an ATS.
 
 *So the invocation printed above no longer runs, and the reason is doctrinal
 rather than a defect.* **`list` and `ad` are unaffected** — re-exercised
