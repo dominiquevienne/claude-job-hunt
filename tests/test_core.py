@@ -49065,5 +49065,222 @@ class AnEmployerNameIsASearchAndAnAbsentRowIsNotAnAbsentATS(unittest.TestCase):
         self.assertIn('"checked"', r.stdout)
 
 
+class NoCliTracebacksOnHelpUnderAnEightBitConsole(unittest.TestCase):
+    """`--help` must not be a stack trace — #1166, and the FORM is pinned here.
+
+    Measured 2026-10-21 on `280f914c`: of **298 argparse CLIs** in this
+    directory, **75 exited with `UnicodeEncodeError` on `--help` under
+    `PYTHONIOENCODING=cp1252`**, the default code page of a Windows console. The
+    character is nearly always the arrow this repository writes 471 times in its
+    docstrings. The same loop gives 75 on `82d485a4` too, so the corpus did not
+    move: the pilot's 73 and this 75 differ by FILTER, not by state, and what
+    governs acceptance is the loop the issue wrote.
+
+    **TWO INSTRUMENTS, and the scan is not replaced** (see this file's header):
+    the behaviour is EXERCISED in-process, with and without the patch, and the
+    corpus is SCANNED over the real directory. One end-to-end subprocess stands
+    as the witness that the two agree.
+
+    *And the last case pins a DECISION rather than a behaviour.* #1166 left the
+    form to whoever coded it, and the route refused was reconfiguring
+    `sys.stdout` process-wide. That would also stop the crash and it would reach
+    the DATA path — which sounds like more and is worth less: an adapter's
+    `list` prints JSON a parent reads, and a parent decoding with the locale
+    encoding would read UTF-8 bytes as mojibake, **trading a loud failure for a
+    silent one**. `errors="replace"` on stdout is worse again: it writes `?`
+    into that JSON. So a future pass that "improves" `_console` into route 1
+    reddens, which is the point.
+    """
+
+    SCRIPTS_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "skills", "job-scan", "scripts")
+
+    FLECHE = "\u2192"
+
+    def _console(self):
+        chemin = os.path.join(self.SCRIPTS_DIR, "_console.py")
+        spec = importlib.util.spec_from_file_location("_console_1166", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _flux(self, codage):
+        return io.TextIOWrapper(io.BytesIO(), encoding=codage, newline="")
+
+    def _ecrire_aide(self, flux):
+        import argparse
+        p = argparse.ArgumentParser(prog="essai",
+                                    description="une fleche " + self.FLECHE + " ici")
+        p._print_message(p.format_help(), flux)
+        flux.flush()
+        return flux.buffer.getvalue()
+
+    # ---- exerce, dans les deux sens -------------------------------------
+
+    def test_an_eight_bit_console_gets_the_help_instead_of_a_traceback(self):
+        """Le rouge est une ASSERTION et jamais une exception qui s'echappe :
+        un rouge de CRASH et un rouge d'assertion se comptent pareil, et seul
+        le second dit ce qui manque."""
+        import argparse
+        avant = argparse.ArgumentParser._print_message
+        octets, leve = None, None
+        try:
+            self._console()                      # l'import EST l'acte
+            try:
+                octets = self._ecrire_aide(self._flux("cp1252"))
+            except UnicodeEncodeError as exc:
+                leve = exc
+        finally:
+            argparse.ArgumentParser._print_message = avant
+        self.assertIsNone(leve,
+                          "`--help` est redevenu une trace de pile sous une "
+                          "console huit bits: %r" % (leve,))
+        self.assertIn(b"une fleche", octets, "l'aide doit sortir")
+        self.assertIn(b"?", octets,
+                      "le caractere que la console ne sait pas ecrire degrade")
+
+    def test_without_the_patch_the_same_write_raises(self):
+        """Le CONTRE-ESSAI : sans lui la cause est supposee, pas demontree.
+
+        **ET IL NE PEUT PAS SE FAIRE PAR SAUVEGARDE-RESTAURATION, mesure en
+        l'essayant :** 298 modules de ce repertoire importent `_console`, donc
+        des qu'un test en importe UN, `argparse.ArgumentParser` est rustine pour
+        tout le processus de test. Un « avant » capture ici rend alors la
+        version DEJA rustinee, et la « desarmer » la reinstalle — le test
+        passait vert en croyant tester le contraire. On charge donc une copie
+        VIERGE d'`argparse` sous un autre nom, dont la classe n'a jamais ete
+        touchee.
+
+        *Conséquence a connaitre et sans danger : la sortie d'aide, d'usage et
+        d'erreur du lanceur de tests est elle aussi devenue indulgente. Elle ne
+        porte aucune donnee.*
+        """
+        import argparse
+        spec = importlib.util.spec_from_file_location(
+            "argparse_vierge_1166", argparse.__file__)
+        vierge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(vierge)
+        # CONTROLE DE MONTAGE, et il se livre en disant ce qu'il ne fait pas :
+        # AUCUNE mutation plausible ne le fait rougir, parce que deux copies
+        # d'`argparse` executees separement ont de toute facon des objets
+        # fonction DISTINCTS. La premiere forme de cette ligne comparait leur
+        # IDENTITE — `assertIsNot` — et elle etait donc INERTE : toujours vraie,
+        # rustine posee ou non. Ce qu'on peut encore verifier est l'ORIGINE du
+        # writer de la copie vierge, et c'est ce que la ligne fait.
+        self.assertTrue(
+            vierge.ArgumentParser._print_message.__code__.co_filename
+            .endswith("argparse.py"),
+            "le writer de la copie vierge doit venir d'argparse lui-meme, "
+            "sinon ce cas ne mesure rien")
+        p = vierge.ArgumentParser(prog="essai",
+                                  description="une fleche " + self.FLECHE + " ici")
+        flux = self._flux("cp1252")
+        with self.assertRaises(UnicodeEncodeError):
+            p._print_message(p.format_help(), flux)
+            flux.flush()
+
+    def test_a_stream_that_takes_anything_keeps_every_character(self):
+        """La degradation est CONDITIONNELLE A L'ECHEC — et la PREMIERE forme
+        de ce cas ne pouvait pas le montrer, trouvee par mutation.
+
+        Elle comparait deux ecritures sur un flux **utf-8**, ou
+        `encode("utf-8", "replace")` est l'IDENTITE : un repli rendu
+        inconditionnel y restait invisible et le cas restait VERT. Une garde
+        qui ne peut pas echouer sur sa propre these est pire qu'absente.
+
+        Ce qui le montre est un flux SANS attribut `encoding` — un `StringIO`,
+        qui accepte tout texte et ne leve jamais. Le repli y retomberait sur
+        `ascii` et remplacerait la fleche ; conditionnel, il ne s'execute pas
+        du tout et chaque caractere survit.
+        """
+        import argparse
+        avant = argparse.ArgumentParser._print_message
+        try:
+            self._console()
+            p = argparse.ArgumentParser(
+                prog="essai", description="une fleche " + self.FLECHE + " ici")
+            flux = io.StringIO()
+            p._print_message(p.format_help(), flux)
+            ecrit = flux.getvalue()
+        finally:
+            argparse.ArgumentParser._print_message = avant
+        self.assertIn(self.FLECHE, ecrit,
+                      "un flux qui accepte tout ne doit RIEN perdre: le repli "
+                      "s'est execute alors que l'ecriture avait reussi")
+        self.assertNotIn("?", ecrit, "aucun caractere n'est remplace ici")
+
+    # ---- le corpus REEL, pas une fixture --------------------------------
+
+    def test_every_argparse_cli_in_the_directory_imports_the_shared_point(self):
+        import glob
+        manquants = []
+        total = 0
+        for p in sorted(glob.glob(os.path.join(self.SCRIPTS_DIR, "*.py"))):
+            if os.path.basename(p) == "_console.py":
+                continue
+            src = io.open(p, encoding="utf-8").read()
+            if "argparse" not in src:
+                continue
+            total += 1
+            if "import _console" not in src:
+                manquants.append(os.path.basename(p))
+        self.assertGreaterEqual(total, 290,
+                                "un corpus qui a fondu ne prouve rien")
+        self.assertEqual(manquants, [],
+                         "ces CLI tracebackeraient a `--help` sous cp1252: "
+                         + ", ".join(manquants))
+
+    def test_every_file_in_the_directory_still_compiles(self):
+        """`ast.parse` N'EST PAS LE BON INSTRUMENT ICI, et ca a coute trois
+        fichiers : le placement d'un import `__future__` est verifie a la
+        COMPILATION, donc `ast.parse` rend VERT sur un fichier qui ne
+        s'execute pas — un vert qui dit « je n'ai pas regarde la »."""
+        import glob
+        casses = []
+        for p in sorted(glob.glob(os.path.join(self.SCRIPTS_DIR, "*.py"))):
+            try:
+                compile(io.open(p, encoding="utf-8").read(), p, "exec")
+            except SyntaxError as exc:
+                casses.append((os.path.basename(p), str(exc)[:70]))
+        self.assertEqual(casses, [], "%r" % (casses,))
+
+    # ---- le temoin de bout en bout, un seul sous-processus --------------
+
+    def test_a_cli_that_used_to_traceback_now_prints_its_help(self):
+        """Le temoin de bout en bout, un seul sous-processus.
+
+        **IL PROUVE LE COMPORTEMENT ET NON LA NECESSITE DE L'IMPORT DANS CE
+        FICHIER, mesure par mutation :** retirer `import _console` du seul
+        `adecco.py` laisse ce cas VERT, parce qu'il importe des freres qui
+        l'importent et que la rustine est posee sur la classe `argparse`, donc
+        pour tout le processus. Ce qui epingle l'import par fichier est le
+        BALAYAGE DE CORPUS, et c'est pourquoi les deux instruments coexistent.
+        """
+        import subprocess
+        cible = os.path.join(self.SCRIPTS_DIR, "adecco.py")
+        self.assertTrue(os.path.exists(cible), "le temoin a disparu du depot")
+        r = subprocess.run([sys.executable, cible, "--help"],
+                           capture_output=True, cwd=self.SCRIPTS_DIR,
+                           env=dict(os.environ, PYTHONIOENCODING="cp1252"))
+        self.assertEqual(r.returncode, 0,
+                         "exit 0 sous cp1252: " + r.stderr.decode(
+                             "cp1252", "replace")[-300:])
+        self.assertIn(b"usage:", r.stdout)
+
+    # ---- et la DECISION de forme, pas seulement le comportement ---------
+
+    def test_the_fix_does_not_reach_the_data_path(self):
+        src = io.open(os.path.join(self.SCRIPTS_DIR, "_console.py"),
+                      encoding="utf-8").read()
+        corps = src.split('"""', 2)[-1]        # hors de la docstring, qui en PARLE
+        for route1 in ("stdout.reconfigure", "stderr.reconfigure",
+                       "reconfigure("):
+            self.assertNotIn(route1, corps,
+                             "route 1 refusee: elle atteindrait la sortie de "
+                             "DONNEES et echangerait un echec bruyant contre "
+                             "un echec silencieux")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

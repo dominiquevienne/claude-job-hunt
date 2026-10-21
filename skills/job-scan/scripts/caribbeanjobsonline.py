@@ -57,6 +57,7 @@ WHAT IS WITHHELD. Addresses and phone numbers in the prose are replaced
 the site's text, never parsed.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import http.cookiejar

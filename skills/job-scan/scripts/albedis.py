@@ -63,6 +63,7 @@ reference a recruiter quotes.
 MEASURED ON FOUR ADVERTISEMENTS OF 95, and that is written on the card too.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

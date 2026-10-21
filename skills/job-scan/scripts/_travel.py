@@ -43,6 +43,7 @@ travel requirement is a thing to raise at the gate, and an advertisement is
 never set aside for it.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import re
 
 # Phrasings measured in the corpus, plus the German and French forms the same

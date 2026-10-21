@@ -68,6 +68,7 @@ held (`0` 45×, `1` 31×, `2` 24×) — a criterion about a person, never carrie
 the board's internal identifiers. Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

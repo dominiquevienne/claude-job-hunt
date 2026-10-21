@@ -109,6 +109,7 @@ distinct from the retrievals and exercised both ways: five open with `rule=None`
 three refused by `/api/`. Measured 2026-10-06 (#669).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

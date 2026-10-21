@@ -30,6 +30,7 @@ resolves again on 1.1.1.1 and 8.8.8.8 (76.76.21.21; NXDOMAIN on 2026-09-13); rob
 the ad 161 167 B with its JobPosting; a tab: «Vous voyez 253 offres sur 253».
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

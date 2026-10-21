@@ -34,6 +34,7 @@ transport served the root (214 kB, the title in Japanese) and every file
 tried. Measured 2026-09-11 18:37–18:44 UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

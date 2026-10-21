@@ -27,6 +27,7 @@ mobiles are eight). The site's own `web@boliviatrabajo.bo` and WhatsApp
 number sit in its footer, in no field this file emits.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

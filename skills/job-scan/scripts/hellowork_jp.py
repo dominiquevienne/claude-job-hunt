@@ -33,6 +33,7 @@ read**: the 求人票 (job sheet) and the detail page carry the employer's
 address and telephone, and this adapter emits neither.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import http.cookiejar

@@ -32,6 +32,7 @@ page, 1 340 pages; `--pages` defaults to 10 (120 rows) and the note says the wal
 bounded by request; 1 340 pages at 2 s is a choice, not the default.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -36,6 +36,7 @@ missing `validThrough` as expired: `--live` keeps what carries no end date,
 because *absent* is not *past*.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

@@ -52,6 +52,7 @@ on ten advertisements; here there is no such date to compare to, and the
 difference between the two boards is evidence, not carelessness.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

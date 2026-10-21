@@ -43,6 +43,7 @@ stated (41 280 B), FHNW `655298` 16 / 16 (11 259 B); the Empa ad 200 ×2 (24 058
 — the vendor's landing page (63 712 B).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

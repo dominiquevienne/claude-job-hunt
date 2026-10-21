@@ -21,6 +21,7 @@ Usage:
   fachkraft.py resolve --ref 19868-STAZH      # portable ref -> canonical slug
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

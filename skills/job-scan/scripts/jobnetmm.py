@@ -40,6 +40,7 @@ Measured 2026-09-22 12:5x UTC by the declared client, the guard on the exact pat
 200 (490 433 B), **30 cards, zero shared with page 1**, the same total stated.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

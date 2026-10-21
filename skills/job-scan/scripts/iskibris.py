@@ -81,6 +81,7 @@ links**; `/` 200, 111 489 B, 12 counters summing 301, `featuredJobs` empty with
 identical ids.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

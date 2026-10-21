@@ -31,6 +31,7 @@ on a 429 without retrying. Measured 2026-09-13 10:18–10:4x UTC, every
 fetch under the declared identity, the guard on the exact path first.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

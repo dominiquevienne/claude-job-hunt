@@ -26,6 +26,7 @@ Usage:
   umantis.py check --host jobs.bobst.com --id 9151     # open / not open
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

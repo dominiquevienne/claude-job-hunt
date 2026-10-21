@@ -44,6 +44,7 @@ zero: **a page that says `JobPosting` and yields none has been misread.**
 Verified against the live site on **2026-09-03**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

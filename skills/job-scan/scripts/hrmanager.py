@@ -33,6 +33,7 @@ scrubbed of e-mail addresses and telephone numbers; the application form
 `contacts_withheld` on every record.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

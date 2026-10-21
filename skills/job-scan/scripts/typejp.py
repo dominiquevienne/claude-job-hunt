@@ -29,6 +29,7 @@ Root 200, 71 745 B, the title in Japanese. Measured 2026-09-11 18:37–2026-09-1
 01:12 UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import collections
 import html as htmlmod

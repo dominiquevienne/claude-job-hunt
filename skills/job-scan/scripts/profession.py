@@ -40,6 +40,7 @@ read. Measured 2026-09-13 17:20 UTC (#359; page Hongrie of 2026-09-01:
 11 451).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

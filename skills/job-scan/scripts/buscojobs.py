@@ -65,6 +65,7 @@ and phone numbers in the prose are replaced. `EdadDesde`/`EdadHasta`/`Sexo`
 The employer object is reduced to its id and name before the record is built.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

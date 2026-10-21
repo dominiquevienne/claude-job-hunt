@@ -41,6 +41,7 @@ image ids not emitted; `contacts_withheld` on every record; the application (Har
 «Multiple apply») never touched.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

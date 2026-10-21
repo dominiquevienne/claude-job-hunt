@@ -46,6 +46,7 @@ link; the employer's logo; `contacts_withheld` on every record. Country CD
 on every row.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -45,6 +45,7 @@ identical; the ads on `jobs.mepersonal.ch`); the Lactalis Suisse ad on `link.ost
 (25 972 B, one JobPosting); `jobs.ostendis.com/` 404.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

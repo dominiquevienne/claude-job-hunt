@@ -35,6 +35,7 @@ Measured 2026-09-14 00:1x UTC by the declared client: «19 005» stated, 40 card
 was bounded by request.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

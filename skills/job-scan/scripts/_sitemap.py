@@ -44,6 +44,7 @@ what it could not read. `count_says` is the sentence for that.
         note(count_says(body))
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import gzip
 import re
 

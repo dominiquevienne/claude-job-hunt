@@ -65,6 +65,7 @@ which are never emitted**; the employer's logo; the application route; the
 site's internal ids beyond the advert's own. Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

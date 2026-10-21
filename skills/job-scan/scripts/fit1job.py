@@ -132,6 +132,7 @@ ZERO-SHAPED ANSWERS (contract 5)
 Config keys (contract 0): none. Nothing to obtain, nothing to log into.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as html_mod
 import json

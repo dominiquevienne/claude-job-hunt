@@ -31,6 +31,7 @@ list states towns and counties, not countries; `--country-code` stamps
 the rows and says so.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

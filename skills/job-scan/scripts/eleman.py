@@ -37,6 +37,7 @@ Measured 2026-09-14 01:5x UTC by the declared client, the guard on the exact pat
 cards, «2 / 125»; the ad 108 250 B with its JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

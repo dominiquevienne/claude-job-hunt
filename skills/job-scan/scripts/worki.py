@@ -42,6 +42,7 @@ Measured 2026-09-14 04:2x UTC by the declared client, the guard on the exact pat
 623 rows; the ad 239 358 B; the state's `zdrojPonuky=WRK` 537 rows, all 537 in the 623.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

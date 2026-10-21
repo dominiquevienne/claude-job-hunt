@@ -51,6 +51,7 @@ ROBOTS IS READ PER HOST. Two of six iCIMS hosts sampled served
 Verified against the live platform on **2026-09-02**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

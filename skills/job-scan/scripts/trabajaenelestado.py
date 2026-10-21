@@ -36,6 +36,7 @@ Measured 2026-09-13 23:59 UTC by the declared client: `Estado: postulacion` → 
 349, 36 a page; the record above from the first page.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

@@ -59,6 +59,7 @@ is marked.
 Verified against the live site on **2026-09-03**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as html_mod
 import json

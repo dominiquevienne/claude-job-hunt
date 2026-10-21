@@ -46,6 +46,7 @@ Measured 2026-09-22 08:5x UTC by the declared client, the guard on the exact pat
 200, 13 689 B, md5 bc57c674409f — **3 posts, 1 open**, three PDFs under `media/pdf/vacancies/`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

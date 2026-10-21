@@ -92,6 +92,7 @@ every retrieval: rules READ (`state: read`), nothing refuses our paths,
 applies. Measured 2026-10-06 (card) and 2026-10-07 (this adapter), #1061.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -39,6 +39,7 @@ they appear), the registration link; `contacts_withheld` on every record.
 Country ER on every row.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -35,6 +35,7 @@ apart: `/jobs` 620 647 B, 30 hits, `nbHits` 32; `/sitemap-jobs` 6 694 B, 32 rows
 (2026-06-24 … 2026-09-11); the ad 195 440 B with its JobPosting and its `job` object.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -47,6 +47,7 @@ emitted; the descriptions scrubbed of e-mail addresses and telephone numbers; th
 never printed.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import http.cookiejar

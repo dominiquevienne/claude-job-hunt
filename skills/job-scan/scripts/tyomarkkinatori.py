@@ -37,6 +37,7 @@ address is a premises' address and is not emitted; the municipality and
 region are. No contact field is in the schema, and none is read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

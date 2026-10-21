@@ -37,6 +37,7 @@ a board of this size); `certain: True`. Measured 2026-09-13 17:38–17:47
 UTC (#382; page Turquie of 2026-09-01: 82 407).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

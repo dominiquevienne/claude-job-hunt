@@ -85,6 +85,7 @@ No `Crawl-delay`, so our own 2 s floor applies. Guard taken on every exact path 
 turns distinct from the retrievals. Measured 2026-10-06 (#665).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

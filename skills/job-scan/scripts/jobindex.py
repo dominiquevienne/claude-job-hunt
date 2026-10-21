@@ -53,6 +53,7 @@ this adapter's, and the two are named apart.
 Nothing is translated: the adapter emits what the site says, in Danish.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

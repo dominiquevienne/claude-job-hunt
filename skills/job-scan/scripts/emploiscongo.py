@@ -80,6 +80,7 @@ from a future date would manufacture exactly the claim this section refuses.*
 Verified against the live site on 2026-09-08.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import gzip
 import html as html_mod

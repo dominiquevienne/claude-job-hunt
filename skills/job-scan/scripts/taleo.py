@@ -56,6 +56,7 @@ of the stated count, a page the portal refused); 7 refused by the rules; 8 the r
 could not be read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import http.cookiejar

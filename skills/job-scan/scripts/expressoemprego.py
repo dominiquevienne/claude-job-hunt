@@ -43,6 +43,7 @@ here dies through `_zero.empty_first_page` rather than reporting it.
 Nothing is translated: the adapter emits what the site says, in Portuguese.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

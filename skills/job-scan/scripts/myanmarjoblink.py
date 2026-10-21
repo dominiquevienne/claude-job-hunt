@@ -37,6 +37,7 @@ Measured 2026-09-25 18:3x UTC by the declared client, the guard on the exact pat
 `__NEXT_DATA__`, no `JobPosting` — server-rendered throughout.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

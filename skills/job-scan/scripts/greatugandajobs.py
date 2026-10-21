@@ -42,6 +42,7 @@ No of Jobs — and the description text. The rules are Joomla's defaults
 root twice. Measured 2026-09-11 13:27–13:40 UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime as dt
 import html as htmlmod

@@ -42,6 +42,7 @@ The rules carry no `Crawl-delay`; this adapter spaces 2 s. `certain: True`,
 11:22–11:3x UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -58,6 +58,7 @@ WHAT IT DOES NOT DO
 as expired: *absent is not past.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

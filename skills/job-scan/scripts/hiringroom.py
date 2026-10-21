@@ -47,6 +47,7 @@ the location line («…, Argentina») when the line ends with a name this
 adapter knows; `--country-code` stamps what the user names otherwise.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

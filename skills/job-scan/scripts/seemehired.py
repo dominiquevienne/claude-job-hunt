@@ -30,6 +30,7 @@ board is UK & Ireland, the job page says which; `--country-code` on
 `jobs` stamps the rows and says so.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

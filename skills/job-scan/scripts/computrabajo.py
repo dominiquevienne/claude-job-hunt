@@ -40,6 +40,7 @@ offers; they are still markup, and they will move.
 Verified against `co.computrabajo.com` on **2026-09-02**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as html_mod
 import json

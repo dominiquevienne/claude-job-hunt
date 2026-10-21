@@ -48,6 +48,7 @@ a phone — that is never read.** No JSON-LD. Measured 2026-09-13 18:13–18:2x
 UTC (#342; page Slovaquie of 2026-09-01 named the ÚPSVaR and no board).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

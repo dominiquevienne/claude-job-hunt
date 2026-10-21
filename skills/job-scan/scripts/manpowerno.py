@@ -34,6 +34,7 @@ Measured 2026-09-14 03:2x UTC by the declared client, the guard on the exact pat
 cards; the ad 123 092 B with its JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

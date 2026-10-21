@@ -36,6 +36,7 @@ designed advertisement is the title repeated — the body is in `html`**, and
 the adapter emits the text of whichever is longer, saying which.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

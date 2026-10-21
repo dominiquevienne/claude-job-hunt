@@ -48,6 +48,7 @@ a rendered element moves), one item listed; the PDF 200, 387 382 B, md5 9d0146be
 so the run prints what it read: the entries, the employers, the sectors and the pages.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

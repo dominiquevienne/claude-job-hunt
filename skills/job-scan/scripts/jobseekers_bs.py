@@ -37,6 +37,7 @@ is null and `employer_hidden` says why. No contact is on either page; the «APPL
 to the Department's own form, which this adapter never touches.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import http.cookiejar

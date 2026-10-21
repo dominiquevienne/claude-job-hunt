@@ -47,6 +47,7 @@ reads each: `fi-ts-karriere` 46 publications (108 082 B), `holzapfel-group` 6 (1
 `zzz-not-a-tenant-2026.dvinci-easy.com` does not resolve — no wildcard, not a tenant (exit 3).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

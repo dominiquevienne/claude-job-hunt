@@ -61,6 +61,7 @@ Invocation:
 Exit codes: 0 fine · 2 broken · 3 gone · 6 partial · 7 refused · 8 unknown.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

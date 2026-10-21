@@ -35,6 +35,7 @@ Measured 2026-09-11 13:45–13:50 UTC. Requests are spaced by the host's own
 `Crawl-delay: 10`, which `_pace` applies.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import collections
 import json

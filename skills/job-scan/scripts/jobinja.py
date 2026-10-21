@@ -53,6 +53,7 @@ digits included), the employer's logo, the application route; the gender
 criterion above; `contacts_withheld` on every record. Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

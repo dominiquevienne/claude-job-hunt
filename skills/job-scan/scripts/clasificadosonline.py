@@ -39,6 +39,7 @@ is the site's text, never parsed («$10.5 / hr», «Desde $10.50 Hasta
 $10.50 hr»).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

@@ -41,6 +41,7 @@ One JSON object on stdout. `offer` is the answer; `reason` is why, in words
 meant to be shown to nobody but the person reading this code.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

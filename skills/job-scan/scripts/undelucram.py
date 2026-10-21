@@ -33,6 +33,7 @@ THE RULES: a short file (231 B) naming `ClaudeBot` to refuse it, `*` open —
 2026-09-13 15:54 UTC (#233, lot 7 → this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

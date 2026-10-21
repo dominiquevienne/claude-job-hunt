@@ -26,6 +26,7 @@ Usage:
 """
 
 from __future__ import annotations
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 
 import argparse
 import datetime as dt

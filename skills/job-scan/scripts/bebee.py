@@ -48,6 +48,7 @@ boards. **A duplicate is established by employer, title and city together —
 never by a date two publishers set separately.**
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import collections
 import datetime

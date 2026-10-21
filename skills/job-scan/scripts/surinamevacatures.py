@@ -27,6 +27,7 @@ Measured 2026-09-16 21:42–21:43 UTC by the declared client, the guard on the e
 200 (122 B); `/` 60 894 B (identical to 2026-09-13); the two lists 13 and 16 cards; the ad 35 311 B.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -41,6 +41,7 @@ request from here carries** (#233, the fourth form). `identity()` answers
 12:22–12:32 UTC (#233, lot 6 → this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

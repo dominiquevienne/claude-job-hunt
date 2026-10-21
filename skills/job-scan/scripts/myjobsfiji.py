@@ -82,6 +82,7 @@ board's own jurisdiction with `country_basis` saying exactly that.*
 Verified against the live site on 2026-09-07.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import json

@@ -53,6 +53,7 @@ the list: `/jobs/` 200 ×2, **168 540 B both**, 18 cards, «Showing 272 active j
 established here and the figures that held twice are the ones carried.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

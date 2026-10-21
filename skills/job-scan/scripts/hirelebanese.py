@@ -73,6 +73,7 @@ both**, **50 adverts and «Job Posts 1 - 50 of 3210 Results Found»**, its own L
 (50 × 65 = 3 250 ≥ 3 210); 44 location facets summing to **3 210**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

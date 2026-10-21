@@ -64,6 +64,7 @@ MEASURED ON ONE LIST PAGE, ONE RSS, ONE ADVERTISEMENT, 2026-09-11, and the
 card says so.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

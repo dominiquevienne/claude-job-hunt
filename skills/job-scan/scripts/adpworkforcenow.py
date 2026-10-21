@@ -40,6 +40,7 @@ addresses and telephone numbers; internal-only postings (`InternalPostingFlag`) 
 `contacts_withheld` on every record; the application (an ADP account) never touched.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -29,6 +29,7 @@ Measured 2026-09-16 12:05 UTC by the declared client, the guard on the exact pat
 entry, 43 030 B; no e-mail and no phone in the fifty bodies read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

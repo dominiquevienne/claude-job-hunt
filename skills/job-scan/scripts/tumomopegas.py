@@ -28,6 +28,7 @@ Measured 2026-09-16 06:15–06:17 UTC by the declared client, the guard on the e
 the ad 62 594 B.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -75,6 +75,7 @@ board's own facets, and each one REDUCES — 412, 11 and a reduced count against
 Country MN.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as htmlmod

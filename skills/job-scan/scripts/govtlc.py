@@ -51,6 +51,7 @@ portal keeps its existing vacancies listed); a notice read at
 title, «Published:» and the whole «Description:» as HTML.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

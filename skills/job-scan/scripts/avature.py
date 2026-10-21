@@ -47,6 +47,7 @@ WHAT IS WITHHELD. Addresses and phone numbers in the prose are replaced
 (`[e-mail withheld]`, `[phone withheld]` — nine digits or more).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

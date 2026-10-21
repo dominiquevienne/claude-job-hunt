@@ -38,6 +38,7 @@ State's own agencies.** No recruiter contact is emitted: the OATRH's address and
 in the page footer are the office's, not a posting's, and they are dropped.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

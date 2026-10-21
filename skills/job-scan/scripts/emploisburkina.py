@@ -27,6 +27,7 @@ run, and says why: the pager is a refused route, the exclusives a subscription.*
 2026-09-14 10:47–11:1x UTC by the declared client, the guard on the exact path, 3 s apart.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

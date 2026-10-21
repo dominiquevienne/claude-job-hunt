@@ -43,6 +43,7 @@ same store under three sets of slugs: the adapter reads them and prints
 read. Measured 2026-09-12 10:55–11:0x UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

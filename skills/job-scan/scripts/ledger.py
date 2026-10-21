@@ -60,6 +60,7 @@ Exit codes: 2 unreadable, 5 a row count that went down, 6 a row whose
 cells do not line up with the header.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

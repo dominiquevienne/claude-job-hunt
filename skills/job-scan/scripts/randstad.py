@@ -21,6 +21,7 @@ Usage:
   randstad.py check --id aefa6056-8e23-4d6d-b22e-d2b4c9ef9047
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

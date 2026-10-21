@@ -50,6 +50,7 @@ the emitted text**, and the page's `mailto:` is never read. No salary.
 Measured 2026-09-13 18:02–18:0x UTC (#374; page Finlande of 2026-08-31).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

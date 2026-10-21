@@ -63,6 +63,7 @@ stale: the search is sorted newest-first, so `Re-open` rows sit deeper — page
 never notices because it never reaches them.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import sys

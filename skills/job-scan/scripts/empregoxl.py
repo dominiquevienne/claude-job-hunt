@@ -40,6 +40,7 @@ adapter reads is refused; no `Crawl-delay`; this adapter spaces 2 s. Behind
 Cloudflare, 200 to the declared identity on every page read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime as dt
 import html as htmlmod

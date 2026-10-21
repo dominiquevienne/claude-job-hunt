@@ -19,6 +19,7 @@ Usage:
   sozialinfo.py check --token TA94iHqG
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

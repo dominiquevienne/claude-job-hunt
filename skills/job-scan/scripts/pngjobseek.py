@@ -24,6 +24,7 @@ plus the operator's lines (3 695 B); `certain: True`. Measured 2026-09-12
 15:28 and 2026-09-13 11:35 UTC (#233, lot 7 → this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

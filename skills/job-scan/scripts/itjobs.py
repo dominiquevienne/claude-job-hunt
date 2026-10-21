@@ -34,6 +34,7 @@ stub of the documented envelope on 2026-09-13; no live call was made — the
 key is absent on this machine, by design.**
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

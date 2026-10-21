@@ -43,6 +43,7 @@ a plain `200` is the advert. **The block count decides none of it** (#88).
     jobup.py ad --url https://www.jobup.ch/fr/emplois/detail/<uuid>/
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

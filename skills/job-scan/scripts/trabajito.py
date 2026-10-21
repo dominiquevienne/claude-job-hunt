@@ -31,6 +31,7 @@ Measured 2026-09-16 06:00–06:01 UTC by the declared client, the guard on the e
 728 ads, distinct; `/empleos/bolivia` 144 581 B, «736 ofertas»; the ad 114 236 B with its JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

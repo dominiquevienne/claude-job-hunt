@@ -51,6 +51,7 @@ emission and says the size is not established.*
     ntchito.py list [--kind jobs|all] [--pages N] [--limit N]
     ntchito.py ad --url https://ntchito.com/job/<slug>/
 """
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

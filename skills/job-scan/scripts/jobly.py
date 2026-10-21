@@ -50,6 +50,7 @@ the site's, the record carries its title and its body as served.
 Measured 2026-09-14 02:0x UTC by the declared client, the guard on the exact path, 10 s apart.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

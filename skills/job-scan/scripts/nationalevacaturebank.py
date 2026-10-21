@@ -47,6 +47,7 @@ uur per week»), educationRequirements, experienceRequirements
 (monthsOfExperience), industry, directApply. The uuid is the id.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json
