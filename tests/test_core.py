@@ -48432,5 +48432,160 @@ class AFollowUpNamesWhichRuleBroughtItOut(unittest.TestCase):
         self.assertIn("Never print the delay itself at the user", plat)
 
 
+class APointerIntoTheEmployerRegistryAnswersUnknownAndNeverZero(unittest.TestCase):
+    """`_employer_ats.resolve` — #1094 point 3, the three constraints of its § 3.
+
+    **The constraint that decides is the first one: an unresolved pointer renders
+    UNKNOWN and SAYS SO.** A resolver that answered `{}` or `""` would read, at
+    every call site, as «&nbsp;this employer needs no arguments&nbsp;» — and that
+    is the shape `launchd` taught the repository to refuse, where a missing tool
+    answered a count of zero instead of UNKNOWN.
+
+    *Branch distribution over the REAL registry, measured 2026-10-21 and not
+    asserted: **21 / 21 of its own keys resolve**, and the two refusal branches
+    reached from the corpus are «&nbsp;no row&nbsp;» for an unknown key and for an
+    unknown family. **THREE branches are reached by FIXTURE ONLY and by nothing
+    in the corpus** — an unreadable registry, an empty `args` cell, and a
+    duplicate key — so their green says «&nbsp;the fixture reached it&nbsp;» and
+    never «&nbsp;the corpus needs it&nbsp;». Declared here because a guard that
+    protects nothing still reads as covered.*
+    """
+
+    def _mod(self):
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        chemin = os.path.join(racine, "skills", "job-scan", "scripts",
+                              "_employer_ats.py")
+        spec = importlib.util.spec_from_file_location("_employer_ats", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _registre(self, lignes):
+        """A registry of our own, in a directory of our own — a bench is MOVED."""
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "employer-ats.md")
+        tete = "| " + " | ".join(("family", "identifier", "args",
+                                  "employer_label", "state", "checked",
+                                  "verified_by")) + " |"
+        with io.open(p, "w", encoding="utf-8") as fh:
+            fh.write(tete + "\n| :-- |" * 1 + "\n")
+            for l in lignes:
+                fh.write(l + "\n")
+        self.addCleanup(shutil.rmtree, d, True)
+        return p
+
+    def test_a_fully_wrapped_cell_is_unwrapped_and_a_partly_wrapped_one_is_not(self):
+        """`strip("`")` removes a SET of characters, not a wrapper — the
+        `verified_by` cell is the one that proves it, and the mutation that
+        restores `strip` must redden here."""
+        m = self._mod()
+        p = self._registre(["| ats | `x` | `--provider a --tenant x` | X | live "
+                            "| 2026-10-08 | `ats.py list --tenant x` -> **61** |"])
+        row, _ = m.resolve("ats", "x", p)
+        self.assertEqual(row["identifier"], "x")
+        self.assertEqual(row["args"], "--provider a --tenant x")
+        self.assertEqual(row["verified_by"], "`ats.py list --tenant x` -> **61**",
+                         "a cell wrapped only in PART must come back whole")
+        self.assertEqual(row["verified_by"].count("`") % 2, 0,
+                         "an odd number of backticks is an orphan wrapper")
+
+    def test_an_absent_registry_answers_unknown_and_never_an_empty_list(self):
+        """None and `[]` are different answers, and both are returned."""
+        m = self._mod()
+        found, where = m.rows(os.path.join(tempfile.mkdtemp(), "nope.md"))
+        self.assertIsNone(found, "an absent registry must not read as an empty one")
+        self.assertIn("no registry at", where)
+        row, where = m.resolve("ats", "x", os.path.join(tempfile.mkdtemp(), "nope.md"))
+        self.assertIsNone(row)
+        self.assertIn("no registry at", where)
+
+    def test_an_unknown_key_names_the_key_and_the_path_it_consulted(self):
+        """«&nbsp;no row&nbsp;» alone does not say which of the two to fix."""
+        m = self._mod()
+        p = self._registre(["| ats | `x` | `--tenant x` | X | live | 2026-10-08 "
+                            "| `c` |"])
+        row, where = m.resolve("ats", "absent", p)
+        self.assertIsNone(row)
+        self.assertIn("ats/absent", where)
+        self.assertIn(p, where, "a key that is absent and a registry that was "
+                                "never found are two different things to fix")
+
+    def test_an_empty_args_cell_is_a_malformed_row_and_not_no_arguments_needed(self):
+        """FIXTURE-ONLY branch: the real registry has 21 / 21 args filled."""
+        m = self._mod()
+        p = self._registre(["| ats | `x` |  | X | live | 2026-10-08 | `c` |"])
+        row, where = m.resolve("ats", "x", p)
+        self.assertIsNone(row, "an empty argument string must not resolve")
+        self.assertIn("malformed", where)
+
+    def test_a_duplicate_key_resolves_to_nothing_and_says_how_many(self):
+        """FIXTURE-ONLY branch: the sibling guard asserts the key unique."""
+        m = self._mod()
+        ligne = "| ats | `x` | `--tenant x` | X | live | 2026-10-08 | `c` |"
+        row, where = m.resolve("ats", "x", self._registre([ligne, ligne]))
+        self.assertIsNone(row)
+        self.assertIn("2 rows", where)
+        self.assertIn("unique", where)
+
+    def test_a_local_override_wins_and_the_sentence_names_the_registry_too(self):
+        """A silent override is how a registry starts being wrong unnoticed."""
+        m = self._mod()
+        p = self._registre(["| ats | `x` | `--tenant x` | X | live | 2026-10-08 "
+                            "| `c` |"])
+        row, where = m.resolve("ats", "x", p, local={"args": "--tenant mine"})
+        self.assertEqual(row["args"], "--tenant mine")
+        self.assertIn("local override", where)
+        self.assertIn("--tenant x", where,
+                      "the override must name what the registry WOULD have said")
+
+    def test_the_real_registry_resolves_every_one_of_its_own_keys(self):
+        """The corpus case: a fixture carries the values of whoever wrote it."""
+        m = self._mod()
+        found, where = m.rows()
+        self.assertIsNotNone(found, where)
+        self.assertGreater(len(found), 15, where)
+        for r in found:
+            row, w = m.resolve(r["family"], r["identifier"])
+            self.assertIsNotNone(row, w)
+
+    def test_the_key_folds_case_on_both_halves_and_the_corpus_needs_one_half(self):
+        """**The two halves are NOT symmetrically covered, and that is measured.**
+
+        Of the real registry's 21 identifiers, **2 carry a capital** — `Evooq`
+        and `AudemarsPiguet` — so folding the IDENTIFIER is exercised by the
+        corpus: without it, `test_the_real_registry_resolves_every_one_of_its_own_keys`
+        reddens naming `ats/Evooq`. All **6 / 6** families are lowercase, so
+        folding the FAMILY is reached by this fixture and by nothing in the
+        corpus. *A branch green on a fixture and never taken in the world still
+        reads as covered, so its half is declared here rather than counted.*
+        """
+        m = self._mod()
+        p = self._registre(["| ats | `Evooq` | `--tenant Evooq` | E | live | "
+                            "2026-10-08 | `c` |"])
+        for famille, ident in (("ats", "evooq"), ("ATS", "Evooq"),
+                               ("AtS", "EVOOQ")):
+            row, where = m.resolve(famille, ident, p)
+            self.assertIsNotNone(row, f"{famille}/{ident}: {where}")
+            self.assertEqual(row["identifier"], "Evooq")
+
+    def test_the_bare_identifier_matches_no_raw_cell_of_the_real_registry(self):
+        """**This is why the unwrapping is a condition and not a tidy-up.**
+
+        A `config.yml` writes the identifier BARE; the registry wraps it. A
+        resolver comparing the two raw forms returns a false zero on EVERY
+        present row, with no error at all.
+        """
+        m = self._mod()
+        found, _ = m.rows()
+        with io.open(m.REGISTRY, encoding="utf-8") as fh:
+            brut = fh.read()
+        nus = [r["identifier"] for r in found]
+        self.assertTrue(nus)
+        for ident in nus:
+            self.assertNotIn("| " + ident + " |", brut,
+                             "a bare identifier must not match a raw cell, or "
+                             "this test is measuring nothing")
+            self.assertIn("`" + ident + "`", brut)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
