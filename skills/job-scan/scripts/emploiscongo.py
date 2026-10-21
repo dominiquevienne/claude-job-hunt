@@ -199,9 +199,23 @@ def classify(url):
     tail = url[len(BASE) + 1:]
     if "/" in tail or tail in NOT_AN_AD:
         return None
-    # **One prefix, and no second form.** `jobartis` has a bare-slug form
-    # beside its prefixed one; this host has none, checked on the whole file.
-    return "emploi" if tail.startswith("emploi-") else "bare"
+    # **One prefix, and no second form — and the DEFAULT of this sort used to
+    # be the advertisement side. #1180.**
+    #
+    # `jobartis` really has a bare-slug form beside its prefixed one, 2 294 of
+    # them against 38 588, two of which were fetched to check it. **This host
+    # has none, and that was checked ON THE FILE OF THAT DAY** — which is a
+    # measurement and not a property of the host. So a single-segment path that
+    # is neither the prefix nor a known chrome page used to come back `"bare"`,
+    # and `entries()` emitted it as an advertisement: the headline count was
+    # safe, the LIST was not, and `--fetch` would then spend a request opening
+    # a chrome page.
+    #
+    # *«When a sort has a default case, pick the one that fails VISIBLY»* — so
+    # the default is now `"unknown"`, which is counted, NAMED, and never
+    # emitted. **A deny-list bets the problem was enumerated; this one was
+    # enumerated once and will not stay enumerated by itself.**
+    return "emploi" if tail.startswith("emploi-") else "unknown"
 
 
 def entries():
@@ -209,7 +223,8 @@ def entries():
     if code != 200:
         die(f"{SITEMAP}: HTTP {code}")
     body, was_gz = ungzip(raw, headers)
-    rows, counts = [], {"emploi": 0, "bare": 0, "not-an-ad": 0}
+    rows, unknown = [], []
+    counts = {"emploi": 0, "unknown": 0, "not-an-ad": 0}
     for block in ENTRY.findall(body):
         loc = LOC.search(block)
         if not loc:
@@ -220,6 +235,12 @@ def entries():
             counts["not-an-ad"] += 1
             continue
         counts[form] += 1
+        if form == "unknown":
+            # **NAMED and not merely counted**: a count cannot tell a new
+            # chrome page from a second advertisement form, and the two call
+            # for opposite conduct.
+            unknown.append(url)
+            continue
         d = LASTMOD.search(block)
         rows.append({"source": "emploiscongo", "url": url,
                      "slug": url[len(BASE) + 1:], "form": form,
@@ -230,7 +251,7 @@ def entries():
             f"characters (gzip={was_gz}) — read the bytes before believing "
             f"the zero.")
     rows.sort(key=lambda r: (r["lastmod"] or ""), reverse=True)
-    return rows, counts, was_gz
+    return rows, counts, was_gz, unknown
 
 
 def read_ad(url):
@@ -264,17 +285,27 @@ def read_ad(url):
 
 
 def cmd_list(a):
-    rows, counts, was_gz = entries()
+    rows, counts, was_gz, unknown = entries()
     if not rows:
         die(f"{sum(counts.values())} sitemap entr(y|ies) and **0 "
             f"advertisement(s) parsed** ({counts}). The file was read and "
             f"yielded no advertisement — a reading that failed, not an empty "
             f"board. #181", EXIT_PARTIAL)
-    note(f"{counts['emploi']} advertisement(s) under `/emploi-` and "
-         f"**{counts['bare']} under a bare slug** (gzip={was_gz}); "
-         f"{counts['not-an-ad']} entr(y|ies) are not advertisements. "
-         f"*`jobartis`, the same operator, has 2 294 bare-slug "
-         f"advertisements — this host has none, and that was checked.*")
+    note(f"{counts['emploi']} advertisement(s) under `/emploi-` "
+         f"(gzip={was_gz}); {counts['not-an-ad']} entr(y|ies) are not "
+         f"advertisements. *`jobartis`, the same operator, really has 2 294 "
+         f"bare-slug advertisements beside its prefixed ones; this host has "
+         f"none, and that was checked on the file of the day rather than "
+         f"being a property of the host.*")
+    if counts["unknown"]:
+        # **LOUD, because this is the branch that used to emit a false
+        # advertisement.** #1180.
+        note(f"{counts['unknown']} single-segment path(s) are NEITHER "
+             f"`/emploi-` NOR a known chrome page, and they are NOT counted "
+             f"or emitted as advertisements: {', '.join(unknown[:10])}"
+             f"{' …' if len(unknown) > 10 else ''}. **Read them before "
+             f"believing either answer** — a second advertisement form arriving "
+             f"and a new chrome page look identical from a count.")
     newest = max((r["lastmod"] or "") for r in rows)
     note(f"most recent: {newest}. **This board is a closed archive** — 7 of 7 "
          f"sampled were closed, the three most recent included.")
@@ -288,7 +319,7 @@ def cmd_list(a):
     if not a.fetch:
         print(json.dumps({"source": "emploiscongo", "country": "CD",
                           "advertisements": counts["emploi"],
-                          "bare_slug_advertisements": counts["bare"],
+                          "unclassified": unknown,
                           "not_advertisements": counts["not-an-ad"],
                           "returned": len(rows), "ads": rows},
                          ensure_ascii=False, indent=1))
