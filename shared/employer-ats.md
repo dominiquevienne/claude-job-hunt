@@ -283,6 +283,53 @@ is NOT true of Lever**, which 404s on both of its disjoint hosts and dies exit 4
 configuration**, which is his derogation to make (#403, 13.09.2026) and never ours. *A
 session that finds this file without that key must not reach those five.*
 
+## The two rows OWED — found by point 4b's resolver, exercised 2026-10-21
+
+**They are point 2 work and not a regression of 4b**, and the way they surfaced is
+constraint 1 of point 3 in operation: *«a pointer that does not resolve renders UNKNOWN
+and SAYS SO, never zero»*. `employer_pointers.py plan` named them, by board and by
+identifier, instead of rendering an absence it had not measured — two of the owner's
+configured employers that the nineteen of 2026-10-08 never carried.
+
+**Both were EXERCISED**, guard taken on each exact host and path in a turn distinct from
+the retrieval, with the single token a request carries (`claude-user`) and never the set:
+`boards-api.greenhouse.io` refuses `/embed/` to `*` and nothing else, `apply.workable.com`
+writes no `Disallow` at all, and neither names a `Crawl-delay` — so the cadence is ours.
+
+| family | identifier | args | employer_label | state | checked | verified_by |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| ats | `workwize` | `--provider greenhouse --tenant workwize` | Workwize (NL/US) | live | 2026-10-21 | `ats.py list --provider greenhouse --tenant workwize` → **17** advertisements, first *Business Development Representative, New York*, `ledger_id` `greenhouse:workwize:4570507101`, by the declared HTTP client |
+| ats | `itecor` | `--provider workable --tenant itecor` | Itecor (CH) | live | 2026-10-21 | `ats.py list --provider workable --tenant itecor` → **17** advertisements, first *Business Analyst IT* in Lausanne, `ledger_id` `workable:itecor:1867F69E1B`, by the declared HTTP client |
+
+**The two counts are both 17 and that is a COINCIDENCE, not a confirmation** — two
+boards, two providers, one number. *Nothing is inferred from the equality; this file has
+already taken an accidental equality for a measurement twice (#1094's two 19s).*
+
+**And 17 is a TOTAL here, where the `workday` rows above say «20 on the first page».**
+*Neither of these two endpoints pages: `greenhouse_list` and `workable_list` each make
+ONE request and the whole board comes back. The count is still our own extraction of
+that response and not a board-declared total, so it is written as advertisements SERVED,
+which is what a non-zero witness needs to be.*
+
+### What the exercise added to note 3 above: the false zero is testable, and it was tested
+
+Note 3 settles that *«the discriminator is not the zero, it is whether the provider
+distinguishes unknown tenant from empty board — and that is settled with one bogus tenant
+per family, once»*. **It had been measured for Lever and for SmartRecruiters only.**
+`workable` is a provider this registry had never carried, and `greenhouse` had carried
+three rows without it ever being taken. Both now are:
+
+```
+ats.py list --provider greenhouse --tenant zzz-aucun-board-ici  ->  exit 4, "HTTP 404"
+ats.py list --provider workable   --tenant zzz-aucun-board-ici  ->  exit 4, "HTTP 404"
+```
+
+**So both providers DISTINGUISH, and a zero from either is a MEASUREMENT and not an
+indeterminate** — the same standing as Lever's, and the opposite of SmartRecruiters'.
+*Neither of the two rows above needed it, both answering non-zero: it was taken because
+the rule says it is taken BEFORE a family's first insertion and holds for every later
+one, so the cheap moment is now and not the day a zero arrives.*
+
 ## What this file does NOT contain, and why
 
 - **Anything of the owner's beyond the nineteen pairs and the invocations that
