@@ -44050,7 +44050,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in corpus
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), [],
+            sorted(pathlib.Path(p).name for p in reels), ["jobartis-ga.md"],
             "the declared population of this branch changed. EMPTY until "
             "2026-10-06, THREE within the day, and EMPTY again by its end: "
             "`isgar.md` and `yora.md` left because their ADAPTERS WERE WRITTEN, "
@@ -44061,7 +44061,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
             "«measured, route known, adapter not written» arriving — but it means "
             "the docstring's figure is stale: name the new card here and say since "
             "when, and do NOT widen this to a count, which would stop telling you "
-            "WHICH card arrived")
+            "WHICH card arrived. ARRIVED 2026-10-21 (#1097, `ab`): "
+            "`jobartis-ga.md` — www.jobartis.ga, 228 advertisements under "
+            "`/emploi-<slug>` in a declared `sitemap.xml.gz`, basis `route: http`. It "
+            "is the #949 state and NOT a defect: the route is measured and the adapter "
+            "is not written, the network's `jobartis.py` being wired to Angola by three "
+            "literals. Its SIBLING `esi-mk.md` is deliberately NOT here — it declares no "
+            "`route:` at all, like `bolsas-sanitarias-es.md`, because every path answers "
+            "and its own counter says zero")
         # **AND THE EMPTINESS NAMES ITS REASON, CARD BY CARD.** *This is the half
         # the assertion above cannot carry: `[]` is the same `[]` whichever way a
         # card left, and the two ways call for OPPOSITE conduct — an adapter
