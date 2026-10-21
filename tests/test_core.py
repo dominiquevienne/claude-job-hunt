@@ -48548,6 +48548,26 @@ class APointerIntoTheEmployerRegistryAnswersUnknownAndNeverZero(unittest.TestCas
             row, w = m.resolve(r["family"], r["identifier"])
             self.assertIsNotNone(row, w)
 
+    def test_the_key_folds_case_on_both_halves_and_the_corpus_needs_one_half(self):
+        """**The two halves are NOT symmetrically covered, and that is measured.**
+
+        Of the real registry's 21 identifiers, **2 carry a capital** — `Evooq`
+        and `AudemarsPiguet` — so folding the IDENTIFIER is exercised by the
+        corpus: without it, `test_the_real_registry_resolves_every_one_of_its_own_keys`
+        reddens naming `ats/Evooq`. All **6 / 6** families are lowercase, so
+        folding the FAMILY is reached by this fixture and by nothing in the
+        corpus. *A branch green on a fixture and never taken in the world still
+        reads as covered, so its half is declared here rather than counted.*
+        """
+        m = self._mod()
+        p = self._registre(["| ats | `Evooq` | `--tenant Evooq` | E | live | "
+                            "2026-10-08 | `c` |"])
+        for famille, ident in (("ats", "evooq"), ("ATS", "Evooq"),
+                               ("AtS", "EVOOQ")):
+            row, where = m.resolve(famille, ident, p)
+            self.assertIsNotNone(row, f"{famille}/{ident}: {where}")
+            self.assertEqual(row["identifier"], "Evooq")
+
     def test_the_bare_identifier_matches_no_raw_cell_of_the_real_registry(self):
         """**This is why the unwrapping is a condition and not a tidy-up.**
 
