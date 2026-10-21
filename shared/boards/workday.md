@@ -209,7 +209,9 @@ which is the reason trap 7 exists.
 --tenant swisscom --site swisscomexternalcareers` returns **20 of 86**, and says
 so — `raise --pages to go further`.
 
-**And its `resolve` example is refused** — like `ats.py resolve`, it searches
+**And its `resolve` example is refused** — `workday.py resolve` searches
 through HiringCafe, whose `robots.txt` refuses `?searchState=` to
 `User-agent: *` since 2026-09-03 (#123). **The adapter exits 7 and makes no
-request**; `list` is unaffected.
+request**; `list` is unaffected. *`ats.py resolve` no longer behaves this way:
+#1167 moved it to `shared/employer-ats.md`, so the two commands now answer
+differently and only this one still refuses.*

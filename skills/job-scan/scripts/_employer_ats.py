@@ -52,7 +52,7 @@ import io
 import os
 import re
 
-__all__ = ["REGISTRY", "FIELDS", "rows", "resolve"]
+__all__ = ["REGISTRY", "FIELDS", "rows", "resolve", "search"]
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTRY = os.path.normpath(
@@ -142,6 +142,39 @@ def resolve(family, identifier, path=None, local=None):
                       f"args — an empty argument string is not 'no arguments "
                       f"needed', it is a malformed row")
     return dict(row), f"{key[0]}/{key[1]} in {path}"
+
+def search(name, path=None):
+    """`(matches, where)` — every row whose `employer_label` holds `name`.
+
+    The registry's key is `(family, identifier)` and an employer NAME is not a
+    key, so answering a name is a SEARCH and it returns N rows. The three
+    answers are kept apart: None is « I could not read the registry »,
+    `[]` is « the registry holds no row for this name », and NEITHER is
+    « this employer has no ATS ». Conflating the last two would publish a
+    zero nobody measured, at the one place a user cannot see it.
+
+    The match is DECLARED rather than clever: case-folded substring on
+    `employer_label` alone, which is the one field whose purpose is the human
+    name. It is NOT accent-folded — `Societe` will not find `Société` — and
+    that limit is written here because its cost is to MISS a row, which the
+    caller's sentence then names, never to invent one.
+    """
+    found, where = rows(path)
+    if found is None:
+        return None, where
+    path = REGISTRY if path is None else path
+    needle = str(name).strip().casefold()
+    # A POSITIVE floor on our own pattern: `"" in anything` is True, so an
+    # empty name would match EVERY row and the caller would read that as a
+    # resolved employer. Refusing to judge is not the same answer as finding
+    # nothing, so this is None and not `[]`.
+    if not needle:
+        return None, (f"an empty name is not a search — refusing to match "
+                      f"all {len(found)} row(s) in {path}")
+    hit = [dict(r) for r in found
+           if needle in r["employer_label"].casefold()]
+    return hit, (f"{len(hit)} row(s) for {name!r} among {len(found)} "
+                 f"in {path}")
 
 
 # The witness is prose, so the sub-command is EXTRACTED from it and the script

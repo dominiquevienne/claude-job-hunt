@@ -27,8 +27,9 @@ boards:
 ```
 
 The tenant is the account slug in the employer's careers URL —
-`apply.workable.com/<tenant>` — or whatever `ats.py resolve "<employer>"`
-returns. **Never guess it**: an invented slug answers `404` and the adapter says
+`apply.workable.com/<tenant>` — or the `args` of its row in
+`shared/employer-ats.md`, which `ats.py resolve "<employer>"` prints when the
+row has been filed. **Never guess it**: an invented slug answers `404` and the adapter says
 so with exit code `4`, which is the good case. Guessing a plausible one that
 happens to exist gives you another company's board.
 
@@ -37,7 +38,7 @@ happens to exist gives you another company's board.
 ```bash
 ats.py list --provider workable --tenant storyteq
 ats.py ad   --provider workable --tenant storyteq --id 6C529DB5AE
-ats.py resolve "Storyteq"
+ats.py resolve "Storyteq"    # exit 1 today: no Storyteq row is filed
 ```
 
 ## One request returns the whole board, descriptions included
@@ -139,9 +140,15 @@ note in the board request.
 listing is the only closure signal this board gives, and it is a reliable one:
 the endpoint returns the employer's whole live board every time.
 
-## `resolve` can hand you a tenant `list` refuses
+## `resolve` could hand you a tenant `list` refuses
 
-Re-verified 2026-09-02. `ats.py resolve "Storyteq"` returns two rows, and the
+**Dated, and it describes the route BEFORE #1167**: `resolve` then searched
+HiringCafe, which is refused in writing (#123), and it now reads
+`shared/employer-ats.md` instead. The measurement is kept because the TRAP it
+documents is HiringCafe's, not ours, and anyone taking a tenant from there
+still meets it.
+
+Re-verified 2026-09-02. `ats.py resolve "Storyteq"` returned two rows, and the
 second one works. The first does not:
 
 ```
