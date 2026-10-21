@@ -115,7 +115,9 @@ def resolve(family, identifier, path=None, local=None):
     `row` is None whenever nothing was resolved, and `where` says WHICH of the
     reasons it was. `local` overrides, and the sentence names both.
     """
-    key = (str(family).strip().lower(), str(identifier).strip().strip("`").lower())
+    # the SAME unwrapping as a cell, and for the same reason — the idiom this
+    # module exists to refuse must not survive in the module that refuses it
+    key = (str(family).strip().lower(), _cell(str(identifier)).lower())
     found, where = rows(path)
     if found is None:
         if local is not None:
