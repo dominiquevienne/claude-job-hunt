@@ -26,6 +26,8 @@ import re
 import sys
 import unicodedata
 
+import _ledger_table
+
 JOB_HUNT_HOME = os.environ.get(
     "JOB_HUNT_HOME", os.path.expanduser("~/Documents/job_applications")
 )
@@ -66,50 +68,19 @@ HEADER_ALIASES = {
 # ledger
 # --------------------------------------------------------------------------
 
-def split_row(line: str) -> list[str]:
-    """Split a markdown table row, honouring \\| escapes inside cells."""
-    out, cell, i = [], [], 0
-    body = line.strip().strip("|")
-    while i < len(body):
-        ch = body[i]
-        if ch == "\\" and i + 1 < len(body) and body[i + 1] == "|":
-            cell.append("|")
-            i += 2
-            continue
-        if ch == "|":
-            out.append("".join(cell).strip())
-            cell = []
-            i += 1
-            continue
-        cell.append(ch)
-        i += 1
-    out.append("".join(cell).strip())
-    return out
 
 
-def load_rows(path: str) -> list[dict]:
-    try:
-        with open(path, encoding="utf-8") as fh:
-            lines = fh.read().splitlines()
-    except FileNotFoundError:
-        raise SystemExit(f"error: pipeline file not found: {path}")
+def load_rows(path: str) -> tuple[list[dict], dict[str, int]]:
+    """`(rows, skipped)` — see `_ledger_table`, issue #1182.
 
-    rows, columns = [], None
-    for line in lines:
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            continue
-        cells = split_row(stripped)
-        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
-            continue
-        if cells and cells[0].strip().lower() == "id":
-            columns = [HEADER_ALIASES.get(c.strip().lower(), c.strip().lower()) for c in cells]
-            continue
-        if columns is None or len(cells) < len(columns):
-            continue
-        row = dict(zip(columns, cells[: len(columns)]))
-        if "statut" not in row:
-            continue
+    The reading is shared with `list_applications.py`: bounded to `## Ads`
+    with the boundary `ledger.py` uses, and counting the rows whose width does
+    not match rather than dropping them in silence. This file had its own
+    near-identical copy, and the two agreed with `ledger.py` by coincidence.
+    """
+    rows, skipped = _ledger_table.load(path, HEADER_ALIASES)
+    out = []
+    for row in rows:
         m = STATUS_RE.match(row["statut"])
         row["date"] = m.group("date") if m else None
         row["kind"] = m.group("kind").lower() if m else row["statut"].lower()
@@ -119,10 +90,9 @@ def load_rows(path: str) -> list[dict]:
         row["jr_declared"] = jr.group(1) if jr else None
         w = JR_WAIVED_RE.search(note)
         row["jr_waived"] = (w.group(1) or True) if w else None
-        rows.append(row)
-    if columns is None:
-        raise SystemExit(f"error: no table header found in {path}")
-    return rows
+        out.append(row)
+    return out, skipped
+
 
 
 def sent(row: dict) -> bool:
@@ -179,7 +149,8 @@ def write_state(path: str, data: dict) -> None:
 # plan
 # --------------------------------------------------------------------------
 
-def build_plan(rows: list[dict], state: dict) -> dict:
+def build_plan(rows: list[dict], state: dict,
+               skipped: dict[str, int] | None = None) -> dict:
     """Split the ledger into what job-room is missing and what it has wrong.
 
     `to_enter`  — sent, and never declared.
@@ -234,6 +205,11 @@ def build_plan(rows: list[dict], state: dict) -> dict:
         "waived": waived,
         "counts": {"to_enter": len(to_enter), "to_update": len(to_update),
                    "waived": len(waived)},
+        # Rows of `## Ads` the reading refused, by direction. A PRE is an
+        # official declaration: «Both errors are invisible in a row count, so
+        # neither is left to judgement here» — and a row dropped in silence
+        # was exactly that. Issue #1182.
+        "skipped": skipped or {},
     }
 
 
@@ -452,6 +428,8 @@ def run_check(plan: dict, text: str) -> dict:
 def print_plan(plan: dict) -> None:
     ls = plan["last_sync"] or "never"
     print(f"last job-room sync: {ls}")
+    for line in _ledger_table.skipped_lines(plan.get("skipped") or {}):
+        print(line)
     print()
     print(f"to declare ({len(plan['to_enter'])}):")
     for i in plan["to_enter"] or []:
@@ -593,12 +571,14 @@ def main() -> int:
     state = read_state(args.state)
 
     if args.cmd == "plan":
-        plan = build_plan(load_rows(args.file), state)
+        rows, skipped = load_rows(args.file)
+        plan = build_plan(rows, state, skipped)
         print(json.dumps(plan, indent=2, ensure_ascii=False)) if args.format == "json" else print_plan(plan)
         return 0
 
     if args.cmd == "check":
-        plan = build_plan(load_rows(args.file), state)
+        rows, skipped = load_rows(args.file)
+        plan = build_plan(rows, state, skipped)
         text = _read_text(args.jobroom_text)
         res = run_check(plan, text)
         print(json.dumps(res, indent=2, ensure_ascii=False)) if args.format == "json" else print_check(res)
