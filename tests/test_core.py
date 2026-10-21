@@ -48775,8 +48775,21 @@ class AConfigPointerResolvesThroughTheRegistryOrSaysWhichItCouldNot(
             chemin = os.path.join(scripts, r["family"] + ".py")
             self.assertTrue(os.path.exists(chemin), chemin)
             if r["family"] not in usages:
+                # **`PYTHONIOENCODING` is not tidiness, it is what makes
+                # this measure the sub-command set instead of the console\'s
+                # code page.** On `windows-latest` the child printed a
+                # `UnicodeEncodeError: charmap ... \\u2192` instead of its
+                # help, and this assertion read that traceback as «&nbsp;no
+                # `jobs` sub-command&nbsp;» — true of the run and false of the
+                # adapter. Measured 2026-10-21 over the directory: **157 of
+                # 315 docstrings cannot be encoded in cp1252**, `→` alone 254
+                # times, so half the adapters answer `--help` with a traceback
+                # on a default Windows console. That is a user-facing defect
+                # of its own and it is NOT what this test is for.
                 p = subprocess.run([_sys.executable, chemin, "--help"],
-                                   capture_output=True, text=True, timeout=120)
+                                   capture_output=True, text=True, timeout=120,
+                                   env=dict(os.environ,
+                                            PYTHONIOENCODING="utf-8"))
                 usages[r["family"]] = p.stdout + p.stderr
             offre = usages[r["family"]]
             self.assertRegex(offre, r"\{[^}]*\b%s\b[^}]*\}" % re.escape(sub),
