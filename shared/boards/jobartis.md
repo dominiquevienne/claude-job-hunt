@@ -7,6 +7,7 @@
 <!-- host-forms-basis: read — `jobartis.py:BASE`, a single literal. `info.jobartis.com` is declared as a second sitemap in `/robots.txt` and is never fetched; `m.jobartis.com` is offered to phones and is not used · 2026-09-07 -->
 <!-- script: jobartis.py -->
 <!-- countries: AO -->
+<!-- closure: detail · «Vaga fechada» on the ADVERTISEMENT page against «Enviar candidatura» for an open one, read by `jobartis.py` in `cmd_ad` and nowhere else. **The listing cannot carry closure**: the enumerator is `sitemap.xml.gz`, which holds `<loc>` and `<lastmod>` only. **This line is DERIVED from the adapter's own code path and from the shape of its enumerator, not from a fresh fetch** — the two markers were verified against the live site on 2026-09-07 and that measurement is the card's, not this line's. *The card owed this field from that day: the adapter emitted its closure as `state = "closed"`, a form the scope pattern of `ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt` cannot see, and #1172 surfaced it by extracting the branch into `state_of`* · 2026-10-21 -->
 <!-- content: measured · 40 882 advertisements in one gzipped sitemap — 38 588 under `/emprego-<slug>` and 2 294 under a bare `/<slug>`, plus 212 entries that are not advertisements, summing to the file's 41 094 `<loc>`; 216 dated on or after 2026-08-01 · 2026-09-07 -->
 <!-- witness: none found — the site publishes no total; 41 094 is the file's own length and 40 882 is what remains after the 212 non-advertisements are named · 2026-09-07 -->
 

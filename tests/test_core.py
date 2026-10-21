@@ -44050,7 +44050,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in corpus
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), ["jobartis-ga.md"],
+            sorted(pathlib.Path(p).name for p in reels), [],
             "the declared population of this branch changed. EMPTY until "
             "2026-10-06, THREE within the day, and EMPTY again by its end: "
             "`isgar.md` and `yora.md` left because their ADAPTERS WERE WRITTEN, "
@@ -44068,7 +44068,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
             "is not written, the network's `jobartis.py` being wired to Angola by three "
             "literals. Its SIBLING `esi-mk.md` is deliberately NOT here — it declares no "
             "`route:` at all, like `bolsas-sanitarias-es.md`, because every path answers "
-            "and its own counter says zero")
+            "and its own counter says zero. DEPARTED 2026-10-21 (#1172), the same "
+            "day it arrived: `jobartis-ga.md` now declares `script: jobartis.py` "
+            "and left for the SAME reason as `isgar.md` and `yora.md` — its "
+            "ADAPTER WAS WRITTEN, basis «`script:` sans refus consigné», "
+            "MEASURED and not assumed. The population is EMPTY again, and the "
+            "departure is pinned card-by-card below, because a written adapter "
+            "and a withdrawn route both empty this list and call for OPPOSITE "
+            "conduct")
         # **AND THE EMPTINESS NAMES ITS REASON, CARD BY CARD.** *This is the half
         # the assertion above cannot carry: `[]` is the same `[]` whichever way a
         # card left, and the two ways call for OPPOSITE conduct — an adapter
@@ -44083,7 +44090,13 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
                 ("yora.md", "`script:` sans refus consigné", "adapter WRITTEN (#665)"),
                 ("naydizdes.md", "aucune ligne de refus, aucun script, aucune `route:`",
                  "route FALSE and WITHDRAWN (#671) — 2 222 `/item/` were the whole "
-                 "classifieds site, not a jobs section")):
+                 "classifieds site, not a jobs section"),
+                ("jobartis-ga.md", "`script:` sans refus consigné",
+                 "adapter WRITTEN (#1172) — the sitemap SHAPE transposed from "
+                 "the Angolan `.com` and the VOCABULARY did not: ten French "
+                 "field labels and a French closed marker, so the Angolan "
+                 "parser run unchanged emitted 10 of 10 fields null and "
+                 "`state: null` on 4 of 4 pages")):
             self.assertIn(nom, par_nom, "%s left the repository entirely" % nom)
             etiquette, base = mod.access_of(par_nom[nom])
             self.assertEqual(
@@ -49287,6 +49300,154 @@ class NoCliTracebacksOnHelpUnderAnEightBitConsole(unittest.TestCase):
                              "route 1 refusee: elle atteindrait la sortie de "
                              "DONNEES et echangerait un echec bruyant contre "
                              "un echec silencieux")
+
+
+class TheJobartisInstancesShareAShapeAndNotAVocabulary(unittest.TestCase):
+    """**#1172 — the Gabonese instance, and what «one locale constant away» cost.**
+
+    `shared/boards/jobartis-ga.md` established that the URL SHAPE transposes from
+    the Angolan `.com`: same `sitemap.xml.gz`, same flat `urlset`, advertisements
+    under a localised prefix. *That is the `hays-fr` case and the card was right
+    about it.* **What it could not say — and said so — is what an advertisement
+    page CARRIES, because none had been opened.**
+
+    Measured on 2026-10-21 over four fetched pages: **the structure transposes and
+    the VOCABULARY does not.** `data-job-id` 4/4, `<h1>` 4/4, the `data-label`
+    motif yields 13 fields on 4/4 — and all ten field labels are FRENCH while
+    both Portuguese state markers are ABSENT on 4/4. *So the Angolan parser run
+    unchanged would have emitted a well-formed record with 10 of 10 fields `null`
+    and `state: null`, which is the shape of a silent falsehood rather than of an
+    error.*
+
+    **THIS CLASS HOLDS THE LOGIC AND THE TABLE; IT DOES NOT HOLD THE CORPUS.**
+    *The vocabulary was measured against the live host and the figures live in the
+    card — four pages of third-party HTML are not a fixture this repository should
+    carry. What a guard CAN do without a request is refuse a table that drifts,
+    and refuse the one asymmetry that costs a user something: calling a page open
+    because the marker that would have closed it is unknown.*
+    """
+
+    CHAMPS = ("country", "source", "base", "prefix", "bare_is_ad", "chrome",
+              "accept_language", "closed", "open", "labels")
+
+    def _m(self):
+        import importlib.util
+        chemin = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "skills", "job-scan", "scripts", "jobartis.py")
+        self.assertTrue(os.path.exists(chemin), chemin)
+        spec = importlib.util.spec_from_file_location("jobartis_1172", chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_angolan_instance_is_pinned_to_what_it_was_before_gabon(self):
+        """**The no-regression pin, and it is the first case because the risk of
+        parameterising a working adapter is the adapter that worked.** *Every
+        value here was read from `jobartis.py` as it stood at `7b81457c`, before
+        the Gabonese instance existed.*"""
+        ao = self._m().INSTANCES["AO"]
+        self.assertEqual(ao["base"], "https://www.jobartis.com")
+        self.assertEqual(ao["prefix"], "emprego-")
+        self.assertEqual(ao["source"], "jobartis")
+        self.assertTrue(ao["bare_is_ad"], "the `.com` carries 2 294 bare-slug "
+                                          "advertisements and they were counted")
+        self.assertEqual(ao["closed"], "Vaga fechada")
+        self.assertEqual(ao["open"], "Enviar candidatura")
+        self.assertEqual(ao["chrome"], {
+            "", "ajuda", "search-job-offers", "vagas-emprego", "sitemap",
+            "aviso-legal", "politica-de-privacidade", "contacto"})
+        self.assertEqual(set(ao["labels"].values()), {
+            "oferta_aberta_ate", "tipo_contrato", "cargo", "industria",
+            "numero_de_vagas", "titulacao_minima", "experiencia_exigida",
+            "nacionalidade", "linguas", "area_funcional"})
+
+    def test_every_instance_declares_every_field(self):
+        """*A new instance that omitted `open` would not fail at import: it would
+        raise a `KeyError` on the one path that reads it — the state path, which
+        only runs against a live page. That is «the guard that raises on the very
+        path it guards», so the shape is asserted here instead.*"""
+        mod = self._m()
+        self.assertGreaterEqual(len(mod.INSTANCES), 2,
+                                "%d instance(s): this class is NOT EXERCISED"
+                                % len(mod.INSTANCES))
+        for cle, inst in sorted(mod.INSTANCES.items()):
+            self.assertEqual(sorted(inst), sorted(self.CHAMPS),
+                             "instance %s declares %s" % (cle, sorted(inst)))
+            self.assertEqual(inst["country"], cle)
+            self.assertTrue(inst["prefix"].endswith("-"), inst["prefix"])
+            self.assertIn("open_until", inst["labels"],
+                          "%s has no deadline label, and `iso()` reads that one"
+                          % cle)
+
+    def test_an_instance_with_no_measured_open_marker_never_calls_a_page_open(self):
+        """**The asymmetry that costs a user something, and the only one.** *A page
+        with no closed marker on an instance whose open marker was never seen is
+        `None` and SAYS why — never «open». Reading one host's rule onto another
+        declares every closed post open, and the plugin then drafts for a vacancy
+        that is gone.*"""
+        mod = self._m()
+        ga = mod.INSTANCES["GA"]
+        self.assertIsNone(ga["open"], "the Gabonese open marker is UNMEASURED: 4 "
+                                      "of 4 sampled pages are closed, the newest "
+                                      "advertisement in the corpus included")
+        etat, base = mod.state_of("un document sans aucun marqueur", ga)
+        self.assertIsNone(etat)
+        self.assertIn("NO measured open marker", base)
+        etat, base = mod.state_of("avant " + ga["closed"] + " apres", ga)
+        self.assertEqual(etat, "closed")
+        self.assertIn(ga["closed"], base)
+        # et l'instance qui a DEUX marqueurs mesures garde ses trois issues
+        ao = mod.INSTANCES["AO"]
+        self.assertEqual(mod.state_of("x " + ao["open"] + " y", ao)[0], "open")
+        self.assertEqual(mod.state_of("x " + ao["closed"] + " y", ao)[0], "closed")
+        self.assertIsNone(mod.state_of("ni l'un ni l'autre", ao)[0])
+
+    def test_classify_separates_the_prefix_the_chrome_and_the_unknown(self):
+        """**Three answers and not two.** *`/emplois` is why the deny-list is
+        per-instance: the Angolan one knows `vagas-emprego` and not `emplois`, so
+        the Angolan rules applied to Gabon would have promoted the French listing
+        index to an advertisement. And a single-segment path that is neither the
+        prefix nor known chrome is `"unknown"` on an instance with no bare form —
+        LOUD, because a deny-list bets the problem was enumerated.*"""
+        mod = self._m()
+        ao, ga = mod.INSTANCES["AO"], mod.INSTANCES["GA"]
+        self.assertEqual(mod.classify(ga["base"] + "/emploi-x", ga), "emploi")
+        self.assertIsNone(mod.classify(ga["base"] + "/emplois", ga),
+                          "the French listing index is not an advertisement")
+        self.assertIsNone(mod.classify(ga["base"] + "/emplois/province-x", ga))
+        self.assertEqual(mod.classify(ga["base"] + "/quelque-chose", ga), "unknown",
+                         "an unknown single-segment path must be LOUD, not chrome")
+        self.assertIsNone(mod.classify(ao["base"] + "/emploi-x", ga),
+                          "a `.com` URL is not on the `.ga` instance")
+        self.assertEqual(mod.classify(ao["base"] + "/emprego-x", ao), "emprego")
+        self.assertEqual(mod.classify(ao["base"] + "/quelque-chose", ao), "bare",
+                         "the bare form IS an advertisement on the `.com`")
+        self.assertIsNone(mod.classify(ao["base"] + "/vagas-emprego", ao))
+
+    def test_the_two_instances_do_not_share_a_ledger_namespace(self):
+        """*Both number their advertisements with a bare `data-job-id` and nothing
+        says the sequences are disjoint. A collision would file a Gabonese vacancy
+        over an Angolan one and the ledger would look consistent.*"""
+        mod = self._m()
+        sources = [i["source"] for i in mod.INSTANCES.values()]
+        self.assertEqual(len(set(sources)), len(sources), sources)
+        self.assertEqual(mod.INSTANCES["AO"]["source"], "jobartis",
+                         "the `.com` keeps its namespace or existing ledger keys "
+                         "move under it")
+
+    def test_the_age_of_the_corpus_is_derived_and_an_undated_file_is_not_a_zero(self):
+        """*«This board is an archive, use `--since`» is a figure that PRESCRIBES,
+        so it goes stale with its input — the `.com` docstring's 18.5 % is history
+        and this one is computed from the file in hand. And a file with no dates
+        returns `None`, which is a fact about the file rather than a count.*"""
+        mod = self._m()
+        self.assertIsNone(mod.age_note([{"lastmod": None}, {"lastmod": None}]))
+        texte = mod.age_note([{"lastmod": "2019-02-20"}] * 3
+                             + [{"lastmod": "2021-03-26"}])
+        self.assertIn("2019-02-20", texte)
+        self.assertIn("2021-03-26", texte)
+        self.assertIn("75.0", texte)
 
 
 if __name__ == "__main__":
