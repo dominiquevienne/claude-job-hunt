@@ -63,8 +63,34 @@ the zero included.*
 street address.** *None is reproduced here and none went into any output: the
 figures that matter to this card are the count and the facets.*
 
-**`#349 Adaptateur : Trenkwalder Slovaquie` is CLOSED and its closing reason
-has not been read.** *A closed match does not excuse opening an issue — the
-reason decides, delivered or set aside — so whether this instance warrants an
-`adapter` issue of its own is left open rather than answered. A search of all
-634 issues returns zero for `esi.mk` and zero for `Macedonia`.*
+**`#349 Adaptateur : Trenkwalder Slovaquie` is CLOSED as COMPLETED — the
+sibling adapter WAS DELIVERED, and `trenkwalder.py` ships beside
+`shared/boards/trenkwalder-sk.md`.** *Read, because a closed match excuses
+nothing on its own: the reason decides, delivered or set aside.*
+
+**And the «does the sibling-country adapter transpose?» question answers NO
+here, measured — the OPPOSITE of the answer `jobartis-ga.md` got in the same
+turn.**
+
+| | stack | enumerator | listing |
+| :-- | :-- | :-- | :-- |
+| `.sk` (#349) | Next.js | `/sitemap-jobs`, 32 rows | `__NEXT_DATA__` carrying an Algolia state, `nbHits` 32 |
+| `.mk` (here) | ASP.NET MVC, `Microsoft-IIS/10.0` | **none declared** | server-rendered, no JSON of any kind |
+
+**So the shape is NOT shared: this is the `randstad` case, a rewrite — while
+Jobartis Gabon, measured the same evening, is the `hays-fr` case, a
+parameter.** *Two instances of one question, opposite answers, one day — which
+is the denominator that makes the discriminant a rule and not an anecdote, and
+the discriminant is again whether the URL SHAPE is shared and never whether the
+BRAND is. Both brands are shared.*
+
+**One finding travels from the sibling anyway, and it is a safety one: `.sk`
+publishes `recruiter {name, e-mail, telephone}` on EVERY record, and its
+adapter never emits them.** *Different editor and a different stack here, so
+this is a reason to LOOK before emitting and not a fact about this host — but
+it is the first thing to look at the day this board carries advertisements
+again.*
+
+*No `adapter` issue is opened for this host today: there is nothing to extract
+from zero, and a rewrite priced against an empty board prices nothing. A search
+of all 634 issues returns zero for `esi.mk` and zero for `Macedonia`.*
