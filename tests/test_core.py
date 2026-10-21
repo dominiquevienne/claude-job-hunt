@@ -49680,5 +49680,214 @@ class AnUnknownPathIsNotAnAdvertisementOnEmploisCongo(unittest.TestCase):
             self._entries_sur(m, ["/une-rubrique-neuve", "/une-autre"])
         self.assertEqual(ctx.exception.code, m.EXIT_BROKEN)
 
+class OneReadingOfTheLedgerForJobReport(unittest.TestCase):
+    """`job-pipeline.md` had THREE readers, and two of them agreed by luck.
+
+    Issue #1182. `skills/job-scan/scripts/ledger.py` bounds itself to the
+    `## Ads` section and says so when a row's width does not match the
+    header, naming the row. The two scripts in `skills/job-report/scripts/`
+    each carried their own near-identical copy, read **every** line of the
+    file beginning with `|`, and dropped a mismatched row in silence.
+
+    Measured on the real ledger of 2026-10-22, the three agreed:
+
+        ledger.py count        ad_rows    : 2823
+        list_applications.py   total_rows : 2823
+        widths by section      ## Ads {9: 2824}   ## Log {4: 5}
+
+    **And the agreement was a coincidence**: the only non-conformant table in
+    that file lives in `## Log` and happens to carry four cells, so it failed
+    their width test. Given nine, it was counted — contrasted on the pre-fix
+    versions taken from `origin/main`, same input file:
+
+        list_applications   before  count 4, ids [jobup-2, jobup-6, zz-1, jobup-3]
+                            after   count 3, ids [jobup-2, jobup-6, jobup-3]
+        jobroom_sync plan   before  to_enter 4, including «Log SA»
+                            after   to_enter 3
+
+    The second one is the one that matters: `jobroom_sync` builds the list of
+    applications to declare to an unemployment office, and its own docstring
+    says *«Both errors are invisible in a row count, so neither is left to
+    judgement here»*. A row from `## Log` entered that list.
+
+    **The branches guarded here are DECLARED DEAD on that corpus** — every
+    row of `## Ads` carries nine cells and nothing outside it is nine wide —
+    so these cases fire on fixtures and on nothing real today. That is said
+    rather than hidden: a defect behind a path that succeeds waits for the
+    path to change, and this path is a count sent to an authority.
+    """
+
+    LEDGER = """# Job pipeline — Test Person
+
+Last scan: 2026-10-20
+
+## Ads
+
+| ID | Role | Company | Location / mode | Posted | Match | Pay | Status | Note |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| a-1 | Dev | Acme | Lausanne | 2026-10-01 | 82 | — | applied 2026-10-05 | ok |
+| a-2 | Lead \\| cloud | Beta | Genf | 2026-10-02 | 77 | — | rejected 2026-10-12 | no |
+| a-3 | SRE | Gamma | Bern | 2026-10-03 | 55 | — | todo | — |
+
+## Log
+
+- 2026-10-20 — scan
+"""
+
+    SHORT_ROW = "| a-4 | QA | Delta | Sion | 2026-10-08 | 60 | applied 2026-10-09 |\n"
+    LONG_ROW = ("| a-5 | QA | Delta | Sion | 2026-10-08 | 60 | — | "
+                "applied 2026-10-09 | a | stray |\n")
+    LOG_ROW = ("| zz-1 | Faux | Log SA | nowhere | 2026-10-10 | 99 | — | "
+               "applied 2026-10-10 | not an ad |\n")
+
+    def _dir(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(root, "skills", "job-report", "scripts")
+
+    def _mod(self, name):
+        """Load a `job-report` script with its own directory importable.
+
+        It does `import _ledger_table`, which only resolves when that
+        directory is on `sys.path` — the same way the 26 `_*.py` helpers of
+        `job-scan` are imported by their neighbours.
+        """
+        d = self._dir()
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location(
+                name + "_1182", os.path.join(d, name + ".py"))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            sys.path.remove(d)
+
+    def _write(self, text):
+        p = os.path.join(tempfile.mkdtemp(), "job-pipeline.md")
+        with io.open(p, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return p
+
+    def _ads(self, extra_ads="", extra_log=""):
+        text = self.LEDGER
+        if extra_ads:
+            text = text.replace("\n## Log", extra_ads + "\n## Log")
+        if extra_log:
+            text = text + extra_log
+        return self._write(text)
+
+    # -- condition 1 : the scope ------------------------------------------
+
+    def test_a_nine_column_table_outside_ads_is_not_an_application(self):
+        """The row that entered a PRE declaration. `## Log`, nine cells."""
+        m = self._mod("list_applications")
+        rows, skipped = m.load_rows(self._ads(extra_log=self.LOG_ROW))
+        self.assertNotIn("zz-1", [r.get("id") for r in rows],
+                         "a row outside `## Ads` was read as an application")
+        self.assertEqual(len(rows), 3, [r.get("id") for r in rows])
+        self.assertEqual(skipped, {"short": 0, "long": 0,
+                                   "no_status_column": 0},
+                         "a row outside `## Ads` must not even be SKIPPED — "
+                         "it is not a row of the table")
+
+    def test_the_other_job_report_script_is_bounded_the_same_way(self):
+        """`jobroom_sync` is the one whose list goes to an office."""
+        m = self._mod("jobroom_sync")
+        rows, _ = m.load_rows(self._ads(extra_log=self.LOG_ROW))
+        self.assertNotIn("zz-1", [r.get("id") for r in rows])
+        self.assertEqual(len(rows), 3)
+
+    # -- condition 2 : a short row ----------------------------------------
+
+    def test_a_short_row_is_counted_and_named_not_dropped_in_silence(self):
+        m = self._mod("list_applications")
+        rows, skipped = m.load_rows(self._ads(extra_ads=self.SHORT_ROW))
+        self.assertEqual(skipped["short"], 1, skipped)
+        self.assertNotIn("a-4", [r.get("id") for r in rows],
+                         "a row whose columns are shifted was read anyway")
+        lines = self._mod("_ledger_table").skipped_lines(skipped)
+        self.assertTrue(any("FEWER cells" in l for l in lines), lines)
+
+    # -- condition 3 : a long row -----------------------------------------
+
+    def test_a_long_row_is_refused_and_counted_not_truncated(self):
+        """An unescaped `|` shifts every column after it.
+
+        The pre-fix readers kept such a row, truncated to the header width,
+        so the status they read could belong to another column — the case
+        `ledger.py`'s own docstring says produced a row whose status read
+        `42`. Refusing it is `ledger.py`'s verdict, and it tests `!=`.
+        """
+        m = self._mod("list_applications")
+        rows, skipped = m.load_rows(self._ads(extra_ads=self.LONG_ROW))
+        self.assertEqual(skipped["long"], 1, skipped)
+        self.assertNotIn("a-5", [r.get("id") for r in rows])
+        lines = self._mod("_ledger_table").skipped_lines(skipped)
+        self.assertTrue(any("MORE cells" in l for l in lines), lines)
+
+    # -- the warning must not fire on every run ---------------------------
+
+    def test_the_warning_says_nothing_when_nothing_was_skipped(self):
+        """A warning that fires always is no better than one that never does.
+
+        The real ledger skips nothing once the boundary is in place — its
+        five off-shape rows live in `## Log` — so this is the branch that
+        runs in the world, and it must be silent.
+        """
+        m = self._mod("list_applications")
+        rows, skipped = m.load_rows(self._ads())
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(
+            self._mod("_ledger_table").skipped_lines(skipped), [])
+
+    # -- the invariant : one reading, not two that agree ------------------
+
+    def test_the_boundary_is_the_one_ledger_py_uses(self):
+        """Agreement BY CONSTRUCTION, which is the point of the issue.
+
+        Not «the two numbers match on today's file» — that was true before
+        the fix and was a coincidence. The two readers must select the SAME
+        header and the SAME rows out of the same text, including a text whose
+        `## Log` carries a nine-column table.
+        """
+        here = self._mod("_ledger_table")
+        spec = importlib.util.spec_from_file_location(
+            "ledger_1182", os.path.join(SCRIPTS, "ledger.py"))
+        there = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(there)
+        for extra_log in ("", self.LOG_ROW):
+            text = self.LEDGER + extra_log
+            p = self._write(text)
+            mine = here.ads_table(text, p)
+            its = there.ads_table(text, p)
+            self.assertEqual(mine[0], its[0], "headers differ")
+            self.assertEqual(mine[1], its[1], "selected rows differ")
+
+    # -- no fourth copy ---------------------------------------------------
+
+    def test_neither_job_report_script_carries_its_own_row_splitter(self):
+        """Four copies of one rule are lost one at a time.
+
+        The point of the fix is that the two scripts mutate together. A guard
+        on the NAMES would miss a copy spelled differently, so this one reads
+        what each file DEFINES at module level.
+        """
+        import ast
+
+        bad = []
+        for name in ("list_applications", "jobroom_sync"):
+            path = os.path.join(self._dir(), name + ".py")
+            with io.open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            tree = ast.parse(src)
+            own = [n.name for n in tree.body
+                   if isinstance(n, ast.FunctionDef)
+                   and ("split" in n.name or "separator" in n.name)]
+            if own:
+                bad.append(f"{name}.py defines {own}")
+            if "import _ledger_table" not in src:
+                bad.append(f"{name}.py does not import the shared reading")
+        self.assertEqual(bad, [], "; ".join(bad))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

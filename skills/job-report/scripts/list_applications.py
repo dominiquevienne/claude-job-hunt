@@ -16,6 +16,8 @@ import os
 import re
 import sys
 
+import _ledger_table
+
 JOB_HUNT_HOME = os.environ.get(
     "JOB_HUNT_HOME", os.path.expanduser("~/Documents/job_applications")
 )
@@ -74,29 +76,8 @@ def parse_date(value: str) -> dt.date:
         raise SystemExit(f"error: invalid date {value!r} (expected YYYY-MM-DD)")
 
 
-def split_row(line: str) -> list[str]:
-    """Split a markdown table row, honouring \\| escapes inside cells."""
-    body = line.strip().strip("|")
-    cells, buf, i = [], "", 0
-    while i < len(body):
-        ch = body[i]
-        if ch == "\\" and i + 1 < len(body) and body[i + 1] == "|":
-            buf += "|"
-            i += 2
-            continue
-        if ch == "|":
-            cells.append(buf.strip())
-            buf = ""
-            i += 1
-            continue
-        buf += ch
-        i += 1
-    cells.append(buf.strip())
-    return cells
 
 
-def is_separator(cells: list[str]) -> bool:
-    return all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c)
 
 
 # `IV:2026-09-02 phone`, `IV:2026-09-11 on-site` — repeatable, the qualifier
@@ -104,29 +85,17 @@ def is_separator(cells: list[str]) -> bool:
 IV_RE = re.compile(r"\bIV:(\d{4}-\d{2}-\d{2})(?:\s+([A-Za-z][\w -]{0,18}))?")
 
 
-def load_rows(path: str) -> list[dict]:
-    try:
-        with open(path, encoding="utf-8") as fh:
-            lines = fh.read().splitlines()
-    except FileNotFoundError:
-        raise SystemExit(f"error: pipeline file not found: {path}")
+def load_rows(path: str) -> tuple[list[dict], dict[str, int]]:
+    """`(rows, skipped)` — see `_ledger_table`, issue #1182.
 
-    rows, columns = [], None
-    for line in lines:
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            continue
-        cells = split_row(stripped)
-        if is_separator(cells):
-            continue
-        if cells and cells[0].strip().lower() == "id":          # header row
-            columns = [HEADER_ALIASES.get(c.strip().lower(), c.strip().lower()) for c in cells]
-            continue
-        if columns is None or len(cells) < len(columns):
-            continue
-        row = dict(zip(columns, cells[: len(columns)]))
-        if "statut" not in row:
-            continue
+    The reading itself lives in `_ledger_table`: bounded to `## Ads` with the
+    same boundary `ledger.py` uses, and counting the rows whose width does not
+    match instead of dropping them in silence. What stays here is the part
+    that is this script's own — the derived fields it adds to each row.
+    """
+    rows, skipped = _ledger_table.load(path, HEADER_ALIASES)
+    out = []
+    for row in rows:
         m = STATUS_RE.match(row["statut"])
         row["date"] = m.group("date") if m else None
         row["kind"] = m.group("kind").lower() if m else row["statut"].lower()
@@ -140,10 +109,9 @@ def load_rows(path: str) -> list[dict]:
             {"date": m.group(1), "kind": (m.group(2) or "").strip() or None}
             for m in IV_RE.finditer(row.get("note", ""))
         ]
-        rows.append(row)
-    if columns is None:
-        raise SystemExit(f"error: no table header found in {path} (expected a row starting with '| ID |')")
-    return rows
+        out.append(row)
+    return out, skipped
+
 
 
 def report_interviews(rows, start, end, args) -> int:
@@ -234,6 +202,8 @@ def _warn(meta: dict) -> None:
     A count is the one output where an omission is invisible: the result looks
     exactly as legitimate whether or not rows were dropped along the way.
     """
+    for line in _ledger_table.skipped_lines(meta.get("skipped") or {}):
+        print(line)
     if meta["unparsed_status"]:
         print()
         print(f"  ! {len(meta['unparsed_status'])} status value(s) not understood, so those rows")
@@ -282,7 +252,7 @@ def main() -> int:
     if args.status.strip().lower() != "all":
         wanted = {s.strip().lower() for s in args.status.split(",") if s.strip()}
 
-    rows = load_rows(args.file)
+    rows, skipped = load_rows(args.file)
 
     if args.interviews:
         return report_interviews(rows, start, end, args)
@@ -307,6 +277,11 @@ def main() -> int:
         "status": args.status,
         "count": len(kept),
         "total_rows": len(rows),
+        # Rows of `## Ads` whose width does not match the header, by
+        # DIRECTION: a short row is a cell missing, a long one is an
+        # unescaped `|` shifting every column after it. Neither is read.
+        # They used to vanish before `meta` existed for them. Issue #1182.
+        "skipped": skipped,
         "dated_rows": len(dated),
         # A status that carries no date and is not one of the dateless kinds:
         # something the ledger says that this script does not understand.
