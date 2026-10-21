@@ -76,6 +76,30 @@ heading *one second between requests is too fast for this host*. **No
 none** — same operator, same stack, so the five seconds measured on `.com` are
 the figure to honour here, not a cadence of ours.
 
-*Gabon had no card and no issue of any kind before this one: a search of all
-634 issues, by host and by country, returns zero for `jobartis` and for
-`Gabon`.*
+## The false half of a measured sentence, and it is mine
+
+**CORRECTION 2026-10-21: Gabon ALREADY had a card.** *This card said «Gabon had
+no card and no issue of any kind before this one». The ISSUE half was measured —
+a search of all 634 issues, by host and by country, returns zero for `jobartis`
+and for `Gabon` — and the CARD half was **never measured at all**: it was
+extrapolated from the issue search, which answers a different question.
+Measured on both sides of the commit, by generating this country's fragment
+from `shared/boards/` each time: **`emploi-ga.md` has declared `GA` since
+2026-09-12**, with `route: browser · 67`.*
+
+> **And the consequence is a ratio that does NOT move while a whole adapter
+> lands.** *`fait 1 / faisable 1 / total 1` before, `fait 2 / faisable 2 /
+> total 2` after — **100 % on both sides**, both terms `+1`. Naming the quotient
+> alone would read tomorrow as a country that learned nothing, which is why a
+> republished ratio announces the MOVEMENT OF ITS TWO TERMS and never the
+> quotient.*
+
+**So `jobartis.py` is Gabon's first SCRIPT and not its first adapter.** *The
+owner's decision of 2026-09-08 counts the two together — «un adaptateur non-web
+et un adaptateur web lui permettent d'extraire la MÊME donnée. La distinction
+est liée aux CGU des sites» — so a browser route already delivered here, and
+«first adapter, all types» is the one phrasing that is wrong.*
+
+*The claim travelled from this card into a peer's message and its journal bullet
+before anyone checked it. That is what an unmeasured half of a measured sentence
+does: the measured half carries the unmeasured one.*
