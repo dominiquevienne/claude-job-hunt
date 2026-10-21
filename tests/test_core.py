@@ -44145,14 +44145,24 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
 
     SURFACES = ("listing", "detail", "both", "neither")
     _MOTS = r"(retired|closed|expired|unavailable|filled|gone)"
-    # A status EMITTED, never the word in prose. The four forms are the ones
-    # this repository actually uses; `row["status"] = "retired"` is the one a
-    # first pattern missed, and it is `fit1job.py:334` — half of the very pair
-    # this guard exists for.
+    # A status EMITTED, never the word in prose. The forms are the ones this
+    # repository actually uses; `row["status"] = "retired"` is the one a first
+    # pattern missed, and it is `fit1job.py:334` — half of the very pair this
+    # guard exists for.
+    #
+    # **AND `state` WAS THE SECOND ONE IT MISSED — #1175, measured 2026-10-21.**
+    # Two shipped scripts name the variable `state` and not `status`, and the
+    # pattern could not see either: `emploiscongo.py:254` writes
+    # `"state": "closed" if closed else None`, and `jobartis.py` wrote
+    # `state = "closed" if closed else …` until #1172 extracted the branch into
+    # `state_of` and a `return "closed"` dragged it into scope BY ACCIDENT. Both
+    # of its cards had owed a `closure:` line since 2026-09-07 and nothing could
+    # say so: *a card outside the scope is not accused, it is DISPENSED, and the
+    # green reads «nothing to find» where it means «I did not look there».*
     EMET = re.compile(
-        r'(?:"status(?:_\w+)?"\s*:\s*'
-        r'|\[\s*"status(?:_\w+)?"\s*\]\s*=\s*'
-        r'|\bstatus(?:_\w+)?\s*=\s*'
+        r'(?:"(?:status|state)(?:_\w+)?"\s*:\s*'
+        r'|\[\s*"(?:status|state)(?:_\w+)?"\s*\]\s*=\s*'
+        r'|\b(?:status|state)(?:_\w+)?\s*=\s*'
         r'|\breturn\s+)"' + _MOTS + '"', re.I)
 
     def _root(self):
@@ -44164,16 +44174,42 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
             self._root(), "shared", "boards", "*.md"))
             if os.path.basename(p) != "README.md")
 
+    def _declared_scripts(self):
+        """Every script name a card declares, from the cards themselves."""
+        import re as _re
+        out = set()
+        for p in self._cards():
+            with open(p, encoding="utf-8") as fh:
+                decl = self._header(fh.read(), "script")
+            if decl:
+                out |= {s for s in _re.split(r"[,\s]+", decl[0]) if s}
+        return out
+
     def _scripts_that_emit(self):
-        """The measured scope: basenames of shipped scripts that emit a closure
-        status."""
+        """The measured scope: scripts a CARD DECLARES that emit a closure status.
+
+        **The card filter is not an optimisation, it removes a CATEGORY ERROR
+        by construction — #1175.** Widening `EMET` to see `state` made it match
+        `_robots.py:2403`, `out["state"] = "closed"`, which is a verdict about a
+        HOST being closed to us and has nothing to do with an advertisement
+        being closed. *The same word, a different object.* Excluding it BY NAME
+        would be the species this repository keeps paying for — «a guard with a
+        declared exception gets a second one» — so the scope is instead the
+        question the guard actually asks: **which CARDS owe a `closure:` line.**
+        A shipped script with no card cannot owe one, and a card-less adapter is
+        caught by its own guard elsewhere rather than by this one.
+        """
         import glob
+        declares = self._declared_scripts()
         out = set()
         for p in glob.glob(os.path.join(self._root(), "skills", "job-scan",
                                         "scripts", "*.py")):
+            nom = os.path.basename(p)
+            if nom not in declares:
+                continue
             with open(p, encoding="utf-8") as fh:
                 if self.EMET.search(fh.read()):
-                    out.add(os.path.basename(p))
+                    out.add(nom)
         return out
 
     @staticmethod
@@ -44191,7 +44227,13 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
         """
         oui = ['row["status"] = "retired"', '"status": "closed"',
                'row["status_detail"] = "gone"', 'return "closed", marks',
-               '    status = "expired"']
+               '    status = "expired"',
+               # **#1175 : les trois formes que `state` prend dans ce depot.**
+               # Elles rendaient ZERO avant le 21.10.2026, et deux scripts
+               # expedies les ecrivaient.
+               '    state = "closed" if closed else None',
+               '"state": "closed" if closed else None',
+               'out["state"] = "closed"']
         non = ['# the advertisement is retired',
                'retired = [r for r in rows]',
                'if row["status"] == "retired":',
@@ -44240,6 +44282,79 @@ class ASurfaceOfClosureIsDeclaredByTheCardThatMeasuredIt(unittest.TestCase):
         self.assertEqual(manquantes, [],
                          "a card measures closure and does not name the "
                          "SURFACE it read it on — see shared/ats-open-check.md")
+
+    def test_the_scope_is_what_cards_declare_and_not_whatever_matches(self):
+        """**#1175 — the half of the widening that is NOT the pattern.**
+
+        Making `EMET` see `state` was the fix; it also made it match
+        `_robots.py`, `out["state"] = "closed"` — *a verdict about a HOST being
+        closed to us, the same word on a different object.* **This case asserts
+        that the module MATCHES and is still out of scope, and that the scope
+        excludes it BY CONSTRUCTION rather than by name:** the question the
+        guard asks is which CARDS owe a `closure:` line, and no card declares
+        `_robots.py`.
+
+        *«A guard with a declared exception gets a second one, and the second
+        cites the first as a precedent» — so there is no exception here, only a
+        narrower question.*
+        """
+        chemin = os.path.join(self._root(), "skills", "job-scan", "scripts",
+                              "_robots.py")
+        self.assertTrue(os.path.exists(chemin), chemin)
+        with open(chemin, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertTrue(
+            self.EMET.search(src),
+            "`_robots.py` no longer matches EMET, so this case no longer tests "
+            "what it says: it exists because the WIDENED pattern matches a "
+            "module that must stay out of scope")
+        declares = self._declared_scripts()
+        self.assertTrue(declares, "no card declares any script: NOT EXERCISED")
+        self.assertNotIn("_robots.py", declares,
+                         "a card now declares `_robots.py`; the scope filter "
+                         "would stop excluding it and this guard would start "
+                         "demanding a `closure:` line for a robots verdict")
+        emet = self._scripts_that_emit()
+        self.assertNotIn("_robots.py", emet,
+                         "the robots module entered the closure scope: same "
+                         "word, different object")
+        self.assertIn("emploiscongo.py", emet,
+                      "`emploiscongo.py` writes `\"state\": \"closed\"` and the "
+                      "pattern was blind to it until 2026-10-21. If it is out "
+                      "again, the widening was undone and a card is DISPENSED "
+                      "rather than accused")
+
+    def test_the_congolese_surface_is_PINNED_because_its_listing_lies_both_ways(self):
+        """**#1175 — the measurement cost five requests and one word could erase it.**
+
+        Measured 2026-10-21 on `www.emploiscongo.com`, four detail pages against
+        their own cards on the host's HTML listing `/emplois`: **20 cards, 17
+        carrying the marker, and the two surfaces disagree in BOTH
+        directions.** One unmarked card is CLOSED on its detail page (`57851`)
+        and one marked card carries NO marker on its detail page (`59490`).
+
+        > *So the listing yields false negatives AND false positives, and
+        > `listing` or `both` would name a surface that cannot be read.* **The
+        > false NEGATIVE is the one that costs: it declares a closed post open,
+        > and the plugin then drafts for a vacancy that is gone.**
+
+        **Nothing else pins this value.** The vocabulary check accepts any of the
+        four words, so writing `both` here would stay green while erasing the
+        finding — the shape this class already guards for its original pair.
+        *If a later measurement legitimately moves it, this red is the request
+        to bring that measurement with it.*
+        """
+        p = os.path.join(self._root(), "shared", "boards", "emploiscongo.md")
+        with open(p, encoding="utf-8") as fh:
+            src = fh.read()
+        lignes = self._header(src, "closure")
+        self.assertTrue(lignes, "emploiscongo.md carries no `closure:` line")
+        self.assertEqual(lignes[0].split("\u00b7")[0].strip().lower(), "detail")
+        # et la RAISON voyage avec la valeur, sinon le pin se relit comme un gout
+        for owed in ("DISAGREE IN BOTH DIRECTIONS", "57851", "59490"):
+            self.assertIn(owed, lignes[0],
+                          "the pinned surface no longer carries what measured "
+                          "it: %r" % owed)
 
     def test_the_two_measured_hosts_name_DIFFERENT_surfaces(self):
         """**The finding itself, asserted rather than described.** If a later
