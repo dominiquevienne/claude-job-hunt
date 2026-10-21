@@ -7,6 +7,15 @@ every script a card declares in `<!-- script: -->`.**
 tools rather than board adapters: `achievements.py`, `board_offer.py`,
 `dormant.py`, `employers.py`, `ledger.py`, `tenant_offer.py`.*
 
+**CORRECTION DU 21.10.2026 — ce « Six » valait six au 08.09.2026 et il en vaut
+SEPT aujourd'hui**, `employer_pointers.py` ayant été ajouté par #1094 point 4a.
+*L'ancienne valeur est laissée à la ligne du dessus parce qu'elle date le
+dénominateur de cet audit-là&nbsp;; ce qui se périme est l'ÉNUMÉRATION, qu'un
+futur audit relirait au présent pour savoir ce qui n'est pas un adaptateur.*
+**La liste qui fait foi est `EveryCardDeclaresItsScript.TOOLING`** dans
+`tests/test_core.py`, qui est exercée à chaque suite&nbsp;; celle-ci est un
+récit.
+
 ## The discriminant, stated so it can be re-run
 
 > **Does the adapter print a quantity that does NOT come from counting its

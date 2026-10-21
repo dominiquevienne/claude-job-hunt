@@ -144,6 +144,51 @@ def resolve(family, identifier, path=None, local=None):
     return dict(row), f"{key[0]}/{key[1]} in {path}"
 
 
+# The witness is prose, so the sub-command is EXTRACTED from it and the script
+# it names must be the family itself — a witness that happens to mention
+# another adapter would otherwise hand back that adapter's sub-command.
+_WITNESS_RE = re.compile(r"\b([A-Za-z0-9_]+)\.py\s+([a-z][a-z-]*)\b")
+
+
+def subcommand(row):
+    """`(sub, where)` — the sub-command, DERIVED from the witness.
+
+    **The format rule already says `args` is «&nbsp;DERIVED from
+    `verified_by`, never retyped&nbsp;». The sub-command is the other half of
+    the same command, and no column holds it.** Measured 2026-10-21 over the
+    21 rows: `ats`→`list` ×11, `workday`→`list` ×6, `successfactors`→`list`,
+    `umantis`→`list`, `recruitee`→**`jobs`**, `oraclecloud`→**`sites`**. So it
+    is NOT one word for the whole registry, and a caller that assumed `list`
+    would hand two families a sub-command they do not have.
+
+    `None` whenever it cannot be derived, and the sentence says so. A command
+    emitted without its sub-command would be the worst of the three outcomes:
+    it would look launchable.
+    """
+    fam = str(row.get("family", "")).strip().lower()
+    ident = _cell(str(row.get("identifier", "")))
+    witness = _cell(str(row.get("verified_by", "")))
+    for script, sub in _WITNESS_RE.findall(witness):
+        if script.lower() == fam:
+            return sub, f"derived from verified_by ({script}.py {sub})"
+    return None, (f"the witness for {fam}/{ident} names no "
+                  f"`{fam}.py <sub-command>`, so the command cannot be "
+                  f"derived — and a retyped sub-command is not a witness")
+
+
+def command(row):
+    """`(cmd, where)` — the launchable command for a resolved row, or None.
+
+    The row's own `args` are taken verbatim: they are asserted to PARSE in
+    that adapter's `argparse` by the guard the registry already carries, and
+    retyping them here would be the one thing the format forbids.
+    """
+    sub, where = subcommand(row)
+    if sub is None:
+        return None, where
+    return f"{row['family']}.py {sub} {row['args']}", where
+
+
 def main(argv=None):
     import argparse
     import json

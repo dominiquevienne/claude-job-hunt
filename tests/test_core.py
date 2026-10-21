@@ -4009,6 +4009,10 @@ class EveryCardDeclaresItsScript(unittest.TestCase):
     TOOLING = frozenset({
         "ledger.py", "employers.py", "dormant.py", "achievements.py",
         "board_offer.py", "tenant_offer.py",
+        # #1094 point 4a: turns a board's configured employer pointers into
+        # the commands that would sweep them. It sweeps nothing itself, so it
+        # has no board and no card to have one.
+        "employer_pointers.py",
     })
 
     def _paths(self):
@@ -48586,6 +48590,293 @@ class APointerIntoTheEmployerRegistryAnswersUnknownAndNeverZero(unittest.TestCas
                              "a bare identifier must not match a raw cell, or "
                              "this test is measuring nothing")
             self.assertIn("`" + ident + "`", brut)
+
+class AConfigPointerResolvesThroughTheRegistryOrSaysWhichItCouldNot(
+        unittest.TestCase):
+    """#1094 point 4a — the config names the EMPLOYER, the registry gives the
+    coordinates, and every failure in the chain says UNKNOWN rather than zero.
+
+    **Three of this chain\'s defects were found by RUNNING it on the owner\'s
+    real `config.yml`, and none of them by reading it** (2026-10-21):
+    `read_boards` skips a nested list by design, so a block list arrived as a
+    key with an EMPTY value and `board_value` collapsed that into «&nbsp;no
+    key&nbsp;»; his `boards.workday.employers` is a block of six MAPPINGS whose
+    own keys are indented past the dash, so a reader taking each `- ` for a
+    pointer reported ONE; and two of his boards carry a trailing comment after
+    the inline list, which the first shape test refused outright.
+
+    *Branch distribution over his REAL file, measured 2026-10-21 and NOT
+    asserted — it is his file, it is outside the repository, and it will move:
+    **13 pointers resolved to a launchable command, 2 rendered UNKNOWN by name
+    (rows the registry does not hold), 1 board rendered INDETERMINATE (the
+    block of mappings), 2 boards configure no employer at all.** Seven of his
+    eight boards were ALREADY in pointer form, which is why 4a could be built
+    without touching his file.*
+
+    *Reached by FIXTURE ONLY, and by nothing in that corpus: the empty inline
+    list, the key written with neither value nor item, a scalar where a list
+    belongs, an `employers:` outside the `boards:` block, a witness that lends
+    no sub-command, and the provider disagreement. **Their green says the
+    fixture reached them and never that the corpus needs them.***
+    """
+
+    CONFIG = [
+        "boards:",
+        "  greenhouse:",
+        '    employers: ["scandit", "scandit", "canonical"]  # ajoute le 2026-09-02',
+        "  workday:",
+        "    employers:",
+        "      - swisscom",
+        "      # une mesure, gardee",
+        "      - roche",
+        "  ashby:",
+        "    employers:",
+        "      - host: \"swisscom.wd103.myworkdayjobs.com\"",
+        "        tenant: swisscom",
+        "  lever:",
+        "    dormant_since: 2026-01-01",
+        "  umantis:",
+        "    employers:",
+        "  workable:",
+        "    employers: []",
+        "  successfactors:",
+        "    employers: scandit",
+        "thresholds:",
+        "  employers: [un-piege]",
+        # **A board name that exists ONLY here.** With it under `boards:` too
+        # the trap could not decide: the first match wins, and the real one
+        # comes first — so the test would have passed whatever the reader did
+        # with this block.
+        "  piege:",
+        "    employers: [un-piege]",
+    ]
+
+    def _charge(self, nom):
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(racine, "skills", "job-scan", "scripts")
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        chemin = os.path.join(scripts, nom + ".py")
+        spec = importlib.util.spec_from_file_location(nom, chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _registre(self, lignes):
+        """A registry of our own, in a directory of our own — a bench is MOVED."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        p = os.path.join(d, "employer-ats.md")
+        with io.open(p, "w", encoding="utf-8") as fh:
+            fh.write("| family | identifier | args | employer_label | state |"
+                     " checked | verified_by |\n")
+            fh.write("| :-- | :-- | :-- | :-- | :-- | :-- | :-- |\n")
+            for l in lignes:
+                fh.write(l + "\n")
+        return p
+
+    # ------------------------------------------------- the door, shape by shape
+
+    def test_an_inline_list_is_read_in_file_order_and_keeps_duplicates(self):
+        """Order and duplicates are the user\'s, not ours to tidy."""
+        o = self._charge("_override")
+        v, ou = o.employers_in(self.CONFIG, "greenhouse", "/w/config.yml")
+        self.assertEqual(v, ["scandit", "scandit", "canonical"])
+        self.assertIn("inline", ou)
+        self.assertIn("/w/config.yml", ou)
+
+    def test_a_block_list_is_read_and_a_comment_inside_it_is_not_an_item(self):
+        o = self._charge("_override")
+        v, ou = o.employers_in(self.CONFIG, "workday", "/w/config.yml")
+        self.assertEqual(v, ["swisscom", "roche"])
+        self.assertIn("block", ou)
+
+    def test_a_block_list_of_mappings_is_refused_by_name_and_is_not_an_absence(self):
+        """**The owner\'s own shape.** It must not read as «no employers», and
+        it must not read as ONE either — the dash count is not the item count
+        when the items are maps."""
+        o = self._charge("_override")
+        v, ou = o.employers_in(self.CONFIG, "ashby", "/w/config.yml")
+        self.assertIsNone(v, "a mapping is not a pointer, and refusing it is "
+                             "the whole point — an empty list would be a zero "
+                             "nobody measured")
+        self.assertIn("MAPPINGS", ou)
+        self.assertIn("4b", ou, "the sentence must say the migration is owed")
+
+    def test_an_absent_key_is_an_empty_list_and_never_none(self):
+        """`[]` and `None` are the two answers this chain exists to separate."""
+        o = self._charge("_override")
+        for board in ("lever", "pas-un-board"):
+            v, ou = o.employers_in(self.CONFIG, board, "/w/config.yml")
+            self.assertEqual(v, [], board)
+            self.assertIn("no boards.%s.employers" % board, ou)
+
+    def test_three_written_but_unreadable_shapes_render_none_and_name_themselves(self):
+        o = self._charge("_override")
+        for board, mot in (("umantis", "no `- ` item"),
+                           ("workable", "EMPTY inline list"),
+                           ("successfactors", "neither an inline list")):
+            v, ou = o.employers_in(self.CONFIG, board, "/w/config.yml")
+            self.assertIsNone(v, board)
+            self.assertIn(mot, ou, board)
+            self.assertIn("config.yml:", ou, "the sentence names the LINE, "
+                                             "because the shape is what has "
+                                             "to be fixed")
+
+    def test_a_trailing_comment_is_stripped_the_way_its_sibling_strips_one(self):
+        """Two of his boards carry one, and the comments are the expensive half
+        of that file — stripping one to PARSE is not deleting it."""
+        o = self._charge("_override")
+        v, _ = o.employers_in(
+            ["boards:", "  greenhouse:", "    employers: [a]  # pourquoi"],
+            "greenhouse", "/w/config.yml")
+        self.assertEqual(v, ["a"])
+
+    def test_an_employers_key_outside_the_boards_block_is_not_a_boards(self):
+        """`thresholds:` takes indented keys too, so a reader matching on the
+        key alone would take one board\'s setting from anywhere in the file."""
+        o = self._charge("_override")
+        for nom in ("thresholds", "piege"):
+            v, ou = o.employers_in(self.CONFIG, nom, "/w/config.yml")
+            self.assertEqual(v, [], "the `employers:` under `thresholds:` is "
+                                    "not a board\'s, and a reader that took "
+                                    "it would sweep a threshold")
+            self.assertIn("no boards.%s.employers" % nom, ou)
+
+    # ------------------------------------- the registry, and the command itself
+
+    def test_the_subcommand_is_derived_per_family_over_the_whole_corpus(self):
+        """**No column holds the sub-command, and it is not one word.** It is
+        derived from the witness by the rule the format already states for
+        `args` — and what is asserted here is that each derived sub-command
+        EXISTS in the adapter it names, never a distribution, which would be a
+        dated literal that goes red at the next row."""
+        import subprocess
+        import sys as _sys
+        m = self._charge("_employer_ats")
+        lignes, ou = m.rows()
+        self.assertIsNotNone(lignes, ou)
+        self.assertGreater(len(lignes), 15, "a floor, so this cannot pass by "
+                                            "measuring an empty registry")
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(racine, "skills", "job-scan", "scripts")
+        # **A sub-command is a property of the RUN, not of the file.** The
+        # first form of this assertion looked for `add_parser("<sub>"` in the
+        # source and went RED on sound code: `oraclecloud.py` builds its
+        # sub-parsers in a loop, so the literal is nowhere in it while the
+        # sub-command is real. That is the third species — red on correct —
+        # and the remedy is the one this repository already prescribes for a
+        # message: pilot the tool and read what it prints.
+        usages, vus = {}, set()
+        for r in lignes:
+            sub, pourquoi = m.subcommand(r)
+            self.assertIsNotNone(sub, "%s/%s: %s" % (r["family"],
+                                                     r["identifier"], pourquoi))
+            chemin = os.path.join(scripts, r["family"] + ".py")
+            self.assertTrue(os.path.exists(chemin), chemin)
+            if r["family"] not in usages:
+                p = subprocess.run([_sys.executable, chemin, "--help"],
+                                   capture_output=True, text=True, timeout=120)
+                usages[r["family"]] = p.stdout + p.stderr
+            offre = usages[r["family"]]
+            self.assertRegex(offre, r"\{[^}]*\b%s\b[^}]*\}" % re.escape(sub),
+                             "%s.py --help offers no `%s` sub-command, so the "
+                             "command this row yields would not run"
+                             % (r["family"], sub))
+            cmd, _ = m.command(r)
+            self.assertTrue(cmd.startswith("%s.py %s " % (r["family"], sub)))
+            self.assertIn(r["args"], cmd, "the args are taken verbatim or they "
+                                          "are retyped, and retyped is what "
+                                          "the format forbids")
+            vus.add((r["family"], sub))
+        self.assertGreater(len(set(s for _, s in vus)), 1,
+                           "if every family used the same sub-command this "
+                           "test would be measuring nothing")
+
+    def test_a_witness_naming_another_script_lends_no_subcommand(self):
+        m = self._charge("_employer_ats")
+        for temoin in ("seen live on 2026-10-11, no command",
+                       "cross-checked with ats.py list --provider x"):
+            cmd, pourquoi = m.command({"family": "recruitee",
+                                       "identifier": "gmk",
+                                       "args": "--tenant gmk",
+                                       "verified_by": temoin})
+            self.assertIsNone(cmd, temoin)
+            self.assertIn("recruitee.py <sub-command>", pourquoi)
+
+    # ----------------------------------------------- the named entry point
+
+    def test_the_family_of_a_board_is_declared_by_its_card_never_guessed(self):
+        """**A config board key is NOT a registry family.** His config indexes
+        by board; the registry defines `family` as the adapter\'s filename. The
+        mapping is declared by the `<!-- script: -->` line this repository
+        already counts adapters by, so what is asserted is the PROPERTY — that
+        several board keys share one family — and not the pairs, which belong
+        to the cards."""
+        ep = self._charge("employer_pointers")
+        racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        scripts = os.path.join(racine, "skills", "job-scan", "scripts")
+        familles = {}
+        for board in ("ashby", "greenhouse", "lever", "smartrecruiters",
+                      "workable", "workday"):
+            fam, ou = ep.family_of(board)
+            self.assertIsNotNone(fam, "%s: %s" % (board, ou))
+            self.assertIn("declared by", ou)
+            self.assertTrue(os.path.exists(os.path.join(scripts, fam + ".py")))
+            familles.setdefault(fam, []).append(board)
+        partagee = [v for v in familles.values() if len(v) > 1]
+        self.assertTrue(partagee, "no family serves two board keys, so this "
+                                  "test no longer exercises the assumption it "
+                                  "exists to refuse")
+        fam, ou = ep.family_of("ce-board-n-existe-pas")
+        self.assertIsNone(fam)
+        self.assertIn("no card at", ou)
+        self.assertIn("DECLARED", ou)
+
+    def test_a_plan_on_an_unreadable_list_is_indeterminate_not_an_empty_plan(self):
+        """The difference exit 2 is for: `[]` says «nothing is configured»,
+        `None` says «I could not tell»."""
+        ep = self._charge("employer_pointers")
+        reg = self._registre(["| workday | swisscom | --tenant swisscom --site X"
+                              " | Swisscom (CH) | live | 2026-10-11 |"
+                              " workday.py list --tenant swisscom --site X |"])
+        rows, ou = ep.plan("ashby", registry=reg, lines=self.CONFIG,
+                           path="/w/config.yml")
+        self.assertIsNone(rows, "a block of mappings is not a plan of zero "
+                                "employers")
+        self.assertIn("MAPPINGS", ou)
+        rows, ou = ep.plan("lever", registry=reg, lines=self.CONFIG,
+                           path="/w/config.yml")
+        self.assertEqual(rows, [], "a board that configures none plans none, "
+                                   "and that is not indeterminate")
+
+    def test_a_pointer_filed_under_another_provider_carries_a_visible_note(self):
+        """Point 3\'s second constraint: a disagreement stays POSSIBLE and it
+        is VISIBLE. The registry decides the coordinates; the config\'s own
+        filing is reported beside them rather than silently overruled."""
+        ep = self._charge("employer_pointers")
+        reg = self._registre([
+            "| ats | scandit | --provider greenhouse --tenant scandit |"
+            " Scandit (CH) | live | 2026-10-11 |"
+            " ats.py list --provider greenhouse --tenant scandit |",
+            "| ats | canonical | --provider smartrecruiters --tenant canonical |"
+            " Canonical (UK) | live | 2026-10-11 |"
+            " ats.py list --provider smartrecruiters --tenant canonical |",
+        ])
+        rows, _ = ep.plan("greenhouse", registry=reg, lines=self.CONFIG,
+                          path="/w/config.yml")
+        par_id = {r["identifier"]: r for r in rows}
+        self.assertNotIn("note", par_id["scandit"],
+                         "the provider agrees, so there is nothing to report "
+                         "and an always-firing note is worth no more than one "
+                         "that never fires")
+        self.assertIn("note", par_id["canonical"])
+        self.assertIn("boards.greenhouse", par_id["canonical"]["note"])
+        self.assertIn("smartrecruiters", par_id["canonical"]["note"])
+        self.assertIn("--provider smartrecruiters",
+                      par_id["canonical"]["command"],
+                      "the command is the registry\'s, verbatim")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

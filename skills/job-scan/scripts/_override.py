@@ -24,6 +24,19 @@ it must quote the SENTENCE — `no boards.<board>.override_robots: true in
 """
 
 import os
+import re
+
+# The SAME shapes `dormant.read_boards` matches, because a second convention
+# for the same file is a second file. Two spaces for a board, four for its
+# keys, six for a block list's items.
+_BOARD_RE = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
+_KEY_RE = re.compile(r"^    ([A-Za-z0-9_-]+):\s*(.*?)\s*$")
+_ITEM_RE = re.compile(r"^      -\s+(\S.*?)\s*$")
+# A `- ` item that is a `<key>:` is a MAPPING, not a pointer. Measured on the
+# owner's own config 2026-10-21: `boards.workday.employers` is six of them,
+# and their continuation lines are indented PAST the dash — so a reader that
+# took each `- ` for a pointer stopped at the first and reported ONE.
+_MAPPING_RE = re.compile(r"^[A-Za-z0-9_-]+\s*:")
 
 __all__ = ["enabled", "board_value", "contact", "threshold"]
 
@@ -125,3 +138,129 @@ def threshold(key):
             return val, f"thresholds.{key}: {val} in {path}"
         return None, f"thresholds.{key} in {path} has no value"
     return None, f"no thresholds.{key} in {path}"
+
+
+def employers(board):
+    """`(pointers, where)` for `boards.<board>.employers` — BOTH list forms.
+
+    **Measured 2026-10-21 by running `dormant.read_boards` on a fixture, not
+    by reading it** (#1094 point 4a):
+
+        employers: [scandit, nexthink]    ->  '[scandit, nexthink]'   a STRING
+        employers:                        ->  ''        <- the items are SKIPPED
+          - swisscom
+          - roche
+
+    `read_boards` skips a nested list by design — *«&nbsp;a nested list or map:
+    not ours&nbsp;»* — so the block form arrives as a key whose value is empty,
+    and `board_value` collapses that into `None` by its `if v:`. Its caller
+    then prints **`no boards.<board>.employers in <path>`**: a sentence that
+    names the file and denies two employers the file configures. That is the
+    false zero of `shared/false-zero-cost.md` at the one place the user cannot
+    see it, and it is the shape a migration writes FIRST — nobody writes six
+    employers as an inline list.
+
+    So the lines are read here, as `threshold()` reads them, and for a kindred
+    reason: that parser cannot answer this question at all, rather than merely
+    dying on a config without a `boards:` block. The three returns are not
+    interchangeable:
+
+        ([...], where)   the pointers, in file order, duplicates KEPT
+        ([],    where)   the key is ABSENT — this board configures no employer
+        (None,  where)   a shape that was NOT READ — never an empty list
+
+    The third is the whole point. `[]` says «&nbsp;nothing is configured&nbsp;»
+    and `None` says «&nbsp;I could not tell&nbsp;»; a caller that renders them
+    alike has published a zero it never measured.
+    """
+    from _secrets import _workspace
+    ws = _workspace()
+    if not ws:
+        return None, "no workspace resolved (JOB_HUNT_HOME unset, nothing remembered)"
+    path = os.path.join(ws, "config.yml")
+    if not os.path.exists(path):
+        return None, f"no config.yml at {path}"
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError as exc:
+        return None, f"{path} could not be read ({type(exc).__name__})"
+    return employers_in(lines, board, path)
+
+
+def employers_in(lines, board, path):
+    """The reading itself, on LINES — so every shape can be exercised.
+
+    Taking lines rather than a path is what lets a guard reach the branch that
+    matters: a workspace is resolved from the environment, and a test that has
+    to build one reaches the easy branches only.
+    """
+    from dormant import unquote
+    at = _employers_line(lines, board)
+    if at is None:
+        return [], f"no boards.{board}.employers in {path}"
+    # A trailing comment is ordinary in this file — and it is the expensive
+    # half of it: 302 of its 508 lines are comments saying when a tenant was
+    # exercised. `threshold()` strips one the same way, two functions up, so
+    # doing it differently here would be a second convention for one file.
+    rest = _KEY_RE.match(lines[at]).group(2).split("#", 1)[0].strip()
+    if rest:
+        if not (rest.startswith("[") and rest.endswith("]")):
+            return None, (f"boards.{board}.employers at {path}:{at + 1} carries "
+                          f"{rest!r}, which is neither an inline list nor a "
+                          f"block list — a shape to fix, NOT an absence")
+        items = [unquote(x.strip()) for x in rest[1:-1].split(",") if x.strip()]
+        if not items:
+            return None, (f"boards.{board}.employers at {path}:{at + 1} is an "
+                          f"EMPTY inline list — a key written and left blank "
+                          f"is a shape to fix, not a board with no employers")
+        return items, (f"boards.{board}.employers in {path} "
+                       f"({len(items)} inline)")
+    items = []
+    for raw in lines[at + 1:]:
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        m = _ITEM_RE.match(raw)
+        if not m:
+            break
+        item = unquote(m.group(1).strip())
+        if _MAPPING_RE.match(item):
+            return None, (f"boards.{board}.employers at {path}:{at + 1} is a "
+                          f"block list of MAPPINGS, not of pointers — and its "
+                          f"items' own keys are indented past the `- `, so a "
+                          f"reader that took each dash for a pointer reports "
+                          f"ONE where the file holds several. This is the "
+                          f"shape BEFORE #1094 point 4b; it is a migration "
+                          f"still owed, NOT an absence of employers")
+        items.append(item)
+    if not items:
+        return None, (f"boards.{board}.employers at {path}:{at + 1} has no "
+                      f"value and no `- ` item under it — a key that carries "
+                      f"nothing is a shape to fix, not a board with no "
+                      f"employers")
+    return items, f"boards.{board}.employers in {path} ({len(items)} block)"
+
+
+def _employers_line(lines, board):
+    """The index of `boards.<board>.employers`, or None if the key is absent."""
+    inside, here = False, False
+    for i, raw in enumerate(lines):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if not raw.startswith(" "):
+            # `boards:` takes indented keys too, so a reader matching on the
+            # key alone would take it from anywhere in the file.
+            inside, here = raw.rstrip() == "boards:", False
+            continue
+        if not inside:
+            continue
+        m = _BOARD_RE.match(raw)
+        if m:
+            here = m.group(1) == board
+            continue
+        if not here:
+            continue
+        m = _KEY_RE.match(raw)
+        if m and m.group(1) == "employers":
+            return i
+    return None
