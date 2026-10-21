@@ -42,6 +42,7 @@ Measured 2026-09-14 03:4x UTC by the declared client, the guard on the exact pat
 the ad 255 963 B with its `advert`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

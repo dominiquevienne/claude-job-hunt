@@ -48,6 +48,7 @@ only the first header counts two headers as rows. The symptom is that `family`
 answers `family`.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import io
 import os
 import re

@@ -55,6 +55,7 @@ without `--fetch`**: the dates are on the advertisement, not the card, and a
 filter that silently kept everything would be worse than none.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

@@ -42,6 +42,7 @@ open — `identity()` answers `claude-user`, `verdict()` sweeps since #230)
 plus the operator's lines; no `Crawl-delay` (2 s is ours); `certain: True`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

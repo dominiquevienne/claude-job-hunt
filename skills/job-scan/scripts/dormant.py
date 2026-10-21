@@ -38,6 +38,7 @@ like this one is to report "nothing due" for a file it never understood, and
 that reads exactly like a healthy workspace.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime as dt
 import json

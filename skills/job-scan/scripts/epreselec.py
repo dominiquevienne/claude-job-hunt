@@ -52,6 +52,7 @@ numbers; `contacts_withheld` on every record; the site states no country
 — the family is Spanish, `--country-code` stamps what the user names.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -31,6 +31,7 @@ digits or more, Hungarian numbers are nine). The client is not named on
 the ads (the agency writes «partnerünk»), and that is the board's choice.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

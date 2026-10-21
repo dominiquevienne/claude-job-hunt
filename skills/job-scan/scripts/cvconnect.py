@@ -62,6 +62,7 @@ carries its adverts stated **4** — it stated **7** on 2026-09-17, so this coun
 week and **every figure here carries its date**; ids 2519, 2548, 2552, 2565.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

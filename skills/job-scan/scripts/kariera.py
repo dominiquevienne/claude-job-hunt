@@ -45,6 +45,7 @@ direct read adds: the list's thirty a page with salary text and date,
 the ad page's sections, and the sitemap's `lastmod`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

@@ -80,6 +80,7 @@ between 2025-07-15 and 2026-09-22; 23 categories / 15 cities / 5 types read from
 **every token the adverts use is named by the site**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

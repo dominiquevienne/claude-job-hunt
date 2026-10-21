@@ -54,6 +54,7 @@ JavaScript. The category select offers exactly three categories (Customer Servic
 Engineering/Technology 106, Sale 51) under the parent «Jobs» (110) — one advert each.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

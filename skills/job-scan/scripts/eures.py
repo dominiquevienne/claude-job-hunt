@@ -81,6 +81,7 @@ each exact path, host included, in a turn distinct from every retrieval.
 Measured 2026-10-05 (card) and 2026-10-07 (this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

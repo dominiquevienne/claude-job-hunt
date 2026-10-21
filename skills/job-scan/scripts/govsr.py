@@ -33,6 +33,7 @@ bare. No contact is emitted: a card's «Locatie» is a ministry's street address
 is kept as the workplace; an e-mail in a card's text is dropped from the summary.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

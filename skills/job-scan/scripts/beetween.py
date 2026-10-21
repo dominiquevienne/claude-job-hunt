@@ -58,6 +58,7 @@ account or a form) never touched; `contacts_withheld` on every record.
 The country is the job's own (`country` → ISO2 when named).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

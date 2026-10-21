@@ -50,6 +50,7 @@ with a `lastmod`, of which 219 under `/jobs/`**. `/jobs` answers 200, 56 887 B a
 and no pager, which is why the sitemap is the route.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

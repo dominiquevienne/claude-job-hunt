@@ -34,6 +34,7 @@ public page are the board's own and are emitted. Salary is whatever the
 prose says, never parsed.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

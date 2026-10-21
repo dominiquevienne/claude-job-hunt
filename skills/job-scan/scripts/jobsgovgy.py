@@ -48,6 +48,7 @@ numbers; the employer's logo never emitted; the application
 record. The country is GY on every row.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

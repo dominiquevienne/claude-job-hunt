@@ -58,6 +58,7 @@ mixes the ad with what we wrote about it cannot validate a detector.
         note(v["text"])
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import re
 
 __all__ = ["requirement", "verdict"]

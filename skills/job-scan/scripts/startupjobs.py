@@ -34,6 +34,7 @@ Measured 2026-09-14 02:4x UTC by the declared client, the guard on the exact pat
 152 689 B with its 54 144-character payload.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

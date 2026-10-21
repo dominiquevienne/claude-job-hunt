@@ -37,6 +37,7 @@ logo and website, the apply route; texts scrubbed of e-mail addresses and
 telephone numbers; `contacts_withheld` on every record. Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import gzip

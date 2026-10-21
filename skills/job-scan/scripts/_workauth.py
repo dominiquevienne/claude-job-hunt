@@ -48,6 +48,7 @@ place of work instead of climbing to the right to work there.
     if v["flag"]:
         note(v["text"])
 """
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 
 __all__ = ["ZONES", "expand", "verdict"]
 

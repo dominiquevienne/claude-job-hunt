@@ -40,6 +40,7 @@ THE RULES refuse `anthropic-ai` — a name no request from here carries
 Measured 2026-09-12 11:18–11:35 UTC (#233, lot 4).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

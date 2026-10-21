@@ -44,6 +44,7 @@ WHAT THIS NEVER DOES:
     tenant_offer.py scan --urls urls.txt --config ~/…/config.yml
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

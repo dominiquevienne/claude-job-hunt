@@ -51,6 +51,7 @@ THE RULES. `robots.txt` (199 bytes): `*` refuses `/error/`, `/app/`,
 True`; 3 s own spacing.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

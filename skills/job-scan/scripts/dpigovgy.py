@@ -48,6 +48,7 @@ Measured 2026-09-22 08:0x–08:2x UTC by the declared client, the guard on the e
 the run says which page answered it.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

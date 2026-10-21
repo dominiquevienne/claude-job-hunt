@@ -93,6 +93,7 @@ does not separate *independent* from *written differently*. `verdict()` reports
 state that has every appearance of a result and is not one.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import random

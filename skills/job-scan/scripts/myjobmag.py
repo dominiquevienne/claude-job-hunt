@@ -37,6 +37,7 @@ Nigeria 35 cards a page dated 12 September on page 1; Kenya 25 (13 September); S
 May–June 2024 — a dormant front, served and said**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as htmlmod

@@ -57,6 +57,7 @@ Officers Only», 14-09-2026); `ActiveAdvertsInternsInternshipExt.aspx` 200, 14 5
 empty today** — which is why an empty table is reported, never treated as a failure.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

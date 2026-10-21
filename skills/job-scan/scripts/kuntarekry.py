@@ -41,6 +41,7 @@ addresses and Finnish telephone numbers before it is emitted.** The «Hae työpa
 is the site's own form and is never touched.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -17,6 +17,7 @@ Usage:
   workday.py ad     --host … --tenant … --site … (--path /job/… | --req-id R-123)
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

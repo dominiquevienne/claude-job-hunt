@@ -80,6 +80,7 @@ never as a number**, because it is not one.
 Verified against the live site on 2026-09-08.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

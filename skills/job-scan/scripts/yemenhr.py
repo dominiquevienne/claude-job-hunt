@@ -95,6 +95,7 @@ settled by the site's own filter in our favour. Exercised: `jobs --country-code 
 notes identical on 4 of 4 and dropped.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

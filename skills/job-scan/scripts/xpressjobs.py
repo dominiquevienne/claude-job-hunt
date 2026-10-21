@@ -49,6 +49,7 @@ the HTML advertisement routes serve the shell above. What this script emits is
 what the API gives.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import sys

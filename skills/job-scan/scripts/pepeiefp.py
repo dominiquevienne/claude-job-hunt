@@ -52,6 +52,7 @@ removed), **3 rows**. **4 entries, no count stated.** `backend/web/index.php?r=a
 JSON call the home page's cards make, answers **404** — the two HTML lists are the route.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

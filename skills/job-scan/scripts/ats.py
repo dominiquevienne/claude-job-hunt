@@ -32,6 +32,7 @@ ATS rows, and makes NO network request. A name it does not hold is a row
 nobody has filed, never an employer without an ATS (#1167).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

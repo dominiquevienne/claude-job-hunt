@@ -62,6 +62,7 @@ page 1**; `/tr/feed/jobs` 200, 18 846 B, RSS with 20 `<item>`; one advert 86 376
 blocks (`BreadcrumbList`, `WebSite`, `JobPosting`).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import email.utils
 import html as htmlmod

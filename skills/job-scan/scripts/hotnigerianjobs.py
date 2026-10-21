@@ -48,6 +48,7 @@ sweeps since #230, `certain: True`; no `Crawl-delay` (2 s is ours). Measured
 2026-09-12 15:27 and 2026-09-13 16:05 UTC (#233, lot 7 → this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

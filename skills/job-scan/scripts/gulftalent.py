@@ -53,6 +53,7 @@ false unless the JobPosting gave one. Measured 2026-09-13 12:35 UTC (a tab)
 and 13:27–14:59 UTC (the declared client, served on every path read).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

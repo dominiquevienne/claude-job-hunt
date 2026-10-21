@@ -37,6 +37,7 @@ predicts nothing about the transport** (#233, lot 3). Measured 2026-09-12
 11:00–11:03 UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

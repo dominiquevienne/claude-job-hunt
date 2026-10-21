@@ -38,6 +38,7 @@ here to the city and district. The employer's details are behind the
 login there too. No contact is on either page.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

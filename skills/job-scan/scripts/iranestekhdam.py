@@ -55,6 +55,7 @@ the notices print (#183 — the advert is served, the criterion is not), named o
 every record. Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

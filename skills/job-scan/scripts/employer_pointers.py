@@ -42,6 +42,7 @@ states for `args`. And it launches nothing: it prints the command, and the
 step that owns the sweep runs it.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import sys

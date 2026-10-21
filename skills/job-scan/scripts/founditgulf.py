@@ -47,6 +47,7 @@ expired-jobs sitemaps; no `Crawl-delay` (2 s is ours); `certain: True`;
 11:18–11:41 UTC (#233, lot 4).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

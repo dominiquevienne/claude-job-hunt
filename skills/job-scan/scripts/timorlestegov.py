@@ -43,6 +43,7 @@ an agenda block moves), **10 entries**; page 2 200 (31 657 B) 10; page 3 200 (25
 the newest 2026-07-01.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

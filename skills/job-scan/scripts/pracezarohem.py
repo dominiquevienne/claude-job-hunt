@@ -35,6 +35,7 @@ Measured 2026-09-14 03:0x UTC by the declared client, the guard on the exact pat
 151 709 B, 50 cards, `numFound` 18 586; the ad 33 837 B with its `advert` and its `recruiter`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

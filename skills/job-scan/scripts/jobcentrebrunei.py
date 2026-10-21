@@ -46,6 +46,7 @@ of 607 entries», 75 cards; the advert `211200374` 200 ×2 (200 814 B), its over
 `Age 20-28` left out.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

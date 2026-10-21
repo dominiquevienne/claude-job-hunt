@@ -33,6 +33,7 @@ bounds — the job description too is behind the login. No contact is on
 either page.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import http.cookiejar

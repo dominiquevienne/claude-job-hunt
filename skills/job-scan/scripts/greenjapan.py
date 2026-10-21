@@ -31,6 +31,7 @@ none of them the sitemap, `/search` or `/company/`; no `Crawl-delay`;
 2026-09-12 09:33–09:40 UTC.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

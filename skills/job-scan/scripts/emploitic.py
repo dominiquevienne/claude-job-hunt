@@ -37,6 +37,7 @@ fails on characters that look identical to a reader.
 Verified against the live site on **2026-09-03**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

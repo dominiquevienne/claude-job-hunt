@@ -53,6 +53,7 @@ card's text («A convenir», «Pago por comisiones», «----------» → null),
 never parsed into a number.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

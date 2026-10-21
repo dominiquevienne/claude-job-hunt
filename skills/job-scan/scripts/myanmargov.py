@@ -51,6 +51,7 @@ page 1 and one of each other page: page 1 200 Ã—2 (225 332 B, md5 c9711170b6d4 â
 stated total to the unit**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import hashlib
 import html as htmlmod

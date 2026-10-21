@@ -40,6 +40,7 @@ Usage:
   successfactors.py check  --host jobs.bcv.ch --id 31130
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -43,6 +43,7 @@ factorial.es` 0 (70 909 B); the Factorial ad `it-systems-engineer-323635` 200 ×
 JobPosting with a full street address).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -44,6 +44,7 @@ THE RULES: `Allow: /`, no agent named, no `Crawl-delay` (1 s is ours),
 2026-09-01: 9 862 + 23 620 = 33 482).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

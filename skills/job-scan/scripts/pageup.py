@@ -42,6 +42,7 @@ e-mail addresses and telephones; `contacts_withheld` on every record; the
 country stamped from `--country-code` (the site names none).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

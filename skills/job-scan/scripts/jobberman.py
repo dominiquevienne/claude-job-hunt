@@ -33,6 +33,7 @@ and «Job descriptions & requirements». Applications are «Log In and
 Apply»; no contact is on the page and none is read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

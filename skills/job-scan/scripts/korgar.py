@@ -108,6 +108,7 @@ THE RULES: 105 bytes, `state: read`, `certain: True`, zero `Disallow`, no
 Measured 2026-10-06 06:01–06:04 UTC (#664).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

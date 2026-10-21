@@ -35,6 +35,7 @@ tooltip's street line not emitted (the place and region are); `contacts_withheld
 record; the application (`/apply`, Betterteam's form) never touched.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

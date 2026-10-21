@@ -47,6 +47,7 @@ the list 341 093 B, 20 cards, «20.409», «Son Sayfa» ?sf=342; the ad 155 557 
 JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

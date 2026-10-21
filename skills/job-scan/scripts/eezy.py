@@ -42,6 +42,7 @@ RSS 99 204 B / 338 items / 10 ads; `/fi` 43 994 B; `_app` 514 225 B; the query `
 and a Core ad with its `recruitmentPerson`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

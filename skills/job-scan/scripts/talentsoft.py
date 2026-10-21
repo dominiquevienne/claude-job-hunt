@@ -23,6 +23,7 @@ Usage:
 Output: one JSON object per line (jobs), or one JSON object (ad).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import gzip
 import html as html_mod

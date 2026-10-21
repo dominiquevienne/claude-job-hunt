@@ -57,6 +57,7 @@ adds («CLICK HERE TO APPLY», an external form or the site's own link) is
 never emitted; `job_tag` dropped; `contacts_withheld` on every record.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime as dt
 import html as htmlmod

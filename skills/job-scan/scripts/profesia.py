@@ -43,6 +43,7 @@ no `Crawl-delay` (1 s is ours); `Sitemap: /sitemap.php`. Measured
 2026-09-13 17:09 UTC (#343; page Slovaquie of 2026-09-01: 14 040).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

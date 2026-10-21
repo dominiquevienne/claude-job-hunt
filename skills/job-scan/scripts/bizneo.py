@@ -54,6 +54,7 @@ country: the family is Spanish and the tenants' places are the only
 geography; `--country-code` stamps the rows with what the user names.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

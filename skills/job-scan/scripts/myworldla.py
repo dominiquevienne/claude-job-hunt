@@ -57,6 +57,7 @@ name `https://laos.myworld-careers.com/sitemap.xml`, 200, 37 086 B — **179 `<l
 `/jobs/`**; `/jobs` 200, 25 137 B and carries no advert link; one advert read at 94 097 B.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

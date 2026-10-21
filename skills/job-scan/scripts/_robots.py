@@ -184,6 +184,7 @@ routinely what a *missing key* returns. `_storage_note` still names the
 shape for a person; the verdict no longer depends on it.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import datetime
 import hashlib
 import random

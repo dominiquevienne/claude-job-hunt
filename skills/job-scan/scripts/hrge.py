@@ -70,6 +70,7 @@ further would be #72's fault; the listing works and is used instead.
 Verified against the live platform on **2026-09-03**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

@@ -35,6 +35,7 @@ quota flags (Afro, Trans, Disc, VicDelVio), `listaOrganismoCantPuestos`
 `LlaTieCon`. The public page of a llamado is `/llamado/<LlaId>`.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

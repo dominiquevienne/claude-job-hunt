@@ -41,6 +41,7 @@ no open position); `/jobs/quantummachines/D6.000` 200 (293 973 B) → the API 51
 200 (811 176 B).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

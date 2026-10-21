@@ -37,6 +37,7 @@ checked `title` alone printed a raw entity in `town` on the line above its own
 green assertion.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as html_mod
 import json

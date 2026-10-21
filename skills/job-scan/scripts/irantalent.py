@@ -39,6 +39,7 @@ Persian title is empty and collides (50 097 of 56 095 measured on Jobvision
 the same week). Country IR.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

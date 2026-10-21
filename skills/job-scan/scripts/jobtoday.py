@@ -72,6 +72,7 @@ This tool therefore does not walk a sitemap at all.
     jobtoday.py list --city madrid [--country es] [--pages N] [--limit N]
     jobtoday.py ad   --url https://jobtoday.com/es/trabajo/<role>-<key>
 """
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

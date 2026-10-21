@@ -33,6 +33,7 @@ Measured 2026-09-14 00:5x UTC by the declared client: count 2 321, jobs 1 078 (s
 positionCount 2 321 — equal), one ad read. `--language 1` is Norwegian (bokmål), 2 English.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -47,6 +47,7 @@ reads: `/jobseeker_page/mispage` 200 ×2, 2 331 252 B both times (md5 4d80c27ccf
 Thimphu 192, Sarpang 103, Paro 64.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

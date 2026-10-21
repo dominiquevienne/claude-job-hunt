@@ -36,6 +36,7 @@ motive and names `ClaudeBot` only through the managed block. Measured
 2026-09-13 10:22–10:59 UTC (#233, lot 8 → this adapter).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

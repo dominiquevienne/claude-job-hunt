@@ -37,6 +37,7 @@ the description's HTML is reduced to text. The apply route
 (`apply_redirect_url`, the tenant's own form) is never followed.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

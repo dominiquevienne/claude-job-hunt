@@ -30,6 +30,7 @@ Measured 2026-09-16 06:25–06:27 UTC by the declared client, the guard on the e
 16 cards; `/sitemap.xml` 404; the ad 52 269 B with its JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

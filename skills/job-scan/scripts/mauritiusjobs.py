@@ -48,6 +48,7 @@ Measured 2026-09-21 14:0x–14:1x UTC by the declared client, the guard on the e
 both times, the same ids in the same order, «587 jobs» stated both times**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

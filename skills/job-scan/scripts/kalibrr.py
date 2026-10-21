@@ -58,6 +58,7 @@ downstream can mistake a converted figure for the employer's.
 Everything here was verified against the live service on **2026-09-02**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import sys

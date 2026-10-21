@@ -37,6 +37,7 @@ apart: the sitemap 1 167 855 B / 8 670 rows; the list 135 251 B, 15 cards, «866
 pages; one hosted ad 98 485 B with its contact block.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

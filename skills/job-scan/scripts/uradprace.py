@@ -50,6 +50,7 @@ published with the employer, 2 950 EU-wide, 22 anonymous; easy-prace.cz republis
 them (`easyprace.md`) — the file carries 15 341 more.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import http.client
 import json

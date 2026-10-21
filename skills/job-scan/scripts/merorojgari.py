@@ -52,6 +52,7 @@ It writes nothing to disk, and a missing `validThrough` is not treated as
 expired: *absent is not past.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime
 import html as html_mod

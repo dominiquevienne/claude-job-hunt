@@ -49,6 +49,7 @@ emptiness by searching for it**; count the cards.
 Everything here was verified against the live site on **2026-09-02**.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import re

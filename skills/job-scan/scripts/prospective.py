@@ -44,6 +44,7 @@ items — the whole board), ZHAW `1002929` (664 B — «Career Center project te
 board today, exit 6 with that sentence).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

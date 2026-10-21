@@ -36,6 +36,7 @@ afterwards.
     python3 achievements.py asked --outcome none|recorded|paused
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import datetime as dt
 import json

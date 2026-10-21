@@ -76,6 +76,7 @@ naming 15; `/jobs/category/sales-business-development` 200, 273 139 B — 12 adv
 `?functionalAreaId=…`; `/jobs?page=15` 200, **9 adverts as predicted**; `/jobs?page=16` 200, none.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

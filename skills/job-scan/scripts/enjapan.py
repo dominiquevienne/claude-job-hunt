@@ -36,6 +36,7 @@ Everything is Japanese and nothing is translated. Measured 2026-09-12
 15:26–15:3x UTC, every fetch under the declared identity.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import gzip
 import html as htmlmod

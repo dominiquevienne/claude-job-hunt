@@ -41,6 +41,7 @@ Measured 2026-09-22 09:2x–09:4x UTC by the declared client, the guard on the e
 information rows, four blocks, `Gender: Male` and `Nationality: Afghan` among them.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

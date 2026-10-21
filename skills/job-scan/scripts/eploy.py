@@ -43,6 +43,7 @@ every record. **The list states no country: `--country-code` STAMPS the
 rows with the country the user names for that tenant, and says so.**
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import http.cookiejar

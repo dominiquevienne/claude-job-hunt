@@ -49,6 +49,7 @@ last page 20); `jobs.pwc.de` 404 on the script and the list (not a tenant today)
 (CERTIFICATE_VERIFY_FAILED — the `_tls` shape, not measured here).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

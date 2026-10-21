@@ -84,6 +84,7 @@ carrying `"@type":"JobPosting"` with `identifier` "Job ID" 27449 and `hiringOrga
 "Mongolian Express LLC".
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

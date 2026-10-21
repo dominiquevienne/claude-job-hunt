@@ -48,6 +48,7 @@ e-mail in the footer); `zzz-not-a-tenant-2026.softgarden.io` 404 «Unknown subdo
 tenant, exit 3.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

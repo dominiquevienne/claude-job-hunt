@@ -32,6 +32,7 @@ Output: one JSON object per line — a URL and what can be known without
 fetching it. Hand those URLs to the browser step.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import gzip
 import json

@@ -63,6 +63,7 @@ Measured 2026-10-01 by the declared client, the guard on each exact path: `/is-i
 `ld+json` blocks, the `JobPosting` giving `datePosted` 2026-07-09 and `validThrough` 2026-08-23.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

@@ -21,6 +21,7 @@ Every failure is loud: a search that cannot be built exits non-zero rather
 than returning an unfiltered or empty result set that looks like an answer.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

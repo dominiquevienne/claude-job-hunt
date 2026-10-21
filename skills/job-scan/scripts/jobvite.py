@@ -41,6 +41,7 @@ without its header); 6 partial (a walk short of the stated count, HTTP ≠ 200);
 refused by the rules; 8 the rules could not be read.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html
 import json

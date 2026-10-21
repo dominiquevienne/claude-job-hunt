@@ -42,6 +42,7 @@ the call: `totalCount` 153 in four readings (9, 153 and 300 asked — 9, 153, 15
 the adapter prints what it reads each run**; the ad 290 274 B with its JobPosting.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

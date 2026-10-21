@@ -49,6 +49,7 @@ layout), `msig-portal` 5 cards, `codesys-portal` 6 cards; the MSIG ad 200 ×2 (1
 Frankfurt ad on the portal host 200 (its links name `stadtfrankfurtjobs.de`).
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

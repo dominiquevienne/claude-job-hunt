@@ -36,6 +36,7 @@ for a `JobPosting`; said out loud rather than discovered.
     title = first(posts, "title", "name")
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import html as html_mod
 import re
 from html.parser import HTMLParser

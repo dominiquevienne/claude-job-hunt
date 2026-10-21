@@ -33,6 +33,7 @@ stillingen» whole**: the page embeds `contactList` with names, e-mails
 and telephones, and none of it leaves this adapter.
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json

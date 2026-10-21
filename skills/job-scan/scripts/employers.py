@@ -34,6 +34,7 @@ file about the employer, and they never speak about the same thing.**
     python3 employers.py list
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import json
 import os

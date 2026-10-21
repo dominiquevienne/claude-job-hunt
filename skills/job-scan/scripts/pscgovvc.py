@@ -43,6 +43,7 @@ Measured 2026-09-22 08:4x UTC by the declared client, the guard on the exact pat
 2026-09-28 and 2026-10-05, each a PDF. *A thin flow, and it is the public service's own.*
 """
 
+import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
 import html as htmlmod
 import json
