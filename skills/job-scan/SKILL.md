@@ -814,6 +814,40 @@ report rather than passing the number on.
 "This board is poor in salaries" may be an artefact of the language queried:
 **a fill rate measured in one language is not the board's fill rate.**
 
+### The employers the config names, and the coordinates the registry gives
+
+**A board's `employers:` list names employers; `shared/employer-ats.md` holds
+what each one's ATS needs.** Ask for the sweep commands rather than composing
+them from the config by hand:
+
+```bash
+python3 "$S/employer_pointers.py" plan --board <board>   # the `boards:` key
+```
+
+It prints one row per configured employer with the command that would sweep
+it, and three exits that are **not** interchangeable:
+
+```
+0   every pointer resolved — or the board configures none, and the row says so
+1   a pointer did NOT resolve: the sentence names which one, and why
+2   the pointer LIST could not be read at all — INDETERMINATE, not empty
+```
+
+**Exit 2 is the one that matters.** A board whose `employers:` is written as a
+list of mappings rather than of names is a migration still owed (#1094 point
+4b) — *not* a board with no employers — and rendering the two alike publishes
+a zero nobody measured. A wrong tenant answers **200 with zero ads**, so every
+failure in this chain already wears the shape of an employer who is not
+hiring.
+
+**Do not retype what it prints, and do not fill a gap by guessing.** An
+`UNKNOWN` row means the registry holds no entry for that employer: the fix is
+an entry with its date and its witness, taken by exercising the adapter, never
+a tenant invented at the call site. And a row carrying a `note` is a
+disagreement to show the user — the config filed that employer under one
+board, the registry answers with another provider, and the registry decides
+the coordinates.
+
 ### Tenants seen in this run that the config does not sweep
 
 **An ad's apply URL often names an ATS the user already has enabled, under a
