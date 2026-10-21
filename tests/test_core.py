@@ -14949,8 +14949,14 @@ class TheAnchorSurvivesItsOwnZero(unittest.TestCase):
         # path, so an empty extraction raised ValueError before any figure was
         # printed. `jobwebrwanda` raised before the count line entirely.
         ("careerical_sl", lambda: ([], {"sierra-jobs": 2344})),
+        # **Four values since #1180**, and the fourth is the list of
+        # single-segment paths that are NEITHER the prefix NOR known chrome:
+        # `entries()` names them instead of emitting them as advertisements.
+        # *The fixture follows the real signature — it describes the arity the
+        # module actually returns, and an empty extraction has nothing unknown
+        # in it either.*
         ("emploiscongo",  lambda: ([], {"advertisement": 446,
-                                        "not-an-ad": 12}, False)),
+                                        "not-an-ad": 12}, False, [])),
         ("jobwebrwanda",  lambda: ([], 558)),
     )
 
@@ -49564,6 +49570,115 @@ class TheJobartisInstancesShareAShapeAndNotAVocabulary(unittest.TestCase):
         self.assertIn("2021-03-26", texte)
         self.assertIn("75.0", texte)
 
+
+class AnUnknownPathIsNotAnAdvertisementOnEmploisCongo(unittest.TestCase):
+    """**#1180 — the sibling of the defect #1172 fixed on the Gabonese instance.**
+
+    `emploiscongo.classify` returned `"bare"` for any single-segment path that
+    was neither `/emploi-` nor a known chrome page, and `entries()` emitted it
+    as an advertisement. Its own comment said *«this host has none, checked on
+    the whole file»* — **a measurement of that day's file, treated as a property
+    of the host.**
+
+    **The headline count was never at risk and that is said first:** the output
+    writes `"advertisements": counts["emploi"]`, so the 446 the card and the
+    README publish could not be inflated. *What was unprotected is the EMITTED
+    LIST — and a consumer walks `ads`, not the header. The count told the truth
+    while the list carried a false, and nothing put them in disagreement.*
+    **And `--fetch` would then spend a request opening a chrome page.**
+
+    > *«When a sort has a default case, pick the one that fails VISIBLY.»* The
+    > default was the advertisement side, so the next unforeseen path was a
+    > FALSE ADVERTISEMENT; it is now `"unknown"`, counted, NAMED and never
+    > emitted — a missing line that says its own name.
+
+    **THE ANGOLAN BARE FORM IS NOT TOUCHED AND IS ALREADY PINNED ELSEWHERE.**
+    `www.jobartis.com` serves 2 294 advertisements under a bare `/<slug>`
+    beside its 38 588 prefixed, two of them fetched to check it, and
+    `TheJobartisInstancesShareAShapeAndNotAVocabulary` already asserts
+    `INSTANCES["AO"]["bare_is_ad"]`. *That case is CITED and not copied: a
+    duplicated guard has no symptom, contradicts nothing, and yields two greens
+    without saying which one protects.* **The direction there is the inverse of
+    the one here — a global fix would destroy 2 294 REAL advertisements while
+    looking like tidying.**
+
+    *The bench carries its own module copy and its own synthetic sitemap: it
+    never reaches the network and it patches nothing that outlives it.*
+    """
+
+    def _m(self):
+        import importlib.util
+        chemin = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "skills", "job-scan", "scripts", "emploiscongo.py")
+        self.assertTrue(os.path.exists(chemin), chemin)
+        spec = importlib.util.spec_from_file_location("emploiscongo_1180",
+                                                      chemin)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_an_unknown_single_segment_path_is_classified_unknown(self):
+        """*The decision itself, and `bare` must no longer be a form here.*"""
+        m = self._m()
+        B = m.BASE
+        self.assertEqual(m.classify(B + "/emploi-quelque-chose"), "emploi")
+        self.assertEqual(m.classify(B + "/une-rubrique-neuve"), "unknown",
+                         "the default of this sort is back on the "
+                         "advertisement side")
+        self.assertIsNone(m.classify(B + "/emplois"))
+        self.assertIsNone(m.classify(B + "/ajuda"))
+        self.assertIsNone(m.classify(B + "/a/b"))
+        self.assertIsNone(m.classify("https://autre.example/emploi-x"))
+
+    def _entries_sur(self, m, chemins):
+        """`entries()` over a SYNTHETIC sitemap, with no request at all."""
+        import gzip as _gzip
+        xml = ["<urlset>"]
+        for c in chemins:
+            xml.append("<url><loc>%s%s</loc><lastmod>2026-01-02</lastmod>"
+                       "</url>" % (m.BASE, c))
+        xml.append("</urlset>")
+        brut = _gzip.compress("".join(xml).encode("utf-8"))
+
+        def faux_get(url, binary=False):
+            self.assertTrue(url.endswith("/sitemap.xml.gz"), url)
+            return 200, brut, {"Content-Type": "application/xml"}
+
+        m.get = faux_get          # la copie du module, jamais celle du processus
+        return m.entries()
+
+    def test_an_unknown_path_is_counted_and_NAMED_and_never_emitted(self):
+        """**The case that holds the real defect: the EMITTED list.**
+
+        *Asserting `classify` alone would have been the guard that tests the
+        decision and not the path the data takes — and it is `entries()` that
+        appends.*
+        """
+        m = self._m()
+        rows, counts, was_gz, unknown = self._entries_sur(
+            m, ["/emploi-un", "/emploi-deux", "/emplois", "/une-rubrique-neuve"])
+        self.assertTrue(was_gz)
+        self.assertEqual(counts["emploi"], 2)
+        self.assertEqual(counts["not-an-ad"], 1, "`/emplois` is chrome")
+        self.assertEqual(counts["unknown"], 1)
+        self.assertEqual(unknown, [m.BASE + "/une-rubrique-neuve"],
+                         "the unknown path is NAMED, not merely counted: a "
+                         "count cannot tell a new chrome page from a second "
+                         "advertisement form")
+        self.assertEqual(sorted(r["slug"] for r in rows),
+                         ["emploi-deux", "emploi-un"],
+                         "an unknown path was EMITTED as an advertisement")
+        self.assertNotIn("bare", counts)
+
+    def test_a_file_of_only_unknown_paths_dies_rather_than_returning_nothing(self):
+        """*`entries()` dies on zero advertisements — «read the bytes before
+        believing the zero» — and that must survive the change: a file that is
+        ALL unknown is a reading that failed, not an empty board.*"""
+        m = self._m()
+        with self.assertRaises(SystemExit) as ctx:
+            self._entries_sur(m, ["/une-rubrique-neuve", "/une-autre"])
+        self.assertEqual(ctx.exception.code, m.EXIT_BROKEN)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
