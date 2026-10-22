@@ -49903,7 +49903,15 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
     differently.** Measured on 2026-10-22:
 
         `<script>.py:<n>`      44 declared, 0 outside their file
-        `<script>.py:<NAME>`   86 declared, 6 resolving to nothing
+        `<script>.py:<NAME>`   86 declared, 0 resolving to nothing
+
+    **CORRECTION 2026-10-22: the line above read «6 resolving to nothing»,
+    and those six were FALSE POSITIVES of the first `_defines`** — see the
+    comment on `PINNED`. A motif that requires an identifier at the head of
+    its line is blind to tuple unpacking, and a motif defect does not produce
+    an error: it produces SEVERAL CONCORDANT FALSE measurements, whose
+    concordance reads as a confirmation. Two independent probes of mine
+    returned the same falsehood, so it was published as established.
 
     A LINE number drifts with any edit above it and **nothing mechanical
     detects it** — pairing a pointer to the object its prose names is not
@@ -49918,24 +49926,27 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
     broken clause — `` `emploiscongo.py:BASE` `` — and in the sibling card
     `jobartis.md`, as «in `cmd_ad` and nowhere else».*
 
-    **The six that resolve to nothing are NOT repaired here**, and that is a
-    refusal rather than an omission: deciding what `` `beetween.py:DOMAIN` ``
-    meant requires knowing what its author measured, and writing that guess
-    into a card would be a gloss on a verdict nobody took. They are pinned
-    below so a SEVENTH reddens the suite the day it appears.
+    **And the refusal to repair those six, which this docstring argued for,
+    had no object: there was nothing to repair.** The refusal was the right
+    gesture for a reason that was not the one given — a measurement error,
+    not an author's silence. `PINNED` is now empty, so ANY card naming
+    something its adapter does not define reddens the suite.
     """
 
-    PINNED = {
-        # card, script, name — the constant is ABSENT from that script, verified
-        # 2026-10-22 by listing each module's upper-case names. Their author must
-        # say what was meant; this list SHRINKS deliberately, never silently.
-        ("beetween.md", "beetween.py", "DOMAIN"),
-        ("bizneo.md", "bizneo.py", "DOMAIN"),
-        ("epreselec.md", "epreselec.py", "DOMAIN"),
-        ("gupy.md", "gupy.py", "DOMAIN"),
-        ("hiringroom.md", "hiringroom.py", "DOMAIN"),
-        ("youthall.md", "youthall.py", "HOST"),
-    }
+    # **EMPTY, and it held six entries until 2026-10-22.** Those six —
+    # `beetween`, `bizneo`, `epreselec`, `gupy`, `hiringroom` (`DOMAIN`) and
+    # `youthall` (`HOST`) — were SIX FALSE POSITIVES of the first `_defines`,
+    # which could not see a tuple target. Every one of them IS defined:
+    #     beetween.py:76   BOARD, DOMAIN, APP_HOST, API_HOST = "beetween", ...
+    #     bizneo.py:72     BOARD, DOMAIN = "bizneo", "bizneo.com"
+    #     epreselec.py:70  BOARD, DOMAIN = "epreselec", "epreselec.com"
+    #     gupy.py:64       BOARD, DOMAIN = "gupy", "gupy.io"
+    #     hiringroom.py:65 BOARD, DOMAIN = "hiringroom", "hiringroom.com"
+    #     youthall.py:69   BOARD, HOST, COUNTRY = "youthall", "www.youth...", "TR"
+    # **The guard was GREEN while certifying a falsehood**, and the day anyone
+    # fixed `_defines` it would have reddened on correct work. Kept as an empty
+    # name rather than deleted, so the history of the accusation stays legible.
+    PINNED = frozenset()
 
     NAMED = re.compile(r"`([A-Za-z_]+\.py):([A-Za-z_][A-Za-z_0-9]*)`")
     NUMBER = re.compile(r"`([A-Za-z_]+\.py):(\d+)`")
@@ -49976,9 +49987,20 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
             return fh.read()
 
     def _defines(self, src, name):
-        return bool(re.search(r"(?m)^(%s\s*=|def %s\b|class %s\b)"
-                              % (re.escape(name), re.escape(name),
-                                 re.escape(name)), src))
+        """`name` is bound at module level — INCLUDING as a tuple target.
+
+        **The first version read `^NAME\\s*=` and was blind to tuple
+        unpacking**, and the six adapters it then accused all use it:
+        `BOARD, DOMAIN = "bizneo", "bizneo.com"` never puts `DOMAIN` at the
+        head of its line. Measured 6 of 6 — one motif defect on one syntactic
+        form, which is why it produced six "dangling" anchors and not three
+        or nine. Refuted by `claude-job-hunt-ab` on 2026-10-22.
+        """
+        n = re.escape(name)
+        return bool(
+            re.search(r"(?m)^(def %s\b|class %s\b)" % (n, n), src)
+            or re.search(r"(?m)^(?:[A-Za-z_]\w*\s*,\s*)*%s"
+                         r"(?:\s*,\s*[A-Za-z_]\w*)*\s*=(?!=)" % n, src))
 
     def test_every_named_anchor_a_card_declares_resolves_in_its_script(self):
         cards, scripts = self._cards()
@@ -50046,6 +50068,66 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
         self.assertIn("read by `emploiscongo.py` in `read_ad` and nowhere else",
                       by_name["emploiscongo.md"])
         self.assertIn("`jobartis.py:INSTANCES`", by_name["jobartis.md"])
+
+    def test_defines_sees_a_tuple_target_and_not_a_neighbour(self):
+        """The motif defect of #1188, exercised in BOTH directions.
+
+        `BOARD, DOMAIN = "bizneo", "bizneo.com"` binds `DOMAIN` at module
+        level and never puts it at the head of its line. The first `_defines`
+        read `^NAME\\s*=` and reported six sound cards as broken; this case
+        is what refuses that regression.
+
+        **The negative half matters as much**: a name that merely APPEARS on
+        such a line — on the right-hand side, or as a prefix of a target —
+        must NOT count as bound, or the repair would trade a false negative
+        for a false positive.
+        """
+        yes = [
+            'BOARD, DOMAIN = "bizneo", "bizneo.com"\n',
+            'BOARD, DOMAIN, APP_HOST = "b", "d", "a"\n',
+            'DOMAIN, BOARD = "d", "b"\n',
+            'DOMAIN = "d"\n',
+            'def DOMAIN(x):\n    pass\n',
+        ]
+        no = [
+            'BOARD = "bizneo"  # DOMAIN is only mentioned here\n',
+            'URL = "https://%s" % DOMAIN\n',
+            'DOMAINS = ("a", "b")\n',          # a PREFIX of the target
+            'MY_DOMAIN = "d"\n',               # a SUFFIX of the target
+            'if DOMAIN == "d":\n    pass\n',  # a comparison, not a binding
+            # **A comparison AT THE HEAD of its line — the only form that
+            # reaches the `(?!=)` guard.** Without this case that guard is an
+            # UNEXERCISED branch: the `^` anchor already rejects `if DOMAIN
+            # ==`, so the mutation removing `(?!=)` came back GREEN until this
+            # line existed. Found by the sweep, not by reading.
+            'DOMAIN == "d"\n',
+            '    DOMAIN = "d"\n',              # indented: not module level
+        ]
+        for src in yes:
+            self.assertTrue(self._defines(src, "DOMAIN"),
+                            "a module-level binding was not seen: %r" % src)
+        for src in no:
+            self.assertFalse(self._defines(src, "DOMAIN"),
+                             "something that binds nothing was read as a "
+                             "binding: %r" % src)
+
+    def test_the_six_cards_once_accused_all_resolve_now(self):
+        """The six false positives, named, with the line that binds each.
+
+        They are asserted INDIVIDUALLY rather than through the empty
+        `PINNED`, because an empty set is also what a broken corpus loader
+        returns — this case cannot pass by accident.
+        """
+        _, scripts = self._cards()
+        for script, name in (("beetween.py", "DOMAIN"), ("bizneo.py", "DOMAIN"),
+                             ("epreselec.py", "DOMAIN"), ("gupy.py", "DOMAIN"),
+                             ("hiringroom.py", "DOMAIN"), ("youthall.py", "HOST")):
+            src = self._source(scripts, script)
+            self.assertIsNotNone(src, script)
+            self.assertTrue(self._defines(src, name),
+                            "%s does not bind %s — if that became true, the "
+                            "card citing it is now the one to fix"
+                            % (script, name))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
