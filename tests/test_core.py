@@ -49889,5 +49889,163 @@ Last scan: 2026-10-20
                 bad.append(f"{name}.py does not import the shared reading")
         self.assertEqual(bad, [], "; ".join(bad))
 
+class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
+    """A card's pointer into an adapter drifts in silence. Issue #1188.
+
+    `shared/boards/emploiscongo.md` declared *«read by `emploiscongo.py:247`
+    in `read_ad` and nowhere else»*, and line 247 reads
+    `"lastmod": d.group(1) if d else None,`. The closure read is at **276**,
+    still inside `read_ad()` — **twenty-nine lines, moved by #1180, the very
+    commit that rewrote that file**, and the address was never re-read. The
+    card stayed well formed and the number stayed plausible.
+
+    **Two forms of pointer coexist in `shared/boards/`, and they fail
+    differently.** Measured on 2026-10-22:
+
+        `<script>.py:<n>`      44 declared, 0 outside their file
+        `<script>.py:<NAME>`   86 declared, 6 resolving to nothing
+
+    A LINE number drifts with any edit above it and **nothing mechanical
+    detects it** — pairing a pointer to the object its prose names is not
+    mechanical, as three successive probes showed: a ±110-character window
+    reported offsets from −170 to +59, all of them the window's fault, since
+    `avature.md` cites `:271` for `--host` *and* `:137` for `norm_host()` in
+    one clause. A NAMED anchor cannot drift at all — but it can be **deleted**,
+    and that is detectable, which is what this class guards.
+
+    *What saved `emploiscongo.md` is its MOTIF half: `read_ad` was still true.
+    The drift-proof form was already in the repository, one comment above the
+    broken clause — `` `emploiscongo.py:BASE` `` — and in the sibling card
+    `jobartis.md`, as «in `cmd_ad` and nowhere else».*
+
+    **The six that resolve to nothing are NOT repaired here**, and that is a
+    refusal rather than an omission: deciding what `` `beetween.py:DOMAIN` ``
+    meant requires knowing what its author measured, and writing that guess
+    into a card would be a gloss on a verdict nobody took. They are pinned
+    below so a SEVENTH reddens the suite the day it appears.
+    """
+
+    PINNED = {
+        # card, script, name — the constant is ABSENT from that script, verified
+        # 2026-10-22 by listing each module's upper-case names. Their author must
+        # say what was meant; this list SHRINKS deliberately, never silently.
+        ("beetween.md", "beetween.py", "DOMAIN"),
+        ("bizneo.md", "bizneo.py", "DOMAIN"),
+        ("epreselec.md", "epreselec.py", "DOMAIN"),
+        ("gupy.md", "gupy.py", "DOMAIN"),
+        ("hiringroom.md", "hiringroom.py", "DOMAIN"),
+        ("youthall.md", "youthall.py", "HOST"),
+    }
+
+    NAMED = re.compile(r"`([A-Za-z_]+\.py):([A-Za-z_][A-Za-z_0-9]*)`")
+    NUMBER = re.compile(r"`([A-Za-z_]+\.py):(\d+)`")
+    COMMENT = re.compile(r"<!--.*?-->", re.S)
+
+    def _roots(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return (os.path.join(root, "shared", "boards"),
+                os.path.join(root, "skills", "job-scan", "scripts"))
+
+    def _declaring_part(self, comment):
+        """The part of a comment that DECLARES, i.e. before any correction.
+
+        **A correction cites what it corrects** (`shared/` convention and the
+        repository's own practice), so the stale pointer SURVIVES in the card
+        on purpose. A guard that counted occurrences would redden on a sound
+        correction and send somebody to "repair" it.
+        """
+        i = comment.find("**CORRECTION ")
+        return comment if i < 0 else comment[:i]
+
+    def _cards(self):
+        boards, scripts = self._roots()
+        out = []
+        for name in sorted(os.listdir(boards)):
+            if not name.endswith(".md") or name == "README.md":
+                continue
+            with io.open(os.path.join(boards, name), encoding="utf-8") as fh:
+                out.append((name, fh.read()))
+        self.assertGreater(len(out), 400, "the corpus of cards did not load")
+        return out, scripts
+
+    def _source(self, scripts, script):
+        path = os.path.join(scripts, script)
+        if not os.path.exists(path):
+            return None
+        with io.open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    def _defines(self, src, name):
+        return bool(re.search(r"(?m)^(%s\s*=|def %s\b|class %s\b)"
+                              % (re.escape(name), re.escape(name),
+                                 re.escape(name)), src))
+
+    def test_every_named_anchor_a_card_declares_resolves_in_its_script(self):
+        cards, scripts = self._cards()
+        seen, dangling = 0, set()
+        for card, text in cards:
+            for comment in self.COMMENT.finditer(text):
+                part = self._declaring_part(comment.group(0))
+                for m in self.NAMED.finditer(part):
+                    seen += 1
+                    src = self._source(scripts, m.group(1))
+                    if src is None or not self._defines(src, m.group(2)):
+                        dangling.add((card, m.group(1), m.group(2)))
+        self.assertGreater(seen, 60, "no named anchor was examined at all")
+        self.assertEqual(
+            dangling, self.PINNED,
+            "a card names something its adapter does not define. Either a "
+            "constant was renamed and the card kept its old name, or the "
+            "pinned list above is now out of date — it shrinks DELIBERATELY. "
+            "new: %s | gone: %s"
+            % (sorted(dangling - self.PINNED), sorted(self.PINNED - dangling)))
+
+    def test_every_line_number_a_card_declares_is_inside_its_file(self):
+        """The weakest check that is still MECHANICAL on a line pointer.
+
+        It cannot see a pointer that drifted to another line — nothing can,
+        see the class docstring — it only sees one that drifted past the end
+        of its file. Declared as the floor it is, not as a closure.
+        """
+        cards, scripts = self._cards()
+        seen, outside = 0, []
+        for card, text in cards:
+            for comment in self.COMMENT.finditer(text):
+                part = self._declaring_part(comment.group(0))
+                for m in self.NUMBER.finditer(part):
+                    seen += 1
+                    src = self._source(scripts, m.group(1))
+                    if src is None or int(m.group(2)) > len(src.splitlines()):
+                        outside.append((card, m.group(1), int(m.group(2))))
+        self.assertGreater(seen, 20, "no line pointer was examined at all")
+        self.assertEqual(outside, [], "; ".join(map(str, outside)))
+
+    def test_a_pointer_cited_inside_a_correction_is_not_held_to_resolve(self):
+        """The scoping, exercised on the two real specimens of #1188.
+
+        Both repaired cards keep the broken pointer **inside** their
+        correction. Without the scoping this class would redden on exactly
+        the two cards it was written to fix — the species of guard that
+        accuses the work that satisfies it.
+        """
+        cards, scripts = self._cards()
+        by_name = dict(cards)
+        for card, pointer in (("emploiscongo.md", "`emploiscongo.py:247`"),
+                              ("jobartis.md", "`jobartis.py:BASE`")):
+            text = by_name[card]
+            self.assertIn(pointer, text,
+                          "%s no longer cites what it corrects" % card)
+            declaring = "".join(self._declaring_part(c.group(0))
+                                for c in self.COMMENT.finditer(text))
+            self.assertNotIn(pointer, declaring,
+                             "%s DECLARES %s outside a correction" % (card, pointer))
+
+    def test_the_two_cards_repaired_here_point_by_what_they_name(self):
+        cards, _ = self._cards()
+        by_name = dict(cards)
+        self.assertIn("read by `emploiscongo.py` in `read_ad` and nowhere else",
+                      by_name["emploiscongo.md"])
+        self.assertIn("`jobartis.py:INSTANCES`", by_name["jobartis.md"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
