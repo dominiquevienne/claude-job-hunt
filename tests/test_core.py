@@ -50095,6 +50095,12 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
             'DOMAINS = ("a", "b")\n',          # a PREFIX of the target
             'MY_DOMAIN = "d"\n',               # a SUFFIX of the target
             'if DOMAIN == "d":\n    pass\n',  # a comparison, not a binding
+            # **A comparison AT THE HEAD of its line — the only form that
+            # reaches the `(?!=)` guard.** Without this case that guard is an
+            # UNEXERCISED branch: the `^` anchor already rejects `if DOMAIN
+            # ==`, so the mutation removing `(?!=)` came back GREEN until this
+            # line existed. Found by the sweep, not by reading.
+            'DOMAIN == "d"\n',
             '    DOMAIN = "d"\n',              # indented: not module level
         ]
         for src in yes:
