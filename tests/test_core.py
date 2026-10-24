@@ -44056,7 +44056,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in corpus
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), [],
+            sorted(pathlib.Path(p).name for p in reels), ["turkmenportal.md"],
             "the declared population of this branch changed. EMPTY until "
             "2026-10-06, THREE within the day, and EMPTY again by its end: "
             "`isgar.md` and `yora.md` left because their ADAPTERS WERE WRITTEN, "
@@ -44081,7 +44081,21 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
             "MEASURED and not assumed. The population is EMPTY again, and the "
             "departure is pinned card-by-card below, because a written adapter "
             "and a withdrawn route both empty this list and call for OPPOSITE "
-            "conduct")
+            "conduct. ARRIVED 2026-10-24 (#668, `cd`): `turkmenportal.md` — "
+            "turkmenportal.com, the TWELVE `cat_id:117` notices the EDITORIAL "
+            "section `/work/rabota-v-turkmenistate/vakansii-v-turkmenistane` "
+            "enumerates in its single RSC push, its own `pageCount` 0 so there is "
+            "no pager and the section walks in ONE request, basis `route: http`. "
+            "It is the #949 state and NOT a defect: the route is measured and the "
+            "adapter is not written. AND IT ARRIVED BY A REFUTATION, not by a "
+            "discovery — this card's own 2026-10-06 line put the board in the "
+            "classifieds category `117`, where the URL the site's OWN nav declares "
+            "prints «There are no results found for the category you selected» and "
+            "the `/posts/category/` view renders TWO items from 2019: the page the "
+            "card called a SHOWCASE is the only enumerator. Its sibling "
+            "`naydizdes.md` is still NOT here for the OPPOSITE reason — its route "
+            "was withdrawn as FALSE where this one was ESTABLISHED on a card that "
+            "declared none, and that is why this names rather than counts")
         # **AND THE EMPTINESS NAMES ITS REASON, CARD BY CARD.** *This is the half
         # the assertion above cannot carry: `[]` is the same `[]` whichever way a
         # card left, and the two ways call for OPPOSITE conduct — an adapter
