@@ -155,3 +155,17 @@ were named by the pages and not fetched.
 Madrid, the BOJA for Andalucía — form an enumerable stream. That is a different
 object again, with a different cadence, and the Andalusian portal already refuses
 219 individual BOJA articles in writing.
+
+**And the shared host form, decided 2026-10-25 (#1102):** `www.comunidad.madrid`
+is declared by this card AND by `servicios-regionales-es-2.md`, and **both keep
+it, because neither card routes through it.** That form is the PORTAL — read here
+at 95 `Disallow` and `Crawl-delay: 10` — while this card's own route is
+`sede.comunidad.madrid`, which carries the 67 registry pages, and the other
+card's is `oficinavirtualempleo.comunidad.madrid`, which served it 314 rows. Of
+the three Madrid forms the repository declares, `sede.` is named by this card
+alone and `oficinavirtualempleo.` by that one alone: **each card owns the form
+where its own measurement happened, and only the portal is shared.** So this is
+one host put to two uses and not a copy of one board — nothing is removed from
+either `hosts:` line, and the two lines a Spanish page carries come from two
+cards declaring `countries: ES`, never from the shared host, because
+`bin/country-boards.py` does not read `hosts:` at all.
