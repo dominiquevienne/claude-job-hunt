@@ -44056,7 +44056,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         reels = [c["path"] for c in corpus
                  if (mod.access_of(c) or ("",))[0].startswith("HTTP — route déclarée")]
         self.assertEqual(
-            sorted(pathlib.Path(p).name for p in reels), ["turkmenportal.md"],
+            sorted(pathlib.Path(p).name for p in reels), [],
             "the declared population of this branch changed. EMPTY until "
             "2026-10-06, THREE within the day, and EMPTY again by its end: "
             "`isgar.md` and `yora.md` left because their ADAPTERS WERE WRITTEN, "
@@ -44095,7 +44095,7 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
             "card called a SHOWCASE is the only enumerator. Its sibling "
             "`naydizdes.md` is still NOT here for the OPPOSITE reason — its route "
             "was withdrawn as FALSE where this one was ESTABLISHED on a card that "
-            "declared none, and that is why this names rather than counts")
+            "declared none, and that is why this names rather than counts. DEPARTED 2026-10-25 (#668, `cd`), the day after it arrived: `turkmenportal.md` now declares `script: turkmenportal.py` and left for the SAME reason as `isgar.md`, `yora.md` and `jobartis-ga.md` — its ADAPTER WAS WRITTEN, basis «`script:` sans refus consigné», MEASURED and not assumed. **AND ITS ARRIVAL NOTE ABOVE IS ITSELF CORRECTED BY THE MEASUREMENT THAT WROTE THE ADAPTER, which is kept rather than rewritten: «the page the card called a SHOWCASE is the only enumerator» reads the 12-against-2 as a difference of PATH, and it is a difference of LOCALE.** The editorial path REDIRECTS — `final_url` is `/ru/advertisement/posts/category/117-rabota` — so the showcase and the category are ONE path, and the four listings return `ru` 12, `en` 2, `tm` 1, `tr` 0, each by its own request. *Both 2026-10-06 and 2026-10-24 relocated the board and neither measured the variable that moved; a thesis refuted always finds a neighbour to sit on.* The population is EMPTY again")
         # **AND THE EMPTINESS NAMES ITS REASON, CARD BY CARD.** *This is the half
         # the assertion above cannot carry: `[]` is the same `[]` whichever way a
         # card left, and the two ways call for OPPOSITE conduct — an adapter
@@ -44116,7 +44116,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
                  "the Angolan `.com` and the VOCABULARY did not: ten French "
                  "field labels and a French closed marker, so the Angolan "
                  "parser run unchanged emitted 10 of 10 fields null and "
-                 "`state: null` on 4 of 4 pages")):
+                 "`state: null` on 4 of 4 pages"),
+                ("turkmenportal.md", "`script:` sans refus consigné",
+                 "adapter WRITTEN (#668) — and the measurement that wrote it "
+                 "REFUTED this card's own arrival note: the editorial path "
+                 "REDIRECTS to `/ru/advertisement/posts/category/117-rabota`, so "
+                 "the «showcase» and the category are ONE path and the 12-against-2 "
+                 "is a difference of LOCALE, not of path — the four listings "
+                 "return ru 12, en 2, tm 1, tr 0, measured one request each")):
             self.assertIn(nom, par_nom, "%s left the repository entirely" % nom)
             etiquette, base = mod.access_of(par_nom[nom])
             self.assertEqual(
@@ -46441,6 +46448,234 @@ class TheYoraDedupIsOnTheIdBecauseFourLocalesCarryTheSamePaths(unittest.TestCase
         self.assertIsNone(mod.refuse_api("https://yora.tj/api/avatar/12"))
         self.assertIsNone(mod.refuse_api("https://yora.tj/en/vacancies/1522086"))
         self.assertIsNone(mod.refuse_api("https://yora.tj/sitemap.xml"))
+
+
+class TurkmenportalReadsTheMaximalLocaleAndCannotMeasureItsOwnFilter(unittest.TestCase):
+    """**`turkmenportal.py`, 2026-10-25 (#668). THE MIRROR OF THE YORA CLASS ABOVE.**
+
+    There four locales carry the SAME paths, the locale MULTIPLIES, and the remedy is to
+    dedup on the id — 8 URLs for 2 objects, «removing the dedup publishes 400 for a board
+    of 100». Here the four aliases are mostly EMPTY, the locale SUBTRACTS, and the remedy
+    is to read the maximal one. Both columns measured 2026-10-25, the first on the `/ru`
+    payload with a positive floor, the second by ONE REQUEST PER LOCALE:
+
+        locale   alias filled on the 12      that locale's listing returns
+        ru              12                            12      <- MAXIMAL, and the one read
+        en               2                             2
+        tm               2                             1      <- they DISAGREE
+        tr               0                             0
+
+    **So carrying a locale's alias is NECESSARY to be listed under it and is not
+    SUFFICIENT**: three locales of four agree and one does not. *Reading `/en` publishes 2
+    for a board of 12 — and nothing shared with yora, neither the four-alias shape nor the
+    country's neighbourhood, predicted one from the other: the two errors point in OPPOSITE
+    directions.*
+
+    **AND THE FIRST VERSION OF THIS ADAPTER TRIED TO DERIVE THAT FILTER FROM ONE REQUEST.**
+    It computed the alias fill on the items the listing had returned and warned when
+    another locale's alias was filled more often; run against `/en` it printed
+    `ru 2/2, en 2/2` and said **nothing**, on exactly the case it existed for.
+
+    > **A filter's magnitude cannot be derived from the filter's own output.** *An item
+    > missing from `/en` is absent from the array altogether, so it contributes to NO
+    > locale's count: the sample is the set of SURVIVORS, and the fill measures them rather
+    > than the filter.* **This is «a rate taken on page 1 is not a board's rate» one floor
+    > down — there the sort puts the sample on page 1, here the filter IS the sample — and
+    > the warning was the first species of a failing guard: a green that says «I did not
+    > look there».** *Found by RUNNING the adapter and not by re-reading it, and replaced by
+    > `check-locales`, which costs one request per locale and says so before making them.*
+
+    **One case per FORM.**
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_turkmenportal_668", str(pathlib.Path(SCRIPTS) / "turkmenportal.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # `]` and an escaped quote in a title are not decoration: the balanced walk must skip
+    # strings, and item `17371` of the real board carries escaped quotes — the 2026-10-24
+    # measurement read ELEVEN items before reading twelve because of them.
+    ITEMS = [
+        {"id": 101, "title": "Operator] smena \"nochnaya\"", "date": "2022-07-12T13:25:31.000Z",
+         "updated_date": "2022-07-12T08:28:20.000Z", "cat_id": 117, "cat_name": "Vakansii",
+         "alias_tm": "", "alias_ru": "operator", "alias_en": "", "alias_tr": None,
+         "status": 1, "phone": "", "address": "", "view_count": 10,
+         "creator": "redaktsiya", "editor": "redaktsiya", "web_site": "",
+         "thumb_url": None, "image_url": None},
+        {"id": 102, "title": "Torgovyi predstavitel", "date": "2021-03-20T06:11:58.000Z",
+         "updated_date": "2021-03-20T06:11:58.000Z", "cat_id": 117, "cat_name": "Vakansii",
+         "alias_tm": "wekil", "alias_ru": "predstavitel", "alias_en": "agent", "alias_tr": None,
+         "status": 1, "phone": "+(99312) 34-23-03",
+         "address": "Ashgabat, ulitsa Atamyrat Niyazov 17", "view_count": 20,
+         "creator": "Leyla", "editor": "Leyla", "web_site": "https://example.tm",
+         "thumb_url": "https://turkmenportal.com/images/uploads/x.jpg", "image_url": None},
+        {"id": 103, "title": "Zvonite +993 65 123456, Telegram: +99365123456, hr@example.tm",
+         "date": "2019-03-14T12:14:28.000Z", "updated_date": "2019-03-14T12:14:28.000Z",
+         "cat_id": 117, "cat_name": "Vakansii",
+         "alias_tm": "", "alias_ru": "zvonite", "alias_en": "", "alias_tr": None,
+         "status": 1, "phone": "$undefined", "address": "null", "view_count": 30,
+         "creator": "resuldovlet", "editor": "resuldovlet", "web_site": "",
+         "thumb_url": None, "image_url": None},
+    ]
+
+    def _body(self):
+        """A body whose cat-117 block is the SECOND of three — so a walk that takes the
+        first match takes category 283 instead."""
+        avant = json.dumps({"models": [{"id": 1, "cat_id": 283, "title": "objyavleniya"}]})
+        notre = json.dumps({"models": self.ITEMS})
+        apres = json.dumps({"models": [{"id": 2, "cat_id": 364, "title": "uslugi"},
+                                       {"id": 3, "cat_id": 362, "title": "avto"}]})
+        inner = ('41:["$","div",null,{"data":%s}]\n'
+                 '43:["$","$L45",null,{"data":%s}]\n'
+                 '44:["$","section",null,{"data":%s}]\n' % (avant, notre, apres))
+        return "self.__next_f.push([1,%s])" % json.dumps(inner)
+
+    def test_the_block_is_chosen_by_its_category_and_never_by_position(self):
+        """**THE CENTRAL CASE.** The real page carries THREE `"models"` arrays — 12, 4 and
+        4 items of categories `117`, `{283,353}` and `{362,363,364}` — and ours is first
+        only by accident of today's layout. *A walk that takes the first match publishes
+        the classifieds' other sections as vacancies.*"""
+        mod = self._mod()
+        rows = mod.models(mod.payload(self._body()))
+        self.assertIsNotNone(rows, "the fixture itself did not parse")
+        self.assertEqual([r["id"] for r in rows], [101, 102, 103],
+                         "the cat-117 block was not the one chosen")
+        self.assertTrue(all(r["cat_id"] == mod.CAT for r in rows),
+                        "an item of another category entered the board")
+
+    def test_an_unbalanced_bracket_inside_a_title_does_not_truncate_the_array(self):
+        """The balanced walk skips STRINGS, escapes included.
+
+        **AND THE FIRST VERSION OF THIS CASE WAS INERT, which the mutation sweep said and
+        a re-reading never would have.** *Its fixture title carried `[smena]` — a BALANCED
+        pair — so removing the string-skipping changed no bracket count at all and the
+        array still closed in the right place: the negative witness carried its author's
+        model of the defect rather than the defect.* The title now carries a LONE `]`, and
+        without the skip the array closes inside item 101, the truncated blob fails to
+        parse, `models` finds no category-117 block and returns `None`.
+
+        **AND THE REAL CORPUS CARRIES NO BRACKET AT ALL — 0 `[` and 0 `]` across every
+        string value of the 12 items, measured 2026-10-25 — so this is protection against
+        a hazard not yet seen, declared rather than presented as cover.** *What the corpus
+        DOES carry is item `17371`'s escaped quotes, and they are not handled here: they
+        do not affect a bracket count. Decoding each push on its own and parsing the inner
+        JSON is what handles them, which is why the 2026-10-24 off-by-one lived in that
+        measurement's de-escaping and not in the object.*
+        """
+        mod = self._mod()
+        rows = mod.models(mod.payload(self._body()))
+        self.assertEqual(len(rows), 3, "a bracket inside a title truncated the array")
+        self.assertIn("Operator]", rows[0]["title"], "the title lost its lone bracket")
+        self.assertIn('"nochnaya"', rows[0]["title"], "the escaped quotes did not survive")
+
+    def test_the_named_contact_fields_are_dropped_and_named_and_the_site_is_kept(self):
+        """`phone` 7/12 and `address` 3/12 on the real board, all seven phones carrying
+        `993`. **`address` is dropped although it is a LOCATION**: street and locality
+        travel in one free-form string and no structured locality field exists among the
+        nineteen, so a declared loss is preferred to an emitted street. `web_site` — two
+        URLs with no `@` and no digit — is an employer's site and is KEPT."""
+        mod = self._mod()
+        r = mod.record(self.ITEMS[1])
+        self.assertEqual(r.get("withheld_fields"), ["address", "phone"])
+        self.assertEqual(r.get("web_site"), "https://example.tm",
+                         "an employer's site was treated as a personal contact")
+        self.assertEqual(r["url"],
+                         "https://turkmenportal.com/ru/advertisement/posts/102",
+                         "the url is not the form the page itself links")
+        self.assertEqual(r["listed_locales"], ["en", "ru", "tm"],
+                         "the locales this advertisement is LISTED under moved")
+
+    def test_no_withheld_value_ever_reaches_the_row(self):
+        """**A guard on the function does not see a substitution on the path**, so this
+        goes through `record()` and reads the row it actually emits."""
+        mod = self._mod()
+        emis = json.dumps(mod.record(self.ITEMS[1]), ensure_ascii=False)
+        for cache in ("99312", "34-23-03", "Atamyrat", "ulitsa"):
+            self.assertNotIn(cache, emis, cache)
+
+    def test_the_newsroom_accounts_are_never_emitted_and_are_not_withheld_either(self):
+        """`creator` and `editor` are filled 12/12 — **exactly the shape of an employer
+        field** — and carry only **4** and **5** distinct values for twelve
+        advertisements, equal on 9 of 12. *A dozen notices written by four accounts are
+        the portal's newsroom, not twelve advertisers.* They are not «withheld» either:
+        nobody deposited them as a contact, and naming them would lie about our own
+        discretion."""
+        mod = self._mod()
+        for item in self.ITEMS:
+            r = mod.record(item)
+            emis = json.dumps(r, ensure_ascii=False)
+            self.assertNotIn("creator", emis)
+            self.assertNotIn("editor", emis)
+            for faux in ("redaktsiya", "Leyla", "resuldovlet"):
+                self.assertNotIn(faux, emis, faux)
+            self.assertNotIn("creator", r.get("withheld_fields", []))
+            self.assertNotIn("editor", r.get("withheld_fields", []))
+
+    def test_withheld_fields_is_absent_when_nothing_was_withheld(self):
+        """**It is DERIVED**, and the floor is POSITIVE: item 101 holds `""` for both
+        fields and item 103 holds `"$undefined"` and `"null"`. *A `withheld_fields`
+        naming what nobody deposited lies about OUR discretion rather than about the
+        board, and a poor board then reads as a censored one — and `"$undefined"` passes
+        under any list of sentinels that knows `undefined`.*"""
+        mod = self._mod()
+        for i in (0, 2):
+            with self.subTest(item=self.ITEMS[i]["id"]):
+                self.assertNotIn("withheld_fields", mod.record(self.ITEMS[i]))
+
+    def test_a_telephone_in_a_title_is_scrubbed_although_no_title_carries_one_today(self):
+        """**A BRANCH THE REAL CORPUS DOES NOT TAKE, DECLARED RATHER THAN PRESENTED AS
+        COVER.** The twelve titles carry no telephone — **0 of 12 under TWO patterns of
+        different shapes**, the dialling code as it is SERVED and any run of grouped
+        digits — while the same dialling-code pattern fires on **7 of 7** filled `phone`
+        values. *So the scrubber exists for the day a title does, and a guard that cannot
+        fire on the real data says so instead of being read as protection.*"""
+        mod = self._mod()
+        r = mod.record(self.ITEMS[2])
+        self.assertIn("[telephone withheld]", r["title"])
+        self.assertIn("[e-mail withheld]", r["title"])
+        # **THE THIRD PATTERN RUNS TOO, AND IT DID NOT BEFORE.** *The mutation sweep
+        # removed `MSG_RE` and this case stayed GREEN: the fixture carried no messaging
+        # handle, so a pattern could be deleted without a single red — «a scrubber built
+        # on the pattern this prose happens not to use is green and inert».*
+        self.assertIn("[messaging contact withheld]", r["title"])
+        self.assertNotIn("Telegram", r["title"])
+        self.assertNotIn("123456", r["title"])
+        self.assertNotIn("hr@example.tm", r["title"])
+
+    def test_the_alias_fill_is_on_the_survivors_and_says_nothing_about_the_filter(self):
+        """**The repaired mechanism, and its DECLARED limit.** `locale_fill` counts the
+        aliases of the rows it was given, which are the rows that locale's listing
+        returned. *On the real `/en` run it printed `ru 2/2, en 2/2` — a tie — because an
+        item absent from `/en` is in no array at all.* So the function is correct and it
+        cannot answer «is my count the board's count?»: only `check-locales` can, at one
+        request per locale."""
+        mod = self._mod()
+        rows = mod.models(mod.payload(self._body()))
+        fill = mod.locale_fill(rows)
+        self.assertEqual(fill, {"tm": 1, "ru": 3, "en": 1, "tr": 0})
+        self.assertEqual(set(fill), set(mod.LOCALES),
+                         "a locale left the derivation without leaving LOCALES")
+        # the tie the inert warning could not see, reproduced on the fixture
+        deux = [r for r in rows if mod.held(r.get("alias_en"))]
+        self.assertEqual(mod.locale_fill(deux)["ru"], mod.locale_fill(deux)["en"],
+                         "the survivors of an `en` filter no longer tie — the specimen "
+                         "that showed the first version inert has gone quiet")
+
+    def test_the_maximal_locale_is_the_one_the_adapter_reads(self):
+        """`READ_LOCALE` is `ru`, **established by measurement and not chosen**: the four
+        listings return ru 12, en 2, tm 1, tr 0. *A constant that happens to be right is
+        not the same as one that was measured, so the measurement is named here and the
+        departure from it is what would redden.*"""
+        mod = self._mod()
+        self.assertEqual(mod.READ_LOCALE, "ru")
+        self.assertIn(mod.READ_LOCALE, mod.LOCALES)
+        self.assertIn("117-rabota", mod.LIST)
+        self.assertEqual(mod.CAT, 117)
+        self.assertEqual(mod.CONTACT_FIELDS, ("phone", "address"))
+        self.assertEqual(mod.NEWSROOM, ("creator", "editor"))
 
 
 class AMarkerInHostsIsNotAMachineNameAndTheGuardIsNotAskedAboutIt(unittest.TestCase):
