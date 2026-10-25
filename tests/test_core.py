@@ -46499,7 +46499,7 @@ class TurkmenportalReadsTheMaximalLocaleAndCannotMeasureItsOwnFilter(unittest.Te
     # strings, and item `17371` of the real board carries escaped quotes — the 2026-10-24
     # measurement read ELEVEN items before reading twelve because of them.
     ITEMS = [
-        {"id": 101, "title": "Operator [smena] \"nochnaya\"", "date": "2022-07-12T13:25:31.000Z",
+        {"id": 101, "title": "Operator] smena \"nochnaya\"", "date": "2022-07-12T13:25:31.000Z",
          "updated_date": "2022-07-12T08:28:20.000Z", "cat_id": 117, "cat_name": "Vakansii",
          "alias_tm": "", "alias_ru": "operator", "alias_en": "", "alias_tr": None,
          "status": 1, "phone": "", "address": "", "view_count": 10,
@@ -46512,7 +46512,7 @@ class TurkmenportalReadsTheMaximalLocaleAndCannotMeasureItsOwnFilter(unittest.Te
          "address": "Ashgabat, ulitsa Atamyrat Niyazov 17", "view_count": 20,
          "creator": "Leyla", "editor": "Leyla", "web_site": "https://example.tm",
          "thumb_url": "https://turkmenportal.com/images/uploads/x.jpg", "image_url": None},
-        {"id": 103, "title": "Zvonite +993 65 123456 ili na pochtu hr@example.tm",
+        {"id": 103, "title": "Zvonite +993 65 123456, Telegram: +99365123456, hr@example.tm",
          "date": "2019-03-14T12:14:28.000Z", "updated_date": "2019-03-14T12:14:28.000Z",
          "cat_id": 117, "cat_name": "Vakansii",
          "alias_tm": "", "alias_ru": "zvonite", "alias_en": "", "alias_tr": None,
@@ -46546,14 +46546,29 @@ class TurkmenportalReadsTheMaximalLocaleAndCannotMeasureItsOwnFilter(unittest.Te
         self.assertTrue(all(r["cat_id"] == mod.CAT for r in rows),
                         "an item of another category entered the board")
 
-    def test_a_bracket_inside_a_title_does_not_truncate_the_array(self):
-        """The balanced walk skips STRINGS, escapes included. *Without that, the `]` in
-        item 101's title closes the array two items early and the board loses a third of
-        itself — with no error, because a shorter JSON array parses perfectly.*"""
+    def test_an_unbalanced_bracket_inside_a_title_does_not_truncate_the_array(self):
+        """The balanced walk skips STRINGS, escapes included.
+
+        **AND THE FIRST VERSION OF THIS CASE WAS INERT, which the mutation sweep said and
+        a re-reading never would have.** *Its fixture title carried `[smena]` — a BALANCED
+        pair — so removing the string-skipping changed no bracket count at all and the
+        array still closed in the right place: the negative witness carried its author's
+        model of the defect rather than the defect.* The title now carries a LONE `]`, and
+        without the skip the array closes inside item 101, the truncated blob fails to
+        parse, `models` finds no category-117 block and returns `None`.
+
+        **AND THE REAL CORPUS CARRIES NO BRACKET AT ALL — 0 `[` and 0 `]` across every
+        string value of the 12 items, measured 2026-10-25 — so this is protection against
+        a hazard not yet seen, declared rather than presented as cover.** *What the corpus
+        DOES carry is item `17371`'s escaped quotes, and they are not handled here: they
+        do not affect a bracket count. Decoding each push on its own and parsing the inner
+        JSON is what handles them, which is why the 2026-10-24 off-by-one lived in that
+        measurement's de-escaping and not in the object.*
+        """
         mod = self._mod()
         rows = mod.models(mod.payload(self._body()))
         self.assertEqual(len(rows), 3, "a bracket inside a title truncated the array")
-        self.assertIn("[smena]", rows[0]["title"], "the title lost its bracket")
+        self.assertIn("Operator]", rows[0]["title"], "the title lost its lone bracket")
         self.assertIn('"nochnaya"', rows[0]["title"], "the escaped quotes did not survive")
 
     def test_the_named_contact_fields_are_dropped_and_named_and_the_site_is_kept(self):
@@ -46621,6 +46636,12 @@ class TurkmenportalReadsTheMaximalLocaleAndCannotMeasureItsOwnFilter(unittest.Te
         r = mod.record(self.ITEMS[2])
         self.assertIn("[telephone withheld]", r["title"])
         self.assertIn("[e-mail withheld]", r["title"])
+        # **THE THIRD PATTERN RUNS TOO, AND IT DID NOT BEFORE.** *The mutation sweep
+        # removed `MSG_RE` and this case stayed GREEN: the fixture carried no messaging
+        # handle, so a pattern could be deleted without a single red — «a scrubber built
+        # on the pattern this prose happens not to use is green and inert».*
+        self.assertIn("[messaging contact withheld]", r["title"])
+        self.assertNotIn("Telegram", r["title"])
         self.assertNotIn("123456", r["title"])
         self.assertNotIn("hr@example.tm", r["title"])
 
