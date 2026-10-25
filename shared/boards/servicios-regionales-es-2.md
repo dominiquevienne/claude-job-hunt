@@ -231,3 +231,18 @@ on the same architecture — which is «a shared template predicts the ROUTE, no
 the analysis», two layers above the template. The health-service `bolsas` and
 the `oposiciones docentes` remain on a different axis again, and the one thing
 now known about them is a refusal written against two of their paths.
+
+**And the shared host form, decided 2026-10-25 (#1102):** `www.comunidad.madrid`
+is declared by this card AND by `bolsas-sanitarias-es.md`, and **both keep it,
+because neither card routes through it.** That form is the PORTAL — the one whose
+rules file never mentions the host the offers actually live on — while this
+card's route is `oficinavirtualempleo.comunidad.madrid`, which served the 314
+rows above, and the other card's is `sede.comunidad.madrid`, which carries its 67
+registry pages. Of the three Madrid forms the repository declares,
+`oficinavirtualempleo.` is named by this card alone and `sede.` by that one
+alone: **each card owns the form where its own measurement happened, and only the
+portal is shared.** The `bolsas` named at the end of this section are therefore
+not a rival reading of the same board but a different object behind the same
+portal — nothing is removed from either `hosts:` line, and the two lines a
+Spanish page carries come from two cards declaring `countries: ES`, never from
+the shared host, because `bin/country-boards.py` does not read `hosts:` at all.

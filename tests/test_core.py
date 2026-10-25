@@ -48040,6 +48040,131 @@ class TwoCardsNamingOneHostForOneCountryCountThatSourceTwice(unittest.TestCase):
             self._memo = {}
             shutil.rmtree(d, ignore_errors=True)
 
+    @staticmethod
+    def _nomme(dossier, fiche, autre):
+        """La fiche `fiche` nomme-t-elle le FICHIER `autre` ? *Le nom de fichier
+        et pas un mot de prose : c'est ce qu'un lecteur peut suivre, et c'est ce
+        que `test_every_cited_markdown_file_resolves` tient deja a resoudre.*"""
+        with io.open(os.path.join(dossier, fiche), encoding="utf-8",
+                     errors="replace") as fh:
+            return autre in fh.read()
+
+    def _paires_sans_script(self, dossier):
+        """Les paires que `_paires` ne peut PAS atteindre : les DEUX fiches a
+        `script: none`, un hote REEL commun — via `declared()`, donc le filtre
+        de forme de #1074 s'applique sans etre recopie — et un pays commun."""
+        import itertools
+        f = self._fiches(dossier)
+        out = []
+        for a, b in itertools.combinations(sorted(f), 2):
+            ha, sa, ca = f[a]
+            hb, sb, cb = f[b]
+            if sa != "none" or sb != "none":
+                continue
+            if not (ha & hb) or not (ca & cb):
+                continue
+            out.append((a, b, sorted(ha & hb), sorted(ca & cb)))
+        return out
+
+    def _muettes(self, dossier):
+        """Celles dont AUCUNE des deux fiches ne nomme l'autre. **Un seul chemin
+        pour le corpus et pour la fixture**, sinon la phrase qu'on eprouve n'est
+        pas celle qui sortira."""
+        return [(a, b, h, c) for a, b, h, c in self._paires_sans_script(dossier)
+                if not self._nomme(dossier, a, b)
+                and not self._nomme(dossier, b, a)]
+
+    @staticmethod
+    def _dit_muettes(muettes):
+        return " ; ".join(
+            "%s et %s nomment %s sous `script: none` et se recouvrent sur %s, "
+            "et aucune des deux ne nomme l'autre"
+            % (a, b, ", ".join(h), " ".join(c)) for a, b, h, c in muettes)
+
+    def test_a_scriptless_pair_sharing_a_host_is_never_silent(self):
+        """**LA CLASSE QUE LA CONJONCTION CI-DESSUS NE PEUT PAS ATTEINDRE — et
+        elle l'epargne par une CLAUSE, non par la raison qui la rend licite.**
+        `_paires` exige `sa and sa != "none" and sa == sb`, donc DEUX fiches sans
+        script ne s'apparient JAMAIS, quoi qu'elles partagent — et **243 des 552
+        fiches portent `script: none`** (25.10.2026). *Le relachement du 20.10
+        rangeait `madrid` sous «sans la condition de SCRIPT», ce qui est vrai et
+        melange deux raisons sous un seul conjonct : `sa != sb` et `sa == none`.
+        La fixture de `test_each_of_the_three_conditions_is_load_bearing`
+        n'eprouve que la premiere — ses deux fiches portent `a.py` et `b.py` —
+        donc la seconde n'etait exercee par rien.*
+
+        **CE QUI EST MESURE SUR LE CORPUS DU 25.10.2026, et les deux autres
+        conjoncts restent porteurs ici aussi :**
+
+            les deux `script: none` ET hote reel ET pays commun     2 paires
+            sans la condition de PAYS                               4 paires
+            sans la condition d'HOTE                              590 paires
+
+        **ET LES DEUX PAIRES DE LA CLASSE SE COMPORTENT DE FACON OPPOSEE, ce qui
+        donne a cette garde son contraste sur le corpus REEL (§4 ter, cinquieme
+        espece) :** `iraq-hosts.md` NOMME `eshjob.md` — *«See `eshjob.md` for the
+        field census»* — donc l'absorption y est DECLAREE ; `bolsas-sanitarias-es
+        .md` et `servicios-regionales-es-2.md` ne se nommaient PAS (0 et 0), donc
+        **cette branche etait ROUGE sur le corpus avant l'acte qui pose la garde**
+        et elle est verte apres, par deux paragraphes dates et motives.
+
+        **ET CE QUI EST ASSERTE N'EST PAS UN ARBITRAGE : c'est que la
+        configuration ne soit pas MUETTE.** *Les deux paires sont licites — un
+        hote a deux usages, une absorption — et dire laquelle garde l'hote serait
+        une decision sur la COUVERTURE. La garde n'en prend aucune : elle exige
+        que le partage soit ECRIT, ce qui est le point 2 de #1102 generalise de
+        «jamais une suppression silencieuse» a «jamais en silence».*"""
+        dossier = os.path.join(self._racine(), "shared", "boards")
+        self.assertGreater(
+            len(self._fiches(dossier)), 400,
+            "le corpus des fiches n'a pas ete lu — ce cas n'est PAS exerce")
+        muettes = self._muettes(dossier)
+        self.assertEqual(
+            muettes, [],
+            "deux fiches SANS SCRIPT partagent un hote et un pays sans que l'une "
+            "nomme l'autre : %s — la conjonction d'hote-script-pays ne peut pas "
+            "voir cette classe (`sa != \"none\"`), donc rien d'autre ne dira si "
+            "ce sont deux objets ou une copie (#1102)" % self._dit_muettes(muettes))
+
+    def test_the_silent_branch_is_reachable_and_a_declaration_spares_the_pair(self):
+        """**PREUVE D'EXERCICE DE LA BRANCHE, le jour ou le corpus est propre, ET
+        DANS LES DEUX SENS.** *Une garde dont la branche fautive n'est atteinte
+        par rien est verte sur la fixture et morte sur le corpus ; une garde
+        qu'aucune fixture n'epargne se fait retirer au premier faux rouge.*"""
+        d = tempfile.mkdtemp()
+        try:
+            # la MEME configuration deux fois : hote partage, pays commun,
+            # aucun script. La premiere paire est MUETTE, la seconde se DECLARE.
+            self._carte(d, "mu-a.md", "www.exemple.es, a.exemple.es", "none", "ES")
+            self._carte(d, "mu-b.md", "www.exemple.es, b.exemple.es", "none", "ES")
+            self._carte(d, "di-a.md", "www.autre.es, c.autre.es", "none", "ES")
+            self._carte(d, "di-b.md", "www.autre.es, d.autre.es", "none", "ES")
+            with io.open(os.path.join(d, "di-a.md"), "a", encoding="utf-8") as fh:
+                fh.write("\nThe portal is shared; see `di-b.md` for the other "
+                         "service.\n")
+
+            paires = {(a, b) for a, b, _h, _c in self._paires_sans_script(d)}
+            self.assertEqual(
+                paires, {("di-a.md", "di-b.md"), ("mu-a.md", "mu-b.md")},
+                "la classe ne retient pas les deux paires de fixture : %s"
+                % sorted(paires))
+
+            muettes = self._muettes(d)
+            self.assertEqual(
+                [(a, b) for a, b, _h, _c in muettes], [("mu-a.md", "mu-b.md")],
+                "la garde ne separe pas la paire MUETTE de la paire DECLAREE : %s"
+                % self._dit_muettes(muettes))
+
+            dit = self._dit_muettes(muettes)
+            for attendu in ("mu-a.md", "mu-b.md", "www.exemple.es", "ES"):
+                self.assertIn(attendu, dit, "le message ne nomme pas %r" % attendu)
+            self.assertNotIn(
+                "a.exemple.es", dit,
+                "le message nomme un hote que les deux fiches ne partagent PAS")
+        finally:
+            self._memo = {}
+            shutil.rmtree(d, ignore_errors=True)
+
 
 class ACardThatDeclaresNothingIsIndeterminateAndNeverFeasibleEstablished(unittest.TestCase):
     """**#1155, rapportee par `ab` le 20.10.2026 DEPUIS LA SORTIE — trois pages
