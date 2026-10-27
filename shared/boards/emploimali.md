@@ -5,6 +5,7 @@
 <!-- hosts: emploimali.net, www.emploimali.net -->
 <!-- script: none -->
 <!-- countries: ML -->
+<!-- route: none · non faisable — « sort du faisable », décision du propriétaire du 26.10.2026, par OBJET et non par classe (§2 sexies) — measured 2026-10-27: NXDOMAIN on BOTH public resolvers (1.1.1.1 and 8.8.8.8) for the apex AND the `www.` form, so NO FORM of the name answers; a live control name returns NOERROR on both, so the instrument discriminates, and no SERVFAIL appears anywhere · 2026-10-27 -->
 <!-- witness: none — no HTTP request reached a host: the name does not resolve; the only measurement is DNS, on two public resolvers · 2026-09-11 -->
 
 **This card is a measurement and not an adapter, and the measurement never
