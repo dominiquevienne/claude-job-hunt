@@ -103,6 +103,12 @@ DATE = re.compile(r"(20\d\d-\d\d-\d\d)")
 REFUSAL = re.compile(r"(?:HTTP\s*)?(?<!\d )(?<!\d\u202f)(?<!\d\u00a0)(?<!#)\b(403|429|451)\b(?!\s?(?:B|o|octets|bytes)\b)(?![ \u202f\u00a0]\d{3}\b)")
 TOOL = re.compile(r"(fetch-body\.py|_robots\.allowed|curl|browser|navigateur|a real browser)")
 
+# **The robots verdict as a DECLARED field, which `refusal_of()` must not read
+# as a refusal.** #1142, owner's decision «A» of 2026-10-26. Anchored at the
+# head of the line, because seven `witness:` lines already MENTION `robots.txt`
+# while naming a count — a motif on the bare word would swallow all seven.
+ROBOTS_WITNESS = re.compile(r"^<!--\s*witness:\s*robots-verdict\b")
+
 NOTICE = ("Le dénominateur est la liste de boards que ce relevé a établie, à sa "
           "date. Ce n'est pas le marché du pays.")
 
@@ -175,6 +181,18 @@ def refusal_of(card):
     for line in card["text"].splitlines():
         m = REFUSAL.search(line)
         if not m or "robots.txt" in line and "200" in line:
+            continue
+        # **#1142, 2026-10-27: a DECLARED field is exempt, and the exemption is
+        # on the FIELD and never on a value.** The owner's decision «A» puts the
+        # robots verdict in a dated `witness:` line that NAMES the status it
+        # read, so a host refusing its own rules file plants a 403 here —
+        # `figaro-emploi` is already such a host. Measured by CALLING this code
+        # on three `faisable` cards: all three answered `indetermine`, i.e. a
+        # card whose route is established would be published as a measurement
+        # to redo, silently. The clause above exempts a VALUE (`200`), which is
+        # an inference on prose; the floor must be POSITIVE and on a field —
+        # #1136, cited in `classify()` twenty lines below.
+        if ROBOTS_WITNESS.match(line.lstrip()):
             continue
         d = date_of(line)
         t = TOOL.search(line)

@@ -8190,6 +8190,291 @@ class ACountedCardNamesItsWitnessOrSaysThereIsNone(unittest.TestCase):
             f"is checking almost nothing")
 
 
+class TheRobotsVerdictIsADeclaredDatedWitnessWhoseAbsenceSaysNotMeasured(
+        unittest.TestCase):
+    """**Owner's decision «A», 2026-10-26 (#1142): the robots verdict is a
+    `witness:` line, DATED, and FIRST among the witnesses of its card.**
+
+    No new field. Measured 2026-10-27: `witness:` is on **483** of **552**
+    cards — the anchored line and the bare word agree, intersection complete —
+    while `robots:` is on **4**, all four `keyed-api`, a name already taken by
+    the API exemption of 04.09.
+
+    **The clause the decision requires to be written WITH the format:** the
+    absence of the line says *not measured*, and it never says *open*. Read as
+    a permission it would rebuild, in a declared field this time, the
+    affirmative zero that #1136 took out of the prose — in the same permissive
+    direction.
+
+    **And the field must move no classification, in EITHER direction.** A
+    verdict NAMES the status it read, so a host that refuses its own rules file
+    plants a `403` in the card text, where `refusal_of()` reads line by line.
+    Measured by CALLING the code before this class existed: **three `faisable`
+    cards out of three answered `indetermine`** — a card whose route is
+    established, republished as a measurement to redo, and silently. The fix
+    exempts the DECLARED FIELD and never a value, the floor being positive and
+    on a field (#1136, cited inside `classify()` itself).
+
+    **Why the kind is anchored at the HEAD of the line rather than searched for
+    inside it:** seven `witness:` lines already MENTION `robots.txt` while
+    witnessing a COUNT — *«none — nothing was fetched beyond robots.txt»* —
+    and reading their clause shows **not one of the seven is a verdict**. A
+    motif on the bare word is false by its MEMBERS, so the anchor is measured
+    to be load-bearing below instead of being asserted.
+    """
+
+    DECL = r"^robots-verdict\b"
+    WITNESS = r"(?m)^<!--\s*witness:\s*(.*?)\s*-->\s*$"
+    CONTENT = r"(?m)^<!--\s*content:\s*(.*?)\s*-->\s*$"
+    DATED = re.compile(r"·\s*20\d\d-\d\d-\d\d\s*(?:—|$)")
+
+    V_DATED = ("robots-verdict · state unrecognised · certain False · "
+               "http://x/robots.txt · 200, 1 B · 2026-10-27")
+    V_UNDATED = ("robots-verdict · state unrecognised · certain False · "
+                 "http://x/robots.txt · 200, 1 B")
+    V_403 = ("robots-verdict · state refused · certain False · "
+             "https://x/robots.txt · 403, 1234 B · 2026-10-27")
+    V_COUNT = "none — nothing was fetched beyond robots.txt · 2026-10-01"
+    V_PROSE_DATE = ("robots-verdict · state read · certain True · "
+                    "http://x/robots.txt · 200, 1 B — read on 2026-10-27, and "
+                    "the date lives in the prose and in no field")
+
+    @staticmethod
+    def _line(value):
+        return "<!-- witness: " + value + " -->\n"
+
+    def _cards(self):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for path in sorted(glob.glob(os.path.join(root, "shared", "boards",
+                                                  "*.md"))):
+            if os.path.basename(path) == "README.md":
+                continue
+            with open(path, encoding="utf-8") as fh:
+                out.append((os.path.basename(path)[:-3], fh.read()))
+        return out
+
+    def _witnesses(self, text):
+        """Every anchored `witness:` value, IN ORDER — the rank is the whole
+        point, `read_cards()` doing a `setdefault`."""
+        return list(enumerate(re.findall(self.WITNESS, text)))
+
+    def _is_verdict(self, value):
+        return re.match(self.DECL, value) is not None
+
+    # The three predicates below take a CORPUS, so a fixture can be fed to
+    # them: a predicate exercised only on today's cards is green on whatever
+    # today happens to hold, and says so to nobody.
+    def _undated(self, corpus):
+        r"""The date is a POSITIONAL field, not a date somewhere in the line.
+
+        **Found by mutation.** A first version searched `20\d\d-\d\d-\d\d`
+        anywhere in the value, and the first real verdict discusses three dates
+        in its own prose — so removing the field changed nothing and the guard
+        could not redden. A `·`-delimited date closing the fields, either at
+        the end or before the prose dash, is what the format declares."""
+        return [(n, v[:48]) for n, t in corpus for _r, v in self._witnesses(t)
+                if self._is_verdict(v) and not self.DATED.search(v)]
+
+    def _not_first(self, corpus):
+        return [(n, r) for n, t in corpus for r, v in self._witnesses(t)
+                if self._is_verdict(v) and r != 0]
+
+    def _measured_without_a_count_witness(self, corpus):
+        bad = []
+        for n, t in corpus:
+            c = re.search(self.CONTENT, t)
+            if not (c and c.group(1).startswith("measured")):
+                continue
+            if not [v for _r, v in self._witnesses(t)
+                    if not self._is_verdict(v)]:
+                bad.append(n)
+        return bad
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location(
+            "_country_boards_robots",
+            os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _class_of(self, mod, name, text):
+        h = {}
+        for m in mod.HEADER.finditer(text):
+            h.setdefault(m.group(1), m.group(2))
+        return mod.classify({"name": name, "path": name + ".md",
+                             "text": text, "h": h})[0]
+
+    def test_a_robots_verdict_carries_the_date_of_its_measurement(self):
+        """A verdict without its date is a verdict without its object: the
+        instrument's answer changes when the host changes, and «dated» is the
+        half of the decision that keeps the line re-readable later."""
+        self.assertEqual(
+            self._undated(self._cards()), [],
+            "a `witness: robots-verdict` line carries no measurement date")
+        self.assertEqual(self._undated([("fx", self._line(self.V_DATED))]), [])
+        self.assertEqual(
+            [n for n, _v in self._undated([("fx",
+                                            self._line(self.V_UNDATED))])],
+            ["fx"],
+            "the predicate cannot see an undated verdict, so its green above "
+            "says «I did not look there»")
+        self.assertEqual(
+            [n for n, _v in self._undated([("fx",
+                                            self._line(self.V_PROSE_DATE))])],
+            ["fx"],
+            "a date discussed in the prose is accepted as the verdict's own "
+            "date — the first real verdict names three, so this is the "
+            "direction that made the check inert")
+
+    def test_the_anchor_excludes_the_count_witnesses_that_mention_robots(self):
+        """**The anchor, and the measurement that shows it is load-bearing.**
+        A bare-word motif must return STRICTLY MORE lines than the anchored
+        one on the real cards: the difference is the count witnesses a loosened
+        reader would swallow, and if it ever reaches zero this guard has
+        stopped measuring anything and says so instead of staying green."""
+        corpus = self._cards()
+        loose = [(n, v) for n, t in corpus for _r, v in self._witnesses(t)
+                 if re.search(r"robots", v, re.I)]
+        strict = [(n, v) for n, t in corpus for _r, v in self._witnesses(t)
+                  if self._is_verdict(v)]
+        self.assertGreater(
+            len(loose), len(strict),
+            f"the bare word returns {len(loose)} line(s) and the anchor "
+            f"{len(strict)}: with nothing between them the anchor is no "
+            f"longer measured to exclude anything")
+        self.assertTrue(self._is_verdict(self.V_DATED))
+        self.assertFalse(
+            self._is_verdict(self.V_COUNT),
+            "a count witness that mentions robots.txt is read as a verdict")
+
+    def test_a_robots_verdict_is_the_first_witness_of_its_card(self):
+        """**«FIRST» is a condition of existence, not a preference.**
+        `read_cards()` does a `setdefault` and the neighbouring guard reads
+        `re.search`: the first occurrence wins, so a dated line written at the
+        bottom of a card is never read.
+
+        **Declared:** on the cards of 2026-10-27 the only card carrying a
+        verdict carries no other witness, so the «several witnesses» branch is
+        exercised by the fixture below and by NO real card. That is said here
+        rather than left to a green."""
+        self.assertEqual(self._not_first(self._cards()), [],
+                         "a robots verdict is not the first witness of its "
+                         "card, so a first-occurrence reader never sees it")
+        first = self._line(self.V_DATED) + self._line(self.V_COUNT)
+        second = self._line(self.V_COUNT) + self._line(self.V_DATED)
+        self.assertEqual(self._not_first([("fx", first)]), [])
+        self.assertEqual(
+            self._not_first([("fx", second)]), [("fx", 1)],
+            "the predicate cannot see a verdict written second")
+
+    def test_the_field_moves_no_classification_in_either_direction(self):
+        """**The guard this format needed most, and it reddens without the
+        exemption in `refusal_of()`.** Every real card is classified as it
+        stands, then with a verdict naming a 200, then with one naming a 403;
+        and the card that already carries a verdict is classified with it
+        REMOVED. All of them must agree — presence is not a faisability, and
+        absence is not a permission.
+
+        *Measured before the fix: the 403 form turned `faisable` into
+        `indetermine` on three cards out of three.*"""
+        mod = self._tool()
+        moved, removed = [], []
+        for n, t in self._cards():
+            has = [v for _r, v in self._witnesses(t) if self._is_verdict(v)]
+            base = self._class_of(mod, n, t)
+            if has:
+                keep = []
+                for ln in t.split("\n"):
+                    m = re.match(r"^<!--\s*witness:\s*(.*?)\s*-->\s*$", ln)
+                    if m and self._is_verdict(m.group(1)):
+                        continue
+                    keep.append(ln)
+                stripped = "\n".join(keep)
+                if self._class_of(mod, n, stripped) != base:
+                    removed.append((n, base,
+                                    self._class_of(mod, n, stripped)))
+                continue
+            for label, value in (("200", self.V_DATED), ("403", self.V_403)):
+                t2 = t.replace("<!-- countries:",
+                               self._line(value) + "<!-- countries:", 1)
+                got = self._class_of(mod, n, t2)
+                if got != base:
+                    moved.append((n, label, base, got))
+        self.assertEqual(
+            moved[:8], [],
+            f"{len(moved)} card(s) change class when a declared robots verdict "
+            f"is ADDED — the field is being read as a verdict on the route")
+        self.assertEqual(
+            removed, [],
+            f"{len(removed)} card(s) change class when the verdict is REMOVED "
+            f"— an absence is being read as something other than «not "
+            f"measured»")
+
+    def test_a_refusal_written_in_prose_still_fires(self):
+        """**The contre-essai**, and it is what separates a FIELD exemption
+        from desensitising `refusal_of()` altogether: the exemption is anchored
+        on the declared field, so a 403 recorded anywhere else in a card is
+        still a refusal. Without this, the guard above could be satisfied by
+        making nothing a refusal at all."""
+        mod = self._tool()
+        faisable = [(n, t) for n, t in self._cards()
+                    if self._class_of(mod, n, t) == "faisable"]
+        self.assertTrue(faisable,
+                        "no `faisable` card to exercise the contre-essai on, "
+                        "so its green says nothing")
+        n, t = faisable[0]
+        prose = ("\nOn 2026-10-27 the host answered HTTP 403 to the listing, "
+                 "read by fetch-body.py.\n")
+        self.assertEqual(
+            self._class_of(mod, n, t + prose), "indetermine",
+            "a refusal written in prose no longer fires: the exemption has "
+            "stopped being about the declared field")
+
+    def test_a_measured_card_still_names_a_witness_that_is_not_the_verdict(
+            self):
+        """**A verdict cannot stand in for the count witness its neighbour
+        requires.** That guard reads the FIRST `witness:` line, and the
+        decision puts the verdict there — so once the campaign fills the field,
+        a `content: measured` card could satisfy it with a verdict and name no
+        witness for its count at all. A green that says «I did not look
+        there».
+
+        **Declared:** no real card is in that shape today, so the fixture is
+        what exercises it."""
+        self.assertEqual(
+            self._measured_without_a_count_witness(self._cards()), [],
+            "a measured card names a robots verdict and no count witness, so "
+            "its figure is taken once and reads as corroborated")
+        measured = "<!-- content: measured · 12 rows · 2026-10-01 -->\n"
+        self.assertEqual(
+            self._measured_without_a_count_witness(
+                [("fx", measured + self._line(self.V_DATED)
+                  + self._line(self.V_COUNT))]), [])
+        self.assertEqual(
+            self._measured_without_a_count_witness(
+                [("fx", measured + self._line(self.V_DATED))]), ["fx"],
+            "the predicate cannot see a measured card whose only witness is a "
+            "robots verdict")
+
+    def test_the_population_is_declared_rather_than_assumed(self):
+        """**The floor.** Every predicate above passes on a corpus carrying no
+        verdict at all — the shape this suite has shipped twice — so the count
+        is asserted rather than left implicit. The field fills AT THE PACE OF
+        THE MEASUREMENTS, so this number is expected to grow; what must not
+        happen is that it silently returns to zero while the guards above keep
+        reporting green."""
+        verdicts = [(n, r) for n, t in self._cards()
+                    for r, v in self._witnesses(t) if self._is_verdict(v)]
+        self.assertGreaterEqual(
+            len(verdicts), 1,
+            "no card declares a `witness: robots-verdict` line, so every "
+            "guard in this class is vacuous and not one of them says so")
+
+
 class AHostVerdictCanBeTrueAndTheWrongAnswer(unittest.TestCase):
     """**#156, and it is the sharpest instance of #101 we have found.**
 
