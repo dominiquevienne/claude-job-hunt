@@ -780,6 +780,63 @@ change, and the net-to-flow objection does not arise.
 it does not protect against; a line that only says *witness* invites the
 strongest reading of the weakest evidence.
 
+#### The robots verdict is one of them — `robots-verdict`, declared and dated
+
+**Owner's decision «A», 2026-10-26 (#1142): the robots verdict is a `witness:`
+line, DATED, and FIRST among the witnesses of its card.** No new field. The
+shape:
+
+    <!-- witness: robots-verdict · state <s> · certain <True|False> · <the url that ANSWERED> · <status>, <bytes> B · YYYY-MM-DD -->
+
+**It records what `_robots.allowed()` RENDERS, never what a raw fetch implies**
+— and `fedgroup-fr`, the specimen this decision came from, is the whole
+argument. Its card inferred `state: read · certain: True` from a 200 and one
+byte on port 80: a prediction about the instrument's output, written before the
+scheme repair and never checked by calling it. Called on 2026-10-27 the repaired
+module renders `scheme: http`, `schemes_tried: ["https", "http"]` — the repair
+is live — and `state: unrecognised · certain: False`, because a body carrying no
+`User-agent`, `Disallow` or `Allow` line is not an absence of rules (#128). *The
+same open door, a different reason for it, and only `state` separates the two —
+which is exactly the pair the field exists to keep apart.*
+
+**`robots-verdict` is a DECLARED kind at the HEAD of the line, and the
+declaration is the point.** Measured 2026-10-27: **seven** `witness:` lines
+already MENTION `robots.txt` while witnessing a COUNT — *«none — nothing was
+fetched beyond robots.txt»* — and **none of the seven is a verdict**. A motif on
+the bare word is false by its members, which is the defect #1136 took out of the
+prose; a reader anchors at the head of the line and renders zero on all seven.
+
+**FIRST is a condition of existence, not a preference.** `read_cards()` does a
+`setdefault` and the guard reads `re.search`: the FIRST occurrence wins, so a
+dated line added at the BOTTOM of a card is never read. *This repository has
+already paid it — re-measurements written under the older line never reached a
+page — and the conservative gesture, adding without removing, is the wrong one
+whenever the first occurrence wins.*
+
+> **The absence of the line says «not measured». It never says «open».**
+
+*That clause is the field's whole safety.* Read as a permission it would rebuild,
+in a declared field this time, the affirmative zero that #1136 removed from the
+prose — and in the same permissive direction.
+
+**And the field moves no classification, in either direction.** A verdict names
+the status it read, so a host that refuses its own rules file plants a `403` in
+the card text, where `refusal_of()` reads line by line: **measured by CALLING
+the code, three `faisable` cards out of three answered `indetermine`** — a card
+whose route is established would have been published as a measurement to redo,
+silently. `country-boards.py` exempts the declared field, **by the FIELD and
+never by a value**, the floor being positive and on a field (#1136); and the
+contre-essai holds — a refusal written in PROSE still fires.
+
+**Counts, with their command, because this one has two provenances.**
+`grep -c` over the cards on 2026-10-27: `witness:` on **483** of **552** cards
+(anchored line and bare word agree, intersection complete), `robots:` on **4**,
+all four `keyed-api` — that name is taken and means the API exemption of
+04.09, so it is not chosen. *A figure of 514 for the first was reported and is
+not reproducible here under either motif; the argument does not turn on it —
+either way `witness:` is the field the reader already reads and `robots:` is
+four cards of another sense.*
+
 ### A figure about another board is cited by reference, never by value
 
 **A card owns the counts of its own board. Everywhere else, the same number is a
