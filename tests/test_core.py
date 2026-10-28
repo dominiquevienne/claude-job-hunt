@@ -2591,6 +2591,59 @@ class OneDeclaredIdentity(unittest.TestCase):
         self.assertIn("cannot tell them apart", note)
 
 
+
+    # **An option cannot overwrite what we declare about ourselves.** #670:
+    # `fetch-body.py --header` exists because a Next.js server action is
+    # addressed by one, and the first thing such an option can do is send
+    # Chrome — which is the defect this class was written for, arriving by a
+    # door that did not exist when it was written.
+    def test_an_extra_header_cannot_overwrite_a_header_the_tool_sets(self):
+        eh = self._fb().extra_headers
+        for name in ("User-Agent", "user-agent", "USER-AGENT", " User-Agent "):
+            with self.assertRaises(ValueError) as c:
+                eh(["%s=Mozilla/5.0" % name], {"User-Agent"})
+            self.assertIn("cannot be overridden", str(c.exception))
+
+    # **The reserved set is PASSED IN, so the guard covers a header this tool
+    # has not grown yet.** A list of reserved names written inside the function
+    # would be a list composed by hand, and the member it omits leaves no
+    # trace. This is the case that fails if someone hard-codes one.
+    def test_the_reserved_set_is_the_callers_and_not_a_list_in_the_function(self):
+        eh = self._fb().extra_headers
+        with self.assertRaises(ValueError):
+            eh(["X-Future-Thing=1"], {"X-Future-Thing"})
+        self.assertEqual(eh(["X-Future-Thing=1"], set()),
+                         {"X-Future-Thing": "1"})
+
+    # A name that merely CONTAINS a reserved one is not it.
+    def test_the_match_is_the_whole_name_and_not_a_substring(self):
+        eh = self._fb().extra_headers
+        self.assertEqual(eh(["X-User-Agent=x"], {"User-Agent"}),
+                         {"X-User-Agent": "x"})
+
+    def test_a_malformed_pair_is_refused_before_anything_leaves(self):
+        eh = self._fb().extra_headers
+        for bad in ("sansegal", "=x", "  =x"):
+            with self.assertRaises(ValueError):
+                eh([bad], set())
+
+    # The empty case must be the empty dict, not a crash: every GET takes it.
+    def test_no_header_is_the_empty_mapping(self):
+        eh = self._fb().extra_headers
+        self.assertEqual(eh(None, {"User-Agent"}), {})
+        self.assertEqual(eh([], {"User-Agent"}), {})
+        # a value may contain '=' — only the FIRST one separates
+        self.assertEqual(eh(["X=a=b"], set()), {"X": "a=b"})
+
+    def _fb(self):
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+        p = os.path.normpath(os.path.join(root, "bin", "fetch-body.py"))
+        s = importlib.util.spec_from_file_location("fb_670", p)
+        m = importlib.util.module_from_spec(s)
+        s.loader.exec_module(m)
+        return m
+
 class EveryNetworkReaderAsksOrSaysWhyNot(unittest.TestCase):
     """#100's last hole, and the answer written down rather than deduced.
 
