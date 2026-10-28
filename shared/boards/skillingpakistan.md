@@ -35,7 +35,9 @@ request and no adapter is warranted until it is not empty.**
 
 Pakistan's TVET portal (National Vocational and Technical Training
 Commission). `robots.txt` closes nothing — `sweep: True`, no rule matched.
-`www.skillingpakistan.gov.pk` does not resolve.
+**`www.skillingpakistan.gov.pk` RESOLVES** — a `CNAME` to the apex, measured
+2026-10-28 on two public resolvers. The sentence that stood here until then said
+the opposite; it is cited and corrected below, not rewritten.
 
 **`/jobs` exists, is 704 kB, and its table says `No jobs available`.**
 
@@ -77,6 +79,75 @@ they sit directly above a table with nothing in it.** Anyone quoting 302 613
 as this board's advertisement count would be out by 302 613. It is the exact
 shape `atlas`-facing work has been wrong on before: *a headline number that
 reads as a total.*
+
+## The name resolves, and the clause that said otherwise is dated
+
+**What stood in the prose above from 2026-09-03 (`81ea07f6`) until 2026-10-28:**
+« `www.skillingpakistan.gov.pk` does not resolve. » — a bare sentence, with no
+resolver, no status and no hour, on a card that dates everything else.
+**A phrase like that cannot be reopened, because there is nothing to compare.**
+
+**Measured 2026-10-28, the four queries and their negative control in one
+command, `dig` against two public resolvers:**
+
+```
+skillingpakistan.gov.pk       @1.1.1.1   NOERROR   A 203.124.43.206
+skillingpakistan.gov.pk       @8.8.8.8   NOERROR   A 203.124.43.206
+www.skillingpakistan.gov.pk   @1.1.1.1   NOERROR   CNAME -> skillingpakistan.gov.pk
+www.skillingpakistan.gov.pk   @8.8.8.8   NOERROR   CNAME -> skillingpakistan.gov.pk
+
+negative control, same zone, same command, same resolvers:
+zzz-ce-nom-n-existe-pas-2810-cd.gov.pk   @1.1.1.1   NXDOMAIN
+zzz-ce-nom-n-existe-pas-2810-cd.gov.pk   @8.8.8.8   NXDOMAIN
+
+the system resolver too, the one this repository's tooling INHERITS:
+apex -> 203.124.43.206 · www. -> 203.124.43.206 · the control name fails
+```
+
+**The negative control is what makes four `NOERROR` readable** — a resolver that
+never says no prints exactly the same thing. And no `SERVFAIL` appears, so this
+is neither an ignorance nor an indeterminate.
+
+**None of it moves this card's verdict.** `www.` is a `CNAME` to the apex, so it
+serves what the apex serves and no route is discovered; `content:` stands as
+measured on 2026-09-07, and no `route:` line exists here or is created by this
+correction.
+
+### Why it was wrong is NARROWED by this repository, and not closed
+
+Two readings account for the gap — the 2026-09-03 measurement was wrong, or the
+name was delegated after it — and the card cannot separate them. **The
+repository can, partly, and it has carried the answer since the week it
+happened:** `skills/job-scan/scripts/_robots.py` and the test class
+`ADnsFailureIsTheResolversAnswerNotTheHosts` both record, from **2026-09-05 —
+two days AFTER the clause** — this same zone answering
+
+```
+via 1.1.1.1   skillingpakistan.gov.pk   NOERROR   A = 203.124.43.206
+via 8.8.8.8   skillingpakistan.gov.pk   SERVFAIL
+              jobs.gov.pk               SERVFAIL   <- not specific to it
+```
+
+**The address is the one measured today.** So the apex was served, at this
+address, two days after a sentence saying a name in this zone was not — and this
+zone has a dated history of answering `SERVFAIL` on one of the two public
+resolvers, which is exactly the failure that produces a false *does not
+resolve*: `SERVFAIL` is not `NXDOMAIN`.
+
+**What is still NOT established, and no instrument here reads it:** whether
+`www.` carried its `CNAME` on 2026-09-03. The apex's branch is answered; the
+`www.` branch is not, so « delegated since » survives for that form alone, and
+it is left open rather than closed by convenience.
+
+**And the guard came out of THIS host while the clause stood — through two
+later passes over the card itself.** The 2026-09-05 report (`17db9a68`,
+11:55 UTC) produced `_resolver_note()`, its two-direction test, and the sentence
+« a name that does not resolve here has not been shown to be gone » — written
+two days after the clause and while the clause was in the file. **The card was
+then edited twice, on 2026-09-07 (`19541fa0`, +29 lines) and on 2026-09-08
+(`f3239ede`), and the clause is present in the card at both.** *So it is not
+that nobody came back: two passes wrote around the sentence without reading it,
+and writing the guard audited neither.*
 
 ## Why no adapter yet
 
