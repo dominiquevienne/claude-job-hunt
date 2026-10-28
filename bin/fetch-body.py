@@ -188,6 +188,41 @@ def shown_token():
 # leur propre `Request`** et ne recevaient rien d'un correctif pose ici.
 
 
+
+def extra_headers(pairs, reserved):
+    """`--header NAME=VALUE` pairs, refusing the ones this tool sets itself.
+
+    **`reserved` is passed in rather than known here, because the caller
+    DERIVES it from the headers it has actually built.** A list of reserved
+    names composed by hand omits a member and the omission leaves no trace
+    (`CLAUDE.md` §5) — and the member that would be omitted is the one that
+    matters: `User-Agent`. *One draft script sent Chrome for a whole day while
+    the module beside it declared itself properly, and a tool's identity
+    appears nowhere in its output, so it is verified rather than observed.*
+
+    The refusal is ABSOLUTE: a guard with one declared exception gets a second
+    one, and this one guards our declaration of who we are.
+
+    Raises `ValueError` with the message to print; the caller turns that into
+    `EXIT_HTTP`, as it does for a malformed `--form`.
+    """
+    low = {r.lower() for r in reserved}
+    out = {}
+    for h in pairs or ():
+        if "=" not in h:
+            raise ValueError(f"--header wants NAME=VALUE, got {h!r}")
+        name, value = h.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise ValueError(f"--header with an empty name: {h!r}")
+        if name.lower() in low:
+            raise ValueError(
+                f"--header {name} is set by this tool and cannot be "
+                f"overridden; its identity appears nowhere in its output, "
+                f"so it is verified rather than observed")
+        out[name] = value
+    return out
+
 def main():
     # **Nothing here reads standard input, and it is closed anyway.**
     #
@@ -249,6 +284,18 @@ def main():
     p.add_argument("--content-type",
                    help="declared Content-Type of the body "
                         "(default: application/x-www-form-urlencoded)")
+    # **An extra request header, because a server action is addressed by one.**
+    # #670: TMCARS paginates through a Next.js server action, which is reached
+    # by `Next-Action: <id>` on the page's own path — not by a query string and
+    # not by `/api/`, which that host refuses in writing. Until this option the
+    # only way to send it was the one thing `CLAUDE.md` §3 bis forbids: a
+    # hand-rolled fetch. *That is the same hole #999 closed one dimension over,
+    # and the hole produced the behaviour the rule was written against.*
+    p.add_argument("--header", action="append", metavar="NAME=VALUE",
+                   help="one extra request header; repeat for each. The "
+                        "headers this tool sets itself cannot be overridden. "
+                        "**Values never reach the provenance file** — only "
+                        "the names, for the same reason as --form")
     a = p.parse_args()
 
     if not a.sitemaps and not a.out:
@@ -272,6 +319,17 @@ def main():
               "POST is almost always a forgotten argument; pass --data '' if "
               "it is really what the board wants.", file=sys.stderr)
         return EXIT_HTTP
+    if a.header:
+        bad = [h for h in a.header if "=" not in h]
+        if bad:
+            print(f"ERROR: --header wants NAME=VALUE, got {bad[0]!r}",
+                  file=sys.stderr)
+            return EXIT_HTTP
+        blank = [h for h in a.header if not h.split("=", 1)[0].strip()]
+        if blank:
+            print(f"ERROR: --header with an empty name: {blank[0]!r}",
+                  file=sys.stderr)
+            return EXIT_HTTP
 
     payload, ctype = None, None
     if a.form:
@@ -302,6 +360,12 @@ def main():
         else {}
     if a.method != "GET":
         sent = dict(sent, method=a.method)
+    # **The names of the extra headers, never their values** — the same line
+    # `sent_summary` draws for a body. A `Next-Action` id is public, an
+    # `Authorization` would not be, and the record cannot tell them apart.
+    if a.header:
+        sent = dict(sent, sent_header_names=sorted(
+            h.split("=", 1)[0].strip() for h in a.header))
     parts = urllib.parse.urlsplit(a.url)
     if not parts.netloc:
         print(f"ERROR: {a.url} has no host", file=sys.stderr)
@@ -389,6 +453,27 @@ def main():
     heads_out = {"User-Agent": UA}
     if ctype:
         heads_out["Content-Type"] = ctype
+    # **The headers this tool sets itself are inviolable, and the list of them
+    # is DERIVED from `heads_out` rather than retyped.** A list composed by hand
+    # omits a member and the omission leaves no trace (`CLAUDE.md` §5), and the
+    # member that would be omitted here is the one that matters: `User-Agent`.
+    # *One draft script sent Chrome for a whole day while the module beside it
+    # declared itself properly — so an option that could overwrite our identity
+    # would undo discipline 2 of this very tool.* The refusal is ABSOLUTE: a
+    # guard with one declared exception gets a second one.
+    #
+    # `content-type` is named beside the derivation because `--content-type`
+    # drives it and `heads_out` carries it only when that option was passed —
+    # so deriving alone would leave a second, unrecorded way to set it.
+    # `content-type` is named beside the derivation because `--content-type`
+    # drives it and `heads_out` carries it only when that option was passed —
+    # so deriving alone would leave a second, unrecorded way to set it.
+    try:
+        heads_out.update(extra_headers(
+            a.header, set(heads_out) | {"Content-Type"}))
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return EXIT_HTTP
     # **`method=` is passed explicitly, and the reason is narrower than it
     # first looked.** The draft of this comment said an empty `--data ''` would
     # go out as a GET «because the body is empty» — **the test written to
