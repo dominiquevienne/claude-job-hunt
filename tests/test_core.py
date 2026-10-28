@@ -44347,6 +44347,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         `route: browser` line leaves the whole previous class GREEN and reddens
         this one naming the card and the reason.*
 
+        **THAT CONTRAST IS DATED AND ITS SPECIMEN NO LONGER SERVES — 2026-10-28,
+        cited rather than rewritten.** *`naydizdes.md` now declares `script:
+        naydizdes.py` (#671), so a `route:` added to it changes NOTHING: a written
+        adapter decides the basis before any route is read. The contrast itself
+        still holds — the two bases are still distinguished and still asserted
+        below — but re-running it needs a card that declares NO script, and the
+        pinned list below is where its result lives.*
+
         **I also wrote that «an empty corpus was a GREEN path that would have
         silenced this class», and that is FALSE.** *Measured by making
         `read_cards` return nothing for the real directory only — so the fixtures
@@ -44446,9 +44454,20 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
         for nom, base_attendue, pourquoi in (
                 ("isgar.md", "`script:` sans refus consigné", "adapter WRITTEN (#669)"),
                 ("yora.md", "`script:` sans refus consigné", "adapter WRITTEN (#665)"),
-                ("naydizdes.md", "aucune ligne de refus, aucun script, aucune `route:`",
-                 "route FALSE and WITHDRAWN (#671) — 2 222 `/item/` were the whole "
-                 "classifieds site, not a jobs section"),
+                ("naydizdes.md", "`script:` sans refus consigné",
+                 "adapter WRITTEN (#671) on 2026-10-28 — and this is the ONLY card here "
+                 "that has left this branch TWICE BY OPPOSITE ROUTES: on 2026-10-06 because "
+                 "its ROUTE WAS FALSE and was withdrawn (2 222 `/item/` were the whole "
+                 "classifieds site, not a jobs section), and now because its ADAPTER WAS "
+                 "WRITTEN, basis MEASURED by calling `access_of` and not assumed. **AND THE "
+                 "SECOND MEASUREMENT REFUTED THE FIRST ONE'S REMAINING HALF:** having "
+                 "withdrawn the sitemap, that card went on to name the `/en/rabota/` pager as "
+                 "the jobs enumerator — and that pager is the MIXED parent, 396 = 345 "
+                 "vacancies + 51 CVs of real people, SIX of them on its page one. So "
+                 "`naydizdes.py` walks `/en/vakansii/` instead and asserts the declared "
+                 "category at all THREE places it is served, which is a safety condition and "
+                 "not an optimisation. *A thesis refuted always finds a neighbour to sit on, "
+                 "and here the neighbour was the enumerator left standing.*"),
                 ("jobartis-ga.md", "`script:` sans refus consigné",
                  "adapter WRITTEN (#1172) — the sitemap SHAPE transposed from "
                  "the Angolan `.com` and the VOCABULARY did not: ten French "
@@ -45765,6 +45784,124 @@ class TheKorgarFilterIsASafetyConditionNotAnOptimisation(unittest.TestCase):
                       "hiringOrganization": {"name": k.EMPLOYER_PLACEHOLDER}})
         self.assertNotIn("withheld_fields", r)
         self.assertNotIn("withheld", json.dumps(r, ensure_ascii=False))
+
+
+class TheNaydizdesFilterKeepsVacanciesAndNotOneCV(unittest.TestCase):
+    """**`naydizdes.py`, 2026-10-28 (#671).** A Turkmen classifieds site whose jobs
+    section MIXES employer vacancies with CVs of real people, and whose card named
+    the MIXED pager as its enumerator. The rules permit every one of those paths —
+    a census of the 100 advert paths of page one returns **0 refused on 100** — so
+    `_robots` cannot sort them and the protection has to be ours.
+
+    *Measured composition, read from the counts the HOST prints in its own
+    navigation, 2026-10-28 19:19 UTC:*
+
+        /en/rabota/     Jobs           396   the MIXED parent — never enumerated
+        /en/vakansii/   Vacancies      345   employer adverts — THE enumerator
+        /en/rezyume/    Resume - CV     51   CVs of real people — never walked
+
+    **And it closes twice independently:** 51 + 345 = 396, and regionally
+    330+3+6+1+5 = 345 as 375+4+7+2+8 = 396.
+
+    **THE FILTER WAS MEASURED IN BOTH DIRECTIONS ON THE REAL CORPUS**, never on a
+    composed string: `/en/rabota/` page one gives **94 Vacancies + 6 Resume - CV**,
+    `/en/vakansii/` page one **100 + 0** and its page four **45 + 0** — and those 6
+    are exactly the members a set difference between the two page ones isolates, so
+    two independent methods return the same names.
+
+    *The rows below keep the SHAPE of the served bytes — the real class names, the
+    real `item_extra` form, a real employer advert — but **the CV row's own text is
+    not reproduced**: it is a real person's self-description, and carrying it into a
+    versioned fixture is the very harm this filter exists to prevent. The
+    discriminant under test is the category field, not the prose, so nothing is
+    weakened by neutralising it.*
+
+    **The fixture is strictly larger than the thing it must make fire**: it carries
+    both families, so the floor cannot pass by having nothing to reject.
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_naydizdes_671", str(pathlib.Path(SCRIPTS) / "naydizdes.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    LISTING = (
+        '<h1>Vacancies <sup class="item_count">345</sup></h1><ul class="list_style_full">'
+        '<li class="item img-no" data-item="251039">'
+        '<a href="https://www.naydizdes.com/en/item/nujen-injener-tb-s-opitom-raboti-rejim-'
+        'zarplata-dogovornaya-251039.html" class="item_link clearfix">'
+        '<span class="item_content"><span class="item_title clearfix">'
+        '\u041d\u0423\u0416\u0415\u041d \u0418\u041d\u0416\u0415\u041d\u0415\u0420 '
+        '\u0422\u0411</span>'
+        '<span class="item_description clearfix">x</span>'
+        '<small class="item_extra">22 hours ago | Ashgabat | Vacancies | Building</small>'
+        '</span></a></li>'
+        '<li class="item img-no" data-item="999001">'
+        '<a href="https://www.naydizdes.com/en/item/neutralised-candidate-row-999001.html" '
+        'class="item_link clearfix">'
+        '<span class="item_content"><span class="item_title clearfix">[not reproduced]</span>'
+        '<span class="item_description clearfix">[not reproduced]</span>'
+        '<small class="item_extra">1 hour ago | Ashgabat | Resume - CV | '
+        'Driver, Transport, logistics</small>'
+        '</span></a></li></ul>')
+
+    def test_the_floor_keeps_the_advertisement_and_not_the_candidate_row(self):
+        """The central case. A record is a vacancy because it PASSES the test,
+        never because it is missing from a list."""
+        nd = self._mod()
+        rows, rejected = nd.listing(self.LISTING, "fixture")
+        self.assertEqual([r["id"] for r in rows], ["251039"])
+        self.assertEqual([c for _, c in rejected], [nd.CANDIDATE_LABEL])
+        emitted = json.dumps(rows, ensure_ascii=False)
+        self.assertNotIn(
+            "999001", emitted,
+            "a `%s` row reached the emitted set. **This is the defect the floor exists "
+            "to prevent: this host's rules permit these paths — 0 refused on 100 — and "
+            "51 of the parent section's 396 adverts are CVs of real people.**"
+            % nd.CANDIDATE_LABEL)
+
+    def test_the_candidate_section_and_the_mixed_parent_are_refused_before_any_request(self):
+        """Two refusals, not one. The CV child is the obvious one; **the MIXED
+        parent is the one this card got wrong**, and it is refused by the same
+        door, before the network is touched."""
+        nd = self._mod()
+        for url in ([nd.BASE + "/en" + s for s in nd.CANDIDATE_SEGMENTS]
+                    + [nd.BASE + "/en/rabota/", nd.BASE + "/en/rabota/3/"]):
+            with self.subTest(url=url):
+                with self.assertRaises(SystemExit) as e:
+                    nd.refuse_candidate(url)
+                self.assertEqual(e.exception.code, nd.EXIT_REFUSED)
+
+    def test_the_vacancies_section_itself_is_not_refused(self):
+        """The other direction: a filter that refused everything would pass the
+        case above while emitting nothing at all."""
+        nd = self._mod()
+        self.assertIsNone(nd.refuse_candidate(nd.SECTION))
+        self.assertIsNone(nd.refuse_candidate(
+            nd.BASE + "/en/item/construction-manager-2746-251279.html"))
+
+    def test_the_witness_is_the_count_the_host_prints_itself(self):
+        """`345` is read from the host's own `<h1>`, so it is a witness and not
+        our own extraction — the one thing a walk cannot confirm about itself."""
+        nd = self._mod()
+        self.assertEqual(nd.section_count(self.LISTING), ("Vacancies", 345))
+        self.assertEqual(nd.section_count("<h1>no count here</h1>"), (None, None))
+
+    def test_the_description_anchor_matches_both_class_forms_the_host_serves(self):
+        """**A motif tried on ONE specimen returned nothing on the second.** The
+        container's class list varies with the length of the text, and the two
+        neighbours it must not catch are `item_description` — the sidebar carries
+        TEN of them — and `site_description`."""
+        nd = self._mod()
+        for classes in ("description limit_content_height", "description"):
+            with self.subTest(classes=classes):
+                self.assertEqual(
+                    nd.BODY_RE.findall('<p class="%s">kept</p>' % classes), ["kept"])
+        for voisin in ("item_description clearfix", "site_description xs-hide"):
+            with self.subTest(voisin=voisin):
+                self.assertEqual(nd.BODY_RE.findall('<p class="%s">no</p>' % voisin), [])
 
 
 class ACellIsAFunctionOfTheCardsContentAlone(unittest.TestCase):
