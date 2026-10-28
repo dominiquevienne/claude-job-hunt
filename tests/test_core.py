@@ -45867,12 +45867,27 @@ class TheNaydizdesFilterKeepsVacanciesAndNotOneCV(unittest.TestCase):
         parent is the one this card got wrong**, and it is refused by the same
         door, before the network is touched."""
         nd = self._mod()
-        for url in ([nd.BASE + "/en" + s for s in nd.CANDIDATE_SEGMENTS]
-                    + [nd.BASE + "/en/rabota/", nd.BASE + "/en/rabota/3/"]):
+        # **LITERAL, not derived from `CANDIDATE_SEGMENTS`.** The first form of this
+        # case built its URLs from that tuple, so EMPTYING the tuple emptied the cases
+        # too and the mutation came back GREEN — a bench that shares an object with the
+        # thing it tests. Found by mutation on 2026-10-28, invisible to any re-reading.
+        for url in ("https://www.naydizdes.com/en/rezyume/",
+                    "https://www.naydizdes.com/en/rezume/",
+                    "https://www.naydizdes.com/en/resume/gorod/x",
+                    "https://www.naydizdes.com/en/soiskatel",
+                    "https://www.naydizdes.com/en/rabota/",
+                    "https://www.naydizdes.com/en/rabota/3/"):
             with self.subTest(url=url):
                 with self.assertRaises(SystemExit) as e:
                     nd.refuse_candidate(url)
                 self.assertEqual(e.exception.code, nd.EXIT_REFUSED)
+        # and the tuple is still asserted to COVER them, so a segment dropped from it
+        # reddens here too rather than silently widening what the adapter will fetch
+        self.assertEqual(
+            sorted(nd.CANDIDATE_SEGMENTS),
+            sorted(("/rezyume/", "/rezume/", "/resume/", "/soiskatel")),
+            "a candidate segment was added or dropped: the literal cases above are the "
+            "guard, and this says WHICH segment moved")
 
     def test_the_vacancies_section_itself_is_not_refused(self):
         """The other direction: a filter that refused everything would pass the
@@ -45902,6 +45917,102 @@ class TheNaydizdesFilterKeepsVacanciesAndNotOneCV(unittest.TestCase):
         for voisin in ("item_description clearfix", "site_description xs-hide"):
             with self.subTest(voisin=voisin):
                 self.assertEqual(nd.BODY_RE.findall('<p class="%s">no</p>' % voisin), [])
+
+    # The advert page declares its category TWICE, and BOTH are asserted. **This pair
+    # of cases exists because a mutation of that floor came back GREEN on 2026-10-28
+    # while the whole class passed**: it was covered only by a throwaway bench, which
+    # dies with the session that wrote it.
+    LD = ('{"@context":"https:\\/\\/schema.org","@type":"BreadcrumbList",'
+          '"itemListElement":[{"@type":"ListItem","position":1,"name":"Home",'
+          '"item":"https:\\/\\/www.naydizdes.com\\/en\\/"},'
+          '{"@type":"ListItem","position":4,"name":"%s",'
+          '"item":"https:\\/\\/www.naydizdes.com\\/en\\/ashgabat\\/%s"}]}')
+
+    def _advert_body(self, bc_name="Vacancies", bc_seg="vakansii/", champ="Jobs, Vacancies"):
+        return (
+            '<h1>Construction Manager \u21162746</h1>'
+            '<script type="application/ld+json">' + (self.LD % (bc_name, bc_seg))
+            + '</script>'
+            '<span class="cf_label col col-6">Category: </span>'
+            '<span class="cf_value col col-6"><a href="#">' + champ + '</a></span>'
+            '<span class="cf_label col col-6">Listed by: </span>'
+            '<span class="cf_value col col-6">Agency</span>'
+            '<span class="cf_label col col-6">Location: </span>'
+            '<span class="cf_value col col-6">Ashgabat</span>'
+            '<span class="cf_label col col-6">Posted on: </span>'
+            '<span class="cf_value col col-6">1 hour ago</span>'
+            '<span class="cf_label col col-6">Phone: </span><span class="cf_value col col-6">'
+            '<a href="#x" data-target="T0k3n1" data-toggle="cb_unproc">+9936XXXXX</a></span>'
+            '<span class="cf_label col col-6">Email: </span><span class="cf_value col col-6">'
+            '<a href="#y" data-target="T0k3n2" data-toggle="cb_unproc">Show email</a></span>'
+            '<p class="description">duties \u2022 one \u2022 two</p>')
+
+    URL = "https://www.naydizdes.com/en/item/construction-manager-2746-251279.html"
+
+    def test_an_advert_that_declares_itself_a_vacancy_is_emitted(self):
+        """The green side, so the two reds below cannot pass by refusing
+        everything."""
+        nd = self._mod()
+        nd.get = lambda url, _b=self._advert_body(): (200, _b)
+        r = nd.advert(self.URL)
+        self.assertEqual(r["id"], "251279")
+        self.assertEqual(r["listed_by"], "Agency")
+        self.assertIsNone(r["posted"], "no absolute date exists on this page: none is derived")
+        self.assertEqual(r["posted_relative"], "1 hour ago")
+        self.assertEqual(r["bullets"], 2)
+
+    def test_the_obfuscated_contact_token_never_reaches_the_record(self):
+        """The host gates the phone behind its own mask and the e-mail behind a
+        toggle; the real values sit in `cb_unproc` attributes. **Dropping them is
+        the rule and decoding them is the act the rule forbids.**"""
+        nd = self._mod()
+        nd.get = lambda url, _b=self._advert_body(): (200, _b)
+        emitted = json.dumps(nd.advert(self.URL), ensure_ascii=False)
+        for jeton in ("cb_unproc", "data-target", "T0k3n1", "T0k3n2"):
+            self.assertNotIn(jeton, emitted,
+                             "%s reached the record: the gated contact travels with it"
+                             % jeton)
+        r = json.loads(emitted)
+        self.assertTrue(r["host_gates_contacts"])
+        self.assertEqual(r["withheld_fields"], ["email", "phone"],
+                         "DERIVED from the tokens actually present, so it never claims "
+                         "to have withheld what nobody deposited")
+
+    def test_a_body_without_the_gate_names_no_withheld_field(self):
+        """**`withheld_fields` is DERIVED and absent when the set is empty.** An
+        advert whose contact slots carry no gated token had nothing withheld, and
+        saying otherwise would lie about OUR discretion rather than about the
+        board — a defect no re-reading catches, the output being identical."""
+        nd = self._mod()
+        nu = self._advert_body().replace(' data-toggle="cb_unproc"', '')
+        self.assertNotIn("cb_unproc", nu)
+        nd.get = lambda url, _b=nu: (200, _b)
+        r = nd.advert(self.URL)
+        self.assertFalse(r["host_gates_contacts"])
+        self.assertNotIn("withheld_fields", r,
+                         "the field must be ABSENT, not an empty list: a board that "
+                         "deposited nothing must not read as a board we censored")
+
+    def test_a_breadcrumb_that_says_resume_is_refused(self):
+        """How a CV announces itself on an advert page. **The floor is POSITIVE**:
+        the name AND the segment must both say vacancy."""
+        nd = self._mod()
+        for name, seg in (("Resume - CV", "rezyume/"), ("Vacancies", "rezyume/"),
+                          ("Resume - CV", "vakansii/")):
+            with self.subTest(name=name, seg=seg):
+                nd.get = lambda url, _b=self._advert_body(name, seg): (200, _b)
+                with self.assertRaises(SystemExit) as e:
+                    nd.advert(self.URL)
+                self.assertEqual(e.exception.code, nd.EXIT_REFUSED)
+
+    def test_two_declarations_that_disagree_are_not_a_vacancy_established(self):
+        """The breadcrumb says vacancy and the labelled field does not. *Trusting
+        either one alone is what makes a second declaration worth reading.*"""
+        nd = self._mod()
+        nd.get = lambda url, _b=self._advert_body(champ="Jobs, Resume - CV"): (200, _b)
+        with self.assertRaises(SystemExit) as e:
+            nd.advert(self.URL)
+        self.assertEqual(e.exception.code, nd.EXIT_REFUSED)
 
 
 class ACellIsAFunctionOfTheCardsContentAlone(unittest.TestCase):
