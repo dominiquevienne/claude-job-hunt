@@ -46015,6 +46015,305 @@ class TheNaydizdesFilterKeepsVacanciesAndNotOneCV(unittest.TestCase):
         self.assertEqual(e.exception.code, nd.EXIT_REFUSED)
 
 
+class TheBusinessTmFloorIsPositiveAndTheSectionParameterIsAWhitelist(unittest.TestCase):
+    """**`business_tm.py`, 2026-10-29 (#672).** The job notices of a Turkmen business
+    portal, reached through a GENERIC paginator whose section lives in a QUERY
+    PARAMETER — `/ru/work/a/index?path=rabota%2Fvakansii&page=N` — while the notices
+    themselves sit at `/ru/work/<id>`, a root that is not the section's.
+
+    *What that shape costs, measured on the served bodies 2026-10-29 03:21–03:29 UTC:*
+
+        pager    141 pages declared; 10 notices on page 1, page 2 and page 70, 8 on 141
+        sitemap  1 410 `/work/<id>` paths, FLAT, carrying no category at all
+        4115 and 4116 are in the sitemap, on no pager page, and both answer HTTP 404
+        1 410 − 2 dead = 1 408 = 140 × 10 + 8, so the two enumerators AGREE
+
+    **THE ADAPTER TAKES THE EXPENSIVE ENUMERATOR ON PURPOSE.** The sitemap hands over
+    every id in ONE request against the pager's 141, and the pager is walked anyway
+    because its `path=` BOUNDS it to vacancies by construction where `/work/<id>` is
+    flat. On `naydizdes.com`, the sibling board of this same country, the parent
+    section held 345 vacancies AND 51 CVs of real people, and an enumerator that could
+    not tell them apart would have leaked all 51 (#671). Here no CV section exists
+    TODAY — `rezyume`, `rezume`, `resume`, `soiskatel`, `Резюме`, `Соискател` each
+    return ZERO on the served section page, and the parent `/ru/work/rabota` declares
+    the same 141 pages with a page one identical id for id — so the sitemap is safe
+    TODAY and would absorb in silence whatever subsection «Работа» gains tomorrow.
+
+    **THE CASES BELOW ARE LITERAL, and that is the point of their form.** On #671 a
+    guard of this same family came back GREEN under mutation because it DERIVED its
+    cases from the very constant it was testing: emptying the tuple emptied the case
+    list. So the refused parameters and the refused CV segments are written out here,
+    and the module's own tuple is asserted SEPARATELY — a mutation that empties it
+    reddens the second assertion while the first keeps firing.
+
+    *The floor is POSITIVE and DOUBLED because this host serves no `JobPosting`, no
+    JSON-LD and no breadcrumb list anywhere: the `<title>` must end in `| Вакансии`
+    AND the `categoryHeader` must read `Вакансии`. Both were measured to RETAIN the
+    two notices read and to REFUSE two real negatives of the same host — an
+    `/advert/<id>` announcement, which ends in `| Announcements`, and a `/post/<id>`
+    press article. A DISAGREEMENT between the two is refused too, which is the case
+    neither declaration covers on its own.*
+
+    **THE TEASER'S SCRUB IS LIVE ON THE CORPUS, AND THE FIRST VERSION OF THIS
+    DOCSTRING SAID THE OPPOSITE — cited rather than rewritten.** It read: «over the 38
+    listed items read, the teaser carried a contact on ZERO of them … so that branch is
+    never taken by the real board». That was a claim about a DISTRIBUTION made on 38 of
+    1 408, and the full walk of 2026-10-29 refutes it: **4 teasers of 1 408 carry a
+    contact and are scrubbed** — three a phone and one an address. So the branch is
+    exercised by the board and not only by the fixture below. *A sample of 38 and a
+    corpus of 1 408 gave opposite answers about the same branch, and nothing in the
+    small one said it could not answer.*
+
+    **AND THE SAME WALK IS WHAT JUSTIFIES THE ANCHORS, which no sample could:** across
+    the 1 408 teasers there are **86 runs of digits** in a telephone's shape — six
+    digits, `NN-NN-NN`, `NNNN-NNNN` — and **ZERO of the 86 is preceded by a word of
+    contact within 80 characters**. Every one is an age range (`18-25`), a schedule
+    (`14:00-22:00`), a wage (`2500-3000 манат`) or an announcement number
+    (`ASHGABAT-2026-037`). *An Ashgabat landline is written on six digits, so a
+    six-digit floor would have destroyed all 86 — which is the Burmese defect exactly,
+    and it is the LABEL and `+993` that make it unreachable here.*
+
+    *One teaser, id 4745, still contains the string `+993` after scrubbing, and that is
+    CORRECT: the host truncated its own teaser right after `(+993)`, so the country code
+    stands alone with no subscriber digit behind it — `re.findall(r'\\d{4,}')` on it
+    returns nothing. Matching a bare country code would substitute «withheld» for
+    something nobody deposited.*
+    """
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_business_tm_672", str(pathlib.Path(SCRIPTS) / "business_tm.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # The SHAPE of the served bytes: the real class names, the real `badge_ex` date,
+    # the NESTED `<p>` inside `entry-description` that made a `(.*?)</p>` anchor return
+    # zero on all four pages, and the two `sub.text-green` blocks the unbounded teaser
+    # was swallowing. The second article carries neither of them, which is the real
+    # id 4125 — one of the 38 — so the fixture holds both families.
+    LISTING = (
+        '<article class="type-info-item style-media-list  style-media colheight-index">'
+        '<div class="inner_block "><div class="media-body"><div class="entry-header">'
+        '<h4 class="entry-title main-title">'
+        '<a alt="t" title="t" rel="bookmark" class="bold" '
+        'href="https://business.com.tm/ru/work/5622">K&auml;tip wezipesi</a></h4></div>'
+        '<div class="data"><span class="badge badge-inverse badge_ex" '
+        'style="background-color:#094091; margin-bottom: 10px;">28.10.2026</span></div>'
+        '<p class="entry-description">\n<p>Iş tertibi: Duşenbe &ndash; Anna.</p>\n'
+        '<ul>\n\t<li>Gel&yacute;&auml;n jaňlary kabul etmek</li>\n</ul>\n'
+        'Habarlaşmak: okderyaplastik@gmail.com, +993 12 71 36 40, aýlyk 4500 manat...'
+        '            </p>\n                <sub class="text-green">'
+        '<i class="fa fa-map-marker" aria-hidden="true"></i> Ашгабат                </sub>'
+        '<div><sub class="text-green"><i class="fa fa-building" aria-hidden="true"></i> '
+        '“Deryaplastik” kärhanasy                    </sub></div>'
+        '</div></div>\n    <!--    </div>-->\n</article>'
+        '<article class="type-info-item style-media-list  style-media colheight-index">'
+        '<div class="inner_block "><div class="media-body"><div class="entry-header">'
+        '<h4 class="entry-title main-title">'
+        '<a alt="t" title="t" rel="bookmark" class="bold" '
+        'href="https://business.com.tm/ru/work/4125">Business Camp Project Trainer</a>'
+        '</h4></div><div class="data"><span class="badge badge-inverse badge_ex" '
+        'style="background-color:#094091;">31.10.2025</span></div>'
+        '<p class="entry-description">\n<p>Issue Date: October.</p>...            </p>'
+        '</div></div>\n    <!--    </div>-->\n</article>')
+
+    HEAD = ('<html><head><title>%s</title>'
+            '<meta name="description" content="Rez&yacute;ume ibermek &uuml;&ccedil;in: '
+            'okderyaplastik@gmail.com"/></head><body>')
+    # The site's OWN footer, identical on every page served. It must not be read and it
+    # must not count towards `withheld_fields`: claiming to have withheld what nobody
+    # deposited would be a lie about our discretion, on every single record.
+    FOOT = ('<ul class="inline "><li>info@business.com.tm</li>'
+            '<li>+993 61 89 14 98</li>'
+            '<li>Для размещения вакансий: press@business.com.tm</li></ul></body></html>')
+
+    def _notice(self, title_suffix="Вакансии", header="Вакансии", phone=True):
+        champs = [("Работодатель", "“Deryaplastik” kärhanasy")]
+        if phone:
+            champs.append(("Телефон", "+9931271364062"))
+        champs += [("Почта", "okderyaplastik@gmail.com"), ("Регион", "Ашгабат")]
+        blocs = "".join(
+            '<div class="place-info"><div class="place-info_label"> %s: </div>'
+            '<div class="place-info_labeled"><b>%s</b></div></div>' % (k, v)
+            for k, v in champs)
+        entete = ('<h1 class="categoryHeader_borderwithbottom">%s</h1>' % header) if header else ""
+        return (self.HEAD % ("Kätip wezipesi | " + title_suffix) + entete + blocs +
+                '<div class="border-left-big1"><p>Iş tertibi.</p>'
+                '<p>Rez&yacute;ume ibermek &uuml;&ccedil;in: okderyaplastik@gmail.com, '
+                '+993 12 71 36 40</p></div>\n</div>' + self.FOOT)
+
+    def test_the_two_declarations_must_agree_and_both_are_asserted(self):
+        """Either declaration alone, or the two disagreeing, emits NOTHING."""
+        mod = self._mod()
+        url = "https://business.com.tm/ru/work/5622"
+        cas = (
+            ("the two agree", "Вакансии", "Вакансии", None),
+            ("an /advert/<id> announcement of the same host",
+             "Announcements", None, "<title>"),
+            ("a press article of the same host", "Business Turkmenistan", None, "<title>"),
+            ("the header says Вакансии and the title does not",
+             "Announcements", "Вакансии", "<title>"),
+            ("the title says Вакансии and the header says Объявления",
+             "Вакансии", "Объявления", "categoryHeader"),
+        )
+        for quoi, suffixe, entete, attendu in cas:
+            mod.get = lambda u, _b=self._notice(suffixe, entete): (200, _b)
+            if attendu is None:
+                out = mod.notice(url)
+                self.assertEqual(out["category"], "Вакансии", quoi)
+                self.assertEqual(out["id"], "5622", quoi)
+                continue
+            # **A CRASH IS A RED THAT DOES NOT SAY WHAT IS MISSING.** Removing
+            # either declaration lets `None.group(1)` raise, and an unexpected
+            # exception inside `assertRaises` is reported as an ERROR rather than
+            # as this claim failing — so anything that is not `SystemExit` is
+            # turned into a NAMED failure here instead of propagating.
+            try:
+                mod.notice(url)
+            except SystemExit as sortie:
+                self.assertEqual(
+                    sortie.code, mod.EXIT_REFUSED,
+                    "%s exited %r, not EXIT_REFUSED" % (quoi, sortie.code))
+                self.assertIn(attendu, "<title> categoryHeader", quoi)
+            except Exception as autre:
+                self.fail("%s raised %s instead of refusing: the floor did not "
+                          "REFUSE, it broke. A record is a vacancy because it "
+                          "passes a test, never because nothing stopped it."
+                          % (quoi, type(autre).__name__))
+            else:
+                self.fail("%s was RETAINED: the floor is POSITIVE and this record "
+                          "does not declare itself a vacancy at both places" % quoi)
+
+    def test_withheld_fields_is_derived_and_absent_when_nothing_was_there(self):
+        """It names the labels that WERE served, never a constant pair.
+
+        `Телефон:` is present on notice 5622 and ABSENT on notice 4888, both read in
+        full, so this varies on the real corpus rather than firing on everything.
+        """
+        mod = self._mod()
+        url = "https://business.com.tm/ru/work/5622"
+
+        mod.get = lambda u, _b=self._notice(phone=True): (200, _b)
+        avec = mod.notice(url)
+        self.assertEqual(avec["withheld_fields"], ["phone", "email"])
+
+        mod.get = lambda u, _b=self._notice(phone=False): (200, _b)
+        sans = mod.notice(url)
+        self.assertEqual(
+            sans["withheld_fields"], ["email"],
+            "the phone label was NOT served and `withheld_fields` still claims one: "
+            "declaring to have withheld what nobody deposited is a lie about our own "
+            "discretion, and it is indistinguishable from discretion in the output")
+
+        for r in (avec, sans):
+            self.assertNotIn("@", r["description"] or "")
+            self.assertNotIn("+993", r["description"] or "")
+            self.assertIn("[email withheld]", r["description"] or "")
+            # the host's own footer must not have travelled into the record
+            self.assertNotIn("business.com.tm</", json.dumps(r, ensure_ascii=False))
+            self.assertNotIn("press@", json.dumps(r, ensure_ascii=False))
+
+    def test_the_listing_carries_place_and_employer_and_the_teaser_is_bounded(self):
+        """The teaser stops at the block's own next element.
+
+        The FIRST run of this adapter emitted `... Ашгабат “Deryaplastik” kärhanasy
+        -->`: the region, the employer and a comment close glued onto the
+        description, because the marker had no bound. Only RUNNING it showed this,
+        and it is also how the listing's own region and employer were found — so
+        `--details` buys the full text and nothing else.
+        """
+        mod = self._mod()
+        rows, dropped = mod.listing(self.LISTING, "where")
+        self.assertEqual([r["id"] for r in rows], ["5622", "4125"])
+        self.assertEqual(dropped, [])
+        self.assertEqual(rows[0]["place"], "Ашгабат")
+        self.assertEqual(rows[0]["employer"], "“Deryaplastik” kärhanasy")
+        self.assertEqual(rows[0]["posted"], "2026-10-28")
+        self.assertEqual(rows[1]["posted"], "2025-10-31")
+        # the real id 4125, one of the 38, carries neither block
+        self.assertIsNone(rows[1]["place"])
+        self.assertIsNone(rows[1]["employer"])
+        for r in rows:
+            t = r["teaser"] or ""
+            self.assertNotIn("-->", t, "the comment close leaked into the teaser")
+            self.assertNotIn("Ашгабат", t, "the region leaked into the teaser")
+            self.assertNotIn("kärhanasy", t, "the employer leaked into the teaser")
+        # The board DOES take this branch -- 4 of its 1 408 teasers carry a contact --
+        # and the fixture makes it fire here too, on a shorter and faster specimen.
+        self.assertIn("[email withheld]", rows[0]["teaser"])
+        self.assertIn("[telephone withheld]", rows[0]["teaser"])
+        self.assertNotIn("@", rows[0]["teaser"])
+
+    def test_the_section_parameter_is_a_whitelist_of_one(self):
+        """A generic paginator enumerates whatever `path=` names, so the floor is POSITIVE.
+
+        These cases are LITERAL. On #671 a guard of this family came back GREEN under
+        mutation because it derived its cases from the constant under test; the
+        module's tuple is asserted separately below instead.
+        """
+        mod = self._mod()
+        refuses = (
+            "https://business.com.tm/ru/work/a/index?path=rabota%2Frezyume&page=1",
+            "https://business.com.tm/ru/work/a/index?path=rabota%2Fresume&page=1",
+            "https://business.com.tm/ru/work/a/index?path=soiskatel&page=1",
+            "https://business.com.tm/ru/work/a/index?path=rabota%2F%D1%80%D0%B5%D0%B7%D1%8E%D0%BC%D0%B5&page=1",
+            "https://business.com.tm/ru/work/a/index?path=post%2Fnews&page=1",
+            "https://business.com.tm/ru/work/a/index?path=advert%2Finformation&page=1",
+            "https://business.com.tm/ru/work/a/index?path=&page=1",
+        )
+        for u in refuses:
+            with self.assertRaises(SystemExit) as e:
+                mod.refuse_path(u)
+            self.assertEqual(e.exception.code, mod.EXIT_REFUSED, u)
+        for u in ("https://business.com.tm/ru/work/a/index?path=rabota%2Fvakansii&page=7",
+                  "https://business.com.tm/ru/work/a/index?path=rabota&page=7",
+                  "https://business.com.tm/ru/work/rabota/vakansii",
+                  "https://business.com.tm/ru/work/5622"):
+            mod.refuse_path(u)
+        # ASSERTED SEPARATELY: emptying this tuple must redden something of its own.
+        self.assertTrue(mod.CANDIDATE_SEGMENTS, "the CV segment list is empty")
+        self.assertIn("rezyume", mod.CANDIDATE_SEGMENTS)
+        self.assertEqual(mod.SECTION_PARAM, "rabota%2Fvakansii")
+        # And a notice path that is not `/ru/work/<id>` is refused by shape.
+        for u in ("https://business.com.tm/advert/1016",
+                  "https://business.com.tm/post/16534/x",
+                  "https://business.com.tm/ru/work/rabota/vakansii"):
+            try:
+                mod.notice(u)
+            except SystemExit as sortie:
+                self.assertEqual(sortie.code, mod.EXIT_REFUSED, u)
+            except Exception as autre:
+                self.fail("%s raised %s instead of refusing: the shape check is "
+                          "what stands between this adapter and the flat "
+                          "`/work/<id>` space" % (u, type(autre).__name__))
+            else:
+                self.fail("%s was taken as a notice" % u)
+
+    def test_no_digit_threshold_eats_a_wage_in_manat(self):
+        """The anchors are `+993`, the e-mail shape and the LABELS — never a digit count.
+
+        A 9-digit threshold carried from a Syrian board destroyed 113 of 115 salaries
+        on a Burmese one. Measured on this corpus before relying on the expression
+        `isgar.py` already carries for this country: across the 38 listed items and
+        the two notices read in full, the ONLY run of six or more digits that is not
+        a phone is `276758`, which is six.
+        """
+        mod = self._mod()
+        garde = "aýlyk 4500 manat, tejribe 3 ýyl, kod 276758"
+        self.assertEqual(mod.scrub(garde), garde, "a wage or a reference was scrubbed")
+        self.assertEqual(mod.scrub("ýazyň: a@b.tm"), "ýazyň: [email withheld]")
+        self.assertIn("[telephone withheld]", mod.scrub("jaň: +993 12 71 36 40"))
+        self.assertIn("[contact withheld]", mod.scrub("WhatsApp: +99312713640"))
+        self.assertIsNone(mod.scrub(""))
+        self.assertIsNone(mod.scrub(None))
+        # the absolute date the host prints, and the forms that are not one
+        self.assertEqual(mod.iso("28.10.2026"), "2026-10-28")
+        self.assertEqual(mod.iso("1.1.2026"), "2026-01-01")
+        for mauvais in ("", None, "28.10.26", "32.10.2026", "28.13.2026", "hier"):
+            self.assertIsNone(mod.iso(mauvais), repr(mauvais))
+
+
 class ACellIsAFunctionOfTheCardsContentAlone(unittest.TestCase):
     """**#1044 — one defect of the four reported was real, and the other three
     are retracted here, mine included.**
