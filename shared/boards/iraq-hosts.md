@@ -9,6 +9,7 @@
 <!-- hosts-source: all 19 named by `jobsiniraq.github.io`, a directory of job platforms in Iraq that names 103 distinct hosts; **no hostname was composed**, and the hosts DISCARDED here are recorded with the rest so this source's error rate is computable — see #162 · 2026-09-07 -->
 <!-- content: measured · 19 hosts guarded and 10 fetched; the only server-rendered board declares 1 advertisement through 7 of its own facet counts; 0 `JobPosting` across the 10 · 2026-09-07 -->
 <!-- witness: `works-jobsiq.com` states its own total through every facet of its listing — title, country, governorate, city, experience, contract type, industry, all reading `1` · 2026-09-07 -->
+<!-- refusal: 403 · three of the nineteen hosts — `iqjscout.com`, `eshjob.com`, `www.iraqhire.com` — answer HTTP 403 with 25 B and the SAME `md5 9ccabba20b9f`, twice each and STABLE. **A refusal body shared across unrelated hosts is the PROVIDER's and not the publishers' (borne 0 of §2 quater), so this names a transport refusal and never a verdict on the boards.** The other sixteen are not refused. *Migrated from the prose table below on 2026-10-31 because #1219 put a POSITIVE floor on `refusal_of()`: a measurement that lives only in prose is no longer read, and this one is real — the alternative was a page saying «mesuré sans refus» of a card that measured three.* · 2026-09-07 -->
 
 **Iraq — forty-five million people — was absent from the country queue on
 2026-09-05, invisible exactly as if it had a page.** Issue #161 measured five
