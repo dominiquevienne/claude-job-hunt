@@ -71,6 +71,7 @@ Run: `python3 -m unittest discover -s tests -v`
 """
 
 import argparse
+import contextlib
 import datetime
 import hashlib
 import io
@@ -28666,6 +28667,190 @@ class ARefusalIsAStatusTheCardDECLARESAndNotOneItsProseMENTIONS(unittest.TestCas
         self.assertGreater(len(silenced), 10,
                            "the floor silences nothing on the real corpus: it "
                            "is green on a fixture and dead where it matters")
+
+
+class TheMalawiFilterIsAConditionOfCorrectnessAndNotAnOptimisation(unittest.TestCase):
+    """#676, 2026-10-31 — `onlinejobmw.py`, and the whole adapter is the filter.
+
+    **One post type, FOUR terms, one of them jobs.** Measured on the host's own
+    taxonomy on 2026-10-31: `job_vacancies` 967 · `edication_trainings` 279 ·
+    `annoucements` 13 · `tender_consultancy` 13. *An unfiltered walk emits 305
+    records that are not advertisements, and the unfiltered page 1 was
+    school-admission copy.* **So there is no switch to turn the filter off, and
+    these guards exist to keep one from being added.**
+
+    **The id is resolved by SLUG.** It happens to be `1` here, which is exactly
+    the id a fresh WordPress hands to whatever was created first — so a
+    hardcoded 1 would silently mean something else the day a term is recreated.
+
+    **A 429 stops the walk and is never re-probed** (§2 quater). The host writes
+    no `Crawl-delay` and rate-limited the twelfth request in 4 min 51 s on
+    2026-10-30 — and again, in the field, on the second invocation of this very
+    adapter on 2026-10-31, where the branch below did exactly this.
+
+    *Nothing here touches the network: `fetch` is replaced and every URL the
+    tool would have sent is asserted.*"""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_onlinejobmw", os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "skills", "job-scan", "scripts", "onlinejobmw.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    TAX = [{"id": 1, "slug": "job_vacancies", "name": "Job Vacancies",
+            "count": 967},
+           {"id": 2, "slug": "edication_trainings",
+            "name": "Education &amp; Trainings", "count": 279},
+           {"id": 3, "slug": "annoucements", "name": "Annoucements",
+            "count": 13},
+           {"id": 4, "slug": "tender_consultancy",
+            "name": "Tender &amp; Consultancy", "count": 13}]
+
+    @staticmethod
+    def _rec(ident, terms=(1,), title="Operations Officer", extra=None):
+        r = {"id": ident, "date": "2026-10-29T12:53:26",
+             "modified": "2026-10-29T12:53:26", "slug": "x",
+             "link": f"https://onlinejobmw.com/vacancies/x-{ident}/",
+             "title": {"rendered": title}, "job-category": list(terms),
+             "status": "publish", "type": "vacancies"}
+        if extra:
+            r.update(extra)
+        return r
+
+    def _wire(self, mod, pages, tax=None):
+        """Replace `fetch` and record every URL. `pages` maps a page number to
+        a list of records, or to the integer status of a refusal."""
+        sent = []
+
+        def fake(url, first=False):
+            sent.append(url)
+            if "/job-category" in url:
+                return json.dumps(self.TAX if tax is None else tax), None
+            m = re.search(r"[?&]page=(\d+)", url)
+            page = int(m.group(1)) if m else 1
+            v = pages.get(page, [])
+            if isinstance(v, int):
+                return None, {"status": v, "error": f"HTTP {v}"}
+            return json.dumps(v), None
+
+        mod.fetch = fake
+        mod.PACE = 0.0
+        return sent
+
+    def _args(self, **kw):
+        kw.setdefault("pages", 1)
+        kw.setdefault("limit", 0)
+        return argparse.Namespace(**kw)
+
+    def test_every_collection_url_carries_the_filter_and_names_the_term_by_slug(self):
+        mod = self._mod()
+        sent = self._wire(mod, {1: [self._rec(1), self._rec(2)]})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(mod.cmd_list(self._args()), 0)
+        coll = [u for u in sent if "/vacancies?" in u]
+        self.assertTrue(coll, "no collection URL was sent at all")
+        for u in coll:
+            self.assertIn("job-category=1", u,
+                          "a collection URL without the filter would emit "
+                          "records that are not advertisements")
+        self.assertEqual(len(json.loads(
+            [l for l in out.getvalue().splitlines() if l][0])["kinds"]), 1)
+
+    def test_the_term_is_matched_on_its_slug_so_a_renumbered_taxonomy_follows(self):
+        """The SAME slug at a DIFFERENT id must move the filter with it — this
+        is what a hardcoded `1` would get wrong, and it would get it wrong
+        SILENTLY, emitting the records of whatever now holds id 1."""
+        mod = self._mod()
+        tax = [{"id": 7, "slug": "job_vacancies", "name": "Job Vacancies",
+                "count": 12},
+               {"id": 1, "slug": "tender_consultancy", "name": "T", "count": 9}]
+        sent = self._wire(mod, {1: [self._rec(1, terms=(7,))]}, tax=tax)
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_list(self._args())
+        coll = [u for u in sent if "/vacancies?" in u]
+        self.assertTrue(all("job-category=7" in u for u in coll), coll)
+        self.assertFalse(any("job-category=1&" in u for u in coll),
+                         "the filter followed the ID instead of the SLUG")
+
+    def test_a_taxonomy_without_the_jobs_term_refuses_to_walk_at_all(self):
+        """**The direction that must stay closed.** If the slug is gone, the
+        honest outcome is a REFUSAL, never an unfiltered walk: 305 of the 1 272
+        records on this host are not advertisements."""
+        mod = self._mod()
+        tax = [{"id": 2, "slug": "edication_trainings", "name": "E",
+                "count": 279}]
+        sent = self._wire(mod, {1: [self._rec(1, terms=(2,))]}, tax=tax)
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as cm:
+                mod.cmd_list(self._args())
+        self.assertEqual(cm.exception.code, mod.EXIT_BROKEN)
+        self.assertEqual([u for u in sent if "/vacancies?" in u], [],
+                         "a collection URL was sent with no filter to put in it")
+
+    def test_a_429_stops_the_walk_and_is_never_re_probed(self):
+        """The exit code is its OWN — a rate limit is not a verdict on the
+        board, and `EXIT_BROKEN` would read as one."""
+        mod = self._mod()
+        sent = self._wire(mod, {1: [self._rec(i) for i in range(1, 101)],
+                                2: 429, 3: [self._rec(500)]})
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(err):
+            code = mod.cmd_list(self._args(pages=3))
+        self.assertEqual(code, 0, "100 rows were read before the refusal")
+        self.assertIn("THE WALK STOPS HERE", err.getvalue())
+        pages = [u for u in sent if "/vacancies?" in u]
+        self.assertEqual(len(pages), 2,
+                         "page 3 was requested after a 429 — the walk was "
+                         "re-probed")
+
+    def test_a_429_on_the_only_page_is_paced_and_not_broken(self):
+        mod = self._mod()
+        self._wire(mod, {1: 429})
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(mod.cmd_list(self._args()), mod.EXIT_PACED)
+
+    def test_contacts_exposed_is_DERIVED_from_the_record_and_not_asserted(self):
+        """Measured 0 of 100 on 2026-10-31, the record carrying no `meta` and
+        the payload no address at all. **An empty withheld list is exactly what
+        a careless tool would produce**, so the day this host serves a field
+        holding an address the row must say so BY ITSELF."""
+        mod = self._mod()
+        plain = mod.row(self._rec(1), {1: {"name": "Job Vacancies"}})
+        self.assertFalse(plain["contacts_exposed"])
+        self.assertEqual(plain["withheld_fields"], [])
+        self.assertIn("title", plain["third_party_inspected"],
+                      "the inspected list must name what was looked at, or an "
+                      "empty withheld list says nothing")
+        loaded = mod.row(
+            self._rec(2, extra={"content": {"rendered": "write to hr@x.mw"}}),
+            {1: {"name": "Job Vacancies"}})
+        self.assertTrue(loaded["contacts_exposed"],
+                        "an address served in a field the host added later is "
+                        "not withheld — the statement is asserted, not derived")
+        self.assertIn("content", loaded["withheld_fields"])
+
+    def test_the_sum_of_the_term_counts_is_never_published_as_the_boards_size(self):
+        """967 + 279 + 13 + 13 = 1 272 double-counts any record carrying
+        several terms, and no total is stated anywhere on this host."""
+        mod = self._mod()
+        self._wire(mod, {1: [self._rec(1)]})
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(err):
+            mod.cmd_list(self._args())
+        s = err.getvalue()
+        self.assertIn("967", s, "the host's own figure must be reported")
+        self.assertNotIn("1272", s.replace(" ", "").replace(" ", ""))
+        self.assertIn("never this count", s,
+                      "our emission must not read as the board's size")
 
 
 class AByteOrderMarkBeforeTheFirstUserAgentDoesNotOrphanItsRules(unittest.TestCase):
