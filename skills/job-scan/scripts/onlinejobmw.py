@@ -37,8 +37,20 @@ on the 100 records of the filtered page 1 (HTTP 200, 124 123 B, md5
 `096dc56f303f`, 2026-10-31): the record carries `id`, `date`, `modified`,
 `slug`, `link`, `title`, `job-category` and `_links` — **and no `content`, no
 `excerpt` and no `meta` at all**. So the advertisement's body lives on its
-server-rendered page under `/vacancies/<slug>/`, and `ad` reads that page rather
-than pretending the API holds it.
+server-rendered page under `/vacancies/<slug>/`.
+
+**AND `ad` DOES NOT READ THAT PAGE — the sentence this replaces said it
+did, and it was false about this very file from the moment it was written
+(2026-10-31, #1222, found by the pilot reading the code rather than taking
+my word).** `cmd_ad` sends exactly ONE URL, `{API}/vacancies?slug=…`,
+prints the same `row()` as the list, and then NAMES where the text is.
+*The mechanism is worth more than the error: the measurement «the body
+lives on the page» was true, the consequence written into `row()`
+(`body_source: page`) was right, and the sentence then stated as a FACT
+what the finding implied the tool SHOULD do — an intention in the
+indicative, inside a docstring a reader takes for a description of the
+code.* **Whether `ad` should fetch that page is #1222, and it depends on a
+measurement nobody had taken: what an ad page actually carries.**
 
 **NO CONTACT IS EXPOSED ON THIS ROUTE, AND IT IS MEASURED RATHER THAN ASSUMED:**
 0 e-mail addresses in the whole 124 123-byte payload, and the record has no
