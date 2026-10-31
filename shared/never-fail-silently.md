@@ -644,6 +644,23 @@ three of the 87 taken at ranks 1, 20 and 60 — `academicwork`, `cvbankas`,
 `merorojgari` — all three of the shape `(<the host's own field> or "")[:10] or
 None`. *The date is the HOST's, truncated, never computed by us.*
 
+**The population, with its commands and its hour** — a count without its
+command does not get republished (§4), and Done-when 1 of #1226 asks for
+them by name. Read 2026-10-31T02:30:58Z on `954939cf`:
+
+```bash
+ls      skills/job-scan/scripts/*.py | wc -l   # 320  adapter scripts
+grep -l '"valid_through":' skills/job-scan/scripts/*.py | wc -l   # 87  EMIT the key
+grep -l  'valid_through'   skills/job-scan/scripts/*.py | wc -l   # 92  NAME it
+```
+
+*The gap between 92 and 87 is five scripts that mention the field without
+emitting it; it is reported as the gap and not ventilated, a decomposition
+whose classes can overlap being the thing §1 warns about.* **And the two
+counts disagree with the 90 a peer reported for «names it» — two motifs,
+two answers, and what is published here is the one whose command is
+written above.**
+
 ### The rule, and the repository had already written its reason four times
 
 **A row whose `valid_through` has passed is EMITTED, with the field, and is never
