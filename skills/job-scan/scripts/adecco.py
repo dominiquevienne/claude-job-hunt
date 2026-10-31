@@ -6,7 +6,9 @@ declares. Not the 20 000 its home page advertises: that number is marketing,
 this one is counted.
 
   GET /robots.txt                        → Sitemap: …/jobsindex.xml
-  GET /jobsindex.xml                     → 59 country sitemaps
+  GET /jobsindex.xml                     → 60 country sitemaps (2026-10-31; it
+                                         was 59 — a COUNT is a dated reading,
+                                         never a property of the site)
   GET /sitemap-jobs-france-fr.xml        → 13 293 ads + per-ad lastmod
   GET /fr-fr/offres-emploi/<slug>/<id>   → the ad, with a JSON-LD JobPosting
 
@@ -54,13 +56,32 @@ BOARDS = {
     "fr": {"file": "sitemap-jobs-france-fr.xml", "lang": "fr-FR,fr;q=0.9", "key": "adecco", "country": "FR", "name": "France"},
     "no": {"file": "sitemap-jobs-norway-nb.xml", "lang": "nb-NO,nb;q=0.9", "key": "adecco-no", "country": "NO", "name": "Norway"},
     "fi": {"file": "sitemap-jobs-finland-fi.xml", "lang": "fi-FI,fi;q=0.9", "key": "adecco-fi", "country": "FI", "name": "Finland"},
+    # Italy, 2026-10-31 (#1078). The file is **DECLARED** in `jobsindex.xml`,
+    # which lists 60 children — the card had it as guessed from the shape of
+    # the other three, and reading the index upgraded that. Note the index
+    # also carries `sitemap-jobs-switzerland-it.xml`: `it` here is the
+    # COUNTRY Italy, never the Italian-language Swiss front, and no card
+    # claims the latter.
+    "it": {"file": "sitemap-jobs-italy-it.xml", "lang": "it-IT,it;q=0.9", "key": "adecco-it", "country": "IT", "name": "Italy"},
 }
 BOARD = dict(BOARDS["fr"], code="fr")   # rewired by --host before any request
 SITEMAP = BASE + "/" + BOARD["file"]
 from _ua import UA
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 # French 06 12 34 56 78 / +33 …, Norwegian 991 29 992 / +47 …, Finnish 040 123 4567 / +358 …
-PHONE_RE = re.compile(r"(?<![\d+])(?:\+33[\s ]?\(?0?\)?[\s ]?\d(?:[\s .-]?\d{2}){4}|0\d(?:[\s .-]?\d{2}){4}|(?:\+47[\s ]?)?(?:\d{2}[\s ]?\d{2}[\s ]?\d{2}[\s ]?\d{2}|\d{3}[\s ]?\d{2}[\s ]?\d{3})|(?:\+358[\s ]?\(?0?\)?[\s ]?|0)\d{1,3}[\s -]?\d{2,4}[\s -]?\d{2,4}(?:[\s -]?\d{1,3})?)(?!\d)")
+# **Italian mobiles are matched only with a PREFIX or after a cue word, and
+# that is measured and not cautious.** A bare `3\d{2} \d{3} \d{3,4}` reads
+# exactly like a large amount written in threes: it destroyed `350 000 000`,
+# `320 500 000` and `380 000 000` in three of five money samples — a rule on
+# PROSE whose cost is to FABRICATE a detection, which is the one cost a
+# redaction rule may not have (a nine-digit rule once destroyed 113 of 115
+# salaries on another board). Both branches below leave all eight money and
+# real-prose samples intact and add NOTHING to the FR/NO/FI forms, measured
+# on 6 of 6. **DECLARED LIMIT: a bare `348 123 4567`, with neither prefix nor
+# cue, is NOT withheld** — the cost of this limit is to MISS, never to
+# destroy, and the Italian front published ZERO contact on three witnesses
+# (7 959 characters of prose), so it guards a day that has not come.
+PHONE_RE = re.compile(r"(?<![\d+])(?:\+33[\s ]?\(?0?\)?[\s ]?\d(?:[\s .-]?\d{2}){4}|0\d(?:[\s .-]?\d{2}){4}|(?:\+47[\s ]?)?(?:\d{2}[\s ]?\d{2}[\s ]?\d{2}[\s ]?\d{2}|\d{3}[\s ]?\d{2}[\s ]?\d{3})|(?:\+358[\s ]?\(?0?\)?[\s ]?|0)\d{1,3}[\s -]?\d{2,4}[\s -]?\d{2,4}(?:[\s -]?\d{1,3})?|(?:\+39|0039)[\s . -]?3\d{2}[\s . -]?\d{3}[\s . -]?\d{3,4}|(?:cell|cel|tel|telefono|cellulare|contattare|chiamare|numero|recapito)[^\d\n]{0,24}3\d{2}[\s . -]?\d{3}[\s . -]?\d{3,4})(?!\d)", re.I)
 
 
 def use_board(host):
@@ -387,13 +408,13 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     d = sub.add_parser("discover", help="ad URLs from the country's sitemap")
-    d.add_argument("--host", help="fr (default) · no · fi — the country's front, or its hostname")
+    d.add_argument("--host", help="fr (default) · no · fi · it — the country's front, or its hostname")
     d.add_argument("--since", help="keep lastmod >= this ISO date")
     d.add_argument("--limit", type=int)
     d.set_defaults(func=cmd_discover)
 
     s = sub.add_parser("search", help="read ads, optionally by department")
-    s.add_argument("--host", help="fr (default) · no · fi — the country's front, or its hostname")
+    s.add_argument("--host", help="fr (default) · no · fi · it — the country's front, or its hostname")
     s.add_argument("--region", help="department spelled out, e.g. Morbihan — "
                    "checked on the ad, so it costs one fetch per candidate")
     s.add_argument("--ville", help="substring of the URL slug, e.g. lorient. "

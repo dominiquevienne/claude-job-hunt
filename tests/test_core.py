@@ -7934,8 +7934,15 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
                     if m:
                         rows.setdefault(m.group(1), []).append(line)
         shipped = self._with_script(root)
+        # **the narrow motif was false by its MEMBERS, measured one act later.**
+        # The row for `adecco-it` denied its script as « no script for this
+        # country yet », which does NOT contain « no script yet ». EXTRACTED
+        # from the file rather than retyped, the denial has **41 distinct
+        # phrasings**; the wide form covers them all and reddens on none
+        # today, so it dominates strictly.
+        deny = re.compile(r"no script", re.I)
         denied = sorted(n for n in shipped for line in rows.get(n, [])
-                        if "no script yet" in line)
+                        if deny.search(line))
         self.assertEqual(
             denied, [],
             f"{len(denied)} row(s) say \u00ab no script yet \u00bb for a card that "
@@ -52564,6 +52571,262 @@ class TheServedBlockCarriesTheAdvertAndTheHydrationCopyIsNotCounted(
         self.assertIn("no shortfall is reported", texte,
                       "and the refusal must be SAID, or a reader cannot "
                       "tell it from an omission")
+
+
+class TheItalianFrontIsOneTableEntryAndItsRedactionMustNotEatAnAmount(
+        unittest.TestCase):
+    """**`adecco.py --host it`, 2026-10-31 (#1078).** Italy is the fourth
+    country file of the French platform, and the act was one `BOARDS` entry —
+    but three of the things the sibling cards predicted are REFUTED on the
+    object, and one of them decides a redaction rule.
+
+    **The file is DECLARED and was not guessed.** `jobsindex.xml` lists 60
+    children and `sitemap-jobs-italy-it.xml` is among them; the card had it as
+    inferred from the shape of the other three. *The index also carries
+    `sitemap-jobs-switzerland-it.xml`, so `it` is the COUNTRY and never the
+    Italian-language Swiss front — `ch` stays refused.*
+
+    **The identifier has THREE forms, not one**: of 7 719 declared adverts,
+    5 559 end in a UUID, 1 246 in `xxxx-xxxx` and 744 in `xxxx-xxx`, and the
+    Norwegian fixture carries a fourth (`ts-f7697975`). *A motif anchored on
+    the UUID would miss 2 190 of 7 719 — 28 %.* **The code is immune because it
+    keys on the URL's last segment from a SINGLE source**, and that matters:
+    `jobId` comes back UPPERCASE where the URL is lower, and **0 of the 7 719
+    sitemap segments carry a capital**, so a key taken from `jobId` and
+    compared with one taken from the URL would fail to join for the 72 % in
+    UUID form.
+
+    **The redaction is where the measurement changed the code.** An Italian
+    mobile survived the existing motif intact — `+39 335 9876543` and
+    `348 123 4567` both — so the front needed a branch. But a bare
+    `3\\d{2} \\d{3} \\d{3,4}` reads exactly like a large amount written in
+    threes: it destroyed `350 000 000`, `320 500 000` and `380 000 000` in
+    three of five money samples. *A rule on PROSE may cost a MISSED detection
+    and may never cost a FABRICATED one — a nine-digit rule once destroyed 113
+    of 115 salaries on another board.* **So the branch fires only with an
+    international prefix or after a cue word, and a bare mobile is a DECLARED
+    limit pinned below** — pinned so that nobody widens it without measuring
+    the amounts again.
+
+    **And the Les Jeudis mechanism does NOT transpose, which is measured and
+    not assumed**: there, `application/ld+json` occurs TWICE for one served
+    block and a page-wide motif doubles every advert. Here the string occurs
+    ONCE on all three witnesses.
+
+    **Salaries are REAL here** — 1 979.3 / 25 000 / 27 500 EUR with `unitText`
+    `mensile`, `giornaliero`, `Annui` — where FR/NO/FI carry zeros, and **zero
+    contact travels in the prose**: no address and no telephone across 7 959
+    characters of description on three witnesses.
+
+    *The structures are the real pages'; the contact-shaped values are
+    INVENTED, and this repository is public. Nothing here touches the network:
+    `get` is replaced throughout.*"""
+
+    # the three real identifier forms, one sitemap entry each
+    SLUGS = (
+        ("30-addett-produzione-settore-metalmeccanico-cremona-cremona", "1298-1421"),
+        ("impiegato-a-ufficio-acquisti-villongo-bergamo",
+         "23777333-e8b2-46bc-ae49-43471d816704"),
+        ("zobele-holding-s-p-a-trento-operaio-a-generico-produzione-trento-trento",
+         "1303-99"),
+    )
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_adecco_it", os.path.join(SCRIPTS, "adecco.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def sitemap(self):
+        return ('<?xml version="1.0"?><urlset>' + "".join(
+            '<url><lastmod>2026-10-30T18:09:37.528Z</lastmod><loc>'
+            'https://www.adecco.com/it-it/cerca-lavoro/%s/%s</loc></url>'
+            % (s, i) for s, i in self.SLUGS) + '</urlset>')
+
+    def ad(self, titre="Disegnatore Ufficio Tecnico", loc="TELGATE",
+           region="Bergamo", desc="Profilo tecnico.", jid="1298-1421",
+           cur="EUR ", minv="25000 ", maxv="27500 ", unit="Annui ",
+           sector="INDUSTRIA MANIFATTURIERA"):
+        ld = json.dumps({
+            "@context": "https://schema.org", "@type": "JobPosting",
+            "title": titre, "description": desc,
+            # the trailing spaces are the page's own, on all three witnesses
+            "employmentType": "Permanent  ", "industryTypeTitle": sector,
+            "isRemote": "false", "country": "IT", "jobId": jid,
+            "datePosted": "2026-10-26T16:47:09.862Z",
+            "validThrough": "2026-11-17T00:00:00Z ",
+            "hiringOrganization": {"@type": "Organization", "name": "adecco",
+                                   "logo": ""},
+            "jobLocation": {"@type": "Place", "address": {
+                "@type": "PostalAddress", "addressLocality": loc,
+                "addressRegion": region, "postalCode": "",
+                "addressCountry": "IT"}},
+            "baseSalary": {"@type": "MonetaryAmount", "currency": cur,
+                           "CurrencySymbol": "€",
+                           "value": {"@type": "QuantitativeValue",
+                                     "minValue": minv, "maxValue": maxv,
+                                     "unitText": unit}}}, ensure_ascii=False)
+        return ('<html><body><script type="application/ld+json">' + ld
+                + '</script><h1>' + titre + '</h1></body></html>')
+
+    def _run(self, mod, served, host="it", limit=None):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def get(url, retries=2, gone_is_ok=False):
+            asked.append(url)
+            return next(it)
+
+        mod.get = get
+        mod.time.sleep = lambda s: None
+        mod.use_board(host)
+        ns = argparse.Namespace(cmd="search", host=host, region=None,
+                                ville=None, all=True, since=None, pages=3,
+                                limit=limit, delay=0)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_search(ns)
+        return ([json.loads(l) for l in out.getvalue().splitlines()
+                 if l.startswith("{")], err.getvalue(), asked, out.getvalue())
+
+    def test_the_italian_front_is_its_country_file_and_the_key_joins(self):
+        mod = self._mod()
+        pages = [self.sitemap()] + [
+            self.ad(jid=i.upper()) for _, i in self.SLUGS]
+        rows, err, asked, raw = self._run(mod, pages, limit=3)
+        self.assertEqual(
+            asked[0], "https://www.adecco.com/sitemap-jobs-italy-it.xml")
+        self.assertIn("[adecco-it] 3 ads in the Italy sitemap", err)
+        self.assertEqual([r["ledger_id"] for r in rows],
+                         ["adecco-it:" + i for _, i in self.SLUGS])
+        self.assertEqual([r["source"] for r in rows], ["adecco-it"] * 3)
+        self.assertEqual([r["country"] for r in rows], ["IT"] * 3)
+        # **the key comes from the URL, so the UPPERCASE `jobId` cannot leak
+        # into it**: 0 of 7 719 real sitemap segments carry a capital.
+        #
+        # **The case contrast only EXISTS on the form that has letters**, and
+        # the first version of this guard asserted it on all three — it fired
+        # on `1298-1421`, whose `.upper()` is itself. The guard was right and
+        # the fixture proved nothing there, so the contrast is asserted where
+        # it is real and the JOIN is asserted everywhere.
+        avec_lettres = [r for r in rows
+                        if r["job_id"] != r["job_id"].lower()]
+        self.assertEqual(len(avec_lettres), 1,
+                         "exactly the UUID form carries letters")
+        for r in rows:
+            self.assertEqual(r["ledger_id"], r["ledger_id"].lower())
+            self.assertEqual(r["job_id"].lower(),
+                             r["ledger_id"].split(":", 1)[1],
+                             "the key JOINS whatever the case")
+        self.assertNotEqual(avec_lettres[0]["job_id"],
+                            avec_lettres[0]["ledger_id"].split(":", 1)[1],
+                            "and on that form the cases really differ, or "
+                            "this proves nothing")
+
+    def test_three_identifier_forms_give_three_distinct_keys(self):
+        """5 559 UUID + 1 246 `xxxx-xxxx` + 744 `xxxx-xxx` of 7 719: a motif
+        anchored on the UUID would miss 2 190 — 28 %."""
+        mod = self._mod()
+        formes = {re.sub(r"[0-9a-f]", "x", i) for _, i in self.SLUGS}
+        self.assertEqual(len(formes), 3,
+                         "the fixture must carry the THREE real forms")
+        rows, _, _, _ = self._run(
+            mod, [self.sitemap()] + [self.ad() for _ in self.SLUGS], limit=3)
+        self.assertEqual(len({r["ledger_id"] for r in rows}), 3)
+        self.assertFalse([r for r in rows if r["ledger_id"].endswith(":")],
+                         "no key may be empty")
+
+    def test_a_large_amount_is_never_withheld(self):
+        """The measured refusal: a bare `3\\d{2} \\d{3} \\d{3,4}` destroyed
+        three of five money samples. A redaction rule may cost a MISS; it may
+        never cost a FABRICATION."""
+        mod = self._mod()
+        for somme in ("chiffre d'affaires de 350 000 000 euros",
+                      "budget 320 500 000 CHF",
+                      "un portefeuille de 380 000 000",
+                      "fatturato 300 250 000 EUR",
+                      "RAL 28.000 euro",
+                      "investimento di 350 000 euro",
+                      "CAP 20121, dal 2026-11-03",
+                      "turni 6-14 e 14-22"):
+            self.assertEqual(mod.scrub(somme), somme, somme)
+
+    def test_an_italian_mobile_is_withheld_by_prefix_or_cue_only(self):
+        mod = self._mod()
+        for tel in ("+39 335 9876543", "0039 348 123 4567",
+                    "cell. 335 987 6543",
+                    "contattare Giulia al 348 123 4567",
+                    "tel 347 1234567",
+                    "recapito telefonico 333 444 5555"):
+            self.assertIn("[telephone withheld]", mod.scrub(tel), tel)
+        # **DECLARED LIMIT, pinned so nobody widens it without re-measuring
+        # the amounts**: a bare mobile, with neither prefix nor cue, is not
+        # withheld — and the samples above are why.
+        nu = "348 123 4567"
+        self.assertEqual(mod.scrub(nu), nu,
+                         "widening this to catch a bare mobile is what ate "
+                         "`350 000 000`; re-measure the money samples first")
+        self.assertIn("[e-mail withheld]",
+                      mod.scrub("scrivere a giulia.invented@esempio.test"))
+
+    def test_the_italian_branch_changes_nothing_for_the_other_fronts(self):
+        mod = self._mod()
+        for tel in ("06 12 34 56 78", "+33 6 12 34 56 78", "991 29 992",
+                    "+47 991 29 992", "040 123 4567", "+358 40 123 4567"):
+            self.assertIn("[telephone withheld]", mod.scrub(tel), tel)
+
+    def test_the_locale_spelling_is_refused_as_it_is_for_the_other_fronts(self):
+        """`it-it` is refused, and so are `nb-no` and `fi-fi`: the path segment
+        has never been an accepted `--host`. Pinned so that its refusal is not
+        read as an Italian omission and 'fixed' into an inconsistency."""
+        import contextlib
+        mod = self._mod()
+        for bon in ("it", "IT", "www.adecco.it", "adecco.it"):
+            self.assertEqual(mod.use_board(bon)["key"], "adecco-it", bon)
+        for mauvais in ("it-it", "nb-no", "fi-fi", "ch", "www.adecco.ch",
+                        "www.adecco.example"):
+            with contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as cm:
+                mod.use_board(mauvais)
+            self.assertEqual(cm.exception.code, 2, mauvais)
+
+    def test_the_italian_sentinels_and_a_real_salary(self):
+        """`"null"` → None and trailing spaces trimmed, but an Italian salary
+        is REAL where FR/NO/FI carry zeros — so `money()` must pass it."""
+        mod = self._mod()
+        self.assertIsNone(mod.clean("null"))
+        self.assertEqual(mod.clean("EUR "), "EUR")
+        self.assertEqual(mod.clean("Permanent  "), "Permanent")
+        self.assertEqual(mod.clean("2027-01-01T00:00:00Z "),
+                         "2027-01-01T00:00:00Z")
+        self.assertEqual(mod.money("1979.3"), "1979.3")
+        self.assertEqual(mod.money("25000 "), "25000")
+        self.assertIsNone(mod.money("0 "))
+        self.assertIsNone(mod.money("null "))
+        rows, _, _, _ = self._run(
+            mod, [self.sitemap()] + [self.ad(sector="null")] * 3, limit=1)
+        self.assertEqual((rows[0]["salary_min"], rows[0]["salary_max"]),
+                         ("25000", "27500"))
+        self.assertIsNone(rows[0]["sector"],
+                          "`null` is a SENTINEL and not a sector")
+        self.assertEqual(rows[0]["contract_text"], "Permanent")
+        self.assertEqual(rows[0]["company"], "adecco")
+        self.assertTrue(rows[0]["employer_is_the_agency"])
+
+    def test_the_hydration_double_does_not_exist_on_this_front(self):
+        """**Measured, not assumed.** On Les Jeudis the string
+        `application/ld+json` occurs TWICE for one served block, so a
+        page-wide motif doubles every advert. On all three Italian witnesses
+        it occurs ONCE — so that correction must NOT be imported here, and
+        this pins the difference rather than leaving it to be rediscovered."""
+        mod = self._mod()
+        page = self.ad()
+        self.assertEqual(page.count("application/ld+json"), 1)
+        self.assertEqual(len(mod.postings(page)), 1)
+        rows, _, _, _ = self._run(mod, [self.sitemap(), page], limit=1)
+        self.assertEqual(len(rows), 1, "one served block, one row")
 
 
 if __name__ == "__main__":
