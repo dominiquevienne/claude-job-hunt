@@ -51968,5 +51968,247 @@ class TheAdPageIsReadByLabelBoundaryAndTheRedactionIsRedoneOnWhatIsExtracted(
 
 
 
+
+class TheDom767AdIsReadInsideItsContainerAndAContactLabelIsWithheldAlways(
+        unittest.TestCase):
+    """#735, 2026-10-31 — `dom767.py`, and the container IS the mechanism.
+
+    **The ambiguity two labels showed was a property of the measurement's
+    scope and never of the board.** On the whole advertisement page `Posted:`
+    and `Industry:` occur FOUR times each, so neither can bound anything;
+    inside the advertisement's own container all SEVENTEEN labels occur exactly
+    once, the repetitions belonging to the sibling cards outside it. *The
+    container is not inferred: the markup names its end itself,
+    `<!-- .entry-header /-->`, and the region is 4 916 characters where the
+    page is 204 371.*
+
+    **Label and value share an element pair in TWO forms, and that was
+    measured rather than generalised**: `<h4>L</h4><p>V</p>` for fifteen of
+    them, `<strong>L</strong><span>V</span>` for the header row. *A single form
+    read off `Company:` would have rendered nothing on fourteen labels.*
+
+    **This board puts a contact INSIDE the advertisement's block** —
+    `Contact Person Name:` and `Contact Person Email:` — where its Malawi
+    sibling measured zero. *So «the block is clean» is a fact about a board and
+    never about a family, and a contact label is withheld by its LABEL before
+    any motif is consulted.*
+
+    **The element shapes and labels below are the page's own; the
+    contact-shaped values are INVENTED.** The real page carries six addresses
+    and this repository is public.
+
+    *Nothing here touches the network: `fetch` is replaced throughout.*"""
+
+    META = "<li class=\"meta-boxes\"><h4>%s</h4><p> %s </p></li>"
+    HEAD = "<li><strong>%s</strong><span>%s</span></li>"
+
+    CHAMPS = (("Qualification:", "Not Applicable"),
+              ("Company Type:", "Employer (Private Sector)"),
+              ("LOCATION:", "Roseau, Dominica"),
+              ("Job Role/Speciality:", "Cleaning Services"),
+              ("EXPERIENCE:", "1 Year"),
+              ("Career Level:", "Open to Anyone"),
+              ("Number of Vacancies:", "1"),
+              ("Monthly Salary Range:", "Unspecified"),
+              ("Age:", "Unspecified"),
+              ("Contract Length:", "Unspecified"),
+              ("Gender:", "Gender Unspecified"),
+              ("Contact Person Name:", "Unspecified"),
+              ("Contact Person Email:", "desk@example.invalid"))
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_dom767", os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "skills", "job-scan", "scripts", "dom767.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def page(self, deadline="30<sup>th</sup> OCT, 2026", org="Fort Young Hotel",
+             voisin=True, conteneur=True, double=None):
+        inner = [self.HEAD % ("Posted:", " 20 Hours ago "),
+                 self.HEAD % ("Company:", org),
+                 self.HEAD % ("Industry:", "Hospitality &amp; Tourism")]
+        for lab, val in self.CHAMPS:
+            inner.append(self.META % (lab, val))
+            if lab == "Career Level:":
+                inner.append(self.META % ("DEADLINE:", deadline))
+        if double:
+            inner.append(self.META % (double, "un second"))
+        bloc = ("<div class=\"entry-header\"><h1>Houseman</h1><ul>%s</ul>"
+                "</div> <!-- .entry-header /-->" % "".join(inner))
+        # the sibling cards OUTSIDE the container, which is what makes two
+        # labels occur four times on the page and once inside it
+        frere = ("<div class=\"related\">%s%s</div>"
+                 % (self.HEAD % ("Posted:", "3 Days ago"),
+                    self.HEAD % ("Industry:", "Construction"))) * 3
+        return ("<html><body><title>Houseman &#8211; DOM767</title>%s%s</body>"
+                "</html>" % (bloc if conteneur else "", frere if voisin else ""))
+
+    def _row(self, mod, body):
+        sent = []
+
+        def fetch(url):
+            sent.append(url)
+            return body, None
+
+        mod.fetch = fetch
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = mod.cmd_ad(argparse.Namespace(
+                url="https://www.dom767.com/job/houseman-fort-young-hotel/"))
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            sent, ["https://www.dom767.com/job/houseman-fort-young-hotel/"])
+        return json.loads(out.getvalue())
+
+    def test_the_container_makes_every_label_unique_where_the_page_does_not(self):
+        mod = self._mod()
+        body = self.page()
+        self.assertEqual(len(re.findall("Posted:", body)), 4,
+                         "the fixture must reproduce the page's repetition, "
+                         "or this test proves nothing")
+        got, ambiguous, absent, unpaired = mod.pairs_of(body)
+        self.assertEqual((ambiguous, absent, unpaired), ([], [], []))
+        self.assertEqual(got["Posted:"], "20 Hours ago")
+        self.assertEqual(got["Industry:"], "Hospitality & Tourism")
+        self.assertEqual(len(got), 17)
+
+    def test_a_contact_label_is_withheld_whatever_it_holds(self):
+        """**The motif alone would have published one of them**: `Contact
+        Person Name:` holds «Unspecified», which no address or digit motif
+        matches. It is withheld by its LABEL, before any motif is consulted."""
+        mod = self._mod()
+        row = self._row(mod, self.page())
+        self.assertEqual(row["page_withheld"],
+                         ["Contact Person Email", "Contact Person Name"])
+        self.assertFalse(mod.ADDRESS.search("Unspecified"))
+        self.assertFalse(mod.PHONE.search("Unspecified"))
+        self.assertTrue(row["contacts_exposed"])
+        blob = json.dumps(row, ensure_ascii=False)
+        self.assertNotIn("example.invalid", blob,
+                         "no contact VALUE may reach the row")
+
+    def test_age_and_gender_are_read_and_never_emitted(self):
+        """#183: we keep serving the advertisement and we do not propagate the
+        criterion. They are NAMED so the silence is declared rather than
+        looking like a board that does not publish them."""
+        mod = self._mod()
+        row = self._row(mod, self.page())
+        self.assertEqual(row["page_dropped_criteria"], ["Age", "Gender"])
+        for k in row:
+            self.assertNotIn(k, ("age", "gender"))
+        self.assertIn("Age", row["page_inspected"])
+
+    def test_the_deadline_is_the_hosts_date_reformatted_and_never_computed(self):
+        mod = self._mod()
+        row = self._row(mod, self.page())
+        self.assertEqual(row["valid_through"], "2026-10-30")
+        self.assertIsNone(mod.iso_deadline("bientot"))
+
+    def test_an_unreadable_deadline_is_named_and_expired_is_not_false(self):
+        mod = self._mod()
+        row = self._row(mod, self.page(deadline="when we find someone"))
+        self.assertIsNone(row["valid_through"])
+        self.assertEqual(row["page_unparsed"], ["DEADLINE"])
+        self.assertIsNone(row["expired"],
+                          "with no readable deadline `expired` is UNKNOWN; "
+                          "False would assert the advertisement is open")
+
+    def test_an_expired_advert_is_emitted_with_its_date_and_never_dropped(self):
+        """Both branches DERIVED from today: a dated literal would redden on
+        its own one day, and a guard that reddens by the calendar gets
+        switched off."""
+        mod = self._mod()
+        today = datetime.datetime.now(
+            datetime.timezone.utc).strftime("%Y-%m-%d")
+        year = int(today[:4])
+        for human, iso, expired in (
+                ("1<sup>st</sup> JAN, %d" % (year - 1), "%d-01-01" % (year - 1), True),
+                ("1<sup>st</sup> JAN, %d" % (year + 2), "%d-01-01" % (year + 2), False)):
+            row = self._row(mod, self.page(deadline=human))
+            self.assertEqual(row["valid_through"], iso)
+            self.assertEqual(row["expired"], expired)
+            self.assertEqual(row["expired_against"], today)
+
+    def test_a_label_duplicated_inside_the_container_takes_its_field_out(self):
+        mod = self._mod()
+        got, ambiguous, absent, unpaired = mod.pairs_of(
+            self.page(double="LOCATION:"))
+        self.assertEqual(ambiguous, ["LOCATION x2"])
+        self.assertNotIn("LOCATION:", got)
+        self.assertEqual(absent, [],
+                         "a duplicated label is named ONCE, in `ambiguous`; "
+                         "`absent` is for labels the container does not carry")
+        self.assertEqual(got["Career Level:"], "Open to Anyone",
+                         "and it must not take its neighbours with it")
+
+    def test_a_label_the_container_does_not_carry_is_named_absent(self):
+        """The other branch, and it is the one a page redesign would take: a
+        label that simply stops being published must be NAMED, not become a
+        null that reads as «this board does not state it»."""
+        mod = self._mod()
+        body = self.page().replace("<h4>LOCATION:</h4>", "<h4>WHERE:</h4>", 1)
+        got, ambiguous, absent, unpaired = mod.pairs_of(body)
+        self.assertEqual((ambiguous, unpaired), ([], []))
+        self.assertEqual(absent, ["LOCATION:"])
+        self.assertNotIn("LOCATION:", got)
+
+    def test_a_missing_container_claims_nothing_about_the_advertisement(self):
+        mod = self._mod()
+        mod.fetch = lambda url: (self.page(conteneur=False), None)
+        with self.assertRaises(SystemExit) as e:
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                mod.cmd_ad(argparse.Namespace(
+                    url="https://www.dom767.com/job/x/"))
+        self.assertEqual(e.exception.code, mod.EXIT_BROKEN)
+        self.assertIn("was NOT read", err.getvalue())
+
+    def test_the_list_counts_rows_in_their_container_not_links_on_the_page(self):
+        """Each row is linked TWICE — its title and its «View Details» — so a
+        page-wide motif for `/job/<slug>/` counts links and not
+        advertisements."""
+        mod = self._mod()
+        ads = ["https://www.dom767.com/job/a-%d/" % i for i in range(5)]
+        body = ('<script>var pager = {"pager":{"page":1,"per_page":5,'
+                '"total_rows":2468,"total_rows_unfiltered":2468,'
+                '"total_pages":494}}</script>'
+                + "".join('<h3><a href="%s">t</a></h3>'
+                          '<a class="job-single-view" href="%s">View Details</a>'
+                          % (u, u) for u in ads))
+        # **Found by MUTATION: without the line below this test was INERT.**
+        # Each row being linked twice is deduplicated by `cmd_list`, so a
+        # page-wide motif emitted the same five and the anchor's role was
+        # invisible. What the anchor actually buys is a `/job/` link OUTSIDE
+        # the pager — a «related jobs» block — and the test must carry one.
+        # *DECLARED: the real page carries none today, so on the object this
+        # anchor has never fired; it is a guard against a block the board
+        # does not currently render.*
+        body += ('<div class="related"><a href="https://www.dom767.com/'
+                 'job/elsewhere/">a sixth, OUTSIDE the pager</a></div>')
+        self.assertEqual(len(re.findall(r'/job/[a-z-]+\d*/', body)), 11,
+                         "the fixture must link each row twice AND carry one "
+                         "link outside the pager, or the trap this test names "
+                         "is not reproduced")
+        mod.fetch = lambda url: (body, None)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = mod.cmd_list(argparse.Namespace())
+        self.assertEqual(code, 0)
+        rows = [json.loads(l) for l in out.getvalue().strip().split("\n")]
+        self.assertEqual(len(rows), 5)
+        self.assertNotIn("https://www.dom767.com/job/elsewhere/",
+                         [r["url"] for r in rows],
+                         "a link outside the pager is not one of its rows")
+        self.assertEqual(mod.declared_pager(body)["total_rows"], 2468)
+        self.assertIn("UNFILTERED", err.getvalue(),
+                      "the declared total must be published as unfiltered or "
+                      "not at all: the page carries a «Hide Jobs Not In "
+                      "Dominica» facet over locations")
+        self.assertIn("capped", err.getvalue(),
+                      "without that word a capped read looks like a smaller "
+                      "board")
 if __name__ == "__main__":
     unittest.main(verbosity=2)
