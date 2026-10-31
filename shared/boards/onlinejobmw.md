@@ -55,9 +55,19 @@ GET https://onlinejobmw.com/job-category/job_vacancies/   200 ×2 — see the co
 it keeps is this card's own H1 — so the gloss a country page would print is «refus daté»
 on 2026-09-17.** *This board refused nothing: it answered 200 on every path measured, and
 the 429 is the trace of OUR cadence on 2026-10-30.* Measured by calling the function:
-**15 of the 555 cards are `indetermine` through `refusal_of`, 13 of them on a 403 and
-2 on a 429 — and one of those two is this card**, so the population of this mis-reading
-is one specimen and a specimen is DATED, never a rate. Nothing was changed in the
+**22 of the 555 cards are `indetermine` through `refusal_of`, 19 of them on a 403
+and 3 on a 429 — and one of those three is this card.** *CORRECTION OF 2026-10-31,
+AND THE LINE THIS REPLACES SAID «15 … 13 on a 403 and 2 on a 429», WHICH WAS FALSE
+BY ITS MEMBERS IN BOTH DIRECTIONS: it omitted `108-jobs`, whose retained line IS a
+declared `content:` field reporting a real «Vercel Security Checkpoint» and which is
+therefore classed RIGHTLY. The count was composed instead of being derived, which is
+the fault this card documents, committed inside its own diagnosis.* Measured twice
+independently — by the pilot on #1219 and by the coding session before writing this —
+and concordant to the name. **AND THE DEFECT IS REPAIRED, 2026-10-31 (#1219): the
+floor on `refusal_of()` is POSITIVE — only a DECLARED field is read — so the lines of
+this very paragraph can carry a status without planting a refusal, which is the
+property that was missing.** *Measured on the corpus: 103 cards lose the gloss, 5
+move class, and across the 185 country pages 53 change while NOT ONE RATIO MOVES.* Nothing was changed in the
 tooling on that warrant: the exemption that would fit is a POSITIVE one on a declared
 field, the shape `ROBOTS_WITNESS` already has, and it is not for the card that benefits
 from it to install it. **Neither ratio moves** — `faisable = total - écartés -

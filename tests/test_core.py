@@ -8467,12 +8467,24 @@ class TheRobotsVerdictIsADeclaredDatedWitnessWhoseAbsenceSaysNotMeasured(
             f"— an absence is being read as something other than «not "
             f"measured»")
 
-    def test_a_refusal_written_in_prose_still_fires(self):
-        """**The contre-essai**, and it is what separates a FIELD exemption
-        from desensitising `refusal_of()` altogether: the exemption is anchored
-        on the declared field, so a 403 recorded anywhere else in a card is
-        still a refusal. Without this, the guard above could be satisfied by
-        making nothing a refusal at all."""
+    def test_a_refusal_in_a_declared_field_fires_and_one_in_prose_does_not(self):
+        """**The contre-essai, REVERSED ON ITS SPECIMEN AND NOT ON ITS ROLE —
+        #1219, 2026-10-31.**
+
+        It used to assert that a 403 written in PROSE still made a card
+        `indetermine`, which was right while the only floor was #1142's
+        negative exemption: a FIELD exemption had to be told apart from
+        desensitising `refusal_of()` altogether. #1219 puts a POSITIVE floor —
+        only a DECLARED field is read — so that assertion is now exactly
+        backwards, and it reddened on this change, which is the dispositif
+        working.
+
+        **The ROLE survives untouched and is what this still measures:** the
+        floor must not desensitise the reader. So a refusal DECLARED in a field
+        fires, prose does NOT, and the `witness: robots-verdict` field stays
+        the one declared field that is exempt. *Without the first assertion,
+        the guard above could be satisfied by making nothing a refusal at
+        all.*"""
         mod = self._tool()
         faisable = [(n, t) for n, t in self._cards()
                     if self._class_of(mod, n, t) == "faisable"]
@@ -8483,9 +8495,17 @@ class TheRobotsVerdictIsADeclaredDatedWitnessWhoseAbsenceSaysNotMeasured(
         prose = ("\nOn 2026-10-27 the host answered HTTP 403 to the listing, "
                  "read by fetch-body.py.\n")
         self.assertEqual(
-            self._class_of(mod, n, t + prose), "indetermine",
-            "a refusal written in prose no longer fires: the exemption has "
-            "stopped being about the declared field")
+            self._class_of(mod, n, t + prose), "faisable",
+            "a status MENTIONED in prose is being read as a refusal of the "
+            "board — #1219's floor is not holding")
+        declared = ("<!-- refusal: 403 · the listing answers HTTP 403 to the "
+                    "declared client, read by fetch-body.py · 2026-10-27 -->\n")
+        t2 = t.replace("<!-- countries:", declared + "<!-- countries:", 1)
+        self.assertIn("<!-- refusal:", t2, "the fixture did not receive the field")
+        self.assertEqual(
+            self._class_of(mod, n, t2), "indetermine",
+            "a refusal DECLARED in a field no longer fires: the floor has "
+            "desensitised the reader instead of narrowing it")
 
     def test_a_measured_card_still_names_a_witness_that_is_not_the_verdict(
             self):
@@ -16507,9 +16527,18 @@ class ACountryPageIsGeneratedFromTheCardsAndNamesItsDenominators(unittest.TestCa
         card("gamma", "# G\n\n<!-- hosts: g.example -->\n<!-- script: none -->\n"
                       "<!-- countries: XX -->\n"
                       "The host refuses our client. No date was recorded.\n")
+        # #1219, 2026-10-31: `delta`'s refusal moved from its PROSE into a
+        # DECLARED field. The floor on `refusal_of()` is positive, so the prose
+        # line below is now INERT — it is kept on purpose, so this fixture also
+        # holds a status that must NOT be read — and the declared field is what
+        # keeps the INDÉTERMINÉS branch EXERCISED. *Every assertion of the test
+        # below is unchanged, which is the sign the fixture was repaired and the
+        # bench not disguised.*
         card("delta", "# D\n\n<!-- verified: 2026-09-08 -->\n<!-- hosts: d.example -->\n"
                       "<!-- script: none -->\n<!-- countries: XX -->\n"
                       "<!-- content: measured · 300 ads · 2026-09-08 -->\n"
+                      "<!-- refusal: 403 · GET / answers HTTP 403, 25 bytes, by "
+                      "fetch-body.py · 2026-09-08 -->\n"
                       "GET / -> HTTP 403, 25 bytes, fetch-body.py, 2026-09-08\n")
         card("world", "# W\n\n<!-- hosts: w.example -->\n<!-- script: world.py -->\n"
                       "<!-- countries: * -->\n")
@@ -28464,6 +28493,179 @@ class ASizeWhoseThousandsGroupIsAStatusCodeIsNotARefusal(unittest.TestCase):
         r = mod.refusal_of(by["refused"])
         self.assertEqual((r["status"], r["date"]), ("429", "2026-09-18"))
 
+
+
+class ARefusalIsAStatusTheCardDECLARESAndNotOneItsProseMENTIONS(unittest.TestCase):
+    """#1219, 2026-10-31 — the floor on `refusal_of()` is POSITIVE: only a
+    DECLARED FIELD is read.
+
+    **The specimen is a page that said the opposite of its own card.**
+    `onlinejobmw`'s H1 carries «… 429 — remeasured 2026-10-30; no adapter yet
+    …», so the Malawi page's access cell published «refuse au client HTTP —
+    429» about a host answering 200 with 415 037 B — and the 429 was the trace
+    of OUR OWN cadence, twelve requests in 4 min 51 s against a host that
+    writes no `Crawl-delay`. *A page announcing that a host shut the door looks
+    like prudence, and nobody audits a prudence.*
+
+    **Measured by CALLING the code on the 555 cards, twice and independently
+    (the pilot, then this session, concordant to the name):** 164 cards carried
+    a refusal (403: 149 · 429: 14 · 451: 1); of the 32 that `classify()`
+    renders `indetermine`, 22 were so by a refusal — 10 from a declared field,
+    8 from prose, 4 from an H1 title. Three did not mention a measurement of a
+    host at all: a CITATION of rule #283 (`lanbide`), a COUNTERFACTUAL
+    (`servicios-regionales-es`), a doctrinal DISTINCTION (`feinaactiva`).
+
+    **What the floor costs, generated and not predicted:** 103 cards lose the
+    gloss, 5 move class — all `indetermine` to `faisable`, all five correct —
+    and across the 185 country pages **53 change and NOT ONE RATIO MOVES**,
+    indeterminates counting inside `faisable` by #404's own arithmetic. The one
+    real casualty was `iraq-hosts`, whose measured «403 25 o md5 9ccabba20b9f
+    x2 STABLE» lived in a prose table; it was MIGRATED into a declared
+    `refusal:` field rather than exempted, because a finer motif on prose would
+    aim better at exactly what must not be taken.
+
+    **THE GUARD ASSERTS THE PROPERTY AND NEVER THE SPECIMEN.** Naming
+    `onlinejobmw` and `malawijob` — #1219's «Done when» 3 — would still pass
+    the day either card is reworded, and an assertion on a dated literal is a
+    time bomb (§4 bis). The invariant is corpus-wide: *every* refusal returned
+    comes from a declared field. A positive contingent keeps it from being
+    vacuous, and a second one measures that the floor is LOAD-BEARING on the
+    real corpus rather than green on a fixture — the fifth species of §4 ter,
+    a branch alive under mutation and dead on the corpus."""
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _boards(self):
+        return os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "shared", "boards")
+
+    @staticmethod
+    def _whole_line(card, stored):
+        """`refusal_of` stores `line[:160]` for DISPLAY — #1219 measured that
+        truncation hiding the very date its verdict rendered — so the form is
+        read on the card's own bytes and never on the stored field."""
+        for line in card["text"].splitlines():
+            if line.strip()[:160] == stored:
+                return line
+        return stored
+
+    def test_prose_and_an_h1_title_are_not_read_and_a_declared_field_is(self):
+        import tempfile
+        mod = self._tool()
+        d = tempfile.mkdtemp()
+        head = ("<!-- verified: 2026-10-31 -->\n<!-- script: none -->\n"
+                "<!-- countries: XX -->\n")
+        cases = {
+            "titre": "# B — the host answers 200 and a 429 was our own cadence,"
+                     " remeasured 2026-10-31\n\n" + head
+                     + "<!-- content: measured · the root answers 200 ·"
+                       " 2026-10-31 -->\n",
+            "prose": "# B\n\n" + head
+                     + "<!-- content: measured · the root answers 200 ·"
+                       " 2026-10-31 -->\n\nIt answered 403 on 2026-10-31,"
+                       " measured by fetch-body.py.\n",
+            "declare": "# B\n\n" + head
+                       + "<!-- content: measured · `/x` answers HTTP 403 to the"
+                         " declared client, 25 B, by fetch-body.py ·"
+                         " 2026-10-31 -->\n",
+        }
+        for name, body in cases.items():
+            with open(os.path.join(d, name + ".md"), "w", encoding="utf-8") as fh:
+                fh.write(body)
+        by = {c["name"]: c for c in mod.read_cards(d)}
+        self.assertIsNone(mod.refusal_of(by["titre"]),
+                          "a status in an H1 title is not a refusal of the board")
+        self.assertIsNone(mod.refusal_of(by["prose"]),
+                          "a status mentioned in prose is not a declared refusal")
+        r = mod.refusal_of(by["declare"])
+        self.assertIsNotNone(r, "a DECLARED field carrying a status must be read")
+        self.assertEqual((r["status"], r["date"], r["tool"]),
+                         ("403", "2026-10-31", "fetch-body.py"))
+        self.assertEqual(mod.classify(by["titre"])[0], "faisable")
+        self.assertEqual(mod.classify(by["prose"])[0], "faisable")
+        self.assertEqual(mod.classify(by["declare"])[0], "indetermine")
+
+    def test_the_field_name_motif_is_derived_from_the_corpus_not_composed(self):
+        """**The first motif was `[a-z_]+` and it was false BY ITS MEMBERS.**
+        26 distinct field names live in the cards, five hyphenated, four DATED
+        (`content-2026-09-12`, `route-2026-09-19`…) and one that IS a date
+        (`2026-09-14`). `labour-gov-gy` declares `<!-- content-2026-09-12: …`
+        and silently lost a legitimate gloss; no rereading showed it — only the
+        before/after on the 555 did. So the motif is checked against the names
+        the corpus actually carries, DERIVED and never retyped."""
+        import glob
+        mod = self._tool()
+        names = set()
+        for path in glob.glob(os.path.join(self._boards(), "*.md")):
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    m = re.match(r"<!--\s*([^:\s]+):", line.lstrip())
+                    if m:
+                        names.add(m.group(1))
+        self.assertGreater(len(names), 20,
+                           "the corpus must carry the field names this asserts")
+        missed = sorted(n for n in names
+                        if not mod.DECLARED_FIELD.match("<!-- " + n + ": x -->"))
+        self.assertEqual(missed, [], "field names the floor cannot see")
+        self.assertTrue([n for n in names if "-" in n], "no hyphenated name")
+        self.assertTrue([n for n in names if any(c.isdigit() for c in n)],
+                        "no dated field name")
+
+    def test_the_robots_verdict_field_is_declared_and_stays_exempt(self):
+        """#1142's exemption is NOT subsumed by the floor: a
+        `witness: robots-verdict` line IS a declared field, and it names the
+        status it read from the RULES file and not from the board."""
+        import tempfile
+        mod = self._tool()
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "v.md"), "w", encoding="utf-8") as fh:
+            fh.write("# B\n\n<!-- verified: 2026-10-31 -->\n"
+                     "<!-- script: none -->\n<!-- countries: XX -->\n"
+                     "<!-- witness: robots-verdict · state refused · certain"
+                     " False · https://x/robots.txt · 403, 1234 B ·"
+                     " 2026-10-31 -->\n"
+                     "<!-- content: measured · the root answers 200 ·"
+                     " 2026-10-31 -->\n")
+        by = {c["name"]: c for c in mod.read_cards(d)}
+        self.assertIsNone(mod.refusal_of(by["v"]),
+                          "a robots verdict is not a refusal of the board")
+
+    def test_on_the_real_corpus_every_refusal_comes_from_a_declared_field(self):
+        """The invariant, with TWO positive contingents — one so the guard is
+        not vacuous, one so it is load-bearing."""
+        mod = self._tool()
+        cards = mod.read_cards(self._boards())
+        self.assertGreater(len(cards), 400, "the corpus must be the real one")
+        refused = [(c, mod.refusal_of(c)) for c in cards]
+        refused = [(c, r) for c, r in refused if r]
+        self.assertGreater(len(refused), 20,
+                           "contingent: cards DO declare refusals, so an empty "
+                           "result would mean the reader stopped reading")
+        bad = [c["name"] for c, r in refused
+               if not mod.DECLARED_FIELD.match(
+                   self._whole_line(c, r["line"]).lstrip())]
+        self.assertEqual(bad, [],
+                         "a refusal read from a line the card does not declare")
+        silenced = []
+        for c in cards:
+            if mod.refusal_of(c):
+                continue
+            for line in c["text"].splitlines():
+                t = line.lstrip()
+                if mod.DECLARED_FIELD.match(t) or mod.ROBOTS_WITNESS.match(t):
+                    continue
+                if mod.REFUSAL.search(line) and not (
+                        "robots.txt" in line and "200" in line):
+                    silenced.append(c["name"])
+                    break
+        self.assertGreater(len(silenced), 10,
+                           "the floor silences nothing on the real corpus: it "
+                           "is green on a fixture and dead where it matters")
 
 
 class AByteOrderMarkBeforeTheFirstUserAgentDoesNotOrphanItsRules(unittest.TestCase):

@@ -109,6 +109,52 @@ TOOL = re.compile(r"(fetch-body\.py|_robots\.allowed|curl|browser|navigateur|a r
 # while naming a count — a motif on the bare word would swallow all seven.
 ROBOTS_WITNESS = re.compile(r"^<!--\s*witness:\s*robots-verdict\b")
 
+# **AND THE FLOOR IS POSITIVE: `refusal_of()` READS ONLY A DECLARED FIELD —
+# #1219, 2026-10-31.** The clause above exempts ONE declared field; it left
+# every other line of a card readable, so a status MENTIONED anywhere became a
+# refusal of the board. Measured by CALLING `refusal_of()` on the 555 cards,
+# twice and independently (the pilot, then the coding session, concordant):
+# 164 cards carry a refusal (403: 149 · 429: 14 · 451: 1), and of the 32 that
+# `classify()` renders `indetermine`, 22 are so by a refusal — 10 from a
+# declared field, 8 from prose, 4 from an H1 title.
+#
+# **The specimen is a card that says the opposite of what the page published.**
+# `onlinejobmw`'s H1 reads «… 429 — remeasured 2026-10-30; no adapter yet …»,
+# so the page's access cell said «refusé au client HTTP — 429» about a host
+# answering 200 with 415 037 B, the 429 being the trace of OUR OWN cadence.
+# Three specimens do not even mention a measurement of a host: `lanbide`
+# retains a CITATION of rule #283, `servicios-regionales-es` a COUNTERFACTUAL
+# («where a timeout or a 403 would have been»), `feinaactiva` a doctrinal
+# DISTINCTION.
+#
+# **What the floor keeps, measured and not predicted:** of the 12 whose line is
+# not a declared field, `malawijob`, `jobsbrunei` and `jobsintimorleste` keep a
+# refusal — each also declares a `content:` field reporting its real Cloudflare
+# 403 — so this floor retires `onlinejobmw`'s gloss AND leaves `malawijob`'s
+# standing, which is #1219's «Done when» 1 and 3 together. **What it loses:**
+# nine cards, of which TWO carry a real measurement of a host in prose —
+# `iraq-hosts` (`iqjscout.com 403 25 o md5 9ccabba20b9f x2, STABLE`) and
+# `indeed` («it answered 403 on 2026-09-02») — one quotes a third party's list
+# (`maliemploi`, «in the #222 candidate list as «403 Apache»») and six measure
+# no host at all. *A measurement that matters migrates into a declared field;
+# that is a card's edit, not this function's business.*
+#
+# **Direction, which is why a finer motif is refused:** the defect
+# OVER-declares a refusal, and a page announcing that a host shut the door
+# looks like prudence — which nobody audits. A finer motif would aim BETTER at
+# exactly what must not be taken; the fix is the EXTENSION of an exemption
+# already written, which is the form #1142 gave it and the form the comment
+# above already prescribes.
+# The field NAME is DERIVED from the corpus and never composed: 25 distinct
+# names, of which five are hyphenated (`host-forms-basis`, `hosts-source`,
+# `same-postings`, `robots-note`, `route-http`), four are DATED
+# (`content-2026-09-12`, `route-2026-09-19`…) and one IS a date
+# (`2026-09-14`). A first motif written `[a-z_]+` was false BY ITS MEMBERS
+# and the measurement said so: `labour-gov-gy` declares
+# `<!-- content-2026-09-12: … -->` and lost a legitimate gloss, which no
+# rereading showed — only the before/after on the 555 did.
+DECLARED_FIELD = re.compile(r"^<!--\s*[a-z0-9][a-z0-9_-]*:")
+
 NOTICE = ("Le dénominateur est la liste de boards que ce relevé a établie, à sa "
           "date. Ce n'est pas le marché du pays.")
 
@@ -174,9 +220,15 @@ def date_of(value):
 
 
 def refusal_of(card):
-    """The refusal a card records — status, date, tool — read from the lines
-    that carry a 403/429/451, never from the header. `None` when the card
-    records none."""
+    """The refusal a card records — status, date, tool — read ONLY from a
+    DECLARED FIELD that carries a 403/429/451. `None` when the card declares
+    none.
+
+    **The «never from the header» of the line this replaces was true until
+    #1219 and is now exactly backwards:** the floor is positive, so a header
+    field is the ONLY thing read and a status mentioned in prose or in the H1
+    title is not a refusal of the board. A card that wants a measurement
+    counted declares it."""
     best = None
     for line in card["text"].splitlines():
         m = REFUSAL.search(line)
@@ -192,6 +244,13 @@ def refusal_of(card):
         # to redo, silently. The clause above exempts a VALUE (`200`), which is
         # an inference on prose; the floor must be POSITIVE and on a field —
         # #1136, cited in `classify()` twenty lines below.
+        # **THE POSITIVE FLOOR — #1219.** A status is a refusal of the
+        # board only when the card DECLARES it in a field. See the measured
+        # population beside `DECLARED_FIELD` above; the clause below stays
+        # because a `witness: robots-verdict` field is declared and still
+        # names a status it read from the RULES file, not from the board.
+        if not DECLARED_FIELD.match(line.lstrip()):
+            continue
         if ROBOTS_WITNESS.match(line.lstrip()):
             continue
         d = date_of(line)
