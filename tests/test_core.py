@@ -51775,5 +51775,198 @@ class APointerFromACardIntoCodeIsGivenByWhatItNames(unittest.TestCase):
                             "card citing it is now the one to fix"
                             % (script, name))
 
+class TheAdPageIsReadByLabelBoundaryAndTheRedactionIsRedoneOnWhatIsExtracted(
+        unittest.TestCase):
+    """#1222, 2026-10-31 — `onlinejobmw.py ad` now reads the advert's page.
+
+    **The collection is NOT filtered on expiry, so a closed advert is
+    enumerated as a live one.** Measured on the 51st record of the filtered
+    page — the median and not the first — at `/vacancies/captain/` (HTTP 200,
+    284 404 B, md5 `619c940153ec`, 2026-10-31): a labelled block carries
+    `Type`, `Posted on`, `Location`, `Expiry Date`, `Company:`, and that
+    advert's expiry was the day BEFORE while all 100 records of page 1 were
+    `status: publish`. *The cost of serving it as live falls on the candidate,
+    who spends an application on a closed door.*
+
+    **The two element shapes below, the labels, their order and the furniture
+    that FOLLOWS `Company:` are the page's own. The contact-shaped values are
+    INVENTED.** The real page carries one address and four numbers, all
+    outside the block, and this repository is public: their SHAPE is
+    reproduced here and their values never are. *A fixture carries the values
+    of whoever writes it, so what is asserted here is the MECHANISM; the
+    measurement on the real object lives in the module docstring and in the
+    issue.*
+
+    *Nothing here touches the network: `fetch` is replaced throughout.*"""
+
+    LABEL = '<span class="elementor-icon-list-text">%s</span>'
+    VALUE = ('<div class="elementor-widget-container">'
+             '<div class="jet-listing-dynamic-field__content">%s</div></div>')
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_onlinejobmw_ad", os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "skills", "job-scan", "scripts", "onlinejobmw.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def page(self, posted="October 9, 2026", place="Lilongwe, Malawi",
+             expiry="October 30, 2026", org="Flytech Aviation Group",
+             furniture=True):
+        parts = ["<h1>Captain</h1>", self.LABEL % "Type",
+                 self.VALUE % "Full Time"]
+        for lab, val in (("Posted on", posted), ("Location", place),
+                         ("Expiry Date", expiry)):
+            parts += [self.LABEL % lab, self.VALUE % val]
+        parts.append('<h2 class="elementor-heading-title">'
+                     "<strong>Company:</strong> %s </h2>" % org)
+        if furniture:
+            # what follows the last label on the real page, same shape — and
+            # `OUR LOCATION` is upper case there too, which is why `Location`
+            # still occurs exactly once and can still bound a field
+            parts.append("<p>Please Share</p><h3>OUR LOCATION</h3>"
+                         "<p>Plot 99, Somewhere</p><p>+265 9 999 9999</p>"
+                         "<p>desk@example.invalid</p>")
+        return "<html><body>%s</body></html>" % "".join(parts)
+
+    def _read(self, mod, body):
+        sent = []
+
+        def fetch(url, first=False):
+            sent.append(url)
+            return body, None
+
+        mod.fetch = fetch
+        out = mod.from_page("https://onlinejobmw.com/vacancies/captain/")
+        self.assertEqual(sent, ["https://onlinejobmw.com/vacancies/captain/"])
+        return out
+
+    def test_the_three_text_fields_are_bounded_by_the_next_label(self):
+        mod = self._mod()
+        got, unterminated, ambiguous = mod.block_of(mod.plain(self.page()))
+        self.assertEqual(got, {"Posted on": "October 9, 2026",
+                               "Location": "Lilongwe, Malawi",
+                               "Expiry Date": "October 30, 2026"})
+        self.assertEqual((unterminated, ambiguous), ([], []))
+
+    def test_company_from_its_element_and_the_text_route_swallows_the_rest(self):
+        """The counter-test, and it is what makes the element route a
+        condition of SAFETY rather than a nicety: `Company:` is the LAST label,
+        so nothing in the text terminates its value."""
+        mod = self._mod()
+        body = self.page()
+        out = self._read(mod, body)
+        self.assertEqual(out["organisation"], "Flytech Aviation Group")
+        text = mod.plain(body)
+        naive = text[text.index("Company:") + len("Company:"):].strip()
+        self.assertGreater(len(naive), 4 * len(out["organisation"]),
+                           "the counter-test is DISARMED if no region follows")
+        self.assertTrue(mod.PHONE.search(naive),
+                        "a text-bounded capture must be shown to reach the "
+                        "furniture, or this test proves nothing")
+        # **Found by MUTATION, and it is a fact about the code: making the
+        # capture greedy does not publish the furniture, it makes the
+        # redaction WITHHOLD the field.** So the two are independent layers
+        # and the second catches the first's failure — and an assertion that
+        # the published value carries no number could never fire, the value
+        # being `None` by then. What discriminates is that the sound route
+        # leaves the redaction with NOTHING to withhold.
+        self.assertEqual(out["page_withheld"], [])
+
+    def test_an_address_in_a_block_field_is_withheld_and_the_field_is_null(self):
+        mod = self._mod()
+        out = self._read(mod, self.page(place="Lilongwe desk@example.invalid"))
+        self.assertEqual(out["page_withheld"], ["Location"])
+        self.assertIsNone(out["locality"])
+        self.assertIn("Location", out["page_inspected"],
+                      "a withheld field is still INSPECTED, and the row says "
+                      "which fields were looked at")
+
+    def test_a_number_in_the_organisation_is_withheld(self):
+        mod = self._mod()
+        out = self._read(mod, self.page(org="Flytech +265 9 999 9999"))
+        self.assertEqual(out["page_withheld"], ["Company:"])
+        self.assertIsNone(out["organisation"])
+
+    def test_the_digit_motif_is_kept_off_a_date_and_the_exemption_is_not_inert(
+            self):
+        """**Measured, not assumed: the motif DOES bite an ISO date** — which
+        is the form `iso_date` itself emits — so exempting the date fields is
+        a live guard and not a precaution against nothing. The kyat lesson: a
+        digit rule once destroyed 113 of 115 salaries on another board."""
+        mod = self._mod()
+        for form in ("2026-10-30", "30-10-2026", "30.10.2026"):
+            self.assertTrue(mod.PHONE.search(form),
+                            "%s: if the motif stopped biting this, the "
+                            "exemption below would be inert" % form)
+        out = self._read(mod, self.page(expiry="2026-10-30"))
+        self.assertNotIn("Expiry Date", out["page_withheld"])
+        self.assertEqual(out["page_unparsed"], ["Expiry Date"],
+                         "a form this parser does not know is NAMED, never "
+                         "returned as a null that reads as «no expiry»")
+        self.assertIsNone(out["valid_through"])
+
+    def test_an_unreadable_expiry_is_named_and_expired_is_not_false(self):
+        mod = self._mod()
+        out = self._read(mod, self.page(expiry="Fin octobre"))
+        self.assertIsNone(out["valid_through"])
+        self.assertEqual(out["page_unparsed"], ["Expiry Date"])
+        self.assertIsNone(out["expired"],
+                          "with no readable expiry, `expired` is UNKNOWN; "
+                          "False would assert the advert is open")
+        self.assertIsNone(out["expired_against"])
+
+    def test_an_expired_advert_is_emitted_with_its_date_and_never_dropped(self):
+        """`shared/never-fail-silently.md`, #1226. Both branches are DERIVED
+        from today: a dated literal here would redden on its own one day, and
+        a guard that reddens by the calendar gets switched off."""
+        mod = self._mod()
+        today = datetime.datetime.now(
+            datetime.timezone.utc).strftime("%Y-%m-%d")
+        year = int(today[:4])
+        for human, iso, expired in (
+                ("January 1, %d" % (year - 1), "%d-01-01" % (year - 1), True),
+                ("January 1, %d" % (year + 2), "%d-01-01" % (year + 2), False)):
+            out = self._read(mod, self.page(expiry=human))
+            self.assertEqual(out["valid_through"], iso)
+            self.assertEqual(out["expired"], expired)
+            self.assertEqual(out["expired_against"], today)
+
+    def test_a_page_not_read_leaves_the_four_fields_absent_and_not_null(self):
+        """**Absent means «not read»; present-and-null means «read, and the
+        page did not carry it».** Collapsing the two is the failure this route
+        exists to avoid."""
+        mod = self._mod()
+        mod.fetch = lambda url, first=False: (None, {"status": 503,
+                                                     "error": "upstream"})
+        out = mod.from_page("https://onlinejobmw.com/vacancies/captain/")
+        self.assertIn("503", out["page_status"])
+        for key in ("organisation", "locality", "valid_through", "expired",
+                    "posted_on_page", "page_inspected", "page_withheld"):
+            self.assertNotIn(key, out, "%s must be ABSENT, not null" % key)
+
+    def test_a_label_that_is_not_unique_bounds_nothing_and_is_named(self):
+        """**The branch no fixture above reaches, and the real risk.** On the
+        board's ARCHIVE page the city name occurred fourteen times, being the
+        operator's contact block repeated by the layout; it is one on an advert
+        page. So a label earns its role as a boundary by its COUNT, and a
+        duplicate must take the field OUT rather than pick an occurrence."""
+        mod = self._mod()
+        body = self.page().replace(
+            "<h3>OUR LOCATION</h3>", "<h3>Location of the office</h3>", 1)
+        out = self._read(mod, body)
+        self.assertIn("Location x2", out["page_ambiguous_labels"])
+        self.assertIsNone(out["locality"],
+                          "a duplicated label must take the field OUT, never "
+                          "pick an occurrence")
+        self.assertNotIn("Location", out["page_inspected"])
+        self.assertEqual(out["valid_through"], "2026-10-30",
+                         "and it must not take the neighbouring fields with "
+                         "it: `Expiry Date` is still bounded by `Company:`")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

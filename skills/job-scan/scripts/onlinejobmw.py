@@ -52,6 +52,23 @@ indicative, inside a docstring a reader takes for a description of the
 code.* **Whether `ad` should fetch that page is #1222, and it depends on a
 measurement nobody had taken: what an ad page actually carries.**
 
+**ET C'EST FAIT&nbsp;: `ad` LIT CETTE PAGE DEPUIS #1222, donc la DERNIERE phrase
+du paragraphe ci-dessus est CADUQUE et elle n'est pas reecrite — une correction
+CITE ce qu'elle corrige.** The measurement it waited for was taken on the 51st
+record of the filtered page, so the median and not the first (HTTP 200,
+284 404 B, md5 `619c940153ec`, 2026-10-31): a labelled block follows the title
+with `Type`, `Posted on`, `Location`, `Expiry Date` and `Company:`. **And it
+answered a question nobody had asked: that advert's `Expiry Date` was the day
+BEFORE, and it sat in the filtered collection the enumerator walks** — all 100
+records of page 1 being `status: publish`, the collection is not filtered on
+expiry. *So the row carried a closed advert as a live one, and the cost of that
+falls on the candidate, who spends an application on it.*
+
+> **`cmd_ad` therefore costs TWO requests and `cmd_list` still costs none of
+> them.** *The 1 934-request walk over the whole board buys nothing here: the
+> instant that knowing matters is the instant a candidate opens one advert.*
+
+
 **NO CONTACT IS EXPOSED ON THIS ROUTE, AND IT IS MEASURED RATHER THAN ASSUMED:**
 0 e-mail addresses in the whole 124 123-byte payload, and the record has no
 `meta` dictionary in which a `_application` or `_company_name` could hide.
@@ -367,6 +384,166 @@ def cmd_list(a):
     return 0 if kept else (EXIT_PACED if end == "paced" else EXIT_BROKEN)
 
 
+# --------------------------------------------------------------- the ad page
+# **`cmd_ad` reads the advertisement's own page; `cmd_list` never does.** The
+# API serves no body for this post type, and the page carries four fields the
+# collection does not: the organisation, the locality, the absolute posting
+# date, and the EXPIRY — and the collection is not filtered on expiry (#1222).
+
+# `Type` occurs TEN times in the markup and once in the rendered text, so a
+# label earns its place as a boundary by its COUNT and never by its name.
+PAGE_LABELS = ("Type", "Posted on", "Location", "Expiry Date", "Company:")
+TEXT_FIELDS = ("Posted on", "Location", "Expiry Date")
+
+# **`Company:` is read from its ELEMENT and not from the text, and that is a
+# condition of safety rather than a nicety.** It is the LAST label of the
+# block, so in the text its value runs into the operator's own address region,
+# which no label terminates — an extractor bounded by page furniture would
+# publish that address. `</h2>` is a real boundary.
+COMPANY = re.compile(r"<strong>\s*Company:\s*</strong>(.*?)</h2>", re.I | re.S)
+
+# A `strptime` would read these dates through the machine's locale and give a
+# different answer elsewhere; the table is explicit for that reason.
+MONTHS = {m: i for i, m in enumerate(
+    ("january february march april may june july august september october "
+     "november december").split(), 1)}
+HUMAN_DATE = re.compile(r"^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$")
+
+# The page carries ONE address and FOUR numbers, all OUTSIDE the block. This
+# motif never runs on a field whose sense is a DATE: a nine-digit rule once
+# destroyed 113 of 115 salaries on another board because a monthly wage has as
+# many digits as a telephone number, and a date is protected the same way — by
+# PARSING it, not by counting its digits.
+PHONE = re.compile(r"\+?\d[\d\s().-]{6,}\d")
+
+
+def plain(fragment):
+    """A fragment of markup as the READER sees it.
+
+    *284 404 bytes of this page render 629 characters of text, so the block is
+    matched in the TEXT and never in the markup.* Scripts and styles go first:
+    their contents are not text, and leaving them in would put a quarter of a
+    megabyte of code between a label and its value.
+    """
+    s = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", fragment)
+    s = html.unescape(re.sub(r"(?s)<[^>]+>", " ", s))
+    return re.sub(r"[\s\u00a0]+", " ", s).strip()
+
+
+def iso_date(value):
+    """The HOST's date, reformatted — never computed by us.
+
+    `None` when it does not parse, and the caller NAMES the field it could not
+    read: a null that is indistinguishable from «this advert has no expiry» is
+    the failure this whole route exists to avoid.
+    """
+    m = HUMAN_DATE.match((value or "").strip())
+    month = MONTHS.get(m.group(1).lower()) if m else None
+    if not month:
+        return None
+    return "%04d-%02d-%02d" % (int(m.group(3)), month, int(m.group(2)))
+
+
+def block_of(text):
+    """The labelled values, each bounded by the NEXT label of the block.
+
+    A label bounds a field only where it occurs EXACTLY ONCE; one that occurs
+    none or several times is not used, and it is not silently dropped either.
+    **A field with no following label is NOT emitted and is named**: refusing
+    is the only direction that cannot publish the region after it.
+    """
+    at, ambiguous = {}, []
+    for lab in PAGE_LABELS:
+        found = [m.start() for m in re.finditer(re.escape(lab), text)]
+        if len(found) == 1:
+            at[lab] = found[0]
+        else:
+            ambiguous.append("%s x%d" % (lab, len(found)))
+    got, unterminated = {}, []
+    for lab in TEXT_FIELDS:
+        if lab not in at:
+            continue
+        after = [o for o in at.values() if o > at[lab]]
+        if not after:
+            unterminated.append(lab)
+            continue
+        got[lab] = text[at[lab] + len(lab):min(after)].strip(" :")
+    return got, unterminated, ambiguous
+
+
+def from_page(url):
+    """What the advertisement's own page adds, with the redaction redone
+    ENTIRE on the region extracted.
+
+    *A page body is a NEW surface, and a count of zero that becomes non-zero
+    is the worst case of that family.* Measured on this specimen: zero
+    contacts inside the block, while the PAGE carries one address and four
+    numbers outside it — so «the block is clean» is established of the BLOCK,
+    on one specimen, and every extraction added here re-opens the question.
+
+    **A field ABSENT from the row was not read; a field present and null was
+    read and the page did not carry it.** The two are different facts and this
+    route never collapses them.
+    """
+    body, err = fetch(url)
+    if body is None:
+        return {"page_status": "not read: HTTP %s" % (err.get("status"),),
+                "page_error": err.get("error")}
+    text = plain(body)
+    got, unterminated, ambiguous = block_of(text)
+
+    inspected, withheld, vals = [], [], {}
+    for lab in sorted(got):
+        inspected.append(lab)
+        if ADDRESS.search(got[lab]):
+            withheld.append(lab)
+        elif lab not in ("Posted on", "Expiry Date") and PHONE.search(got[lab]):
+            withheld.append(lab)
+        else:
+            vals[lab] = got[lab]
+    m = COMPANY.search(body)
+    if m:
+        inspected.append("Company:")
+        org = plain(m.group(1))
+        if ADDRESS.search(org) or PHONE.search(org):
+            withheld.append("Company:")
+        else:
+            vals["Company:"] = org
+
+    expiry = iso_date(vals.get("Expiry Date"))
+    posted = iso_date(vals.get("Posted on"))
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    out = {
+        "page_status": "read",
+        "organisation": vals.get("Company:") or None,
+        "locality": vals.get("Location") or None,
+        # **TWO provenances for one quantity, deliberately NOT merged**: the
+        # row's `posted` is the API's and this one is the page's, and a
+        # disagreement between them is information a single key would hide.
+        "posted_on_page": posted,
+        # **An advert whose `valid_through` has passed is EMITTED with its
+        # date and never dropped** — `shared/never-fail-silently.md`, #1226.
+        # The consumer cannot un-drop what it never received.
+        "valid_through": expiry,
+        "expired": None if expiry is None else expiry < today,
+        # the basis of the comparison, because `expired` is the only derived
+        # field here and a derived field that hides its basis is not auditable
+        "expired_against": today if expiry is not None else None,
+        "page_inspected": sorted(inspected),
+        "page_withheld": sorted(withheld),
+    }
+    unparsed = [lab for lab, iso in (("Expiry Date", expiry),
+                                     ("Posted on", posted))
+                if lab in vals and iso is None]
+    for key, value in (("page_unparsed", unparsed),
+                       ("page_unterminated", unterminated),
+                       ("page_ambiguous_labels", ambiguous)):
+        if value:
+            out[key] = sorted(value)
+    return out
+
+
+
 def cmd_ad(a):
     m = re.search(r"/vacancies/([^/?#]+)", urllib.parse.urlsplit(a.url).path)
     if not m:
@@ -385,10 +562,19 @@ def cmd_ad(a):
              "advertisement is gone")
         return EXIT_BROKEN
     ts = terms()
-    print(json.dumps(row(recs[0], {t["id"]: t for t in ts}),
-                     ensure_ascii=False, sort_keys=True))
-    note("the API serves no body for this post type: the advertisement's text "
-         f"is on {recs[0].get('link')} and this row says so in `body_source`")
+    r = row(recs[0], {t["id"]: t for t in ts})
+    page = from_page(recs[0].get("link") or a.url)
+    r.update(page)
+    print(json.dumps(r, ensure_ascii=False, sort_keys=True))
+    if page.get("page_status") != "read":
+        note("the advertisement's page was NOT read, so the four fields it "
+             "carries are ABSENT from the row rather than null: %s"
+             % (page.get("page_status"),))
+        return EXIT_PACED if "429" in str(page.get("page_status")) else EXIT_BROKEN
+    if page.get("expired"):
+        note("this advertisement EXPIRED on %s and the collection still "
+             "enumerates it: the row is emitted WITH its date, never dropped"
+             % (page.get("valid_through"),))
     return 0
 
 
