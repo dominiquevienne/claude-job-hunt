@@ -628,3 +628,79 @@ lets each new instance of it die in one session's memory.
   wider set exactly as written.
 - **It never interrupts.** The finding is filed after the user's task finishes,
   in one clause at the end — never as a question in the middle of it.
+
+## An advert that expired is EMITTED with its date, never dropped — `valid_through`
+
+**#1226, 2026-10-31. This DECLARES a practice the repository already follows; it
+creates none.** The field was followed by **87 of the 320 adapter scripts** and
+**named by 92**, and declared **nowhere**: `shared/pipeline-format.md` renders
+zero — that file is the user's own ledger format, not the schema of an adapter
+row — and `shared/boards/README.md` names it twice, incidentally, inside board
+table rows. *So when an adapter dropped the field, nothing in the repository
+could say so.*
+
+**The row carries `valid_through`: an ISO `YYYY-MM-DD`, or `null`.** Measured on
+three of the 87 taken at ranks 1, 20 and 60 — `academicwork`, `cvbankas`,
+`merorojgari` — all three of the shape `(<the host's own field> or "")[:10] or
+None`. *The date is the HOST's, truncated, never computed by us.*
+
+### The rule, and the repository had already written its reason four times
+
+**A row whose `valid_through` has passed is EMITTED, with the field, and is never
+dropped.** The consumer decides what to do with it; it cannot un-drop what it
+never received.
+
+This is not an arbitration between two defensible options. The repository
+instantiates it already, in four scripts and on three different objects, each
+giving the same reason in its own words:
+
+- `ntchito.py` — *«a record marked filled is emitted with `filled: True` rather
+  than dropped, because dropping it would make a closed advert indistinguishable
+  from one that never existed»*;
+- `pscgovvc.py` — *«a closed post is emitted with its date rather than dropped in
+  silence»*;
+- `pscgovvc.py` and `abgovag.py` — *«post(s) state no deadline; they are emitted
+  with `deadline: null` rather than dropped»*.
+
+**And dropping silently also lowers a count the board itself states.** Online Job
+Malawi declares 967 advertisements through its own taxonomy; an enumerator that
+silently withheld the expired ones would publish a smaller number against a
+witness that is not our extraction, and the difference would look like a
+measurement.
+
+### Why this is NOT tidiness: the ledger's own rule is unexecutable without it
+
+`shared/pipeline-format.md` already declares the LEDGER side — *«An ad that
+closed is `discarded`, and it keeps its score … so no later scan proposes it
+again»*. **That rule cannot run unless the adapter says the advert closed.** An
+adapter that omits `valid_through` leaves the ledger unable to know, and one that
+drops the row leaves it unable to mark anything at all. One half of a coupled
+pair was written and the other was not.
+
+### What this does NOT ask
+
+**It does not ask the other 233 scripts to emit the field.** Most boards publish
+no expiry at all, and demanding a field a board does not serve produces `null`
+everywhere — which says nothing — or an invented value, which is worse. A script
+emits `valid_through` when ITS board publishes one, and says so in its card.
+
+### NOT GUARDED, and the reason is mechanical
+
+**There is no test behind this section, and that is declared rather than left to
+be discovered.** A guard shaped «this script should emit the field» has to know
+whether its board publishes an expiry, which no test can read from the
+repository: it would be inert where the board publishes none, and red on correct
+code where it does — the first and third species of a defective guard at once.
+
+**And a SHAPE guard over the 87 was considered and refused**: a motif run over
+the sources measures our writing habit, not the value emitted, and the only
+sound version would have to RUN the 87 adapters against their hosts. *A guard
+that cannot fail on what it claims to watch is worse than no guard, so what
+stands here is a declaration, and it says it is one.*
+
+### What remains the owner's
+
+Whether `valid_through` becomes **obligatory** for a board that publishes one,
+and whether it should surface in **his own ledger** beside the `discarded` rule.
+His format, his decision — this section records the practice and arbitrates
+neither.
