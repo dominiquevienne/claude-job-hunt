@@ -7912,6 +7912,36 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
             f"*Which boards are available*, so nobody reading the README can "
             f"find them: {missing}")
 
+    def test_no_row_denies_the_script_its_card_declares(self):
+        """**Being LISTED is not being described, and the guard above cannot
+        see the difference.** On 2026-10-31 five rows said « no script yet »
+        for cards that declare one — `dom767`, `irantalent`, `iscikler`,
+        `jobinja`, `onlinejobmw` — and the test above was GREEN on all five,
+        because it asks whether the card is CITED and never what the row says
+        about it. *Two of the five had been made stale that same morning by the
+        very session that shipped their adapters: the row is where a reader
+        looks, so a shipped adapter stayed invisible in the only register a
+        reader has.* The intersection was MEASURED rather than feared — 307
+        cards ship a script and 68 rows carry the clause, and only five are
+        both."""
+        root, listed = self._registry()
+        with open(os.path.join(root, "shared", "boards", "README.md"),
+                  encoding="utf-8") as fh:
+            rows = {}
+            for line in fh:
+                if line.startswith("| "):
+                    m = re.search(r"`([a-z0-9-]+)\.md`", line)
+                    if m:
+                        rows.setdefault(m.group(1), []).append(line)
+        shipped = self._with_script(root)
+        denied = sorted(n for n in shipped for line in rows.get(n, [])
+                        if "no script yet" in line)
+        self.assertEqual(
+            denied, [],
+            f"{len(denied)} row(s) say \u00ab no script yet \u00bb for a card that "
+            f"declares one, so a shipped adapter is invisible to a reader of "
+            f"the README: {denied}")
+
     def test_no_row_points_at_a_card_that_does_not_exist(self):
         """A row naming a missing file is worse than a missing row: it looks
         like an answer."""
@@ -52210,5 +52240,331 @@ class TheDom767AdIsReadInsideItsContainerAndAContactLabelIsWithheldAlways(
         self.assertIn("capped", err.getvalue(),
                       "without that word a capped read looks like a smaller "
                       "board")
+class TheServedBlockCarriesTheAdvertAndTheHydrationCopyIsNotCounted(
+        unittest.TestCase):
+    """#1128, 2026-10-31 — `lesjeudis.py`, and the DIFFERENCE BETWEEN TWO
+    COUNTS is the mechanism.
+
+    **The string `application/ld+json` occurs TWICE on an advert page for ONE
+    block actually served.** Measured on two witnesses taken at distant ranks
+    of the declared enumerator — the median and the last — identically on
+    both: one real `<script type="application/ld+json">` at offset ~7 700,
+    outside every fragment, and a second occurrence inside a
+    `self.__next_f.push` fragment where the same JSON-LD is re-queued for
+    hydration **as an escaped JavaScript string literal**. *So the block is
+    matched by its real TAG, which the escaped copy cannot satisfy, and a
+    page-wide motif for `JobPosting` finds two and doubles every advert.*
+
+    **The enumerator is the sitemap and not the list, and that is a measure.**
+    `/offers/` serves 96 016 bytes with twelve advert links, **zero**
+    `application/ld+json` and **zero** `JobPosting`: a React Server Components
+    shell. The advert page is rendered server-side. *A verdict taken on the
+    list would have described neither, and this is the trap of «a verdict taken
+    on `/` does not describe the advert pages» with the two sides swapped.*
+
+    **Deduplication is by the identifier and never by the title**: of the
+    17 269 advert URLs the sitemap declared on 2026-10-31, there are 17 269
+    distinct slugs for **14 129 distinct titles**, so 3 140 adverts — one in
+    six — share a title with another. *The 8-hex suffix is on 17 269 of 17 269
+    and is UNIQUE, zero collisions; the page shows why, its
+    `identifier.value` being a UUID whose first eight characters are it.*
+
+    **No total is declared by the site**, measured with five motifs of
+    different forms over the raw HTML and over the de-escaped RSC stream. *So
+    a walk has no external witness, and the adapter reports its cap without
+    deriving a shortfall from it — a shortfall against our own cap is a
+    witness we fabricated.*
+
+    **The structures below are the real pages'; the contact-shaped values are
+    INVENTED.** The real median witness carries one address in 7 117
+    characters of prose and the real last witness carries none — both
+    directions exist in the corpus — and this repository is public.
+
+    *Nothing here touches the network: `fetch` is replaced throughout.*"""
+
+    UUID = "6cf7196f-7de7-48ff-88a9-909ede9ab55d"
+    SLUG = "zenith-responsable-de-deploiement-is-it-f-h-6cf7196f"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_lesjeudis", os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "skills", "job-scan", "scripts", "lesjeudis.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def posting(self, uuid=None, titre="ZENITH - Responsable IS/IT - F/H",
+                through="2026-11-30T03:22:47.584853+00:00",
+                desc="Poste a pourvoir.", slug=None):
+        return {
+            "@context": "https://schema.org", "@type": "JobPosting",
+            "title": titre, "datePosted": "2026-10-16T18:09:11.592000+00:00",
+            "validThrough": through, "directApply": False,
+            "description": desc,
+            "hiringOrganization": {"@type": "Organization", "name": "Thales"},
+            "identifier": {"@type": "PropertyValue", "name": "LesJeudis",
+                           "value": uuid or self.UUID},
+            "jobLocation": {"@type": "Place",
+                            "address": {"@type": "PostalAddress",
+                                        "addressLocality": "Meudon",
+                                        "addressCountry": "FR",
+                                        "postalCode": "92190"}},
+            "url": "https://lesjeudis.com/offers/" + (slug or self.SLUG),
+        }
+
+    def page(self, postings=None, servi=True, hydratation=True, **kw):
+        """An advert page in the real shape: the served block, then the SAME
+        JSON-LD re-queued inside an RSC fragment as an escaped literal."""
+        objs = postings if postings is not None else [self.posting(**kw)]
+        charge = json.dumps(objs[0] if len(objs) == 1 else objs,
+                            ensure_ascii=False)
+        bloc = ('<script type="application/ld+json">%s</script>' % charge
+                if servi else "")
+        # the hydration copy: the tag's own name appears only ESCAPED here,
+        # which is exactly why a tag motif cannot reach it
+        frag = ('<script>self.__next_f.push([1,"e:[[\\"$\\",\\"script\\",null,'
+                '{\\"type\\":\\"application/ld+json\\",\\"children\\":'
+                '\\"{\\\\\\"@type\\\\\\":\\\\\\"JobPosting\\\\\\"}\\"}]]\\n"])'
+                '</script>') if hydratation else ""
+        return ("<html><head><title>ZENITH &#8212; Thales | LesJeudis</title>"
+                "</head><body><header>nav</header>%s<main>prose</main>%s"
+                "</body></html>" % (bloc, frag))
+
+    def _row(self, mod, body, url=None):
+        cible = url or ("https://lesjeudis.com/offers/" + self.SLUG)
+        sent = []
+
+        def fetch(u):
+            sent.append(u)
+            return body, None
+
+        mod.fetch = fetch
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = mod.cmd_ad(argparse.Namespace(url=cible))
+        self.assertEqual(code, 0, err.getvalue())
+        self.assertEqual(sent, [cible])
+        return json.loads(out.getvalue()), err.getvalue()
+
+    def test_the_served_block_is_matched_by_its_tag_not_by_the_string(self):
+        mod = self._mod()
+        body = self.page()
+        # the fixture must reproduce the page's DOUBLING, or this proves nothing
+        self.assertEqual(body.count("application/ld+json"), 2,
+                         "the fixture must carry the hydration copy")
+        self.assertEqual(len(re.findall("JobPosting", body)), 2,
+                         "a page-wide motif must find TWO here")
+        postings, servi, occurrences = mod.postings_of(body)
+        self.assertEqual((servi, occurrences), (1, 2))
+        self.assertEqual(len(postings), 1,
+                         "one advert: the surplus occurrence is hydration")
+        row, err = self._row(mod, body)
+        self.assertEqual(row["page_served_ld_blocks"], 1)
+        self.assertEqual(row["page_ld_string_occurrences"], 2)
+        self.assertIn("hydration", err)
+
+    def test_a_body_with_no_served_block_says_what_was_not_read(self):
+        """The list page's shape: twelve advert links and zero served block."""
+        mod = self._mod()
+        body = self.page(servi=False)
+        postings, servi, occurrences = mod.postings_of(body)
+        self.assertEqual((len(postings), servi), (0, 0))
+        self.assertGreaterEqual(occurrences, 1,
+                                "the hydration copy is still there, which is "
+                                "why a count of the STRING cannot decide")
+        mod.fetch = lambda u: (body, None)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as e:
+            mod.cmd_ad(argparse.Namespace(
+                url="https://lesjeudis.com/offers/" + self.SLUG))
+        self.assertEqual(e.exception.code, mod.EXIT_BROKEN)
+        self.assertIn("not read", err.getvalue(),
+                      "it must say what was NOT read and claim nothing about "
+                      "the advert")
+
+    def test_two_served_postings_are_refused_rather_than_guessed(self):
+        mod = self._mod()
+        body = self.page(postings=[self.posting(), self.posting(
+            uuid="954cc647-4792-4977-a677-66e59694a366")])
+        postings, servi, _ = mod.postings_of(body)
+        self.assertEqual((len(postings), servi), (2, 1))
+        mod.fetch = lambda u: (body, None)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as e:
+            mod.cmd_ad(argparse.Namespace(
+                url="https://lesjeudis.com/offers/" + self.SLUG))
+        self.assertEqual(e.exception.code, mod.EXIT_BROKEN)
+        self.assertIn("unmeasured", err.getvalue())
+
+    def test_two_adverts_sharing_a_title_keep_two_rows(self):
+        """3 140 of the 17 269 declared adverts share a title: a title key
+        collapses one advert in six."""
+        mod = self._mod()
+        a = "https://lesjeudis.com/offers/architecte-calculateur-embarque-1-75e0e598"
+        b = "https://lesjeudis.com/offers/architecte-calculateur-embarque-1-a67a2725"
+        titre_a = a.rstrip("/").rsplit("/", 1)[-1]
+        titre_b = b.rstrip("/").rsplit("/", 1)[-1]
+        self.assertEqual(re.sub(r"-[0-9a-f]{8}$", "", titre_a),
+                         re.sub(r"-[0-9a-f]{8}$", "", titre_b),
+                         "these two real slugs must share their title")
+        self.assertNotEqual(mod.ledger_id(a), mod.ledger_id(b))
+        xml = ("<urlset>" + "".join(
+            "<url><loc>%s</loc><lastmod>2026-10-30T18:09:37.528Z</lastmod>"
+            "</url>" % u for u in (a, b)) + "</urlset>")
+        mod.fetch = lambda u: (xml, None)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = mod.cmd_list(argparse.Namespace(max=0))
+        self.assertEqual(code, 0)
+        lignes = [json.loads(x) for x in out.getvalue().splitlines() if x]
+        self.assertEqual(len(lignes), 2,
+                         "a title key would have emitted ONE")
+        self.assertEqual(sorted(r["ledger_id"] for r in lignes),
+                         ["lesjeudis:75e0e598", "lesjeudis:a67a2725"])
+
+    def test_the_key_from_the_slug_equals_the_key_from_the_identifier(self):
+        """Both commands must key alike or their rows do not join."""
+        mod = self._mod()
+        p = self.posting()
+        url = p["url"]
+        self.assertEqual(mod.ledger_id(url, p),
+                         "lesjeudis:" + mod.board_id_of(p)[:8])
+        self.assertEqual(mod.ledger_id(url), "lesjeudis:6cf7196f")
+        row, _ = self._row(mod, self.page())
+        self.assertEqual(row["ledger_id"], "lesjeudis:6cf7196f")
+        self.assertEqual(row["board_id"], self.UUID)
+
+    def test_the_date_is_paired_inside_its_own_entry(self):
+        """A page-wide zip of two page-wide motifs pairs the Nth `<loc>` with
+        the Nth `<lastmod>` and is silently wrong the moment one entry omits
+        its date. Measured: zero of the 17 269 real entries omit it, so this
+        guard has never fired on this host — it is written for the entry that
+        will."""
+        mod = self._mod()
+        xml = ("<urlset>"
+               "<url><loc>https://lesjeudis.com/offers/un-11111111</loc>"
+               "<lastmod>2026-10-01T00:00:00.000Z</lastmod></url>"
+               "<url><loc>https://lesjeudis.com/offers/deux-22222222</loc>"
+               "</url>"
+               "<url><loc>https://lesjeudis.com/offers/trois-33333333</loc>"
+               "<lastmod>2026-10-03T00:00:00.000Z</lastmod></url>"
+               "</urlset>")
+        got = mod.entries_of(xml)
+        self.assertEqual([u.rsplit("-", 1)[-1] for u, _ in got],
+                         ["11111111", "22222222", "33333333"])
+        self.assertEqual([lm[:10] if lm else None for _, lm in got],
+                         ["2026-10-01", None, "2026-10-03"],
+                         "the third keeps ITS date; a page-wide zip would "
+                         "have given it to the second")
+
+    def test_a_loc_in_cdata_is_read(self):
+        """The real file carried ZERO CDATA on 2026-10-31 — so this guard has
+        never fired here. It is written because a bare `<loc>([^<]+)</loc>`
+        once returned 0 of 467 on another board for exactly this reason."""
+        mod = self._mod()
+        xml = ("<urlset><url><loc><![CDATA["
+               "https://lesjeudis.com/offers/en-cdata-abcdef12]]></loc>"
+               "<lastmod>2026-10-30T00:00:00.000Z</lastmod></url></urlset>")
+        got = mod.entries_of(xml)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0][0],
+                         "https://lesjeudis.com/offers/en-cdata-abcdef12")
+        self.assertEqual(mod.ledger_id(got[0][0]), "lesjeudis:abcdef12")
+
+    def test_only_the_address_motif_runs_on_the_prose(self):
+        """A digit rule applied to prose fires on an ISO date, a time, a
+        postal code and an md5 — and a nine-digit rule once destroyed 113 of
+        115 salaries on another board. So the prose below carries all four and
+        NO address, and nothing may be withheld."""
+        mod = self._mod()
+        prose = ("Mission a pourvoir des le 2026-11-03, entretien a 14:30, "
+                 "site 92190 Meudon, reference "
+                 "64dd87191a7bf04f53d15e3398042669, salaire 350000 - 450000 "
+                 "par an, 0123456789 collaborateurs dans le groupe.")
+        row, err = self._row(mod, self.page(desc=prose))
+        self.assertEqual(row["withheld_fields"], [],
+                         "a digit rule would have withheld this whole prose")
+        self.assertNotIn("WITHHELD", err)
+        self.assertGreater(row["description_chars"], 100)
+
+    def test_an_address_in_the_prose_is_withheld_and_named(self):
+        mod = self._mod()
+        row, err = self._row(mod, self.page(
+            desc="Candidatures a rh.invente@exemple-invente.test svp."))
+        self.assertEqual(row["withheld_fields"], ["description.email"])
+        self.assertIn("WITHHELD", err)
+        self.assertNotIn("rh.invente@exemple-invente.test",
+                         json.dumps(row) + err,
+                         "the value must never be printed")
+
+    def test_expiry_is_derived_from_the_day_and_never_from_a_literal(self):
+        """A test that pins a dated literal is a bomb on a timer: `v1.244.0`
+        shipped 2 h 20 after a green verdict because an assertion on a dated
+        literal turned red at midnight with no push. The floor keeps the
+        contrast real whatever the day."""
+        mod = self._mod()
+        today = datetime.date.today()
+        vieux = (today - datetime.timedelta(days=400)).isoformat() + "T00:00:00Z"
+        neuf = (today + datetime.timedelta(days=400)).isoformat() + "T00:00:00Z"
+        self.assertLess(vieux[:10], today.isoformat())
+        self.assertGreater(neuf[:10], today.isoformat())
+        perime, _ = self._row(mod, self.page(through=vieux))
+        vivant, _ = self._row(mod, self.page(through=neuf))
+        self.assertEqual((perime["expired"], vivant["expired"]), (True, False))
+        self.assertEqual(perime["expired_against"], today.isoformat())
+        muet, err = self._row(mod, self.page(through=None))
+        self.assertIsNone(muet["expired"], "absent is NAMED, not a false false")
+        self.assertIsNone(muet["expired_against"])
+        self.assertIn("never a false", err)
+
+    def test_the_apply_button_is_not_an_advert_address(self):
+        """`/offers/*/postuler` is the single refusal that fires on us, and it
+        reads as an intention rather than a gap."""
+        mod = self._mod()
+        bon = "https://lesjeudis.com/offers/" + self.SLUG
+        self.assertTrue(mod.AD_URL.match(bon))
+        self.assertTrue(mod.AD_URL.match(bon.replace("lesjeudis", "www.lesjeudis", 1)))
+        for mauvais in (bon + "/postuler",
+                        "https://lesjeudis.com/companies/thales",
+                        "https://lesjeudis.com/emploi/informatique/biot",
+                        "https://lesjeudis.com/offers/"):
+            self.assertIsNone(mod.AD_URL.match(mauvais), mauvais)
+            mod.fetch = lambda u: (_ for _ in ()).throw(
+                AssertionError("nothing may be fetched for " + u))
+            with contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as e:
+                mod.cmd_ad(argparse.Namespace(url=mauvais))
+            self.assertEqual(e.exception.code, mod.EXIT_BROKEN)
+
+    def test_the_cap_is_reported_without_a_shortfall_being_derived(self):
+        mod = self._mod()
+        xml = ("<urlset>" + "".join(
+            "<url><loc>https://lesjeudis.com/offers/annonce-%08x</loc>"
+            "<lastmod>2026-10-30T18:09:37.528Z</lastmod></url>" % n
+            for n in range(1, 8)) + "</urlset>")
+        mod.fetch = lambda u: (xml, None)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = mod.cmd_list(argparse.Namespace(max=3))
+        self.assertEqual(code, 0)
+        self.assertEqual(len([x for x in out.getvalue().splitlines() if x]), 3)
+        texte = err.getvalue()
+        self.assertIn("capped", texte)
+        self.assertIn("NOT the board's size", texte)
+        # **a substring test cannot tell a FIGURE of shortfall from the
+        # sentence that refuses to derive one**: the first form of this
+        # assertion was `assertNotIn("short", ...)` and it fired on the
+        # word « shortfall » inside the adapter's own refusal — red on
+        # correct code, which is the species that makes a session
+        # « repair » something sound. What is forbidden is a NUMBER.
+        self.assertNotRegex(
+            texte, r"\d[\d\s ]*\bshort",
+            "a FIGURE of shortfall against OUR cap is a witness we made")
+        self.assertIn("no shortfall is reported", texte,
+                      "and the refusal must be SAID, or a reader cannot "
+                      "tell it from an omission")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
