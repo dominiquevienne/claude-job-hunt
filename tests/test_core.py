@@ -7862,12 +7862,53 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
     promised, and listing them under *available* would be the opposite error.
     """
 
-    def _registry(self):
-        import re
+    def _readme(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         path = os.path.join(root, "shared", "boards", "README.md")
         with open(path, encoding="utf-8") as fh:
-            lines = fh.read().splitlines()
+            return root, fh.read().splitlines()
+
+    def _registry(self):
+        """**The AVAILABILITY register, and deliberately nothing else.**
+
+        `README.md` carries thirteen contiguous `|` blocks, and only the first
+        one — the table under *Which boards are available*, header `| Board |
+        File | Status |`, from its header down to and including the
+        `| *your board here* |` sentinel — is a register of what ships. The
+        other twelve are a glossary of states, a `witness:` taxonomy, an
+        adapter contract, two decode tables, and the
+        *Investigated and closed* logs whose columns are
+        `| Country | Service | What was measured |`.
+
+        **#1233 reported this narrowness as the defect and prescribed reading
+        every block. Measured on 2026-10-31, that remedy would have installed
+        the false green it was opened to prevent.** The thirty-one cards cited
+        only outside block 1 live in the investigation log and **every one of
+        them declares `script: none`** — they are measurement records, not
+        shipped boards. The day one of them ships an adapter it will have NO
+        row under *Which boards are available*, which is exactly what
+        `test_every_card_that_ships_a_script_is_in_the_table` exists to say;
+        a reader that counted its investigation-log line as a listing would
+        answer *present* about a board nobody can find in the only register a
+        reader has. **So the narrow scope is correct HERE and it is declared
+        rather than incidental** — Done-when 1 of #1233, second branch.
+
+        What #1233 got right is that one helper was answering two questions.
+        The other one — *does any row point at a card that does not exist?* —
+        does not care which table the row sits in, and it reads the whole file
+        through `_cited_rows` below.
+
+        **The one case where this scope is WRONG, named so that the reflex it
+        provokes does not win:** if the availability table is ever SPLIT by a
+        paragraph, a shipped card in its second half is declared MISSING —
+        red on correct content. The fix is then to rejoin the table or to
+        extend this reader to the named continuation, **never to read every
+        `|` block**, which is the move that turns this visible red back into
+        the silent green above. A red that names the card it cannot find is
+        diagnosable; a green that counted an investigation log is not.
+        """
+        import re
+        root, lines = self._readme()
         start = next((i for i, l in enumerate(lines)
                       if l.startswith("| Board | File")), None)
         self.assertIsNotNone(
@@ -7879,6 +7920,31 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
         listed = {m.group(1) for l in lines[start:end]
                   if (m := re.search(r"`([a-z0-9-]+)\.md`", l))}
         return root, listed
+
+    def _cited_rows(self):
+        """Every TABLE row of the README that names a card, wherever it sits,
+        with its line number so a failure is diagnosable.
+
+        **Rows only, never prose.** Six cards are named in running text and in
+        no table — `bayt`, `chile-public-sector`, `melr-gh`,
+        `saudi-labour-platforms`, `skillingpakistan` (the investigation records
+        this class exempts on purpose) and `robots-policy.md`, which is not a
+        board card at all but `shared/robots-policy.md`. A reader that took
+        prose for rows would count 538 where the tables cite 532, and the six
+        it added would all be wrong for the question being asked.
+
+        **Declared residue, no specimen today:** a table row citing a `.md`
+        that legitimately lives outside `shared/boards/` — `robots-policy.md`
+        moved into a cell, say — would be reported as pointing at a missing
+        card. Zero rows do that as of 2026-10-31, which is why the message
+        below prints the offending LINES rather than only the names.
+        """
+        import re
+        root, lines = self._readme()
+        rows = [(k, m.group(1)) for k, l in enumerate(lines, 1)
+                if l.startswith("|")
+                and (m := re.search(r"`([a-z0-9-]+)\.md`", l))]
+        return root, rows
 
     def _with_script(self, root):
         import glob
@@ -7951,13 +8017,35 @@ class AShippedBoardIsListedWhereBoardsAreListed(unittest.TestCase):
 
     def test_no_row_points_at_a_card_that_does_not_exist(self):
         """A row naming a missing file is worse than a missing row: it looks
-        like an answer."""
-        root, listed = self._registry()
+        like an answer.
+
+        **This is the consumer #1233 did not name, and the one where the old
+        narrow reader really was a false green.** It used to compare
+        `listed - files` over block 1 alone, so a row in any of the other
+        twelve tables could send a reader to a deleted card and nothing would
+        say so — and its green read as *no row lies* when it meant *I did not
+        look at 31 of them*. Widened to every table row on 2026-10-31 it adds
+        **zero** reds (539 citing rows, 532 distinct cards, 0 absent), so it
+        dominates the old form strictly rather than trading one blind spot for
+        another.
+
+        **It has caught nothing yet, and that is said rather than left to be
+        inferred.** Its mutation is a row added to the *Investigated and
+        closed* table naming a card that does not exist: green under the old
+        reader, red under this one.
+        """
         import glob
+        root, rows = self._cited_rows()
         files = {os.path.basename(p)[:-3]
                  for p in glob.glob(os.path.join(root, "shared", "boards",
                                                  "*.md"))} - {"README"}
-        self.assertEqual(sorted(listed - files), [])
+        orphelines = [(k, n) for k, n in rows if n not in files]
+        self.assertEqual(
+            orphelines, [],
+            f"{len(orphelines)} README row(s) name a card file that does not "
+            f"exist, so a reader is sent to a missing page, which looks like "
+            f"an answer: "
+            + ", ".join(f"line {k} -> `{n}.md`" for k, n in orphelines))
 
     def test_the_table_has_not_shrunk_to_nothing(self):
         """**The denominator.** Both checks above are set differences, and both
