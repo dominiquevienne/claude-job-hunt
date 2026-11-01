@@ -202,7 +202,7 @@ def cmd_jobs(a):
             "source": BOARD, "tenant": host, "ledger_id": f"{BOARD}:{host}:{j['id']}", "id": str(j["id"]), "url": f"https://{host}/jobs/{j['id']}",
             "title": (j.get("title") or "").strip() or None, "company": company, "department": j.get("department") or None,
             "country": country_of(ad.get("country")), "state": ad.get("stateShortName") or ad.get("state") or None, "place": ad.get("city") or None,
-            "job_type": j.get("type"), "workplace_type": wp.get("workplaceType"), "contacts_withheld": True,
+            "job_type": j.get("type"), "workplace_type": wp.get("workplaceType"),
         })
     for r in out:
         print(json.dumps(r, ensure_ascii=False))

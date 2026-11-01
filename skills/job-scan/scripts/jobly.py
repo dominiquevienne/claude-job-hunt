@@ -201,7 +201,7 @@ def cards(body, b):
             "employer": text(o.group(1)) if o else None,
             "posted": iso(d.group(1)) if d else None,
             "location": text(loc.group(1)) if loc else None,   # «95900 Kolari, Lappi» — the towns, then the region
-            "contacts_withheld": True, "language": b["lang"],
+"language": b["lang"],
         })
     return out
 
@@ -276,7 +276,7 @@ def cmd_sitemap(a):
             if m.group(1) in seen:
                 continue
             seen.add(m.group(1))
-            rows.append({"source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None, "contacts_withheld": True, "language": b["lang"]})
+            rows.append({"source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None,"language": b["lang"]})
     emitted = rows[:a.limit] if a.limit else rows
     for r in emitted:
         print(json.dumps(r, ensure_ascii=False))

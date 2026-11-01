@@ -228,7 +228,6 @@ def row(host, href, title, fields, country):
         "vacancy_type": fields.get("VacV_VacancyTypeID", (None, None))[1], "closes": fields.get("VacV_AdvertisingEndDate", (None, None))[1],
         "division": (fields.get("VacV_PositionID", (None, None))[1] if fields.get("VacV_PositionID", (None, None))[1] not in (None, "Please Select", "Not Specified") else None),
         "fields": {lab: val for lab, val in fields.values() if val and lab not in ("All Locations", "Location", "Vacancy ID")},   # the tenant's own labels, the address fields left out
-        "contacts_withheld": True,
     }
 
 

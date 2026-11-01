@@ -209,7 +209,6 @@ def record(d, host):
         "industry": first_name(d, "PositionIndustry"), "schedule": first_name(d, "PositionSchedule"),
         "contract": first_name(d, "PositionOfferingType"),
         "published": (d.get("PublicationStartDate") or "")[:10] or None, "expires": (d.get("PublicationEndDate") or "")[:10] or None,
-        "contacts_withheld": True,
     }
 
 

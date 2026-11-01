@@ -134,7 +134,7 @@ def cards(body):
             "source": "tumomopegas", "country": "BO", "ledger_id": f"tumomopegas:{jid}", "id": jid, "url": href,
             "title": text(title), "company": text(comp.group(2)) if comp else None, "company_id": comp.group(1) if comp else None,
             "posted": iso(*dt.groups()) if dt else None, "place": text(pl.group(1)) if pl else None,
-            "contacts_withheld": True, "language": "es",
+"language": "es",
         })
     return out
 

@@ -190,7 +190,6 @@ def row(host, inst, cust, q, jid, cells, heads, country):
         "title": named.get("title"), "place": named.get("place"), "region": named.get("region"), "closes": named.get("closes"),
         "employment_type": named.get("employment_type"), "reference": named.get("reference"), "country": country,
         "fields": {k: v for k, v in fields.items() if k not in (heads[0][1] if heads else None,)},   # the tenant's own labels, the title once
-        "contacts_withheld": True,
     }
 
 

@@ -137,7 +137,7 @@ def cards(body):
             "source": "empleos_hn", "country": "HN", "ledger_id": f"empleos_hn:{slug}", "id": slug, "url": f"https://{HOST}/jobs/{slug}",
             "title": text(t.group(1)) if t else None, "company": text(e.group(1)) if e else None, "department": text(p.group(1)) if p else None,
             "valid_through": (tm.group(1) or "")[:10] or None if tm else None,
-            "contacts_withheld": True, "language": "es",
+"language": "es",
         })
     return out
 

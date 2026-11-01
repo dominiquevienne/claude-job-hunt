@@ -180,7 +180,6 @@ def record(uuid, f, tenant, stamp):
         "ledger_id": f"prospective:{uuid}", "id": uuid,
         "url": f"https://{HOST}/public/v1/jobs/{uuid}", "employer_url": f.get("employer_url"),
         "title": f.get("title"), "place": f.get("place"),
-        "contacts_withheld": True,
     }
 
 

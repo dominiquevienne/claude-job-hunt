@@ -168,7 +168,6 @@ def row(host, jid, cells, lang, country):
         "url": f"https://{host}/{lang}/what:job/jobID:{jid}/",
         "title": cells.get("title"), "place": cells.get("town") or None, "department": cells.get("subcompany") or None,
         "closes": cells.get("ends") or None, "country": country,
-        "contacts_withheld": True,
     }
 
 

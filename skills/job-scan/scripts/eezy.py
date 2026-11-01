@@ -181,7 +181,7 @@ def row(j):
         "fields": [f for f in (j.get("fieldOfWorks") or []) if f] or None,
         "places": [l.get("name") for l in (j.get("workLocations") or []) if isinstance(l, dict) and l.get("name")] or None,
         "feed": j.get("source"),   # Core (the group's own ATS) or Personnel (Talentadore)
-        "language": "fi", "contacts_withheld": True,
+        "language": "fi",
     }
 
 

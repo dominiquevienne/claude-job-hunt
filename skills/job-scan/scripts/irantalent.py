@@ -155,7 +155,7 @@ def ads_of(body):
 def row(jid, slug, url, via):
     return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{jid}", "id": jid, "url": url,
             "slug": slug, "title_from_slug": " ".join(slug.replace("-", " ").split()) or None,
-            "seen_on": via, "contacts_withheld": True}
+            "seen_on": via,}
 
 
 def cmd_jobs(a):

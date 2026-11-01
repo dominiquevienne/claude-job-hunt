@@ -214,7 +214,7 @@ def sitemap_rows(b):
         if not m or m.group(1) in seen:
             continue
         seen.add(m.group(1))
-        rows.append({"source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None, "contacts_withheld": True, "language": b["lang"]})
+        rows.append({"source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": loc, "lastmod": lastmod or None,"language": b["lang"]})
     if not rows:
         die(f"{url}: 200 and not one /jobs/<id> row — the sitemap's shape changed", EXIT_PARTIAL)
     return rows

@@ -202,7 +202,6 @@ def record(p, host, lang):
         "salary": jo.get("salary") or jo.get("salaryRange") or None,
         "language": p.get("language") or None,
         "published": (p.get("startDate") or jo.get("createdDate") or "")[:10] or None, "expires": (p.get("endDate") or "")[:10] or None,
-        "contacts_withheld": True,
     }
 
 

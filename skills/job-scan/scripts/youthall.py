@@ -179,7 +179,7 @@ def parse_cards(body):
         rows.append({
             "source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{company}:{n}", "id": f"{company}:{n}", "url": url,
             "title": text(h5.group(1)) if h5 else None, "company": htmlmod.unescape(logo.group(1)).strip() if logo else None,
-            "kind": kind, "closes": closes, "place": city, "contacts_withheld": True,
+            "kind": kind, "closes": closes, "place": city,
         })
     return rows
 

@@ -178,7 +178,7 @@ def row(j):
         "fields": [f.get("name") for f in (j.get("fields") or []) if isinstance(f, dict) and f.get("name")] or None,
         "posted": fi_date(j.get("validFrom")), "valid_through": fi_date(j.get("validUntil")), "continuous": (j.get("validUntil") or "").strip() == "Jatkuva haku",
         "is_new": j.get("isNew"), "is_expiring": j.get("isExpiring"),
-        "language": (j.get("language") or "fi").lower(), "contacts_withheld": True,
+        "language": (j.get("language") or "fi").lower(),
     }
 
 

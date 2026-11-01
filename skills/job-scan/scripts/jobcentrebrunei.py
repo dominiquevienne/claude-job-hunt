@@ -195,7 +195,6 @@ def record(pid, f, stamp):
         "place": f.get("job_location"), "salary": f.get("job_salary"),
         "schedule": f.get("time"), "posts": int(n) if n else None,
         "closes": when((f.get("closing-date") or "").replace("CLOSING DATE:", "").strip()),
-        "contacts_withheld": True,
     }
 
 

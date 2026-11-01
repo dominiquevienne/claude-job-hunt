@@ -127,7 +127,7 @@ def sitemap_rows():
         if m.group(2) in seen:
             continue
         seen.add(m.group(2))
-        rows.append({"source": "asako", "country": "MG", "ledger_id": f"asako:{m.group(2)}", "id": m.group(2), "url": loc, "slug": m.group(1), "lastmod": (lastmod or "")[:10] or None, "contacts_withheld": True, "language": "fr"})
+        rows.append({"source": "asako", "country": "MG", "ledger_id": f"asako:{m.group(2)}", "id": m.group(2), "url": loc, "slug": m.group(1), "lastmod": (lastmod or "")[:10] or None,"language": "fr"})
     if not rows:
         die(f"{SITEMAP}: 200 and not one /annonces/<slug>-<hex> row among {th(other)} — the sitemap's shape changed", EXIT_PARTIAL)
     return rows, other

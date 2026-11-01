@@ -235,7 +235,7 @@ def cmd_sitemap(a):
         if slug in seen:
             continue
         seen.add(slug)
-        rows.append({"source": "allasportal", "country": "HU", "ledger_id": f"allasportal:slug:{slug}", "id": slug, "url": loc, "kind": "hosted", "contacts_withheld": True, "language": "hu"})
+        rows.append({"source": "allasportal", "country": "HU", "ledger_id": f"allasportal:slug:{slug}", "id": slug, "url": loc, "kind": "hosted","language": "hu"})
     if not rows:
         die(f"{SITEMAP}: 200 and not one /munka-<slug>/ row — the file's shape changed", EXIT_PARTIAL)
     emitted = rows[:a.limit] if a.limit else rows

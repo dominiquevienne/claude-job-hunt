@@ -194,7 +194,6 @@ def record(r, cid, cc_id, lang):
         "location": ((first.get("nameCode") or {}).get("shortName") or "").strip() or None,
         "work_level": ((r.get("workLevelCode") or {}).get("shortName") or None), "job_class": f.get("JobClass") or None,
         "posted": (r.get("postDate") or "")[:10] or None,
-        "contacts_withheld": True,
     }
 
 

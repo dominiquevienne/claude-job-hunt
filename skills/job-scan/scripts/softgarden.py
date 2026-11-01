@@ -199,7 +199,6 @@ def record(pid, f, host, lang, stamp):
         "title": f.get("title"), "company": f.get("sg_company_id"),
         "place": f.get("ProjectGeoLocationCity"), "audience": f.get("audience"), "category": f.get("jobcategory"),
         "published": when(f.get("date")),
-        "contacts_withheld": True,
     }
 
 

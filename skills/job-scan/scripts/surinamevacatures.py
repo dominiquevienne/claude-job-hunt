@@ -134,7 +134,7 @@ def cards(body, kind):
             "source": "surinamevacatures", "country": "SR", "ledger_id": f"surinamevacatures:{m.group(1)}", "id": m.group(1), "url": href, "kind": kind,
             "title": text(t.group(1)), "place": (f.get("plaatsnaam") or [None])[0], "hours": (f.get("uren") or [None])[0], "level": text(lv.group(1)) if lv else None,
             "categories": [text(c) for c in CATEG_RE.findall(tail) if text(c)] or None,
-            "contacts_withheld": True, "language": "nl",
+"language": "nl",
         })
     return out
 

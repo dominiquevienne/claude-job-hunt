@@ -134,7 +134,7 @@ def sitemap_rows(dept=None):
         if m.group(3) in seen:
             continue
         seen.add(m.group(3))
-        rows.append({"source": "trabajito", "country": "BO", "ledger_id": f"trabajito:{m.group(3)}", "id": m.group(3), "url": loc, "department": m.group(1), "slug": m.group(2), "lastmod": (lastmod or "")[:10] or None, "contacts_withheld": True, "language": "es"})
+        rows.append({"source": "trabajito", "country": "BO", "ledger_id": f"trabajito:{m.group(3)}", "id": m.group(3), "url": loc, "department": m.group(1), "slug": m.group(2), "lastmod": (lastmod or "")[:10] or None,"language": "es"})
     if not rows and not elsewhere:
         die(f"{SITEMAP}: 200 and not one /trabajo/<dept>/<slug>-<CODE> row among {th(other)} — the sitemap's shape changed", EXIT_PARTIAL)
     return rows, other, elsewhere
