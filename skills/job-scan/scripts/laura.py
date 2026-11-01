@@ -171,7 +171,6 @@ def row(host, jid, cells, heads, lang, country):
         "place": cells.get("Location") or cells.get("City") or cells.get("Municipality"),
         "department": cells.get("Department"), "closes": cells.get("ApplyEndDate"),
         "fields": labelled,                     # the tenant's own column labels
-        "contacts_withheld": True,
     }
 
 

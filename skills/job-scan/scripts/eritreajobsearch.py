@@ -167,7 +167,7 @@ def row(c):
     slug = urllib.parse.urlsplit(c["url"]).path.strip("/").split("/")[-1]
     return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['id']}", "id": c["id"], "url": c["url"], "slug": slug,
             "title": c["title"], "place": c["place"], "kind": c["kind"], "views": c["views"],
-            "source_signals": list(SIGNALS), "contacts_withheld": True}
+            "source_signals": list(SIGNALS),}
 
 
 def cmd_jobs(a):

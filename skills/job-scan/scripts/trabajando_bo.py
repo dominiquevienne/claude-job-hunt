@@ -143,7 +143,7 @@ def cards(body):
             "city": m.group(1) if m else None, "category": m.group(2) if m else None,
             "hours": badges[0] if len(badges) > 1 else None, "place": badges[1] if len(badges) > 1 else (badges[0] if badges else None),
             "posted": (tm.group(1) or "")[:10] or None, "featured": "Destacado" in inner,
-            "contacts_withheld": True, "language": "es",
+"language": "es",
         })
     return out
 

@@ -187,7 +187,6 @@ def record(pid, f, tenant, stamp):
         "title": f.get("title"), "workload": f.get("workload"), "place": f.get("workplace"),
         "area": f.get("operationArea"), "segment": f.get("segment"), "language": f.get("locale"),
         "published": when(f.get("published")),
-        "contacts_withheld": True,
     }
 
 

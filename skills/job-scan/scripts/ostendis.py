@@ -224,7 +224,6 @@ def record(j, token, domain):
         "workload": j.get("workload") or None, "type": j.get("type") or None, "position": j.get("position") or None,
         "start": j.get("startdate") or None, "published": when(j.get("timestamp")) or when(j.get("published")),
         "language": (j.get("langcode") or "").upper() or None,
-        "contacts_withheld": True,
     }
 
 

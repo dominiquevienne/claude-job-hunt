@@ -237,7 +237,7 @@ def cmd_jobs(a):
             continue
         seen.add(jid)
         out.append({"source": BOARD, "tenant": host, "ledger_id": f"{BOARD}:{host}:{jid}", "id": jid, "url": ad_url(host, jid),
-                    "title": title, "company": company, "country": country, "posted": iso_date(date), "posted_as_written": date, "contacts_withheld": True})
+                    "title": title, "company": company, "country": country, "posted": iso_date(date), "posted_as_written": date,})
     for r in out:
         print(json.dumps(r, ensure_ascii=False))
     n = len(out)

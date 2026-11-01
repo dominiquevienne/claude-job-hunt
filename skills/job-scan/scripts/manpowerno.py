@@ -150,7 +150,7 @@ def sitemap_rows():
         if m.group(1) in seen:
             continue
         seen.add(m.group(1))
-        rows.append({"source": "manpower-no", "country": "NO", "ledger_id": f"manpower-no:{m.group(1)}", "id": m.group(1), "url": loc, "slug": m.group(2), "lastmod": lastmod or None, "contacts_withheld": True, "language": "nb"})
+        rows.append({"source": "manpower-no", "country": "NO", "ledger_id": f"manpower-no:{m.group(1)}", "id": m.group(1), "url": loc, "slug": m.group(2), "lastmod": lastmod or None,"language": "nb"})
     if not rows:
         die(f"{SITEMAP}: 200 and not one /nb/jobb/<id>/ row among {th(other)} — the sitemap's shape changed", EXIT_PARTIAL)
     return rows, other

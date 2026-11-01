@@ -191,7 +191,7 @@ def cards(body):
             "place": lines.get("location-dot") or None, "contract": lines.get("file-contract") or None,
             "salary_min": smin, "salary_max": smax, "salary_currency": cur, "salary_unit": unit, "salary_unit_stated": st, "salary_text": sal_text,
             "updated_text": lines.get("calendar-days") or None,
-            "language": "sk", "contacts_withheld": True,
+            "language": "sk",
         })
     return out
 
@@ -263,7 +263,7 @@ def sitemap_rows():
         if mm.group(2) in seen:
             continue
         seen.add(mm.group(2))
-        rows.append({"source": "worki", "country": "SK", "ledger_id": f"worki:{mm.group(2)}", "id": mm.group(2), "url": loc, "employer_slug": mm.group(1), "slug": mm.group(3), "file_generated": (lastmod or "")[:10] or None, "language": "sk", "contacts_withheld": True})
+        rows.append({"source": "worki", "country": "SK", "ledger_id": f"worki:{mm.group(2)}", "id": mm.group(2), "url": loc, "employer_slug": mm.group(1), "slug": mm.group(3), "file_generated": (lastmod or "")[:10] or None, "language": "sk",})
     if not rows:
         die(f"{m.group(1)}: 200 and not one /ponuka-prace/<employer>/<id>- row among {th(other)} — the shape changed", EXIT_PARTIAL)
     return rows, other

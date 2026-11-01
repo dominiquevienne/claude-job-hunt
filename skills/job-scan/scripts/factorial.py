@@ -185,7 +185,6 @@ def record(pid, f, host, stamp):
         "title": f.get("title"), "team": f.get("team"), "workplace": f.get("workplace"),
         "contract": f.get("contract"), "remote": f.get("remote"),
         "location_id": f.get("location_id"), "team_id": f.get("team_id"),
-        "contacts_withheld": True,
     }
 
 

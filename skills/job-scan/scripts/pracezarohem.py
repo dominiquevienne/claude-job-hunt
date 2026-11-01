@@ -176,7 +176,7 @@ def card(a, b):
         "age": a.get("ageGroupStr") or None, "valid_end": a.get("validEnd"),
         "agency": bool(a.get("personalAgency")), "topped": bool(a.get("toppedPzr")),
         "employer_rating": atm.get("stars") if atm else None, "employer_reviews": atm.get("numberOfReviews") if atm else None,
-        "contacts_withheld": True, "language": b["lang"],
+"language": b["lang"],
     }
 
 

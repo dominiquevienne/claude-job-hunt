@@ -169,7 +169,7 @@ def cards(body):
         m = AD_RE.match(urllib.parse.urlsplit(t.group(1)).path)
         rec = {"source": "werkstraat", "country": "SR", "ledger_id": f"werkstraat:{nid}", "id": nid, "url": t.group(1), "slug": m.group(1) if m else None, "title": text(t.group(2))}
         rec.update(meta(inner))
-        rec.update({"contacts_withheld": True, "language": "nl"})
+        rec.update({"language": "nl"})
         out.append(rec)
     return out
 

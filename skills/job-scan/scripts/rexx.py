@@ -248,7 +248,6 @@ def record(pid, f, host, stamp):
         "title": f.get("title"), "lang": f.get("lang"),
         "place": f.get("place"), "location": f.get("location"), "department": f.get("department"),
         "level": f.get("level"), "deadline": when(f.get("deadline")),
-        "contacts_withheld": True,
     }
 
 

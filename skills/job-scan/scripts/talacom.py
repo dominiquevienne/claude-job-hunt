@@ -179,7 +179,7 @@ def parse_listing(body):
 
 def row(c):
     return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['slug']}", "id": c["slug"], "url": c["url"],
-            "title": c["title"], "company": c["company"], "region": c["region"], "contract": c["contract"], "contacts_withheld": True}
+            "title": c["title"], "company": c["company"], "region": c["region"], "contract": c["contract"],}
 
 
 def cmd_list(a):

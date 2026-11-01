@@ -169,7 +169,7 @@ def cards(body):
             "employer": text(c.group(2)) if c else None, "employer_slug": c.group(1) if c else None,
             "city": text(city.group(1)) if city else None,
             "age": text(age.group(1)) if age else None,   # «Bugün», «1 gün önce» — the site's own words
-            "contacts_withheld": True, "language": "tr",
+"language": "tr",
         })
     return out
 

@@ -170,7 +170,6 @@ def row(j, host, lang, groups, stamp):
         "url": f"https://{host}/{lang}/{slug}" if slug else None, "employer_url": j.get("url") or None,
         "title": j.get("title"), "place": j.get("location") or None, "country": stamp,
         "schedule": j.get("types") or None, "categories": labels(groups, set(filt.get("filterIds") or [])),
-        "contacts_withheld": True,
     }
 
 

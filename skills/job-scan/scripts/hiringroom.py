@@ -248,7 +248,7 @@ def cmd_jobs(a):
             seen.add(c["id"])
             out.append({"source": BOARD, "tenant": host, "ledger_id": f"{BOARD}:{host}:{c['id']}", "id": c["id"], "url": f"https://{host}/jobs/get_vacancy/{c['id']}",
                         "title": c["title"], "company": company, "country": country_of(c["location"], stamp), "location": c["location"], "area": c["area"],
-                        "schedule": c["schedule"], "modality": c["modality"], "seniority": c["seniority"], "posted_relative": c["age"], "contacts_withheld": True})
+                        "schedule": c["schedule"], "modality": c["modality"], "seniority": c["seniority"], "posted_relative": c["age"],})
         if total is not None and len(out) >= total:
             break
     else:

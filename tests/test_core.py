@@ -25651,8 +25651,8 @@ class AGeneralistThatAsksTenSecondsWhosePagerCountsFromZeroAndWhoseBodyNamesTheR
         self.assertEqual(asked, ["https://www.jobly.fi/tyopaikat", "https://www.jobly.fi/tyopaikat?page=1", "https://www.jobly.fi/tyopaikat?page=2"])
         self.assertEqual([r["id"] for r in rows], ["2685791", "2756802", "2756700", "2756600"])
         a = rows[0]
-        self.assertEqual((a["ledger_id"], a["url"], a["title"], a["employer"], a["posted"], a["location"], a["contacts_withheld"]),
-                         ("jobly:2685791", "https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791", "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "Lapland Hotels", "2026-09-13", "95900 Kolari, Lappi", True))
+        self.assertEqual((a["ledger_id"], a["url"], a["title"], a["employer"], a["posted"], a["location"]),
+                         ("jobly:2685791", "https://www.jobly.fi/tyopaikka/tarjoilija-lapland-hotels-olos-olostunturi-2685791", "Ski Shop-työntekijä, Ylläs Ski Resort, Äkäslompolo", "Lapland Hotels", "2026-09-13", "95900 Kolari, Lappi"))
         self.assertEqual((rows[2]["posted"], rows[2]["location"]), ("2026-09-12", "Uusimaa"))
         self.assertIn("4 emitted over 3 page(s) of 20, the listing states 12 737 — walked by request (--pages/--limit), 10 s a page as the host asks; not a shortfall.", err)
         self.assertIn("never followed", err)
@@ -26034,8 +26034,8 @@ class AListWhoseEveryParameterAnswersGoneReadOneFirstPageAtATimeAndAnAdBehindNoL
         self.assertEqual(asked, ["https://www.secretcv.com/is-ilanlari"])
         self.assertEqual([r["id"] for r in rows], ["1877236", "1877200"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["employer_slug"], a["city"], a["age"], a["contacts_withheld"]),
-                         ("secretcv", "TR", "secretcv:1877236", "https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236", "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "Amasya Et Ürünleri", "amasya-et-urunleri-10868-is-ilanlari", "İstanbul Avrupa", "1 gün önce", True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["employer_slug"], a["city"], a["age"]),
+                         ("secretcv", "TR", "secretcv:1877236", "https://www.secretcv.com/amasya-et-urunleri-10868/magaza-mudur-yardimcisi-city-center-outlet-avm-is-ilanlari-1877236", "Mağaza Müdür Yardımcısı (City Center Outlet AVM)", "Amasya Et Ürünleri", "amasya-et-urunleri-10868-is-ilanlari", "İstanbul Avrupa", "1 gün önce"))
         self.assertIn("2 emitted from 1 first page(s) (2 cards, 2 distinct), the list states 20 409 over 342 pages — the pager answers 410 to this client: first pages only, never a shortfall claimed; --sections all reads the 3 lists the site links.", err)
         self.assertNotIn("giris-yap", raw)
         rows, err, asked, raw = self._run(mod, [(200, main), (200, ist), (200, cm_)], sections="istanbul,cagri-merkezi")
@@ -26180,7 +26180,7 @@ class ATechBoardWhoseApiHostRefusesEverythingAndWhoseOfferPageCarriesItsOwnState
         rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS)])
         self.assertEqual(asked, ["https://www.startupjobs.cz/sitemap_index.xml", "https://www.startupjobs.cz/sitemap/offers.xml"])
         self.assertEqual([(r["id"], r["slug"]) for r in rows], [("21242", "customer-care-chat-and-mail"), ("24290", "fullstack-agentic-engineer"), ("36746", "linux-server-administrator")])
-        self.assertEqual((rows[1]["url"], rows[1]["ledger_id"], rows[1]["country"], rows[1]["contacts_withheld"]), ("https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer", "startupjobs:24290", "CZ", True))
+        self.assertEqual((rows[1]["url"], rows[1]["ledger_id"], rows[1]["country"]), ("https://www.startupjobs.cz/nabidka/24290/fullstack-agentic-engineer", "startupjobs:24290", "CZ"))
         self.assertIn("3 offer id(s) in the offers sitemap (1 other rows set aside) — the site states no count on a page this client may read (its count is on back.startupjobs.cz, refused in writing): the sitemap is the inventory, not the site's statement.", err)
         rows, err, asked, raw = self._run(mod, [(200, self.INDEX), (200, self.OFFERS)], limit=1)
         self.assertEqual((len(rows), "1 emitted of the 3 — bounded by --limit." in err), (1, True))
@@ -26393,8 +26393,8 @@ class TwoNeighbourhoodBoardsOnOneNextStackWhoseAdCarriesTheRecruiterAndNeverEmit
         self.assertEqual(asked, ["https://www.pracezarohem.cz/nabidky", "https://www.pracezarohem.cz/nabidky?page=2"])
         self.assertEqual([r["id"] for r in rows], ["PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "G2-2001321946-aden_brand0", "PROF-1", "PZRG-x"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["address"], a["age"], a["employer_rating"], a["employer_reviews"], a["contacts_withheld"]),
-                         ("pracezarohem", "CZ", "pracezarohem:PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "https://www.pracezarohem.cz/dl/jd/PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "Recruiter/grafik (ž/m)", "Kaufland Česká republika v.o.s.", "Praha-Břevnov", "Ulice 1, Praha-Břevnov", "Jen pár hodin", 3.0, 1049, True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["address"], a["age"], a["employer_rating"], a["employer_reviews"]),
+                         ("pracezarohem", "CZ", "pracezarohem:PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "https://www.pracezarohem.cz/dl/jd/PZRG-7a1f18a6-1223-443a-bd1f-04901b3f3677", "Recruiter/grafik (ž/m)", "Kaufland Česká republika v.o.s.", "Praha-Břevnov", "Ulice 1, Praha-Břevnov", "Jen pár hodin", 3.0, 1049))
         self.assertEqual((rows[1]["salary_text"], rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_currency"], rows[1]["salary_unit_stated"]), ("25 190 - 36 210 Kč", 25190, 36210, "CZK", False))
         self.assertEqual((rows[2]["salary_min"], rows[2]["salary_max"], rows[2]["salary_currency"], rows[2]["agency"]), (1000, None, "EUR", True))   # «od 1 000 €» — a floor, not a range
         self.assertEqual((rows[3]["salary_min"], rows[3]["salary_max"]), (45000, 45000))
@@ -26595,7 +26595,7 @@ class AnAgencyBoardWhoseSitemapIsTheInventoryAndWhosePageWritesTheTownInTheRegio
         rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)])
         self.assertEqual(asked, ["https://www.manpower.no/sitemap.xml"])
         self.assertEqual([(r["id"], r["slug"], r["lastmod"]) for r in rows], [("53700", "radgiveroffentligeanskaffelser", "2026-09-10T12:56:13+00:00"), ("53493", "kundemottaker", "2026-09-07T07:01:48+00:00")])
-        self.assertEqual((rows[0]["source"], rows[0]["country"], rows[0]["ledger_id"], rows[0]["contacts_withheld"]), ("manpower-no", "NO", "manpower-no:53700", True))
+        self.assertEqual((rows[0]["source"], rows[0]["country"], rows[0]["ledger_id"]), ("manpower-no", "NO", "manpower-no:53700"))
         self.assertIn("2 job row(s) in the sitemap (3 other rows set aside — pages, facets, the English twins) — the site's search renders no count a client reads: the sitemap is the inventory, not the site's statement.", err)
         rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], limit=1)
         self.assertEqual((len(rows), "1 emitted of the 2 — bounded by --limit." in err), (1, True))
@@ -26944,8 +26944,8 @@ class AStaffingBoardWhoseListIsFilledByThePagesOwnServerActionReplayedWithItsOwn
         self.assertEqual(asked[3][1], [{"sortBy": "startDate", "sortOrder": "desc", "openApplications": "false", "size": "3"}])                  # then the whole list, size = totalCount
         self.assertEqual([r["id"] for r in rows], ["JR1K", "ERPa", "XAx3"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["employment_type"], a["regions"], a["cities"], a["fields"], a["posted"], a["valid_through"], a["continuous"], a["is_new"], a["language"], a["contacts_withheld"]),
-                         ("staffpoint", "FI", "staffpoint:JR1K", "https://www.staffpoint.fi/tyopaikat/myyjia-varkaus-Z5l9JR1K", "myyjia-varkaus", "Myyjia Varkaus", "Määräaikainen", ["Pohjois-Savo"], ["Kuopio", "Varkaus"], ["Asiakaspalvelu"], "2026-09-11", "2026-09-27", False, True, "fi", True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["employment_type"], a["regions"], a["cities"], a["fields"], a["posted"], a["valid_through"], a["continuous"], a["is_new"], a["language"]),
+                         ("staffpoint", "FI", "staffpoint:JR1K", "https://www.staffpoint.fi/tyopaikat/myyjia-varkaus-Z5l9JR1K", "myyjia-varkaus", "Myyjia Varkaus", "Määräaikainen", ["Pohjois-Savo"], ["Kuopio", "Varkaus"], ["Asiakaspalvelu"], "2026-09-11", "2026-09-27", False, True, "fi"))
         self.assertEqual((rows[1]["valid_through"], rows[1]["continuous"], rows[2]["language"]), ("Jatkuva haku", True, "en"))
         self.assertIn("3 emitted, the site states 3 (the page's own fetchJobs call, `totalCount`) — equal.", err)
         # a different build: the id must come from the script, never from memory
@@ -27064,8 +27064,8 @@ class AStaffingBoardWhoseListIsThePagesOwnGraphQLQueryReplayedAndWhoseClientIsHi
         self.assertEqual(asked[3][1]["variables"], {"locations": [], "from": 0, "to": 3})                            # then the whole list, to = available
         self.assertEqual([r["id"] for r in rows], ["bYZRVGfF5Oz4ANQGG3Y7Ig", "e_dzVYVh4bNvO83gy2YcWg", "BMJ55"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_hidden"], a["agency"], a["fields"], a["places"], a["feed"], a["language"], a["contacts_withheld"]),
-                         ("eezy", "FI", "eezy:bYZRVGfF5Oz4ANQGG3Y7Ig", "https://tyopaikat.eezy.fi/fi/tyopaikat/bYZRVGfF5Oz4ANQGG3Y7Ig", "Asiakasneuvojia Vaasaan", "Jyväskylän Aluetaksi Oy", False, "Eezy", ["Toimisto-, hallinto ja asiakaspalvelu"], ["Vaasa", "Pohjanmaa"], "Core", "fi", True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_hidden"], a["agency"], a["fields"], a["places"], a["feed"], a["language"]),
+                         ("eezy", "FI", "eezy:bYZRVGfF5Oz4ANQGG3Y7Ig", "https://tyopaikat.eezy.fi/fi/tyopaikat/bYZRVGfF5Oz4ANQGG3Y7Ig", "Asiakasneuvojia Vaasaan", "Jyväskylän Aluetaksi Oy", False, "Eezy", ["Toimisto-, hallinto ja asiakaspalvelu"], ["Vaasa", "Pohjanmaa"], "Core", "fi"))
         self.assertEqual((rows[1]["company"], rows[1]["company_hidden"]), (None, True))   # the site hides it; so does the adapter
         self.assertNotIn("Hidden Oy", raw)
         self.assertIn("3 emitted, the site states 3 (the page's own elasticJobs query, `available`) — equal.", err)
@@ -27199,8 +27199,8 @@ class ASlovakBoardWhoseListingStatesItsCountAndPagesByPathAndWhoseAdIsCutBeforeI
         self.assertEqual(asked, ["https://www.worki.sk/ponuka-prace", "https://www.worki.sk/ponuka-prace/2"])
         self.assertEqual([r["id"] for r in rows], ["2061450", "2059567", "2062058"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["top"], a["company"], a["company_id"], a["place"], a["contract"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["salary_text"], a["updated_text"], a["language"], a["contacts_withheld"]),
-                         ("worki", "SK", "worki:2061450", "https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vzťahový-pracovník", "Vzťahový pracovník", True, "Rastislav Beran", "57023", "Prešov, Home office", "Práca na živnosť", 150, 2000, "EUR", "mesiac", True, "od 150 € do 2 000 € za mesiac", "Aktualizované dnes", "sk", True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["top"], a["company"], a["company_id"], a["place"], a["contract"], a["salary_min"], a["salary_max"], a["salary_currency"], a["salary_unit"], a["salary_unit_stated"], a["salary_text"], a["updated_text"], a["language"]),
+                         ("worki", "SK", "worki:2061450", "https://www.worki.sk/ponuka-prace/rastislav-beran/2061450-vzťahový-pracovník", "Vzťahový pracovník", True, "Rastislav Beran", "57023", "Prešov, Home office", "Práca na živnosť", 150, 2000, "EUR", "mesiac", True, "od 150 € do 2 000 € za mesiac", "Aktualizované dnes", "sk"))
         self.assertEqual((rows[1]["salary_min"], rows[1]["salary_max"], rows[1]["salary_currency"], rows[1]["top"], rows[1]["company"]), (1800, 1800, "EUR", False, "Havko Milan, s. r. o."))   # one figure printed: the amount itself
         self.assertEqual((rows[2]["salary_min"], rows[2]["salary_max"], rows[2]["salary_currency"]), (50000, 60000, "CZK"))
         self.assertIn("3 emitted in 2 page(s), the site states 3 — equal.", err)
@@ -27836,8 +27836,8 @@ class ABolivianDrupalBoardWhoseListIsServedWithItsCountInProseAndWhoseSearchSort
         self.assertEqual([r["id"] for r in rows], ["1", "2", "3", "4"])   # the repeated nid 3 read once
         self.assertEqual([r["company"] for r in rows], ["DM Blackmining S.R.L.", "Laboratorios IFA S.A.", "Empresa confidencial", "Laboratorios IFA S.A."])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company_profile"], a["city"], a["category"], a["hours"], a["place"], a["posted"], a["featured"], a["contacts_withheld"], a["language"]),
-                         ("trabajando_bo", "BO", "trabajando_bo:1", "https://trabajando.com.bo/trabajo/la-paz/administracion-y-oficina/administrador-1", "ADMINISTRADOR", "https://trabajando.com.bo/empresa/dm-blackmining-srl", "la-paz", "administracion-y-oficina", "Jornada completa", "La Paz", "2026-09-15", True, True, "es"))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company_profile"], a["city"], a["category"], a["hours"], a["place"], a["posted"], a["featured"], a["language"]),
+                         ("trabajando_bo", "BO", "trabajando_bo:1", "https://trabajando.com.bo/trabajo/la-paz/administracion-y-oficina/administrador-1", "ADMINISTRADOR", "https://trabajando.com.bo/empresa/dm-blackmining-srl", "la-paz", "administracion-y-oficina", "Jornada completa", "La Paz", "2026-09-15", True, "es"))
         self.assertEqual((rows[1]["hours"], rows[1]["place"], rows[1]["featured"], rows[1]["company_profile"]), ("Contrato", "Santa Cruz", False, None))
         self.assertIn("4 emitted from 2 page(s), the site states 344 — 340 short.", err)
         rows, err, asked, raw = self._run(mod, [(200, p0)], pages=1)
@@ -27951,8 +27951,8 @@ class ABolivianBoardOnAJobBoardEngineWhoseListIsTenCardsAPageWithItsCountAndWhos
         self.assertEqual(asked, ["https://tumomopegas.com/todos-los-empleos/", "https://tumomopegas.com/todos-los-empleos/?page=2", "https://tumomopegas.com/todos-los-empleos/?page=3"])
         self.assertEqual([r["id"] for r in rows], ["38186", "38185", "38183", "38171"])   # 38183 read once; page 3 brought nothing new and ended the walk
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_id"], a["posted"], a["place"], a["contacts_withheld"], a["language"]),
-                         ("tumomopegas", "BO", "tumomopegas:38186", "https://tumomopegas.com/display-job/38186/Afiliado(a)-Comercial-Freelance.html", "Afiliado(a) Comercial Freelance", "Edutin Academy", "68828", "2026-09-04", "La Paz, LPZ", True, "es"))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["company_id"], a["posted"], a["place"], a["language"]),
+                         ("tumomopegas", "BO", "tumomopegas:38186", "https://tumomopegas.com/display-job/38186/Afiliado(a)-Comercial-Freelance.html", "Afiliado(a) Comercial Freelance", "Edutin Academy", "68828", "2026-09-04", "La Paz, LPZ", "es"))
         self.assertEqual((rows[1]["company"], rows[1]["company_id"], rows[3]["posted"], rows[3]["place"]), (None, "68820", "2024-07-26", "Santa Cruz de la Sierra, SCZ"))
         self.assertNotIn("searchId", raw)
         self.assertIn("4 emitted from 3 page(s), the site states 37 — 33 short.", err)
@@ -28076,8 +28076,8 @@ class AHonduranDrupalBoardWhoseSearchPagesToItsLastPageWithoutATotalAndWhoseAdCa
         self.assertEqual(asked, ["https://empleos.hn/busqueda-avanzada", "https://empleos.hn/busqueda-avanzada?page=1"])
         self.assertEqual([r["id"] for r in rows], ["director-casa-hogar", "tecnicoa-de-campo", "auxiliar-1", "conductoras-2"])   # the repeated slug read once; the walk ended at the pager's last page
         a = rows[1]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["department"], a["valid_through"], a["contacts_withheld"], a["language"]),
-                         ("empleos_hn", "HN", "empleos_hn:tecnicoa-de-campo", "https://empleos.hn/jobs/tecnicoa-de-campo", "Técnico/a de Campo – Proyecto RECOVER", "OCP/Secretaria de Recursos Naturales", "Atlántida", "2026-09-22", True, "es"))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["department"], a["valid_through"], a["language"]),
+                         ("empleos_hn", "HN", "empleos_hn:tecnicoa-de-campo", "https://empleos.hn/jobs/tecnicoa-de-campo", "Técnico/a de Campo – Proyecto RECOVER", "OCP/Secretaria de Recursos Naturales", "Atlántida", "2026-09-22", "es"))
         self.assertIn("4 emitted from 2 page(s), the pager's 2 walked to the last; the site prints no total — the walk is the count, 32 its bound.", err)
         rows, err, asked, raw = self._run(mod, [(200, p0)], pages=1)
         self.assertEqual((len(asked), len(rows)), (1, 3))
@@ -28317,8 +28317,8 @@ class ASurinameseFreePostingBoardWhoseListStatesItsCountAndWhoseEmployerFieldIsS
         self.assertEqual(asked, ["https://werkstraat.com/jobs/", "https://werkstraat.com/jobs/page/2/"])
         self.assertEqual([r["id"] for r in rows], ["74389", "74351", "74300", "74200"])   # the repeated card read once; the walk ended at the pager's last page
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["company"], a["company_profile"], a["locations"], a["categories"], a["job_type"], a["posted"], a["valid_through"], a["contacts_withheld"], a["language"]),
-                         ("werkstraat", "SR", "werkstraat:74389", "https://werkstraat.com/jobs/chat-moderator/", "chat-moderator", "Chat Moderator (Remote)", "Content Services", "https://werkstraat.com/companies/rdplasabasgmail-com/", ["Paramaribo, Suriname", "Remote, vanuit Suriname"], None, "Freelance", "2026-09-15", None, True, "nl"))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["slug"], a["title"], a["company"], a["company_profile"], a["locations"], a["categories"], a["job_type"], a["posted"], a["valid_through"], a["language"]),
+                         ("werkstraat", "SR", "werkstraat:74389", "https://werkstraat.com/jobs/chat-moderator/", "chat-moderator", "Chat Moderator (Remote)", "Content Services", "https://werkstraat.com/companies/rdplasabasgmail-com/", ["Paramaribo, Suriname", "Remote, vanuit Suriname"], None, "Freelance", "2026-09-15", None, "nl"))
         self.assertEqual((rows[1]["company"], rows[1]["job_type"]), ("[e-mail withheld]", "Full-time"))
         self.assertNotIn("blobapps.com", raw)
         self.assertIn("4 emitted from 2 page(s), the site states 341 — 337 short.", err)
@@ -28429,8 +28429,8 @@ class ASmallSurinameseBoardWhoseTwoListsAreServedWholeWithoutACountAndWhoseAdIsA
         self.assertEqual(asked, ["https://surinamevacatures.com/vacatures-suriname", "https://surinamevacatures.com/stageplekken-suriname"])
         self.assertEqual([(r["id"], r["kind"]) for r in rows], [("admin-officer", "vacatures"), ("ziekenverzorgende", "vacatures"), ("stage-shared", "vacatures"), ("stage-hospitality", "stages")])   # the card on both lists read once
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["place"], a["hours"], a["level"], a["categories"], a["contacts_withheld"], a["language"]),
-                         ("surinamevacatures", "SR", "surinamevacatures:admin-officer", "https://surinamevacatures.com/vacatures/admin-officer/", "Admin Officer", "Paramaribo", "40 uur", "MBO", ["Administratie", "Dementie zorg", "Zorg"], True, "nl"))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["place"], a["hours"], a["level"], a["categories"], a["language"]),
+                         ("surinamevacatures", "SR", "surinamevacatures:admin-officer", "https://surinamevacatures.com/vacatures/admin-officer/", "Admin Officer", "Paramaribo", "40 uur", "MBO", ["Administratie", "Dementie zorg", "Zorg"], "nl"))
         self.assertEqual((rows[2]["hours"], rows[2]["level"], rows[2]["categories"]), (None, "MBO, HBO, WO", None))
         self.assertIn("4 emitted — 3 vacatures and 2 stages on the list(s), the site prints no total: the lists are the count (1 on both lists, read once).", err)
         rows, err, asked, raw = self._run(mod, [(200, stg)], kind="stages")
@@ -29288,7 +29288,7 @@ class AHospitalityATSWhosePortalAsksTheGatewayForItsBrandThenItsJobsAndStatesThe
         r = rows[0]
         self.assertEqual((r["id"], r["company"], r["country"], r["place"], r["posted"], r["compensation"], r["plus_tips"]), (100, "Trivoli Tavern", "US", "Chicago", "2026-08-27", "Minimum Wage", True))
         self.assertEqual(r["url"], "https://harri.com/HHILTT/job/100-server-assistant-earn-up-to-1-000-wk")
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         self.assertNotIn("profile_image_href", json.dumps(r))
 
     def test_a_longer_list_is_asked_again_with_size_hits_and_the_cap_is_printed_when_it_bites(self):
@@ -29791,7 +29791,7 @@ class AnATSWhoseCareerCenterListsRequisitionsByAOneBasedSkipCappedAtTwentyAndSta
         self.assertEqual((r["id"], r["ref"], r["external_id"], r["title"], r["place"], r["region"], r["country"], r["posted"], r["job_class"]), ("9205452900000_1", "1300", "606000", "Job 0", "Kalaheo", "HI", "US", "2026-09-18", "Technicians"))
         self.assertTrue(r["url"].endswith("&jobId=606000"))
         self.assertNotIn("96741", json.dumps(rows))
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
 
     def test_internal_postings_the_empty_tenant_the_country_filter_the_bounded_walk_and_the_repeating_pager(self):
         mod = self._mod()
@@ -30142,7 +30142,7 @@ class AnATSWhoseTenantSiteRendersItsListAndPagesByAWebFormsPostbackThatNeedsTheP
         dump = json.dumps(rows)
         for hidden in ("Worcester Road", "Moss Lane", "SK8 5NW", "required field", "var x=1"):
             self.assertNotIn(hidden, dump, hidden)
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
 
     def test_a_postback_that_answers_its_own_page_the_empty_tenant_the_bounded_walk_and_a_page_without_the_count(self):
         mod = self._mod()
@@ -30284,7 +30284,7 @@ class AnATSWhoseTenantSubdomainServesAServerRenderedTableWithItsCountAndWhoseNon
                          ("3100", "Job 0", "Palveluyksiköt", "21.09.2026", "FI", f"https://{self.HOST}/paikat/index.php?o=A_RJ&jid=3100"))
         self.assertEqual(r["fields"], {"Hakuaika päättyy": "21.09.2026", "Tiedekunta/Yksikkö": "Palveluyksiköt"})
         self.assertNotIn("rspvt", json.dumps(rows))
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/paikat/index.php?o=A_LOJ&list=3&lang=en", "--list", "3", "--lang", "en"], page=self._list([self._row(0, "Job")], 1, label="Open jobs"))
         self.assertEqual((code, len(rows)), (0, 1), err)
         self.assertEqual(sent, [f"https://{self.HOST}/paikat/index.php?o=A_LOJ&list=3&lang=en"])
@@ -30743,7 +30743,7 @@ class AnATSWhoseTenantSiteRendersEveryJobInOneTableWithNoCountAndWhoseJobPageLis
         r = rows[0]
         self.assertEqual((r["id"], r["title"], r["place"], r["department"], r["closes"], r["country"], r["url"]),
                          ("969900", "Job 0", "Stockholm", "Kemikum", "2026-09-29", "SE", f"https://{self.HOST}/se/what:job/jobID:969900/"))
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/", "--lang", "en"], page=page)
         self.assertEqual((code, len(rows), sent), (0, 3, [f"https://{self.HOST}/en/"]), err)
         self.assertIsNone(rows[0]["country"])
@@ -30870,7 +30870,7 @@ class AnATSWhoseListAddressCarriesItsOwnValidatorAndRendersOneTableWithTheTenant
         self.assertEqual(r["url"], f"https://web103.reachmee.com/ext/I011/853/job?site=6&lang=SE&validator={self.VAL}&job_id=29920")
         self.assertEqual(r["fields"], {"Sista ans.dag": "2026-10-02", "Anställningsform": "Extrajobb", "Diarienummer": "LiU-2026-04136", "Ort": "Norrköping", "Affärsområde": "ITN", "Erfarenhetsområde": "Student"})
         self.assertNotIn("Sista ans.dag:", json.dumps(rows, ensure_ascii=False), "the mobile label is not a value")
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", self.LIST], page=self._list([]))
         self.assertEqual((code, rows), (0, []), err)
         self.assertIn("0 emitted — the table is the board", err)
@@ -31594,7 +31594,7 @@ class AnATSWhoseEmployersShareOneServerRenderedBoardThatStatesItsCountAndPageInA
         self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["country"], r["schedule"], r["salary"], r["posted_ago"], r["url"]),
                          ("74000", "Job 0", "Caremark Kirklees", "Holmfirth", "GB", "Full time", "From £14.00 Hourly to £18.50 Hourly", "8 hours ago", "https://seemehired.com/jobs/74000"))
         self.assertEqual((rows[12]["company"], rows[12]["schedule"], rows[12]["salary"]), ("Leading Lives", "Part time", None))
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         code, rows, err, _ = self._run(mod, ["jobs"], pages=[(15, p1), (15, p2)])
         self.assertIsNone(rows[0]["country"])
 
@@ -31736,8 +31736,8 @@ class ABoardWhoseListingIsWalkedToItsEmptyPageAndCheckedAgainstItsJobSitemapAndW
         self.assertEqual(sent, ["https://www.youthall.com/tr/is-ilanlari/", "https://www.youthall.com/tr/is-ilanlari/?page=2", "https://www.youthall.com/tr/is-ilanlari/?page=3", "https://www.youthall.com/sitemap.tr-jobs.xml"])
         self.assertIn("3 emitted, the sitemap lists 3 — equal", err)
         r = rows[1]
-        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["kind"], r["closes"], r["place"], r["country"], r["contacts_withheld"]),
-                         ("youthall:Akcansa:56", "https://www.youthall.com/tr/Akcansa/long-term-intern_56/", "Long-Term Intern & Maintenance", "Akçansa", "Stajyer", "18.10.2026", "Samsun", "TR", True))
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["kind"], r["closes"], r["place"], r["country"]),
+                         ("youthall:Akcansa:56", "https://www.youthall.com/tr/Akcansa/long-term-intern_56/", "Long-Term Intern & Maintenance", "Akçansa", "Stajyer", "18.10.2026", "Samsun", "TR"))
         self.assertNotIn("featured-only", json.dumps(rows))
         self.assertNotIn("yetenek-programlari", json.dumps(rows))
         # a page of repeats ends the walk too; the sitemap's differences are named
@@ -32004,7 +32004,7 @@ class AnATSWhoseJobsiteCarriesItsWholeListInlineAndWhoseRulesRefuseEveryQueryStr
                          ("26900", "Harvesting Engineer", "Zedelgem", "BE", "Full-time", ["Engineering"], f"https://{self.HOST}/en/harvesting-engineer", "https://www.cnhind-belgium.be/en/harvesting-engineer"))
         self.assertEqual(rows[1]["categories"], ["Service"])
         self.assertNotIn("imgix", json.dumps(rows))
-        self.assertTrue(r["contacts_withheld"])
+        self.assertNotIn("contacts_withheld", r)
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/nl", "--lang", "nl"], page=self._page(jobs))
         self.assertEqual((code, len(rows), sent), (0, 2, [f"https://{self.HOST}/nl"]), err)
         self.assertIsNone(rows[0]["country"])
@@ -32140,8 +32140,8 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         self.assertEqual([r["id"] for r in rows], ["76d869b5-db41-43ed-a64e-678bee5554a8", "985a54af-adbf-481f-92c6-f92c0b54c331", "practicas-gestor"])
         self.assertIn("3 emitted over 2 page(s), the pager numbered 2: equal — the walk stopped on the empty page; country ES stamped", err)
         r = rows[1]
-        self.assertEqual((r["ledger_id"], r["tenant"], r["url"], r["title"], r["place"], r["details"], r["country"], r["contacts_withheld"]),
-                         (f"bizneo:{self.HOST}:985a54af-adbf-481f-92c6-f92c0b54c331", self.HOST, "https://unete.icp.es/jobs/desarrollador-junior-net-985a54af-adbf-481f-92c6-f92c0b54c331", "Desarrollador Junior .NET", "Meco", ["Presencial"], "ES", True))
+        self.assertEqual((r["ledger_id"], r["tenant"], r["url"], r["title"], r["place"], r["details"], r["country"]),
+                         (f"bizneo:{self.HOST}:985a54af-adbf-481f-92c6-f92c0b54c331", self.HOST, "https://unete.icp.es/jobs/desarrollador-junior-net-985a54af-adbf-481f-92c6-f92c0b54c331", "Desarrollador Junior .NET", "Meco", ["Presencial"], "ES"))
         self.assertNotIn("X-Amz", json.dumps(rows))
         # a page of repeats ends the walk, and the count says the pager promised more
         pages[2] = self._list(c1, pages=3)
@@ -32268,8 +32268,8 @@ class AnATSWhoseTenantListStatesItsCountOnOnePageAndWhoseHostServesARateChalleng
         self.assertEqual(len(rows), 2)
         self.assertIn("2 emitted — the page states 3: 1 short", err)
         r = rows[1]
-        self.assertEqual((r["id"], r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["posted"], r["posted_as_written"], r["contacts_withheld"]),
-                         ("3217350", f"epreselec:{self.HOST}:3217350", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=3217350", "Bilbao -CAJA- 092025", "EROSKI", "ES", "2026-08-01", "1 de agosto, 2026", True))
+        self.assertEqual((r["id"], r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["posted"], r["posted_as_written"]),
+                         ("3217350", f"epreselec:{self.HOST}:3217350", f"https://{self.HOST}/Ofertas/Ofertas.aspx?Id_Oferta=3217350", "Bilbao -CAJA- 092025", "EROSKI", "ES", "2026-08-01", "1 de agosto, 2026"))
         self.assertNotIn("__doPostBack", json.dumps(rows))
         code, rows, err, sent = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/Ofertas/Ofertas.aspx"], lambda url: (200, self._list([self._row(1, "1", "A")], 1)))
         self.assertEqual((code, len(rows)), (0, 1), err)
@@ -32416,8 +32416,8 @@ class AnATSWhoseCareerPageShipsEveryJobInItsNextDataAndPrintsTheCountItShips(uni
         self.assertEqual([r["id"] for r in rows], ["12057784", "12279277"])
         self.assertIn("2 emitted — the page prints 3 vagas: 1 short", err)
         r = rows[0]
-        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["department"], r["country"], r["state"], r["place"], r["job_type"], r["workplace_type"], r["contacts_withheld"]),
-                         (f"gupy:{self.HOST}:12057784", f"https://{self.HOST}/jobs/12057784", "FARM | Apoio de Loja | BELA VISTA", "FARM", "UM FARM", "BR", "SP", "São Paulo", "vacancy_type_effective", "on-site", True))
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["department"], r["country"], r["state"], r["place"], r["job_type"], r["workplace_type"]),
+                         (f"gupy:{self.HOST}:12057784", f"https://{self.HOST}/jobs/12057784", "FARM | Apoio de Loja | BELA VISTA", "FARM", "UM FARM", "BR", "SP", "São Paulo", "vacancy_type_effective", "on-site"))
         self.assertNotIn("jobBoardSource", json.dumps(rows))
         pp["jobs"] = pp["jobs"][:2]
         code, rows, err, _ = self._run(mod, ["jobs", "--tenant", f"https://{self.HOST}/"], lambda url: (200, self._page(pp, "<span>2 vagas</span>")))
@@ -32553,8 +32553,8 @@ class AnATSWhoseTenantPortalFillsItsListByAPostItsOwnScriptMakesTwentyAPageToAnE
         self.assertEqual([r["id"] for r in rows], ids)
         self.assertIn("3 emitted — the list call states 3: equal; country AR stamped", err)
         r = rows[1]
-        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["location"], r["schedule"], r["modality"], r["seniority"], r["posted_relative"], r["contacts_withheld"]),
-                         (f"hiringroom:{self.HOST}:{ids[1]}", f"https://{self.HOST}/jobs/get_vacancy/{ids[1]}", "Consultor SOC", "KPMG Argentina", "CL", "Santiago, Chile", "Full-time", "Remoto", "Semi Senior", "Hace 2 meses", True))
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["country"], r["location"], r["schedule"], r["modality"], r["seniority"], r["posted_relative"]),
+                         (f"hiringroom:{self.HOST}:{ids[1]}", f"https://{self.HOST}/jobs/get_vacancy/{ids[1]}", "Consultor SOC", "KPMG Argentina", "CL", "Santiago, Chile", "Full-time", "Remoto", "Semi Senior", "Hace 2 meses"))
         self.assertEqual((rows[0]["country"], rows[2]["country"]), ("AR", "AR"))
         # the total short of the pages: the walk goes to the empty page and says short
         pages[2] = [self._card(ids[2], "Auditor")]
@@ -32828,8 +32828,8 @@ class AnATSWhoseTenantScriptNamesItsSearchAPIAndWhoseAdsCarryAContactBlock(unitt
         self.assertIn("PositionLocation.CountryCode", q1["SearchParameters"]["MatchedObjectDescriptor"])
         self.assertEqual([r["id"] for r in rows], ["20817", "20818", "20819"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["region"], a["category"], a["career_level"], a["industry"], a["schedule"], a["contract"], a["published"], a["expires"], a["contacts_withheld"]),
-                         ("beesite", "jobs.lvr.de", "DE", "Deutschland", "beesite:jobs.lvr.de:20817", "https://jobs.lvr.de/index.php?ac=jobad&id=20817", "Psychotherapeut*in", "LVR-Klinik Bonn", "Bonn", "Nordrhein-Westfalen", "Therapie", "Berufseinsteigende / Berufserfahrene", "Gesundheitswesen / öffentlicher Dienst", "Voll-/ oder Teilzeit", "befristet", "2026-09-17", "2026-10-09", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["region"], a["category"], a["career_level"], a["industry"], a["schedule"], a["contract"], a["published"], a["expires"]),
+                         ("beesite", "jobs.lvr.de", "DE", "Deutschland", "beesite:jobs.lvr.de:20817", "https://jobs.lvr.de/index.php?ac=jobad&id=20817", "Psychotherapeut*in", "LVR-Klinik Bonn", "Bonn", "Nordrhein-Westfalen", "Therapie", "Berufseinsteigende / Berufserfahrene", "Gesundheitswesen / öffentlicher Dienst", "Voll-/ oder Teilzeit", "befristet", "2026-09-17", "2026-10-09"))
         self.assertIn("3 emitted, the API states 3 for jobs.lvr.de.", err)
         rows, err, asked, raw = self._run(mod, [(200, self.SCRIPT), (200, p1), (200, p2)], tenant="https://jobs.lvr.de/index.php?ac=search_result", country_code="at")
         self.assertEqual([r["id"] for r in rows], ["20818"])
@@ -32974,8 +32974,8 @@ class AnATSWhoseBoardIsRenderedWholeInItsPageAndWhoseWidgetRouteIsRefusedInWriti
         self.assertEqual(asked, ["https://gruen.softgarden.io/de/vacancies"])
         self.assertEqual([r["id"] for r in rows], ["49734098", "60022705", "80000009"])   # the list's order, then the card the list does not name
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["audience"], a["category"], a["published"], a["contacts_withheld"]),
-                         ("softgarden", "gruen.softgarden.io", None, "softgarden:gruen.softgarden.io:49734098", "https://gruen.softgarden.io/job/49734098/Mitarbeiter-Support?jobDbPVId=2849734098&l=de", "Mitarbeiter Support", "GRÜN Software Group", "Bremen", "Berufserfahrene", None, "2026-09-15", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["company"], a["place"], a["audience"], a["category"], a["published"]),
+                         ("softgarden", "gruen.softgarden.io", None, "softgarden:gruen.softgarden.io:49734098", "https://gruen.softgarden.io/job/49734098/Mitarbeiter-Support?jobDbPVId=2849734098&l=de", "Mitarbeiter Support", "GRÜN Software Group", "Bremen", "Berufserfahrene", None, "2026-09-15"))
         self.assertEqual(rows[1]["published"], "2026-01-03")
         self.assertIn("3 emitted, the page's own list names 3 for gruen.softgarden.io — 1 named without a card, 1 card(s) not in the list.", err)
         self.assertNotIn("stamp", err)
@@ -33106,8 +33106,8 @@ class AnATSWhoseListPageCarriesEveryPublicationAsJSONWithItsAddressesAndApplicat
         self.assertEqual(asked, ["https://fi-ts-karriere.dvinci-easy.com/de/jobs"])
         self.assertEqual([r["id"] for r in rows], ["71095", "71096", "71097"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["countries"], a["ledger_id"], a["url"], a["title"], a["company"], a["org_unit"], a["reference"], a["location"], a["places"], a["categories"], a["target_groups"], a["working_times"], a["contract"], a["earliest_entry"], a["salary"], a["language"], a["published"], a["expires"], a["contacts_withheld"]),
-                         ("dvinci", "fi-ts-karriere.dvinci-easy.com", "DE", ["DE"], "dvinci:fi-ts-karriere.dvinci-easy.com:71095", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/slug-71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", "35082 ITSM Plattform", "700071095", "Fellbach (Stuttgart)", ["Fellbach"], ["IT-Service Management"], ["Auszubildende"], ["Vollzeit"], "unbefristet", "Ab sofort", None, "de", "2026-02-18", None, True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["countries"], a["ledger_id"], a["url"], a["title"], a["company"], a["org_unit"], a["reference"], a["location"], a["places"], a["categories"], a["target_groups"], a["working_times"], a["contract"], a["earliest_entry"], a["salary"], a["language"], a["published"], a["expires"]),
+                         ("dvinci", "fi-ts-karriere.dvinci-easy.com", "DE", ["DE"], "dvinci:fi-ts-karriere.dvinci-easy.com:71095", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/slug-71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", "35082 ITSM Plattform", "700071095", "Fellbach (Stuttgart)", ["Fellbach"], ["IT-Service Management"], ["Auszubildende"], ["Vollzeit"], "unbefristet", "Ab sofort", None, "de", "2026-02-18", None))
         self.assertEqual((rows[1]["country"], rows[1]["countries"], rows[2]["country"], rows[2]["countries"]), (None, None, None, ["DE", "AT"]))
         for secret in ("Wilhelm-Pfitzer", "70736", "Ring 1", "1010", "applyApi", "/apply", "48.8", "latitude", "WhatsApp"):
             self.assertNotIn(secret, raw, secret)
@@ -33165,8 +33165,8 @@ class AnATSWhoseListPageCarriesEveryPublicationAsJSONWithItsAddressesAndApplicat
         rows, err, asked, raw = self._run(mod, [(200, self._ad(pub))], cmd="ad", url="https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd?utm=x")
         self.assertEqual(asked, ["https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd"])
         a = rows[0]
-        self.assertEqual((a["id"], a["title"], a["company"], a["places"], a["country"], a["published"], a["url"], a["contacts_withheld"]),
-                         ("71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", ["Fellbach"], "DE", "2026-02-18", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd", True))
+        self.assertEqual((a["id"], a["title"], a["company"], a["places"], a["country"], a["published"], a["url"]),
+                         ("71095", "ServiceNow Developer", "Finanz Informatik Technologie Service GmbH & Co. KG", ["Fellbach"], "DE", "2026-02-18", "https://fi-ts-karriere.dvinci-easy.com/de/jobs/71095/senior-servicenow-platform-developer-mwd"))
         self.assertEqual(a["description"], "Wir suchen Dich.\nFragen an Frau Muster: [telephone withheld], [e-mail withheld]. Start ab 01.10.2026.")
         for secret in ("Wilhelm-Pfitzer", "70736", "123 456", "muster@", "logo.png", "applyApi"):
             self.assertNotIn(secret, raw, secret)
@@ -33402,8 +33402,8 @@ class AnATSWhoseListIsATableNamedByItsCellsAndWhoseUnknownTenantIsTheVendorsLand
         self.assertEqual(asked, ["https://apply.refline.ch/673276/search.html?form.buttons.listAll=1"])
         self.assertEqual([r["id"] for r in rows], ["2176", "2199"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["workload"], a["place"], a["area"], a["segment"], a["language"], a["published"], a["contacts_withheld"]),
-                         ("refline", "673276", None, "refline:673276:2176", "https://apply.refline.ch/673276/2176/pub/1", "Postdoctoral Researcher on CO2", "80% - 100%", "Dübendorf", None, None, None, "2026-03-16", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["workload"], a["place"], a["area"], a["segment"], a["language"], a["published"]),
+                         ("refline", "673276", None, "refline:673276:2176", "https://apply.refline.ch/673276/2176/pub/1", "Postdoctoral Researcher on CO2", "80% - 100%", "Dübendorf", None, None, None, "2026-03-16"))
         self.assertIn("2 emitted, the page states 3 for tenant 673276 — 1 short.", err)
         self.assertNotIn("stamp", err)
         zkb = self._page([self._row("792841", "11001", "DevOps Engineer", {"operationArea": "IT / Business Engineering", "workplace": "Zürich", "workload": "80% - 100%", "segment": "Berufserfahrene", "locale": "de"})])
@@ -33547,8 +33547,8 @@ class ACongoleseDirectoryWhoseJobSectionStatesNoTotalAndWhosePagerIsTheOnlyBound
         self.assertEqual([r["id"] for r in rows], [f"poste-{i}" for i in range(16)])
         self.assertIn("16 emitted — the site states no total; the pager bounds 16–30; 16 of 16 in the job sitemap (17 addresses, the archive with its expired adverts).", err)
         r = rows[15]
-        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["region"], r["contract"], r["country"], r["contacts_withheld"]),
-                         ("talacom:poste-15", "https://www.tala-com.com/offres-emploi/poste-15/", "POSTE 15", "D-PRO SERVICES", "KINSHASA", "CDI|CONTRAT A DUREE INDETERMINEE (CDI)", "CD", True))
+        self.assertEqual((r["ledger_id"], r["url"], r["title"], r["company"], r["region"], r["contract"], r["country"]),
+                         ("talacom:poste-15", "https://www.tala-com.com/offres-emploi/poste-15/", "POSTE 15", "D-PRO SERVICES", "KINSHASA", "CDI|CONTRAT A DUREE INDETERMINEE (CDI)", "CD"))
         self.assertNotIn("logo.jpg", json.dumps(rows))
         # an address the sitemap does not carry is named; --no-sitemap skips the second witness
         code, rows, err, sent = self._run(mod, ["list"], lambda url: (200, self._sitemap(every[:-2])) if url.endswith(".xml") else answers(url))
@@ -33685,8 +33685,8 @@ class AnATSWhosePortalListsInATableOrCardsAndWhoseLinksCarryASessionIdAndACustom
         self.assertEqual(asked, ["https://stadtfrankfurt-portal.rexx-recruitment.com/stellenangebote.html", "https://stadtfrankfurt-portal.rexx-recruitment.com/stellenangebote.html?start=100"])
         self.assertEqual([r["id"] for r in rows], ["11131", "11190", "4976"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["lang"], a["location"], a["level"], a["deadline"], a["place"], a["contacts_withheld"]),
-                         ("rexx", "stadtfrankfurt-portal.rexx-recruitment.com", "DE", "rexx:stadtfrankfurt-portal.rexx-recruitment.com:11131", "https://stadtfrankfurt-portal.rexx-recruitment.com/Buechereiangestellter-wmd-de-j11131.html", "Büchereiangestellte:r (w/m/d)", "de", "Stadtbücherei", "Berufseinsteiger:in", "2026-10-11", None, True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["lang"], a["location"], a["level"], a["deadline"], a["place"]),
+                         ("rexx", "stadtfrankfurt-portal.rexx-recruitment.com", "DE", "rexx:stadtfrankfurt-portal.rexx-recruitment.com:11131", "https://stadtfrankfurt-portal.rexx-recruitment.com/Buechereiangestellter-wmd-de-j11131.html", "Büchereiangestellte:r (w/m/d)", "de", "Stadtbücherei", "Berufseinsteiger:in", "2026-10-11", None))
         self.assertIsNone(rows[2]["deadline"])   # «00.00.0000» is no deadline
         self.assertNotIn("sid=", raw)
         self.assertNotIn("stadtfrankfurtjobs.de", raw)
@@ -33825,8 +33825,8 @@ class AnATSWhoseListIsEmbeddedOnTheEmployersOwnPageByATokenAndFilledByAVersioned
                                  f"https://odm.ostendis.com/ojp/data/v55/jobs/{self.T1}/DE?domain=www.mepersonal.ch", f"https://odm.ostendis.com/ojp/data/v55/jobs/{self.T2}/DE?domain=www.mepersonal.ch"])
         self.assertEqual([r["id"] for r in rows], ["78711", "78712", "78720"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["publication_place"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["place"], a["workload"], a["start"], a["published"], a["language"], a["contacts_withheld"]),
-                         ("ostendis", "www.mepersonal.ch", self.T1, "CH", "Schweiz", f"ostendis:{self.T1}:78711", "https://jobs.mepersonal.ch/publication/slug-78711/" + "a" * 64, "Logistiker Leitstand (a)", "Zofingen", "100%", "Per sofort", "2026-09-16", "DE", True))
+        self.assertEqual((a["source"], a["tenant"], a["publication_place"], a["country"], a["country_name"], a["ledger_id"], a["url"], a["title"], a["place"], a["workload"], a["start"], a["published"], a["language"]),
+                         ("ostendis", "www.mepersonal.ch", self.T1, "CH", "Schweiz", f"ostendis:{self.T1}:78711", "https://jobs.mepersonal.ch/publication/slug-78711/" + "a" * 64, "Logistiker Leitstand (a)", "Zofingen", "100%", "Per sofort", "2026-09-16", "DE"))
         self.assertEqual(rows[2]["publication_place"], self.T2)
         for secret in ("4800", "file.ostendis.com", '"zip"', '"image"'):
             self.assertNotIn(secret, raw, secret)
@@ -34085,8 +34085,8 @@ class AMultiEmployerATSWhoseCareerCenterFillsItselfByPostingItsOwnFormAndLinksTo
         self.assertEqual((asked[0][1], asked[1][1]["offset"], asked[1][1]["limit"], asked[1][1]["lang"], asked[2][1]["offset"]), (None, ["0"], ["2"], ["de"], ["2"]))
         self.assertEqual([r["id"] for r in rows], [self.U1, self.U2, self.U3])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["employer_url"], a["title"], a["place"], a["contacts_withheld"]),
-                         ("prospective", "1000981", "CH", f"prospective:{self.U1}", f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}", f"https://jobs.css.ch/offene-stellen/product-owner-web-w-m/{self.U1}", "Product Owner Web (w/m) 80-100%", "Luzern / hybrid", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["employer_url"], a["title"], a["place"]),
+                         ("prospective", "1000981", "CH", f"prospective:{self.U1}", f"https://ohws.prospective.ch/public/v1/jobs/{self.U1}", f"https://jobs.css.ch/offene-stellen/product-owner-web-w-m/{self.U1}", "Product Owner Web (w/m) 80-100%", "Luzern / hybrid"))
         self.assertIn("3 emitted, the page states 3 for center 1000981 (2 answer(s) of 2).", err)
         self.assertIn("country CH is the user's stamp — the list states no country.", err)
         ekz = self._answer([(self.U2, "x", "Netzelektriker:in Freileitungsbau 80-100%", "Wetzikon"), (self.U3, "y", "Elektroinstallateur:in", "Dietikon")], template="ekz")
@@ -34212,8 +34212,8 @@ class AnATSWhoseCareerPageRendersItsJobCardsNextToItsTeamsNames(unittest.TestCas
         self.assertEqual(asked, ["https://kampaoh.factorial.es/"])
         self.assertEqual([r["id"] for r in rows], ["312764", "312765"])
         a = rows[0]
-        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["team"], a["workplace"], a["contract"], a["remote"], a["location_id"], a["team_id"], a["contacts_withheld"]),
-                         ("factorial", h, "ES", f"factorial:{h}:312764", f"https://{h}/job_posting/limpiador-a-kampaoh-las-arenas-312764", "Limpiador/a Kampaoh las Arenas", "Operaciones", "Presencial", "indefinite", False, "302593", "83827", True))
+        self.assertEqual((a["source"], a["tenant"], a["country"], a["ledger_id"], a["url"], a["title"], a["team"], a["workplace"], a["contract"], a["remote"], a["location_id"], a["team_id"]),
+                         ("factorial", h, "ES", f"factorial:{h}:312764", f"https://{h}/job_posting/limpiador-a-kampaoh-las-arenas-312764", "Limpiador/a Kampaoh las Arenas", "Operaciones", "Presencial", "indefinite", False, "302593", "83827"))
         self.assertIs(rows[1]["remote"], True)
         for secret in ("CARMEN", "JUAN CARLOS", "Candidatura", "other.factorial.es"):
             self.assertNotIn(secret, raw, secret)
@@ -34553,8 +34553,8 @@ class ANetworkNodeWhoseAdvertsBearTheMarksOfFabricationAndSayItOnEveryRow(unitte
         self.assertIn("468 emitted over 2 page(s) of 384 — the site states 468: equal.", err)
         self.assertIn("every row carries source_signals — fabrication-suspected (2026-09-21); see #549.", err)
         r = rows[0]
-        self.assertEqual((r["ledger_id"], r["id"], r["url"], r["slug"], r["title"], r["place"], r["kind"], r["views"], r["country"], r["contacts_withheld"]),
-                         ("eritreajobsearch:13000", "13000", "https://eritreajobsearch.com/job/post-0-job-vacancy-in-barentu-eritrea--sector/", "post-0-job-vacancy-in-barentu-eritrea--sector", "Post 0 Job Vacancy in Barentu, Eritrea – Sector", "Barentu", "Full Time", 0, "ER", True))
+        self.assertEqual((r["ledger_id"], r["id"], r["url"], r["slug"], r["title"], r["place"], r["kind"], r["views"], r["country"]),
+                         ("eritreajobsearch:13000", "13000", "https://eritreajobsearch.com/job/post-0-job-vacancy-in-barentu-eritrea--sector/", "post-0-job-vacancy-in-barentu-eritrea--sector", "Post 0 Job Vacancy in Barentu, Eritrea – Sector", "Barentu", "Full Time", 0, "ER"))
         self.assertTrue(all(r["source_signals"] and r["source_signals"][0].startswith("fabrication-suspected (2026-09-21)") and "not established" in r["source_signals"][0] for r in rows))
         self.assertNotIn("8100605863", json.dumps(rows))
         # short of the counter → 6; a page of repeats stops; no counter read → 6; the form's own options only
@@ -34745,8 +34745,8 @@ class APublicEmploymentServiceWhoseLiferayPagerIsReadFromThePageAndWhoseAdvertPr
         self.assertIn(f"_{self.P}_cur=2", asked[2])
         self.assertEqual([r["id"] for r in rows], ["211200374", "210297693", "210999999"])
         a = rows[0]
-        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["salary"], a["schedule"], a["posts"], a["closes"], a["contacts_withheld"]),
-                         ("jobcentrebrunei", "BN", "jobcentrebrunei:211200374", "https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/211200374/shop-assistant", "Shop Assistant", "BN AURUM", "Brunei Muara, Gadong 'B', Pengkalan Gadong", "$ 500 - 600 Monthly", "Full time", 4, "2026-10-07", True))
+        self.assertEqual((a["source"], a["country"], a["ledger_id"], a["url"], a["title"], a["employer"], a["place"], a["salary"], a["schedule"], a["posts"], a["closes"]),
+                         ("jobcentrebrunei", "BN", "jobcentrebrunei:211200374", "https://www.jobcentrebrunei.gov.bn/web/guest/view-job/-/jobs/211200374/shop-assistant", "Shop Assistant", "BN AURUM", "Brunei Muara, Gadong 'B', Pengkalan Gadong", "$ 500 - 600 Monthly", "Full time", 4, "2026-10-07"))
         self.assertIn("3 emitted, the portal states 3.", err)
         self.assertIn("country BN is the user's stamp", err)
         rows, err, asked, raw = self._run(mod, [(200, first), (200, p1)], max_pages=1)
@@ -52915,6 +52915,187 @@ class TheItalianFrontIsOneTableEntryAndItsRedactionMustNotEatAnAmount(
         self.assertEqual(len(mod.postings(page)), 1)
         rows, _, _, _ = self._run(mod, [self.sitemap(), page], limit=1)
         self.assertEqual(len(rows), 1, "one served block, one row")
+
+
+class ADeclarationOfWithholdingIsBackedByAnActualRedaction(unittest.TestCase):
+    """**`contacts_withheld` est une GARANTIE, et une garantie se VÉRIFIE au lieu de
+    se déclarer — #1236.**
+
+    Mesuré sur `1a92d507` : **110** adaptateurs portent le champ sur **174** sites
+    d'émission, **toutes** les émissions valent la constante littérale `True`
+    (0 dérivée, 0 à `False`), et les **126** assertions de cette suite lisaient
+    cette constante. Elles étaient vertes, et elles le seraient restées si un
+    contact avait traversé : *une constante ne discrimine rien.*
+
+    **Ce qui n'était PAS le défaut**, et qui a été mesuré avant d'écrire quoi que
+    ce soit : ce n'est pas une déclaration de POLITIQUE vide. **110 sur 110**
+    portent une expurgation VIVANTE qui substitue un marqueur de contact
+    (`[e-mail withheld]`, `[telephone withheld]`) dans un champ ÉMIS — contingent
+    positif pris sur la même classe d'objet : **26 sur 186** des adaptateurs qui
+    ne portent pas le champ ont une telle routine, donc le motif discrimine et le
+    110/110 n'est pas « être un adaptateur ». Et le contact n'a pas besoin d'une
+    surface de DÉTAIL pour traverser : chez `adecco` il vit dans la `description`
+    du JSON-LD, donc `detail_read` (6 des 110) est le mauvais discriminant.
+
+    **Ce qui était le défaut** : sur **45** de ces 174 sites, dans **43** fichiers,
+    *rien dans le record émis n'avait traversé l'expurgation* — ce sont les lignes
+    de DÉCOUVERTE, qui ne portent que de la métadonnée structurée. Elles
+    déclaraient avoir retenu un contact qu'aucun champ de ce record n'aurait pu
+    porter : c'est le défaut de #1007 verbatim, « déclarer avoir retenu ce que
+    personne n'a déposé », et il ment sur NOTRE discrétion et non sur le board.
+    Les 38 tests que leur retrait a fait rougir étaient **tous** des tests de
+    liste, de marche, de pagination ou de sitemap — aucun test d'annonce : la
+    population que la mesure désignait et celle que la suite a dénoncée
+    coïncident.
+
+    **RÉSIDU DÉCLARÉ, et il n'est pas petit.** Les **129** sites ADOSSÉS portent
+    encore la constante : leur `True` ne varie pas avec ce que l'expurgation a
+    réellement retiré. Mesuré sur les trois pages d'annonce d'Adecco Italie
+    détenues avec leur provenance — dénominateur **3**, et il est petit —
+    `scrub` ne retire **rien sur 3 sur 3** pendant que le record dit `True`.
+    Cette garde ne voit pas cela, et le dire est sa seule façon de ne pas le
+    faire oublier : elle vérifie qu'une déclaration est ADOSSÉE, jamais qu'elle
+    est VRAIE pour ce record-là.
+
+    **Et une seconde garde a été écrite puis RETIRÉE, exprès.** Exercé sur
+    l'objet, `scrub` laisse passer trois formes : la limite déjà DÉCLARÉE dans
+    son propre docstring (un portable italien nu), et deux obfuscations que rien
+    ne déclare — `nom (at) domaine.no` et `nom[dot]prenom@domaine[dot]no`, cette
+    dernière portant un `@` littéral que `MAIL_RE` manque faute de point dans le
+    domaine. **Balayées sur 15 541 938 caractères de corps réels détenus : ZÉRO
+    occurrence.** Une garde là-dessus serait verte sur une chaîne composée et
+    morte sur le corpus — la cinquième espèce de §4 ter — donc elle n'est pas
+    écrite, et le fait est consigné ici plutôt que dans un test qui rassurerait.
+    """
+
+    MOTIF = re.compile(r"(?:scrub|redact|withh|sanit)", re.I)
+    NOMS = re.compile(r"MAIL|PHONE|CONTACT|TEL|ADDR", re.I)
+
+    @classmethod
+    def _appel_expurge(cls, n):
+        import ast
+        if not isinstance(n, ast.Call):
+            return False
+        fn = n.func
+        if isinstance(fn, ast.Name) and cls.MOTIF.search(fn.id):
+            return True
+        if isinstance(fn, ast.Attribute) and fn.attr == "sub":
+            v = fn.value
+            nom = v.id if isinstance(v, ast.Name) else getattr(v, "attr", "")
+            return bool(cls.NOMS.search(nom or ""))
+        return False
+
+    @classmethod
+    def _expurge(cls, node):
+        """VRAI si l'expurgation apparaît N'IMPORTE OÙ dans le sous-arbre.
+
+        S'arrêter aux `ast.Call` rendait **86** sites nus au lieu de 45 : un
+        `IfExp` (`scrub(x) if x else None`, chez `eleman`) et une compréhension
+        de dictionnaire (chez `asako`) ne sont pas des `Call`, et les deux
+        expurgent. Un motif faux par sa FORME rend des mesures concordantes et
+        fausses, et leur concordance se lit comme une confirmation.
+        """
+        import ast
+        return any(cls._appel_expurge(n) for n in ast.walk(node))
+
+    @classmethod
+    def _sites(cls, src, chemin):
+        """Rend `(ligne, adossé)` pour chaque record qui déclare le champ."""
+        import ast
+        arbre = ast.parse(src, chemin)
+        propres, pere = {}, {}
+        fns = [n for n in ast.walk(arbre)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+        for fn in fns:
+            s = set()
+            for n in ast.walk(fn):
+                if isinstance(n, (ast.Assign, ast.AnnAssign)) and n.value is not None \
+                        and cls._expurge(n.value):
+                    for tg in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                        for t in ast.walk(tg):
+                            if isinstance(t, ast.Name):
+                                s.add(t.id)
+            propres[fn] = s
+            for n in ast.walk(fn):
+                pere[id(n)] = fn
+        out = []
+        for n in ast.walk(arbre):
+            if not isinstance(n, ast.Dict):
+                continue
+            paires = [(k, v) for k, v in zip(n.keys, n.values)
+                      if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+            if not any(k.value == "contacts_withheld" for k, _ in paires):
+                continue
+            sains = propres.get(pere.get(id(n)), set())
+            adosse = any(
+                cls._expurge(v)
+                or any(isinstance(t, ast.Name) and t.id in sains for t in ast.walk(v))
+                for k, v in paires if k.value != "contacts_withheld")
+            out.append((n.lineno, adosse))
+        return out
+
+    @classmethod
+    def _porteurs(cls):
+        import glob
+        out = []
+        for p in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            src = io.open(p, encoding="utf-8").read()
+            if "contacts_withheld" in src:
+                out.append((os.path.basename(p), src))
+        return out
+
+    def test_there_is_a_corpus_of_carriers_to_check(self):
+        """**Le plancher POSITIF** : sans lui, un balayage qui ne trouve plus rien
+        rendrait vert en disant « je n'ai pas regardé là »."""
+        porteurs = self._porteurs()
+        self.assertGreater(len(porteurs), 90,
+                           "trop peu de porteurs : le balayage ne mesure plus rien")
+        sites = [s for nom, src in porteurs for s in self._sites(src, nom)]
+        # Les planchers sont posés LOIN sous les comptes du jour (110 porteurs,
+        # 129 sites après #1236) : un plancher serré sur le compte courant est
+        # une assertion sur un littéral DATÉ, et le dépôt en a déjà payé une
+        # (§4 bis, la release refusée sur un compte qui change à minuit). Ce
+        # qu'ils doivent attraper est un balayage devenu INERTE, pas une dérive.
+        self.assertGreater(len(sites), 110,
+                           "trop peu de sites d'emission : le balayage est inerte")
+
+    def test_no_record_declares_a_withholding_nothing_in_it_went_through(self):
+        """La déclaration suit ce qui a RÉELLEMENT traversé l'expurgation.
+
+        Rougissait sur **45** sites dans **43** fichiers avant le correctif de
+        #1236 — mesuré sur l'objet par l'arbre syntaxique, sans aucune fixture.
+        """
+        nus = []
+        for nom, src in self._porteurs():
+            for ligne, adosse in self._sites(src, nom):
+                if not adosse:
+                    nus.append("%s:%d" % (nom, ligne))
+        self.assertEqual(nus, [],
+                         "ces records declarent `contacts_withheld` alors que RIEN "
+                         "dans le record n'a traverse l'expurgation de leur "
+                         "adaptateur : " + ", ".join(nus))
+
+    def test_the_guard_reddens_when_a_declaration_loses_its_backing(self):
+        """**La mutation vit DANS la suite**, pour que le contraste soit rejoué à
+        chaque run plutôt que promis une fois dans un rapport.
+
+        On prend un porteur ADOSSÉ, on retire l'appel d'expurgation de son
+        source, et le prédicat doit basculer. Si la mutation ne mutait pas, le
+        vert ne dirait rien : `mut != src` est asserté avant de juger.
+        """
+        candidats = [(nom, src) for nom, src in self._porteurs()
+                     if any(a for _l, a in self._sites(src, nom))]
+        self.assertTrue(candidats, "aucun porteur adosse : rien a muter")
+        nom, src = candidats[0]
+        mut = re.sub(r"\bscrub\(", "str(", src, count=0)
+        self.assertNotEqual(mut, src, "la mutation n'a MUTE personne")
+        compile(mut, nom, "exec")
+        avant = [a for _l, a in self._sites(src, nom)]
+        apres = [a for _l, a in self._sites(mut, nom)]
+        self.assertTrue(any(avant), "%s n'avait aucun site adosse AVANT" % nom)
+        self.assertFalse(any(apres),
+                         "%s garde un site adosse apres le retrait de son "
+                         "expurgation : la garde ne lit pas ce qu'elle croit" % nom)
 
 
 if __name__ == "__main__":

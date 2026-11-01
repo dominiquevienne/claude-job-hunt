@@ -229,7 +229,7 @@ def cmd_jobs(a):
             k = key_of(c["url"])
             out.append({
                 "source": BOARD, "tenant": host, "ledger_id": f"{BOARD}:{host}:{k or c['url']}", "id": k or c["url"], "url": c["url"],
-                "title": c["title"], "country": country, "place": c["place"], "details": c["details"], "contacts_withheld": True,
+                "title": c["title"], "country": country, "place": c["place"], "details": c["details"],
             })
     else:
         note(f"{a.max_pages} pages read (--max-pages) and the last still had cards — the walk is truncated.")

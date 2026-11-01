@@ -136,7 +136,6 @@ def row(jid, c, country):
         "source": BOARD, "ledger_id": f"{BOARD}:{jid}", "id": jid, "url": f"{BASE}/jobs/{jid}",
         "title": c["title"], "company": c["company"], "place": c["place"], "country": country,
         "schedule": c["schedule"], "salary": c["salary"], "posted_ago": c["posted_ago"], "tags": c["tags"],
-        "contacts_withheld": True,
     }
 
 

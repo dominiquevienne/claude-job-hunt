@@ -193,7 +193,6 @@ def record(r, slug):
         "place": first.get("city") or None, "region": first.get("state") or None, "location": first.get("formatted_address") or None,
         "posted": (r.get("publishTime") or "")[:10] or None,
         "compensation": comp.get("name") or None, "plus_tips": bool(comp.get("plus_tips")) if comp else None,
-        "contacts_withheld": True,
     }
 
 

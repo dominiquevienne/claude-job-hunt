@@ -229,7 +229,7 @@ def sitemap_rows():
         if m.group(1) in seen:
             continue
         seen.add(m.group(1))
-        rows.append({"source": "startupjobs", "country": "CZ", "ledger_id": f"startupjobs:{m.group(1)}", "id": m.group(1), "url": loc, "slug": m.group(2), "contacts_withheld": True, "language": "cs"})
+        rows.append({"source": "startupjobs", "country": "CZ", "ledger_id": f"startupjobs:{m.group(1)}", "id": m.group(1), "url": loc, "slug": m.group(2),"language": "cs"})
     if not rows:
         die(f"{OFFERS}: 200 and not one /nabidka/<id>/ row — the file's shape changed", EXIT_PARTIAL)
     return rows, other
