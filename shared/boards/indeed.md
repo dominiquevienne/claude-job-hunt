@@ -331,6 +331,15 @@ description) and a `div.simple-job-description-html` with the body text.
   });})()
 ```
 
+**This block returns `d` with no bound, and `javascript_tool` stops at 1 000
+characters** — whole result, framing included, then a literal `[TRUNCATED]`,
+measured 2026-11-01 (`shared/page-js-output-ceiling.md`). So a description
+longer than that comes back as a prefix inside unterminated JSON, with nothing
+in the output saying so. **Read the description with `get_page_text`** and keep
+page JS for the short structural fields. *The snippet is left as it stands: it
+was measured for this board on its own day, and changing it belongs to the run
+that re-measures it.*
+
 **Read `source` and `body_len` before the fields.** `source: null` with a
 `body_len` in the thousands is **stale hooks, not an empty page** — which is
 exactly how the 2026-08-26 snippet failed silently for a month. Measured
