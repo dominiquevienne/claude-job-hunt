@@ -53538,6 +53538,19 @@ class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestC
     def _racine(self):
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+    def _posix(self, chemin):
+        """`os.path.relpath` rend des ANTISLASHS sous Windows, et ce séparateur
+        n'existe pas sur la machine où cette garde a été écrite.
+
+        **La première version comparait `shared\\boards\\indeed.md` à un préfixe
+        POSIX et a donc rougi sur du contenu PARFAITEMENT CORRECT — deux jobs
+        sur neuf, les DEUX `windows-latest`, run 41341904057 du 2026-11-01.**
+        Troisième espèce de §4 ter, rouge sur du correct, et seule la CI pouvait
+        la montrer : le discriminant n'existe pas ici. Le NORMALISEUR, lui,
+        s'éprouve sur cette machine, et c'est ce qui le met sous garde.
+        """
+        return chemin.replace("\\", "/")
+
     def _rend_une_description(self, src):
         """Le prédicat, UN SEUL, pour le corpus réel comme pour un texte de synthèse.
 
@@ -53558,7 +53571,7 @@ class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestC
             with open(path, encoding="utf-8") as fh:
                 src = fh.read()
             if self._rend_une_description(src):
-                out[os.path.relpath(path, self._racine())] = src
+                out[self._posix(os.path.relpath(path, self._racine()))] = src
         return out
 
     def test_there_is_a_corpus_of_cards_returning_a_description_from_page_js(self):
@@ -53574,6 +53587,16 @@ class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestC
                 "%s rend une description par du JS de page hors de "
                 "`shared/boards/` : la portée a changé de nature, relire la "
                 "garde avant de la croire" % nom)
+
+    def test_the_name_is_normalised_instead_of_assuming_a_posix_separator(self):
+        """Le normaliseur s'éprouve ici, là où le séparateur de Windows n'existe pas."""
+        self.assertEqual(self._posix("shared\\boards\\x.md"), "shared/boards/x.md")
+        self.assertEqual(self._posix("shared/boards/x.md"), "shared/boards/x.md")
+        for nom in self._corpus():
+            self.assertNotIn("\\", nom,
+                             "un nom de la portée porte un antislash : le "
+                             "contrôle de préfixe de cette classe le refuserait "
+                             "sur du contenu correct")
 
     def test_a_card_that_returns_a_description_from_page_js_names_the_ceiling(self):
         """La déclaration, sur chaque membre de la portée dérivée."""
