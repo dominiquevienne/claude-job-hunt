@@ -65,6 +65,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "www.govt.lc"
 LIST = f"https://{HOST}/jobs"
@@ -212,7 +213,7 @@ def record(it, stamp):
     title, took = scrub(text(it.get("Title")))
     withheld = ["coordinates"] + took          # every item carries Latitude/Longitude: never emitted
     url = it.get("Url") or ""
-    return {
+    r = {
         "source": "govtlc", "country": stamp,
         "ledger_id": f"govtlc:{(url.rsplit('/', 1)[-1] or it.get('Id'))}",
         "id": url.rsplit("/", 1)[-1] or str(it.get("Id") or ""),
@@ -221,8 +222,14 @@ def record(it, stamp):
         "published": when(it.get("Date")), "updated": when(it.get("LastUpdatedDate")),
         "kind": it.get("ResourceSubTypeName"),
         "withheld_fields": withheld,
-        "contacts_withheld": True,
     }
+    # **`coordinates` is in EVERY record of this path**, so a truthiness test on
+    # `withheld` would be True for every item forever — a derivation that looks done
+    # and measures nothing. The vacancy's latitude is not a way to reach anybody;
+    # only what `scrub` took is (#1238).
+    if withheld_a_contact(took):
+        r["contacts_withheld"] = True
+    return r
 
 
 def cmd_jobs(a):
@@ -286,8 +293,9 @@ def cmd_ad(a):
         "published": when(text(cells.get("published"))),
         "description": description,
         "withheld_fields": sorted(set(took_t + took_d)),
-        "contacts_withheld": True,
     }
+    if withheld_a_contact(r["withheld_fields"]):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
     if r["withheld_fields"]:
         note(f"withheld from this notice: {', '.join(r['withheld_fields'])} — named, so the removal is not a silence.")

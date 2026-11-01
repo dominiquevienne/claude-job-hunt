@@ -63,6 +63,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "www.employment.gov.sc"
 PAGE = f"https://{HOST}/job-opportunities/national-vacancies"
@@ -139,11 +140,24 @@ def text(markup):
 
 
 def scrub(s):
-    """A vacancy's title never needs an address or a number; if one is there, it does not travel."""
+    """A vacancy's title never needs an address or a number; if one is there, it does not travel.
+
+    **It returns `(value, took)`.** It used to return the value alone, and that made
+    the removal SILENT: a number scrubbed out of a vacancy line left no name in
+    `withheld_fields`, so a record could drop a contact and then say nothing was
+    withheld. A declaration about contacts cannot be derived from a witness that does
+    not see half of what the record removed (#1238).
+    """
     if not s:
-        return None
-    s = MAIL_RE.sub("[e-mail withheld]", s)
-    return PHONE_RE.sub("[telephone withheld]", s).strip() or None
+        return None, []
+    took = []
+    if MAIL_RE.search(s):
+        took.append("email")
+        s = MAIL_RE.sub("[e-mail withheld]", s)
+    out = PHONE_RE.sub("[telephone withheld]", s)
+    if out != s:
+        took.append("telephone")
+    return (out.strip() or None), took
 
 
 def slug(s):
@@ -467,9 +481,11 @@ def record(doc, e, stamp):
         withheld.append("employer_phone")
     # the KEY is built from what is emitted, never from what was read: a vacancy line that ran into
     # the employer's address would otherwise carry it into the identifier, where nobody looks for one
-    title, employer = scrub(e["title"]), scrub(e["employer"])
+    title, took_t = scrub(e["title"])
+    employer, took_e = scrub(e["employer"])
+    withheld += [n for n in sorted(set(took_t + took_e)) if n not in withheld]
     key = f"{doc['slug']}:{slug(employer)}:{slug(title)}"
-    return {
+    r = {
         "source": "employmentgovsc", "country": stamp,
         "ledger_id": f"employmentgovsc:{key}", "id": key,
         "title": title, "employer": employer, "sector": e["sector"],
@@ -478,8 +494,13 @@ def record(doc, e, stamp):
         "document_published": doc.get("modified"),
         "key_is_ours": True,                 # the ministry publishes no identifier, and the record says so
         "withheld_fields": withheld,         # what the document carried and the record does not
-        "contacts_withheld": True,
     }
+    # Every name this record can put in `withheld_fields` reaches a person — an
+    # address, a number — so the whole witness decides. It is the witness that had to
+    # be widened, not the test: `scrub` now says what it took.
+    if withheld_a_contact(withheld):
+        r["contacts_withheld"] = True
+    return r
 
 
 def documents_of(markup):
