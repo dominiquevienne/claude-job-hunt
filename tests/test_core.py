@@ -53500,5 +53500,147 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         self.assertTrue(withheld_a_contact(["application_link"], reached_a_person=True))
 
 
+class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestCase):
+    """**#1241, 2026-11-01.** Le canal qui ramène ce qu'un bloc de JS de page
+    RETOURNE — `javascript_tool`, seul ou dans `browser_batch` — s'arrête à
+    **1 000 caractères** et appose un `[TRUNCATED]` littéral. Mesuré sur un banc
+    local servi en loopback, charge auto-indexée par blocs de dix caractères ;
+    contrôle positif à 100 caractères rendus entiers, 1 000 rendus entiers,
+    1 010 coupés, 700 caractères accentués (1 400 octets) rendus entiers — donc
+    le plafond compte des CARACTÈRES — et `get_page_text` rendant **6 000 sur
+    6 000** de la même page, pendant que `innerText.length` de cette page rendait
+    6 000. La perte est au canal, jamais à la lecture.
+
+    Dans la forme à trois champs que portait `linkedin.md`, le `d` ne survivait
+    qu'à **750 caractères** et le JSON revenait NON TERMINÉ : «&nbsp;1 000&nbsp;»
+    et le «&nbsp;600 à 700&nbsp;» rapporté sur LinkedIn sont la même mesure prise
+    par deux bouts, la différence étant l'enveloppe et l'échappement.
+
+    **La portée se DÉRIVE**, jamais d'une liste de fichiers : une fiche de
+    `shared/` dont un bloc ```js rend un objet nommant la clé `d:` — la
+    convention de description de ces fiches, confirmée par un second motif de
+    FORME différente (`innerText` ET `JSON.stringify`), les deux rendant les
+    MÊMES quatre fiches avant cet acte, différence vide dans les deux sens.
+    `linkedin.md` est SORTIE de la portée dans le même commit, son bloc ne
+    rendant plus de description.
+
+    **Ce que la garde exige est une DÉCLARATION, pas un correctif** : la fiche
+    cite `shared/page-js-output-ceiling.md`. Changer le bloc d'un board demande
+    de le remesurer sur ce board, ce qu'une mesure prise sur un seul locataire
+    n'autorise pas (§4 de la doctrine : une fiche de famille ne revendique rien
+    sur la foi d'un seul).
+    """
+
+    POINTEUR = "shared/page-js-output-ceiling.md"
+    FENCE = re.compile(r"```js\n(.*?)```", re.S)
+    CLE_D = re.compile(r"(?m)(?:^[ \t]*|[,{][ \t]*)d[ \t]*:")
+
+    def _racine(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _rend_une_description(self, src):
+        """Le prédicat, UN SEUL, pour le corpus réel comme pour un texte de synthèse.
+
+        Deux implémentations se mettraient d'accord sur le corpus et diviseraient
+        sur le cas suivant (§4 ter : un banc qui partage un objet avec ce qu'il
+        éprouve).
+        """
+        return any(self.CLE_D.search(b) for b in self.FENCE.findall(src))
+
+    def _declare_le_plafond(self, src):
+        return self.POINTEUR in src
+
+    def _corpus(self):
+        import glob
+        out = {}
+        motif = os.path.join(self._racine(), "shared", "**", "*.md")
+        for path in sorted(glob.glob(motif, recursive=True)):
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            if self._rend_une_description(src):
+                out[os.path.relpath(path, self._racine())] = src
+        return out
+
+    def test_there_is_a_corpus_of_cards_returning_a_description_from_page_js(self):
+        """Plancher POSITIF : sans corpus la garde est verte sans rien garder."""
+        corpus = self._corpus()
+        self.assertGreaterEqual(
+            len(corpus), 2,
+            "aucune fiche ne rend de description par du JS de page : la garde "
+            "ne garde plus rien, et son vert dirait « je n'ai pas regardé là »")
+        for nom in corpus:
+            self.assertTrue(
+                nom.startswith("shared/boards/"),
+                "%s rend une description par du JS de page hors de "
+                "`shared/boards/` : la portée a changé de nature, relire la "
+                "garde avant de la croire" % nom)
+
+    def test_a_card_that_returns_a_description_from_page_js_names_the_ceiling(self):
+        """La déclaration, sur chaque membre de la portée dérivée."""
+        muets = sorted(nom for nom, src in self._corpus().items()
+                       if not self._declare_le_plafond(src))
+        self.assertEqual(
+            [], muets,
+            "ces fiches rendent une description par un canal qui s'arrête à "
+            "1 000 caractères et ne citent pas %s : la coupe est silencieuse, "
+            "donc rien dans la sortie ne dit que le champ a été amputé"
+            % self.POINTEUR)
+
+    def test_the_cited_file_resolves_and_states_the_measured_ceiling(self):
+        """Un pointeur qui ne rend rien est pire que pas de pointeur."""
+        cible = os.path.join(self._racine(), self.POINTEUR)
+        self.assertTrue(os.path.exists(cible),
+                        "%s est cité et n'existe pas" % self.POINTEUR)
+        with open(cible, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertIn("1 000", src, "la cible ne porte pas le plafond mesuré")
+        self.assertIn("[TRUNCATED]", src,
+                      "la cible ne porte pas le marqueur littéral, qui est le "
+                      "SEUL signal de la coupe")
+        self.assertIn("get_page_text", src,
+                      "la cible ne nomme pas le canal qui rend le texte entier")
+
+    def test_the_guard_reddens_when_a_card_drops_the_pointer(self):
+        """La mutation vit dans la suite, et elle porte sur CHAQUE membre.
+
+        Une garde de déclaration qui ne s'éprouve pas sur le retrait de la
+        déclaration est inerte par construction.
+        """
+        corpus = self._corpus()
+        self.assertTrue(corpus)
+        for nom, src in corpus.items():
+            mut = src.replace(self.POINTEUR, "shared/un-fichier-sans-rapport.md")
+            self.assertNotEqual(mut, src, "la mutation n'a rien muté sur %s" % nom)
+            self.assertTrue(self._declare_le_plafond(src), nom)
+            self.assertFalse(
+                self._declare_le_plafond(mut),
+                "le prédicat reste vrai sans le pointeur sur %s : il ne mesure "
+                "pas ce qu'il dit" % nom)
+            # et la fiche mutee reste DANS la portee : c'est ce qui la rend fautive
+            self.assertTrue(self._rend_une_description(mut), nom)
+
+    def test_the_scope_is_derived_in_both_directions(self):
+        """Un oui et un non, sur la forme que la donnée a au point d'appel."""
+        dedans = ("```js\n"
+                  "JSON.stringify({t:q('h1'), d:el.innerText});\n"
+                  "```\n")
+        self.assertTrue(self._rend_une_description(dedans),
+                        "une fiche neuve rendant `d:` échapperait à la portée")
+        dehors_champs_courts = ("```js\n"
+                                "JSON.stringify({t:q('h1').slice(0,90), n:cards.length});\n"
+                                "```\n")
+        self.assertFalse(self._rend_une_description(dehors_champs_courts),
+                         "un bloc qui ne rend que du court est accusé à tort")
+        dehors_hors_bloc = "le champ `d:` est décrit en prose, hors de tout bloc js\n"
+        self.assertFalse(self._rend_une_description(dehors_hors_bloc),
+                         "une mention en PROSE entre dans la portée")
+        dehors_autre_langage = ("```python\n"
+                                "r = {'d': description}\n"
+                                "```\n")
+        self.assertFalse(self._rend_une_description(dehors_autre_langage),
+                         "un bloc d'un AUTRE langage entre dans la portée : la "
+                         "garde parle du canal du navigateur, pas des scripts")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

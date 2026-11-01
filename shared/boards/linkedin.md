@@ -108,6 +108,7 @@ log in rather than trying to authenticate.
 | `localStorage` is unavailable in the injected world | Silently no-ops. Accumulate results in the tool output, not in the page |
 | Returning `location.href` (or anything carrying a query string or cookie) from `javascript_tool` | The whole result is replaced by `[BLOCKED: Cookie/query string data]`. **Never return URLs from page JS** — rebuild them from the job ID |
 | Modal buttons ignore synthetic clicks | Same rule as the cards: `screenshot`, then a real `computer{left_click}` at the coordinates you read off it |
+| Anything long returned from `javascript_tool`, alone or inside `browser_batch` | The result stops at **1 000 characters** and ends in a literal `[TRUNCATED]` — measured 2026-11-01, `shared/page-js-output-ceiling.md`. In a three-field snippet that leaves **750 characters** of description, and the JSON comes back unterminated. **Read a description with `get_page_text`; page JS returns what is short and structural** |
 
 ## Pace
 
@@ -257,19 +258,64 @@ not control and must never assume.
 
 ## Extracting one job description
 
-After a real click on the card, plus `computer{wait:4}`:
+### First route, measured 2026-11-01 — no click at all
+
+Navigate to the search URL that NAMES the ad, then read the page as text:
+
+```
+https://www.linkedin.com/jobs/search/?currentJobId=<ID>&keywords=<quoted term>&location=<place>&f_TPR=r604800&sortBy=DD
+
+navigate  ->  computer{wait:5}  ->  get_page_text
+```
+
+**13 ads of 13 returned their whole description this way** — each the ad named
+in the URL, judged by its text; source element `<article>`; several thousand
+characters on the longest. `#job-details` was populated (5 326 characters on
+the first ad tested).
+
+**And the bound is the half that matters.** One account, one session, **one
+window in the FOREGROUND**, viewport 602 x 337 — so LinkedIn served its
+single-column layout and `currentJobId` opened a detail view instead of a
+two-pane list. The viewport was not chosen; it is how the window opened.
+
+> **This is the 2026-08-28 trap above, measured 13 times with a URL shape that
+> names its ad — not a new fact about LinkedIn.** *That trap already records
+> the pane rendering on plain navigation, with no click, while
+> `document.hidden` was `false`.* **What is new is the count, the URL shape,
+> and that `get_page_text` carries the whole description where page JS cannot.**
+
+**Still open, and not settled by this run:** `document.hidden` was read once
+for the session and never per ad; the window was never sent to the background;
+the wide two-pane layout and `/jobs/view/<ID>/` were not tested that day — the
+constraint table's older reading of `/jobs/view/<ID>/` stands until someone
+re-measures it. **The constraint table remains right about what to DO when the
+tab is hidden**, and nothing here licenses building on the foreground
+behaviour.
+
+### Fallback — a real click, unchanged
+
+When `#job-details` comes back empty, do what the constraint table says:
+`screenshot`, read the card's y-position, `computer{left_click}` at those
+coordinates, then `computer{wait:4}`. Then read the two short fields from page
+JS, and the description with `get_page_text`:
 
 ```js
 const q=s=>(document.querySelector(s)?.innerText||'').replace(/\s+/g,' ').trim();
 JSON.stringify({
   t:q('.job-details-jobs-unified-top-card__job-title').slice(0,90),
-  m:q('.job-details-jobs-unified-top-card__primary-description-container').slice(0,140),
-  d:q('#job-details').slice(0,1500)
+  m:q('.job-details-jobs-unified-top-card__primary-description-container').slice(0,140)
 })
 ```
 
 **Confirm `t` matches the ad you meant to open** — the list re-orders between
 visits, so the card at a given y-coordinate is not stable across navigations.
+
+**The third field was `d:q('#job-details').slice(0,1500)` and it is removed
+here, not shortened:** with `t` and `m` filled, the 1 000-character ceiling of
+`javascript_tool` returns **750 characters** of that description and leaves the
+JSON unterminated, with nothing in the output saying the field was amputated
+(`shared/page-js-output-ceiling.md`). A bound that cannot be delivered is worse
+than no field.
 
 Several clicks on the same search page chain nicely in one `browser_batch`
 (click → wait → extract, repeated): one screenshot, then 3–6 descriptions.
