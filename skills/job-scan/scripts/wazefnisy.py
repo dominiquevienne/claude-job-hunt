@@ -93,6 +93,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "www.wazefnisy.com"
 BASE = "/jobs/"
@@ -105,6 +106,7 @@ DATE_RE = re.compile(r"\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{4}-\d{2}-\d{2}")
 DIGITS_FOR_A_PHONE = 9                       # 09xxxxxxxx is ten; 1.725.000 is seven — see the docstring
 LIST_RE = r"%s\s*=\s*\["                     # the site's own three lists, read where it keeps them
 PAIR_RE = re.compile(r"\{\s*id:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'\s*\}")
+SCHEMES_FOR_A_PERSON = ("mailto", "tel", "sms", "callto", "whatsapp", "viber", "skype")
 MESSAGING = ("wa.me", "api.whatsapp.com", "web.whatsapp.com", "whatsapp.com",
              "t.me", "telegram.me", "m.me", "messenger.com")
 HOSTNAME_RE = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+")
@@ -189,10 +191,20 @@ def read_labels():
 
 
 def scrub(s):
-    """Free text as the employer wrote it, minus what reaches a person."""
+    """Free text as the employer wrote it, minus what reaches a person.
+
+    **It returns `(value, took)`.** It used to return the value alone, which made the
+    removal SILENT: a number scrubbed out of a description left no name in
+    `withheld_fields`, so the record could drop a contact and then say nothing was
+    withheld. `contacts_withheld` cannot be derived from a witness blind to half of
+    what the record removed (#1238).
+    """
     if not s:
-        return None
-    s = MAIL_RE.sub("[e-mail withheld]", s)
+        return None, []
+    took = []
+    if MAIL_RE.search(s):
+        took.append("email")
+        s = MAIL_RE.sub("[e-mail withheld]", s)
 
     def one(m):
         run = m.group(0)
@@ -202,7 +214,10 @@ def scrub(s):
             return run
         return "[telephone withheld]"
 
-    return RUN_RE.sub(one, s).strip() or None
+    out = RUN_RE.sub(one, s)
+    if out != s:
+        took.append("telephone")
+    return (out.strip() or None), took
 
 
 def shortish(s):
@@ -216,7 +231,7 @@ def shortish(s):
 
 
 def apply_url(link):
-    """(url to emit, what was withheld).
+    """(url to emit, what was withheld, whether that something reached a person).
 
     **The test is whether the address opens a conversation with a person**, not
     whether it is social: `wa.me/963…` and `t.me/…` are how you reach someone, so
@@ -228,18 +243,24 @@ def apply_url(link):
     """
     link = (link or "").strip()
     if not link:
-        return None, None
+        return None, None, False
     parts = urllib.parse.urlsplit(link)
     if parts.scheme not in ("http", "https") or not parts.netloc:
-        return None, "application_link"          # mailto:, tel:, or not an address at all
+        # **THREE causes end up under this one name, and only two are contacts.**
+        # `mailto:` and `tel:` ARE a way to reach someone; «hodnk:iskr/isvwk/fe.com»,
+        # typed by an employer, is not an address at all and reaches nobody. The name
+        # cannot tell them apart, so the CAUSE travels beside it — otherwise
+        # `contacts_withheld` would declare a retained contact for an advert whose
+        # only fault was an unusable link (#1238).
+        return None, "application_link", parts.scheme in SCHEMES_FOR_A_PERSON
     host = parts.netloc.lower().split("@")[-1].split(":")[0]
     if not HOSTNAME_RE.fullmatch(host):
-        return None, "application_link"
+        return None, "application_link", False   # not an address: nobody is reached
     if host.startswith("www."):
         host = host[4:]
     if host in MESSAGING:
-        return None, "application_link"
-    return link, None
+        return None, "application_link", True    # this one opens a conversation
+    return link, None, False
 
 
 def label(maps, field, token):
@@ -263,7 +284,7 @@ def record(j, maps, stamp):
         withheld.append("phone")
     if j.get("application_email"):
         withheld.append("application_email")
-    url, dropped = apply_url(j.get("application_link"))
+    url, dropped, reached_a_person = apply_url(j.get("application_link"))
     if dropped:
         withheld.append(dropped)
     cat, cat_id = label(maps, "category", j.get("category"))
@@ -274,23 +295,28 @@ def record(j, maps, stamp):
     currency = (str(j.get("currency_type") or "").strip() or None)
     if currency in ("0", "None"):
         currency = None
+    title, took_t = scrub(j.get("job_title"))
+    employer, took_e = scrub(j.get("company_name"))
+    description, took_d = scrub(j.get("description"))
+    withheld += [n for n in sorted(set(took_t + took_e + took_d)) if n not in withheld]
     r = {
         "source": "wazefnisy", "country": stamp,
         "ledger_id": f"wazefnisy:{j['id']}", "id": j["id"],
         "url": f"https://{HOST}{BASE}job_details.php?id={j['id']}",
-        "title": scrub(j.get("job_title")),
-        "employer": scrub(j.get("company_name")),
+        "title": title,
+        "employer": employer,
         "city": city, "city_id": city_id,
         "category": cat, "category_id": cat_id,
         "employment_type": typ, "employment_type_id": typ_id,
         "published": ts.split("T")[0] if ts else None,
         "published_at": ts,
-        "description": scrub(j.get("description")),
+        "description": description,
         "views_count": j.get("views_count"),
         "detail_read": False,
-        "contacts_withheld": True,
         "withheld_fields": withheld,
     }
+    if withheld_a_contact(withheld, reached_a_person=reached_a_person):
+        r["contacts_withheld"] = True
     if salary:
         r["salary"] = salary
         r["salary_period"] = (j.get("salary_period") or "").strip() or None

@@ -55,6 +55,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "www.acbar.org"
 LIST = f"https://{HOST}/en/jobs"
@@ -180,7 +181,8 @@ def cards_of(markup):
 def record(ident, f, stamp):
     title, took_t = scrub(f.get("title"))
     employer, took_e = scrub(f.get("employer"))
-    return {
+    took = sorted(set(took_t + took_e))
+    r = {
         "source": "acbar", "country": stamp,
         "ledger_id": f"acbar:{ident}", "id": ident,
         "title": title, "employer": employer,
@@ -188,9 +190,14 @@ def record(ident, f, stamp):
         "posted_relative": f.get("posted_relative"),    # «34 minutes ago» as the site writes it
         "closing_date": f.get("closing_date"),
         "url": f.get("url"),
-        "withheld_fields": sorted(set(took_t + took_e)),
-        "contacts_withheld": True,
+        "withheld_fields": took,
     }
+    # The declaration follows what `scrub` ACTUALLY removed. On the 200 records of
+    # this path held with their provenance, `took` is empty on 200 of 200 — so the
+    # constant it replaces was false on every one of them (#1238).
+    if withheld_a_contact(took):
+        r["contacts_withheld"] = True
+    return r
 
 
 def cmd_jobs(a):
@@ -287,7 +294,13 @@ def cmd_ad(a):
     r.update(out)
     r.update(body_out)
     r["withheld_fields"] = sorted(set(withheld + took))
-    r["contacts_withheld"] = True
+    # **Les deux moitiés de ce témoin ne sont pas de la même classe** : `withheld`
+    # porte les critères que #183 refuse de propager, `took` ce que l'expurgation a
+    # retiré. Seule la seconde atteint une personne, donc seule la seconde décide —
+    # dériver du mélange déclarerait un contact retenu pour une annonce dont seul le
+    # sexe a été écarté.
+    if withheld_a_contact(took):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
     if withheld:
         note(f"criteria the advert states about a person and this record does NOT carry: {', '.join(sorted(set(withheld)))} — #183, named so a silence is not read as an absence.")

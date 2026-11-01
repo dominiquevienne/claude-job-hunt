@@ -93,6 +93,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 # **L'hote des DONNEES**, et c'est le seul auquel on parle. `www.bast.af` porte la
 # facade et un `Disallow: /api/` qui ne gouverne PAS cet hote-ci.
@@ -180,10 +181,24 @@ def valeur(v):
 
 
 def scrub(s):
+    """**Rend `(valeur, retires)`.**
+
+    Il ne rendait que la valeur, et le retrait était donc MUET : un numéro expurgé
+    d’un `how_to_apply` — là où un employeur écrit où envoyer son dossier — ne
+    laissait aucun nom dans `withheld_fields`, donc le record pouvait retirer un
+    contact puis déclarer n’avoir rien retenu. Une déclaration sur les contacts ne se
+    dérive pas d’un témoin aveugle à la moitié des retraits (#1238).
+    """
     if not s:
-        return None
-    s = MAIL_RE.sub("[e-mail withheld]", s)
-    return TEL_RE.sub("[telephone withheld]", s).strip() or None
+        return None, []
+    retires = []
+    if MAIL_RE.search(s):
+        retires.append("email")
+        s = MAIL_RE.sub("[e-mail withheld]", s)
+    out = TEL_RE.sub("[telephone withheld]", s)
+    if out != s:
+        retires.append("telephone")
+    return (out.strip() or None), retires
 
 
 def text(x):
@@ -229,15 +244,27 @@ def record(ld, stamp):
     # #183 : le critere de sexe est RETENU, et nomme seulement s'il etait POSE.
     sexe = (str(ld.get("gender") or "").strip().lower())
     sexe_pose = rempli(ld.get("gender")) and sexe not in SEXE_NEUTRE
-    retenus = (["gender"] if sexe_pose else []) + \
-              (["email"] if rempli(ld.get("email")) else []) + \
-              (["submission_email"] if rempli(ld.get("submission_email")) else [])
-    return {
+    contacts = (["email"] if rempli(ld.get("email")) else []) + \
+               (["submission_email"] if rempli(ld.get("submission_email")) else [])
+    titre, pris_t = scrub(valeur(ld.get("job_title")))
+    employeur, pris_e = scrub(nom_de(ld.get("company")))
+    salaire, pris_s = scrub(valeur(ld.get("salary_range")))
+    description, pris_d = scrub(text(ld.get("job_description")))
+    exigences, pris_x = scrub(text(ld.get("job_requirement")))
+    postuler, pris_p = scrub(text(ld.get("submission_guideline")))
+    contacts += [n for n in sorted(set(pris_t + pris_e + pris_s + pris_d + pris_x + pris_p))
+                 if n not in contacts]
+    # **`gender` est un CRITÈRE de #183, pas un contact.** Il va dans le témoin, parce
+    # qu’un silence ne doit pas se lire comme une absence, et il ne va JAMAIS dans la
+    # déclaration : dériver du mélange annoncerait un contact retenu pour une annonce
+    # dont seul le sexe a été écarté (#1238).
+    retenus = (["gender"] if sexe_pose else []) + contacts
+    r = {
         "source": "bastaf", "country": stamp,
         "ledger_id": "bastaf:%s" % ident, "id": str(ident),
         "url": "https://www.bast.af/job-detail/%s" % ident,
-        "title": scrub(valeur(ld.get("job_title"))),
-        "employer": scrub(nom_de(ld.get("company"))),
+        "title": titre,
+        "employer": employeur,
         "location": provinces_de(ld.get("provinces")),
         "country_stated": valeur(ld.get("countries")),
         "employment_type": nom_de(ld.get("contract_type")) or valeur(ld.get("job_type")),
@@ -257,15 +284,17 @@ def record(ld, stamp):
         "status": valeur(ld.get("job_status")),
         # `salary_range` est du TEXTE LIBRE («As per Salary Scale») : aucun
         # chiffre, donc aucune unite a nommer — on porte ce que le board ecrit.
-        "salary_text": scrub(valeur(ld.get("salary_range"))),
-        "description": scrub(text(ld.get("job_description"))),
-        "requirements": scrub(text(ld.get("job_requirement"))),
-        "how_to_apply": scrub(text(ld.get("submission_guideline"))),
+        "salary_text": salaire,
+        "description": description,
+        "requirements": exigences,
+        "how_to_apply": postuler,
         "application_type": valeur(ld.get("application_type")),
         "enumerated_by": "api",
         "withheld_fields": retenus or None,
-        "contacts_withheld": True,
     }
+    if withheld_a_contact(contacts):
+        r["contacts_withheld"] = True
+    return r
 
 
 def page(n):
