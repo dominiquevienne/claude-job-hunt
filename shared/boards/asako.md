@@ -1,15 +1,61 @@
-# Board adapter — Asako.mg (`www.asako.mg`, Madagascar): the listing states its count on the server («253 offres disponibles» on 2026-09-14), the sitemap names every advertisement, each ad carries a JobPosting — `asako.py`, the count printed beside every walk; the name back after two days of NXDOMAIN
+# Board adapter — Asako.mg (`www.asako.mg`, Madagascar): the listing states its count on the server (478 of the 479 it states, read 2026-11-02 from the `totalCount` of its RSC flight), the ads are named by the sitemap the HOST DECLARES — `/sitemap-jobs.xml`, not `/sitemap.xml`, which carried them until 2026-09-14 and carries none now — each ad carries a JobPosting — `asako.py`, the count printed beside every walk with the witness it came from
 
-<!-- verified: 2026-09-14 -->
+<!-- verified: 2026-11-02 -->
 
 <!-- hosts: www.asako.mg, asako.mg -->
 <!-- script: asako.py -->
 <!-- host-forms: www.asako.mg -->
 <!-- host-forms-basis: read — every sitemap row and every card link is on `www.asako.mg`; `asako.py` names the host as a literal and refuses an ad address on any other · 2026-09-14 -->
 <!-- countries: MG -->
-<!-- content: measured · rules read twice and certain (1 877 B, Cloudflare's managed block naming `ClaudeBot`, `*` open — `identity()` answers `claude-user`, `verdict()` sweeps) — and the transport answers 200 on Vercel at the root (330 453 B, byte-identical twice) and at `/emploi` (136 440 B, byte-identical twice): the listing states «251 offres disponibles» and «Vous voyez 20 offres sur 251 — Charger plus», a Next.js app-router page whose 20 cards are in the RSC payload and whose «load more» is a script; 0 `/emploi/<id>` links in the HTML · 2026-09-12 15:28 UTC -->
-<!-- witness: the page's own «<strong>253</strong> offres disponibles» on `/emploi`, printed on the server and read by `asako.py list` beside the sitemap's rows («6 emitted of the 253 the site states … 253 in the sitemap»); a tab pressed «Charger plus d'offres» twelve times and reached «Vous voyez 253 offres sur 253»; a page without the count exits 6 · 2026-09-14 -->
-<!-- route: http · 253 · 2026-09-14 -->
+<!-- content: measured · rules read and certain (1 877 B, md5 ba46383a2cc3 — the SAME md5 as 2026-09-14: `Claude-User` keeps its own group, `Allow: /`, no Crawl-delay) — and the transport answers 200 on Vercel at `/emploi` (353 739 B, byte-identical twice, REDESIGNED: no «offres disponibles» anywhere, the count three times otherwise and `totalCount: 479` in its RSC flight, and its 20 cards are now real `<a href="/annonces/...">` links where 2026-09-12 recorded ZERO), at `/emploi/page/2` (204 801 B, the OLD template with «479 offres disponibles» intact and `/page/3` behind a server link), at `/sitemap.xml` (31 202 B, 361 rows and NOT ONE advertisement) and at `/sitemap-jobs.xml` (72 329 B, 479 rows of which 478 ads, lastmod 2026-09-18 … 2026-11-01) · 2026-11-02 03:17 UTC -->
+<!-- witness: `totalCount: 479` in the RSC flight of `/emploi` AND of `/emploi/page/2`, the structural witness the redesign did not move, beside «479 offres disponibles» still served on page 2 — and the two enumerators AGREE, which was checked and not assumed: the 40 ad links of pages 1–2 are ALL in `/sitemap-jobs.xml` (0 outside) and its 479 rows match the 479 the page states, so the sitemap is a witness and not a second population; `/emploi/page/N` is a measured fallback route; a page with no witness at all still exits 6 · 2026-11-02 -->
+<!-- route: http · 478 · 2026-11-02 -->
+
+## 2026-11-02 03:14–03:17Z — two things moved, the adapter's guard caught both, and #1239 is the remeasurement
+
+**The adapter exited `rc=6` on «200 and no «N offres disponibles»» and that verdict was
+RIGHT — the phrase has gone from `/emploi`.** It had not gone from the board, and nothing
+here is a defect of the adapter: the `die` that refused to report zero is untouched, and it
+is the reason this board never silently reported an empty market.
+
+**What the four header fields above corrected.** `verified` was `2026-09-14`; `route` was
+`http · 253 · 2026-09-14`; `content` described `/emploi` at 136 440 B with «251 offres
+disponibles» and **«0 `/emploi/<id>` links in the HTML»**; `witness` was the page's own
+«<strong>253</strong> offres disponibles». All four were true on their day.
+
+| what was read | then | now |
+| :-- | :-- | :-- |
+| the count's wording on `/emploi` | «<strong>253</strong> offres disponibles» | **gone** — «479 offres d'emploi» twice, «Vous voyez <strong>20</strong> offres sur <strong>479</strong>», and `totalCount: 479` in the flight |
+| the count on `/emploi/page/2` | not read | **«<strong>479</strong> offres disponibles», the OLD template intact** |
+| the 20 cards in the served HTML | **0 links to an offer page** | **20 real `<a href="/annonces/…">`** |
+| «Charger plus d'offres» | a client action | **a server link, `/emploi/page/2` → `/page/3` → …** |
+| the ads' sitemap | `/sitemap.xml`, 582 rows / 253 ads | **`/sitemap-jobs.xml`, 479 rows / 478 ads** — and `/sitemap.xml` now has 361 rows and **not one ad** |
+| the ad page | a JobPosting | **unchanged** — 153 074 B, `record()` reads it with nothing altered |
+| `robots.txt` | 1 877 B, md5 ba46383a2cc3 | **the same md5**, `Claude-User` with its own group, no Crawl-delay |
+
+**So the template changed on PAGE 1 ONLY, and the reader was pointed at the one page that
+stopped carrying its phrase.** That is the whole of the `rc=6`.
+
+**And the host had been publishing the new address the whole time.** `robots.txt` declares
+four sitemaps — `/sitemap.xml`, `/sitemap-jobs.xml`, `/sitemap-blog.xml`,
+`/sitemap-guides.xml` — and until today not one of those declarations was read: the adapter
+held `/sitemap.xml` as a constant. It now DERIVES its candidates from the declarations
+(`_robots.sitemaps_for`, whose own docstring documents this trap), tries the ones whose
+address hints at jobs first, and names the one that answered on the line that always prints.
+Only `www.asako.mg` and `asako.mg`: a row from a third host would ride into every record's
+`url`.
+
+**One row of the 479 is not emitted, and it says so rather than vanishing.**
+`/annonces/sdr-b2b-freelance7d468b86` has its hex glued to the slug with no hyphen, so the
+address pattern refuses it and no identifier can be read from it. It is counted and NAMED,
+never filed under «other rows set aside» — an ad dropped in silence is the one thing a row
+count cannot show — and `478 of the 479 the site states` already reports the gap
+arithmetically. Emitting it would need a guess at where the slug ends, which is a decision
+and not a fix.
+
+**Not a verdict that the host is closed, and no antirobot control appeared.** Nothing refused
+us; every fetch under the declared identity through `bin/fetch-body.py`, the guard taken on
+each exact path in a turn distinct from the retrieval, 2 s of our own between requests.
 
 **Measured 2026-09-12 at 15:27:50Z UTC for #233, lot 7 — a measurement of
 the transport, not a decision about the host.** Every fetch under the

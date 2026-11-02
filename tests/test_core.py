@@ -27351,20 +27351,42 @@ class ACardThatDeclaresForbiddingTermsIsSaidToTheUserAtEnabling(unittest.TestCas
 
 
 class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheInventory(unittest.TestCase):
-    """**`asako.py`, 2026-09-14 (#338).** Asako.mg prints its count on the
-    server («<strong>253</strong> offres disponibles») and loads its cards
-    by a client action, so the sitemap's `/annonces/<slug>-<hex>` rows are
-    the inventory and each ad is read for its JobPosting — or, on the older
-    ads that carry none, from the page's own markup (`<h1>`, «chez X» in the
-    title, «Publiée le», «Lieu de travail», the prose sections). The count
-    is printed beside every walk; texts scrubbed; `/api/`, `/go/` and the
-    accounts (refused in writing to `Claude-User` by name) never sent.
-    Mutated (`-B`, detached copy): the stated count not read → the walk
-    case reddens; the legacy reader dropped → the walk case reddens (exit
-    6 on a real page); the description not scrubbed → the ad case reddens;
-    the refused-path guard dropped → the guard case reddens; the sitemap's
-    non-ad rows counted as ads → the sitemap case reddens; `TELECOMMUTE`
-    not read → the ad case reddens."""
+    """**`asako.py`, 2026-09-14 (#338), remeasured 2026-11-02 (#1239).** Asako.mg
+    states its count on the server and each ad is read for its JobPosting — or,
+    on the older ads that carry none, from the page's own markup (`<h1>`, «chez X»
+    in the title, «Publiée le», «Lieu de travail», the prose sections). The count
+    is printed beside every walk WITH the witness it came from; texts scrubbed;
+    `/api/`, `/go/` and the accounts (refused in writing to `Claude-User` by name)
+    never sent.
+
+    **CORRECTED 2026-11-02, and the adapter's own guard is what reported it.** The
+    first line of this docstring said the count is «<strong>253</strong> offres
+    disponibles» and that the cards load «by a client action, so the sitemap's rows
+    are the inventory». Both were true on 2026-09-14 and neither is now: `/emploi`
+    was redesigned and carries no «offres disponibles» at all (while
+    `/emploi/page/2` still carries it, so the reader was pointed at the one page that
+    stopped), its 20 cards are real `<a href="/annonces/…">` links, «Charger plus»
+    is a server link, and `/sitemap.xml` holds 361 rows and NOT ONE ad while
+    `/sitemap-jobs.xml` — declared in `robots.txt` all along — holds 478. The class
+    name still holds: a sitemap IS the inventory; it is simply the one the host
+    DECLARES. `record()` and the `die` that refuses to report zero are untouched.
+
+    Mutated (`-B`, isolated worktree, each red traced to its own assertion): the
+    stated count not read → the walk case reddens; the legacy reader dropped → the
+    walk case reddens (exit 6 on a real page); the description not scrubbed → the ad
+    case reddens; the refused-path guard dropped → the guard case reddens; the
+    sitemap's non-ad rows counted as ads → the sitemap case reddens; `TELECOMMUTE`
+    not read → the ad case reddens. **Six more for #1239, swept in an isolated
+    worktree at `34bcf60d`, each red traced to the LINE it came from and the sweep
+    green before and after: `TOTAL_RE` made unmatchable → the witness case reddens
+    on the flight-only page AND the declaration case on its provenance line, both
+    reading that key; the jobs hint dropped from `jobs_first` → the declaration
+    case AND the walk's `asked` redden; the host filter dropped → the declaration
+    case reddens on a third host; a refused `/annonces/` row counted under «other»
+    → the declaration case reddens; the fall-through to the next candidate removed
+    → the declaration case reddens; `SEEN_OF_RE` without its `<strong>` → the
+    witness case reddens, reading the FAQ's «340 offres sur 479» as the board's
+    size.**"""
 
     def _mod(self):
         spec = importlib.util.spec_from_file_location("_asako", os.path.join(SCRIPTS, "asako.py"))
@@ -27396,7 +27418,10 @@ class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheI
               '<div><h2 class="h"><span>Missions<!-- --> </span><strong>principales</strong></h2></div><div class="prose prose-sm"><ul><li>Être le support des clients : appeler le 034 12 345 67</li><li>Recueillir des informations</li></ul></div>'
               '<div><h2 class="h"><span>Profil<!-- --> </span><strong>recherché</strong></h2></div><div class="prose prose-sm"><p>Support pour des clients français, cv à madixy@example.mg</p></div></body></html>')
 
-    def _run(self, mod, served, cmd="list", **kw):
+    DECLARED = ["https://www.asako.mg/sitemap.xml", "https://www.asako.mg/sitemap-jobs.xml",
+                "https://www.asako.mg/sitemap-blog.xml", "https://www.asako.mg/sitemap-guides.xml"]
+
+    def _run(self, mod, served, cmd="list", declared=None, **kw):
         import contextlib
         asked = []
         it = iter(served)
@@ -27405,6 +27430,9 @@ class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheI
             asked.append(url)
             return next(it)
         mod.request = request
+        # only `allowed()` is stubbed out, never the ordering: `sitemap_candidates()` and
+        # `jobs_first()` run for real on these declarations, and they decide the walk (#1239).
+        mod.gate = lambda url: {"allowed": True, "sitemaps": self.DECLARED if declared is None else declared}
         ns = argparse.Namespace(limit=None) if cmd != "ad" else argparse.Namespace()
         for k, v in kw.items():
             setattr(ns, k, v)
@@ -27417,7 +27445,7 @@ class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheI
         import contextlib
         mod = self._mod()
         rows, err, asked, raw = self._run(mod, [(200, self.LISTING), (200, self.SITEMAP), (200, self._ad()), (200, self.LEGACY)])
-        self.assertEqual(asked, ["https://www.asako.mg/emploi", "https://www.asako.mg/sitemap.xml", "https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18", "https://www.asako.mg/annonces/charge-de-support-de-logiciel-10053"])
+        self.assertEqual(asked, ["https://www.asako.mg/emploi", "https://www.asako.mg/sitemap-jobs.xml", "https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18", "https://www.asako.mg/annonces/charge-de-support-de-logiciel-10053"])   # the sitemap the HOST declares for jobs, not /sitemap.xml (#1239)
         self.assertEqual([r["id"] for r in rows], ["b3546c18", "10053"])
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["uuid"], a["title"], a["company"], a["company_site"], a["employment_type"], a["place"], a["remote"], a["applicant_country"], a["industry"], a["category"], a["skills"], a["posted"], a["valid_through"], a["direct_apply"], a["responsibilities"], a["lastmod"], a["contacts_withheld"]),
@@ -27440,13 +27468,99 @@ class AMalagasyBoardWhoseCountIsOnTheServerAndWhoseCardsAreNotSoTheSitemapIsTheI
         self.assertEqual(cm.exception.code, 6)
         rows, err, asked, raw = self._run(mod, [(200, self.SITEMAP)], cmd="sitemap")
         self.assertEqual(([r["id"] for r in rows], rows[0]["lastmod"], rows[1]["slug"]), (["b3546c18", "10053"], "2026-09-07", "charge-de-support-de-logiciel"))
-        self.assertIn("2 ad row(s) in the sitemap (2 other rows set aside", err)
+        self.assertIn("2 ad row(s) in https://www.asako.mg/sitemap-jobs.xml (2 other rows set aside", err)
         mod = self._mod()
         mod.gate = lambda url: {"allowed": True}
         for bad in ("https://www.asako.mg/api/offres", "https://www.asako.mg/go/x", "https://www.asako.mg/candidat/cv"):
             with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
                 mod.request(bad)
             self.assertEqual(cm.exception.code, 7)
+
+    # Extracted from the bodies fetched on 2026-11-02, never composed: the flight key as the
+    # page escapes it, the new prose with its `<strong>`, and the FAQ sentence of the SAME page
+    # that writes a different number in the same words without one.
+    FLIGHT = '<script>self.__next_f.push([1,"[\\"$\\",\\"$L3e\\",null,{\\"totalCount\\":479,\\"resultCount\\":479}]"])</script>'
+    SEEN_OF = '<p>Vous voyez<!-- --> <strong class="font-semibold text-asako-navy-title">20</strong> <!-- -->offres sur<!-- --> <strong class="font-semibold text-asako-navy-title">479</strong></p>'
+    FAQ_PROSE = '<div class="prose">Le CDI domine : 340 offres sur 479, soit 71 %. On trouve aussi 96 missions.</div>'
+
+    def test_the_count_is_read_from_the_structure_first_and_the_prose_stays_a_fallback(self):
+        """2026-11-02 (#1239): `/emploi` was redesigned and dropped \u00abN offres disponibles\u00bb,
+        `/emploi/page/2` kept it. So the reader prefers the FLIGHT KEY, which did not move, and
+        keeps BOTH prose forms, because one of them is still served. The counter-test is the FAQ
+        sentence of the same page: \u00ab340 offres sur 479\u00bb, no `<strong>`, and reading it would
+        report 340 as the board's size."""
+        mod = self._mod()
+        self.assertEqual(mod.stated(self.FLIGHT + self.SEEN_OF + self.FAQ_PROSE),
+                         (479, "`totalCount` in the page's RSC flight"))
+        self.assertEqual(mod.stated(self.LISTING), (253, "\u00abN offres disponibles\u00bb"))             # the old template, still served on page 2
+        self.assertEqual(mod.stated(self.SEEN_OF + self.FAQ_PROSE),
+                         (479, "\u00ab\u2026 offres sur <strong>N</strong>\u00bb"))                             # the redesigned page 1, no flight key
+        self.assertEqual(mod.stated(self.FAQ_PROSE), (None, None))                               # the FAQ alone says nothing: 340 is NOT the size
+        self.assertEqual(mod.stated("<html><body>a page about nothing</body></html>"), (None, None))
+        self.assertEqual(mod.stated(None), (None, None))
+        # and the die that caught all this stays: no witness at all is a changed template, never an empty market
+        import contextlib
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(io.StringIO()):
+            self._run(mod, [(200, self.FAQ_PROSE)])
+        self.assertEqual(cm.exception.code, 6)
+
+    GLUED = ('<?xml version="1.0"?><urlset>'
+             '<url><loc>https://www.asako.mg/annonces/assistant-virtuel-polyvalent-b3546c18</loc><lastmod>2026-09-07T11:11:30.877Z</lastmod></url>'
+             '<url><loc>https://www.asako.mg/annonces/sdr-b2b-freelance7d468b86</loc><lastmod>2026-11-01T08:00:00.000Z</lastmod></url>'
+             '<url><loc>https://www.asako.mg/emploi/antananarivo</loc></url></urlset>')
+    NO_ADS = ('<?xml version="1.0"?><urlset>'
+              '<url><loc>https://www.asako.mg/emploi/antananarivo</loc></url>'
+              '<url><loc>https://www.asako.mg/profil-entreprise/madixy</loc></url></urlset>')
+
+    def test_the_ads_sitemap_is_the_one_the_host_declares_and_a_refused_row_is_declared(self):
+        """2026-11-02 (#1239): `/sitemap.xml` carried 253 ads on 2026-09-14 and carries NONE now
+        (361 rows of facets, profiles and pages), while `/sitemap-jobs.xml` \u2014 declared in
+        `robots.txt` all along \u2014 carries 478. A constant would have died on a host that was
+        publishing the address, so the candidates are DERIVED from the declarations."""
+        import contextlib
+        mod = self._mod()
+        self.assertEqual(mod.jobs_first(self.DECLARED)[:2],
+                         ["https://www.asako.mg/sitemap-jobs.xml", "https://www.asako.mg/sitemap.xml"])   # the jobs hint goes FIRST
+        self.assertEqual(mod.jobs_first(self.DECLARED)[2:],
+                         ["https://www.asako.mg/sitemap-blog.xml", "https://www.asako.mg/sitemap-guides.xml"])
+        third = mod.jobs_first(["https://cdn.example.com/sitemap-jobs.xml"])
+        self.assertNotIn("https://cdn.example.com/sitemap-jobs.xml", third)   # another host would ride into every record's `url`
+        self.assertEqual(third, mod.jobs_first([]))                           # and with nothing declared, the two measured paths
+        self.assertEqual(third, ["https://www.asako.mg/sitemap-jobs.xml", "https://www.asako.mg/sitemap.xml"])
+        self.assertEqual(len(mod.jobs_first(self.DECLARED + self.DECLARED)), len(mod.jobs_first(self.DECLARED)))
+
+        # a candidate that answers 200 with not one ad is not the inventory: the walk goes on
+        rows, err, asked, raw = self._run(mod, [(200, self.NO_ADS), (200, self.SITEMAP)], cmd="sitemap")
+        self.assertEqual(asked, ["https://www.asako.mg/sitemap-jobs.xml", "https://www.asako.mg/sitemap.xml"])
+        self.assertEqual([r["id"] for r in rows], ["b3546c18", "10053"])
+        self.assertIn("2 ad row(s) in https://www.asako.mg/sitemap.xml", err)
+
+        # a /annonces/ row the ADDRESS pattern refuses is named, and never filed under \u00abother\u00bb
+        rows, err, asked, raw = self._run(mod, [(200, self.GLUED)], cmd="sitemap")
+        self.assertEqual([r["id"] for r in rows], ["b3546c18"])
+        self.assertIn("1 ad row(s) in https://www.asako.mg/sitemap-jobs.xml (1 other rows set aside", err)
+        self.assertIn("1 /annonces/ row(s) NOT emitted", err)
+        self.assertIn("https://www.asako.mg/annonces/sdr-b2b-freelance7d468b86", err)
+
+        # nothing declared carries an ad: exit 6, the message names every candidate and what it gave,
+        # and it accuses the INVENTORY — never a dead board, which is not ours to declare (\u00a72 sexies)
+        served = iter([(200, self.NO_ADS), (404, "")])
+        mod.request = lambda url: next(served)
+        mod.gate = lambda url: {"allowed": True, "sitemaps": ["https://www.asako.mg/sitemap-jobs.xml"]}
+        e = io.StringIO()   # `_run` swallows its own stderr on SystemExit, so the message is read here
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(e):
+            with self.assertRaises(SystemExit) as cm:
+                mod.cmd_sitemap(argparse.Namespace(limit=None))
+        self.assertEqual(cm.exception.code, 6)
+        self.assertIn("2 row(s) and not one /annonces/<slug>-<hex>", e.getvalue())
+        self.assertIn("HTTP 404", e.getvalue())
+        self.assertIn("the inventory moved; not an empty market", e.getvalue())
+        mod = self._mod()
+
+        # and `list` says where both numbers came from, on the line that always prints
+        rows, err, asked, raw = self._run(mod, [(200, self.FLIGHT), (200, self.SITEMAP), (200, self._ad())], limit=1)
+        self.assertIn("the count comes from `totalCount` in the page's RSC flight on https://www.asako.mg/emploi; the inventory from https://www.asako.mg/sitemap-jobs.xml.", err)
+        self.assertIn("1 emitted of the 479 the site states", err)
 
     def test_the_ad_is_its_jobposting_scrubbed_with_the_place_when_not_remote(self):
         import contextlib
@@ -41152,7 +41266,7 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
     """
 
     MUTES = (
-        "3amal.md", "afgjobs.md", "algeriejob.md", "asako.md", "biznetwork.md",
+        "3amal.md", "afgjobs.md", "algeriejob.md", "biznetwork.md",
         "boliviatrabajo.md", "careerfair-nea-gov-kh.md", "careerlink.md",
         "caribbeanjobsonline.md", "clasificadosonline.md", "clasipar.md",
         "cv-lv.md", "cvonline-lt.md", "cyprusjobs.md", "cypruswork.md",
