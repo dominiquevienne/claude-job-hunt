@@ -22,6 +22,7 @@ that no door was found today.*
 
 ```
 robots.txt      639 B, md5 befc2a9ded19, read twice, certain: True
+Crawl-delay     **none written** — `tyomarkkinatori.fi`, read twice 2026-11-02 (#907): 200, 639 B, md5 befc2a9ded19 both times, `crawl_delay` None; the SAME fingerprint as the reading recorded above, so that measure still holds
 User-agent: *
 Disallow: /api/            <- the search and the posting live here
 Disallow: /*/api/

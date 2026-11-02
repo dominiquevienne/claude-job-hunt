@@ -19,6 +19,7 @@ the `cf-ray` that answered.
 
 ```
 robots.txt      read twice, certain: True, 2573 B, md5 656be9cf511b both times — `User-agent: ClaudeBot / Disallow: /`, `*` open
+Crawl-delay     **none written** — `karrierestart.no`, read twice 2026-11-02 (#907): 200, 3 413 B, md5 c413fad05681 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 identity("/")   http, claude-user      <- the group naming ClaudeBot does not bind Claude-User (owner, 2026-09-07)
 verdict()       sweep True, sweep_token claude-user   <- since #230 (2026-09-11)
 allowed("/")    True

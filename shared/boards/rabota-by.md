@@ -16,6 +16,7 @@ declared identity, the guard on the exact path first, `bin/fetch-body.py`.
 
 ```
 robots.txt      read twice, certain: True, 10 379 B, md5 a0c1c4960a51 both times
+Crawl-delay     **none readable** — `rabota.by/robots.txt` answered **403** on 2026-11-02, so `state: no-rules`, and #283 makes that an ABSENCE of rules (`certain: False` today): there is no directive to record. The 10 379 B / a0c1c4960a51 above is the 2026-09 reading, which the card keeps because a correction cites what it corrects. **ONE reading, and it should have been ZERO: this host is named VERBATIM in the owner's 2026-09-14 exclusion of the whole hh network (#337, « ne plus remesurer »), and I checked that list AFTER reading instead of before** (#907)
                 groups for Yandex, YandexDirect, Googlebot … with Clean-param lines; and
                 `User-agent: claudebot / Disallow: /vacancy/*, /resume$, /resume?*`   <- the advertisement pages, to that name
 identity("/")   http, claude-user       <- not named; falls under `*`

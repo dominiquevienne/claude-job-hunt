@@ -18,6 +18,7 @@ next reading, which was not connected that day.**
 GET https://www.afgjobs.org/            403,   787 B, md5 ff715af41f83 ×2   (Claude-User)
 GET https://www.afgjobs.org/            403,   787 B, the same page          (Chrome, real browser, same address)
 GET https://www.afgjobs.org/robots.txt  404, 4 511 B, md5 b16e9097fc7d
+Crawl-delay                             **none written** — `/robots.txt` answers 404 (4 511 B, md5 b16e9097fc7d, recorded above), so `state: absent`: there is no rules file, hence no directive. Established by this card's OWN reading, with no new request — which is also how the owner's 2026-09-24 exclusion of this board is respected (#907)
 GET https://www.afgjobs.org/sitemap.xml 404, 4 511 B, md5 b16e9097fc7d       (byte-identical to the line above)
 GET https://www.afgjobs.org/jobs        404, «This Page Does Not Exist»      (Chrome, real browser)
 ```

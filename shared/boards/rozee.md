@@ -218,3 +218,5 @@ give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
 leads with it, dated, so the Atlas and the country page (#404: a card
 declaring `route: none` is «non faisable», excluded from the feasible
 denominator) read a decision and not a measurement. The sitemap is alive (2 688 `<loc>` on 2026-09-14) and every advertisement leaves the host for a client-rendered shell whose API is refused in writing — a route to addresses, not to advertisements; the owner has excluded it.
+
+**Crawl-delay** — **none written** — `/robots.txt` answers 403 (2026-09-07, recorded above), so the rules are UNREADABLE: #283 makes an unreadable rules file an ABSENCE of rules, and an absence has no directive to record. Established by this card's OWN reading, with no new request — which is also how the owner's 2026-09-14 exclusion is respected (#907).

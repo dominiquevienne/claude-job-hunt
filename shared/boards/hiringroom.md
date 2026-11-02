@@ -72,3 +72,5 @@ page without `typePortal` (6), a 404 (3), the advert's fields and scrubbed
 sections with the apply link never emitted, bad addresses and tenants
 refused before any request, another host never sent (7) — 8 mutations on
 the committed file, 8 red (2026-09-21).
+
+**Crawl-delay** — **none written** — the tenant `/robots.txt` answers 404 with the application's own page (81 896 B, recorded above) — no rules file on the host the route actually uses, hence no directive. Established by this card's OWN reading, with no new request. **Bound: the vendor apex's 149 B file (13.09) is NOT enumerated and is a DIFFERENT host — `robots.txt` binds a host and not a brand (§3 bis), and the apex is not the route** (#907).

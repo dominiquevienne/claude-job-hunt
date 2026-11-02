@@ -71,3 +71,5 @@ Exits: 2 broken (a malformed URL) · 3 gone (no post with the slug, or a
 post that is not an ad) · 6 partial (a walk short of `X-WP-Total`, HTTP ≠
 200, an answer that is not JSON) · 7 refused by the rules · 8 rules
 undecidable.
+
+**Crawl-delay** — **none written** — `www.jobsgarden.hu`, read twice 2026-11-02 (#907): 200, 66 B, md5 926d32a59be3 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects.

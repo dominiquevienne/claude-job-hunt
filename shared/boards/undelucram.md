@@ -22,6 +22,7 @@ undelucram.py ad --url https://www.undelucram.ro/ro/locuri-de-munca/<slug>/<id>
 
 ```
 robots.txt      read twice, certain: True, 231 B, md5 4473a06c73ea both times — `ClaudeBot` named and refused, `*` open
+Crawl-delay     **none written** — `www.undelucram.ro`, read twice 2026-11-02 (#907): 200, 154 B, md5 7aa5ae8f8a17 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 identity("/")   http, claude-user      <- the group naming ClaudeBot does not bind Claude-User (owner, 2026-09-07)
 verdict()       sweep True, sweep_token claude-user   <- since #230 (2026-09-11)
 allowed()       True on `/`, `/ro/locuri-de-munca`, `/ro/locuri-de-munca?page=2`

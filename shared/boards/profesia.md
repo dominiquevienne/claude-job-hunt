@@ -37,6 +37,7 @@ profesia.py ad --url https://www.profesia.sk/praca/<employer>/O<id>
 
 ```
 robots.txt      .sk 2 204 B md5 dab75ad5bf2f · .cz 2 201 B md5 7bfd3825ad96 — read twice each, certain: True
+Crawl-delay     **none written** — `www.profesia.sk`, read twice 2026-11-02 (#907): 200, 2 204 B, md5 dab75ad5bf2f both times, `crawl_delay` None; the SAME fingerprint as the reading recorded above, so that measure still holds
                 `*` refused 44 paths: /banner/ /images/ /wap/, the language facets (/sk/ /cz/ /de/ /en/*? /hu/*?), /partner/, /documents/…, *company_details.php, *search_offers*form=, *search_cv.php, *print=1, *ajax …
                 the diff between the two: which language prefixes are refused, one `search_cv_submit.php`, one `/registrace-firmy`, and the Sitemap lines
 identity("/")   http, claude-user — no AI agent named on either host

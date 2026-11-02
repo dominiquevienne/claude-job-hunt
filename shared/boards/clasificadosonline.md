@@ -73,3 +73,5 @@ clasificadosonline.py ad --url "https://www.clasificadosonline.com/Empleos/Detai
 Exits: 2 broken (a malformed URL) · 3 gone (404, or no microdata) · 6
 partial (a walk short of the list's count, HTTP ≠ 200, a list that states
 no count) · 7 refused by the rules · 8 rules undecidable.
+
+**Crawl-delay** — **none written** — `www.clasificadosonline.com`, read twice 2026-11-02 (#907): 200, 292 B, md5 2cef680c5be2 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects.

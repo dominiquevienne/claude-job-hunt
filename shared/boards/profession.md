@@ -22,6 +22,7 @@ profession.py ad --url https://www.profession.hu/allas/<slug>-<id>
 
 ```
 robots.txt      1 896 B, md5 1ca7b4acfd86, read twice, certain: True — `*`: 12 Allow, 45 Disallow (*/account/, */jelentkezes/, */munkaado/, */munkavallalo/, /cvgen/, **/en/**, /general/, the ASZF and privacy PDFs, *?rss$ …); an `AdsBot-Google` group; no AI agent named
+Crawl-delay     **none written** — `www.profession.hu`, read twice 2026-11-02 (#907): 200, 1 896 B, md5 1ca7b4acfd86 both times, `crawl_delay` None; the SAME fingerprint as the reading recorded above, so that measure still holds
 identity("/")   http, claude-user
 verdict()       sweep True, certain True, crawl_delay none  -> Pace(HOST, own=1.0), one second, ours
 allowed()       True on `/`, `/allasok`, `/sitemap-listings-index-hu.xml`, `/allas/<slug>-<id>` — **False on `/en/advertisement/<slug>-<id>`**

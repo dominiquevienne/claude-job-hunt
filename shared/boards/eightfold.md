@@ -72,3 +72,5 @@ Exits: 2 broken (no host, a malformed URL) · 3 gone (404, no position in
 the answer) · 6 partial (a walk short of `count`, HTTP ≠ 200, a page that
 names no `domain=`) · 7 refused by the rules, or a PCSX tenant · 8 rules
 undecidable.
+
+**Crawl-delay** — **none written** — `bayer.eightfold.ai`, read twice 2026-11-02 (#907): 200, 355 B, md5 7904287737ac both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects.

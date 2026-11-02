@@ -17,6 +17,7 @@ guard on the exact path first, `bin/fetch-body.py`.
 
 ```
 robots.txt      read twice, certain: True, 1148 B, md5 cecf63e6f27a both times — `ClaudeBot` named and refused, `*` open (the file #233 called «written by hand»; it names ClaudeBot, not Claude-User)
+Crawl-delay     **none written** — `www.careerlink.vn`, read twice 2026-11-02 (#907): 200, 3 720 B, md5 c771099788b2 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 identity("/")   http, claude-user
 verdict()       sweep True, sweep_token claude-user
 allowed()       True on `/`, `/vieclam/tim-kiem-viec-lam`

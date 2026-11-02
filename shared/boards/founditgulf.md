@@ -26,6 +26,7 @@ python3 skills/job-scan/scripts/founditgulf.py ad --url https://www.founditgulf.
 
 ```
 robots.txt      read twice, certain: True, 706 B, md5 572ee93fb164 both times
+Crawl-delay     **none written** — `www.founditgulf.com`, read twice 2026-11-02 (#907): 200, 723 B, md5 8fa0f872c0fe both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
                 `User-agent: *`            Disallow: /seeker/dashboard, /seeker/profile, /*radialhr, /pwa/, /trex/*/, */middleware/…, /mthinking/, *track_aor.html, /penguin/…, /middleware/, /xmlsitemap/expired-jobs-sitemap*.xml
                 `User-Agent: GPTBot / ClaudeBot / CCBot / Bytespider / Meta-ExternalAgent / Google-Extended`
                                            Allow: /, /career-advice/, /career-services   Disallow: /jobs/, /search/     <- WRITTEN BY HAND

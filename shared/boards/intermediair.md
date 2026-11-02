@@ -27,6 +27,7 @@ that issue cites.
 
 ```
 robots.txt   200, 3 735 B — `User-agent: *`: Disallow /vacature/zoeken?* · /vacature/uitgebreid-zoeken · /vacatures/*?page= · /vacatures/*?*&page= · (accounts, apply, cv, utm/gclid variants …)
+Crawl-delay  **none written** — `www.intermediair.nl`, read twice 2026-11-02 (#907): 200, 3 735 B, md5 26d4a6ac40f8 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
              `User-agent: ClaudeBot`: Disallow /          <- `Claude-User` under `*` (2026-09-07)
              AdsBot-Google, AdsBot-Google-Mobile, Twitterbot: Allow /vacature/zoeken?*
              nine `Sitemap:` lines — /cdn/sitemaps/vacature.xml is the advertisements; the others are landing pages (topics, dco-titel, werkgever, plaats, salary, gemeente, trefwoorden)
