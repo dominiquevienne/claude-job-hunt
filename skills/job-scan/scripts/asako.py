@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Asako.mg (`www.asako.mg`) — Madagascar's job board on Vercel (Next.js): the listing prints its count on the server («253 offres disponibles») and loads its cards by a client action, the sitemap names every advertisement, and each ad page carries a JobPosting; the count printed beside every walk; the texts scrubbed. Issue #338.
+"""Asako.mg (`www.asako.mg`) — Madagascar's job board on Vercel (Next.js): the listing states its count on the server, the ads are named by the sitemap the HOST DECLARES, and each ad page carries a JobPosting; the count printed beside every walk with the witness it came from; the texts scrubbed. Issues #338, #1239.
 
-  asako.py sitemap [--limit N]        every /annonces/<slug>-<hex> row of sitemap.xml, with lastmod (1 request)
-  asako.py list [--limit N]           the listing's stated count, then the sitemap's ads read from their pages (N pages, 20 unless told, 2 s apart)
+  asako.py sitemap [--limit N]        every /annonces/<slug>-<hex> row of the ads' sitemap, with lastmod (1 request)
+  asako.py list [--limit N]           the count the page states, then that sitemap's ads read from their pages (N pages, 20 unless told, 2 s apart)
   asako.py ad --url <https://www.asako.mg/annonces/<slug>-<hex>>
 
 THE RULES. `Claude-User` is named with its own group — `Allow: /`, `Disallow: /api/`, `/admin/`,
@@ -28,6 +28,36 @@ Measured 2026-09-14 09:48–09:5x UTC by the declared client, the guard on the e
 resolves again on 1.1.1.1 and 8.8.8.8 (76.76.21.21; NXDOMAIN on 2026-09-13); robots 200;
 `/emploi` 132 972 B, «253»; `sitemap.xml` 582 rows / 253 ads (lastmod 2026-09-01 … 2026-09-14);
 the ad 161 167 B with its JobPosting; a tab: «Vous voyez 253 offres sur 253».
+
+**2026-11-02 03:14–03:17Z (#1239) — TWO THINGS MOVED AND THE ADAPTER'S GUARD CAUGHT BOTH.** Every
+line above is kept as the dated record it is; what follows corrects it. The guard at `cmd_list`
+exited 6 on «200 and no «N offres disponibles»», and that was the right verdict — the phrase HAS
+gone from `/emploi`. It had NOT gone from the board:
+
+  /emploi            200, 353 739 B (md5 f47bce8f0a80, identical twice) — REDESIGNED. No «offres
+                     disponibles» anywhere; the count is there three times otherwise («479 offres
+                     d'emploi» twice, «Vous voyez <strong>20</strong> offres sur <strong>479</strong>»)
+                     and in the RSC flight as `totalCount`. **And the 20 cards are now real
+                     `<a href="/annonces/...">` links, where the 2026-09 card recorded ZERO**, with
+                     «Charger plus» now a server link `/emploi/page/2`, not a client action.
+  /emploi/page/2     200, 204 801 B — the OLD template, «<strong>479</strong> offres disponibles»
+                     intact, `totalCount` and `resultCount` both 479, 20 more ad links, `/page/3`.
+                     So the template changed on PAGE 1 ONLY, and the reader was pointed at the one
+                     page that stopped carrying its phrase.
+  /sitemap.xml       200, 31 202 B, 361 rows, **not one advertisement** (234 /emploi/ facets, 112
+                     employer profiles, 15 pages) — where 582 rows / 253 ads were on 2026-09-14.
+  /sitemap-jobs.xml  200, 72 329 B, 479 rows, 478 ads (lastmod 2026-09-18 … 2026-11-01) — DECLARED
+                     in robots.txt beside the root sitemap, and never read until today.
+  the ad             200, 153 074 B — `record()` unchanged: JobPosting, UUID, employer, dates,
+                     TELECOMMUTE, industry, category, the texts scrubbed.
+  robots.txt         200, 1 877 B, md5 ba46383a2cc3 — the SAME md5 as 2026-09-14. `Claude-User` keeps
+                     its own group, `Allow: /`, no Crawl-delay; 2 s is still ours.
+
+THE TWO ENUMERATORS AGREE, which is the favourable case and had to be checked rather than assumed:
+the 40 ad links of pages 1–2 are ALL in `sitemap-jobs.xml` (0 outside), its 479 rows match the 479
+the page states. So the sitemap is a WITNESS and not a second population, and `/emploi/page/N` is a
+measured fallback route if it ever stops being one. ONE row of the 479 is not emitted and says so:
+`/annonces/sdr-b2b-freelance7d468b86`, hex glued to the slug.
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -47,8 +77,11 @@ from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
 
 HOST = "www.asako.mg"
+HOST_FORMS = (HOST, "asako.mg")
 LIST = f"https://{HOST}/emploi"
-SITEMAP = f"https://{HOST}/sitemap.xml"
+SITEMAP_JOBS = f"https://{HOST}/sitemap-jobs.xml"   # where the ads are, measured 2026-11-02: 479 rows, 478 ads
+SITEMAP_ROOT = f"https://{HOST}/sitemap.xml"        # where they were on 2026-09-14 (582 rows, 253 ads) -- a candidate now, not the address
+JOBS_HINT_RE = re.compile(r"job|emploi|annonce", re.I)
 
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
 EXIT_REFUSED, EXIT_UNKNOWN = 7, 8
@@ -59,6 +92,8 @@ AD_RE = re.compile(r"^/annonces/([a-z0-9\-]+)-([0-9a-f]{4,12})/?$")
 REFUSED_RE = re.compile(r"^/(?:api|admin|recruteur|candidat|dashboard|go)(?:/|$)")
 ROW_RE = re.compile(r"<url>\s*<loc>([^<]+)</loc>(?:\s*<lastmod>([^<]+)</lastmod>)?", re.S)
 COUNT_RE = re.compile(r"<strong[^>]*>\s*(\d[\d  ]*)\s*</strong>\s*(?:<!--\s*-->)?\s*offres? disponibles")
+SEEN_OF_RE = re.compile(r"offres? sur\s*(?:<!--\s*-->)?\s*<strong[^>]*>\s*(\d[\d  ]*)\s*</strong>")
+TOTAL_RE = re.compile(r'\\?"totalCount\\?"\s*:\s*(\d+)')
 
 _PACE = Pace(HOST, own=2.0)   # no Crawl-delay written; 2 s is ours
 
@@ -109,36 +144,111 @@ def scrub(s):
 
 
 def stated(body):
-    """The count the listing prints on the server — «<strong>253</strong> offres disponibles» — or `None`."""
-    m = COUNT_RE.search(body or "")
-    return int(re.sub(r"\D", "", m.group(1))) if m else None
+    """The count the listing states on the server, and WHICH witness answered — `(None, None)` when none does.
+
+    THE STRUCTURE FIRST, THE PROSE AFTER, and that order IS the measurement of
+    2026-11-02 rather than a preference: `/emploi` was redesigned and no longer
+    carries «N offres disponibles» anywhere, while `/emploi/page/2` still carries
+    it unchanged — so in seven weeks the PROSE moved and the KEY did not.
+    `totalCount` is in the RSC flight of both pages and in no ad page.
+
+    The prose form is kept as a fallback and not dropped: page 2 proves it is
+    still served, and a witness that still answers is not a witness to retire.
+    «… offres sur <strong>N</strong>» requires the `<strong>`, because the FAQ prose
+    of the same page writes «340 offres sur 479» without it — measured in both
+    directions, and without that requirement the reader would return 340.
+    """
+    b = body or ""
+    m = TOTAL_RE.search(b)
+    if m:
+        return int(m.group(1)), "`totalCount` in the page's RSC flight"
+    for name, rx in (("«N offres disponibles»", COUNT_RE), ("«… offres sur <strong>N</strong>»", SEEN_OF_RE)):
+        m = rx.search(b)
+        if m:
+            return int(re.sub(r"\D", "", m.group(1))), name
+    return None, None
+
+
+def jobs_first(declared):
+    """The sitemaps to try, in order: the host's own `Sitemap:` declarations whose
+    address hints at jobs, then its other declarations in file order, then the two
+    paths this adapter has measured — deduplicated, order preserved.
+
+    THE ADS MOVED, AND THE HOST SAID SO ALL ALONG. On 2026-09-14 they were the
+    253 `/annonces/` rows of `/sitemap.xml`; on 2026-11-02 that file carries 361
+    rows and NOT ONE advertisement (234 `/emploi/` facets, 112 employer profiles,
+    15 pages), while `/sitemap-jobs.xml` — declared in `robots.txt` beside it —
+    carries 479 rows of which 478 are ads. A constant would have died on a host
+    that was publishing the address; `_robots.sitemaps_for` reads the declaration,
+    and its own docstring documents this trap.
+
+    Only `www.asako.mg` and `asako.mg`: a row from a third host would carry that
+    host into every record's `url`, and this adapter names its host as a literal
+    (its card's `host-forms-basis`). A sitemap that moves off the host is a
+    measurement to take, never a redirection to follow in silence.
+    """
+    ours = [u for u in declared if urllib.parse.urlsplit(u).netloc in HOST_FORMS]
+    hinted = [u for u in ours if JOBS_HINT_RE.search(urllib.parse.urlsplit(u).path)]
+    rest = [u for u in ours if u not in hinted]
+    return list(dict.fromkeys(hinted + rest + [SITEMAP_JOBS, SITEMAP_ROOT]))
+
+
+def sitemap_candidates():
+    return jobs_first(gate(LIST).get("sitemaps") or [])
 
 
 def sitemap_rows():
-    code, body = request(SITEMAP)
-    if code != 200:
-        die(f"{SITEMAP}: HTTP {code}", EXIT_GONE if code == 404 else EXIT_PARTIAL)
-    rows, seen, other = [], set(), 0
-    for loc, lastmod in ROW_RE.findall(body):
-        m = AD_RE.match(urllib.parse.urlsplit(loc).path)
-        if not m:
-            other += 1
+    """The ads from the first declared sitemap that carries one, with the URL that
+    answered, the non-ad rows, and the `/annonces/` rows the ADDRESS pattern refused.
+
+    A `/annonces/` row that `AD_RE` refuses is NOT filed under «other»: no identifier
+    can be read from it, so it is not emitted, and an ad dropped in silence is the one
+    thing a row count cannot show. Measured 2026-11-02: exactly ONE of the 479 rows —
+    `/annonces/sdr-b2b-freelance7d468b86`, whose hex is glued to the slug with no
+    hyphen. Emitting it would need a guess at where the slug ends, which is a decision
+    and not a fix; the pattern stays as it is and the loss is DECLARED, and `list`
+    already reports emitted against the stated count, so the arithmetic says it too.
+
+    Trying the next candidate on a 404 means no path here renders EXIT_GONE any more:
+    «every declared sitemap refuses» is the inventory having moved, never a dead board,
+    and declaring a board dead is not ours to do.
+    """
+    tried = []
+    for url in sitemap_candidates():
+        code, body = request(url)
+        if code != 200:
+            tried.append(f"{url}: HTTP {code}")
             continue
-        if m.group(2) in seen:
-            continue
-        seen.add(m.group(2))
-        rows.append({"source": "asako", "country": "MG", "ledger_id": f"asako:{m.group(2)}", "id": m.group(2), "url": loc, "slug": m.group(1), "lastmod": (lastmod or "")[:10] or None,"language": "fr"})
-    if not rows:
-        die(f"{SITEMAP}: 200 and not one /annonces/<slug>-<hex> row among {th(other)} — the sitemap's shape changed", EXIT_PARTIAL)
-    return rows, other
+        all_rows = ROW_RE.findall(body)
+        rows, seen, other, refused = [], set(), 0, []
+        for loc, lastmod in all_rows:
+            path = urllib.parse.urlsplit(loc).path
+            m = AD_RE.match(path)
+            if not m:
+                if path.startswith("/annonces/"):
+                    refused.append(loc)
+                else:
+                    other += 1
+                continue
+            if m.group(2) in seen:
+                continue
+            seen.add(m.group(2))
+            rows.append({"source": "asako", "country": "MG", "ledger_id": f"asako:{m.group(2)}", "id": m.group(2), "url": loc, "slug": m.group(1), "lastmod": (lastmod or "")[:10] or None,"language": "fr"})
+        if rows:
+            return rows, other, refused, url
+        tried.append(f"{url}: 200, {th(len(all_rows))} row(s) and not one /annonces/<slug>-<hex>")
+    die(f"not one of the sitemaps {HOST} declares carries an advertisement ({'; '.join(tried)}) — the inventory moved; not an empty market", EXIT_PARTIAL)
 
 
 def cmd_sitemap(a):
-    rows, other = sitemap_rows()
+    rows, other, refused, url = sitemap_rows()
     emitted = rows[:a.limit] if a.limit else rows
     for r in emitted:
         print(json.dumps(r, ensure_ascii=False))
-    note(f"{th(len(rows))} ad row(s) in the sitemap ({th(other)} other rows set aside — facets, employer profiles, pages); `list` prints the listing's stated count beside them.")
+    note(f"{th(len(rows))} ad row(s) in {url} ({th(other)} other rows set aside — facets, employer profiles, pages); `list` prints the listing's stated count beside them.")
+    if refused:
+        shown = ", ".join(refused[:3]) + (" …" if len(refused) > 3 else "")
+        note(f"{th(len(refused))} /annonces/ row(s) NOT emitted — the address pattern refuses them, so no identifier can be read: {shown}")
     if a.limit and a.limit < len(rows):
         note(f"{th(len(emitted))} emitted of the {th(len(rows))} — bounded by --limit.")
 
@@ -208,10 +318,10 @@ def cmd_list(a):
     code, body = request(LIST)
     if code != 200:
         die(f"{LIST}: HTTP {code}", EXIT_PARTIAL)
-    total = stated(body)
+    total, witness = stated(body)
     if total is None:
-        die(f"{LIST}: 200 and no «N offres disponibles» in the page — the template changed; not an empty market", EXIT_PARTIAL)
-    rows, other = sitemap_rows()
+        die(f"{LIST}: 200 and no count stated on the server — neither `totalCount` in its RSC flight, nor «N offres disponibles», nor «… offres sur <strong>N</strong>» — the template changed; not an empty market", EXIT_PARTIAL)
+    rows, other, refused, smap = sitemap_rows()
     limit = a.limit if a.limit else 20
     out, gone = [], 0
     for r in rows[:limit]:
@@ -229,6 +339,10 @@ def cmd_list(a):
     for rec in out:
         print(json.dumps(rec, ensure_ascii=False))
     n = len(out)
+    note(f"the count comes from {witness} on {LIST}; the inventory from {smap}.")
+    if refused:
+        shown = ", ".join(refused[:3]) + (" …" if len(refused) > 3 else "")
+        note(f"{th(len(refused))} /annonces/ row(s) NOT emitted — the address pattern refuses them, so no identifier can be read: {shown}")
     if limit < len(rows):
         note(f"{th(n)} emitted of the {th(total)} the site states on {LIST} ({th(len(rows))} in the sitemap, {th(gone)} gone) — {th(min(limit, len(rows)))} read by request (--limit), not a shortfall.")
     else:
@@ -258,10 +372,10 @@ def cmd_ad(a):
 def main():
     p = argparse.ArgumentParser(description="Asako.mg — the listing's stated count beside the sitemap's inventory, each ad read from its JobPosting; texts scrubbed. Issue #338.")
     sub = p.add_subparsers(dest="cmd", required=True)
-    s_ = sub.add_parser("sitemap", help="every /annonces/ row of sitemap.xml (1 request)")
+    s_ = sub.add_parser("sitemap", help="every /annonces/ row of the ads' sitemap, derived from the host's own declarations (1 request)")
     s_.add_argument("--limit", type=int)
     s_.set_defaults(fn=cmd_sitemap)
-    l_ = sub.add_parser("list", help="the stated count, then the sitemap's ads read from their pages — 20 unless --limit")
+    l_ = sub.add_parser("list", help="the count the page states, then the declared sitemap's ads read from their pages — 20 unless --limit")
     l_.add_argument("--limit", type=int)
     l_.set_defaults(fn=cmd_list)
     ad = sub.add_parser("ad")
