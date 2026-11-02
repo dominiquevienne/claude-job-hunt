@@ -41266,22 +41266,18 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
     """
 
     MUTES = (
-        "3amal.md", "afgjobs.md", "algeriejob.md", "biznetwork.md",
-        "boliviatrabajo.md", "careerfair-nea-gov-kh.md", "careerlink.md",
+        "afgjobs.md", "biznetwork.md", "boliviatrabajo.md", "careerlink.md",
         "caribbeanjobsonline.md", "clasificadosonline.md", "clasipar.md",
-        "cv-lv.md", "cvonline-lt.md", "cyprusjobs.md", "cypruswork.md",
-        "duapune.md", "duunitori.md", "easyprace.md", "eightfold.md",
-        "emploi-cd.md", "emploi-cm.md", "emploi-ma.md", "emploi-tg.md",
-        "emploibenin.md", "emploiburkina.md", "emploiguinee.md",
-        "emploisenegal.md", "ethiopiawork.md", "ezega.md", "foundit-ph.md",
-        "founditgulf.md", "gjejpune24.md", "halooglasi.md", "hiringroom.md",
-        "hotnigerianjobs.md", "infotep.md", "intermediair.md", "isinolsun.md",
-        "job-cameroun.md", "jobguinee-pro.md", "jobline.md", "jobsgarden.md",
-        "karboom.md", "kariera-gr.md", "karrierestart.md", "khmer24.md",
-        "kode24.md", "liberiawork.md", "mywork.md", "nea-gov-kh.md",
-        "nodeflair.md", "profesia.md", "profession.md", "rabota-by.md", "rozee.md",
-        "secretcv.md", "southsudanjob.md", "staff-am.md", "sudancareers.md",
-        "toptalent.md", "tyomarkkinatori.md", "undelucram.md",
+        "cv-lv.md", "cvonline-lt.md", "cypruswork.md", "duapune.md",
+        "duunitori.md", "easyprace.md", "eightfold.md", "emploi-cm.md",
+        "emploibenin.md", "emploisenegal.md", "ezega.md", "foundit-ph.md",
+        "founditgulf.md", "halooglasi.md", "hiringroom.md",
+        "hotnigerianjobs.md", "intermediair.md", "isinolsun.md",
+        "job-cameroun.md", "jobline.md", "jobsgarden.md", "karboom.md",
+        "kariera-gr.md", "karrierestart.md", "khmer24.md", "kode24.md",
+        "profesia.md", "profession.md", "rabota-by.md", "rozee.md",
+        "secretcv.md", "staff-am.md", "sudancareers.md", "toptalent.md",
+        "tyomarkkinatori.md", "undelucram.md",
     )
 
     def _silent(self):

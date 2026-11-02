@@ -22,7 +22,14 @@ sorts the refusal, and the sort puts it on #222.**
 ```
 https://nea.gov.kh/robots.txt        200   1 836 o   md5 c6370d4bc02563e4b1e1af4540d1e670   twice
 https://www.nea.gov.kh/robots.txt    200   1 836 o   md5 c6370d4bc02563e4b1e1af4540d1e670   twice — the same file
+
+Crawl-delay                          **none written** — `nea.gov.kh` read twice 2026-11-02 (#907): 200, 2 676 o, md5 27b458791ef0888ad39caa57f4810b88 both times, `crawl_delay` None
 ```
+
+*Le 2026-11-02, seule la forme apex a été relue — le fichier du fournisseur a
+CHANGé depuis le 11.09 (1 836 → 2 676 o) et la ligne de 2026-09 reste, une correction
+citant ce qu'elle corrige ; **la forme `www` n'a pas été relue ce jour-là**, donc
+« identical on both forms » vaut pour le 11.09 et n'est pas reconduit.*
 
 **Cloudflare's managed content-signals template, identical on both forms**:
 `User-agent: *` → `Content-Signal: search=yes,ai-train=no,use=reference`,

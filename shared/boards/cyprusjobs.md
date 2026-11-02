@@ -19,6 +19,7 @@ the `cf-ray` that answered.
 
 ```
 robots.txt      read twice, certain: True, 1860 B, md5 2a0812ac5756 both times — `User-agent: ClaudeBot / Disallow: /`, `*` open
+Crawl-delay     **none written** — `www.cyprusjobs.com`, read twice 2026-11-02 (#907), 2 749 B, md5 9c6ee1ebf294 both times; the 1860 B / 2a0812ac5756 above is the 2026-09 reading and the vendor file has CHANGED since — the card keeps it, a correction cites what it corrects
 identity("/")   http, claude-user      <- the group naming ClaudeBot does not bind Claude-User (owner, 2026-09-07)
 verdict()       sweep True, sweep_token claude-user   <- since #230 (2026-09-11)
 allowed("/")    True
