@@ -103,3 +103,5 @@ Exits: 2 broken (an unknown list, a malformed URL) · 3 gone (404, or no
 key points on the ad page) · 6 partial (a stated page that comes back
 empty, HTTP ≠ 200, cards without a page count) · 7 refused by the rules ·
 8 rules undecidable.
+
+**Crawl-delay** — **none written** — `www.caribbeanjobsonline.com`, read twice 2026-11-02 (#907): 200, 3 814 B, md5 29d3929e7ec2 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects.

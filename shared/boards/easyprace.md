@@ -23,6 +23,7 @@ easyprace.py ad --url https://www.easy-prace.cz/nabidka/<slug>/<id>        # or 
 
 ```
 robots.txt      90 B, md5 67a8379e07df, read twice, certain: True — `User-agent: *` / `Allow: /` / `Sitemap: https://www.easy-prace.cz/data/sitemap/easyprace-index.xml`
+Crawl-delay     **none written** — established by this card's OWN reading, with no new request (#907): the 90 B / md5 67a8379e07df recorded above is reproduced TO THE BYTE by the three directives the card quotes, so the file holds nothing else
 identity("/")   http, claude-user — no agent named
 verdict()       sweep True, certain True, crawl_delay none  -> Pace(HOST, own=1.0), one second, ours
 allowed()       True on `/`, `/nabidka-zamestnani`, the four sitemap files, `/nabidka/…/<id>`, `/volne-misto/…/<id>`

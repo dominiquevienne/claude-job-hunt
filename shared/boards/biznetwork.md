@@ -22,6 +22,7 @@ GET https://www.biznetwork.mn/            404, 196 B, md5 62962daa1b19  ×2   (2
 GET https://biznetwork.mn/                404, 196 B                         (2026-09-17)
 GET https://www.biznetwork.mn/            404, 196 B, md5 62962daa1b19       (2026-09-24 19:42 UTC)
 GET https://www.biznetwork.mn/robots.txt  404, 196 B, md5 62962daa1b19       (2026-09-24 — byte-identical to the root)
+Crawl-delay                               **none written** — `/robots.txt` answers the same 404 as the root (196 B, md5 62962daa1b19, recorded above), so `state: absent`: there is no rules file, hence no directive. Established by this card's OWN reading, with no new request (#907)
 ```
 
 **A CORRECTION OF 2026-09-24, and it removes this card's only sign of life.**

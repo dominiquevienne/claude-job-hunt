@@ -24,6 +24,7 @@ duunitori.py ad --url https://duunitori.fi/tyopaikat/tyo/<stem>-<id>
 
 ```
 robots.txt      8 576 B, md5 62896665d913, read twice, certain: True
+Crawl-delay     **none written** — `duunitori.fi`, read twice 2026-11-02 (#907): 200, 8 851 B, md5 0776885958f8 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 User-agent: *              Disallow: /                      <- any unnamed client is refused
 User-agent: AhrefsBot … Googlebot … ChatGPT-User, GPTBot, Mediapartners-Google, facebookexternalhit, **Claude-User**, Claude-SearchBot   (16 groups)
                            Disallow:  (empty — allowed) + 18 refused paths: /api/, /palkat/alueet/, /palkat/nimikkeet/, /yritys/*/reaktiot$, /tyopaikat/tyo/*/lisaa_suosikkeihin$, …/samanlaiset$, /tyoelama/wp-*, /jobbland/, /carousel/*, /sivusto/*, /health …

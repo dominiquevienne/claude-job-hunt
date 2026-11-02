@@ -41245,6 +41245,18 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
         24.09.2026   84 of 103 cards at «open, certain» silent on the rate
         28.09.2026   62 of 103          — 22 recovered in four days
 
+        02.11.2026   43 of 165 -> **0 of 165** — the floor is resolved, in two slices
+
+    **And the sentence below is kept because a correction cites what it corrects: it
+    says this guard «does not ask anyone to re-measure 62 hosts».** That was true of the
+    GUARD and it stopped being true of the WORK. The 30.10 comment measured the incidental
+    mechanism at ZERO over a month and renamed the residue a *self-selected floor* — the
+    cards left silent are exactly the ones no adapter re-measures — so «it resolves by
+    itself» was refuted by the issue's own thread, and the second slice read the rules of
+    34 hosts on purpose. *Eight more were established from what the cards ALREADY held,
+    with no request at all, and three of those eight are boards the owner excluded with a
+    «ne plus remesurer»: asking nothing is how that order is obeyed.*
+
     **Nobody had taken #907 when those 22 were recovered.** They came from adapter
     work: writing an adapter re-measures the host, and the re-measure notes the
     delay. *That is exactly the route the issue predicted, from `yemenhr.md`,
@@ -41265,20 +41277,11 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
     the `content:` line yields 4 and is a worse reproduction, not a stricter one.
     """
 
-    MUTES = (
-        "afgjobs.md", "biznetwork.md", "boliviatrabajo.md", "careerlink.md",
-        "caribbeanjobsonline.md", "clasificadosonline.md", "clasipar.md",
-        "cv-lv.md", "cvonline-lt.md", "cypruswork.md", "duapune.md",
-        "duunitori.md", "easyprace.md", "eightfold.md", "emploi-cm.md",
-        "emploibenin.md", "emploisenegal.md", "ezega.md", "foundit-ph.md",
-        "founditgulf.md", "halooglasi.md", "hiringroom.md",
-        "hotnigerianjobs.md", "intermediair.md", "isinolsun.md",
-        "job-cameroun.md", "jobline.md", "jobsgarden.md", "karboom.md",
-        "kariera-gr.md", "karrierestart.md", "khmer24.md", "kode24.md",
-        "profesia.md", "profession.md", "rabota-by.md", "rozee.md",
-        "secretcv.md", "staff-am.md", "sudancareers.md", "toptalent.md",
-        "tyomarkkinatori.md", "undelucram.md",
-    )
+    # **ZERO le 2026-11-02 (#907).** La liste ne fait que RETRECIR et elle y est
+    # arrivee : 61 -> 43 (premiere tranche) -> 0 sur 165 « certain: True », somme
+    # fermee des deux cotes. Vide, ce tuple garde tout son sens dans UN sens : une
+    # fiche qui DEVIENT muette est prise parce qu'elle n'y figure pas.
+    MUTES = ()
 
     def _silent(self):
         import glob
@@ -41310,6 +41313,18 @@ class ACardThatConcludesOpenAndCertainSaysNothingOfTheRate(unittest.TestCase):
         self.assertGreaterEqual(len(certain), len(self.MUTES),
                                 "fewer «open, certain» cards than silent ones is arithmetically "
                                 "impossible: the classifier is wrong, not the repository")
+        # **ET DEPUIS QUE `MUTES` EST VIDE, LA LIGNE AU-DESSUS NE PEUT PLUS ECHOUER**
+        # (`len(certain) >= 0` est vrai quoi qu'il arrive), donc elle ne dit plus rien
+        # du denominateur. Or c'est exactement par la que le vert deviendrait faux : si
+        # la detection de `certain: True` cassait, l'ensemble muet serait vide AUSSI et
+        # le cas d'egalite passerait en annoncant «plus une seule fiche muette».
+        # **Un plancher POSITIF sur le denominateur ferme ce mode d'echec** : 165 au
+        # 2026-11-02 sur 555 fiches, et il ne descend pas sous 100 sans que quelque
+        # chose de bien plus grave soit arrive au depot.
+        self.assertGreater(len(certain), 100,
+                           "the «open, certain» population collapsed: with MUTES empty, a broken "
+                           "classifier yields an empty silent set too, and the equality case would "
+                           "pass while measuring nothing (165 cards on 2026-11-02)")
 
     def test_no_card_becomes_silent_and_none_stays_listed_once_fixed(self):
         """**Both directions in one assertion.** Exact equality: a new silent card

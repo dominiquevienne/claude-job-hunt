@@ -24,6 +24,7 @@ isinolsun.py ad --url https://isinolsun.com/is-ilani/<slug>-0ioj<hex>     # atte
 
 ```
 robots.txt      66 B, md5 6df34341f3fd, read twice, certain: True — `User-agent: *` / `Allow: /` / `Sitemap: https://isinolsun.com/sitemap.xml`
+Crawl-delay     **none written** — established by this card's OWN reading, with no new request (#907): the 66 B / md5 6df34341f3fd recorded above is reproduced TO THE BYTE by the three directives the card quotes, so the file holds nothing else
 identity("/")   http, claude-user — no agent named; `www.` answers the same file
 verdict()       sweep True, certain True, crawl_delay none  -> Pace(HOST, own=2.0), two seconds, ours (files of 7 and 10 MB)
 allowed()       True on `/`, `/sitemap.xml`, `/sitemaps/jobdetailsitemap1.xml`, `/is-ilani/…`, `/is-ilanlari`

@@ -21,6 +21,7 @@ the exact path before each request.
 
 ```
 www.secretcv.com/robots.txt               200, 550 B — User-agent: * → Allow: /; GPTBot → Allow: /; OAI-SearchBot → Allow: / + Disallow /banner/redirect/*, /ilan-begen-iptal/*, *hesabim*, /is-ilanlari/ara, /cikis-yap, *kvkk-modal?ilanId=*, *ara?k=*, */?ilanId=*, */?sf=*, */?redirect=*, */?k=*, */?s=*, */?b=*, */?p=*, */?o=*, */?wtime=*, */?parameters=*, /qr-basvuru, /yeniden-biz; Sitemap: /sitemap
+Crawl-delay                               **none written** — `www.secretcv.com`, read twice 2026-11-02 (#907): 200, 485 B, md5 0f003634ff2c both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 GET https://www.secretcv.com/is-ilanlari                 200, 341 093 B — «20.409 İş İlanı Listelendi», 20 cards, «Sonraki» → /is-ilanlari/?sf=2, «Son Sayfa» → ?sf=342
 GET https://www.secretcv.com/is-ilanlari/?sf=2           410, 314 650 B — 17 cards of page 2 in the body
 GET https://www.secretcv.com/is-ilanlari?sf=2            410 · ?sf=342 410 · ?l=50 410 (50 cards) · ?sr=4 410 · with Referer 410

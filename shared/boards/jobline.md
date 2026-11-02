@@ -53,3 +53,5 @@ give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
 leads with it, dated, so the Atlas and the country page (#404: a card
 declaring `route: none` is «non faisable», excluded from the feasible
 denominator) read a decision and not a measurement. A re-measure stays possible — the operator's notice is dated and quoted above — but it is not owed: the owner has excluded the board.
+
+**Crawl-delay** — **none written** — the table above records 200, 1 248 B carrying « the Cloudflare content-signals preamble and not one directive » — a census that counts zero directives counts zero `Crawl-delay`. Established by this card's OWN reading, with no new request — which is also how the owner's 2026-09-14 exclusion is respected (#907).

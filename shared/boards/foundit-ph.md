@@ -25,6 +25,7 @@ python3 skills/job-scan/scripts/founditgulf.py ad --url https://www.foundit.com.
 
 ```
 robots.txt      read twice, certain: True, 703 B, md5 365ec2d7dab4 both times — WRITTEN BY HAND:
+Crawl-delay     **none written** — `www.foundit.com.ph`, read twice 2026-11-02 (#907): 200, 720 B, md5 0a8da342878f both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
                 `User-Agent: GPTBot / ClaudeBot / CCBot / Bytespider / Meta-ExternalAgent / Google-Extended`: Allow: /, Disallow: /jobs/, /search/
 identity("/")   http, claude-user       <- not named; the group that names ClaudeBot does not bind Claude-User (owner, 2026-09-07; #233: the hand-written four are measured like the others)
 verdict()       sweep True — «refuses 2 path(s) to claudebot and not the site as a whole»

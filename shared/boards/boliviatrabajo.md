@@ -74,3 +74,5 @@ boliviatrabajo.py ad --url https://trabajo.info.bo/oferta/4037-analista-junior-b
 Exits: 2 broken (a malformed URL) · 3 gone (404, or no JobPosting) · 6
 partial (a walk short of the count, HTTP ≠ 200, a page that states no
 count) · 7 refused by the rules · 8 rules undecidable.
+
+**Crawl-delay** — **none written — AND THE RULES NOW REFUSE US.** `trabajo.info.bo`, read twice 2026-11-02 (#907): 200, 3 728 B, md5 702bd3f8ea01 both times, `crawl_delay` None — and `group_for(<the BODY>, ('claude-user',))` returns the group **`claude-user`** with `Disallow: /`. **The file NAMES our own token**, so the owner's 2026-09-07 decision opens nothing here: that one says a named refusal of `ClaudeBot` does not bind `Claude-User`, and this file names BOTH. Borne 1 therefore closes every route, browser included. The 313 B / 2026-09-14 reading above recorded `*` refusing a few paths — **the host has changed its mind**, and this line is a dated MEASURE and not a closure verdict (§2 sexies: that one is the owner's).

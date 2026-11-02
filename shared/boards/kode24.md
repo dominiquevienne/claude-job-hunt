@@ -68,3 +68,5 @@ kode24.py ad --url https://kodejobb.no/stillinger/sikt/dce440d1-da61-4d3b-b091-1
 Exits: 2 broken (a malformed URL) · 3 gone (404, or no JobPosting) · 6
 partial (a list short of the menu's count, HTTP ≠ 200, a menu without the
 count) · 7 refused by the rules · 8 rules undecidable.
+
+**Crawl-delay** — **none written** — `www.kode24.no/robots.txt` is 24 B and the card quotes it WHOLE (`User-agent: *` / `Disallow:`) — 24 bytes cannot hold a third line, so nothing else is written; `kodejobb.no/robots.txt` answers 404, `state: absent`. Established by this card's OWN readings, with no new request. *Byte-count exhaustion and not an md5 reconstruction: weaker, and declared as such* (#907).

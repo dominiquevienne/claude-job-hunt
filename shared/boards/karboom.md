@@ -18,6 +18,7 @@ walk.** Two reads of every page that carries a number.
 
 ```
 GET https://karboom.io/robots.txt    200 — User-agent: *, fourteen Disallow lines
+Crawl-delay                          **none written** — `karboom.io`, read twice 2026-11-02 (#907): 200, 374 B, md5 4ad78cdc73c1 both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects
 GET https://karboom.io/             200 ×2 — 103 597 B both times, md5 c58ffb47f9ae then 467583f03e1c
 GET https://karboom.io/jobs         200 — 137 062 B, the CATEGORY HUB: 72 tiles, 9 featured adverts, NO count
 GET https://karboom.io/jobs?page=1  200 — 275 462 B, the LIST: 20 adverts and «۳۹۳ آگهی استخدام»

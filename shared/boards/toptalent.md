@@ -76,3 +76,5 @@ toptalent.py ad --url https://toptalent.co/fiss-ai-video-produksiyon-stajyeri-12
 Exits: 2 broken (a malformed URL) · 3 gone (404, or no `job-content`) · 6
 partial (a walk short of the sitemap's count, HTTP ≠ 200, a sitemap that
 is not one) · 7 refused by the rules · 8 rules undecidable.
+
+**Crawl-delay** — **none written** — `toptalent.co`, read twice 2026-11-02 (#907): 200, 594 B, md5 a273eb1d0aef both times, `crawl_delay` None; the fingerprint recorded above is the 2026-09 reading and the file has **CHANGED** since — the card keeps it, a correction cites what it corrects.
