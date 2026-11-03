@@ -196,10 +196,21 @@ def posts_of(markup):
     posts while the conjunction renders 6.
 
     **It is kept because the layer is not idle in principle**: the POST page's single
-    `<article>` DOES carry a `<script>` (an ad slot with `style=` attributes), and there
-    `cmd_ad` searches the whole page with an `entry-title` sitting in the CSS BEFORE the
-    article — so on that path the strip is load-bearing and its mutation reddens. *A green
-    mutation is sometimes a second layer; it is declared rather than taken for dead code.*
+    `<article>` DOES carry a `<script>`, and there `cmd_ad` searches the WHOLE page while the
+    stylesheet writes an `.entry-title` rule BEFORE the article — so on that path the strip is
+    load-bearing. MEASURED on the held body: unstripped, the title's motif returns
+    `'p:last-child{margin-bottom:0}iframe,object{max-width:100%}...'`; stripped, it returns the
+    real title. *A green mutation is sometimes a second layer; it is declared rather than taken
+    for dead code.*
+
+    **CORRECTION of the same day, by the hand that wrote the line above.** It first read "and
+    its mutation reddens" — and that mutation was **GREEN when the claim was written**, because
+    it had never been run: a prediction standing in for a measurement. The cause was not the
+    code but the FIXTURE, whose stylesheet's only `>` was the one in `</style>`, sitting just
+    before the real `<h1>`, so the capture fell back onto the right title by accident. The trap
+    needs a `>` INSIDE the CSS — the child combinator of `.entry-content>p:last-child` — with
+    more CSS after it. Fixture made faithful to the held body; the mutation now reddens from its
+    own assertion, and the failure message is the trap itself.
     """
     out = []
     clean = STRIP_RE.sub("", markup or "")

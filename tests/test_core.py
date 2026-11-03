@@ -55064,7 +55064,14 @@ class TheBhutaneseBlogWhoseOwnCssCarriesTheClassNamesItsMotifsRead(unittest.Test
     are INVENTED, and this repository is public. Nothing here touches the network:
     `request` is replaced throughout.*"""
 
-    CSS = ('<style>.entry-title{margin:0}.entry-summary p:last-child{margin-bottom:0}'
+    # EXTRAIT du corps detenu `vb-billet.html`, jamais compose : le `>` qui ARME le piege
+    # est le combinateur ENFANT de `.entry-content>p:last-child`, et il faut du CSS APRES
+    # lui. Une feuille dont le seul `>` est celui de `</style>` laisse la capture retomber
+    # par accident sur le vrai titre : la garde passait alors sans rien eprouver, et la
+    # mutation qui retire le nettoyage revenait VERTE.
+    CSS = ('<style>.entry-title{margin-bottom:0}.entry-meta{font-size:85%}'
+           '.entry-content>p:last-child{margin-bottom:0}iframe,object{max-width:100%}'
+           '.entry-summary p:last-child{margin-bottom:0}'
            '.read-more-container{margin-bottom:0}</style>')
     NUMERO_LOCAL = "Tel: 17940918"          # INVENTED shape-alike: LOCAL, no dialling code
     NUMERO_CODE = "+975 17 940 918"
