@@ -1,4 +1,4 @@
-# Board measurement — Ntchito Malawi (`ntchito.com`, Malawi): «2026 Job Vacancies, Tenders & Grants in Malawi» — a WordPress aggregator of jobs, internships, tenders and grants, its jobs page served to the declared client (182 KB) with `/jobs/` and job-tag facets, rules open; no count stated; no adapter yet
+# Board measurement — Ntchito Malawi (`ntchito.com`, Malawi): «2026 Job Vacancies, Tenders & Grants in Malawi» — a WordPress aggregator of jobs, internships, tenders and grants, its jobs page served to the declared client (182 KB) with `/jobs/` and job-tag facets, rules open; the host states its own per-type counts through `/wp/v2/job-types`, and `ntchito.py` was delivered 2026-10-06 (#674) — the « no count stated; no adapter yet » this head carried until 2026-11-03 was true of 2026-09-17
 
 <!-- verified: 2026-10-06 -->
 
