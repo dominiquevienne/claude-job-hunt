@@ -54827,7 +54827,11 @@ class TheMauritianBoardWhoseWitnessIsAContainerTheHelperFlattens(unittest.TestCa
     def _ad(self, avec_contact=False):
         desc = "Un poste de conformite."
         if avec_contact:
-            desc += " Ecrire a emploi@example.invalid ou Tel : +230 111 1111."
+            # DEUX formes, et chacune exerce UNE alternative de l'ancre : l'indicatif, et
+            # le LIBELLE sans indicatif — un numero local, que seule la seconde attrape.
+            # Sans la seconde forme, retirer l'alternative etiquetee revenait VERT.
+            desc += (" Ecrire a emploi@example.invalid ou Tel : +230 111 1111,"
+                     " ou le local Tel : 268 2222.")
         bloc = json.dumps({
             "@context": "https://schema.org", "@type": "JobPosting",
             "title": "Deputy Money Laundering Reporting Officer",
@@ -54950,6 +54954,10 @@ class TheMauritianBoardWhoseWitnessIsAContainerTheHelperFlattens(unittest.TestCa
         self.assertTrue(r.get("contacts_withheld"))
         self.assertNotIn("emploi@example.invalid", r["description"])
         self.assertNotIn("111 1111", r["description"])
+        self.assertNotIn("268 2222", r["description"],
+                         "a LOCAL number written with a label and no dialling code survived: "
+                         "that form is caught only by the labelled alternative, and dropping "
+                         "it lets a contact leave on every board that writes numbers locally")
 
     def test_what_does_not_transpose_is_the_dialling_code_and_not_the_label(self):
         """**My own first claim here was a notch too strong and the bench said so.**
