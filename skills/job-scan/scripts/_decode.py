@@ -44,7 +44,8 @@ WHAT THIS DOES, IN ORDER:
 import re
 import sys
 
-__all__ = ["decode_body", "charset_of"]
+__all__ = ["decode_body", "decode_body_readable", "charset_of",
+           "looks_mojibake"]
 
 # **Once per process.** A sweep of four thousand advertisements on a broken
 # host would otherwise print four thousand lines, and a warning that scrolls
@@ -139,3 +140,68 @@ def decode_body(raw, headers=None):
             f"{declared or 'absent'}; if it names an encoding this "
             f"repository did not try, that is the fix.")
     return text, "utf-8/replace"
+
+
+# **The last resort is total, not right — and this module says so, which puts an obligation on
+# the caller that the caller had no clean way to meet.** `decode_body` reports the codec it used
+# precisely so a caller can act on it; the only action available was to decode by hand, which
+# `TheLossyFallbackSpeaks` forbids across every adapter and is right to. So the arbitration lives
+# HERE, where decoding is owned, and `decode_body` itself is UNCHANGED: no existing call site
+# moves.
+#
+# MEASURED ON `jobpaw.com`, Haiti's generalist board, 2026-11-03:
+#
+#     <meta charset="UTF-8">                       the document's own claim
+#     1 169 653 characters, FIVE of them not UTF-8  0.00043 %
+#
+#     decoded as cp1252         ->  "PubliÃ© 13 aoÃ»t 2026"      28 adverts of mojibake
+#     decoded as utf-8/replace  ->  "Publié 13 août 2026"        five U+FFFD, the rest intact
+#
+# **cp1252 wins the strict loop because it maps every byte and therefore never raises** — the
+# very property the docstring above calls total rather than right. Five bad bytes are enough to
+# lose every accent on a page.
+
+# The repository's own mojibake control: the PART of the UTF-8 lead bytes that are followed by a
+# continuation byte. A PART and not a density, so it does not move with the composition of the
+# text; `0/0` — a well-decoded page with no Latin-1 range at all — reads NOT mojibake.
+_LEAD = re.compile(r"[\u00c0-\u00ff]")
+_PAIR = re.compile(r"[\u00c0-\u00ef][\u0080-\u00bf]")
+_UTF8_NAMES = ("utf-8", "utf8", "utf_8")
+
+
+def looks_mojibake(text, threshold=0.5):
+    """Does this reading look like UTF-8 bytes shown through a Latin-1 lens?"""
+    lead = len(_LEAD.findall(text or ""))
+    return (len(_PAIR.findall(text or "")) / lead) > threshold if lead else False
+
+
+def decode_body_readable(raw, headers=None):
+    """`(text, encoding_used)` — `decode_body`, then ARBITRATED on readability.
+
+    Use this when a board is known to declare UTF-8 and serve a few bytes that are not.
+    It changes the result in exactly one case: the strict loop fell to the total fallback
+    **and** the document declared a UTF-8 family encoding **and** the lossy UTF-8 reading
+    is the one this module's own control prefers. Everything else is `decode_body`.
+
+    **The other direction is the one `decode_body` exists for and it must not move**: a
+    genuinely Latin-1 board — `bne.gob.cl` lost between 37 and 93 characters an advert
+    under UTF-8 — reads as `cp1252` here too, because its cp1252 text is not mojibake.
+    """
+    if isinstance(raw, str):
+        return raw, "str"
+    text, enc = decode_body(raw, headers)
+    if enc != "cp1252":
+        return text, enc
+    declared, _where = charset_of(headers, raw)
+    if (declared or "").replace("_", "-").lower() not in ("utf-8", "utf8"):
+        return text, enc
+    other = raw.decode("utf-8", "replace")
+    if looks_mojibake(text) and not looks_mojibake(other):
+        lost = other.count("\ufffd")
+        _warn_once(
+            f"the document declares {declared} and {lost} byte(s) of {len(raw)} are not, so "
+            f"the strict loop fell to cp1252 — TOTAL, not right. Re-read as utf-8/replace, "
+            f"which this module's own control prefers; {lost} character(s) are U+FFFD and the "
+            f"rest is intact. **cp1252 never raises, which is why it won.**")
+        return other, "utf-8/replace (arbitrated)"
+    return text, enc

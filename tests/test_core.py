@@ -54355,5 +54355,392 @@ class TheHaitianDailyServesItsWholeHistoryAndItsRedactionMustNotEatAReference(
                       "the same gap and nothing here separates the two")
 
 
+class TheHaitianGeneralistStatesItsTotalAndEveryTrapOnItIsAClassThatLies(
+        unittest.TestCase):
+    """**`jobpaw.py`, 2026-11-03 (#776).** JobPaw is the richest Haitian route:
+    its list carries the publication date, **the closing date**, the title, the
+    employer, the location and the sector on **28 of 28**, and **the board
+    states its total TWICE** — `totalRows_RS_job=28` in its pager's link and
+    «Affichage des offres d'emploi de 1 à 28 sur 28» under it. Read 28, stated
+    28, they agree: **a witness EXTERNAL to our extraction**, which the sibling
+    `emploilenouvelliste.py` (#777, same turn) has none of.
+
+    *The premise of #776 moved on both halves: 32 adverts on 2026-09-20 and 28
+    now, and its «no pager, no stated count» is false twice over.*
+
+    **THE STATED RANGE IS NOT USABLE AND THE STATED TOTAL IS.** Probing
+    `?pageNum_RS_job=1` returns 200 with **zero cards** and prints «de **101** à
+    28 sur 28» — so the page STEP is 100, not the number shown, and the range is
+    nonsense out of range while the total stays right. The walk reads the total
+    and stops on a page with no card.
+
+    **FOUR THINGS ON THIS BOARD ARE NAMED SOMETHING THEY ARE NOT, and each one
+    would put a wrong value in a right-looking field:**
+
+        jobs-list__price        carries the SECTOR     («Marketing»)
+        jobs-list__location x2  place AND closing date  the TAG discriminates
+        <h1>/<h2>/<h3>          a marketing BANNER      identical on every advert
+        Location: in the list   country + ZONE          the city is on the ADVERT only
+
+    *Taking the heading gave 28 adverts one identical wrong title; reading
+    `price` as money would put a profession in a salary field; keying the two
+    `location` values by class alone conflates a place with a date.*
+
+    **THE BOARD EMITS PHP WARNINGS INTO ITS OWN MARKUP** — two of two on every
+    advert read, inside an `alt=` attribute — and they land in the FIRST label,
+    so unstripped the job title's key becomes a slug carrying
+    `/var/www/html/professionals/job-details.php on line 349`. A fact about the
+    board, and the server's path never reaches a record.
+
+    **AND THE PAGE DECLARES UTF-8 WHILE SERVING FIVE BYTES THAT ARE NOT**, out
+    of 1 169 653 characters — 0.00043 %. So `raw.decode("utf-8")` raises and
+    `_decode` falls to its last resort. **`_decode` is SOUND and says so in its
+    own docstring**: «cp1252 … *the fallback is chosen for being total, not for
+    being right*, and the caller is told which one was used.» *The defect was
+    the CALLER's: the first version of this adapter took `decode_body(...)[0]`
+    and threw the encoding away, so 28 adverts came out «PubliÃ© 13 aoÃ»t 2026»
+    — and the mojibake silently broke the label stripping too, one defect
+    wearing two symptoms.* The encoding is read, and the re-decode fires only
+    when the repository's OWN control prefers the other reading: the part of
+    UTF-8 lead bytes followed by a continuation is **0.001 under utf-8/replace
+    against 0.996 under cp1252**, threshold 0.5.
+
+    **THE LABELS ARE ACCENT-FOLDED, not enumerated.** The markup writes
+    `Dur&eacute;e`; a first version of the mapping was composed from a loose
+    reading and named **two of the ten**. The ten were EXTRACTED from the page.
+
+    **AND THE SIBLING'S REDACTION ANCHOR DOES NOT TRANSPOSE.** This board writes
+    its number `+(509) 3701 9232` — parentheses round the dialling code — and
+    `emploilenouvelliste.py`'s `\\+\\s?509` returns **ZERO** on it: copying it
+    would have let a contact leave. Widened, it takes **1 of the 1 real number
+    and 0 of the 4 other digit strings**, where the bare motif takes all five —
+    `978385858` twice, the grant number `2000005176`, and **`2147483647`, which
+    is 2³¹−1, a sentinel and not a quantity.** *The remedy transposes between
+    boards; the exact motif does not.*
+
+    *The structures are the real pages'; the telephone- and e-mail-shaped values
+    are INVENTED, and this repository is public. Nothing here touches the
+    network: `request` is replaced throughout.*"""
+
+    LABELS = ("Titre du poste", "Compagnie", "Domaine", "Spécialité",
+              "Date publication", "Date limite", "Pays", "Ville", "Zone")
+    # the four digit strings the BARE motif eats on this board, as the real advert writes them
+    PAS_DES_NUMEROS = ("978385858", "Don DSF No 2000005176", "width=\"2147483647\"")
+    NUMERO = "+(509) 3701 9232"          # INVENTED shape-alike of the real one
+    BARE = re.compile(r"(?<![\w/])\(?\+?\(?\d[\d\s().\-/]{6,}\d(?!\w)")
+
+    def _list(self, ids=(17894, 18040, 18060), total=3):
+        cartes = ""
+        for n, i in enumerate(ids):
+            cartes += (
+                '<div class="jobs-list__card"><div class="jobs-list__left">'
+                '<span class="jobs-list__time"><i class="fas fa-clock"></i> '
+                f'Publié {13 + n} août 2026 </span>'
+                f'<h3 class="jobs-list__title mt-2"> Poste {i} <br>'
+                f'<span class="pt-3"> Employeur {i}</span></h3>'
+                f'<span class="jobs-list__location"> Location: Haiti , Zone {i} </span>'
+                f'<p class="jobs-list__location"> Date Limite: {4 + n} novembre 2026 </p>'
+                '</div><div class="jobs-list__right">'
+                '<span class="jobs-list__price"><b>Marketing</b></span></div>'
+                '<div class="jobs-list__right">'
+                f'<a href="/professionals/job-details?idj={i}" class="hiredots-btn">'
+                'Voir les détails</a></div></div>')
+        return ("<html><body>"
+                "<!-- <a href=\"mailto:info@jobpaw.com\">info@jobpaw.com</a> -->"
+                f'<div class="jobs-list">{cartes}</div>'
+                '<nav><ul class="pagination"><li class="page-item active">'
+                f'<a class="page-link" href="?pageNum_RS_job=0&totalRows_RS_job={total}">1</a>'
+                "</li></ul></nav>"
+                f"<p class=\"text-center\"> Affichage des offres d'emploi de 1 à "
+                f"{len(ids)} sur {total} </p></body></html>")
+
+    def _ad(self, labels=None, avec_php=True, numero=False):
+        labels = labels or dict(zip(self.LABELS, (
+            "Spécialiste Agrobusiness", "UTE du Ministère", "Agriculture",
+            "Agronomie", "30 Oct 2026", "6 Nov 2026", "Haiti", "Port-au-Prince",
+            "Jacmel /Marigot")))
+        # the page's REAL shape: an EMPTY cell whose `<strong>` is never closed, and an
+        # img carrying a SECOND `alt=` that holds the warnings. That is what makes the
+        # label motif span from the empty cell to the `</strong>` after «Titre du poste»,
+        # and a fixture without it leaves this class's PHP test INERT — measured.
+        php = ('<tr><td><strong></td><td></em></td><td><img width="64" src="l.jpg" '
+               'alt="logo" width="100" alt="<br /><b>Warning</b>:  Undefined variable '
+               '$row_RS_User in <b>/var/www/html/professionals/job-details.php</b> on '
+               'line <b>349</b><br /> " width="100" /></td></tr>') if avec_php else ""
+        lignes = ""
+        for k, v in labels.items():
+            lignes += f"<td><strong>{k}</strong></td><td><em>{v}</em></td>"
+        # `Dur&eacute;e` : le libelle est ECHAPPE dans le balisage
+        lignes += ("<td><strong>Dur&eacute;e</strong></td>"
+                   f"<td><em>Douze (12) mois{' Tél : ' + self.NUMERO if numero else ''}"
+                   "</em></td>")
+        return ("<html><body>"
+                "<!-- <a href=\"mailto:info@jobpaw.com\">info@jobpaw.com</a> -->"
+                "<h1>Ils sont plus de 18 000 à guetter nos opportunités "
+                "chaque semaine.</h1>"
+                f'<div class="table-responsive"><table>{php}<tr>{lignes}</tr></table></div>'
+                "</body></html>")
+
+    def _run(self, mod, argv, body):
+        """`body` is one page, or a SEQUENCE of pages served in order. A stub that
+        returns the same page every call describes a board that repeats its page 1
+        for ever — the walk rightly refuses that, and the fixture was the fault."""
+        import io
+        import contextlib
+        pages = [body] if isinstance(body, str) else list(body)
+        real, suite = mod.request, iter(pages)
+        mod.request = lambda _u: (200, next(suite, ""))
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.main(argv)
+        finally:
+            mod.request = real
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_jobpaw_fixtures_carry_the_shapes_this_class_judges(self):
+        """**Each positive contingent asserted before any verdict is read.**"""
+        lst, ad = self._list(), self._ad()
+        self.assertEqual(lst.count('class="jobs-list__card"'), 3)
+        self.assertEqual(lst.count('class="jobs-list__location"'), 6,
+                         "two per card: the place and the closing date")
+        self.assertEqual(lst.count("totalRows_RS_job="), 1)
+        self.assertIn("info@jobpaw.com", lst, "the site's own address, in a comment")
+        self.assertIn("Warning", ad)
+        self.assertIn("Dur&eacute;e", ad, "the label is HTML-escaped in the markup")
+        self.assertEqual(ad.count("<h1>"), 1, "the marketing banner the title must NOT come from")
+
+    def test_the_stated_total_is_the_witness_and_the_range_is_never_read(self):
+        import jobpaw as m
+        rows, err = self._run(m, ["jobs"], self._list(total=3))
+        self.assertEqual(len(rows), 3)
+        self.assertIn("they agree", err)
+        self.assertIn("EXTERNAL to this extraction", err)
+        src = (pathlib.Path(SCRIPTS) / "jobpaw.py").read_text(encoding="utf-8")
+        self.assertIn("totalRows_RS_job=(", src, "the total is read from the pager's own link")
+        self.assertNotIn("Affichage des offres", src.split('"""', 2)[2],
+                         "the stated RANGE is parsed; out of range it prints «de 101 à 28 "
+                         "sur 28», a nonsense, while the total stays right")
+
+    def test_a_short_count_is_named_and_never_passed_off_as_agreement(self):
+        import jobpaw as m
+        vide = self._list(ids=(), total=9)        # MESURE : page 2 rend 200 et ZERO carte
+        _rows, err = self._run(m, ["jobs"], [self._list(ids=(1, 2), total=9), vide])
+        self.assertIn("short", err)
+        self.assertNotIn("they agree", err)
+
+    def test_the_two_location_values_are_told_apart_by_their_tag(self):
+        import jobpaw as m
+        rows, _err = self._run(m, ["jobs"], self._list(ids=(17894,), total=1))
+        self.assertEqual(rows[0]["location"], "Haiti , Zone 17894")
+        self.assertEqual(rows[0]["closing_as_written"], "4 novembre 2026",
+                         "the closing date arrived in the place field, or the reverse: the "
+                         "class does not discriminate, the tag does")
+        self.assertEqual(rows[0]["published_as_written"], "13 août 2026",
+                         "the «Publié» label was not stripped")
+
+    def test_the_sector_is_not_a_price(self):
+        import jobpaw as m
+        rows, err = self._run(m, ["jobs"], self._list(ids=(1,), total=1))
+        self.assertEqual(rows[0]["sector"], "Marketing")
+        self.assertNotIn("price", rows[0], "a class the site calls `price` carries the sector, "
+                                           "and a profession must never land in a money field")
+        self.assertIn("NOT a price", err)
+
+    def test_the_advert_title_comes_from_the_table_and_not_from_the_heading(self):
+        import jobpaw as m
+        rows, err = self._run(
+            m, ["ad", "--url", "https://jobpaw.com/professionals/job-details?idj=1"], self._ad())
+        self.assertEqual(rows[0]["title"], "Spécialiste Agrobusiness")
+        self.assertNotIn("18 000", json.dumps(rows[0], ensure_ascii=False),
+                         "the marketing banner became the title — it is identical on every "
+                         "advert, so 28 adverts would share one wrong title")
+        self.assertIn("Titre du poste", err)
+
+    def test_a_php_warning_never_reaches_a_record_key(self):
+        import jobpaw as m
+        rows, err = self._run(
+            m, ["ad", "--url", "https://jobpaw.com/professionals/job-details?idj=1"], self._ad())
+        plat = json.dumps(rows[0], ensure_ascii=False)
+        self.assertNotIn("var/www", plat,
+                         "the board's PHP warning reached the record, and with it the server's "
+                         "file path: unstripped it lands in the FIRST label")
+        self.assertNotIn("Warning", plat)
+        self.assertIn("PHP warning", err, "the warnings were stripped in silence; they are a "
+                                          "fact about the board and the run must say so")
+
+    def test_an_escaped_accented_label_resolves_by_folding_not_by_listing(self):
+        import jobpaw as m
+        rows, _err = self._run(
+            m, ["ad", "--url", "https://jobpaw.com/professionals/job-details?idj=1"], self._ad())
+        self.assertIn("duration", rows[0],
+                      "`Dur&eacute;e` did not resolve: the key must be accent-folded, not "
+                      "enumerated form by form")
+        self.assertIn("speciality", rows[0], "`Spécialité` folded to a slug instead of its key")
+        self.assertEqual(m.fold("Durée"), m.fold("Duree"))
+
+    def test_the_bare_motif_eats_four_non_numbers_and_the_widened_anchor_none(self):
+        import jobpaw as m
+        prose = " ".join(self.PAS_DES_NUMEROS)
+        bare = self.BARE.findall(prose)
+        self.assertGreaterEqual(
+            len(bare), 3,
+            f"the bare motif takes {len(bare)} of these; it took four on the advert measured, "
+            f"so the fixture no longer carries the defect")
+        self.assertEqual(m.PHONE_RE.findall(prose), [],
+                         "the anchored motif destroyed a grant number or the `2147483647` "
+                         "sentinel — neither is a quantity, let alone a telephone")
+
+    def test_the_anchor_takes_the_number_in_the_form_THIS_board_writes_it(self):
+        """**The sibling's anchor returns ZERO here**, and that direction lets a
+        contact leave."""
+        import jobpaw as m
+        SIBLING = re.compile(r"\+\s?509[\s.\-]?\d[\d\s.\-]{6,}\d")
+        self.assertEqual(SIBLING.findall(self.NUMERO), [],
+                         "the fixture no longer carries the parenthesised form that defeats "
+                         "the sibling's anchor, so this test has nothing to show")
+        cleaned, took = m.scrub(f"Tél : {self.NUMERO}")
+        self.assertIn("telephone", took)
+        self.assertNotIn("3701", cleaned or "")
+
+    def test_the_www_host_is_refused_outright(self):
+        import jobpaw as m
+        with self.assertRaises(SystemExit) as e:
+            m.request("https://www.jobpaw.com/professionals/find-job")
+        self.assertEqual(e.exception.code, m.EXIT_REFUSED,
+                         "the `www.` form fails TLS on a hostname mismatch; it is refused "
+                         "here rather than reported as a board defect")
+
+    def test_a_declared_utf8_body_with_bad_bytes_is_not_left_as_mojibake(self):
+        """`_decode` is sound and says its last resort is total, not right. The
+        CALLER must read which codec was used — the first version of this
+        adapter did not, and 28 adverts came out as mojibake."""
+        import jobpaw as m
+        octets = ('<html><head><meta charset="UTF-8"></head><body>'
+                  'Publié 13 août 2026, Ingénieur</body></html>'
+                  ).encode("utf-8") + b"\xff"      # the byte that is not UTF-8
+        cp = octets.decode("cp1252")
+        self.assertTrue(_decode.looks_mojibake(cp),
+                        "the fixture's cp1252 reading is not mojibake, so this test "
+                        "cannot show the repair")
+        import io
+        import contextlib
+        _decode._WARNED.clear()
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            got, enc = _decode.decode_body_readable(octets)
+        self.assertIn("août", got, "the body was left as cp1252 mojibake")
+        self.assertFalse(_decode.looks_mojibake(got))
+        self.assertEqual(enc, "utf-8/replace (arbitrated)")
+        self.assertIn("TOTAL, not right", err.getvalue())
+        self.assertIn("1 character", err.getvalue(),
+                      "the warning must say how many characters were lost")
+
+    def test_the_real_request_path_arbitrates_the_encoding(self):
+        """**Every other test in this class replaces `request` itself**, so none of
+        them exercises the decode at all — and a mutation putting plain `decode_body`
+        back came back GREEN and said so. This one drives the REAL `request()` with
+        the bytes this board serves: UTF-8 with one of them broken.
+        """
+        import email.message
+        import io
+        import contextlib
+        import jobpaw as m
+        octets = (
+            '<html><head><meta charset="UTF-8"></head><body>'
+            '<div class="jobs-list__card"><div class="jobs-list__left">'
+            '<span class="jobs-list__time"><i></i> Publi\u00e9 13 ao\u00fbt 2026 </span>'
+            '<h3 class="jobs-list__title mt-2"> Ing\u00e9nieur <br>'
+            '<span class="pt-3"> Employeur</span></h3>'
+            '<span class="jobs-list__location"> Location: Haiti , Zone </span>'
+            '<p class="jobs-list__location"> Date Limite: 4 novembre 2026 </p>'
+            '</div><div class="jobs-list__right">'
+            '<span class="jobs-list__price"><b>Marketing</b></span></div>'
+            '<div class="jobs-list__right">'
+            '<a href="/professionals/job-details?idj=1">d</a></div></div>'
+            '<nav><a class="page-link" '
+            'href="?pageNum_RS_job=0&totalRows_RS_job=1">1</a></nav>'
+            '</body></html>').encode("utf-8") + b"\xff"
+
+        class Reponse:
+            headers = email.message.Message()
+
+            def read(self):
+                return octets
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        class Spy:
+            def __init__(self, h, own=0.0):
+                self.host = h
+
+            def wait(self):
+                return 0.0
+
+        permit = {"allowed": True, "reason": "stubbed", "rule": None, "kind": None,
+                  "group": "*", "certain": True, "state": "read", "crawl_delay": None}
+        vrais = (m.urllib.request.urlopen, m.Pace, m.robots_allowed)
+        m.urllib.request.urlopen = lambda *a, **k: Reponse()
+        m.Pace = Spy
+        m._PACES.clear()
+        m.robots_allowed = lambda *a, **k: permit
+        _decode._WARNED.clear()
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                m.main(["jobs"])
+        finally:
+            (m.urllib.request.urlopen, m.Pace, m.robots_allowed) = vrais
+            m._PACES.clear()
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["title"], "Ing\u00e9nieur",
+                         "the body came through as cp1252 mojibake: the adapter must call "
+                         "`decode_body_readable`, not `decode_body`, because this board "
+                         "declares UTF-8 and serves bytes that are not")
+        self.assertEqual(rows[0]["published_as_written"], "13 ao\u00fbt 2026",
+                         "the mojibake also breaks the label stripping — one defect "
+                         "wearing two symptoms")
+        self.assertIn("TOTAL, not right", err.getvalue(),
+                      "`_decode` must say it arbitrated, on the run the caller reads")
+
+    def test_an_undeclared_body_is_left_to_the_total_fallback(self):
+        """**The scope of the arbitration, pinned.** It fires only when the document
+        DECLARES a UTF-8 family encoding; an undeclared body keeps `decode_body`'s
+        answer even when the lossy reading would look better. *The mutation removing
+        that clause came back green on every other fixture, because the mojibake
+        control already decided there — this is the case where the clause is what
+        decides.*"""
+        octets = "Publi\u00e9 13 ao\u00fbt 2026".encode("utf-8") + b"\xff"
+        text, enc = _decode.decode_body_readable(octets)      # no headers, no meta
+        self.assertEqual(enc, "cp1252",
+                         "an UNDECLARED body was re-read as utf-8/replace: the change is "
+                         "scoped to what the measurement covers, a document that declares "
+                         "UTF-8 and serves a few bytes that are not")
+        self.assertTrue(_decode.looks_mojibake(text),
+                        "the fixture is not mojibake under cp1252, so it cannot show the "
+                        "scope")
+
+    def test_a_genuinely_latin1_body_is_left_alone(self):
+        """**The other direction, and it is the one `_decode` exists for.** A
+        Latin-1 site must NOT be re-decoded: `bne.gob.cl` lost between 37 and 93
+        characters an advert under UTF-8."""
+        import jobpaw as m
+        octets = ('<html><head><meta charset="windows-1252"></head><body>'
+                  'Pudahuel \xa1Comisiones</body></html>').encode("cp1252")
+        cp = octets.decode("cp1252")
+        self.assertEqual(_decode.decode_body_readable(octets)[0], cp,
+                         "a Latin-1 body was re-decoded as utf-8/replace, which is the very "
+                         "corruption `_decode` was written to stop")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
