@@ -309,12 +309,22 @@ def main():
               "them and the record would describe the other",
               file=sys.stderr)
         return EXIT_HTTP
-    if a.method == "GET" and (a.form or a.data):
+    # **`a.data` peut valoir la chaine VIDE, et une chaine vide est FAUSSE.** Les deux
+    # portes ci-dessous tenaient sur la veracite, et leurs defauts etaient OPPOSES :
+    # celle-ci laissait passer `--method GET --data ''`, puis `:344` construisait
+    # `payload = b""`, et `urllib` fait d'un `data is not None` un POST — donc un POST
+    # partait pendant que la provenance enregistrait GET. Mesure : `Request(u, data=b"")`
+    # rend `get_method() == "POST"`, ce que le commentaire de `:478` affirmait deja sans
+    # que cette ligne en tienne compte. Un outil dont l'objet EST la provenance ne peut
+    # pas mentir sur la methode.
+    if a.method == "GET" and (a.form or a.data is not None):
         print("ERROR: a body was given with --method GET. A GET carries its "
               "whole request in the URL, which is why its provenance is "
               "complete; pass --method POST.", file=sys.stderr)
         return EXIT_HTTP
-    if a.method == "POST" and not (a.form or a.data):
+    # Et celle-ci REFUSAIT `--data ''`, c'est-a-dire l'echappatoire que son propre
+    # message prescrit — rouge sur l'usage correct, et sur le seul usage qu'elle nomme.
+    if a.method == "POST" and not a.form and a.data is None:
         print("ERROR: --method POST with no --form and no --data. An empty "
               "POST is almost always a forgotten argument; pass --data '' if "
               "it is really what the board wants.", file=sys.stderr)
