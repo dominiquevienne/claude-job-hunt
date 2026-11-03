@@ -55006,5 +55006,250 @@ class TheMauritianBoardWhoseWitnessIsAContainerTheHelperFlattens(unittest.TestCa
         self.assertNotIn("def fold(", src)
 
 
+class TheBhutaneseBlogWhoseOwnCssCarriesTheClassNamesItsMotifsRead(unittest.TestCase):
+    """**`vacancybt.py`, 2026-11-03 (#683).** A WordPress blog republishing Bhutan's
+    vacancy announcements, walked against the last page its own pager names.
+
+    **TWO INDEPENDENT WITNESSES THAT AGREE, which is why this board was taken
+    before its two siblings.** The pager names `/page/32/` as its last; 6 posts a
+    page and 4 on the last give **31 × 6 + 4 = 190**; and `post-sitemap.xml`
+    declares **191** `<loc>` of which one is the site root — **190**. *Two
+    enumerators built differently, meeting at one number.* And the boundary is
+    VERIFIED rather than inferred: `/page/32/` answers 200 with 4 posts,
+    `/page/33/` answers **404**. *This retires the card's `witness: none` of
+    2026-09-17: a page count is the witness where no item count is stated, which
+    is `caribbeanjobsonline`'s shape.*
+
+    **78 % OF A PAGE IS CSS AND SCRIPT, AND THE CSS CARRIES THE VERY CLASS NAMES
+    THESE MOTIFS READ.** Unstripped, `entry-title` occurs TWICE on a post page and
+    the first hit is a rule about `p:last-child`; on the list the bare class name
+    renders **7 where there are 6 posts**, the seventh being a CSS rule. Measured:
+    74 734 B of markup become **16 332** once `<style>` and `<script>` are out.
+    *Same shape as counting `<script>` tags on a page that writes the word in its
+    prose — here it is the page's own class names that lie, and a post is
+    therefore an `<article>` CARRYING an `entry-title`, never the class alone.*
+
+    **AND A TERMINATOR MUST BE SOMETHING THE SLICE ACTUALLY CONTAINS.** The first
+    version ended the excerpt on `<footer` or `</article`, and the list block has
+    NEITHER — `ARTICLE_RE` captures the inside and drops the closing tag — so the
+    whole motif failed and `excerpt` came out **null on 18 of 18, silently**. A
+    field that is null everywhere is not a board that is poor; it is a motif whose
+    end never arrives.
+
+    **THE BLOG IS NEWEST FIRST IN THE LARGE AND NOT STRICTLY MONOTONE, and the
+    bound is the finding.** The first version of this class asserted «strictly
+    descending», measured on 18 posts; the FULL walk of 190 renders **28
+    inversions out of 189 pairs**, nearly all between posts of the SAME DAY.
+    What holds where it decides: **the 53 posts of 2026 occupy positions 1 to
+    53**, page 1 is EXACTLY the six most recent, and position 190 is the oldest.
+    *So a truncation keeps the newest and **no sort is imposed** — a sort that is
+    not a condition of correctness is taste, and `jobsbotswana` needs its sort
+    only because its file is served OLDEST first. A property measured on a
+    sample and written as a board property is the fault this bound repairs.* **But the archive reaches 2019**, so
+    the list is a history — and unlike `emploi-lenouvelliste` (#777), which
+    declares no date in any form, every post here carries its own ISO instant
+    with Bhutan's `+06:00` offset, so a caller can decide what is current. *That
+    difference is the whole reason one of the two boards ships an adapter and the
+    other does not.*
+
+    **AND THIS IS THE FIRST BOARD OF THE CORPUS WHERE THE *LABEL* DECIDES THE
+    REDACTION.** Its numbers are written `Tel: 17940918` — local, with no dialling
+    code at all — so the `+975` alternative returns ZERO and only the labelled
+    one catches them. On the three boards measured before it (`+509` twice,
+    `+230` once) the number carried its code and no label, and the labelled half
+    was the untested layer. *Both halves are load-bearing, and WHICH one decides
+    is a property of the board, never of the motif.*
+
+    *The structures are the real pages'; the telephone- and e-mail-shaped values
+    are INVENTED, and this repository is public. Nothing here touches the network:
+    `request` is replaced throughout.*"""
+
+    # EXTRAIT du corps detenu `vb-billet.html`, jamais compose : le `>` qui ARME le piege
+    # est le combinateur ENFANT de `.entry-content>p:last-child`, et il faut du CSS APRES
+    # lui. Une feuille dont le seul `>` est celui de `</style>` laisse la capture retomber
+    # par accident sur le vrai titre : la garde passait alors sans rien eprouver, et la
+    # mutation qui retire le nettoyage revenait VERTE.
+    CSS = ('<style>.entry-title{margin-bottom:0}.entry-meta{font-size:85%}'
+           '.entry-content>p:last-child{margin-bottom:0}iframe,object{max-width:100%}'
+           '.entry-summary p:last-child{margin-bottom:0}'
+           '.read-more-container{margin-bottom:0}</style>')
+    NUMERO_LOCAL = "Tel: 17940918"          # INVENTED shape-alike: LOCAL, no dialling code
+    NUMERO_CODE = "+975 17 940 918"
+
+    def _post(self, n, when="2026-11-0%d", resume=True):
+        quand = (when % n) if "%" in when else when
+        ex = ('<div class="entry-summary"><p>Bhutan Employeur %d Vacancy and Career '
+              'opportunities 2026.</p>'
+              '<p class="read-more-container"><a class="read-more button" '
+              'href="https://www.vacancybt.com/employeur-%d-vacancy/">Read more</a></p>'
+              '</div>' % (n, n)) if resume else ""
+        return ('<article id="post-%d" class="post">'
+                '<div class="inside-article"><header class="entry-header">'
+                '<h2 class="entry-title">'
+                '<a href="https://www.vacancybt.com/employeur-%d-vacancy/">'
+                'Employeur %d of Bhutan Vacancy 2026 (www.e%d.gov.bt)</a></h2>'
+                '<div class="entry-meta"><span class="posted-on">'
+                '<time class="entry-date published" datetime="%sT20:19:26+06:00">'
+                'November %d, 2026</time></span></div></header>%s</div></article>'
+                % (n, n, n, n, quand, n, ex))
+
+    def _page(self, ids=(1, 2, 3), dernier=32):
+        """A list page: the CSS comes FIRST, as the real page serves it, and it carries
+        the class names the motifs read."""
+        pager = ('<nav class="paging-navigation">'
+                 '<a href="https://www.vacancybt.com/page/2/">2</a>'
+                 '<a href="https://www.vacancybt.com/page/%d/">%d</a></nav>' % (dernier, dernier)
+                 ) if dernier else ""
+        return ("<html><head>" + self.CSS + "</head><body>"
+                + "".join(self._post(i) for i in ids) + pager + "</body></html>")
+
+    def _billet(self, contact=None):
+        corps = "Les candidatures sont ouvertes."
+        if contact:
+            corps += " " + contact
+        return ("<html><head>" + self.CSS + "</head><body><article>"
+                '<h1 class="entry-title">Employeur 1 of Bhutan Vacancy 2026</h1>'
+                '<time class="entry-date published" datetime="2026-11-03T20:19:26+06:00">'
+                'November 3, 2026</time>'
+                f'<div class="entry-content"><p>{corps}</p></div>'
+                '</article></body></html>')
+
+    def _run(self, mod, argv, pages):
+        """`pages` is a page or a SEQUENCE served in order; past the end the stub answers
+        404, which is how this blog really ends its own walk."""
+        import io
+        import contextlib
+        suite = iter([pages] if isinstance(pages, str) else list(pages))
+        real = mod.request
+
+        def servir(_u):
+            try:
+                return 200, next(suite)
+            except StopIteration:
+                return 404, ""
+        mod.request = servir
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.main(argv)
+        finally:
+            mod.request = real
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_vacancybt_fixtures_carry_the_shapes_this_class_judges(self):
+        p, b = self._page(), self._billet()
+        self.assertEqual(p.count("entry-title"), 4,
+                         "three posts plus ONE in the CSS — that seventh-on-the-real-page is "
+                         "the whole point of the <article> conjunction")
+        self.assertEqual(len(re.findall(r"<article", p)), 3)
+        self.assertIn("/page/32/", p, "the pager must name a last page: it is the witness")
+        self.assertEqual(b.count("entry-title"), 2, "one in the CSS, one real")
+        self.assertNotIn("<footer", p, "the list block has no footer — that is why the first "
+                                       "excerpt terminator never arrived")
+
+    def test_a_post_is_an_article_carrying_an_entry_title(self):
+        import vacancybt as m
+        rows, _err = self._run(m, ["jobs", "--max-pages", "1"], [self._page((1, 2, 3))])
+        self.assertEqual(len(rows), 3,
+                         "the CSS rule was counted as a post, or a post was lost: a post is an "
+                         "<article> CARRYING an entry-title, never the class name alone")
+        self.assertEqual([r["id"] for r in rows],
+                         ["employeur-1-vacancy", "employeur-2-vacancy", "employeur-3-vacancy"])
+
+    def test_the_css_is_stripped_before_any_motif_runs(self):
+        """Unstripped, the title's motif matches a CSS rule about `p:last-child`."""
+        import vacancybt as m
+        rows, err = self._run(
+            m, ["ad", "--url", "https://www.vacancybt.com/employeur-1-vacancy/"],
+            [self._billet()])
+        self.assertEqual(rows[0]["title"], "Employeur 1 of Bhutan Vacancy 2026")
+        self.assertNotIn("margin", json.dumps(rows[0]),
+                         "a CSS rule reached the record: `<style>` must come out first")
+        self.assertIn("once `<style>` and `<script>` were out", err)
+
+    def test_the_excerpt_terminator_exists_in_the_slice_it_searches(self):
+        """It came out null on 18 of 18, silently, because the first version ended on
+        `<footer` or `</article` and the list block carries neither."""
+        import vacancybt as m
+        rows, _err = self._run(m, ["jobs", "--max-pages", "1"], [self._page((1, 2, 3))])
+        vides = [r["id"] for r in rows if not r["excerpt"]]
+        self.assertEqual(vides, [],
+                         f"{len(vides)} of {len(rows)} excerpts are null — a field null "
+                         f"EVERYWHERE is not a poor board, it is a motif whose end never arrives")
+        self.assertNotIn("Read more", rows[0]["excerpt"],
+                         "the read-more link leaked into the excerpt: it is the list block's own "
+                         "next element and it is where the excerpt ends")
+
+    def test_the_declared_last_page_is_the_witness_and_agreement_is_said(self):
+        import vacancybt as m
+        # trois pages servies, la quatrieme rend 404 — la fin que le site sert vraiment
+        rows, err = self._run(m, ["jobs"], [self._page((1, 2, 3), dernier=3),
+                                            self._page((4, 5, 6), dernier=3),
+                                            self._page((7,), dernier=3)])
+        self.assertEqual(len(rows), 7)
+        self.assertIn("they agree", err)
+        self.assertIn("404", err, "the run must say that the 404 is the site's own end")
+
+    def test_a_disagreeing_last_page_is_named_and_not_passed_off(self):
+        """**The other direction.** A walk that stops before the declared last page
+        must say the two DISAGREE, not report a witnessed count."""
+        import vacancybt as m
+        _rows, err = self._run(m, ["jobs"], [self._page((1, 2), dernier=9)])
+        self.assertIn("DISAGREE", err)
+        self.assertNotIn("they agree", err)
+
+    def test_no_sort_is_imposed_because_the_blog_is_already_newest_first(self):
+        """A sort that is not a condition of correctness is taste — `jobsbotswana`'s
+        test says so, and there the file is served OLDEST first, which is why its
+        sort is load-bearing and this one would not be."""
+        import vacancybt as m
+        src = (pathlib.Path(SCRIPTS) / "vacancybt.py").read_text(encoding="utf-8")
+        self.assertNotIn("reverse=True", src,
+                         "a sort appeared: this blog is served newest first (measured strictly "
+                         "descending over three pages), so a sort here is taste")
+        rows, err = self._run(m, ["jobs", "--max-pages", "1"], [self._page((3, 2, 1))])
+        self.assertEqual([r["list_position"] for r in rows], [1, 2, 3],
+                         "the board's own order must be kept and recorded")
+        self.assertIn("NEWEST FIRST in the large", err,
+                      "the run must BOUND the claim: the full walk renders 28 inversions of "
+                      "189 pairs, so «newest first» is true in the large and false as a strict "
+                      "property")
+        self.assertIn("NOT strictly monotone", err)
+        self.assertIn("2019", err, "the run must say the archive is a history, because that is "
+                                   "what makes `posted` the field that decides")
+
+    def test_the_label_decides_here_and_the_dialling_code_returns_zero(self):
+        """**The first board of the corpus where the LABELLED half fires.** Its numbers
+        are local; on #777, #776 and #701 they carried a code and no label."""
+        import vacancybt as m
+        code_seul = re.compile(r"\+\s*\(?\s*975\s*\)?[\s.\-]?\d[\d\s.\-]{5,}\d")
+        self.assertEqual(code_seul.findall(self.NUMERO_LOCAL), [],
+                         "the fixture's number is no longer local, so this test cannot show "
+                         "that the dialling-code half is useless here")
+        self.assertTrue(m.PHONE_RE.search(self.NUMERO_LOCAL),
+                        "the LABELLED alternative stopped matching, so a local number leaves")
+        self.assertTrue(m.PHONE_RE.search(self.NUMERO_CODE),
+                        "the dialling-code alternative stopped matching: it is the half that "
+                        "fires on the three sibling boards and it must not be dropped here")
+        for forme in (self.NUMERO_LOCAL, self.NUMERO_CODE):
+            rows, _err = self._run(
+                m, ["ad", "--url", "https://www.vacancybt.com/employeur-1-vacancy/"],
+                [self._billet(contact=forme)])
+            self.assertIn("telephone", rows[0]["withheld_fields"], f"nothing taken from {forme!r}")
+            self.assertNotIn("940918", rows[0]["body"] or "")
+            self.assertNotIn("940 918", rows[0]["body"] or "")
+
+    def test_both_host_forms_are_accepted_and_a_stranger_is_refused(self):
+        import vacancybt as m
+        for hote in ("www.vacancybt.com", "vacancybt.com"):
+            rows, _err = self._run(
+                m, ["ad", "--url", f"https://{hote}/employeur-1-vacancy/"], [self._billet()])
+            self.assertEqual(rows[0]["id"], "employeur-1-vacancy")
+        with self.assertRaises(SystemExit) as e:
+            m.request("https://vacancybt.example.invalid/")
+        self.assertEqual(e.exception.code, m.EXIT_REFUSED)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
