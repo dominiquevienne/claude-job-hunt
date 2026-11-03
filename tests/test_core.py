@@ -12991,6 +12991,12 @@ class TheFetcherRefusesWhatItCannotRecord(unittest.TestCase):
             def __exit__(self, *a):
                 return False
 
+        # Meme fuite que ci-dessus, et elle etait LATENTE : cette classe trie APRES
+        # `GuardReportsBytesNotCharacters`, donc son stub global ne l'a jamais
+        # atteinte. L'ALPHABET etait la seule protection — un defaut derriere un
+        # chemin qui reussit attend qu'on change de chemin.
+        vrai = m.urllib.request.urlopen
+        self.addCleanup(setattr, m.urllib.request, "urlopen", vrai)
         m.urllib.request.urlopen = lambda *a, **k: R(b"body")
         m.allowed = lambda h, p, **kw: {"allowed": True, "reason": "stub"}
         m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
@@ -13001,6 +13007,7 @@ class TheFetcherRefusesWhatItCannotRecord(unittest.TestCase):
             return m.main()
         finally:
             sys.argv, sys.stdout = old, out
+            m.urllib.request.urlopen = vrai
 
     def test_a_non_200_is_not_saved_unless_asked_for(self):
         d = tempfile.mkdtemp()
@@ -55249,6 +55256,138 @@ class TheBhutaneseBlogWhoseOwnCssCarriesTheClassNamesItsMotifsRead(unittest.Test
         with self.assertRaises(SystemExit) as e:
             m.request("https://vacancybt.example.invalid/")
         self.assertEqual(e.exception.code, m.EXIT_REFUSED)
+
+
+class AnEmptyBodyIsTheEscapeThisToolNamesAndBothGatesKeyedOnTruthiness(unittest.TestCase):
+    """`bin/fetch-body.py` held its two body gates on truthiness, and `a.data`
+    can be the EMPTY STRING. The two defects pointed in OPPOSITE directions.
+
+    The POST gate refused `--data ''` — *the escape its own error message
+    prescribes*: "pass --data '' if it is really what the board wants". Red on
+    the only correct usage it names.
+
+    The GET gate was worse, because it let something through. `--method GET
+    --data ''` passed it, `payload = b""` was built, and **urllib makes a
+    `data is not None` request a POST** — so a POST went out while the
+    provenance recorded GET. Measured, not read: `Request(u, data=b"")` returns
+    `get_method() == "POST"`, which the comment at the bottom of that file
+    already states while this gate ignored it. *A tool whose whole object is
+    provenance cannot lie about the method.*
+
+    Found while measuring the Bhutanese civil-service system (#681), whose
+    search is a POST the page makes with no body at all on its sibling route.
+    """
+
+    def _tool(self):
+        import importlib.util
+        repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location(
+            "fetch_body_vide", os.path.join(repo, "bin", "fetch-body.py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _run(self, argv):
+        """Returns (exit code, the Request the tool actually handed urllib)."""
+        m = self._tool()
+        vu = []
+
+        class R(io.BytesIO):
+            headers = {"Content-Type": "text/plain"}
+
+            def geturl(self):
+                return "https://h.example/p"
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def faux_urlopen(req, *a, **k):
+            vu.append(req)
+            return R(b"ok")
+
+        # **`m.urllib` EST le paquet global**, donc assigner `urllib.request.urlopen`
+        # le mute pour TOUT le processus. `GuardReportsBytesNotCharacters` ouvre un
+        # VRAI socket sur 127.0.0.1 et appelle le vrai `urlopen` : sans la
+        # restauration ci-dessous, elle recevait le corps de CE stub — deux octets
+        # la ou elle en attend 204 — et son echec accusait son propre compteur.
+        # *Un banc ne partage aucun objet avec ce qu'il eprouve, et celui-ci
+        # partageait un objet avec un banc qu'il n'eprouve pas.*
+        vrai = m.urllib.request.urlopen
+        self.addCleanup(setattr, m.urllib.request, "urlopen", vrai)
+        m.urllib.request.urlopen = faux_urlopen
+        m.allowed = lambda h, p, **kw: {"allowed": True, "reason": "stub"}
+        m.verdict = lambda h, **kw: {"crawl_delay": None, "sitemaps": []}
+        old, out = sys.argv, sys.stdout
+        sys.argv = argv
+        sys.stdout = io.StringIO()
+        try:
+            return m.main(), (vu[0] if vu else None)
+        finally:
+            sys.argv, sys.stdout = old, out
+            m.urllib.request.urlopen = vrai
+
+    def _sortie(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        return os.path.join(d, "corps.txt")
+
+    def test_the_library_turns_an_empty_body_into_a_post(self):
+        """The fact the GET gate exists for. Asserted rather than believed:
+        without it the gate's reason is a claim about urllib, and this file
+        has already carried a claim about a library that a measurement
+        refuted."""
+        import urllib.request as ur
+        self.assertEqual(ur.Request("https://h.example/p").get_method(), "GET")
+        self.assertEqual(
+            ur.Request("https://h.example/p", data=b"").get_method(), "POST",
+            "an empty body is already a POST to urllib, so a GET that carries "
+            "one records a method it did not send")
+
+    def test_an_empty_post_body_is_accepted_and_really_goes_out_as_a_post(self):
+        out = self._sortie()
+        code, req = self._run(["f", "https://h.example/p", "-o", out,
+                               "--method", "POST", "--data", ""])
+        self.assertEqual(code, 0,
+                         "the tool refused --data '', which is the escape its "
+                         "own error message prescribes")
+        self.assertIsNotNone(req, "no request reached urllib at all")
+        self.assertEqual(req.get_method(), "POST")
+        self.assertEqual(req.data, b"",
+                         "the empty body did not survive to the request")
+
+    def test_a_post_with_no_body_argument_at_all_is_still_refused(self):
+        """**The failing direction.** A tool that accepted any POST would pass
+        the case above and make the gate a lie."""
+        code, req = self._run(["f", "https://h.example/p", "-o",
+                               self._sortie(), "--method", "POST"])
+        self.assertNotEqual(code, 0,
+                            "a POST with neither --form nor --data was sent, "
+                            "so a forgotten argument became a request")
+        self.assertIsNone(req, "the refusal came after the request was spent")
+
+    def test_a_get_may_not_carry_an_empty_body(self):
+        code, req = self._run(["f", "https://h.example/p", "-o",
+                               self._sortie(), "--method", "GET",
+                               "--data", ""])
+        self.assertNotEqual(code, 0,
+                            "--method GET --data '' was accepted; urllib would "
+                            "have sent a POST while the record said GET")
+        self.assertIsNone(req)
+
+    def test_a_get_with_no_body_is_untouched(self):
+        """The other failing direction: a gate that refused every GET would
+        pass the case above and break the tool's ordinary use."""
+        out = self._sortie()
+        code, req = self._run(["f", "https://h.example/p", "-o", out])
+        self.assertEqual(code, 0)
+        self.assertEqual(req.get_method(), "GET")
+        self.assertIsNone(req.data)
 
 
 if __name__ == "__main__":
