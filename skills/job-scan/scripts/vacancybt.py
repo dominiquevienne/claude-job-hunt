@@ -187,8 +187,20 @@ def last_page(markup):
 
 
 def posts_of(markup):
-    """A page → [(slug, fields)]. `<style>`/`<script>` are out FIRST: 78 % of a post page is
-    CSS and it carries the class names these motifs look for."""
+    """A page → [(slug, fields)]. `<style>`/`<script>` are out FIRST.
+
+    **ON THIS PATH THAT STRIP IS A SECOND LAYER, and the mutation that removed it came back
+    GREEN and said so.** `ARTICLE_RE` already bounds the search to article blocks, and
+    MEASURED on three list pages, **0 of 16 of them carry a `<style>` or a `<script>`** — the
+    stylesheet lives in `<head>`, which is why the bare class name renders 7 on a page of 6
+    posts while the conjunction renders 6.
+
+    **It is kept because the layer is not idle in principle**: the POST page's single
+    `<article>` DOES carry a `<script>` (an ad slot with `style=` attributes), and there
+    `cmd_ad` searches the whole page with an `entry-title` sitting in the CSS BEFORE the
+    article — so on that path the strip is load-bearing and its mutation reddens. *A green
+    mutation is sometimes a second layer; it is declared rather than taken for dead code.*
+    """
     out = []
     clean = STRIP_RE.sub("", markup or "")
     for block in ARTICLE_RE.findall(clean):
