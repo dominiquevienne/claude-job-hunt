@@ -54742,5 +54742,269 @@ class TheHaitianGeneralistStatesItsTotalAndEveryTrapOnItIsAClassThatLies(
                          "corruption `_decode` was written to stop")
 
 
+class TheMauritianBoardWhoseWitnessIsAContainerTheHelperFlattens(unittest.TestCase):
+    """**`careerhub.py`, 2026-11-03 (#701).** CareerHub states its own total on an
+    `ItemList` and serves **24 of 158** to a plain client — 15 %, with the
+    board's own number as the denominator. Every advert is a complete
+    `JobPosting`: ISO `datePosted` and `validThrough`, a `PostalAddress`, and
+    **`baseSalary` in MUR with a min and a max** — the richest structured data
+    measured across HT and MU, where #777's board declares no date at all.
+
+    *The premise of #701 moved: «163 offres» on 2026-09-18, **158** now, and its
+    «la liste et l'annonce ne sont pas encore lues» is answered.*
+
+    **THE WITNESS IS A CONTAINER, AND `_ldjson.objects()` FLATTENS IT.** That
+    helper expands the `ItemList` into its items — 26 objects on this page, of
+    types `ListItem`, `Organization`, `WebSite`, and **no `ItemList` among
+    them** — so `numberOfItems` is gone by the time it has spoken. This adapter
+    reads the raw blocks and finds the container. *A helper that flattens a
+    container loses the container's count, and the count is the only witness
+    external to our own extraction.*
+
+    **`one()` IS NOT `label()`, AND `_ldjson` SAYS SO IN ITS OWN DOCSTRING.**
+    The first version read every text field with `one()` and emitted **24
+    adverts with an empty title**: `one()` returns `{}` for a bare string *by
+    design* — «*A string is not silently turned into a name: use `label()` when
+    the field may legitimately be text*» — and an `ItemList`'s `name` is a bare
+    string. `one()` is for fields that must be OBJECTS, so `.get()` is legal
+    whatever shape arrived; `label()` is for text. **The module is sound; using
+    the wrong half of it was the defect, and the empty titles were silent.**
+
+    **TWO HOST FORMS, AND THE BOARD'S CANONICAL IS NOT THE CARD'S.** The card
+    declares `www.careerhub.mu`; the page's `rel="canonical"` and **all 26
+    `ItemList` URLs** use the bare `careerhub.mu`. An `ad` that accepted only
+    the card's form **refused the URLs of its own list** — found by running it.
+    Both forms are guarded (`*`, no `Disallow`, `state: read`, `certain: True`
+    on each) and both accepted. *Third board in one slot where the DATA names a
+    different host from the PAGE, after `bast.af`'s `db.` and `myjob.mu`'s
+    `app.` — and that last one is refused by written rules, so the direction
+    matters.*
+
+    **THE REDACTION IS BOUNDED BY READING THE POSTING, NOT THE PAGE**, and that
+    is structural rather than careful: the site's own address and telephone
+    (`+230 268 2222`, four times) live in the FOOTER, outside the posting.
+    Scrubbing the page would declare a withheld contact on every record for one
+    no employer ever deposited. And **neither sibling's anchor transposes**:
+    Mauritius dials `+230`, so the `+509` anchors of #776 and #777 return ZERO,
+    while the bare motif takes 8 strings on one advert of which 4 are the
+    page's own identifiers.
+
+    *The structures are the real pages'; the telephone- and e-mail-shaped values
+    are INVENTED, and this repository is public. Nothing here touches the
+    network: `request` is replaced throughout.*"""
+
+    UUIDS = ("845ca852-9c8b-4841-842c-99d49a39c956",
+             "471d58a0-84f4-4f46-b9f9-78033e70c5bf",
+             "0406973e-c223-4873-98fa-68dfa1bd27b7")
+    FOOTER = ('<footer><a href="mailto:hello@example.invalid">hello@example.invalid</a>'
+              ' Tel : +230 000 0000</footer>')
+    # the four strings the BARE motif eats on this board: the page's own identifiers.
+    # They are separated by WORDS, as the page separates them: the bare motif is greedy
+    # over `[\d\s().\-/]`, so four of them joined by spaces are ONE match and the
+    # fixture would understate the defect it exists to show.
+    PAS_DES_NUMEROS = ("ref 0035-4483 lot 4786-8585 code 1679-4753 id 68560804")
+    BARE = re.compile(r"(?<![\w/])\(?\+?\(?\d[\d\s().\-/]{6,}\d(?!\w)")
+
+    def _list(self, n=3, total=158, hote="careerhub.mu"):
+        """The list as the page serves it: an `ItemList` CONTAINER whose URLs use the
+        board's own canonical host, which is NOT the one the card declares."""
+        items = [{"@type": "ListItem", "position": i + 1,
+                  "url": f"https://{hote}/fr/jobs/{u}",
+                  "name": f"Poste {i + 1}"}                  # a bare STRING, as the board writes it
+                 for i, u in enumerate(self.UUIDS[:n])]
+        bloc = json.dumps({"@context": "https://schema.org", "@type": "ItemList",
+                           "name": "Emplois", "numberOfItems": total,
+                           "itemListElement": items}, ensure_ascii=False)
+        autres = json.dumps({"@context": "https://schema.org", "@type": "WebSite",
+                             "name": "CareerHub"})
+        liens = "".join(f'<a href="/fr/jobs/{u}">voir</a>' for u in self.UUIDS[:n])
+        return ('<html><head><link rel="canonical" href="https://careerhub.mu/fr/jobs"/>'
+                f'<script type="application/ld+json">{bloc}</script>'
+                f'<script type="application/ld+json">{autres}</script></head><body>'
+                f'{liens}<button>Voir 24 offres de plus</button>'
+                f'{self.FOOTER}</body></html>')
+
+    def _ad(self, avec_contact=False):
+        desc = "Un poste de conformite."
+        if avec_contact:
+            # DEUX formes, et chacune exerce UNE alternative de l'ancre : l'indicatif, et
+            # le LIBELLE sans indicatif — un numero local, que seule la seconde attrape.
+            # Sans la seconde forme, retirer l'alternative etiquetee revenait VERT.
+            desc += (" Ecrire a emploi@example.invalid ou Tel : +230 111 1111,"
+                     " ou le local Tel : 268 2222.")
+        bloc = json.dumps({
+            "@context": "https://schema.org", "@type": "JobPosting",
+            "title": "Deputy Money Laundering Reporting Officer",
+            "datePosted": "2026-11-02T06:05:52.157515+00:00",
+            "validThrough": "2026-12-02T06:05:52.157Z",
+            "employmentType": ["FULL_TIME"],
+            "hiringOrganization": {"@type": "Organization", "name": "Gimlet Labs Ltd."},
+            "jobLocation": {"@type": "Place", "address": {
+                "@type": "PostalAddress", "addressLocality": "Ebene",
+                "addressRegion": "central", "addressCountry": "MU"}},
+            "baseSalary": {"@type": "MonetaryAmount", "currency": "MUR",
+                           "value": {"@type": "QuantitativeValue",
+                                     "minValue": 45000, "maxValue": 75000}},
+            "experienceRequirements": "5",
+            "description": desc + " " + self.PAS_DES_NUMEROS,
+        }, ensure_ascii=False)
+        return ('<html><head>'
+                f'<script type="application/ld+json">{bloc}</script></head><body>'
+                f'{self.FOOTER}</body></html>')
+
+    def _run(self, mod, argv, body):
+        import io
+        import contextlib
+        real = mod.request
+        mod.request = lambda _u, _b=body: (200, _b)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.main(argv)
+        finally:
+            mod.request = real
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_careerhub_fixtures_carry_the_shapes_this_class_judges(self):
+        lst, ad = self._list(), self._ad()
+        self.assertIn('"@type": "ItemList"', lst)
+        self.assertIn('"numberOfItems": 158', lst)
+        self.assertEqual(lst.count('https://careerhub.mu/fr/jobs/'), 3,
+                         "the ItemList URLs must use the BARE host, as the board does")
+        self.assertIn("hello@example.invalid", lst, "the site's own footer address")
+        self.assertIn('"JobPosting"', ad)
+        self.assertIn("hello@example.invalid", ad, "the footer is on the advert page too")
+
+    def test_the_title_comes_from_label_and_not_from_one(self):
+        """`one()` renders `{}` for a bare string by design, and an `ItemList`'s
+        `name` is a bare string: the first version emitted 24 empty titles."""
+        import careerhub as m
+        self.assertEqual(_ldjson.one("Poste 1"), {},
+                         "`one()` no longer drops a string, so this test cannot show the defect")
+        rows, _err = self._run(m, ["jobs"], self._list(n=3))
+        self.assertEqual([r["title"] for r in rows], ["Poste 1", "Poste 2", "Poste 3"])
+
+    def test_the_total_is_read_from_the_container_not_from_objects(self):
+        import careerhub as m
+        lst = self._list(n=3, total=158)
+        self.assertNotIn(
+            "ItemList", {str(o.get("@type")) for o in _ldjson.objects(lst) if hasattr(o, "get")},
+            "`objects()` now exposes the container, so reading the raw blocks is no longer "
+            "what this adapter needs — and the reason in its docstring is stale")
+        self.assertEqual((m.item_list(lst) or {}).get("numberOfItems"), 158)
+        _rows, err = self._run(m, ["jobs"], lst)
+        self.assertIn("states **158**", err)
+        self.assertIn("serves **3**", err)
+
+    def test_the_served_share_is_named_with_the_boards_own_denominator(self):
+        import careerhub as m
+        _rows, err = self._run(m, ["jobs"], self._list(n=3, total=12))
+        self.assertIn("25 % of the board", err,
+                      "the run must say WHAT SHARE is served, against the board's own total")
+        self.assertIn("`?page=2` is MEASURED as ignored", err)
+
+    def test_an_agreeing_total_is_not_reported_as_a_shortfall(self):
+        """**The other direction.** When the board states what it serves, the run
+        must say they agree and not invent a gap."""
+        import careerhub as m
+        _rows, err = self._run(m, ["jobs"], self._list(n=3, total=3))
+        self.assertIn("they agree", err)
+        self.assertNotIn("behind a client-side loader", err)
+
+    def test_both_host_forms_are_accepted_because_the_board_uses_the_bare_one(self):
+        import careerhub as m
+        for hote in ("careerhub.mu", "www.careerhub.mu"):
+            rows, _err = self._run(
+                m, ["ad", "--url", f"https://{hote}/fr/jobs/{self.UUIDS[0]}"], self._ad())
+            self.assertEqual(rows[0]["id"], self.UUIDS[0],
+                             f"an advert on {hote} was refused — the board's own ItemList uses "
+                             f"the bare form, so refusing it refuses the list's own URLs")
+        with self.assertRaises(SystemExit) as e:
+            m.request("https://careerhub.example.invalid/fr/jobs")
+        self.assertEqual(e.exception.code, m.EXIT_REFUSED)
+
+    def test_the_posting_is_read_whole_and_the_footer_never_reaches_a_record(self):
+        import careerhub as m
+        rows, _err = self._run(
+            m, ["ad", "--url", f"https://careerhub.mu/fr/jobs/{self.UUIDS[0]}"], self._ad())
+        r = rows[0]
+        self.assertEqual(r["employer"], "Gimlet Labs Ltd.")
+        self.assertEqual(r["posted"], "2026-11-02T06:05:52.157515+00:00")
+        self.assertEqual(r["valid_through"], "2026-12-02T06:05:52.157Z")
+        self.assertEqual((r["salary_currency"], r["salary_min"], r["salary_max"]),
+                         ("MUR", 45000, 75000))
+        self.assertEqual((r["city"], r["region"], r["country_stated"]),
+                         ("Ebene", "central", "MU"))
+        plat = json.dumps(r, ensure_ascii=False)
+        self.assertNotIn("hello@example.invalid", plat,
+                         "the site's OWN footer address reached the record: reading the posting "
+                         "is what bounds the redaction, and it must not read the page")
+        self.assertEqual(r["withheld_fields"], [],
+                         "a withheld contact was declared for one no employer deposited")
+
+    def test_a_contact_inside_the_posting_is_taken_and_named(self):
+        """**The other direction**: a redaction that takes nothing is not caution."""
+        import careerhub as m
+        rows, _err = self._run(
+            m, ["ad", "--url", f"https://careerhub.mu/fr/jobs/{self.UUIDS[0]}"],
+            self._ad(avec_contact=True))
+        r = rows[0]
+        self.assertEqual(r["withheld_fields"], ["email", "telephone"])
+        self.assertTrue(r.get("contacts_withheld"))
+        self.assertNotIn("emploi@example.invalid", r["description"])
+        self.assertNotIn("111 1111", r["description"])
+        self.assertNotIn("268 2222", r["description"],
+                         "a LOCAL number written with a label and no dialling code survived: "
+                         "that form is caught only by the labelled alternative, and dropping "
+                         "it lets a contact leave on every board that writes numbers locally")
+
+    def test_what_does_not_transpose_is_the_dialling_code_and_not_the_label(self):
+        """**My own first claim here was a notch too strong and the bench said so.**
+        These anchors have TWO alternatives, and they do not travel alike: the
+        LABELLED one (`Tél :`, `Phone`…) is country-agnostic and therefore
+        portable, while the DIALLING-CODE one is board-specific.
+
+        **And the dialling code is the half that decides on this board**, because
+        this board writes its number WITHOUT a label: measured on the real
+        advert, `"telephone":"+230 268 2222"` — a JSON key, not a label the motif
+        reads — and bare in the visible text. On that form both siblings return
+        ZERO."""
+        import careerhub as m
+        import jobpaw
+        import emploilenouvelliste
+        NU = "+230 268 2222"               # as the page writes it: no label
+        ETIQUETE = "Tél : +230 268 2222"
+        for nom, mod in (("jobpaw", jobpaw), ("emploilenouvelliste", emploilenouvelliste)):
+            self.assertEqual(
+                mod.PHONE_RE.findall(NU), [],
+                f"{nom}'s `+509` anchor matched an UNLABELLED Mauritian number, so this test "
+                f"no longer shows that a dialling code is board-specific")
+            self.assertTrue(
+                mod.PHONE_RE.search(ETIQUETE),
+                f"{nom}'s LABELLED alternative stopped matching: it is the portable half, and "
+                f"losing it would let a labelled contact leave on every board")
+        self.assertTrue(m.PHONE_RE.search(NU), "the Mauritian anchor misses an unlabelled +230")
+        self.assertTrue(m.PHONE_RE.search(ETIQUETE))
+        bare = self.BARE.findall(self.PAS_DES_NUMEROS)
+        self.assertGreaterEqual(len(bare), 3,
+                                f"the bare motif takes {len(bare)} of the page's own identifiers; "
+                                f"it took four on the advert measured")
+        self.assertEqual(m.PHONE_RE.findall(self.PAS_DES_NUMEROS), [])
+
+    def test_jobpaw_uses_the_shared_fold_and_not_a_private_copy(self):
+        """`jobpaw.py` shipped with a private `fold()` that agrees with
+        `_locations.fold` on all ten of its labels — a copy of a shared helper,
+        which is the defect the module exists to prevent."""
+        import jobpaw
+        import _locations
+        self.assertIs(jobpaw.fold, _locations.fold,
+                      "`jobpaw` carries its own `fold` again: `_locations.fold` is the shared one")
+        for t in ("Durée", "Duree", "DURÉE", "Spécialité", "Date publication"):
+            self.assertEqual(_locations.fold(t), jobpaw.fold(t))
+        src = (pathlib.Path(SCRIPTS) / "jobpaw.py").read_text(encoding="utf-8")
+        self.assertNotIn("def fold(", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

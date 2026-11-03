@@ -99,7 +99,6 @@ today.
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
 import argparse
-import unicodedata
 import html as htmlmod
 import json
 import re
@@ -109,6 +108,7 @@ import urllib.parse
 import urllib.request
 
 from _decode import decode_body_readable
+from _locations import fold
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
@@ -204,15 +204,6 @@ def request(url):
     except (urllib.error.URLError, OSError) as e:
         die(f"{url}: {type(e).__name__}: {e}")
 
-
-
-def fold(s):
-    """Accent-folded, lower-cased. The advert's labels are matched on THIS form, so the
-    markup's `Dur&eacute;e` and a bare `Duree` resolve to one key without listing both —
-    and the fallback slug keeps its accents' letters instead of dropping them.
-    """
-    d = unicodedata.normalize("NFD", s or "")
-    return "".join(c for c in d if not unicodedata.combining(c)).lower().strip()
 
 
 def th(n):
