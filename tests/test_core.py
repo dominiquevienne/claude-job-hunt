@@ -54459,9 +54459,14 @@ class TheHaitianGeneralistStatesItsTotalAndEveryTrapOnItIsAClassThatLies(
             "Spécialiste Agrobusiness", "UTE du Ministère", "Agriculture",
             "Agronomie", "30 Oct 2026", "6 Nov 2026", "Haiti", "Port-au-Prince",
             "Jacmel /Marigot")))
-        php = ('<br /><b>Warning</b>:  Undefined variable $row_RS_User in '
-               '<b>/var/www/html/professionals/job-details.php</b> on line <b>349</b><br />'
-               ) if avec_php else ""
+        # the page's REAL shape: an EMPTY cell whose `<strong>` is never closed, and an
+        # img carrying a SECOND `alt=` that holds the warnings. That is what makes the
+        # label motif span from the empty cell to the `</strong>` after «Titre du poste»,
+        # and a fixture without it leaves this class's PHP test INERT — measured.
+        php = ('<tr><td><strong></td><td></em></td><td><img width="64" src="l.jpg" '
+               'alt="logo" width="100" alt="<br /><b>Warning</b>:  Undefined variable '
+               '$row_RS_User in <b>/var/www/html/professionals/job-details.php</b> on '
+               'line <b>349</b><br /> " width="100" /></td></tr>') if avec_php else ""
         lignes = ""
         for k, v in labels.items():
             lignes += f"<td><strong>{k}</strong></td><td><em>{v}</em></td>"
@@ -54471,10 +54476,9 @@ class TheHaitianGeneralistStatesItsTotalAndEveryTrapOnItIsAClassThatLies(
                    "</em></td>")
         return ("<html><body>"
                 "<!-- <a href=\"mailto:info@jobpaw.com\">info@jobpaw.com</a> -->"
-                f'<img alt="{php}" src="x.png">'
                 "<h1>Ils sont plus de 18 000 à guetter nos opportunités "
                 "chaque semaine.</h1>"
-                f'<div class="table-responsive"><table><tr>{lignes}</tr></table></div>'
+                f'<div class="table-responsive"><table>{php}<tr>{lignes}</tr></table></div>'
                 "</body></html>")
 
     def _run(self, mod, argv, body):
@@ -54632,6 +54636,98 @@ class TheHaitianGeneralistStatesItsTotalAndEveryTrapOnItIsAClassThatLies(
         self.assertIn("TOTAL, not right", err.getvalue())
         self.assertIn("1 character", err.getvalue(),
                       "the warning must say how many characters were lost")
+
+    def test_the_real_request_path_arbitrates_the_encoding(self):
+        """**Every other test in this class replaces `request` itself**, so none of
+        them exercises the decode at all — and a mutation putting plain `decode_body`
+        back came back GREEN and said so. This one drives the REAL `request()` with
+        the bytes this board serves: UTF-8 with one of them broken.
+        """
+        import email.message
+        import io
+        import contextlib
+        import jobpaw as m
+        octets = (
+            '<html><head><meta charset="UTF-8"></head><body>'
+            '<div class="jobs-list__card"><div class="jobs-list__left">'
+            '<span class="jobs-list__time"><i></i> Publi\u00e9 13 ao\u00fbt 2026 </span>'
+            '<h3 class="jobs-list__title mt-2"> Ing\u00e9nieur <br>'
+            '<span class="pt-3"> Employeur</span></h3>'
+            '<span class="jobs-list__location"> Location: Haiti , Zone </span>'
+            '<p class="jobs-list__location"> Date Limite: 4 novembre 2026 </p>'
+            '</div><div class="jobs-list__right">'
+            '<span class="jobs-list__price"><b>Marketing</b></span></div>'
+            '<div class="jobs-list__right">'
+            '<a href="/professionals/job-details?idj=1">d</a></div></div>'
+            '<nav><a class="page-link" '
+            'href="?pageNum_RS_job=0&totalRows_RS_job=1">1</a></nav>'
+            '</body></html>').encode("utf-8") + b"\xff"
+
+        class Reponse:
+            headers = email.message.Message()
+
+            def read(self):
+                return octets
+
+            def getcode(self):
+                return 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        class Spy:
+            def __init__(self, h, own=0.0):
+                self.host = h
+
+            def wait(self):
+                return 0.0
+
+        permit = {"allowed": True, "reason": "stubbed", "rule": None, "kind": None,
+                  "group": "*", "certain": True, "state": "read", "crawl_delay": None}
+        vrais = (m.urllib.request.urlopen, m.Pace, m.robots_allowed)
+        m.urllib.request.urlopen = lambda *a, **k: Reponse()
+        m.Pace = Spy
+        m._PACES.clear()
+        m.robots_allowed = lambda *a, **k: permit
+        _decode._WARNED.clear()
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                m.main(["jobs"])
+        finally:
+            (m.urllib.request.urlopen, m.Pace, m.robots_allowed) = vrais
+            m._PACES.clear()
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["title"], "Ing\u00e9nieur",
+                         "the body came through as cp1252 mojibake: the adapter must call "
+                         "`decode_body_readable`, not `decode_body`, because this board "
+                         "declares UTF-8 and serves bytes that are not")
+        self.assertEqual(rows[0]["published_as_written"], "13 ao\u00fbt 2026",
+                         "the mojibake also breaks the label stripping — one defect "
+                         "wearing two symptoms")
+        self.assertIn("TOTAL, not right", err.getvalue(),
+                      "`_decode` must say it arbitrated, on the run the caller reads")
+
+    def test_an_undeclared_body_is_left_to_the_total_fallback(self):
+        """**The scope of the arbitration, pinned.** It fires only when the document
+        DECLARES a UTF-8 family encoding; an undeclared body keeps `decode_body`'s
+        answer even when the lossy reading would look better. *The mutation removing
+        that clause came back green on every other fixture, because the mojibake
+        control already decided there — this is the case where the clause is what
+        decides.*"""
+        octets = "Publi\u00e9 13 ao\u00fbt 2026".encode("utf-8") + b"\xff"
+        text, enc = _decode.decode_body_readable(octets)      # no headers, no meta
+        self.assertEqual(enc, "cp1252",
+                         "an UNDECLARED body was re-read as utf-8/replace: the change is "
+                         "scoped to what the measurement covers, a document that declares "
+                         "UTF-8 and serves a few bytes that are not")
+        self.assertTrue(_decode.looks_mojibake(text),
+                        "the fixture is not mojibake under cp1252, so it cannot show the "
+                        "scope")
 
     def test_a_genuinely_latin1_body_is_left_alone(self):
         """**The other direction, and it is the one `_decode` exists for.** A
