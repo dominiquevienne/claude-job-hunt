@@ -54323,10 +54323,22 @@ class TheHaitianDailyServesItsWholeHistoryAndItsRedactionMustNotEatAReference(
         import emploilenouvelliste as m
         _rows, err = self._run(m, ["jobs"], self._list((1, 2, 3)))
         self.assertIn("states NO count", err)
-        for faux in m.TEMPLATE_NUMBERS:
+        # **PLANCHER POSITIF, et il vient d'une mutation INERTE.** Vider
+        # `TEMPLATE_NUMBERS` rendait cette boucle vide, donc le test VERT — le fait de
+        # méthode «\u00a0un ensemble vide rend inerte toute prémisse\u00a0» commis dans
+        # la garde même. Et la constante était LUE NULLE PART dans l'adaptateur : la
+        # note retapait les trois littéraux, donc ce test éprouvait ses propres données.
+        self.assertGreaterEqual(
+            len(m.TEMPLATE_NUMBERS), 3,
+            f"only {len(m.TEMPLATE_NUMBERS)} template literal(s) declared; the board "
+            f"prints three, and an empty tuple makes the loop below vacuous")
+        for faux, ou in m.TEMPLATE_NUMBERS:
             self.assertIn(faux, err,
                           f"«{faux}» is not named in the run, so the next session has "
                           f"nothing telling it this number is a template literal")
+            self.assertIn(ou.split("\u2014")[0].strip()[:24], err,
+                          f"the run does not say WHERE «{faux}» lives, so a reader "
+                          f"cannot check that it is a literal")
 
     def test_the_contiguity_witness_certifies_by_presence_and_is_silent_by_absence(self):
         """**A marker informs only in the direction it cannot be there by

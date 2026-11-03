@@ -154,8 +154,16 @@ MONTHS = ("Janvier|F[ée]vrier|Mars|Avril|Mai|Juin|Juillet|Ao[ûu]t|"
 DATE_FR_RE = re.compile(r"\b(\d{1,2}\s+(?:%s)\s+\d{4})\b" % MONTHS, re.I)
 DEADLINE_RE = re.compile(
     r"date limite|au plus tard|avant le|dernier d[ée]lai|cl[ôo]ture|date de cl", re.I)
-# the three numbers this board prints that are NOT counts; named so none is ever a witness
-TEMPLATE_NUMBERS = ("44554", "4500", "80 jobs")
+# the three numbers this board prints that are NOT counts, each with where it lives. The note
+# DERIVES from this tuple: a constant the run never reads is decoration, and a guard that
+# iterates one tests its own data — the mutation emptying it came back GREEN and said so.
+TEMPLATE_NUMBERS = (
+    ("44554", "\u00ab44554 r\u00e9sultat(s)\u00bb inside an HTML comment on the list"),
+    ("4500", "\u00abPlus de 4500 offres\u00bb in the root's prose"),
+    ("80 jobs", "\u00ab80 jobs\u00bb printed IDENTICALLY on three different employers' tiles "
+                "(OCCED'H, the Conseil \u00c9lectoral Provisoire, SOFALAM) \u2014 that "
+                "repetition is what proves it"),
+)
 _PACES = {}
 
 
@@ -296,10 +304,9 @@ def cmd_jobs(a):
     ids = sorted(seen)
     note(f"{th(len(found))} card(s) on the page, {th(len(rows))} distinct advert(s) emitted "
          f"newest first; the page serves them OLDEST first and `list_position` keeps its order.")
-    note("the board states NO count. Its three numbers that look like one are template "
-         "literals and none is a witness: «44554 résultat(s)» inside an HTML comment, "
-         "«Plus de 4500 offres» on the root, and «80 jobs» printed identically on three "
-         "different employers' tiles.")
+    note(f"the board states NO count. Its {th(len(TEMPLATE_NUMBERS))} numbers that look like "
+         f"one are template literals and none is a witness: "
+         f"{'; '.join(ou for _lit, ou in TEMPLATE_NUMBERS)}.")
     if ids and ids[0] == 1 and ids[-1] == len(ids):
         note(f"ids run 1 to {th(ids[-1])} with no gap and {th(len(ids))} adverts were read: "
              f"the extraction is COMPLETE. This witness is OUR OWN, not a count the board "
