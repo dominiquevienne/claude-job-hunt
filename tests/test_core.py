@@ -18508,6 +18508,17 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
 
     BROWSER_PROSE = re.compile(r"browser tab|in a browser|from a (?:connected )?browser|a real browser, same path", re.I)
     ROUTE = re.compile(r"^\s*(browser|http|none)\s*(?:·\s*(.*?))?\s*$")
+    # #337/#1136 — l'exclusion d'un board par le PROPRIÉTAIRE est une DÉCLARATION
+    # et jamais une INTERPRÉTATION. Ce motif trouve les fiches dont la PROSE la
+    # nomme ; `_complaints` exige alors qu'un CHAMP la déclare. Éprouvé dans les
+    # DEUX sens sur `shared/boards` le 03.11.2026 : 4 fiches le déclenchent et
+    # les 4 portent `route: none`, et il TIRE sur la version de `rabota-by.md`
+    # d'avant le correctif du même jour, qui n'en portait aucun.
+    OWNER_EXCLUSION = re.compile(
+        r"(?:exclusion|exclu(?:e|s)?)\b[^.\n]{0,80}propri[ée]taire"
+        r"|propri[ée]taire[^.\n]{0,80}\bexclu"
+        r"|owner'?s[^.\n]{0,60}exclusion"
+        r"|ne plus remesurer", re.I)
 
     @staticmethod
     def _headers(text):
@@ -18521,6 +18532,18 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
         content = h.get("content", "")
         if self.BROWSER_PROSE.search(content) and "route" not in h:
             bad.append(f"{name}: `content:` says the reading came from a browser and no `route:` line declares it")
+        # Un hôte que le propriétaire a EXCLU n'est pas une entrée à construire, et
+        # `bin/country-boards.py` ne peut pas le savoir : il lit `script: none`, ce
+        # qui est EXACT, donc la fermeture doit vivre dans un CHAMP. Mesuré le
+        # 03.11.2026 : `rabota-by.md` nommait l'exclusion du 14.09 dans sa prose,
+        # ne déclarait aucun `route:`, et l'outil la portait au RANG 1 de l'ordre
+        # de couverture du propriétaire — une dette FANTÔME vers un hôte qu'il
+        # avait lui-même écarté. La direction fait AGIR À TORT, pas se retirer,
+        # et son symptôme a été l'absence de symptôme pendant cinquante jours.
+        if self.OWNER_EXCLUSION.search(text) and not h.get("route", "").startswith("none"):
+            bad.append(f"{name}: the prose names an exclusion the OWNER decided and no "
+                       "`route: none` DECLARES it — the tooling reads the field, so this "
+                       "card is still counted as an entry to build (#337, #1136)")
         if "route" in h:
             m = self.ROUTE.match(h["route"])
             if not m:
@@ -18559,6 +18582,78 @@ class AMeasuredBrowserRouteIsDeclaredNotGuessedFromProse(unittest.TestCase):
         self.assertEqual(self._complaints("good", good), [])
         none = undeclared + "<!-- route: none · the name is clientHold — a route to nothing · 2026-09-12 -->\n"
         self.assertEqual(self._complaints("none", none), [])
+
+    def test_an_exclusion_the_owner_decided_is_declared_in_a_field_and_not_only_in_the_prose(self):
+        """**#337, mesuré le 03.11.2026.** Le propriétaire a exclu six boards le
+        14.09.2026 et la décision consignée disait « fiches à passer en “non
+        faisable — validé par le propriétaire le 14.09.2026” par `cd` ». SIX
+        fiches sur sept l'ont reçu ; `rabota-by.md` — celle que le corps de #337
+        désigne lui-même comme sa mesure — portait l'exclusion **dans sa prose
+        seule** et aucun champ `route:`. Elle classait donc `faisable`, et comme
+        c'était l'unique entrée « à construire » de la Biélorussie, elle arrivait
+        au **RANG 1** de l'ordre de couverture que le propriétaire a déclaré le
+        27.09 : son propre ordre pointait sur un hôte qu'il avait écarté.
+
+        **L'outil est SAIN** et c'est ce qui rend la garde nécessaire ici plutôt
+        que dans `country-boards.py` : il lit `script: none`, ce qui est exact, et
+        ce qu'il ne peut pas lire est qu'un hôte EXCLU n'est pas une entrée à
+        construire. #1136 avait déjà tranché la forme — une exclusion est une
+        DÉCLARATION, jamais une INTERPRÉTATION — et rien ne vérifiait que les deux
+        ne divergent pas.
+
+        **Le motif DÉRIVE de la prose plutôt que d'énumérer les dix hôtes du
+        verbatim**, parce qu'une liste composée à la main en omet un et que
+        l'omission ne laisse aucune trace. Conséquence voulue : la garde aurait
+        tiré le 02.11, le jour où cette prose a été écrite (#907).
+
+        Mutations nommées AVANT d'être lancées, chacune ROUGE depuis sa PROPRE
+        assertion : (a) `OWNER_EXCLUSION` rendu non correspondant → le plancher
+        positif rougit ; (b) la condition `route` retirée, la plainte devenant
+        inconditionnelle → `assertEqual(..., [])` rougit sur la fiche CORRIGÉE ;
+        (c) la condition inversée → le cas négatif ne se plaint plus et
+        `assertTrue` rougit.
+
+        **ET TROIS DES QUATRE ALTERNATIVES DU MOTIF SONT INERTES SUR LE CORPUS, ce
+        qui ne se lit nulle part ailleurs : les fiches sont écrites en ANGLAIS.**
+        Mesuré alternative par alternative le 03.11.2026 : `owner's … exclusion`
+        porte les QUATRE (`afgjobs`, `jobline`, `rabota-by`, `rozee`), et les trois
+        formes françaises n'en portent qu'UNE — `rabota-by`, parce que c'est la
+        seule prose française que ce dépôt ait sur le sujet, et je viens de
+        l'écrire. Donc le plancher de 4 repose ENTIÈREMENT sur l'alternative
+        anglaise, ce que la mutation (d) prouve : la retirer seule fait rougir le
+        plancher. Les formes françaises restent, pour la fiche qui vient ; mais une
+        liste de quatre motifs se lit comme quatre protections, et il y en a une.
+
+        **RÉSIDU DÉCLARÉ** : cette garde ne connaît PAS la liste du propriétaire.
+        Elle n'exige que la concordance prose/champ, donc une fiche d'un hôte
+        exclu qui ne le nomme NI en prose NI en champ lui échappe entièrement —
+        on ne peut pas voir ce que rien ne nomme. Et le compte de 4 ci-dessous
+        est un PLANCHER, pas une population : il dit que le motif n'est pas mort."""
+        d = pathlib.Path(SCRIPTS).parent.parent.parent / "shared" / "boards"
+        named = [c.name for c in sorted(d.glob("*.md"))
+                 if c.name != "README.md"
+                 and self.OWNER_EXCLUSION.search(c.read_text(encoding="utf-8"))]
+        self.assertGreaterEqual(
+            len(named), 4,
+            f"{len(named)} fiche(s) nomment une exclusion du propriétaire ; 4 le "
+            f"faisaient le 03.11.2026 — soit des lignes ont été perdues, soit le "
+            f"motif a cessé de correspondre : {named}")
+        # Le cas NÉGATIF vient du CORPUS et non d'une chaîne composée pour
+        # l'occasion : c'est la prose que `rabota-by.md` portait avant le
+        # correctif du 03.11, une fixture inventée portant les valeurs de qui
+        # l'écrit, donc jamais celles qui le prennent en défaut.
+        avant = ("# R\n\n<!-- hosts: rabota.by -->\n<!-- script: none -->\n"
+                 "<!-- countries: BY -->\n"
+                 "Crawl-delay **none readable** — this host is named VERBATIM in the "
+                 "owner's 2026-09-14 exclusion of the whole hh network (#337, "
+                 "« ne plus remesurer »), and I checked that list AFTER reading.\n")
+        self.assertTrue(
+            any("no `route: none` DECLARES it" in b
+                for b in self._complaints("rabota-by", avant)),
+            self._complaints("rabota-by", avant))
+        apres = avant + ("<!-- route: none · non faisable — exclu par le "
+                         "propriétaire le 14.09.2026, #337 · 2026-11-03 -->\n")
+        self.assertEqual(self._complaints("rabota-by", apres), [])
 
     def _tool(self):
         spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
