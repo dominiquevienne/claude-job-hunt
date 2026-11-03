@@ -1,4 +1,4 @@
-# Chile — the public-sector portals, and why none of them has an adapter
+# Chile — the public-sector portals: `www.trabajaenelestado.cl` has had an adapter since 2026-09-14 (#302), and why the other four still have none
 
 <!-- verified: 2026-09-03 -->
 <!-- hosts: sence.gob.cl, www.trabajaenelestado.cl, www.practicasparachile.cl, directoresparachile.cl, adp.serviciocivil.cl, www.empleospublicos.cl -->
@@ -136,4 +136,6 @@ page's own filters and a plain sort: 349 open calls stated and emitted on
 addresses are on `www.empleospublicos.cl`, which says `Disallow: /`, and
 the adapter emits them as data and never fetches them; the four other
 portals have no adapter, for the reasons above.
+
+**2026-11-03 — and the HEAD followed only today, fifty days after this section declared it history.** The first line of this card read, until then: « Chile — the public-sector portals, and why none of them has an adapter ». *The body was right the whole time — it names `trabajaenelestado.py`, it says the four other portals have no adapter, and the heading above says the title is history — so nothing here was ever measured wrong; only the TITLE was never carried.* **And it moved no ratio, which is why it survived: `country-boards.py` reads the `script:` FIELD and never the H1 (#1219 made that deliberate), so a stale head is INERT for the tooling and FIRST for the reader.** The direction is the expensive one of the three: it makes nobody refuse, it makes a session write an adapter that already ships.
 

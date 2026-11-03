@@ -29003,6 +29003,222 @@ class ARefusalIsAStatusTheCardDECLARESAndNotOneItsProseMENTIONS(unittest.TestCas
                            "is green on a fixture and dead where it matters")
 
 
+class AHeadThatDENIESAnAdapterTheCardITSELFDeclares(unittest.TestCase):
+    """2026-11-03 — a card's H1 asserting that no adapter exists, on a card
+    whose own `script:` field names one. **Four specimens, and the tooling is
+    blind to all four BY DESIGN, so not one of them moved a ratio.**
+
+    `chile-public-sector` was titled «… and why none of them has an adapter»
+    while its own body, three sections down, carried the heading «2026-09-14 —
+    #302: Trabaja en el Estado has an adapter, **and this card's title is now
+    history for one of the five**». *The card had DECLARED its head stale and
+    nobody carried it* — fifty days. `dom767`, `ntchito` and `onlinejobmw`
+    each ended their head on «no count stated; no adapter yet» while declaring
+    `dom767.py`, `ntchito.py`, `onlinejobmw.py`; the gaps were 1, 25 and 28
+    days, and `onlinejobmw`'s head was TRUE the day it was written and false
+    the next.
+
+    **WHY NOTHING CAUGHT IT, AND IT IS NOT AN OVERSIGHT.** #1219 made the
+    tooling read a status from a DECLARED FIELD and never from an H1 — the
+    sibling class above asserts exactly that — so a stale head is INERT for
+    `country-boards.py`: no class moves, no ratio moves, no page changes. **It
+    is the reader who meets it first.** The direction is the expensive one of
+    the three §1 enumerates: it makes nobody refuse and nobody publish a false
+    number, it makes a session WRITE AN ADAPTER THAT ALREADY SHIPS.
+
+    **AND IT IS NOT A SECOND COPY OF EITHER NEIGHBOUR, which is checked and
+    not assumed.** `TheHeadingAgreesWithTheContentLine` compares FIGURES
+    between the first `##` and the `content:` line, and says of itself «it does
+    not scan the body»; the class above reads REFUSALS from declared fields.
+    This one reads the **H1** against the **`script:` field**: a third object,
+    a third pair.
+
+    **EXTENSION IS NOT PROPERTY, measured.** A negation motif near
+    «adapter»/«script» returns **77** of the 555 heads — these heads are
+    measurement paragraphs, and 153 of them carry the word «no» — of which
+    **5** declare a live adapter, and reading their clauses leaves **4**:
+    `tyomarkkinatori` says «an adapter that requests NOTHING without the
+    user's own key», a negation about what the adapter DEMANDS. *Two motifs of
+    different forms rendered 77 and 76 and their agreement validated the
+    extension twice and the property zero times; the single member where they
+    diverged was the false positive.*
+
+    **PER ALTERNATIVE, because a list of four motifs reads like four
+    protections.** On the corpus the day this shipped: `no adapter` **47+16**
+    heads, `no script` **12**, and `none … an adapter` / `has no adapter`
+    **0 — because this very commit retired their only member**, so their
+    specimen is in this commit's own diff and they are kept as prospective.
+    *Two further alternatives that had never had a member here —
+    «without an adapter», «awaits an adapter» — were COMPOSED and were
+    dropped.*
+
+    **THE CITATION STRIP IS LOAD-BEARING, AND WITHOUT IT THIS GUARD ACCUSES
+    ITS OWN CORRECTION.** §4 requires a correction to CITE what it corrects,
+    so all three corrected heads still CONTAIN «no adapter yet» — inside
+    `«…»`. Run on the raw head, the guard goes RED on the three cards it was
+    written to fix: the third species of §4 ter, red on correct. The doctrine
+    had already named this shape for another object — *«the reserved string
+    stays in the file AFTER correction, so a grep counting its occurrences
+    would read 1 and send someone to repair a sound correction»* — and the
+    remedy here is the repository's own convention, which 169 heads already
+    use: **in an H1 a superseded reading is CITED and an asserted one is
+    bare.** `onlinejobmw`'s 2026-09-17 tail was bounded by a PROSE sentence
+    and was brought inside `«…»` for that reason, rather than teaching this
+    guard to parse prose bornes — inventing a grammar is what the neighbour
+    above warns against."""
+
+    CITATION = re.compile("«.*?»", re.S)
+    ADAPTER_DENIED = re.compile(
+        r"\bno adapter\b"
+        r"|\bno script\b"
+        r"|\bnone\b[^.;]{0,30}\ban adapter\b"
+        r"|\bhas no adapter\b", re.I)
+
+    def _tool(self):
+        spec = importlib.util.spec_from_file_location("_country_boards", os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "country-boards.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _cards(self):
+        return self._tool().read_cards(os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "shared", "boards"))
+
+    @staticmethod
+    def _head(card):
+        m = re.search(r"(?m)^#[ \t]+(.+?)[ \t]*$", card["text"])
+        return m.group(1) if m else ""
+
+    def _asserted(self, card):
+        """The head with its CITATIONS removed — what the card ASSERTS today,
+        as opposed to what it quotes itself as having said."""
+        return self.CITATION.sub(" ", self._head(card))
+
+    @staticmethod
+    def _own_adapter(card):
+        s = (card["h"].get("script") or "").strip()
+        return s if s and s.lower() != "none" else None
+
+    @staticmethod
+    def _hosts(card):
+        # `hosts:` is COMMA separated where `countries:` is SPACE separated
+        return [h.strip().lower()
+                for h in (card["h"].get("hosts") or "").split(",") if h.strip()]
+
+    def test_the_motif_and_the_strip_are_both_load_bearing_on_the_real_corpus(self):
+        """Three positive contingents, so a green below cannot mean «I looked
+        at nothing»: the motif must still SEE the convention, the strip must
+        actually REMOVE something, and cards must DECLARE adapters."""
+        cards = self._cards()
+        self.assertGreater(len(cards), 400, "the corpus must be the real one")
+        denies = [c for c in cards if self.ADAPTER_DENIED.search(self._asserted(c))]
+        self.assertGreaterEqual(
+            len(denies), 40,
+            "only %d heads assert that no adapter exists; 72 did on 2026-11-03, "
+            "so either the motif stopped matching the convention or the walk "
+            "narrowed" % len(denies))
+        cited = [c for c in cards if self.CITATION.search(self._head(c))]
+        self.assertGreaterEqual(
+            len(cited), 100,
+            "only %d heads carry a citation, so the strip is inert and this "
+            "guard has lost the only thing that separates an assertion from a "
+            "quotation; 169 did on 2026-11-03" % len(cited))
+        live = [c for c in cards if self._own_adapter(c)]
+        self.assertGreaterEqual(
+            len(live), 250,
+            "only %d cards declare a live adapter; 308 did on 2026-11-03, so "
+            "the pair this guard compares has lost one of its sides" % len(live))
+
+    def test_no_head_DENIES_an_adapter_the_card_itself_DECLARES(self):
+        """The invariant. It counts what it compared, because a `continue`
+        that skipped every card would leave it green."""
+        compared, bad = 0, []
+        for c in self._cards():
+            if not self.ADAPTER_DENIED.search(self._asserted(c)):
+                continue
+            compared += 1
+            own = self._own_adapter(c)
+            if own:
+                bad.append("%s: the head asserts that no adapter exists and "
+                           "the card's own `script:` field declares `%s` — the "
+                           "tooling reads the FIELD and never the head, so "
+                           "nothing here is mismeasured and the first line a "
+                           "reader meets sends them to write what already "
+                           "ships" % (c["name"], own))
+        self.assertGreaterEqual(
+            compared, 40,
+            "the guard compared %d heads; 72 asserted the clause on "
+            "2026-11-03, so it is passing by looking at nothing" % compared)
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_a_head_that_QUOTES_the_retired_clause_is_not_accused(self):
+        """**The failing direction, and it is the one that costs.** A guard run
+        on the raw head reds on every card that obeyed §4 and cited what it
+        corrected. The strip is exercised on literals here and its EFFECT is
+        measured on the corpus, because a pure function green on invented
+        strings proves nothing about the cards."""
+        self.assertTrue(self.ADAPTER_DENIED.search("rules open; no adapter yet"))
+        self.assertFalse(self.ADAPTER_DENIED.search(
+            self.CITATION.sub(" ", "delivered 2026-10-06 — the "
+                              "« no adapter yet » this head carried "
+                              "until 2026-11-03 was true of 2026-09-17")))
+        self.assertTrue(self.ADAPTER_DENIED.search(
+            self.CITATION.sub(" ", "« a quoted title » and no adapter yet")),
+            "the strip must remove the QUOTATION and not the whole head")
+        cards = self._cards()
+        retires = [c["name"] for c in cards
+                   if self.ADAPTER_DENIED.search(self._head(c))
+                   and not self.ADAPTER_DENIED.search(self._asserted(c))]
+        self.assertGreaterEqual(
+            len(retires), 1,
+            "no card in the corpus uses the citation to retire this clause, so "
+            "the convention this guard depends on is not actually in use and "
+            "the strip is untested where it matters")
+
+    def test_no_head_DENIES_an_adapter_a_SIBLING_declares_for_a_shared_host(self):
+        """`chile-public-sector`'s own field was ABSENT: the adapter lived on a
+        sibling card for a host the two CO-DECLARE, which the test above cannot
+        see. Co-declaration is a convention here and not a defect — five of the
+        shared hosts cross no country at all — so what is asserted is only that
+        a head does not DENY what a sibling declares for the same host.
+
+        **DECLARED INERT: the `sibling != c["name"]` self-exclusion below
+        cannot fire while the test above holds**, a card that denies an
+        adapter having by then no live `script:` of its own, so it never
+        contributes to the index it is compared against. Mutating it away
+        came back GREEN and is reported as such; what proves THIS test
+        load-bearing is the corpus mutation instead — restoring
+        `chile-public-sector`'s 2026-09-14 head reds this assertion alone,
+        and it names the shared host."""
+        cards = self._cards()
+        index = {}
+        for c in cards:
+            own = self._own_adapter(c)
+            if own:
+                for h in self._hosts(c):
+                    index.setdefault(h, []).append((c["name"], own))
+        self.assertGreaterEqual(
+            len(index), 250,
+            "only %d hosts carry a live adapter; the crossing has nothing to "
+            "cross and would be green by construction" % len(index))
+        denies = [c for c in cards
+                  if self.ADAPTER_DENIED.search(self._asserted(c))]
+        self.assertGreaterEqual(
+            len([c for c in denies if len(self._hosts(c)) > 1]), 5,
+            "no head that denies an adapter declares more than one host, so "
+            "this crossing can never fire; 13 did on 2026-11-03")
+        bad = []
+        for c in denies:
+            for h in self._hosts(c):
+                for (sibling, script) in index.get(h, []):
+                    if sibling != c["name"]:
+                        bad.append("%s: the head asserts that no adapter exists "
+                                   "and `%s` declares `%s` for `%s`, a host both "
+                                   "cards name" % (c["name"], sibling, script, h))
+        self.assertEqual(bad, [], "\n".join(bad))
+
+
 class TheMalawiFilterIsAConditionOfCorrectnessAndNotAnOptimisation(unittest.TestCase):
     """#676, 2026-10-31 — `onlinejobmw.py`, and the whole adapter is the filter.
 
