@@ -54101,5 +54101,247 @@ class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestC
                          "garde parle du canal du navigateur, pas des scripts")
 
 
+class TheHaitianDailyServesItsWholeHistoryAndItsRedactionMustNotEatAReference(
+        unittest.TestCase):
+    """**`emploilenouvelliste.py`, 2026-11-03 (#777).** Le Nouvelliste's board
+    serves **every advert it has ever published on one page** — 118 of them,
+    ids 1 to 118 with no gap, no pager on seven candidate forms — and the
+    premise of #777 held six weeks later with the board grown from 111.
+
+    **THE BOARD STATES NO COUNT, AND ITS THREE NUMBERS THAT LOOK LIKE ONE ARE
+    TEMPLATE LITERALS.** «44554 résultat(s)» sits in an HTML comment on the
+    list, «Plus de 4500 offres» is the root's prose, and «80 jobs» is printed
+    **identically on three different employers' tiles** — which is what proves
+    it is a literal. *Three candidate witnesses, all false, and the coincidence
+    of the third is the only thing that showed it.* So the only witness is OUR
+    OWN — ids contiguous 1..N with N adverts read — and it certifies by its
+    PRESENCE and says nothing by its absence, a deleted advert leaving the same
+    gap as a parse that dropped one.
+
+    **THE REDACTION IS WHERE THE MEASUREMENT CHANGED THE CODE, and the object is
+    not the one the sibling guards hold.** `TheItalianFrontIsOneTableEntry…`
+    pins an AMOUNT written in threes and a kyat salary cost 113 of 115 on
+    another board; here the string destroyed is an **administrative REFERENCE**
+    — the grant numbers `2000004110` and `200005176`, the contract number
+    `106-2026`, the publication reference `527-05/19` — because Haiti's
+    public-procurement adverts are built out of them. Measured on 13 adverts
+    drawn across the whole id range: the bare motif takes **7 strings of which
+    5 are not telephones**, and **the date guard used elsewhere saves none of
+    them** — a grant number is neither a date nor a phone. Anchored on the
+    dialling code `+509` or a written label it takes **2 of the 2 real numbers
+    and 0 of the 5 references**. *Those references are how a candidate names
+    the post he is applying for.* The Italian class reached the same remedy for
+    another object — «the branch fires only with an international prefix or
+    after a cue word» — so this is that conclusion applied, not re-derived.
+
+    **AND A HEADING IN A COMMENT IS NOT A BLOCK.** «Lieu de dépôt des
+    candidatures» is 13 of 13 in the markup and **0 of 13 live**: it is inside
+    an HTML comment on every advert. Counting it was this adapter's first
+    defect, found by RUNNING it — the same shape as counting `<script>` tags on
+    a page that writes the word in its prose. **And a block that exists is not
+    a block that is filled**: on the procurement-style adverts the next two
+    sections carry a **bare full stop**, so `if value` emits «.» as content.
+
+    **The closing date is read from PROSE and the case is the whole defect.**
+    The board declares no date anywhere — no `JobPosting`, no
+    `application/ld+json`, no `<time>`, no `datePosted`, no `Last-Modified` —
+    so what is open is not a question it answers. Advert 118 writes «16 octobre
+    2026» in lower case where 1 and 60 write «28 Septembre 2024», and the
+    capitalised motif rendered **zero** on an advert carrying two.
+
+    *The structures are the real pages'; the telephone- and e-mail-shaped values
+    are INVENTED, and this repository is public. Nothing here touches the
+    network: `request` is replaced throughout.*"""
+
+    # the five reference strings the BARE motif destroyed, as the real adverts write them
+    REFERENCES = ("Don DSF No 2000004110", "Don DSF No 200005176",
+                  "No. de contrat : 4618-MTPTC-CI-QCNI-106-2026",
+                  "Development Business No IDB 527-05/19",
+                  "avant le 2 avril 2025. 11. Les manifestations")
+    # INVENTED, in the two forms the board really uses: the dialling code, and a label
+    NUMBERS = ("Tel : +50900000000 / +50911111111", "Téléphone : 0000-0000")
+    BARE = re.compile(r"(?<![\w/])\(?\+?\(?\d[\d\s().\-/]{6,}\d(?!\w)")
+
+    LEGENDS = ("Description des responsabilités", "Profil recherché",
+               "Composition du dossier de candidature", "Autre remarque")
+
+    def _list(self, ids=(1, 2, 3)):
+        """The list as the page serves it: OLDEST FIRST, and the template's
+        number inside its HTML comment."""
+        cards = "".join(
+            '<div class="job-card">'
+            f'<a href="https://emploi.lenouvelliste.com/offre-emploi/{i}/poste-{i}">'
+            '<div class="card mb-3 p-3"><div class="card-body">'
+            f'<h6 class="mb-4"><strong>Poste numéro {i}</strong></h6>'
+            f'<div class="text-muted small mt-3">Employeur {i}</div>'
+            "</div></div></a></div>" for i in ids)
+        return ('<html><body><input id="search-input">'
+                "<!-- 44554 résultat(s) -->"
+                "<p>Plus de 4500 offres d'emploi vous attendent</p>"
+                "<div>OCCED'H 80 jobs</div><div>CEP 80 jobs</div>"
+                "<div>SOFALAM 80 jobs</div>"
+                f"{cards}</body></html>")
+
+    def _ad(self, blocks=None, tail="", lower_case_date=False):
+        """One advert: the container, four LIVE legends, a fifth inside a
+        comment, and an inline base64 payload."""
+        blocks = blocks or {}
+        body = ""
+        for name in self.LEGENDS:
+            inner = blocks.get(name, ".")       # the board's own way of leaving a section empty
+            body += f"<legend><strong> {name} </strong></legend><p>{inner}</p>"
+        date = "16 octobre 2026" if lower_case_date else "28 Septembre 2024"
+        body = body.replace(
+            "<p>.</p>", f"<p>Candidature au plus tard le {date}. {tail}</p>", 1)
+        return ("<html><head><title>Un poste</title></head><body>"
+                "<h3>Un poste de spécialiste</h3><p>Ministère de l'Exemple</p>"
+                '<div class="row"><div class="col-lg-8 job-post">'
+                '<img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/">'
+                f"{body}"
+                "<!-- <legend><strong> Lieu de dépôt des candidatures </strong>"
+                "</legend><p>une adresse</p> -->"
+                '</div><div class="col-lg-4">Créez une alerte emploi</div>'
+                "</div></body></html>")
+
+    def _run(self, mod, argv, body):
+        import io
+        import contextlib
+        real = mod.request
+        mod.request = lambda _u, _b=body: (200, _b)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.main(argv)
+        finally:
+            mod.request = real
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue()
+
+    def test_the_fixture_carries_the_shapes_this_class_judges(self):
+        """**A guard green on a fixture it emptied itself proves nothing.** Each
+        positive contingent is asserted before any verdict is read."""
+        lst, ad = self._list(), self._ad()
+        self.assertEqual(lst.count('class="job-card"'), 3)
+        self.assertEqual(lst.count("80 jobs"), 3,
+                         "the repeated tile is what proves the literal")
+        self.assertIn("<!-- 44554", lst)
+        self.assertEqual(ad.count("<legend>"), 5,
+                         "four live legends and one inside a comment")
+        self.assertEqual(ad.count('class="col-lg-8 job-post"'), 1)
+        self.assertIn("base64,", ad)
+
+    def test_the_bare_motif_destroys_five_references_and_the_anchor_takes_none(self):
+        """The contre-épreuve, on the same strings, with both motifs."""
+        import emploilenouvelliste as m
+        prose = " ".join(self.REFERENCES)
+        bare = self.BARE.findall(prose)
+        self.assertGreaterEqual(
+            len(bare), 5,
+            f"the bare motif takes {len(bare)} string(s) of these references; it took 5 "
+            f"on the 13 adverts measured, so the fixture no longer carries the defect")
+        self.assertEqual(
+            m.PHONE_RE.findall(prose), [],
+            "the anchored motif destroyed an administrative reference — a grant number, "
+            "a contract number or a publication reference is how a candidate names the "
+            "post, and the date guard used elsewhere saves none of them")
+
+    def test_the_anchor_still_takes_a_number_in_both_forms_the_board_writes(self):
+        """**The other direction**: an anchor that redacts nothing is not caution,
+        it is a contact that leaves."""
+        import emploilenouvelliste as m
+        for prose in self.NUMBERS:
+            cleaned, took = m.scrub(prose)
+            self.assertIn("telephone", took, f"no number taken from {prose!r}")
+            self.assertNotIn("0000", cleaned or "",
+                             f"a digit of the number survived in {cleaned!r}")
+
+    def test_a_heading_inside_a_comment_is_not_a_live_block(self):
+        import emploilenouvelliste as m
+        rows, err = self._run(m, ["ad", "--url",
+                                  "https://emploi.lenouvelliste.com/offre-emploi/7/x"],
+                              self._ad())
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("lieu_de_d_p_t_des_candidatures", rows[0],
+                         "a heading that only exists inside an HTML comment was read "
+                         "as a block of the advert")
+        self.assertIn("4 live block(s)", err)
+        self.assertNotIn("Créez une alerte emploi", json.dumps(rows[0], ensure_ascii=False),
+                         "the aside leaked into the advert: the body is bounded by "
+                         "`col-lg-8 job-post`, and unbounded the last block swallowed it")
+
+    def test_a_bare_full_stop_is_emitted_as_null_and_never_as_content(self):
+        import emploilenouvelliste as m
+        rows, err = self._run(m, ["ad", "--url",
+                                  "https://emploi.lenouvelliste.com/offre-emploi/7/x"],
+                              self._ad())
+        vides = [k for k, v in rows[0].items()
+                 if k.startswith(("profil", "composition", "autre"))]
+        self.assertTrue(vides, "the empty sections are not in the record at all")
+        for k in vides:
+            self.assertIsNone(rows[0][k],
+                              f"{k} carries {rows[0][k]!r}: a bare full stop is how this "
+                              f"board leaves a section empty, and `if value` emits it")
+        self.assertIn("1 filled", err)
+
+    def test_the_prose_deadline_is_read_in_either_case(self):
+        """**The case was the whole defect.** Advert 118 writes «16 octobre 2026»
+        in lower case; the capitalised motif rendered zero on it."""
+        import emploilenouvelliste as m
+        for lower, attendu in ((False, "28 Septembre 2024"), (True, "16 octobre 2026")):
+            rows, _err = self._run(
+                m, ["ad", "--url", "https://emploi.lenouvelliste.com/offre-emploi/7/x"],
+                self._ad(lower_case_date=lower))
+            self.assertEqual(rows[0]["deadline_stated_in_prose"], attendu,
+                             "the month's case decided whether the date was seen")
+            self.assertEqual(rows[0]["deadline_basis"], "au plus tard",
+                             "the record must name the phrase the date was read from: "
+                             "it is prose-derived and the board declares no date field")
+
+    def test_a_date_with_no_deadline_phrase_before_it_is_not_a_closing_date(self):
+        import emploilenouvelliste as m
+        self.assertEqual(
+            m.deadline_of("Le projet a démarré le 3 Mars 2023 et porte sur deux ans."),
+            (None, None),
+            "a date with no deadline phrase within 120 characters became a closing date")
+
+    def test_the_list_is_emitted_newest_first(self):
+        """The page serves OLDEST first: without the sort `--limit` returns the
+        oldest adverts, all long closed, and the board reads as dead."""
+        import emploilenouvelliste as m
+        rows, err = self._run(m, ["jobs"], self._list((1, 2, 3)))
+        self.assertEqual([r["id"] for r in rows], ["3", "2", "1"])
+        self.assertEqual([r["list_position"] for r in rows], [3, 2, 1],
+                         "`list_position` must keep the board's own order")
+        src = (pathlib.Path(SCRIPTS) / "emploilenouvelliste.py").read_text(
+            encoding="utf-8")
+        self.assertIn("reverse=True", src)
+        self.assertIn("OLDEST first", err)
+
+    def test_no_template_number_is_ever_read_as_a_count(self):
+        """Three candidate witnesses, all false. The run must NAME them rather
+        than quietly not use them."""
+        import emploilenouvelliste as m
+        _rows, err = self._run(m, ["jobs"], self._list((1, 2, 3)))
+        self.assertIn("states NO count", err)
+        for faux in m.TEMPLATE_NUMBERS:
+            self.assertIn(faux, err,
+                          f"«{faux}» is not named in the run, so the next session has "
+                          f"nothing telling it this number is a template literal")
+
+    def test_the_contiguity_witness_certifies_by_presence_and_is_silent_by_absence(self):
+        """**A marker informs only in the direction it cannot be there by
+        accident.** Contiguous 1..N with N read cannot survive a parse that
+        dropped one; a gap admits a deleted advert just as well."""
+        import emploilenouvelliste as m
+        _rows, err = self._run(m, ["jobs"], self._list((1, 2, 3)))
+        self.assertIn("extraction is COMPLETE", err)
+        self.assertIn("OUR OWN", err, "the witness must say it is not the board's count")
+        _rows, trou = self._run(m, ["jobs"], self._list((1, 3)))
+        self.assertNotIn("COMPLETE", trou)
+        self.assertIn("does NOT say the parse failed", trou,
+                      "a gap was reported as a defect, when a deleted advert leaves "
+                      "the same gap and nothing here separates the two")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
