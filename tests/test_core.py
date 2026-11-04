@@ -14198,6 +14198,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
     # computed population cannot give.
     ENTRIES = {
         "aboutsvg": ("get", "https://h.example/x?p=1"),
+        "caglobal": ("get", "https://h.example/x?p=1"),
         "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
         "ats": ("gate", "https://h.example/x?p=1"),
@@ -56794,6 +56795,213 @@ class TheIssueDescribedARouteThatNoLongerExistsAndTwoWitnessesAgreeOnTheNewOne(
         self.assertEqual(code, 0, err)
         self.assertNotIn("the two witnesses", err)
         self.assertIn("the API states 1", err)
+
+
+class TheCountryLivesInTheTitleAndTheTaxonomyNamesOnlyRegions(unittest.TestCase):
+    """#786. The issue asked for a country filter off the ad's place, and the
+    field it designates cannot give one.
+
+    Measured 2026-11-04 on the whole population of 199 records — two REST
+    pages, 0 overlapping id, so not a sample: `jobpost_location` **declares 70
+    terms of which 13 are assigned**, and all seventy are REGIONS at every
+    granularity, 57 of them multi-region names glued by a `#`. **No country is
+    named among them, not even South Africa, which carries 34 ads.** The three
+    other taxonomies the type declares answer no better: `jobpost_category` is
+    a sector, and `jobpost_job_type` and `jobpost_tag` are declared by the
+    schema and EMPTY on 199/199.
+
+    So the country is derived from the TITLE. These cases pin that, and they
+    pin the two things that make the derivation safe rather than plausible.
+    """
+
+    POST = {
+        "id": 18124,
+        "date": "2026-11-04T12:22:45",
+        "date_gmt": "2026-11-04T10:22:45",
+        "link": ("https://www.caglobalint.com/recruitmentafrica/job/"
+                 "accountant-shipping-logistics-antananarivo-madagascar/"),
+        "status": "publish",
+        "jobpost_location": [41],
+        "title": {"rendered": "Accountant (Shipping &#038; Logistics) | "
+                              "Antananarivo, Madagascar"},
+        "content": {"rendered": "<p>Apply to recruiter@caglobalint.com "
+                                "today.</p>"},
+    }
+    REGIONS = {41: "Southern Africa"}
+
+    def setUp(self):
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "skills", "job-scan", "scripts"))
+        import caglobal
+        self.m = caglobal
+
+    def test_the_region_the_host_states_never_becomes_a_country(self):
+        """The record carries BOTH, and only one of them is a country.
+
+        Madagascar's ad is filed by the host under «Southern Africa». Emitting
+        that region as the country would put an Indian-Ocean island into
+        southern Africa's ledger; dropping it would lose what the host asserts.
+        """
+        r = self.m.card(dict(self.POST), self.REGIONS)
+        self.assertEqual(r["country"], "MG")
+        self.assertEqual(r["region_stated"], ["Southern Africa"])
+        self.assertIsNone(r["region_in_title"])
+
+    def test_a_region_in_the_title_leaves_the_country_null(self):
+        """About four in ten unresolved titles state a region instead."""
+        for title, region in (("Underground Project Manager (FIFO / Hard Rock) "
+                               "– Southern Africa", "southern africa"),
+                              ("Production Manager (Open Pit) – West "
+                               "Africa", "west africa"),
+                              ("AI Data Engineer – Sub-Saharan Africa "
+                               "– Remote", "sub-saharan africa")):
+            iso, matched, reg = self.m.place_of(title)
+            self.assertIsNone(iso, title)
+            self.assertIsNone(matched, title)
+            self.assertEqual(reg, region, title)
+
+    def test_an_unnamed_place_is_never_guessed(self):
+        """31 of 199 titles name no place whatever, and they emit null.
+
+        A country invented for them would be a false row in a real country's
+        ledger, which is worse than an absent one.
+        """
+        for title in ("Finance Manager", "CFO", "VP:Exploration",
+                      "Senior Civil Engineer", "Investment Associate"):
+            self.assertEqual(self.m.place_of(title), (None, None, None), title)
+
+    def test_the_longest_key_wins_and_both_congos_depend_on_it(self):
+        """**Without the length, `guinea` captures `Guinea-Bissau`.**
+
+        And the sharpest pair is the two Congos: a bare `congo` would file a
+        Kinshasa advertisement under Brazzaville. Measured 0 ads for either on
+        2026-11-04, and the guard exists anyway — a window that is clean today
+        is not a property of the board.
+        """
+        for title, want in (
+                ("Agency Manager (Shipping) – Guinea-Bissau, West Africa",
+                 "GW"),
+                ("Contract Manager (Mining / FIDIC) – Guinea", "GN"),
+                ("Field Officer – Democratic Republic of Congo", "CD"),
+                ("Field Officer – Republic of Congo", "CG"),
+                ("Programme Lead – South Sudan", "SS"),
+                ("Programme Lead – Sudan", "SD")):
+            self.assertEqual(self.m.place_of(title)[0], want, title)
+
+    def test_the_word_boundary_is_necessary_and_two_pairs_prove_it(self):
+        """**Without it, `niger` captures `Nigeria` and `mali` captures
+        `Malawi`** — the trap this repository already paid for with `^NAM`
+        returning Panama.
+
+        Neither Niger nor Mali is in the 2026-11-04 stock. They are in the
+        table on purpose: it says what the tool can READ, never what the board
+        serves — which is also what will serve Djibouti the day a Djiboutian
+        advertisement appears, instead of emitting it as null.
+        """
+        for title, want in (
+                ("Logistics Manager (Freight) – Nigeria", "NG"),
+                ("Country Sales Manager – Niger", "NE"),
+                ("Packaging Supervisor (Uranium Mining) – Malawi", "MW"),
+                ("Mine Manager – Mali", "ML")):
+            self.assertEqual(self.m.place_of(title)[0], want, title)
+
+    def test_the_country_wins_over_a_city_in_the_same_title(self):
+        """`– Cairo, Egypt` must not resolve through `cairo`.
+
+        And a city ALONE still resolves: six Johannesburg ads name no country
+        on 2026-11-04, and without the city table they would emit null.
+        """
+        self.assertEqual(self.m.place_of(
+            "Director, Treasury – Cairo, Egypt"), ("EG", "egypt", None))
+        self.assertEqual(self.m.place_of(
+            "Storeman (Stores / Dispatch) – Johannesburg"),
+            ("ZA", "johannesburg", None))
+
+    def test_the_motifs_run_on_the_unescaped_title(self):
+        """172 of 199 titles carry an entity, so the raw field is not the text.
+
+        The same string has several forms at the point of call; a motif that is
+        right on one returns zero on the other, with no error.
+        """
+        r = self.m.card(dict(self.POST), self.REGIONS)
+        self.assertIn("&", r["title"])
+        self.assertNotIn("&#038;", r["title"])
+
+    def test_it_emits_date_gmt_because_the_two_dates_differ_on_all_199(self):
+        """A ledger that mixes zones cannot be compared with itself."""
+        r = self.m.card(dict(self.POST), self.REGIONS)
+        self.assertEqual(r["posted"], "2026-11-04T10:22:45Z")
+        self.assertEqual(r["posted_local_stated"], "2026-11-04T12:22:45")
+        self.assertNotEqual(r["posted"][:-1], r["posted_local_stated"])
+
+    def test_the_address_is_the_hosts_own_link_and_is_never_composed(self):
+        p = dict(self.POST)
+        p["link"] = "https://www.caglobalint.com/recruitmentafrica/job/other/"
+        self.assertEqual(self.m.card(p, self.REGIONS)["url"], p["link"])
+
+    def test_a_contact_leaves_the_description_and_the_record_says_so(self):
+        """107 of 199 descriptions carry an e-mail address.
+
+        And the key is ABSENT when nothing was taken: a board that is merely
+        poor must not read like a board we censored.
+        """
+        r = self.m.card(dict(self.POST), self.REGIONS)
+        self.assertNotIn("recruiter@caglobalint.com", r["description"])
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertEqual(r["withheld_fields"], ["email"])
+        self.assertTrue(r["contacts_withheld"])
+        clean = dict(self.POST)
+        clean["content"] = {"rendered": "<p>No way to reach anyone here.</p>"}
+        q = self.m.card(clean, self.REGIONS)
+        self.assertIsNone(q["withheld_fields"])
+        self.assertNotIn("contacts_withheld", q)
+
+    def test_a_country_filter_that_finds_nothing_says_what_it_could_not_resolve(self):
+        """**The case this adapter exists for, and it is read off the RUN.**
+
+        `--country DJ` answering «0 ads» would be read as «this board has
+        nothing for Djibouti», when 71 of 199 titles yielded no country at
+        all. That is a zero that asserts instead of missing — and Djibouti is
+        the very country that put #786 at the top of the owner's 27.09 order.
+
+        The message is a property of the run and not of the file, so it is
+        piloted and read off stderr: searching the source for the phrase would
+        accuse a sound tool, the f-string being composed.
+        """
+        import contextlib
+        import io as _io
+        posts = [dict(self.POST, id=1, title={"rendered": "Mine Manager "
+                                              "– Zambia"}),
+                 dict(self.POST, id=2, title={"rendered": "Finance Manager"})]
+        pages = [json.dumps(posts), json.dumps([])]
+        real_get, real_regions = self.m.get, self.m.region_names
+        real_v = self.m.robots_verdict
+        hd = {"X-WP-Total": "199", "X-WP-TotalPages": "2"}
+        try:
+            # **`cmd_jobs` demande `verdict()` AVANT tout le reste**, donc
+            # stuber `get` ne suffit pas : le banc sortait quatre fois sur le
+            # reseau, et c'est la garde du depot qui l'a dit, pas une relecture.
+            self.m.robots_verdict = lambda h: {"sweep": True, "reason": "stub"}
+            self.m.region_names = lambda: dict(self.REGIONS)
+            self.m.get = lambda url: (200, pages.pop(0) if pages else "[]", hd)
+            a = argparse.Namespace(country="DJ", since_days=3650, max_pages=3,
+                                   per_page=100, limit=None, delay=0)
+            err = _io.StringIO()
+            with contextlib.redirect_stdout(_io.StringIO()):
+                with contextlib.redirect_stderr(err):
+                    try:
+                        self.m.cmd_jobs(a)
+                    except SystemExit:
+                        pass
+        finally:
+            self.m.get, self.m.region_names = real_get, real_regions
+            self.m.robots_verdict = real_v
+        out = err.getvalue()
+        self.assertIn("no vacancy resolved to DJ", out)
+        self.assertIn("yielded no country", out)
+        self.assertIn("not about the board", out)
+        self.assertIn("1 of 2 title(s) yielded NO country", out)
 
 
 class TheStatedTotalIsAnArchiveAndTheTwoDatesDifferByADayAtMidnight(unittest.TestCase):
