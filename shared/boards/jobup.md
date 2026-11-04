@@ -155,9 +155,61 @@ specimen, and a peer established the two jobs.ch rows and the stale gzip hit:
 | host | encoding | what was served |
 | :-- | :-- | :-- |
 | jobup | `identity` | **Hit, 51.6 h stale** — the reported symptom (measured here) |
-| jobup | `gzip` | 5 Hit / 5 Miss, and one HIT serving **11 ads where the origin served 12** (reported) |
+| jobup | `gzip` | of ten keys, **two organic HITS and both STALE** — see the ventilation below (reported) |
 | jobs.ch | `identity` | **Hit, fresh to the second** — three keys agreeing to the unit (reported) |
 | jobs.ch | `gzip` | Miss, so fresh by construction (reported) |
+
+### 2026-11-04, same day — the ventilation, because three of those HITS were our own writes
+
+**TWO HANDS MEASURED THIS HOST INSIDE THE SAME TWENTY MINUTES WITHOUT SAYING WHICH
+KEYS THEY TOUCHED, AND EACH READ THE OTHER'S WRITES AS THE WORLD.** The ten gzip
+keys this card reports were requested at ~10:2x–10:3x UTC; a peer's probe ran at
+~10:28–10:33. Crossing the two records closes it, because **a MISS on our side
+means we populated that entry**:
+
+| key | our gzip read | so the peer's HIT was |
+| :-- | :-- | :-- |
+| `Agile Coach` | **MISS** | **ours**, minutes old |
+| `Tech Lead` | **MISS** | **ours** |
+| `Full Stack` | **MISS** | **ours** |
+| `Scrum Master` | HIT, `Age` 11.5 h | **organic** — the entry predates us |
+| `PMO` | *not in our ten* | **organic** |
+
+**SO THE «&nbsp;old AND correct&nbsp;» SPECIMEN COLLAPSED.** This card said `Agile
+Coach` was served from cache with 160 ads identical to the origin — *old and
+right*. The entry was **our own request of ten minutes earlier**: it equalled the
+origin because it CAME from the origin. The claim it supported — that a guard must
+not call an old body wrong — **stands on an ANALYTIC argument and needs no
+specimen**: if nothing was published for N hours, a snapshot N hours old equals
+the fresh one. Only the word *measured* is retracted.
+
+**AND THE TWO ORGANIC HITS WE DID MEASURE ARE BOTH STALE, which is a shape and
+not an accident** (both reported by the peer, not re-measured here):
+
+| key | from cache | fresh key | gap |
+| :-- | :-- | :-- | :-- |
+| `Scrum Master` | 11 ads, newest 2026-10-23 | 12 ads, newest 2026-11-04 02:02 | **one ad really missed**, published before both reads |
+| `infirmier` (**off-recipe**, never requested by either hand) | 1 807 ads, newest 2026-10-29 | 1 824 ads, newest 2026-11-04 10:12 | **17 ads, six days behind — on a key of 1 824 results** |
+
+`infirmier` is the specimen that cannot be contaminated: nobody here had ever
+asked for it in any encoding, so its warm entry was populated by real traffic.
+**And it was six days behind.** So «&nbsp;real traffic keeps the common keys
+warm&nbsp;» is true about WARMTH and says nothing about FRESHNESS — **warm is not
+fresh** — which removes the last hope that changing the encoding would be enough.
+
+**AND IT OPENS A LIMIT OF THE GUARD, DECLARED HERE BECAUSE A GUARD ONE DOES NOT
+KNOW THE REACH OF READS AS IF IT COVERED EVERYTHING.** `Age` bounds what the EDGE
+held; it says nothing about what the ORIGIN served INTO the edge. Two branches,
+and nothing here decides between them:
+
+- **`Age` high** — the edge kept it long: the guard fires and does its work.
+- **`Age` low** — the edge re-fetched recently and the ORIGIN handed it something
+  old, i.e. a cache on the origin side: **the guard does not fire, and cannot**.
+
+**NOT ESTABLISHED:** which of the two `infirmier` was. The figure is lost for that
+specimen — `bin/fetch-body.py`, the tool §3 bis prescribes, records `x-cache` and
+**not** `age`, which is #1262 — and the entry has since been populated by the
+control itself, so the specimen is consumed and the reading cannot be retaken.
 
 So `identity` is not inherently a cold variant: on the sibling host it is warm
 AND current. **The defect is a HIT ON A LONG-LIVED ENTRY**, and whether a request
