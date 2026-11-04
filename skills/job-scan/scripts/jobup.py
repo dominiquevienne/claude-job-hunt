@@ -132,6 +132,11 @@ EXIT_STALE = 5
 # un seul HIT NON CONTAMINE, a 11.5 h — les huit autres lectures gzip etaient
 # des MISS, donc notre propre ecriture, donc muettes sur la chaleur de la
 # variante. **UN specimen, et le fosse ne porte donc pas le seuil.**
+# **ET LA LIGNE SOUS LE SEUIL SORTIRA SOUVENT, CE QUI N EST PAS UN DEFAUT DE
+# CALIBRAGE : cinq entrees ORGANIQUES sur cinq ont ete mesurees perimees de deux a
+# six jours sur cet hote.** `shared/boards/jobup.md` porte les cinq et dit pourquoi
+# la ligne tire si souvent — a lire AVANT de monter ce seuil, qui eteindrait le seul
+# temoin que nous ayons du defaut au lieu de le reduire.
 # **SA RAISON EST L USAGE, et c est la seule qui tienne :** un balayage quotidien ne
 # peut rien apprendre d un corps plus vieux que son propre intervalle — c est
 # exactement le symptome de #1260, trois balayages sans une annonce neuve.

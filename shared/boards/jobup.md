@@ -211,6 +211,64 @@ specimen — `bin/fetch-body.py`, the tool §3 bis prescribes, records `x-cache`
 **not** `age`, which is #1262 — and the entry has since been populated by the
 control itself, so the specimen is consumed and the reading cannot be retaken.
 
+### 2026-11-04, later the same day — the branch is CLOSED, and freezing is the RULE here
+
+**BRANCH (b) IS REFUTED, ON THE SAME KEY, and `Age` was not needed to do it.** The
+question above asked which of the two branches `infirmier` was, and named `Age` as
+the discriminant. A peer closed it without one: keep the ORIGIN key and change the
+VARIANT, which gives a different edge entry for the same origin request.
+
+| `?term=infirmier` | X-Cache | ads | newest |
+| :-- | :-- | --: | :-- |
+| gzip, the organic entry | **Hit** | 1 807 | 2026-10-29 15:33 |
+| gzip, a fresh key | Miss | **1 824** | 2026-11-04 10:12 |
+| **same key, `identity` variant** | Miss | **1 824** | 2026-11-04 10:12 |
+
+The origin therefore serves CURRENT content for that exact key, so the 1 807-ad
+body was produced earlier and **held by the EDGE** — branch (a), a high `Age`,
+**the guard fires and does its work**. So the witness is NOT insufficient, and
+this is written ESTABLISHED on that control rather than on an `Age` nobody kept.
+*(Residual assumption, named: that an origin-side cache would not itself be keyed
+on `Accept-Encoding`. Nothing measured contradicts it, and an origin cache keyed
+that way would be unusual.)* The `identity` variant of that key answering MISS
+also re-crosses the original cause by another road: nothing but us asks for
+`identity` on this host.
+
+**AND THERE IS NO «&nbsp;old AND correct&nbsp;» SPECIMEN — three attempts out of
+three came back stale.** Three Swiss niche trades, off-recipe, never requested by
+either hand, so organic entries (all reported by the peer):
+
+| key | from cache | fresh |
+| :-- | :-- | :-- |
+| `horloger` | 274 ads, 02.11 16:10 | **262** ads, 04.11 11:27 |
+| `ramoneur` | 11 ads, 29.10 12:01 | 13 ads, 04.11 09:47 |
+| `fromager` | 28 ads, 30.10 07:47 | 34 ads, 04.11 02:04 |
+
+So the analytic argument is the ONLY support that clause has, which is exactly how
+it is now written. **And `horloger` carries a display trap worth keeping: its total
+FALLS, 274 → 262, because old advertisements expire.** A total that moves proves
+two different snapshots and says NOTHING about which way freshness runs — this
+card's own first table shows the stale body with the HIGHER total (1360 against
+1322) and `infirmier` with the LOWER one (1 807 against 1 824). **Only the date
+carries the direction.**
+
+**FIVE ORGANIC ENTRIES OUT OF FIVE WERE STALE, BY TWO TO SIX DAYS** — `Scrum
+Master`, `infirmier`, `horloger`, `ramoneur`, `fromager`, our own three writes
+removed. So this is no longer «&nbsp;the gzip variant can freeze&nbsp;»: **on
+everything that could be measured without contaminating it, it IS frozen, and
+freezing is the rule rather than the exception.**
+
+> **WHICH IS WHY THE `cache age` LINE WILL APPEAR ON ALMOST EVERY PASS, ON SEVERAL
+> TERMS — AND THAT IS NOT A CALIBRATION FAULT.** It is written here in advance
+> because the next hand will see it everywhere and be tempted to raise the
+> threshold until it quiets down, and §4 warns that *a warning which always fires
+> is no better than one that never fires, and is harder to remove because it looks
+> prudent.* **The reason it fires is the host's normal regime: an edge cache
+> several days deep, measured five times out of five.** Raising the threshold would
+> not reduce the defect, it would hide the only witness we have of it. The code
+> threshold is a separate matter and already has its own reason — a daily sweep
+> cannot learn anything from a body older than its own interval.
+
 So `identity` is not inherently a cold variant: on the sibling host it is warm
 AND current. **The defect is a HIT ON A LONG-LIVED ENTRY**, and whether a request
 lands on one depends on the keyspace we inhabit and on each key's own traffic —
