@@ -56889,22 +56889,32 @@ class TheCountryLivesInTheTitleAndTheTaxonomyNamesOnlyRegions(unittest.TestCase)
                 ("Programme Lead – Sudan", "SD")):
             self.assertEqual(self.m.place_of(title)[0], want, title)
 
-    def test_the_word_boundary_is_necessary_and_two_pairs_prove_it(self):
-        """**Without it, `niger` captures `Nigeria` and `mali` captures
-        `Malawi`** — the trap this repository already paid for with `^NAM`
-        returning Panama.
+    def test_the_word_boundary_is_necessary_and_only_two_cases_prove_it(self):
+        """**And the four country pairs do NOT prove it — the length does.**
 
-        Neither Niger nor Mali is in the 2026-11-04 stock. They are in the
-        table on purpose: it says what the tool can READ, never what the board
-        serves — which is also what will serve Djibouti the day a Djiboutian
-        advertisement appears, instead of emitting it as null.
+        Mutation measured 2026-11-04: stripping the boundary and keeping
+        `sorted(key=len)` left `Nigeria`/`Niger` and `Malawi`/`Mali` GREEN,
+        because `nigeria` is longer than `niger` and wins before it. So the
+        boundary is a SECOND LAYER, and a case that cannot tell the two apart
+        promises more than it proves — this one used to be named for the pairs.
+
+        What isolates it is a word that CONTAINS a key and is not itself a
+        key, where length can do nothing: **`Woman` contains `oman`.** Without
+        the boundary, «Woman in Mining Leadership Programme» — an entirely
+        ordinary title on a mining board — files as **Oman**, and `Romania`
+        does too. Both are measured below, and both are green only because of
+        the look-around.
         """
         for title, want in (
-                ("Logistics Manager (Freight) – Nigeria", "NG"),
-                ("Country Sales Manager – Niger", "NE"),
-                ("Packaging Supervisor (Uranium Mining) – Malawi", "MW"),
-                ("Mine Manager – Mali", "ML")):
+                ("Logistics Manager (Freight) \u2013 Nigeria", "NG"),
+                ("Country Sales Manager \u2013 Niger", "NE"),
+                ("Packaging Supervisor (Uranium Mining) \u2013 Malawi", "MW"),
+                ("Mine Manager \u2013 Mali", "ML")):
             self.assertEqual(self.m.place_of(title)[0], want, title)
+        # Les deux seuls cas que la LONGUEUR ne sauve pas.
+        for title in ("Woman in Mining Leadership Programme",
+                      "Country Manager \u2013 Romania"):
+            self.assertIsNone(self.m.place_of(title)[0], title)
 
     def test_the_country_wins_over_a_city_in_the_same_title(self):
         """`– Cairo, Egypt` must not resolve through `cairo`.
