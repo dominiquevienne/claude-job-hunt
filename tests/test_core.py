@@ -14198,6 +14198,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
     # computed population cannot give.
     ENTRIES = {
         "aboutsvg": ("get", "https://h.example/x?p=1"),
+        "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
         "ats": ("gate", "https://h.example/x?p=1"),
         "bumeran": ("get", "https://h.example/x?p=1"),
@@ -56793,6 +56794,303 @@ class TheIssueDescribedARouteThatNoLongerExistsAndTwoWitnessesAgreeOnTheNewOne(
         self.assertEqual(code, 0, err)
         self.assertNotIn("the two witnesses", err)
         self.assertIn("the API states 1", err)
+
+
+class TheStatedTotalIsAnArchiveAndTheTwoDatesDifferByADayAtMidnight(unittest.TestCase):
+    """**#712, St Lucia Business Online — et le total annonce est le piege, pas le cadeau.**
+
+    La liste est la route REST que la fiche nommait « the adapter's first line », et elle
+    porte `X-WP-Total` : un compte que le site enonce lui-meme, ce que §4 exige pour qu un
+    zero ou un partiel veuille dire quelque chose.
+
+    **MAIS C EST UNE ARCHIVE ET PAS UN INVENTAIRE.** Mesure du 2026-11-04 : la categorie
+    `job-vacancies` annonce **3 594** posts sur **36** pages a 100 par page, et la page UNE
+    couvre a elle seule **2026-03-03 a 2026-11-03** — huit mois. Cabler ca comme la porte
+    de completude rendrait toute passe partielle POUR TOUJOURS, ce que §4 avertit : *un
+    avertissement qui tire toujours ne vaut pas mieux qu un qui ne tire jamais, et il est
+    plus dur a retirer parce qu il a l air prudent.* Ce que cet adaptateur appelle complet
+    est donc **d atteindre la borne de `--since-days`**, chose qu une passe peut etablir.
+
+    *Le temoin garde sa place : le `count` de la categorie et l en-tete concordent a 3 594
+    — deux nombres de l HOTE, dont aucun n est notre extraction. Ils repondent « cette
+    route est-elle encore toute la categorie », jamais « avons-nous tout lu ».*
+
+    **DEUX DATES, ET ELLES DIFFERENT D UN JOUR A MINUIT — sur LA MOITIE du corpus.** `date`
+    est l heure locale du site, `date_gmt` est UTC, et **25 des 52 enregistrements emis**
+    portaient un jour calendaire different dans les deux champs. Deux mains ont mesure ce
+    board dans la meme heure et rapporte 02.11 et 03.11 : **toutes deux justes, sur des
+    champs differents, et rien dans leur forme ne dit lequel.** Celui-ci emet `date_gmt`,
+    parce qu un registre qui melange les zones ne se compare plus a lui-meme.
+
+    **LE SITE HEBERGE LES ANNONCES D AUTRES TERRITOIRES DANS LEURS PROPRES CATEGORIES** —
+    `trinidad-job-vacancies` (229) et `barbados-vacancy` (230). Mesure : **0 des 100 plus
+    recents** en porte une, et la garde existe quand meme, parce qu une fenetre propre
+    aujourd hui n est pas une propriete du board.
+
+    **ET UNE BRANCHE INERTE SUR LE CORPUS EST DECLAREE ICI PLUTOT QUE DECOUVERTE PLUS
+    TARD :** l expurgation telephone a tire **0 fois sur la passe de 52**, alors qu une
+    mesure plus large voyait `+1 758` dans 6 des 100. Sa couverture repose donc sur le cas
+    ci-dessous et sur cette mesure — pas sur la passe, dont le vert n en dit rien."""
+
+    POST = '{\n "id": 136383,\n "date": "2026-11-02T20:14:36",\n "date_gmt": "2026-11-03T00:14:36",\n "link": "https://www.stluciabusinessonline.com/vacancy-for-marketing-content-coordinator-at-hotel-chocolat/",\n "slug": "vacancy-for-marketing-content-coordinator-at-hotel-chocolat",\n "status": "publish",\n "categories": [\n  132\n ],\n "title": {\n  "rendered": "Vacancy for Marketing &#038; Content Coordinator at hotel chocolat"\n },\n "content": {\n  "rendered": "\\n\\nJOB TITLE: Marketing &amp; Content Coordinator\\nDEPARTMENT: Saint Lucia Marketing\\nREPORTS TO: Marketing Manager &#8211; Saint Lucia (UK Based)\\nLOCATION: Rabot Estate, Soufrière, Saint Lucia (Hybrid: 2 Days On-Site / 3 Days\\nRemote)\\nHOURS/WORKING PATTERN: 40 hours per week (08:30 &#8211; 17:00, Monday to Friday.\\nROLE OVERVIEW\\nWe&#8217;re in need of social &amp; content creation in paradise, delivering originality, authenticity and ethics daily on a unique organic working cacao farm and award winning hotel in Saint Lucia, does that sound like you?\\nWe are seeking an organized, proactive, and visually creative Marketing &amp; Content Coordinator to lead on-island content execution and marketing support for Hotel Chocolat&#8217;s luxury estate and hospitality portfolio in Saint Lucia.\\nReporting directly to the UK-based Marketing Manager, you will primarily serve as the engine behind our digital channels, driving brand presence for Rabot Hotel, Rabot Restaurant, Beaute De Cacao Spa, Project Chocolat, and the historic 140-acre organic working cacao farm; Rabot Estate. Your primary objective is to significantly scale our organic social media publishing cadence to 6+ engaging posts per week across Meta platforms (Instagram, Facebook) and TikTok to continue the brilliant growth of our social organic platforms.\\nTo do this, this role combines on-the-ground mobile content creation with structured digital coordination and the successful candidate should have a proven track record in balancing both. You will spend two dedicated days each week on property in Soufrière capturing the rich, authentic stories of our cacao farm &amp; people, sustainable agroforestry, culinary creations, and luxury guest hotel &amp; tour experiences. During remote production days, you will assist with marketing campaigns via producing design assets in Canva, manage content spreadsheets, scheduling social posts via Brandwatch, and support central marketing campaigns.\\nImportantly, you will act as the on-island liaison for resort department heads, bringing the organizational maturity and diplomatic assertiveness required to coordinate competing marketing briefs while safeguarding brand standards and delivery timelines. We are looking for someone with a proven track record of dealing with senior stakeholders in this manner.\\nJOB ROLE AND RESPONSIBILITIES\\n1. Content Production &amp; Social Media Management (Core Focus)\\nHigh-Cadence Publishing: Plan, produce, and schedule a minimum of 6 high-quality, engaging posts per week across Meta (Instagram, Facebook) and eventually TikTok for Rabot Hotel and Project Chocolat.\\nStorytelling Breadth: Move beyond standard promotional posts to highlight the full depth of the brand: luxury villa living, open-air dining, cacao spa therapies, Project Chocolat tree-to-bar experiences, the 140-acre working farm, and ethical grower partnerships in line with Hotel Chocolat&#8217;s key 3 principles; originality, authenticity and ethics.\\nCentral Asset Library: Continuously catalog raw and edited imagery and B-roll video into a structured Google Drive media bank, building an evergreen library of high-resolution assets.\\nCommunity Interaction: Monitor comments, handle direct messages (DMs) promptly, and engage with user-generated content (UGC) from visiting guests and travel influencers.\\n2. Graphic Design &amp; Collateral Maintenance (Canva)\\nDigital &amp; Print Design: Act as the local design lead using Canva to produce visually refined, on-brand assets including social graphics, digital flyers, guest announcements, and email banners.\\nResort Touchpoints: Coordinate updates and print preparation for on-property marketing materials, including restaurant and bar menus, spa treatment menus, in-room guest collateral, and retail display signage.\\nCentral Brand Alignment: Ensure all visual assets strictly adhere to Hotel Chocolat&#8217;s brand identity, typography, and color palettes with he support of our UK Design Studio.\\n3. Organization, Scheduling &amp; Analytics\\nContent Pipeline Management: Maintain a forward-looking monthly content calendar using shared spreadsheets and Brandwatch, ensuring zero gaps in publishing.\\nPerformance Reporting: Monitor social metrics (reach, engagement rates, follower growth, link clicks) and deliver a concise monthly report highlighting top-performing content and actionable insights.\\n4. Commercial Campaign Support &amp; Stakeholder Coordination\\nPeak Campaign Execution: Partner with the UK Marketing Manager to coordinate 3-6 major commercial campaigns annually (e.g., typically Valentine&#8217;s Day, Easter, Mother&#8217;s Day, Summer Season, Festive Period), ensuring on-site marketing collateral and digital promotion launch in lockstep.\\nCommercial Launches: Support promotional asset capture and local visibility for new luxury estate developments, including The Ridge House (luxury private 2-ved en-suite villa) and The Estate House (private events and wedding venue).\\nSKILLS AND EXPERIENCE\\nEssential:\\nRelevant Experience: 2-4 years of hands-on experience in social media management, content creation, or digital marketing (agency or hospitality/tourism background strongly\\npreferred).\\nCreative Content Creation: Demonstrable ability to shoot high-quality smartphone video and photography, edit engaging vertical videos (Reels/TikToks via CapCut or similar), and write engaging, grammatically accurate copy.\\nDesign Proficiency: Skilled and confident in Canva, with an intuitive eye for typography, layout, visual hierarchy, and brand aesthetics.\\nOrganizational Rigor: Exceptional time-management and prioritization skills; proven track record of managing detailed content calendars and delivering consistent output without micro-management.\\nDiplomatic Backbone: Mature interpersonal communication skills, comfortable interacting with senior, assertive department heads and diplomatically guiding them toward structured marketing processes.\\nRemote Discipline: Proven capability to work productively in a hybrid setting with a quiet,\\ndedicated home workspace and high-speed internet.\\nMobility: Reliable access to transport for traveling to Rabot Estate, Soufrière two days per\\nweek.\\nDesirable:\\nPractical experience utilizing enterprise social media tools (specifically Brandwatch).\\nPrior marketing experience within Caribbean luxury hospitality, eco-tourism, or food &amp; beverage.\\nWorking knowledge of DSLR/mirrorless photography and Adobe Creative Cloud (Photoshop, Lightroom)Desired but definitely not required.\\nApplication Deadline: November 9th, 2026.\\nApply by sending your CV and application to:\\nvacancies@thehotelchocolat.com\\n\\n"\n }\n}'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import stluciabusinessonline
+        self.m = stluciabusinessonline
+
+    def _run(self, pages, entetes=None, **kw):
+        """Drive `cmd_jobs` over canned pages. Through `cmd_jobs`, never a helper."""
+        import argparse
+        import contextlib
+        import io as _io
+        out, err, appels = _io.StringIO(), _io.StringIO(), []
+
+        def faux_get(url):
+            appels.append(url)
+            i = min(len(appels), len(pages)) - 1
+            h = (entetes or {"X-WP-Total": "3594", "X-WP-TotalPages": "36"})
+            return 200, json.dumps(pages[i], ensure_ascii=False), h
+
+        vrai = (self.m.get, self.m.robots_verdict, self.m.time.sleep)
+        self.m.get = faux_get
+        self.m.robots_verdict = lambda h: {"sweep": True, "reason": "test"}
+        self.m.time.sleep = lambda *a, **k: None
+        base = dict(since_days=120, max_pages=3, per_page=100, limit=None, delay=0)
+        base.update(kw)
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                code = self.m.cmd_jobs(argparse.Namespace(**base)) or 0
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            (self.m.get, self.m.robots_verdict, self.m.time.sleep) = vrai
+        return code, out.getvalue(), err.getvalue()
+
+    def _post(self, **ecrase):
+        """La fixture REELLE, dont seules les deux dates sont rapprochees.
+
+        Sa date vieillit, donc la fenetre de `--since-days` la rejetterait et tous
+        les cas deviendraient vides — un banc desarme. **L ECART DE JOUR entre les
+        deux champs est CONSERVE**, puisque c est le piege que cette classe juge.
+        """
+        import datetime
+        p = json.loads(self.POST)
+        # **L ECART DE JOUR EST POSE EXPLICITEMENT, et pas derive d un decalage
+        # d heures depuis `now`.** Ecrit ainsi, il ne se produisait QUE si
+        # `now - 4 h` tombait la veille : le banc s armait ou non selon l heure du
+        # run, ce qui est un banc desarme une fois sur six. La forme REELLE est
+        # celle que l hote sert — local 20:14 la VEILLE, UTC 00:14 le JOUR —
+        # et c est elle qui est reproduite.
+        jour = datetime.datetime.now(datetime.timezone.utc).date()
+        p["date_gmt"] = jour.strftime("%Y-%m-%dT00:14:36")
+        p["date"] = (jour - datetime.timedelta(days=1)).strftime(
+            "%Y-%m-%dT20:14:36")
+        p.update(ecrase)
+        return p
+
+    def test_the_fixtures_arm_the_traps_this_class_judges(self):
+        """Sans ce cas, un vert plus bas certifierait ce qui n a pas tourne."""
+        p = self._post()
+        self.assertIn("&#038;", p["title"]["rendered"], "l entite HTML est le piege")
+        self.assertRegex(p["content"]["rendered"], r"[\w.+-]+@[\w-]+\.[\w.]{2,}",
+                         "la fixture doit porter une adresse REELLE")
+        self.assertNotEqual(p["date"][:10], p["date_gmt"][:10],
+                            "les deux champs doivent differer DE JOUR")
+        self.assertEqual(p["categories"], [self.m.CAT_JOBS])
+        self.assertEqual(self.m.CAT_JOBS, 132)
+        self.assertEqual(sorted(self.m.CAT_AILLEURS), [229, 230])
+
+    def test_the_stated_total_is_reported_as_an_archive_and_never_gates_completeness(self):
+        """Le cœur de ce board : 3 594 posts sur 36 pages, c est une ARCHIVE."""
+        code, out, err = self._run([[self._post()], []])
+        self.assertEqual(code, 0, err)
+        self.assertIn("ARCHIVE and not an inventory", err)
+        self.assertIn("3594", err, "le total du site se DIT")
+        self.assertNotIn("short of", err,
+                         "comparer ce qu on emet a une archive rendrait toute "
+                         "passe partielle pour toujours")
+
+    def test_reaching_the_since_boundary_is_what_complete_means_here(self):
+        vieux = self._post()
+        vieux["date_gmt"] = "2020-01-01T00:00:00"
+        code, out, err = self._run([[self._post(), vieux]])
+        self.assertEqual(code, 0, err)
+        self.assertIn("reached the --since-days boundary", err)
+        self.assertEqual(len([x for x in out.splitlines() if x.strip()]), 1,
+                         "le post hors fenetre ne sort pas")
+
+    def test_not_reaching_the_boundary_is_partial_and_says_so(self):
+        plein = [self._post(id=1000 + i) for i in range(3)]
+        code, out, err = self._run([plein, plein, plein], max_pages=2)
+        self.assertEqual(code, self.m.EXIT_PARTIAL, err)
+        self.assertIn("the boundary was not reached", err)
+        self.assertTrue([x for x in out.splitlines() if x.strip()],
+                        "les lignes sortent AVANT le code, jamais a sa place")
+
+    def test_the_date_emitted_is_utc_because_the_local_one_differs_by_a_day(self):
+        """25 des 52 enregistrements de la passe reelle differaient DE JOUR."""
+        code, out, err = self._run([[self._post()], []])
+        r = json.loads(out.strip())
+        p = self._post()
+        self.assertEqual(r["posted"], p["date_gmt"] + "Z")
+        self.assertTrue(r["posted"].endswith("Z"), "la zone se DIT")
+        self.assertEqual(r["posted_local_stated"], p["date"])
+        self.assertNotEqual(r["posted"][:10], r["posted_local_stated"][:10],
+                            "le champ local est garde A COTE, et il differe")
+
+    def test_the_html_entities_of_the_title_are_undone_for_a_human_reader(self):
+        code, out, err = self._run([[self._post()], []])
+        r = json.loads(out.strip())
+        self.assertIn("&", r["title"])
+        self.assertNotIn("&#038;", r["title"])
+        self.assertNotRegex(r["title"], r"&#?\w+;")
+
+    def test_a_post_of_another_territory_is_not_emitted_as_saint_lucia(self):
+        """Mesure : 0 des 100 plus recents. La garde existe quand meme."""
+        tt = self._post(id=999, categories=[132, 229])
+        code, out, err = self._run([[self._post(), tt], []])
+        self.assertEqual(code, 0, err)
+        ids = [json.loads(x)["id"] for x in out.splitlines() if x.strip()]
+        self.assertNotIn("999", ids,
+                         "une annonce de Trinite emise en `LC` serait l annonce "
+                         "d un autre pays dans ce registre")
+        self.assertIn("another territory's category", err)
+        self.assertIn("trinidad-job-vacancies", err, "la categorie se NOMME")
+
+    def test_a_post_outside_the_asked_category_stops_the_run(self):
+        hors = self._post(id=777, categories=[158])
+        code, out, err = self._run([[hors]])
+        self.assertEqual(code, self.m.EXIT_BROKEN, err)
+        self.assertIn("the filter did not hold", err)
+        self.assertEqual(out, "", "rien ne sort quand le filtre n a pas tenu")
+
+    def test_the_contacts_leave_the_description_and_the_record_says_which(self):
+        code, out, err = self._run([[self._post()], []])
+        r = json.loads(out.strip())
+        self.assertNotRegex(r["description"], r"[\w.+-]+@[\w-]+\.[\w.]{2,}")
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertEqual(r["withheld_fields"], ["email"])
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_the_telephone_branch_is_inert_on_the_corpus_and_is_judged_here(self):
+        """**La cinquieme espece de garde defaillante, declaree.**
+
+        Le marqueur telephone a tire **0 fois sur la passe de 52**, alors qu une
+        mesure plus large voyait `+1 758` dans 6 des 100. Une branche verte a la
+        suite et jamais empruntee par le corpus rend un vert qui se lit
+        «&nbsp;couvert&nbsp;». Ce cas est le seul endroit ou elle est exercee, et
+        il le DIT.
+        """
+        avec = self._post()
+        avec["content"] = {"rendered": "Call us at +1 758 452 1234 to apply today."}
+        code, out, err = self._run([[avec], []])
+        r = json.loads(out.strip())
+        self.assertIn("[telephone withheld]", r["description"])
+        self.assertEqual(r["withheld_fields"], ["telephone"])
+        self.assertNotIn("758 452", r["description"])
+
+    def test_nothing_is_declared_withheld_that_was_never_there(self):
+        propre = self._post()
+        propre["content"] = {"rendered": "<p>No address here, only prose.</p>"}
+        code, out, err = self._run([[propre], []])
+        r = json.loads(out.strip())
+        self.assertIsNone(r["withheld_fields"])
+        self.assertNotIn("contacts_withheld", r,
+                         "la cle est ABSENTE, pas `False` : l emettre a faux "
+                         "declarerait une discretion non exercee")
+
+    def test_the_address_comes_from_the_host_and_is_never_composed(self):
+        """**ET CE CAS A ETE REECRIT PARCE QU IL ETAIT INERTE : sur cet hote, le
+        `link` EGALE aujourd hui ce qu une composition `/<slug>/` produirait.**
+
+        La mutation qui remplace `post["link"]` par
+        `f"https://{HOST}/{post['slug']}/"` revenait donc VERTE — un echantillon ou
+        deux modeles coincident ne tranche rien, et c est la premiere espece de
+        garde defaillante : son vert disait « je n ai pas regarde la ». C est AUSSI
+        ce qui rendrait la composition invisible — elle casserait le jour ou la
+        structure des permaliens change, et rien ne le dirait.
+
+        Le second cas donne donc un `link` que la composition NE PEUT PAS produire
+        — une structure a date, que WordPress sert couramment — et la coincidence
+        du premier est assertee pour que sa disparition se remarque.
+        """
+        code, out, err = self._run([[self._post()], []])
+        r = json.loads(out.strip())
+        reel = json.loads(self.POST)
+        self.assertEqual(r["url"], reel["link"])
+        self.assertTrue(r["url"].startswith("https://www.stluciabusinessonline.com/"))
+        # la coincidence d aujourd hui, assertee pour qu elle ne disparaisse pas
+        # en silence : c est elle qui rendait le cas inerte
+        self.assertEqual(reel["link"].rstrip("/").rsplit("/", 1)[-1], reel["slug"],
+                         "si cette egalite tombe, le cas ci-dessous devient le seul "
+                         "qui discrimine — et c est deja pour ca qu il existe")
+
+        autre = self._post()
+        autre["link"] = ("https://www.stluciabusinessonline.com/2026/11/"
+                         "a-path-no-composition-would-build/")
+        code, out, err = self._run([[autre], []])
+        r2 = json.loads(out.strip())
+        self.assertEqual(r2["url"], autre["link"],
+                         "l adresse vient de `link` et de nulle part ailleurs")
+        self.assertNotIn(autre["slug"], r2["url"],
+                         "une composition sur le `slug` ne peut pas produire ceci")
+
+    def test_the_tags_are_stripped_before_the_entities_are_undone(self):
+        """L ORDRE compte : desechapper d abord ferait naitre des balises."""
+        p = self._post()
+        p["content"] = {"rendered": "<p>a &lt;b&gt;bold&lt;/b&gt; word</p>"}
+        code, out, err = self._run([[p], []])
+        r = json.loads(out.strip())
+        self.assertIn("<b>bold</b>", r["description"],
+                      "un `&lt;b&gt;` est du TEXTE : le desechapper APRES le "
+                      "retrait des balises le preserve, l inverse le mangerait")
+
+    def test_the_rate_is_actually_consulted_and_not_merely_imported(self):
+        """**EXERCE, PAS LU** — la garde du depot lit un NOM, donc `pass` la laisse verte."""
+        import urllib.request
+        attentes = []
+
+        class FauxPace:
+            def __init__(s, host, own=0.0):
+                s.host = host
+
+            def wait(s):
+                attentes.append(s.host)
+
+        class Rep:
+            def __init__(s, c):
+                s._c = c.encode("utf-8")
+                s.headers = {}
+
+            def read(s):
+                return s._c
+
+            def getcode(s):
+                return 200
+
+            def __enter__(s):
+                return s
+
+            def __exit__(s, *a):
+                return False
+
+        vrai = (self.m.Pace, self.m.gate, urllib.request.urlopen)
+        self.m.Pace = FauxPace
+        self.m.gate = lambda url: None
+        self.m._CADENCE.clear()
+        try:
+            urllib.request.urlopen = lambda req, timeout=None: Rep("[]")
+            self.m.get("https://www.stluciabusinessonline.com/wp-json/x")
+            self.m.get("https://www.stluciabusinessonline.com/wp-json/y")
+        finally:
+            (self.m.Pace, self.m.gate) = vrai[0], vrai[1]
+            urllib.request.urlopen = vrai[2]
+            self.m._CADENCE.clear()
+        self.assertEqual(attentes, ["www.stluciabusinessonline.com"] * 2,
+                         "la cadence se consulte A CHAQUE requete — cet hote "
+                         "n ecrit aucun `Crawl-delay`, donc elle est a nous")
 
 
 if __name__ == "__main__":
