@@ -255,17 +255,26 @@ def decompress_body(raw, headers=None):
             enc = ""
     if not enc or enc == "identity":
         return raw
-    # The LAST coding applied is the first to undo, which is why this reads the
-    # tail of the list and not its head.
-    parts = [p.strip() for p in enc.split(",") if p.strip()]
-    if parts and parts[-1] in ("gzip", "x-gzip"):
-        return gzip.decompress(raw)
-    if parts and parts[-1] == "deflate":
-        try:
-            return zlib.decompress(raw)
-        except zlib.error:              # raw deflate, without the zlib wrapper
-            return zlib.decompress(raw, -zlib.MAX_WBITS)
-    raise ValueError(
-        f"Content-Encoding: {enc!r} — this module decodes gzip and deflate and "
-        f"nothing else, and it refuses rather than hand back bytes that would "
-        f"be read as a charset fault one layer down.")
+    # **The LAST coding applied is the first to undo, so this walks the list
+    # BACKWARDS — and it walks ALL of it.** A first version undid only the tail
+    # and returned, which left `Content-Encoding: gzip, deflate` still
+    # gzip-compressed: bytes that would have reached `decode_body` and been read
+    # as a charset fault, which is the exact outcome the refusal below exists to
+    # prevent. The case became reachable the moment `jobup.py` started asking
+    # for `gzip, deflate` (#1260), so it is undone here and asserted in the
+    # suite rather than left as a shape nobody sends today.
+    for part in reversed([p.strip() for p in enc.split(",") if p.strip()]):
+        if part in ("gzip", "x-gzip"):
+            raw = gzip.decompress(raw)
+        elif part == "deflate":
+            try:
+                raw = zlib.decompress(raw)
+            except zlib.error:          # raw deflate, without the zlib wrapper
+                raw = zlib.decompress(raw, -zlib.MAX_WBITS)
+        elif part != "identity":
+            raise ValueError(
+                f"Content-Encoding: {enc!r} — this module decodes gzip and "
+                f"deflate and nothing else, and it refuses on {part!r} rather "
+                f"than hand back bytes that would be read as a charset fault "
+                f"one layer down.")
+    return raw

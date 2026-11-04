@@ -56259,6 +56259,35 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
         self.assertEqual(decompress_body(b"abc", {}), b"abc")
         self.assertEqual(decompress_body(b"abc", {"Content-Encoding": "identity"}), b"abc")
 
+    def test_a_chain_of_codings_is_undone_whole_and_backwards(self):
+        """`jobup.py` asks for `gzip, deflate`, so the chained shape is REACHABLE.
+
+        A first version undid only the tail of the list and returned, leaving a
+        `gzip, deflate` body still gzip-compressed — bytes that reach
+        `decode_body` and are read as a charset fault, which is precisely what
+        the refusal exists to prevent. Found while writing the mutation that
+        would have shown it, not by reading the code.
+        """
+        import gzip as gz
+        import zlib as zl
+        sys.path.insert(0, SCRIPTS)
+        from _decode import decompress_body
+        clair = "éàüç et un JobPosting".encode("utf-8")
+        # applique gzip PUIS deflate : l en-tete les liste dans l ordre d application
+        chaine = zl.compress(gz.compress(clair))
+        self.assertEqual(
+            decompress_body(chaine, {"Content-Encoding": "gzip, deflate"}), clair,
+            "la chaine se defait ENTIERE et a l envers")
+        # et `identity` au milieu d une chaine ne doit pas faire lever
+        self.assertEqual(
+            decompress_body(gz.compress(clair),
+                            {"Content-Encoding": "identity, gzip"}), clair)
+        # un membre inconnu LEVE, meme accompagne d un membre connu
+        with self.assertRaises(ValueError) as pris:
+            decompress_body(gz.compress(clair), {"Content-Encoding": "br, gzip"})
+        self.assertIn("'br'", str(pris.exception),
+                      "le message nomme le MEMBRE fautif, pas seulement la chaine")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
