@@ -57002,10 +57002,40 @@ class TheStatedTotalIsAnArchiveAndTheTwoDatesDifferByADayAtMidnight(unittest.Tes
                          "declarerait une discretion non exercee")
 
     def test_the_address_comes_from_the_host_and_is_never_composed(self):
+        """**ET CE CAS A ETE REECRIT PARCE QU IL ETAIT INERTE : sur cet hote, le
+        `link` EGALE aujourd hui ce qu une composition `/<slug>/` produirait.**
+
+        La mutation qui remplace `post["link"]` par
+        `f"https://{HOST}/{post['slug']}/"` revenait donc VERTE — un echantillon ou
+        deux modeles coincident ne tranche rien, et c est la premiere espece de
+        garde defaillante : son vert disait « je n ai pas regarde la ». C est AUSSI
+        ce qui rendrait la composition invisible — elle casserait le jour ou la
+        structure des permaliens change, et rien ne le dirait.
+
+        Le second cas donne donc un `link` que la composition NE PEUT PAS produire
+        — une structure a date, que WordPress sert couramment — et la coincidence
+        du premier est assertee pour que sa disparition se remarque.
+        """
         code, out, err = self._run([[self._post()], []])
         r = json.loads(out.strip())
-        self.assertEqual(r["url"], json.loads(self.POST)["link"])
+        reel = json.loads(self.POST)
+        self.assertEqual(r["url"], reel["link"])
         self.assertTrue(r["url"].startswith("https://www.stluciabusinessonline.com/"))
+        # la coincidence d aujourd hui, assertee pour qu elle ne disparaisse pas
+        # en silence : c est elle qui rendait le cas inerte
+        self.assertEqual(reel["link"].rstrip("/").rsplit("/", 1)[-1], reel["slug"],
+                         "si cette egalite tombe, le cas ci-dessous devient le seul "
+                         "qui discrimine — et c est deja pour ca qu il existe")
+
+        autre = self._post()
+        autre["link"] = ("https://www.stluciabusinessonline.com/2026/11/"
+                         "a-path-no-composition-would-build/")
+        code, out, err = self._run([[autre], []])
+        r2 = json.loads(out.strip())
+        self.assertEqual(r2["url"], autre["link"],
+                         "l adresse vient de `link` et de nulle part ailleurs")
+        self.assertNotIn(autre["slug"], r2["url"],
+                         "une composition sur le `slug` ne peut pas produire ceci")
 
     def test_the_tags_are_stripped_before_the_entities_are_undone(self):
         """L ORDRE compte : desechapper d abord ferait naitre des balises."""
