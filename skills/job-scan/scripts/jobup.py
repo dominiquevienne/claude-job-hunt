@@ -38,6 +38,50 @@ own block, an expired ad **redirects to its trade's category page** carrying
 twenty valid postings and no mention of the job, `404` never existed, and only
 a plain `200` is the advert. **The block count decides none of it** (#88).
 
+AND THE LIST CAN BE A CACHED BODY OLDER THAN THE SWEEP ITSELF — #1260, measured
+2026-11-04. Both hosts answer `Vary: Accept-Encoding`, so their CDN keys its
+cache per encoding variant, and this adapter asked for `identity` (#71) — a
+variant that, ON THIS HOST, nothing ever refreshed. Ten
+listing keys at one edge POP: the eight served from cache all carried `Age`
+**51.6 h**, to a tenth of an hour, which is one snapshot written at one instant
+— our own sweep two days earlier. On gzip, eight of the ten reads were MISSES,
+so the origin's own answer; **ONE uncontaminated HIT at `Age` 11.5 h** says real
+traffic reaches that variant, and the other HIT was our own write minutes
+earlier. One specimen either way. Status 200, `exit 0`, "ended by itself", well-formed ads: **three daily
+sweeps running with no new advertisement at all, and the only symptom was an
+absence.**
+
+**THE CASE WAS A RED HERRING AND IT LOOKED LIKE THE CAUSE.** The issue reported
+`Chef de projet` frozen where `chef de projet` was fresh, and lowercasing the
+term was the suggested fix. It would have bought one day: changing any
+character makes a NEW key whose `identity` variant is not populated yet, so a
+MISS, so fresh — and `Chef de Projet` and `CHEF DE PROJET`, both CAPITALISED,
+measured fresh the same minute. A fixed key freezes as soon as our own sweep
+populates it, whatever its case.
+
+**AND THE FAILURE MODE IS NOT "identity VERSUS gzip", which is the part that
+outlives the specimen.** Four cells measured 2026-11-04, the jobs.ch pair and the
+stale gzip hit reported by a peer: jobup/`identity` a HIT 51.6 h stale;
+jobup/gzip five HIT and five MISS, one hit serving **11 ads where a fresh key
+served 12**, the twelfth published before both reads; jobs.ch/`identity` a HIT
+**fresh to the second** across three keys; jobs.ch/gzip a MISS. So `identity` is
+not inherently cold — **the defect is a HIT ON A LONG-LIVED ENTRY**, and whether
+we land on one depends on the keyspace we inhabit and on each key's own traffic,
+neither of which we control or can predict, since the four cells behave
+differently under the same declared configuration. **Switching the encoding is a
+move to a keyspace that is better today, not a repair of the mechanism** — right
+to do, and it closes nothing. Which is why the guard is not this remedy's belt:
+it IS the remedy.
+
+So the request asks for gzip and `decompress_body` undoes it, the size reserve
+of #71 being honoured on the DECOMPRESSED body; and **because that remedy could
+go stale in its turn, the symptom has its own guard**: a page served from cache
+older than `MAX_BODY_AGE` makes the run exit `EXIT_STALE` after its rows are on
+stdout, saying which page and what age. The witness is the `Age` the host
+declares, never a publication date — page 1 is sorted by RELEVANCE, and
+`Laravel` and `Symfony` carry a newest ad of 30.10 and 19.10 on BOTH variants,
+so a date-based guard would redden on correct data.
+
     jobup.py search --site jobup --term developpeur --pages 2
     jobup.py search --site jobs-ch --term entwickler --location Bern
     jobup.py ad --url https://www.jobup.ch/fr/emplois/detail/<uuid>/
@@ -53,7 +97,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from _decode import decode_body
+from _decode import decode_body, decompress_body
 from _ldjson import label, one, postings
 
 from _locations import drop_report
@@ -73,6 +117,61 @@ from _ua import UA
 
 DEFAULT_SITE = "jobup"
 EXIT_PARTIAL = 6
+# **5, et il est DECLARE parce qu un code hors contrat se lit comme le voisin le
+# plus proche.** Le contrat de ces adaptateurs, mesure sur les 238 du depot par
+# l arbre et non au grep : 2 casse, 3 disparu, 6 partiel, 7 refuse, 8 inconnu.
+# Le 9 porte DEJA deux sens ailleurs (`EXIT_PACED`, `EXIT_NEEDS_BROWSER`), donc
+# un troisieme y serait pire que l invention ; le 5 est libre chez les
+# adaptateurs. Il dit : les lignes sur stdout sont bonnes, et la liste d ou
+# elles sortent n est pas celle d aujourd hui.
+EXIT_STALE = 5
+# **24 h, et le seuil est pose DANS UN FOSSE MESURE, pas choisi.** 2026-11-04,
+# dix cles de liste au meme POP d edge : les huit servies depuis le cache sous
+# `Accept-Encoding: identity` portaient toutes `Age` 51.6 h — a un dixieme d
+# heure pres, donc UN instantane — pendant que les memes URL en gzip allaient de
+# un seul HIT NON CONTAMINE, a 11.5 h — les huit autres lectures gzip etaient
+# des MISS, donc notre propre ecriture, donc muettes sur la chaleur de la
+# variante. **UN specimen, et le fosse ne porte donc pas le seuil.**
+# **SA RAISON EST L USAGE, et c est la seule qui tienne :** un balayage quotidien ne
+# peut rien apprendre d un corps plus vieux que son propre intervalle — c est
+# exactement le symptome de #1260, trois balayages sans une annonce neuve.
+MAX_BODY_AGE = 86400
+
+
+def cache_age(headers):
+    """`(secondes, hit)` — quel age a le corps que cette reponse portait. #1260.
+
+    `secondes` sort de l en-tete `Age`, `None` quand il est absent ou illisible ;
+    `hit` dit si l edge l a servi depuis son cache.
+
+    **UN `Age` ABSENT N EST PAS UN INCONNU QUAND IL N Y A PAS DE HIT :** sur un
+    MISS il n y en a pas, et le corps vient de l origine — donc frais par
+    construction. Le seul cas illisible est un `Age` qu on ne sait pas lire sur
+    une reponse qui dit `Hit`, et celui-la se DIT au lieu d etre compte d un cote
+    ou de l autre : l ignorance ne libere pas, et elle n accuse pas non plus.
+
+    **Et ce temoin est le bon parce qu un grand `Age` ne peut pas etre la par
+    accident** — c est l hote qui declare l age de ce qu il vient d envoyer. La
+    date de l annonce la plus recente, elle, ne tranche RIEN : la page 1 est
+    triee par PERTINENCE, et mesure le 2026-11-04 sur `Laravel` et `Symfony`,
+    les deux variantes rendaient une annonce la plus recente du 30.10 et du
+    19.10 — des listes legitimement maigres. Une garde batie sur cette date
+    aurait rougi sur du correct.
+    """
+    if headers is None:
+        return None, False
+    def champ(nom):
+        try:
+            return (headers.get(nom) or headers.get(nom.lower())
+                    or headers.get(nom.upper()))
+        except AttributeError:          # quelque chose sans `.get`
+            return None
+    brut = champ("Age")
+    try:
+        sec = int(str(brut).strip()) if brut is not None else None
+    except ValueError:
+        sec = None
+    return sec, "hit" in (champ("X-Cache") or "").lower()
 
 
 def die(msg, code=2):
@@ -120,21 +219,49 @@ def gate(url):
 
 
 def get(url):
+    """`(status, body, landed, headers)`. **Where it landed is half the signal,
+    and how OLD the body is turned out to be the other half (#1260).**
+
+    **This string used to sit AFTER the `gate(url)` call**, which made it a
+    no-op expression and `get.__doc__` `None`: the contract of this function
+    was written nowhere a reader could reach it. It moves up here with the
+    arity it now has to describe.
+    """
     gate(url)
-    """Returns `(status, body, landed)`. **Where it landed is half the signal.**"""
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
-        # identity, because a compressed body makes every size measurement in
-        # this file a different number (#71).
-        "Accept-Encoding": "identity",
+        # **gzip, and the reason is a CACHE and not a size — #1260.** #71 asked
+        # for `identity` so that one body would have one size rather than two.
+        # But both hosts answer `Vary: Accept-Encoding`, so their CDN keys its
+        # cache **per encoding variant**, and we were the only client of the
+        # `identity` variant — nothing on earth refreshed it. Measured
+        # 2026-11-04 at one edge POP: eight listing keys served from cache at
+        # `Age` **51.6 h** each, to a tenth of an hour, so one snapshot written
+        # at one instant (our own sweep two days earlier). On gzip, eight of
+        # ten reads were MISSES — our own writes, so mute on warmth — and the
+        # ONE uncontaminated HIT was at `Age` 11.5 h. **The size reserve of #71 is
+        # honoured by DECOMPRESSING and measuring the result** — the two
+        # variants carry the same content, measured: on the two keys our sweeps
+        # had not populated, the stated totals matched to the unit.
+        #
+        # **And no `br`:** the standard library cannot decode it, and
+        # `decompress_body` refuses rather than hand back bytes that would be
+        # read one layer down as a charset fault.
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "text/html,application/xhtml+xml",
     })
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
-            return r.getcode(), decode_body(r.read(), r.headers)[0], r.geturl()
+            # A failure to decompress raises `BadGzipFile`, which IS an
+            # `OSError`, so it lands in the clause below and dies naming the
+            # URL. It does not fall through as unreadable bytes.
+            raw = decompress_body(r.read(), r.headers)
+            return (r.getcode(), decode_body(raw, r.headers)[0], r.geturl(),
+                    r.headers)
     except urllib.error.HTTPError as e:
-        return (e.code, decode_body(e.read(), e.headers)[0],
-                getattr(e, "url", url))
+        raw = decompress_body(e.read(), e.headers)
+        return (e.code, decode_body(raw, e.headers)[0],
+                getattr(e, "url", url), e.headers)
     except (urllib.error.URLError, OSError) as e:
         die(f"{url}: {e}")
 
@@ -259,6 +386,8 @@ def cmd_search(a):
         die(f"{site['host']}: {v['reason']}", 8 if v["sweep"] is None else 7)
     seen, rows, repeats, partial = set(), [], 0, False
     board_total, pages_read, last_page, ended = None, 0, 0, "capped"
+    # (page, age en secondes ou None, servi depuis le cache) — #1260
+    fraicheur = []
     for page in range(1, a.pages + 1):
         # **`location` goes into the URL.** It used to be applied only after
         # the fetch, by `drop_report`, so `--location Lausanne` alone
@@ -273,7 +402,9 @@ def cmd_search(a):
         if page > 1:
             q["page"] = page
         url = f"https://{site['host']}{site['path']}?" + urllib.parse.urlencode(q)
-        status, body, _ = get(url)
+        status, body, _, entetes = get(url)
+        age, depuis_cache = cache_age(entetes)
+        fraicheur.append((page, age, depuis_cache))
         if status != 200:
             die(f"{url}: HTTP {status}")
         pages_read = page
@@ -408,6 +539,75 @@ def cmd_search(a):
         note(f"{repeats} card(s) repeated across pages and were deduplicated — "
              f"paid placement, not a pagination failure: one ad was measured "
              f"at position 13 of page 1 and position 1 of page 2.")
+    # **UNE LISTE PEUT ETRE SERVIE DEPUIS UN CACHE PLUS VIEUX QUE LE BALAYAGE
+    # LUI-MEME, ET RIEN DANS LA SORTIE NE LE DISAIT — #1260.** Statut 200,
+    # `exit 0`, « ended by itself — the board's total was reached », des annonces
+    # bien formees : trois balayages quotidiens de suite sans une seule annonce
+    # neuve, et le seul symptome etait une ABSENCE.
+    #
+    # Elle tire sur le SYMPTOME et pas sur la cause du jour : le jour ou ce n est
+    # plus la variante d encodage, un corps vieux reste un corps vieux.
+    #
+    # **ET ELLE ENONCE L INSTRUMENT, JAMAIS LE VERDICT — refonte du 2026-11-04,
+    # tranchee par un pair sur un specimen du CORPUS REEL et pas sur un modele.**
+    # Sa premiere redaction disait « cette liste n est pas celle d aujourd hui »,
+    # et c est FAUX des qu un terme n a rien publie de neuf : `Agile Coach` est
+    # servi depuis le cache avec 160 offres et une plus recente du 02.11 16:58
+    # **IDENTIQUES a ce que l origine rend** — vieux ET juste, et c est le regime
+    # NORMAL d un terme calme, pas une curiosite. Une garde qui y prononce
+    # « perime » est la troisieme espece de garde defaillante — rouge sur du
+    # correct — et elle se fera debrancher *parce qu elle a l air prudente*.
+    #
+    # Ce qui est vrai INCONDITIONNELLEMENT est « rien de publie depuis N heures
+    # ne peut figurer dans cette sortie ». Ca ne peut pas etre un faux positif,
+    # ca porte le nombre dont le lecteur a besoin, et ca n accuse pas l hote.
+    # Meme famille que `traj_muette` et `_prov` dans `garde.sh` : des enonces sur
+    # l INSTRUMENT, exemptes du silence precisement parce qu ils ne pretendent
+    # pas trancher.
+    lus = [(p, a) for p, a, _h in fraicheur if a is not None and a > 0]
+    vieux = [(p, a) for p, a in lus if a > MAX_BODY_AGE]
+    muets = [p for p, a, h in fraicheur if a is None and h]
+    if muets:
+        # On ne sait pas, et ne pas savoir n accuse pas plus que ca ne libere.
+        note(f"page(s) {', '.join(map(str, muets))}: served from the edge's "
+             f"cache and carrying no readable `Age` — **this run cannot "
+             f"establish how old that body was.** Not counted as stale and not "
+             f"counted as fresh; said, because the two read alike in a log.")
+    if lus and not vieux:
+        # **La ligne qui sort DES QU UN AGE EST LISIBLE, sous le seuil comprise,
+        # et elle porte le cas que le CODE laisse passer EXPRES.** `Scrum Master`
+        # a ete mesure servi depuis le cache a 11.5 h avec 11 offres quand l
+        # origine en servait 12, dont une publiee huit heures plus tot : a cette
+        # echelle c est un RETARD et non une PERTE — une annonce reste en ligne
+        # des semaines, donc le balayage du lendemain la voit — alors qu un corps
+        # qui ne bouge plus d un jour sur l autre ne la rendra jamais. Les deux
+        # ne se distinguent pas DANS UN SEUL TOUR, donc le code ne tire qu au-dela
+        # de l intervalle du balayage, et la ligne dit l age dans tous les cas.
+        # *(specimen RAPPORTE par un pair, mesure sur deux clefs du meme terme.)*
+        pv = max(lus, key=lambda pa: pa[1])
+        note(f"cache age: page {pv[0]} came from the edge's cache with "
+             f"`Age: {pv[1]}` s = {pv[1] / 3600.0:.1f} h. **Nothing published "
+             f"in the last {pv[1] / 3600.0:.1f} h can be in this output** — a "
+             f"statement about this reading, not about the board, which may "
+             f"legitimately have published nothing in that window.")
+    if vieux:
+        pire = max(vieux, key=lambda pa: pa[1])
+        note(f"**THIS READING IS BOUNDED, AND THE BOUND IS OLDER THAN THE "
+             f"SWEEP ITSELF.** Page {pire[0]} came from the edge's cache with "
+             f"`Age: {pire[1]}` s = {pire[1] / 3600.0:.1f} h, and "
+             f"{len(vieux)} of {len(fraicheur)} page(s) read exceeded "
+             f"{MAX_BODY_AGE / 3600.0:.0f} h. **Nothing published in the last "
+             f"{pire[1] / 3600.0:.1f} h can be in this output**, so this run "
+             f"is not a day's worth of reading whatever the counts above say — "
+             f"the three ends, the totals and the board's own figure all "
+             f"describe that body. Exit {EXIT_STALE} rather than 0. **It does "
+             f"NOT say the rows are wrong:** a quiet term can be served old "
+             f"and be identical to fresh, and that has been measured.")
+        # Deux codes ne peuvent pas sortir par la meme porte. Les deux FAITS se
+        # disent sur stderr, et c est le plus fondamental qui prend le code : la
+        # pagination d une lecture dont on vient d etablir qu elle est bornee
+        # plus loin que l intervalle du balayage.
+        sys.exit(EXIT_STALE)
     if partial:
         # **The status still says partial; only its timing changed.** Exit 6
         # after stdout has the rows, not instead of them.
@@ -427,7 +627,7 @@ def cmd_ad(a):
     v = robots_verdict(host)
     if not v["sweep"]:
         die(f"{host}: {v['reason']}", 8 if v["sweep"] is None else 7)
-    status, body, landed = get(a.url)
+    status, body, landed, _entetes = get(a.url)
     # **Status, then where it landed, then the ad's own isActive — the block
     # count decides none of it.** jobup.md carries the four-state table (#88).
     if status == 410:

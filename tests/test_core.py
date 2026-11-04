@@ -2364,7 +2364,7 @@ class AWalkHasThreeEndsAndThisOneHadTwo(unittest.TestCase):
                 if total is not None else "")
         return "<html><body>%s%s</body></html>" % (hits, ads)
 
-    def _run(self, pages, **kw):
+    def _run(self, pages, entetes=None, **kw):
         """Drive `cmd_search` over canned pages. Returns (exit code, stderr).
 
         `io` and `contextlib` are imported here because this module imports
@@ -2379,7 +2379,14 @@ class AWalkHasThreeEndsAndThisOneHadTwo(unittest.TestCase):
 
         def faux_get(url):
             appels.append(url)
-            return 200, pages[min(len(appels), len(pages)) - 1], {}
+            i = min(len(appels), len(pages)) - 1
+            # **`get` rend QUATRE valeurs depuis #1260** : les en-tetes
+            # remontent, parce que l age du corps est le temoin de fraicheur et
+            # qu il n est lisible que la. Sans en-tetes donnes, `{}` — donc
+            # `cache_age` rend `(None, False)`, donc FRAIS par construction, donc
+            # les six cas de #924 gardent exactement le verdict qu ils avaient.
+            e = (entetes[min(i, len(entetes) - 1)] if entetes else {})
+            return 200, pages[i], url, e
 
         vrai_get = self.jobup.get
         vrai_verdict = self.jobup.robots_verdict
@@ -4807,7 +4814,10 @@ class PartialStillWritesWhatItKept(unittest.TestCase):
         real_get = jobup.get
         real_gate = jobup.robots_verdict
         real_sleep = jobup.time.sleep
-        jobup.get = lambda url: (200, self._Page.BODY, url)
+        # QUATRE valeurs depuis #1260 : les en-tetes remontent, et `{}`
+        # rend `cache_age` -> (None, False), donc FRAIS, donc ce cas garde
+        # exactement le verdict qu il avait.
+        jobup.get = lambda url: (200, self._Page.BODY, url, {})
         jobup.robots_verdict = lambda h: {"sweep": True, "certain": True,
                                           "reason": ""}
         jobup.time.sleep = lambda *a, **k: None
@@ -16302,7 +16312,10 @@ class AnEmptyFirstPageIsIndeterminateNotAnExitZero(unittest.TestCase):
                                cp=None, with_detail=False, delay=0)),
             "employtt": ("get", lambda *a, **k: (200, self.SHELL), "cmd_search",
                          dict(limit=None)),
-            "jobup": ("get", lambda *a, **k: (200, self.SHELL, ""), "cmd_search",
+            # QUATRE valeurs depuis #1260 : `jobup.get` rend aussi les en-tetes,
+            # l age du corps n etant lisible que la. `{}` -> `cache_age` rend
+            # (None, False), donc FRAIS, donc ce cas garde son exit 6.
+            "jobup": ("get", lambda *a, **k: (200, self.SHELL, "", {}), "cmd_search",
                       dict(site="jobup", term="x", location=None, pages=2,
                            limit=None)),
         }
@@ -55946,6 +55959,335 @@ class TheStatedTotalHidesBehindAnEntityAndTheDatesAreDayFirstOnlyBecauseTheHostS
                          "no address is THERE to withhold, so none is claimed")
         self.assertIn("[email protected]", lignes[0]["description"])
         self.assertNotIn("[e-mail withheld]", lignes[0]["description"])
+
+class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
+    """**#1260, jobup and jobs.ch — measured 2026-11-04, and the reported cause was wrong.**
+    `jobup.py search` returned a FROZEN list: status 200, `exit 0`, «&nbsp;ended by itself —
+    the board's total was reached&nbsp;», well-formed advertisements, and **three daily sweeps
+    running with not one new advertisement**. The only symptom was an absence.
+
+    **THE KEYSPACE IS THE CACHE VARIANT, AND THE HOST NAMES IT ITSELF:
+    `Vary: Accept-Encoding`** — but **the failure mode is NOT «&nbsp;identity versus
+    gzip&nbsp;»**, and that renaming is what outlives the specimen. Measured the same
+    day: jobs.ch serves its own `identity` variant from cache **fresh to the second**,
+    and a jobup gzip HIT served 11 advertisements where a fresh key served 12. What
+    bites is a **HIT ON A LONG-LIVED ENTRY**; which keys carry one depends on their own
+    traffic, which we neither control nor can predict. **So switching the encoding is a
+    move to a better keyspace, not a repair — and the guard below is not its belt, it IS
+    the remedy.**
+    This adapter asked for `Accept-Encoding: identity` (#71, so that one body would have one
+    size rather than two). The CDN therefore keys its cache per encoding variant, and **we
+    were the only client of the `identity` variant** — nothing on earth refreshed it.
+    Measured on ten listing keys at one edge POP (`ZRH52-P1`), same `Cache-Control` on every
+    response: the eight served from cache all carried `Age` **51.6 h**, each to a tenth of an
+    hour, which is ONE snapshot written at ONE instant — our own sweep of two days earlier —
+    and on gzip **eight of the ten reads were MISSES** — our own writes, so the
+    origin's own answer and silent on warmth — with **one uncontaminated HIT at
+    `Age` 11.5 h** and one HIT that was our own request minutes earlier.
+
+    **AND THE REPORTED FIX WOULD HAVE BOUGHT ONE DAY.** The issue measured `Chef de projet`
+    frozen where `chef de projet` was fresh and proposed lowercasing the term. The case is a
+    red herring: `Chef de Projet` and `CHEF DE PROJET`, both CAPITALISED, measured fresh in
+    the same minute, and the lowercase form was fresh only because the measurement itself had
+    just populated it (`Age` 454 s). **A fixed key freezes as soon as our own sweep populates
+    it, whatever its case** — so a test asserting «&nbsp;the term is lowercased&nbsp;» would
+    be green on an adapter that refreezes within the week. That is why this class asserts the
+    FRESHNESS OF WHAT COMES OUT and the guard that fires on it.
+
+    **THE WITNESS IS THE `Age` THE HOST DECLARES, NEVER A PUBLICATION DATE.** Page 1 is sorted
+    by RELEVANCE, and `Laravel` and `Symfony` carried a newest advertisement of 30.10 and
+    19.10 on BOTH variants — legitimately thin listings. A guard built on «&nbsp;the newest
+    advertisement is older than N hours&nbsp;» would have reddened on correct data, which is
+    the third species of a defective guard: rouge sur du correct. `test_a_thin_listing…` below
+    is that control, and it is the case this class exists to keep green.
+
+    **AND THE REMEDY CAN GO STALE IN ITS TURN**, which is why the guard is not optional and
+    not a belt-and-braces: whether real traffic keeps the gzip variant warm for our RARE
+    terms is **NOT ESTABLISHED** — eight of ten gzip reads were MISSES we populated
+    ourselves, and the single uncontaminated HIT was `Scrum Master` at `Age` 11.5 h. The
+    threshold rests on the USE and not on a gap: a daily sweep cannot learn anything from a
+    body older than its own interval."""
+
+    FRAIS = {}
+    VIEUX = {"Age": "185671", "X-Cache": "Hit from cloudfront",
+             "Date": "Mon, 02 Nov 2026 06:42:46 GMT"}
+    JEUNE = {"Age": "41400", "X-Cache": "Hit from cloudfront"}      # 11.5 h, mesure
+    MUET = {"X-Cache": "Hit from cloudfront"}                       # Hit, aucun Age
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import jobup
+        self.jobup = jobup
+
+    def _page(self, n, total=None, first=0, posted="2026-11-04T08:44:08+01:00"):
+        ads = "".join(
+            '<script type="application/ld+json">{"@type":"JobPosting",'
+            '"title":"T%d","identifier":{"value":"id%d"},"datePosted":"%s",'
+            '"url":"https://www.jobup.ch/fr/emplois/detail/%d/"}</script>'
+            % (i, i, posted, i) for i in range(first, first + n))
+        hits = ('<span data-cy="total-hits" title="%d offres d&#x27;emploi">x</span>'
+                % total if total is not None else "")
+        return "<html><body>%s%s</body></html>" % (hits, ads)
+
+    def _run(self, pages, entetes, demandees=1):
+        """Drive `cmd_search` over canned pages AND canned headers.
+
+        Through `cmd_search`, never through a helper: the exit code is decided on
+        the path, and a guard that exercises the function does not see a
+        substitution on the path (#942).
+        """
+        import argparse
+        import contextlib
+        import io
+        out, err, appels = io.StringIO(), io.StringIO(), []
+
+        def faux_get(url):
+            appels.append(url)
+            i = min(len(appels), len(pages)) - 1
+            return 200, pages[i], url, entetes[min(i, len(entetes) - 1)]
+
+        vrai = (self.jobup.get, self.jobup.robots_verdict, self.jobup.time.sleep)
+        self.jobup.get = faux_get
+        self.jobup.robots_verdict = lambda h: {"sweep": True, "reason": "test"}
+        self.jobup.time.sleep = lambda *a, **k: None
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                self.jobup.cmd_search(argparse.Namespace(
+                    site="jobup", term="x", location=None, pages=demandees,
+                    limit=None, delay=0))
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            (self.jobup.get, self.jobup.robots_verdict,
+             self.jobup.time.sleep) = vrai
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_fixtures_arm_the_traps_this_class_judges(self):
+        """Without this, a green below would certify what never ran."""
+        seuil = self.jobup.MAX_BODY_AGE
+        self.assertEqual(seuil, 86400, "le seuil a bouge : les fixtures le cadrent")
+        self.assertEqual(self.jobup.cache_age(self.VIEUX), (185671, True))
+        self.assertGreater(185671, seuil, "la fixture VIEUX doit DEPASSER le seuil")
+        self.assertEqual(self.jobup.cache_age(self.JEUNE), (41400, True))
+        self.assertLess(41400, seuil,
+                        "11.5 h est le SEUL temoin gzip non contamine : il doit rester SOUS "
+                        "le seuil, sinon la garde tire sur la population normale")
+        # Un MISS n a pas d `Age` : frais PAR CONSTRUCTION, et pas un inconnu.
+        self.assertEqual(self.jobup.cache_age(self.FRAIS), (None, False))
+        # Un Hit sans `Age` est le SEUL cas illisible, et il se dit.
+        self.assertEqual(self.jobup.cache_age(self.MUET), (None, True))
+        self.assertEqual(self.jobup.cache_age(None), (None, False))
+
+    def test_a_body_older_than_the_sweeps_own_interval_exits_stale_and_names_its_age(self):
+        code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
+        self.assertEqual(code, self.jobup.EXIT_STALE,
+                         "un corps de 51.6 h ne peut pas sortir en 0 : " + err)
+        self.assertIn("READING IS BOUNDED", err)
+        self.assertIn("185671", err, "l age se DIT, il ne se resume pas")
+        self.assertIn("51.6", err, "et il se dit aussi en heures, pour un lecteur")
+
+    def test_the_rows_are_on_stdout_even_when_the_list_is_stale(self):
+        """Exit 6 l avait appris en #134 : un code au lieu des lignes est une perte."""
+        code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
+        self.assertEqual(code, self.jobup.EXIT_STALE)
+        self.assertEqual(len([l for l in out.splitlines() if l.strip()]), 2, out)
+        self.assertIn('"id0"', out)
+
+    def test_a_fresh_miss_is_not_accused(self):
+        code, out, err = self._run([self._page(2, total=2)], [self.FRAIS])
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("BOUNDED", err)
+        self.assertNotIn("cache age", err, "un MISS n a pas d age a declarer")
+
+    def test_a_cached_body_younger_than_the_threshold_is_not_accused(self):
+        """11.5 h est le SEUL temoin gzip non contamine : pas d accusation dessus."""
+        code, out, err = self._run([self._page(2, total=2)], [self.JEUNE])
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("BOUNDED", err)
+
+    def test_a_cached_body_under_the_code_threshold_still_says_its_age(self):
+        """Le cas que le CODE laisse passer expres, et que la LIGNE dit quand meme.
+
+        `Scrum Master` a ete mesure servi depuis le cache a 11.5 h avec 11 offres
+        quand l origine en servait 12, dont une publiee huit heures plus tot —
+        **une annonce reellement manquee**, SOUS le seuil du code. A cette echelle
+        c est un RETARD et non une PERTE : l annonce reste en ligne, le balayage
+        du lendemain la voit, alors qu un corps qui ne bouge plus d un jour sur l
+        autre ne la rendra jamais. Les deux ne se distinguent pas dans un seul
+        tour, donc le code ne tire qu au-dela de l intervalle du balayage **et la
+        ligne porte le nombre dans tous les cas**. *(specimen RAPPORTE par un
+        pair, mesure sur deux clefs du meme terme ; non remesure ici.)*
+        """
+        code, out, err = self._run([self._page(2, total=2)], [self.JEUNE])
+        self.assertEqual(code, 0, err)
+        self.assertIn("cache age", err)
+        self.assertIn("11.5 h", err, "l age se dit en heures, pour un lecteur")
+        self.assertIn("Nothing published in the last", err,
+                      "l enonce porte sur l INSTRUMENT : il ne peut pas etre un "
+                      "faux positif, et il n accuse pas l hote")
+
+    def test_a_thin_listing_whose_newest_advert_is_old_is_not_accused(self):
+        """LE controle de cette classe : la garde ne lit AUCUNE date d annonce.
+
+        `Symfony` rendait une annonce la plus recente du 19.10 sur les DEUX
+        variantes — une liste legitimement maigre. Une garde sur cette date
+        aurait rougi sur du correct, et elle aurait eu l air prudente.
+        """
+        vieilles = self._page(2, total=2, posted="2026-10-19T09:00:00+02:00")
+        code, out, err = self._run([vieilles], [self.FRAIS])
+        self.assertEqual(code, 0,
+                         "une liste maigre et fraiche est CORRECTE : " + err)
+        self.assertNotIn("BOUNDED", err)
+
+    def test_an_unreadable_age_on_a_hit_is_declared_and_changes_no_exit_code(self):
+        """L ignorance ne libere pas, et elle n accuse pas non plus."""
+        code, out, err = self._run([self._page(2, total=2)], [self.MUET])
+        self.assertEqual(code, 0, err)
+        self.assertIn("cannot establish how old", err)
+        self.assertNotIn("BOUNDED", err)
+
+    def test_the_stale_code_takes_the_exit_over_partial_and_both_facts_are_said(self):
+        """Deux codes ne sortent pas par la meme porte ; deux FAITS, si."""
+        pleine = self._page(20, total=100)
+        code, out, err = self._run([pleine, pleine], [self.VIEUX], demandees=2)
+        self.assertIn("pagination did not advance", err,
+                      "le fait PARTIEL doit se dire quand meme")
+        self.assertIn("READING IS BOUNDED", err)
+        self.assertEqual(code, self.jobup.EXIT_STALE,
+                         "le plus fondamental prend le code : la pagination d une "
+                         "lecture bornee plus loin que l intervalle du balayage")
+
+    def test_an_old_body_identical_to_fresh_is_never_called_wrong(self):
+        """LE cas qui a refait cette garde, et il vient du CORPUS REEL.
+
+        `Agile Coach` est servi depuis le cache avec 160 offres et une plus
+        recente du 02.11 16:58 **identiques a ce que l origine rend** — vieux ET
+        juste, et c est le regime NORMAL d un terme dont rien de neuf n a ete
+        publie. La premiere redaction de cette garde disait « cette liste n est
+        pas celle d aujourd hui », ce qui y est FAUX : troisieme espece de garde
+        defaillante, rouge sur du correct, et elle se fait debrancher *parce qu
+        elle a l air prudente*. Ce qui reste vrai inconditionnellement est l
+        enonce sur l INSTRUMENT. *(specimen RAPPORTE par un pair, mesure sur deux
+        clefs du meme terme ; non remesure ici.)*
+        """
+        code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
+        self.assertEqual(code, self.jobup.EXIT_STALE, err)
+        self.assertIn("does NOT say the rows are wrong", err,
+                      "la garde doit DIRE qu elle ne juge pas la donnee")
+        self.assertIn("Nothing published in the last", err)
+        for interdit in ("not today's", "STALE LIST", "out of date", "the board is"):
+            self.assertNotIn(interdit, err,
+                             f"{interdit!r} prononce un verdict sur la DONNEE, et "
+                             f"un terme calme sert vieux ET juste")
+
+    def test_the_stale_code_collides_with_no_other_code_this_contract_uses(self):
+        """Un code hors contrat se lit comme le voisin le plus proche."""
+        self.assertNotIn(self.jobup.EXIT_STALE,
+                         (0, 2, 3, 6, 7, 8),
+                         "2 casse, 3 disparu, 6 partiel, 7 refuse, 8 inconnu — "
+                         "mesure sur les 238 adaptateurs du depot")
+        self.assertEqual(self.jobup.EXIT_STALE, 5)
+
+    def test_the_request_asks_for_an_encoding_real_traffic_keeps_warm(self):
+        """Le MECANISME, nomme comme tel — le comportement est juge plus haut."""
+        src = io.open(os.path.join(SCRIPTS, "jobup.py"), encoding="utf-8").read()
+        tete = src.split('"Accept-Encoding":')[1].split("\n")[0]
+        self.assertIn("gzip", tete, tete)
+        self.assertNotIn("identity", tete,
+                         "`identity` est la variante dont personne d autre n est "
+                         "client, donc celle que rien ne rafraichit")
+        self.assertNotIn("br", tete,
+                         "la bibliotheque standard ne sait pas defaire brotli, et "
+                         "`decompress_body` refuse plutot que de rendre des octets")
+
+    def test_a_gzipped_body_arrives_as_what_identity_would_have_returned(self):
+        """Le controle qui dit que le correctif ne change QUE la fraicheur.
+
+        Pris SUR LE CHEMIN — `get` — et pas sur `decompress_body` seul : une garde
+        qui eprouve la fonction ne voit pas une substitution sur le chemin.
+        """
+        import gzip as gz
+        corps = self._page(3, total=3)
+
+        class Rep:
+            def __init__(s, raw, h):
+                s._raw, s.headers = raw, h
+
+            def read(s):
+                return s._raw
+
+            def getcode(s):
+                return 200
+
+            def geturl(s):
+                return "https://www.jobup.ch/fr/emplois/?term=x"
+
+            def __enter__(s):
+                return s
+
+            def __exit__(s, *a):
+                return False
+
+        vrai_open = self.jobup.urllib.request.urlopen
+        vrai_gate = self.jobup.gate
+        self.jobup.gate = lambda url: None
+        try:
+            self.jobup.urllib.request.urlopen = (
+                lambda req, timeout=None: Rep(gz.compress(corps.encode("utf-8")),
+                                              {"Content-Encoding": "gzip"}))
+            got = self.jobup.get("https://www.jobup.ch/fr/emplois/?term=x")
+        finally:
+            self.jobup.urllib.request.urlopen = vrai_open
+            self.jobup.gate = vrai_gate
+        self.assertEqual(len(got), 4, "`get` rend (status, body, landed, headers)")
+        self.assertEqual(got[1], corps,
+                         "le corps decompresse doit etre EXACTEMENT ce qu `identity` "
+                         "aurait rendu : c est la reserve de taille de #71, honoree "
+                         "sur le resultat et non en restant sur la variante froide")
+        self.assertEqual(got[3].get("Content-Encoding"), "gzip")
+
+    def test_an_encoding_the_decoder_cannot_undo_refuses_instead_of_handing_back_bytes(self):
+        """Rendus tels quels, ils se liraient comme une faute de charset un etage plus bas."""
+        sys.path.insert(0, SCRIPTS)
+        from _decode import decompress_body
+        with self.assertRaises(ValueError) as pris:
+            decompress_body(b"\x1b\x2a\x00", {"Content-Encoding": "br"})
+        self.assertIn("br", str(pris.exception))
+        # et le no-op doit rester un no-op, sinon tout appelant existant casse
+        self.assertEqual(decompress_body(b"abc", None), b"abc")
+        self.assertEqual(decompress_body(b"abc", {}), b"abc")
+        self.assertEqual(decompress_body(b"abc", {"Content-Encoding": "identity"}), b"abc")
+
+    def test_a_chain_of_codings_is_undone_whole_and_backwards(self):
+        """`jobup.py` asks for `gzip, deflate`, so the chained shape is REACHABLE.
+
+        A first version undid only the tail of the list and returned, leaving a
+        `gzip, deflate` body still gzip-compressed — bytes that reach
+        `decode_body` and are read as a charset fault, which is precisely what
+        the refusal exists to prevent. Found while writing the mutation that
+        would have shown it, not by reading the code.
+        """
+        import gzip as gz
+        import zlib as zl
+        sys.path.insert(0, SCRIPTS)
+        from _decode import decompress_body
+        clair = "éàüç et un JobPosting".encode("utf-8")
+        # applique gzip PUIS deflate : l en-tete les liste dans l ordre d application
+        chaine = zl.compress(gz.compress(clair))
+        self.assertEqual(
+            decompress_body(chaine, {"Content-Encoding": "gzip, deflate"}), clair,
+            "la chaine se defait ENTIERE et a l envers")
+        # et `identity` au milieu d une chaine ne doit pas faire lever
+        self.assertEqual(
+            decompress_body(gz.compress(clair),
+                            {"Content-Encoding": "identity, gzip"}), clair)
+        # un membre inconnu LEVE, meme accompagne d un membre connu
+        with self.assertRaises(ValueError) as pris:
+            decompress_body(gz.compress(clair), {"Content-Encoding": "br, gzip"})
+        self.assertIn("'br'", str(pris.exception),
+                      "le message nomme le MEMBRE fautif, pas seulement la chaine")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
