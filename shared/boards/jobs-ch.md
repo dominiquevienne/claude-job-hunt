@@ -37,6 +37,17 @@ both of its encoding variants carried the same newest `datePosted`
 fresh. A sibling that answers correctly is what made the jobup reading a defect
 rather than a market with nothing in it.
 
+**AND SWITCHING THIS HOST COSTS NOTHING — measured before switching it, because
+`jobup.py` serves both and a shared `get()` moves them together.** Same term,
+same instant, three keys on `?term=Scrum Master`: `identity` (what the adapter
+sent until today) a cache HIT, `gzip` a MISS, and a fresh key a MISS — **all
+three returning 23 ads and the same newest `datePosted` to the second**. So this
+host's `identity` variant was warm AND current, where jobup's was a HIT 51.6 h
+stale. **`identity` is therefore not inherently a cold variant**, and the defect
+is a HIT on a long-lived entry rather than a choice of encoding; which keys carry
+one depends on their own traffic. *(The three keys are REPORTED by a peer, not
+re-measured here.)*
+
 The adapter now asks for `gzip, deflate` and decompresses, and a page served
 from cache older than `MAX_BODY_AGE` exits `5` after its rows are on stdout.
 `jobup.md` carries the measurement, the refuted cause and the reason the witness

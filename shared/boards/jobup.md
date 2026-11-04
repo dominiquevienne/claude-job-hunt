@@ -148,6 +148,34 @@ each to a tenth of an hour** — one snapshot written at one instant, and its
 07:41 +01:00. **We populated that cache ourselves and have been re-reading it
 since.**
 
+**AND THE FAILURE MODE IS NOT «&nbsp;identity VERSUS gzip&nbsp;» — the four cells were
+measured and they disagree.** This renaming is the part that outlives the
+specimen, and a peer established the two jobs.ch rows and the stale gzip hit:
+
+| host | encoding | what was served |
+| :-- | :-- | :-- |
+| jobup | `identity` | **Hit, 51.6 h stale** — the reported symptom (measured here) |
+| jobup | `gzip` | 5 Hit / 5 Miss, and one HIT serving **11 ads where the origin served 12** (reported) |
+| jobs.ch | `identity` | **Hit, fresh to the second** — three keys agreeing to the unit (reported) |
+| jobs.ch | `gzip` | Miss, so fresh by construction (reported) |
+
+So `identity` is not inherently a cold variant: on the sibling host it is warm
+AND current. **The defect is a HIT ON A LONG-LIVED ENTRY**, and whether a request
+lands on one depends on the keyspace we inhabit and on each key's own traffic —
+two things we neither control nor can predict, since the four cells behave
+differently under the same declared configuration. **Switching the encoding is
+therefore not a fix to the mechanism: it is a move to a keyspace that is better
+today**, which is the right thing to do and closes nothing. Measured for the
+sibling before switching it: jobs.ch `identity`, `gzip` and a fresh key all
+returned 23 ads and the same newest `datePosted` to the second, so the shared
+`get()` costs it nothing.
+
+**WHICH IS WHY THE GUARD IS NOT THE REMEDY'S BELT — IT IS THE REMEDY.** A gzip
+HIT was measured serving 11 advertisements where a fresh key served 12, and the
+twelfth had been published before both reads: **an advertisement really missed,
+on the variant we are moving to**. The count is what establishes it — 11 against
+12 is not a sorting artefact, where a newest-date gap would be.
+
 **AND THE GZIP SIDE IS PARTLY OUR OWN WRITING, WHICH IS DECLARED BECAUSE IT
 CHANGES WHAT THE REMEDY IS WORTH** (the question was put by the pilot, and the
 answer is in this session's own record). Of the ten gzip reads, **eight were

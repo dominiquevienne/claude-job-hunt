@@ -218,8 +218,12 @@ def decompress_body(raw, headers=None):
     measured 2026-11-04. `jobup.py` asked for `Accept-Encoding: identity` so
     that one body would have one size rather than two (#71). Both of its hosts
     answer `Vary: Accept-Encoding`, so their CDN keys its cache **per encoding
-    variant** — and we were the only client of the `identity` variant, which
-    therefore nothing on earth ever refreshed. Measured on ten listing keys at
+    variant**, and on THAT host nothing ever refreshed the `identity` entry.
+    **The failure mode is not "identity versus gzip" though**, measured the same
+    day: jobs.ch serves its own `identity` variant from cache FRESH TO THE
+    SECOND. What bites is a HIT on a long-lived entry, and which keys carry one
+    depends on their own traffic — so changing the encoding moves us to a better
+    keyspace rather than repairing anything. Measured on ten listing keys at
     one edge POP: **eight `identity` hits at `Age` 51.6 h**, each to a tenth of
     an hour, so a single snapshot written at a single instant — our own sweep
     of two days earlier. **Against that, eight of the ten gzip reads were

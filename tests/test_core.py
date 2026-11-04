@@ -55966,7 +55966,15 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
     the board's total was reached&nbsp;», well-formed advertisements, and **three daily sweeps
     running with not one new advertisement**. The only symptom was an absence.
 
-    **THE CAUSE IS THE CACHE VARIANT, AND THE HOST NAMES IT ITSELF: `Vary: Accept-Encoding`.**
+    **THE KEYSPACE IS THE CACHE VARIANT, AND THE HOST NAMES IT ITSELF:
+    `Vary: Accept-Encoding`** — but **the failure mode is NOT «&nbsp;identity versus
+    gzip&nbsp;»**, and that renaming is what outlives the specimen. Measured the same
+    day: jobs.ch serves its own `identity` variant from cache **fresh to the second**,
+    and a jobup gzip HIT served 11 advertisements where a fresh key served 12. What
+    bites is a **HIT ON A LONG-LIVED ENTRY**; which keys carry one depends on their own
+    traffic, which we neither control nor can predict. **So switching the encoding is a
+    move to a better keyspace, not a repair — and the guard below is not its belt, it IS
+    the remedy.**
     This adapter asked for `Accept-Encoding: identity` (#71, so that one body would have one
     size rather than two). The CDN therefore keys its cache per encoding variant, and **we
     were the only client of the `identity` variant** — nothing on earth refreshed it.
@@ -56075,7 +56083,7 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
         code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
         self.assertEqual(code, self.jobup.EXIT_STALE,
                          "un corps de 51.6 h ne peut pas sortir en 0 : " + err)
-        self.assertIn("STALE LIST", err)
+        self.assertIn("READING IS BOUNDED", err)
         self.assertIn("185671", err, "l age se DIT, il ne se resume pas")
         self.assertIn("51.6", err, "et il se dit aussi en heures, pour un lecteur")
 
@@ -56089,13 +56097,35 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
     def test_a_fresh_miss_is_not_accused(self):
         code, out, err = self._run([self._page(2, total=2)], [self.FRAIS])
         self.assertEqual(code, 0, err)
-        self.assertNotIn("STALE", err)
+        self.assertNotIn("BOUNDED", err)
+        self.assertNotIn("cache age", err, "un MISS n a pas d age a declarer")
 
     def test_a_cached_body_younger_than_the_threshold_is_not_accused(self):
-        """11.5 h est le plus vieux gzip MESURE : la garde ne doit pas tirer dessus."""
+        """11.5 h est le SEUL temoin gzip non contamine : pas d accusation dessus."""
         code, out, err = self._run([self._page(2, total=2)], [self.JEUNE])
         self.assertEqual(code, 0, err)
-        self.assertNotIn("STALE", err)
+        self.assertNotIn("BOUNDED", err)
+
+    def test_a_cached_body_under_the_code_threshold_still_says_its_age(self):
+        """Le cas que le CODE laisse passer expres, et que la LIGNE dit quand meme.
+
+        `Scrum Master` a ete mesure servi depuis le cache a 11.5 h avec 11 offres
+        quand l origine en servait 12, dont une publiee huit heures plus tot —
+        **une annonce reellement manquee**, SOUS le seuil du code. A cette echelle
+        c est un RETARD et non une PERTE : l annonce reste en ligne, le balayage
+        du lendemain la voit, alors qu un corps qui ne bouge plus d un jour sur l
+        autre ne la rendra jamais. Les deux ne se distinguent pas dans un seul
+        tour, donc le code ne tire qu au-dela de l intervalle du balayage **et la
+        ligne porte le nombre dans tous les cas**. *(specimen RAPPORTE par un
+        pair, mesure sur deux clefs du meme terme ; non remesure ici.)*
+        """
+        code, out, err = self._run([self._page(2, total=2)], [self.JEUNE])
+        self.assertEqual(code, 0, err)
+        self.assertIn("cache age", err)
+        self.assertIn("11.5 h", err, "l age se dit en heures, pour un lecteur")
+        self.assertIn("Nothing published in the last", err,
+                      "l enonce porte sur l INSTRUMENT : il ne peut pas etre un "
+                      "faux positif, et il n accuse pas l hote")
 
     def test_a_thin_listing_whose_newest_advert_is_old_is_not_accused(self):
         """LE controle de cette classe : la garde ne lit AUCUNE date d annonce.
@@ -56108,14 +56138,14 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
         code, out, err = self._run([vieilles], [self.FRAIS])
         self.assertEqual(code, 0,
                          "une liste maigre et fraiche est CORRECTE : " + err)
-        self.assertNotIn("STALE", err)
+        self.assertNotIn("BOUNDED", err)
 
     def test_an_unreadable_age_on_a_hit_is_declared_and_changes_no_exit_code(self):
         """L ignorance ne libere pas, et elle n accuse pas non plus."""
         code, out, err = self._run([self._page(2, total=2)], [self.MUET])
         self.assertEqual(code, 0, err)
         self.assertIn("cannot establish how old", err)
-        self.assertNotIn("STALE LIST", err)
+        self.assertNotIn("BOUNDED", err)
 
     def test_the_stale_code_takes_the_exit_over_partial_and_both_facts_are_said(self):
         """Deux codes ne sortent pas par la meme porte ; deux FAITS, si."""
@@ -56123,10 +56153,33 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
         code, out, err = self._run([pleine, pleine], [self.VIEUX], demandees=2)
         self.assertIn("pagination did not advance", err,
                       "le fait PARTIEL doit se dire quand meme")
-        self.assertIn("STALE LIST", err)
+        self.assertIn("READING IS BOUNDED", err)
         self.assertEqual(code, self.jobup.EXIT_STALE,
                          "le plus fondamental prend le code : la pagination d une "
-                         "liste qui n est pas celle d aujourd hui")
+                         "lecture bornee plus loin que l intervalle du balayage")
+
+    def test_an_old_body_identical_to_fresh_is_never_called_wrong(self):
+        """LE cas qui a refait cette garde, et il vient du CORPUS REEL.
+
+        `Agile Coach` est servi depuis le cache avec 160 offres et une plus
+        recente du 02.11 16:58 **identiques a ce que l origine rend** — vieux ET
+        juste, et c est le regime NORMAL d un terme dont rien de neuf n a ete
+        publie. La premiere redaction de cette garde disait « cette liste n est
+        pas celle d aujourd hui », ce qui y est FAUX : troisieme espece de garde
+        defaillante, rouge sur du correct, et elle se fait debrancher *parce qu
+        elle a l air prudente*. Ce qui reste vrai inconditionnellement est l
+        enonce sur l INSTRUMENT. *(specimen RAPPORTE par un pair, mesure sur deux
+        clefs du meme terme ; non remesure ici.)*
+        """
+        code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
+        self.assertEqual(code, self.jobup.EXIT_STALE, err)
+        self.assertIn("does NOT say the rows are wrong", err,
+                      "la garde doit DIRE qu elle ne juge pas la donnee")
+        self.assertIn("Nothing published in the last", err)
+        for interdit in ("not today's", "STALE LIST", "out of date", "the board is"):
+            self.assertNotIn(interdit, err,
+                             f"{interdit!r} prononce un verdict sur la DONNEE, et "
+                             f"un terme calme sert vieux ET juste")
 
     def test_the_stale_code_collides_with_no_other_code_this_contract_uses(self):
         """Un code hors contrat se lit comme le voisin le plus proche."""
