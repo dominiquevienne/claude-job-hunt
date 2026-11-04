@@ -57013,6 +57013,65 @@ class TheCountryLivesInTheTitleAndTheTaxonomyNamesOnlyRegions(unittest.TestCase)
         self.assertIn("not about the board", out)
         self.assertIn("1 of 2 title(s) yielded NO country", out)
 
+    def _run(self, posts_pages, hd, **kw):
+        """Pilote `cmd_jobs` sans toucher au reseau, et rend son `(code, err)`.
+
+        `robots_verdict` EST stube avec le reste : `cmd_jobs` le demande AVANT
+        tout, donc stuber `get` seul laissait quatre requetes partir — et c est
+        une garde du depot qui l a dit, pas une relecture.
+        """
+        import contextlib
+        import io as _io
+        pages = list(posts_pages)
+        real = (self.m.get, self.m.region_names, self.m.robots_verdict)
+        code, err = None, _io.StringIO()
+        try:
+            self.m.robots_verdict = lambda h: {"sweep": True, "reason": "stub"}
+            self.m.region_names = lambda: dict(self.REGIONS)
+            self.m.get = lambda url: (200, pages.pop(0) if pages else "[]", hd)
+            a = argparse.Namespace(country=None, since_days=3650, max_pages=2,
+                                   per_page=100, limit=None, delay=0)
+            for k, v in kw.items():
+                setattr(a, k, v)
+            with contextlib.redirect_stdout(_io.StringIO()):
+                with contextlib.redirect_stderr(err):
+                    try:
+                        self.m.cmd_jobs(a)
+                    except SystemExit as e:
+                        code = e.code
+        finally:
+            (self.m.get, self.m.region_names, self.m.robots_verdict) = real
+        return code, err.getvalue()
+
+    def test_reading_the_hosts_whole_stated_stock_is_not_partial(self):
+        """**An alarm that fires ALWAYS is worth no more than one that never
+        fires, and it is harder to remove because it looks prudent.**
+
+        Measured 2026-11-04 before this branch existed: the host states 199
+        records over 2 pages, `--max-pages 2` read all 199, and the run exited
+        **6, partial** — a sound sweep declaring itself incomplete. Reaching
+        the LAST page the host declares is a completeness, and a different one
+        from reaching the day boundary, so the note names which of the three
+        ends it hit.
+        """
+        posts = json.dumps([dict(self.POST, id=1)])
+        code, err = self._run([posts, posts],
+                              {"X-WP-Total": "2", "X-WP-TotalPages": "2"})
+        self.assertIsNone(code, "reading the whole stock must not exit partial")
+        self.assertIn("read the whole stock the host states, 2 page(s)", err)
+        self.assertNotIn("partial, and the exit code says so", err)
+
+    def test_a_missing_page_header_does_not_license_a_completeness_claim(self):
+        """**Ignorance does not free.** Without `X-WP-TotalPages` the tool
+        cannot know it reached the last page, so it must NOT say it did — it
+        falls back on the `--max-pages` ceiling and exits partial.
+        """
+        posts = json.dumps([dict(self.POST, id=1)])
+        code, err = self._run([posts, posts], {"X-WP-Total": "2"})
+        self.assertEqual(code, self.m.EXIT_PARTIAL)
+        self.assertIn("stopped at the --max-pages ceiling", err)
+        self.assertNotIn("read the whole stock", err)
+
 
 class TheStatedTotalIsAnArchiveAndTheTwoDatesDifferByADayAtMidnight(unittest.TestCase):
     """**#712, St Lucia Business Online — et le total annonce est le piege, pas le cadeau.**

@@ -373,6 +373,7 @@ def cmd_jobs(a):
     floor = (datetime.datetime.now(datetime.timezone.utc)
              - datetime.timedelta(days=a.since_days)).strftime("%Y-%m-%dT%H:%M:%S")
     seen, rows, unresolved, other = set(), [], [], 0
+    whole = False
     stock, stock_pages, pages_read, reached = None, None, 0, False
     for page in range(1, a.max_pages + 1):
         q = {"per_page": str(a.per_page), "page": str(page),
@@ -391,6 +392,19 @@ def cmd_jobs(a):
         if page == 1:
             stock, stock_pages = hd.get("X-WP-Total"), hd.get("X-WP-TotalPages")
         pages_read = page
+        # **Avoir lu la DERNIERE page que l hote declare est une completude,
+        # et c en est une AUTRE que la borne de jours.** Sans cette branche,
+        # un balayage exhaustif sort en `partiel` des que `--max-pages`
+        # coincide avec `X-WP-TotalPages` — mesure le 2026-11-04 : 199 sur 199
+        # lus, et exit 6. Un avertissement qui tire TOUJOURS ne vaut pas mieux
+        # que celui qui ne tire jamais, et il est plus dur a retirer parce
+        # qu il a l air prudent.
+        try:
+            last = page >= int(stock_pages)
+        except (TypeError, ValueError):
+            # L en-tete manque ou n est pas un entier : on ne sait pas, donc
+            # on ne declare PAS complet — l ignorance ne libere pas.
+            last = False
         if not posts:
             reached = True
             break
@@ -414,6 +428,9 @@ def cmd_jobs(a):
             rows.append(row)
         if reached:
             break
+        if last:
+            whole = True
+            break
         time.sleep(a.delay)
 
     for row in rows[:a.limit] if a.limit else rows:
@@ -435,6 +452,8 @@ def cmd_jobs(a):
     dates = sorted(r["posted"] for r in rows if r["posted"])
     end = ("reached the --since-days boundary of %d day(s)" % a.since_days
            if reached else
+           f"read the whole stock the host states, {stock_pages} page(s)"
+           if whole else
            f"stopped at the --max-pages ceiling of {a.max_pages}")
     filt = (f" for --country {want} (of {len(seen)} read; {other} resolved to "
             f"another country, {len(unresolved)} resolved to none)" if want else "")
@@ -456,7 +475,7 @@ def cmd_jobs(a):
              f"stock at THIS hour and not about the board: {len(unresolved)} "
              f"title(s) in the window yielded no country, so a country can be "
              f"served here without this filter seeing it.")
-    if not reached:
+    if not reached and not whole:
         note(f"the boundary was not reached, so older vacancies inside the "
              f"{a.since_days}-day window are missing — partial, and the exit "
              f"code says so.")
