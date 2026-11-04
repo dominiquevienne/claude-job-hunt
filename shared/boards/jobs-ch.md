@@ -19,6 +19,28 @@ rot; re-check before trusting an old note.
 ## The finding that governs everything else: the id is shared with jobup
 
 **An ad published on both boards carries the same UUID on both.** Verified on two
+
+## 2026-11-04 — #1260: the same cache-variant defect, measured on this host too
+
+`jobup.py` serves both boards, so this card carries the fact as well. The
+adapter asked for `Accept-Encoding: identity`; both hosts answer
+`Vary: Accept-Encoding`, so their CDN kept a cache entry for a variant no other
+client requests, and nothing refreshed it — on jobup, eight listing keys out of
+ten came back from the edge's cache at `Age` **51.6 h each**, one snapshot
+written by our own sweep two days earlier.
+
+**This host was the control that showed it, and that is why it is written
+here.** Measured 2026-11-04 on the same term, `Chef de projet`: jobs.ch returned
+**1 of 17** terms identical day to day where jobup returned **17 of 17**, and
+both of its encoding variants carried the same newest `datePosted`
+(2026-11-04 02:00) for stated totals of 2081 and 2082 — ordinary churn, both
+fresh. A sibling that answers correctly is what made the jobup reading a defect
+rather than a market with nothing in it.
+
+The adapter now asks for `gzip, deflate` and decompresses, and a page served
+from cache older than `MAX_BODY_AGE` exits `5` after its rows are on stdout.
+`jobup.md` carries the measurement, the refuted cause and the reason the witness
+is the host's own `Age` and never a publication date.
 unrelated Romandie ads:
 
 | UUID | jobs.ch | jobup.ch |

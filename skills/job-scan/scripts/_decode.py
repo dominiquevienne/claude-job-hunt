@@ -41,10 +41,12 @@ WHAT THIS DOES, IN ORDER:
     text, enc = decode_body(raw, response.headers)
 """
 
+import gzip
 import re
+import zlib
 import sys
 
-__all__ = ["decode_body", "decode_body_readable", "charset_of",
+__all__ = ["decode_body", "decode_body_readable", "charset_of", "decompress_body",
            "looks_mojibake"]
 
 # **Once per process.** A sweep of four thousand advertisements on a broken
@@ -205,3 +207,61 @@ def decode_body_readable(raw, headers=None):
             f"rest is intact. **cp1252 never raises, which is why it won.**")
         return other, "utf-8/replace (arbitrated)"
     return text, enc
+
+def decompress_body(raw, headers=None):
+    """`bytes` as the origin wrote them, whatever transfer coding carried them.
+
+    **A no-op when there is no `Content-Encoding`**, so it is safe to wrap any
+    read, and that is why nothing already calling `decode_body` has to change.
+
+    WHY IT EXISTS, AND IT IS A *CACHE* FACT AND NOT A SIZE FACT — #1260,
+    measured 2026-11-04. `jobup.py` asked for `Accept-Encoding: identity` so
+    that one body would have one size rather than two (#71). Both of its hosts
+    answer `Vary: Accept-Encoding`, so their CDN keys its cache **per encoding
+    variant** — and we were the only client of the `identity` variant, which
+    therefore nothing on earth ever refreshed. Measured on ten listing keys at
+    one edge POP: **eight `identity` hits at `Age` 51.6 h**, each to a tenth of
+    an hour, so a single snapshot written at a single instant — our own sweep
+    of two days earlier. **Against that, eight of the ten gzip reads were
+    MISSES** — the origin's own answer, so today's data, and silent on whether
+    anything keeps that variant warm; of the two gzip HITS, one was our own
+    write of fifteen minutes earlier and establishes nothing, and **the only
+    uncontaminated witness is a single HIT at `Age` 11.5 h** on a key we had
+    never requested in gzip. One specimen, declared as one.
+
+    **And the two variants carry the same content:** on the two keys our sweeps
+    had NOT populated, `identity` and gzip returned stated totals equal to the
+    unit (160/160 and 132/132) and the same newest date. So the reserve of #71
+    is honoured by DECOMPRESSING and measuring the result — never by sitting on
+    a variant that real traffic never touches.
+
+    **An unknown coding RAISES rather than returning the compressed bytes.**
+    Handed back as they are, they reach `decode_body`, which reads them as a
+    charset problem and warns about mojibake: a cause named one layer away from
+    where it lives. Only gzip and deflate are decodable here — the standard
+    library has no brotli — so nothing may ask for `br`.
+    """
+    if isinstance(raw, str) or not raw:
+        return raw
+    enc = ""
+    if headers is not None:
+        try:
+            enc = (headers.get("Content-Encoding") or "").strip().lower()
+        except AttributeError:          # something without `.get`, or None
+            enc = ""
+    if not enc or enc == "identity":
+        return raw
+    # The LAST coding applied is the first to undo, which is why this reads the
+    # tail of the list and not its head.
+    parts = [p.strip() for p in enc.split(",") if p.strip()]
+    if parts and parts[-1] in ("gzip", "x-gzip"):
+        return gzip.decompress(raw)
+    if parts and parts[-1] == "deflate":
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:              # raw deflate, without the zlib wrapper
+            return zlib.decompress(raw, -zlib.MAX_WBITS)
+    raise ValueError(
+        f"Content-Encoding: {enc!r} — this module decodes gzip and deflate and "
+        f"nothing else, and it refuses rather than hand back bytes that would "
+        f"be read as a charset fault one layer down.")

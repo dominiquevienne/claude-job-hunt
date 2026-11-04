@@ -123,6 +123,94 @@ and exits 6, while a handful of repeats is paid placement.
 refusing to conclude anything**, and only a plain `200` is parsed. Verified on
 all four.
 
+## 2026-11-04 — #1260: the list was a cached body 51.6 h old, and the encoding variant is why
+
+`search` returned a **frozen list** on the 02, 03 and 04.11 sweeps: status 200,
+`exit 0`, *"ended by itself — the board's total was reached"*, well-formed
+advertisements, and **not one new ad in three days**. The only symptom was an
+absence.
+
+**The host names the cause itself: `Vary: Accept-Encoding`.** This adapter asked
+for `Accept-Encoding: identity` (#71, so one body would have one size rather than
+two), so the CDN kept a separate cache entry for a variant **no other client on
+earth requests** — and nothing refreshed it. Measured at one edge POP
+(`ZRH52-P1`), the same `Cache-Control: no-cache="Set-Cookie"` on every response
+and no `max-age` at all, so the lifetime is the distribution's own:
+
+| `Accept-Encoding` | X-Cache | `Age` | newest `datePosted` | stated total |
+| :-- | :-- | --: | :-- | --: |
+| `identity` — what this adapter sent | **Hit** | **185 671 s = 51.6 h** | 2026-11-02 00:48 | 1360 |
+| `gzip` — what every browser sends | Hit | **69 s** | 2026-11-04 08:44 | 1322 |
+
+Across ten listing keys the eight served from cache **all carried `Age` 51.6 h,
+each to a tenth of an hour** — one snapshot written at one instant, and its
+`Date` header (`Mon, 02 Nov 2026 06:42:46 GMT`) is our own sweep of the 02.11 at
+07:41 +01:00. **We populated that cache ourselves and have been re-reading it
+since.**
+
+**AND THE GZIP SIDE IS PARTLY OUR OWN WRITING, WHICH IS DECLARED BECAUSE IT
+CHANGES WHAT THE REMEDY IS WORTH** (the question was put by the pilot, and the
+answer is in this session's own record). Of the ten gzip reads, **eight were
+MISSES** — the origin's own answer, hence today's data, and silent on whether
+anything keeps that variant warm. Of the two HITS, `Chef de projet` at `Age`
+0.1 h was **our own request fifteen minutes earlier** and establishes nothing.
+**The only uncontaminated witness is `Scrum Master`: a HIT at `Age` 11.5 h on a
+key we had never requested in gzip**, so real traffic does reach that variant —
+one specimen, declared as one.
+
+**SO THIS IS NOT ESTABLISHED, and it is the open question:** whether real
+traffic keeps the gzip variant warm for our RARE terms, or whether we end up
+alone on it one notch further along. If the second, gzip buys days and **the
+guard below is the only real protection** — which is why it is not a
+belt-and-braces.
+
+**And it does not affect this board's own users:** the gzip variant is 69 s old,
+so there is nothing to report upstream about a page broken for them. What is
+theirs is a long lifetime on a search-results page; what was ours is having sat
+alone on a variant their traffic never touches.
+
+**THE REPORTED CAUSE WAS WRONG, AND THE SUGGESTED FIX WOULD HAVE BOUGHT ONE
+DAY.** The issue measured `Chef de projet` frozen where `chef de projet` was
+fresh, and proposed lowercasing the term. The case is a red herring: `Chef de
+Projet` and `CHEF DE PROJET`, **both capitalised**, measured fresh in the same
+minute, and the lowercase form was fresh only because the measurement had just
+populated it (`Age` 454 s). A fixed key freezes as soon as our own sweep
+populates it, whatever its case.
+
+**Viewer revalidation is not available either:** `Cache-Control: no-cache` and
+`Pragma: no-cache` as request headers are both ignored — three shots, three
+Hits, `Age` climbing by 6 s each time, with a bare control that did return a Hit
+so the bench was armed.
+
+**What the adapter does now.** It asks for `gzip, deflate` and `decompress_body`
+(in `_decode.py`) undoes it, so the size reserve of #71 is honoured **on the
+decompressed body** rather than by staying on a cold variant. The two variants
+carry the same content, measured: on the two keys our sweeps had not populated,
+`identity` and gzip returned stated totals equal to the unit (160/160 and
+132/132) and the same newest date. **No `br`** — the standard library cannot
+decode it, and `decompress_body` raises rather than hand back bytes that would
+be read one layer down as a charset fault.
+
+**And because that remedy can go stale in its turn, the symptom has its own
+guard.** A page served from the edge's cache with `Age` above `MAX_BODY_AGE`
+(24 h) makes the run **exit 5 after its rows are on stdout**, naming the page
+and the age, and saying that every sentence above it describes that body and not
+this hour. `5` is declared here because a code outside the contract reads as its
+nearest neighbour: across the 238 adapters of this repository the contract is
+**2 broken · 3 gone · 6 partial · 7 refused · 8 unknown**, and `9` already
+carries two different meanings elsewhere. A cached page whose `Age` cannot be
+read is **declared on stderr and changes no code** — the ignorance neither frees
+nor accuses.
+
+**The witness is the `Age` the host declares, never a publication date.** Page 1
+is sorted by RELEVANCE, and `Laravel` and `Symfony` carried a newest ad of 30.10
+and 19.10 **on both variants** — legitimately thin listings. A guard reading
+that date would have reddened on correct data, and it would have looked prudent.
+**The 24 h threshold rests on the USE and not on a gap**: a daily sweep cannot
+learn anything from a body older than its own interval. Nothing was observed
+between 11.5 h and 51.6 h, but that gap has **one** uncontaminated gzip
+specimen under it, so it is a remark and never the justification.
+
 **Prefer `ld+json` to the DOM selectors below.** Both work; the structured
 block does not move when the site is redesigned, and `[data-cy="…"]` does. The
 selectors stay documented because the browser path still uses them and because
