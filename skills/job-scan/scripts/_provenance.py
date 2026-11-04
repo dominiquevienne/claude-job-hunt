@@ -456,6 +456,41 @@ def cache_state(headers):
     cle rendant des totaux egaux a l unite. S en servir pour comparer deux
     corps serait la quatrieme route vers le faux « le fichier a change » que
     `decoded()` documente deja.
+    **ET LA RAISON DE L ADDITIVITE A ETE PUBLIEE AVEC UN SUPPORT FAUX, ce qui
+    est la plus durable des especes : une conclusion JUSTE et une preuve qui
+    n en est pas une — rien ne la contredit.** #1262 a ete livre en disant
+    « le balayage rend UN consommateur hors arbre suivi, `outils-ab/page234.py`,
+    l outillage d un pair que je ne modifie pas ». **C est FAUX, et un pair l a
+    refute sur son propre arbre, qui est le seul endroit d ou ca se lit :** ce
+    fichier ne matchait que parce qu il porte une fonction LOCALE nommee
+    `_ecart_provenance`, sans aucun rapport avec ce module.
+
+    LE MOTIF ETAIT UNE SOUS-CHAINE NUE la ou il fallait l ANCRER SUR L IMPORT.
+    Remesure :
+
+        grep -rl '_provenance'                             -> 1 fichier, et c est un FAUX
+        grep -rlE '^[[:space:]]*(import|from)[[:space:]]+_provenance'
+                                                           -> ZERO hors arbre suivi
+
+    **DONC L ENSEMBLE DES CONSOMMATEURS EXTERNES EST VIDE**, et l inference
+    suivante — « je n en ai qu un, donc un changement de FORMAT se coordonne
+    avec lui » — aurait coordonne avec un consommateur qui n existe pas.
+
+    CE QUI NE BOUGE PAS : l additif reste la bonne forme, pour une raison qui ne
+    dependait jamais de ce compte — un champ ajoute ne peut casser aucun lecteur,
+    connu ou non, et un ensemble mesure VIDE par un motif NU ne prouve pas qu il
+    l est. La direction a protege : un faux POSITIF a fait choisir la forme
+    prudente. Un faux NEGATIF aurait fait changer le format.
+
+    **ET LA FAMILLE SE NOMME, parce que deux mains l ont commise dans la meme
+    minute sur deux motifs differents :** un motif faux par ses MEMBRES. Le mien
+    par SOUS-CHAINE (`_provenance` dans `_ecart_provenance`), le sien par le MOT
+    (`Age` dans « Agence »). Les deux rendent une sortie BIEN FORMEE dont rien ne
+    dit qu elle regarde ailleurs — et les deux conclusions etaient justes, ce qui
+    est exactement ce qui rend la faute durable. **Un balayage de consommateurs
+    s ancre sur la FORME DE L IMPORT, jamais sur le nom nu du module** ; et un
+    ensemble publie comme VIDE ou comme SINGLETON se remesure avec le motif
+    ancre avant d en tirer quoi que ce soit.
     """
     out = {"reading": "fresh-by-construction", "served_from": "unknown",
            "age_s": None, "headers": {}}

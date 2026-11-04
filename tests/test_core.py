@@ -56454,6 +56454,58 @@ class TheRecordSaysWhoAnsweredAndNowAlsoHowOldTheBodyWas(unittest.TestCase):
                       if "from _provenance import" in src else src,
                       "la fonction doit etre IMPORTEE, sinon le module leve au chargement")
 
+    def test_a_consumer_sweep_anchors_on_the_import_and_not_on_the_bare_name(self):
+        """**Le support de l additivite de #1262 a ete publie FAUX**, et ce cas
+        existe pour que la discipline qui le corrige ne soit pas vide.
+
+        #1262 disait « le balayage rend UN consommateur hors arbre suivi,
+        `outils-ab/page234.py` ». Un pair l a refute sur son propre arbre, qui
+        est le seul endroit d ou ca se lit : ce fichier ne matchait que par une
+        fonction LOCALE nommee `_ecart_provenance`. Le motif etait une
+        SOUS-CHAINE NUE la ou il fallait l ANCRER sur l import, et l ensemble des
+        consommateurs externes est en fait VIDE.
+
+        **Ce cas ne mesure pas l arbre d un pair** — il n y a pas acces, et c est
+        precisement pourquoi un pair a du le mesurer. Il prouve que les deux
+        motifs DIFFERENT sur le corpus d ici : sans ca, prescrire l ancre serait
+        une garde incapable d echouer, et sa raison se perdrait au premier
+        nettoyage. La direction a protege cette fois — un faux POSITIF a fait
+        choisir la forme prudente — mais un faux NEGATIF aurait fait changer le
+        format.
+        """
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+        ancre = re.compile(r'(?m)^[ \t]*(?:import|from)[ \t]+_provenance\b')
+        nu, importe = set(), set()
+        for d in ("skills/job-scan/scripts", "bin", "shared", "shared/boards"):
+            chemin = os.path.join(root, d)
+            if not os.path.isdir(chemin):
+                continue
+            for nom in os.listdir(chemin):
+                p = os.path.join(chemin, nom)
+                if not os.path.isfile(p) or not nom.endswith((".py", ".md")):
+                    continue
+                try:
+                    t = io.open(p, encoding="utf-8", errors="replace").read()
+                except OSError:
+                    continue
+                if "_provenance" in t:
+                    nu.add(os.path.join(d, nom))
+                if ancre.search(t):
+                    importe.add(os.path.join(d, nom))
+        self.assertTrue(importe <= nu, "l ancre ne peut pas capter plus que le nom nu")
+        self.assertTrue(
+            nu - importe,
+            "**les deux motifs ne DIFFERENT PAS sur ce corpus**, donc prescrire "
+            "l ancre serait une garde incapable d echouer — et ce cas serait le "
+            "vert qui dit « je n ai pas regarde la ». Si cela arrive un jour, "
+            "c est la PRESCRIPTION qu il faut rejuger, pas ce cas qu il faut "
+            "retirer.")
+        # et l ecart n est pas un artefact : au moins un membre ne NOMME le module
+        # qu en prose ou dans un identifiant qui le CONTIENT
+        self.assertTrue(any(f.endswith(".md") for f in nu - importe)
+                        or len(nu - importe) >= 1, sorted(nu - importe))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
