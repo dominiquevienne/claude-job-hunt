@@ -56731,6 +56731,62 @@ class TheIssueDescribedARouteThatNoLongerExistsAndTwoWitnessesAgreeOnTheNewOne(
         self.assertIn("chrome says 187", err)
         self.assertIn("total says 1", err, "les DEUX nombres se disent")
 
+    def test_the_rate_is_actually_consulted_and_not_merely_imported(self):
+        """**EXERCE, PAS LU — et ce cas existe parce qu une mutation est revenue VERTE.**
+
+        La garde de cadence du depot est `"_pace" in src` : une lecture de NOM.
+        Remplacer l appel par `pass` laisse l import, donc elle reste verte — et la
+        suite le DIT deja ailleurs, « a guard that reads a name reads the name ».
+        Mon balayage l a reproduit : dix mutations rouges et celle-la verte. Ce cas
+        la rend rouge, en pilotant `get()` et en comptant les attentes PAR HOTE.
+        """
+        import urllib.request
+        attentes = []
+
+        class FauxPace:
+            def __init__(s, host, own=0.0):
+                s.host = host
+
+            def wait(s):
+                attentes.append(s.host)
+
+        class Rep:
+            def __init__(s, corps):
+                s._c = corps.encode("utf-8")
+                s.headers = {}
+
+            def read(s):
+                return s._c
+
+            def getcode(s):
+                return 200
+
+            def __enter__(s):
+                return s
+
+            def __exit__(s, *a):
+                return False
+
+        vrai = (self.m.Pace, self.m.gate, urllib.request.urlopen)
+        self.m.Pace = FauxPace
+        self.m.gate = lambda url: None
+        self.m._CADENCE.clear()
+        try:
+            urllib.request.urlopen = lambda req, timeout=None: Rep("{}")
+            self.m.get("https://api-next.aboutsvg.com/api/x")
+            self.m.get("https://api-next.aboutsvg.com/api/y")
+            self.m.get("https://aboutsvg.com/jobs")
+        finally:
+            (self.m.Pace, self.m.gate) = vrai[0], vrai[1]
+            urllib.request.urlopen = vrai[2]
+            self.m._CADENCE.clear()
+        self.assertEqual(attentes, ["api-next.aboutsvg.com",
+                                    "api-next.aboutsvg.com",
+                                    "aboutsvg.com"],
+                         "la cadence se consulte A CHAQUE requete et PAR HOTE — "
+                         "les deux hotes ont leur propre seuil, et aucun n ecrit "
+                         "de `Crawl-delay`, donc elle est a nous")
+
     def test_a_run_without_the_second_host_says_it_is_weaker(self):
         code, out, err = self._run([("/records", self._api(totalItems=1, totalPages=1))],
                                    no_site_witness=True)
