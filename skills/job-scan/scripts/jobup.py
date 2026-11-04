@@ -132,6 +132,11 @@ EXIT_STALE = 5
 # un seul HIT NON CONTAMINE, a 11.5 h — les huit autres lectures gzip etaient
 # des MISS, donc notre propre ecriture, donc muettes sur la chaleur de la
 # variante. **UN specimen, et le fosse ne porte donc pas le seuil.**
+# **ET LA LIGNE SOUS LE SEUIL SORTIRA SOUVENT, CE QUI N EST PAS UN DEFAUT DE
+# CALIBRAGE : cinq entrees ORGANIQUES sur cinq ont ete mesurees perimees de deux a
+# six jours sur cet hote.** `shared/boards/jobup.md` porte les cinq et dit pourquoi
+# la ligne tire si souvent — a lire AVANT de monter ce seuil, qui eteindrait le seul
+# temoin que nous ayons du defaut au lieu de le reduire.
 # **SA RAISON EST L USAGE, et c est la seule qui tienne :** un balayage quotidien ne
 # peut rien apprendre d un corps plus vieux que son propre intervalle — c est
 # exactement le symptome de #1260, trois balayages sans une annonce neuve.
@@ -551,10 +556,17 @@ def cmd_search(a):
     # **ET ELLE ENONCE L INSTRUMENT, JAMAIS LE VERDICT — refonte du 2026-11-04,
     # tranchee par un pair sur un specimen du CORPUS REEL et pas sur un modele.**
     # Sa premiere redaction disait « cette liste n est pas celle d aujourd hui »,
-    # et c est FAUX des qu un terme n a rien publie de neuf : `Agile Coach` est
-    # servi depuis le cache avec 160 offres et une plus recente du 02.11 16:58
-    # **IDENTIQUES a ce que l origine rend** — vieux ET juste, et c est le regime
-    # NORMAL d un terme calme, pas une curiosite. Une garde qui y prononce
+    # et c est FAUX des qu un terme n a rien publie de neuf : si rien n a paru
+    # pendant N heures, un instantane de N heures EGALE le frais. **C est
+    # ANALYTIQUE et non un releve, et la distinction a coute un specimen : le
+    # 2026-11-04 cette clause citait `Agile Coach` — 160 offres identiques a l
+    # origine — comme un cas MESURE, et il s est effondre.** Cette entree avait
+    # ete peuplee par NOTRE propre requete dix minutes plus tot : elle egalait l
+    # origine parce qu elle EN VENAIT. Deux mains mesuraient le meme hote dans la
+    # meme fenetre de vingt minutes sans se dire QUELLES CLES elles touchaient, et
+    # chacune lisait les ecritures de l autre comme du monde. La conduite qui
+    # ferme ca n est pas de l attention : une main qui entre sur un hote annonce
+    # ses cles, pas seulement sa presence. Une garde qui prononce « perime »
     # « perime » est la troisieme espece de garde defaillante — rouge sur du
     # correct — et elle se fera debrancher *parce qu elle a l air prudente*.
     #
@@ -602,7 +614,9 @@ def cmd_search(a):
              f"the three ends, the totals and the board's own figure all "
              f"describe that body. Exit {EXIT_STALE} rather than 0. **It does "
              f"NOT say the rows are wrong:** a quiet term can be served old "
-             f"and be identical to fresh, and that has been measured.")
+             f"and be identical to fresh, which is true BY CONSTRUCTION and "
+             f"needs no specimen: if nothing was published for N hours, a "
+             f"snapshot N hours old equals the fresh one.")
         # Deux codes ne peuvent pas sortir par la meme porte. Les deux FAITS se
         # disent sur stderr, et c est le plus fondamental qui prend le code : la
         # pagination d une lecture dont on vient d etablir qu elle est bornee

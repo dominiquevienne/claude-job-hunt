@@ -56159,17 +56159,33 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
                          "lecture bornee plus loin que l intervalle du balayage")
 
     def test_an_old_body_identical_to_fresh_is_never_called_wrong(self):
-        """LE cas qui a refait cette garde, et il vient du CORPUS REEL.
+        """LE cas qui a refait cette garde, et il tient SANS SPECIMEN — c est ce qui
+        a change le 2026-11-04, quelques heures apres cette classe.
 
-        `Agile Coach` est servi depuis le cache avec 160 offres et une plus
-        recente du 02.11 16:58 **identiques a ce que l origine rend** — vieux ET
-        juste, et c est le regime NORMAL d un terme dont rien de neuf n a ete
-        publie. La premiere redaction de cette garde disait « cette liste n est
-        pas celle d aujourd hui », ce qui y est FAUX : troisieme espece de garde
-        defaillante, rouge sur du correct, et elle se fait debrancher *parce qu
-        elle a l air prudente*. Ce qui reste vrai inconditionnellement est l
-        enonce sur l INSTRUMENT. *(specimen RAPPORTE par un pair, mesure sur deux
-        clefs du meme terme ; non remesure ici.)*
+        **CE QUE CE CAS DISAIT, et qui est RETIRE :** « `Agile Coach` est servi
+        depuis le cache avec 160 offres et une plus recente du 02.11 16:58
+        identiques a ce que l origine rend — vieux ET juste », donne comme un
+        specimen MESURE et rapporte par un pair. **L entree avait ete peuplee par
+        NOTRE PROPRE requete dix minutes plus tot** : elle egalait l origine parce
+        qu elle EN VENAIT. Deux mains mesuraient le meme hote dans la meme fenetre
+        de vingt minutes sans se dire QUELLES CLES elles touchaient, et chacune
+        lisait les ecritures de l autre comme du monde ; le croisement des deux
+        releves l a tranche, un `Miss` chez l une prouvant qu elle avait peuple l
+        entree. Trois des cinq `Hit` du pair etaient a nous.
+
+        **CE QUI NE S EFFONDRE PAS, et c est pourquoi ce cas reste :** si rien n a
+        ete publie pendant N heures, un instantane de N heures EGALE le frais. C
+        est ANALYTIQUE, donc vrai sans aucun releve — et la premiere redaction de
+        cette garde disait « cette liste n est pas celle d aujourd hui », ce qui y
+        est FAUX : troisieme espece de garde defaillante, rouge sur du correct, et
+        elle se fait debrancher *parce qu elle a l air prudente*. Ce qui reste vrai
+        inconditionnellement est l enonce sur l INSTRUMENT.
+
+        **ET LES DEUX `Hit` ORGANIQUES REELLEMENT MESURES SONT TOUS DEUX PERIMES,
+        ce qui est une forme et pas un accident** — `Scrum Master` 11 offres contre
+        12, et `infirmier`, HORS recette donc incontaminable, **1 807 contre 1 824
+        et six jours de retard**. Donc CHAUD N EST PAS FRAIS. *(les deux RAPPORTES
+        par un pair, non remesures ici.)*
         """
         code, out, err = self._run([self._page(2, total=2)], [self.VIEUX])
         self.assertEqual(code, self.jobup.EXIT_STALE, err)
