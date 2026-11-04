@@ -14197,6 +14197,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
     # missing row rather than as nothing at all — the shape a positional or
     # computed population cannot give.
     ENTRIES = {
+        "aboutsvg": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
         "ats": ("gate", "https://h.example/x?p=1"),
         "bumeran": ("get", "https://h.example/x?p=1"),
@@ -56505,6 +56506,237 @@ class TheRecordSaysWhoAnsweredAndNowAlsoHowOldTheBodyWas(unittest.TestCase):
         # qu en prose ou dans un identifiant qui le CONTIENT
         self.assertTrue(any(f.endswith(".md") for f in nu - importe)
                         or len(nu - importe) >= 1, sorted(nu - importe))
+
+
+class TheIssueDescribedARouteThatNoLongerExistsAndTwoWitnessesAgreeOnTheNewOne(
+        unittest.TestCase):
+    """**#733, About SVG (Saint Vincent and the Grenadines) — the premise was 47 days old
+    and the site had been rebuilt under it.** The issue measured, on 2026-09-18, a `/jobs`
+    page of **755 823 bytes whose served markup carried the advertisements**. Measured
+    2026-11-04: **15 074 bytes, 437 characters of visible text**, and `/business/`, `ACADO`,
+    `LiAT`, `Coreas`, `Mustique` and `HOW TO APPLY` each return **zero**.
+
+    **THE DATA MOVED TO A SECOND HOST, AND THAT IS WHERE THE GUARD GOES.** The bundle
+    declares ``https://api-next.aboutsvg.com``; §3 bis says `robots.txt` binds a HOST and not
+    a brand, so reading one host's verdict as the other's is a false closure. That host
+    answers **404 on its own `robots.txt`** — `state: absent`, `certain: True`, which is
+    KNOWLEDGE — and the list is a PocketBase collection named `posts`.
+
+    **AND `postType` IS `job`, SINGULAR, WHERE THE SECTION IS `jobs`.** Composing the plural
+    returns nothing and nothing says why. Three candidate routes were refuted, not abandoned:
+    `/api/browse?section=jobs` by GET and by POST, and `/api/collections/listings/records`.
+    The collection id was EXTRACTED from an image URL in the page, never guessed.
+
+    **TWO WITNESSES, COMPARED TO EACH OTHER:** the site writes its own section counts in the
+    shell's chrome, and the API states `totalItems`. Both said **187**, and `event` 63/63 and
+    `deal` 5/5 agreed too.
+
+    **AND READING THE CHROME COST A CORRECTION OF THIS AUTHOR'S OWN MAKING, which is the case
+    this class exists to keep red.** The chrome reads «&nbsp;Food & menus 274 Jobs 187 Events
+    63…&nbsp;», i.e. `<label> <count>` — and it was first read as «&nbsp;274 Jobs&nbsp;», a
+    number attached to the WRONG label. 274 is the menu count. A motif that merely finds
+    digits near «Jobs» reproduces that silently, so the witness asserts its label matched
+    EXACTLY ONCE and refuses to choose among several."""
+
+    API = '{\n "items": [\n  {\n   "id": "nvvp8erne28oqlu",\n   "title": "Sales Support - Pharmaceuticals at OSV Group Inc.",\n   "postType": "job",\n   "postDate": "2026-10-31 00:49:48.481Z",\n   "status": "approved",\n   "content": "OSV Group Inc. is seeking a detail-oriented and customer-focused Sales Support professional to provide administrative, clerical, and sales support to the Health Department. Key responsibilities include assisting with customer order processing, sales administration, CRM, marketing activities, and accounts receivable follow-ups. Qualifications required include an Associate degree or equivalent, proficiency in Microsoft Office, and experience with inventory or ERP systems. Candidates should possess strong organizational skills, basic financial literacy, excellent communication skills, and the ability to work with minimal supervision. To apply, email hr@osv.com.vc.",\n   "skills": [\n    "gqglvp5e8t7yibr",\n    "bc3adghf4m3u6wn",\n    "9u3ai6vvmbgz2xt",\n    "9gg0sw7nyc5enxy",\n    "4yp57riggphqo6t",\n    "irrhd75rta3lowo",\n    "in91lwa2033rxkz",\n    "8qot4x2297doiop"\n   ],\n   "source": "",\n   "sourceUrl": "",\n   "expand": {\n    "business": {\n     "name": "OSV Group Inc",\n     "address": "Glen",\n     "category": [\n      "wholesale",\n      "retail"\n     ]\n    }\n   }\n  }\n ],\n "page": 1,\n "perPage": 50,\n "totalItems": 187,\n "totalPages": 4\n}'
+
+    CHROME = 'tton></nav><nav class="nav" aria-label="Explore"><div class="side-label">Explore</div><button type="button" class="nav-item"><span class="chip-icon tone-food"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8"></path><path d="M4 3v5a3 3 0 0 0 6 0V3"></path><path d="M7 11v10"></path><path d="M17 3c-2 0-3 2-3 5s1 4 3 4v9"></path></svg></span>Food &amp; menus<span class="count">274</span></button><a class="nav-item on" href="/jobs"><span class="chip-icon tone-jobs"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 13h18"></path></svg></span>Jobs<span class="count">187</span></a><button type="button" class="nav-item"><span class="chip-icon tone-events"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M3 10h18"></path></svg></span>Events<span class="count">63</span></button><button type="button" class="nav-item"><span class="chip-icon tone-business"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9"></path><path d="M4 9v11h16V9"></path><path d="M4 9h16"></path><path d="M9 20v-6h6v6"></path></svg></span>Service Providers<span class="count">92</span></button><button type="button" class="nav-item"><span class="chip-icon tone-deals"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1.5"></circle></svg></span>Deals<span class="count">5</span></button><button type="button" class="nav-item"><span class="chip-icon tone-outage"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg></span>Outages<span class="count">5</span></button></nav><div class="nav"><div class="side-label">Try asking</div><button type="button" class="nav-item subtle">Lunch spots that do roti</button><button type="button" class="nav-i'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import aboutsvg
+        self.m = aboutsvg
+
+    def _run(self, reponses, **kw):
+        """Drive `cmd_jobs` over canned answers. `(code, stdout, stderr)`.
+
+        Through `cmd_jobs` and never through a helper: the exit code is decided on
+        the path, and a guard that exercises the function does not see a
+        substitution on the path (#942).
+        """
+        import argparse
+        import contextlib
+        import io as _io
+        out, err, appels = _io.StringIO(), _io.StringIO(), []
+
+        def faux_get(url):
+            appels.append(url)
+            for motif, rep in reponses:
+                if motif in url:
+                    return rep
+            raise AssertionError("aucune reponse en reserve pour " + url)
+
+        vrai = (self.m.get, self.m.robots_verdict, self.m.time.sleep)
+        self.m.get = faux_get
+        self.m.robots_verdict = lambda h: {"sweep": True, "reason": "test"}
+        self.m.time.sleep = lambda *a, **k: None
+        base = dict(max_pages=3, per_page=50, limit=None, delay=0,
+                    no_site_witness=False)
+        base.update(kw)
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                r = self.m.cmd_jobs(argparse.Namespace(**base))
+                code = r or 0
+        except SystemExit as e:
+            code = e.code or 0
+        finally:
+            (self.m.get, self.m.robots_verdict, self.m.time.sleep) = vrai
+        return code, out.getvalue(), err.getvalue()
+
+    def _api(self, **ecrase):
+        d = json.loads(self.API)
+        d.update(ecrase)
+        return 200, json.dumps(d, ensure_ascii=False), {}
+
+    def _chrome(self, texte=None):
+        return 200, (texte if texte is not None else self.CHROME), {}
+
+    def test_the_fixtures_arm_the_traps_this_class_judges(self):
+        """Sans ce cas, un vert plus bas certifierait ce qui n a pas tourne."""
+        d = json.loads(self.API)
+        r = d["items"][0]
+        self.assertEqual(d["totalItems"], 187)
+        self.assertEqual(r["postType"], "job", "le SINGULIER est le piege")
+        self.assertIn("@", r["content"], "la fixture doit porter un e-mail REEL")
+        self.assertTrue((r.get("expand") or {}).get("business", {}).get("name"))
+        # le chrome doit porter le 274 qui a ete mal lu, sinon le cas suivant est vide
+        self.assertIn("274", self.CHROME)
+        self.assertIn("187", self.CHROME)
+
+    def test_the_sites_own_count_is_read_from_its_label_and_not_from_its_neighbour(self):
+        """274 appartient a « Food & menus ». Ce cas est la faute, figee."""
+        # **ON SAUVE ET ON RESTAURE, JAMAIS ON NE SUPPRIME.** Un `del` sur un
+        # attribut de module qu on vient d AFFECTER retire aussi l original, et
+        # les dix cas suivants perdaient `get` — un banc qui demonte l objet
+        # qu il eprouve.
+        vrai = self.m.get
+        self.m.get = lambda url: self._chrome()
+        try:
+            n, pourquoi = self.m.site_witness()
+        finally:
+            self.m.get = vrai
+        self.assertIsNone(pourquoi, pourquoi)
+        self.assertEqual(n, 187)
+        self.assertNotEqual(n, 274, "274 est le compte des MENUS, pas des emplois")
+
+    def test_a_chrome_whose_label_matches_twice_refuses_rather_than_choosing(self):
+        """Choisir parmi plusieurs est precisement comment 274 a ete lu pour 187."""
+        vrai = self.m.get
+        self.m.get = lambda url: self._chrome(self.CHROME + self.CHROME)
+        try:
+            n, pourquoi = self.m.site_witness()
+        finally:
+            self.m.get = vrai
+        self.assertIsNone(n)
+        self.assertIn("2 time(s)", pourquoi)
+
+    def test_a_record_of_another_section_stops_the_run(self):
+        """Emettre melangerait des menus dans un registre d emploi."""
+        d = json.loads(self.API)
+        d["items"][0]["postType"] = "menu"
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", (200, json.dumps(d), {}))])
+        self.assertEqual(code, self.m.EXIT_BROKEN, err)
+        self.assertIn("the filter did not hold", err)
+        self.assertEqual(out, "", "rien ne sort quand le filtre n a pas tenu")
+
+    def test_the_plural_is_the_trap_and_the_singular_is_what_the_records_carry(self):
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=1, totalPages=1))])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.m.POST_TYPE, "job")
+        self.assertIn("postType='job'", "".join(
+            ["filter=(postType='job')"]), "le filtre part au SINGULIER")
+
+    def test_the_contacts_leave_the_description_and_the_record_says_which(self):
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=1, totalPages=1))])
+        self.assertEqual(code, 0, err)
+        r = json.loads(out.strip())
+        self.assertNotRegex(r["description"], r"[\w.+-]+@[\w-]+\.[\w.]{2,}")
+        self.assertIn("[e-mail withheld]", r["description"])
+        self.assertEqual(r["withheld_fields"], ["email"])
+        self.assertTrue(r["contacts_withheld"])
+
+    def test_nothing_is_declared_withheld_that_was_never_there(self):
+        """Un board pauvre ne doit pas se lire comme un board censure."""
+        d = json.loads(self.API)
+        d["items"][0]["content"] = "Pas d adresse ici, juste du texte."
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", (200, json.dumps(d), {}))])
+        r = json.loads(out.strip())
+        self.assertIsNone(r["withheld_fields"])
+        # **LA CLE EST ABSENTE, pas `False`** : l emettre a faux declarerait une
+        # discretion non exercee, et un board pauvre se lirait comme censure.
+        self.assertNotIn("contacts_withheld", r)
+        self.assertNotIn("withheld]", r["description"])
+
+    def test_the_employer_is_never_invented_when_the_relation_is_absent(self):
+        """Mesure : la relation manque sur 42 des 187."""
+        d = json.loads(self.API)
+        d["items"][0].pop("expand", None)
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", (200, json.dumps(d), {}))])
+        r = json.loads(out.strip())
+        self.assertIsNone(r["company"])
+        self.assertIsNone(r["location_text"])
+
+    def test_the_human_address_uses_the_kind_from_the_bundles_closed_list(self):
+        """`post` est le seul des cinq qui convienne a un enregistrement de `posts`.
+
+        Et une SPA sert sa coquille pour tout chemin, donc aucun code HTTP ne
+        peut confirmer cette adresse : elle est RAISONNEE, et le dire est la
+        seule chose honnete qu on puisse en faire.
+        """
+        self.assertEqual(self.m.AD_KIND, "post")
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=1, totalPages=1))])
+        r = json.loads(out.strip())
+        self.assertEqual(r["url"], "https://aboutsvg.com/post/" + r["id"])
+
+    def test_the_skills_identifiers_are_not_emitted_as_if_they_were_names(self):
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=1, totalPages=1))])
+        r = json.loads(out.strip())
+        self.assertNotIn("skills", r,
+                         "des identifiants emis comme des competences sont une "
+                         "donnee que le lecteur ne peut pas utiliser")
+
+    def test_fewer_than_the_api_states_is_partial_and_says_how_short(self):
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=187, totalPages=1))])
+        self.assertEqual(code, self.m.EXIT_PARTIAL, err)
+        self.assertIn("186 short", err)
+        self.assertEqual(len([l for l in out.splitlines() if l.strip()]), 1,
+                         "les lignes sortent AVANT le code, jamais a sa place")
+
+    def test_the_two_witnesses_are_compared_to_each_other_and_not_only_to_us(self):
+        """Les deux sont des nombres de l HOTE : leur desaccord est un fait sur le board.
+
+        **ET LA PREMIERE VERSION DE CE CAS FABRIQUAIT SON DESACCORD PAR UN NO-OP.**
+        Elle faisait `CHROME.replace("Jobs 187", "Jobs 999")` : dans le HTML BRUT
+        le label et son compte sont separes par du balisage, donc le remplacement
+        ne portait sur rien et l assertion sur `999` a rougi. C est exactement la
+        raison pour laquelle `site_witness()` APLATIT le texte avant de lire —
+        une fixture qu on croit avoir modifiee et qui est intacte est un banc
+        desarme, et il n a ete vu que parce qu une assertion le nommait.
+        """
+        self.assertNotIn("Jobs 187", self.CHROME,
+                         "le label et son compte sont separes par du balisage : "
+                         "c est pourquoi le temoin aplatit avant de lire")
+        code, out, err = self._run([("aboutsvg.com/jobs", self._chrome()),
+                                    ("/records", self._api(totalItems=1, totalPages=1))])
+        self.assertIn("the two witnesses disagree", err)
+        self.assertIn("chrome says 187", err)
+        self.assertIn("total says 1", err, "les DEUX nombres se disent")
+
+    def test_a_run_without_the_second_host_says_it_is_weaker(self):
+        code, out, err = self._run([("/records", self._api(totalItems=1, totalPages=1))],
+                                   no_site_witness=True)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("the two witnesses", err)
+        self.assertIn("the API states 1", err)
 
 
 if __name__ == "__main__":
