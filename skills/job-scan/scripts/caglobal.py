@@ -61,8 +61,10 @@ boundary reached.
 
 **THE `countries:` LINE OF THE CARD IS WRONG IN BOTH DIRECTIONS, and it is a
 stock snapshot rather than a property of the board.** It declares
-`ZA NG GN MA EG CG AO DJ ER RW`, measured on one page on 2026-09-20. On this
-stock: **CG 0, DJ 0, ER 0** — three of its ten have left the window in 45 days
+`ZA NG GN MA EG CG AO DJ ER ET RW`, measured on one page on 2026-09-20. On this
+stock: **CG 0, DJ 0, ER 0** — three of its ELEVEN have left the window in 45
+days. On this
+stock: **CG 0, DJ 0, ER 0** — three of its ELEVEN have left the window in 45 days
 — while the board serves **31 countries**, among them **Australia with 16 ads**
 (`Expression of Interest … – Australia`, DAMA sponsorship), which the line does
 not name at all.
