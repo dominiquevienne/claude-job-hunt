@@ -24,3 +24,105 @@ GET https://www.caglobalint.com/jobs/   200 — 15 ads, ?paged=2 … 12
 ```
 
 The adapter's first line: the 12 pages, the ad's fields (title, region, reference, posted, the text), the WordPress REST if the job type is exposed with `X-WP-Total`.
+
+## 2026-11-04 — #786 SHIPPED as `caglobal.py`: the country does NOT live in the field the issue designated
+
+**MEASURED ON THE WHOLE POPULATION BEFORE A LINE WAS WRITTEN, and that is what
+refuted the premise of the rank.** Two REST pages, `per_page=100`: 100 + 99
+records, **0 overlapping id**, 199 distinct ids. Not a sample — the board.
+
+**The place taxonomy cannot give a country, and that is not a gap in the data
+but its design.** `jobpost_location` DECLARES **70** terms of which **13** are
+assigned, and all seventy are REGIONS at every granularity — 57 of them
+multi-region names glued by a `#`:
+
+```
+Western Africa#Southern Africa#Eastern Africa#Central Africa
+United Kingdom#Southern Africa#Europe#Eastern Africa#Central Africa
+Northern Africa#Middle East · Southern Africa#Indian Ocean#Eastern Africa
+```
+
+**No country is named among the seventy — not even South Africa, which carries
+34 ads.** And the glued names explain a measurement from the morning that was
+true and misleading: «0 ads with several places» holds because the
+multi-membership is encoded INSIDE the term name, not as a list.
+
+The type's three other taxonomies answer no better: `jobpost_category` is a
+sector, and `jobpost_job_type` and `jobpost_tag` are **declared by the schema
+and EMPTY on 199/199**.
+
+**So the country is derived from the TITLE**, where the host writes it — and
+the filter #786 asks for is therefore sound, just not off the field it named.
+
+```
+… - Guinea                      the country alone, after an en-dash
+… - Cairo, Egypt                city, country
+… - South Africa, Johannesburg  country, city -- the REVERSE order
+… Gauteng - South Africa        the city BEFORE the dash
+… ( / Port Operations) Togo     NO separator at all
+… - West Africa                 a REGION, not a country
+Finance Manager · CFO           NOTHING
+```
+
+**A first model of that form came from THREE records and was wrong**: the three
+newest posts carry a `|`, and only **3 of 199** do — one client's. The real
+separator is the en-dash. So no separator is parsed at all: each title is
+searched for a known name, **longest key first and on word boundaries**.
+
+**AND THE TWO CONDITIONS ARE NOT REDUNDANT, which a mutation had to say
+because a test could not.** Stripping the boundary while keeping the length
+left `Nigeria`/`Niger` and `Malawi`/`Mali` GREEN — the longer key wins first.
+What isolates the boundary is a word that CONTAINS a key without being one:
+**`Woman` contains `oman`**, so «Woman in Mining Leadership Programme» files as
+**Oman** without the look-around, and `Romania` does too.
+
+**128 of 199 titles resolve a country** (6 through a city alone); the other 71
+emit `country: null` and are never guessed, about 40 of them stating a region.
+
+**AND `--country` REPORTS WHAT IT COULD NOT RESOLVE.** Exercised on the issue's
+own case: `--country DJ` emits **0 ads** and says *«199 read; 128 resolved to
+another country, 71 resolved to none»*. A bare zero there would read as «this
+board has nothing for Djibouti», which is a zero that asserts instead of
+missing — and Djibouti is the country that put this issue at the top of the
+owner's order of 27.09.
+
+**THE PREVIOUS `countries:` LINE WAS WRONG IN BOTH DIRECTIONS.** It named
+**eleven** — `ZA NG GN MA EG CG AO DJ ER ET RW` — of which **CG, DJ and ER
+carry 0 ads on this stock**, while the board serves **31 countries** including
+**Australia with 16** (`Expression of Interest … – Australia`, DAMA
+sponsorship), which it did not name. *The README already knew «24 countries» at
+its own line 1469: this measurement recoups and extends that, it does not
+discover it.* For a recruitment agency, `countries:` describes what was in the
+window on the day it was measured, never a property of the board.
+
+**`X-WP-Total` IS A PUBLISHED STOCK, NOT AN INVENTORY**: all 199 are `publish`
+and they span **2021-06-22 to 2026-11-04**. So completeness is measured against
+the `--since-days` boundary, or against **reading the last page the host
+declares** — a third kind of ending, added because without it a sweep that read
+199 of 199 exited **partial**, and an alarm that fires always is worth no more
+than one that never fires. When `X-WP-TotalPages` is missing, the tool does NOT
+claim completeness: ignorance does not free.
+
+**And the total MOVED while we measured it** — 196 at ~13:00Z, 199 at 16:30Z —
+so it is reported with its hour.
+
+**A CORRECTION OF THE MORNING'S OWN COMMENT, on the object.** It said the group
+`*` «refuses one path that is not ours». It refuses **nothing**: the body
+carries `User-agent: *` then an EMPTY `Disallow:`. And it said «its 70 resolved
+terms», above a list of **13** — both numbers are right and answer different
+questions, the taxonomy DECLARING 70 and only 13 being ASSIGNED. A denominator
+was missing, not a figure wrong.
+
+```
+_robots.allowed('www.caglobalint.com','/wp-json/wp/v2/jobpost')   open, certain
+GET /wp-json/wp/v2/jobpost?per_page=100&page=1   200, 1 537 519 B, 16:30:20Z
+GET /wp-json/wp/v2/jobpost?per_page=100&page=2   200, 1 523 665 B, 16:30:43Z
+GET /wp-json/wp/v2/jobpost_location?per_page=100 200,    56 421 B, 16:34:03Z
+```
+
+**WHAT REMAINS OPEN, and it is not ours to close**: this adapter cannot deliver
+**Djibouti**, which is why #786 held rank 1 of the owner's order of 27.09
+(«continue à couvrir les pays à zéro»). Djibouti becomes a zero-adapter country
+with no carrier in the queue. *To be raised with the owner* — opening another
+vehicle for DJ is a decision about what we undertake. And withdrawing DJ's
+coverage from the country page belongs to the pages session, not to code.
