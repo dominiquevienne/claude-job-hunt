@@ -55626,5 +55626,326 @@ class AnEmptyFilterMeansNoValueMatchesAndTheDzongkhagMapIsWrongOnExactlyOneOfTwe
         self.assertIn("carry no", err)
 
 
+class TheStatedTotalHidesBehindAnEntityAndTheDatesAreDayFirstOnlyBecauseTheHostSaysSo(
+        unittest.TestCase):
+    """**`jobo.py`, 2026-11-04 (#715).** JOBO.sc, the Seychelles JobMonster board, whose
+    list states its own size and names its own last page — two witnesses this tool did
+    not extract, and both sit where the issue did not say.
+
+    **THE STATED TOTAL CARRIES AN HTML ENTITY AND LIVES ONLY ON PAGE 1.** The page writes
+    `Showing 1&ndash;10 of 184 jobs`. A motif built on the DECODED dash renders ZERO, and
+    that zero reads exactly like «this board states no total» — so the one line that
+    licenses comparing our count to the host's would be lost without a word. And pages
+    2..N do not repeat it, so a per-page read loses it after the first request.
+
+    **THE ADVERT ADDRESS SHARES THE LIST'S PREFIX.** Adverts are `/jobs/<slug>/` and the
+    pager is `/jobs/page/N/`; a first measurement of this host looked for `/job/<slug>/`
+    and found **0 links on a page holding ten adverts**. The filter is therefore POSITIVE
+    — a slug, never `page` — because both negatives are well formed.
+
+    **AND THE DATES ARE DAY-FIRST ONLY BECAUSE THE CARD SAYS SO.** Each card writes
+    `03/11/2026` in `job-date__posted` and `2026-11-03T16:39:53+04:00` in the `datetime`
+    of the SAME `<time>`. `03/11` is valid read either way, so a month-first reading does
+    not raise: it emits March 11th, well formed and false. The two are asserted to agree
+    on every card — measured 184 of 184 on the live walk — and that agreement is what
+    licenses reading the CLOSING date, which exists only as `dd/mm/yyyy`. *The closing
+    span opens with `- `, the dash belonging to the layout: taken raw it is not a date at
+    all, and `job-date-ago` («15 hours ago») sits two tags away.*
+
+    **WHAT IS WITHHELD IS SCRUBBED FROM THE FIELDS AND NEVER FROM THE PAGE.** The list
+    page carries `tel:+2482610105` four times — JOBO's own number, in the chrome beside
+    FAQ and Contact — and **0 of the 10 cards carry a telephone**. Scrubbing the page body
+    would write `withheld_fields: ["telephone"]` on all 184 records and claim a discretion
+    nobody exercised: the #1005 lie from the other end. *The AD route is the opposite and
+    it is measured: its custom fields carry an employer's `Company Phone` and a
+    `Contact Phone`, both withheld.*
+
+    **ON AN ADVERT PAGE THE `<article>` BLOCKS ARE OTHER PEOPLE'S ADVERTS** — five of
+    them, under `related-jobs`. A description slice that reached them would emit the
+    neighbours inside one advert, well formed and wrong.
+
+    *Every fixture here is EXTRACTED from the host's own bytes, read 2026-11-04 03:25–03:29
+    UTC: two whole `<article>` cards, the stated-count span, the pager's own page-19
+    anchor, the chrome's `tel:` anchor, the advert's `<h1>` and its `job-desc` block, and
+    the opening tag of the related block. The list pages are ASSEMBLED from those verbatim
+    spans and nothing is composed. Nothing touches the network: `request` is replaced
+    throughout.*"""
+
+    CARTE_A = '<article class="loadmore-item noo_job style-1 post-211554 type-noo_job status-publish hentry job_category-business job_category-law job_category-telecommunications job_type-full-time job_tag-cws job_location-mahe no-featured has-left-col" \n        data-url="https://jobo.sc/jobs/legal-and-regulatory-officer/" \n        data-marker="false">\n        <a class="job-details-link" href="https://jobo.sc/jobs/legal-and-regulatory-officer/"></a>\n        <div class="loop-item-wrap list">\n                            <div class="item-featured">\n                    <a href="https://jobo.sc/jobs/legal-and-regulatory-officer/">\n                        <img width="100" height="100" src="https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px-100x100.png" class="" alt="Cable &#038; Wireless (Seychelles) Ltd" decoding="async" srcset="https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px-100x100.png 100w, https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px-small.png 150w, https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px.png 270w, https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px-200x200.png 200w, https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px-252x252.png 252w" sizes="(max-width: 100px) 100vw, 100px" />                    </a>\n                </div>\n                        <div class="loop-item-content" style="width: 73%;float: left; padding-left:25px">\n                <h3 class="loop-item-title">\n                    <a href="https://jobo.sc/jobs/legal-and-regulatory-officer/" title="Permanent link to: &quot;Legal and Regulatory Officer&quot;">Legal and Regulatory Officer</a>\n                </h3>\n                <p class="content-meta"><span class="job-company" > <a href="https://jobo.sc/employers/cable-wireless-seychelles-ltd/"><span >Cable & Wireless (Seychelles) Ltd</span></a>\n</span>\n<span class="job-type"><a href="https://jobo.sc/job-type/full-time/" style="color: #f14e3b"><i class="fa fa-bookmark"></i><span>Full Time</span></a></span>\n<span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place" class="job-location">\n<i class=""></i>\n<a href="https://jobo.sc/job-location/mahe/"><em>Mahé</em></a>\n</span>\n<span class="job-date">\n<time class="entry-date" datetime="2026-11-03T16:39:53+04:00">\n<i class="fa fa-calendar-alt"></i>\n<span class="job-date__posted" >\n03/11/2026\n</span>\n<span class="job-date__closing" >\n - 16/11/2026\n</span>\n</time>\n</span>\n<span class="job-category">\n<i class=""></i>\n<a href="https://jobo.sc/job-category/business/" title="View all jobs in: &ldquo;Business&rdquo;"> Business</a> - <a href="https://jobo.sc/job-category/law/" title="View all jobs in: &ldquo;Law&rdquo;"> Law</a> - <a href="https://jobo.sc/job-category/telecommunications/" title="View all jobs in: &ldquo;Telecommunications&rdquo;"> Telecommunications</a>\n</span>\n<span class="job-_industry">\n<i class=""></i>\n<em>Industry: </em>\nTelecommunications\n</span></p>                <div class="job-tools">\n\n                                            <span class="noo-icon-tool noo-tool-email-job" data-id="211554"\n                          data-title="Legal and Regulatory Officer" data-url="https://jobo.sc/jobs/legal-and-regulatory-officer/">\n\t\t\t\t\t\t\t<i class="fa fa-envelope"></i>\n\t\t\t\t\t\t\t<span class="noo-tool-label">Send to friend</span>\n\t\t\t\t\t\t</span>\n\n                    \n                    \n                        <span class="noo-icon-tool noo-btn-bookmark " data-job-id="211554" data-action="noo_bookmark_job" data-security="850c68f6a1">\n    \t\t\t\t\t\t\t<i class="fa fa-heart"></i>\n    \t\t\t\t\t\t\t<span class="noo-tool-label">Save</span>\n    \t\t\t\t\t\t</span>\n\n                                        \n                        <span class="noo-icon-tool noo-tool-share">\n    \t\t\t\t\t\t\t<i class="fa fa-share-alt"></i>\n    \t\t\t\t\t\t\t<span class="noo-tool-label">Share</span>\n                            <div class="noo-social-share">\n<a href="#share" class="noo-icon fab fa-facebook-f" title="Share on Facebook" onclick="window.open(\'http://www.facebook.com/sharer.php?u=https%3A%2F%2Fjobo.sc%2Fjobs%2Flegal-and-regulatory-officer%2F&amp;t=Legal+and+Regulatory+Officer\',\'popupFacebook\',\'width=650,height=270,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-twitter" title="Share on Twitter" onclick="window.open(\'https://twitter.com/intent/tweet?text=Legal+and+Regulatory+Officer&amp;url=https%3A%2F%2Fjobo.sc%2Fjobs%2Flegal-and-regulatory-officer%2F\',\'popupTwitter\',\'width=500,height=370,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-pinterest-p" title="Share on Pinterest" onclick="window.open(\'http://pinterest.com/pin/create/button/?url=https%3A%2F%2Fjobo.sc%2Fjobs%2Flegal-and-regulatory-officer%2F&amp;media=https://jobo.sc/wp-content/uploads/2017/10/CWS_Logo_270px.png&amp;description=Legal+and+Regulatory+Officer\',\'popupPinterest\',\'width=750,height=265,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-linkedin-in" title="Share on LinkedIn" onclick="window.open(\'http://www.linkedin.com/shareArticle?mini=true&amp;url=https%3A%2F%2Fjobo.sc%2Fjobs%2Flegal-and-regulatory-officer%2F&amp;title=Legal+and+Regulatory+Officer&amp;source=JOBO.sc\',\'popupLinkedIn\',\'width=610,height=480,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="/cdn-cgi/l/email-protection#8db2fef8efe7e8eef9b0c1e8eaece1a6ece3e9a6dfe8eaf8e1ecf9e2fff4a6c2ebebe4eee8ffabece0fdb6efe2e9f4b0e5f9f9fdfea8becca8bfcba8bfcbe7e2efe2a3feeea8bfcbe7e2effea8bfcbe1e8eaece1a0ece3e9a0ffe8eaf8e1ecf9e2fff4a0e2ebebe4eee8ffa8bfcb" class="noo-icon far fa-envelope" title="Share on email">\n</a>\n<a href="#share" class="noo-icon fab fa-whatsapp" title="Share on Whatsapp" onclick = "window.open(\'https://wa.me/?text=https%3A%2F%2Fjobo.sc%2Fjobs%2Flegal-and-regulatory-officer%2F\',\'mywindow\',\'width=610,height=480\'); return false;">\n</a>\n</div>    \t\t\t\t\t</span>\n\n                                                        </div>\n            </div>\n                            <div class="show-view-more">\n                    <a class="btn btn-primary" href="https://jobo.sc/jobs/legal-and-regulatory-officer/">\n                        View more                    </a>\n                                        <span class="job-date-ago">15 hours ago</span>\n                </div>\n            \n            \n                <div class="show-quick-view">\n                    <a title="Quick view" href="#" class="btn-quick-view btn-quick-view-popup" data-id="211554"  data-security="6c62cdcb99"></a>\n                </div>\n\n            \n        </div>\n\n        \n    </article>'
+    CARTE_B = '<article class="loadmore-item noo_job style-1 post-211498 type-noo_job status-publish hentry job_category-bartending job_category-hospitality job_category-tourism job_type-casual job_tag-anantara-maia-seychelles-villas job_location-anse-boileau job_location-mahe no-featured has-left-col" \n        data-url="https://jobo.sc/jobs/casual-bartender/" \n        data-marker="false">\n        <a class="job-details-link" href="https://jobo.sc/jobs/casual-bartender/"></a>\n        <div class="loop-item-wrap list">\n                            <div class="item-featured">\n                    <a href="https://jobo.sc/jobs/casual-bartender/">\n                        <img width="100" height="100" src="https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px-100x100.png" class="" alt="Anantara Maia Seychelles Villas" decoding="async" loading="lazy" srcset="https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px-100x100.png 100w, https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px-200x200.png 200w, https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px-252x252.png 252w, https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px.png 270w" sizes="auto, (max-width: 100px) 100vw, 100px" />                    </a>\n                </div>\n                        <div class="loop-item-content" style="width: 73%;float: left; padding-left:25px">\n                <h3 class="loop-item-title">\n                    <a href="https://jobo.sc/jobs/casual-bartender/" title="Permanent link to: &quot;Casual Bartender&quot;">Casual Bartender</a>\n                </h3>\n                <p class="content-meta"><span class="job-company" > <a href="https://jobo.sc/employers/anantara-maia-seychelles-villas/"><span >Anantara Maia Seychelles Villas</span></a>\n</span>\n<span class="job-type"><a href="https://jobo.sc/job-type/casual/" style="color: "><i class="fa fa-bookmark"></i><span>Casual</span></a></span>\n<span itemprop="jobLocation" itemscope itemtype="http://schema.org/Place" class="job-location">\n<i class=""></i>\n<a href="https://jobo.sc/job-location/anse-boileau/"><em>Anse Boileau</em></a>, <a href="https://jobo.sc/job-location/mahe/"><em>Mahé</em></a>\n</span>\n<span class="job-date">\n<time class="entry-date" datetime="2026-11-03T10:40:26+04:00">\n<i class="fa fa-calendar-alt"></i>\n<span class="job-date__posted" >\n03/11/2026\n</span>\n<span class="job-date__closing" >\n - 03/12/2026\n</span>\n</time>\n</span>\n<span class="job-category">\n<i class=""></i>\n<a href="https://jobo.sc/job-category/bartending/" title="View all jobs in: &ldquo;Bartending&rdquo;"> Bartending</a> - <a href="https://jobo.sc/job-category/hospitality/" title="View all jobs in: &ldquo;Hospitality&rdquo;"> Hospitality</a> - <a href="https://jobo.sc/job-category/tourism/" title="View all jobs in: &ldquo;Tourism&rdquo;"> Tourism</a>\n</span>\n<span class="job-_industry">\n<i class=""></i>\n<em>Industry: </em>\nHotels & Resorts\n</span></p>                <div class="job-tools">\n\n                                            <span class="noo-icon-tool noo-tool-email-job" data-id="211498"\n                          data-title="Casual Bartender" data-url="https://jobo.sc/jobs/casual-bartender/">\n\t\t\t\t\t\t\t<i class="fa fa-envelope"></i>\n\t\t\t\t\t\t\t<span class="noo-tool-label">Send to friend</span>\n\t\t\t\t\t\t</span>\n\n                    \n                    \n                        <span class="noo-icon-tool noo-btn-bookmark " data-job-id="211498" data-action="noo_bookmark_job" data-security="850c68f6a1">\n    \t\t\t\t\t\t\t<i class="fa fa-heart"></i>\n    \t\t\t\t\t\t\t<span class="noo-tool-label">Save</span>\n    \t\t\t\t\t\t</span>\n\n                                        \n                        <span class="noo-icon-tool noo-tool-share">\n    \t\t\t\t\t\t\t<i class="fa fa-share-alt"></i>\n    \t\t\t\t\t\t\t<span class="noo-tool-label">Share</span>\n                            <div class="noo-social-share">\n<a href="#share" class="noo-icon fab fa-facebook-f" title="Share on Facebook" onclick="window.open(\'http://www.facebook.com/sharer.php?u=https%3A%2F%2Fjobo.sc%2Fjobs%2Fcasual-bartender%2F&amp;t=Casual+Bartender\',\'popupFacebook\',\'width=650,height=270,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-twitter" title="Share on Twitter" onclick="window.open(\'https://twitter.com/intent/tweet?text=Casual+Bartender&amp;url=https%3A%2F%2Fjobo.sc%2Fjobs%2Fcasual-bartender%2F\',\'popupTwitter\',\'width=500,height=370,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-pinterest-p" title="Share on Pinterest" onclick="window.open(\'http://pinterest.com/pin/create/button/?url=https%3A%2F%2Fjobo.sc%2Fjobs%2Fcasual-bartender%2F&amp;media=https://jobo.sc/wp-content/uploads/2026/04/Anantara_Maia_Seychelles_Villas_new_logo_270px.png&amp;description=Casual+Bartender\',\'popupPinterest\',\'width=750,height=265,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="#share" class="noo-icon fab fa-linkedin-in" title="Share on LinkedIn" onclick="window.open(\'http://www.linkedin.com/shareArticle?mini=true&amp;url=https%3A%2F%2Fjobo.sc%2Fjobs%2Fcasual-bartender%2F&amp;title=Casual+Bartender&amp;source=JOBO.sc\',\'popupLinkedIn\',\'width=610,height=480,resizable=0, toolbar=0, menubar=0, status=0, location=0, scrollbars=0\'); return false;">\n</a>\n<a href="/cdn-cgi/l/email-protection#84bbf7f1e6eee1e7f0b9c7e5f7f1e5e8afc6e5f6f0e1eae0e1f6a2e5e9f4bfe6ebe0fdb9ecf0f0f4f7a1b7c5a1b6c2a1b6c2eeebe6ebaaf7e7a1b6c2eeebe6f7a1b6c2e7e5f7f1e5e8a9e6e5f6f0e1eae0e1f6a1b6c2" class="noo-icon far fa-envelope" title="Share on email">\n</a>\n<a href="#share" class="noo-icon fab fa-whatsapp" title="Share on Whatsapp" onclick = "window.open(\'https://wa.me/?text=https%3A%2F%2Fjobo.sc%2Fjobs%2Fcasual-bartender%2F\',\'mywindow\',\'width=610,height=480\'); return false;">\n</a>\n</div>    \t\t\t\t\t</span>\n\n                                                        </div>\n            </div>\n                            <div class="show-view-more">\n                    <a class="btn btn-primary" href="https://jobo.sc/jobs/casual-bartender/">\n                        View more                    </a>\n                                        <span class="job-date-ago">21 hours ago</span>\n                </div>\n            \n            \n                <div class="show-quick-view">\n                    <a title="Quick view" href="#" class="btn-quick-view btn-quick-view-popup" data-id="211498"  data-security="6c62cdcb99"></a>\n                </div>\n\n            \n        </div>\n\n        \n    </article>'
+    # la ligne qui PORTE le total, avec son entite — c est elle que le motif doit lire
+    ANNONCE = '<span>\n\t\t\tShowing 1&ndash;10 of 184 jobs\t\t</span>'
+    PAGER19 = '<a aria-label="Page 19" class="page-numbers" href="https://jobo.sc/jobs/page/19/">19</a>'
+    # le telephone du SITE, dans le chrome : il ne doit etre retire d AUCUN enregistrement
+    TEL_SITE = '<a href="tel:+2482610105"><i class="fa fa-phone" aria-hidden="true"></i> +248 2610105</a>'
+    AD_TITRE = '<h1 class="page-title">\n\t\t\t\t\t\t\t\t\t\t<span >Legal and Regulatory Officer</span>\n\t\t\t\t\t\t\t\t\t\t<span class="count views">240 views</span>\t\t\t\t\t\t\t\t\t</h1>'
+    AD_DESC = ' \n\t<div class="job-desc" >\n\t\t                <div class="job-custom-fields">\n                    <h3>More Information</h3>\n                    <div class="video-gallery-fields">\n                        <ul>\n                            <li class="job-cf"><strong class=\'noo-label label-_noo_job_field__industry \'>\n<i class=\'fa fa-blank\'>\n</i>\nIndustry\n</strong>\n<span class=\'value-_noo_job_field__industry cf-select-value\'>Telecommunications</span></li>\n<li class="job-cf"><strong class=\'noo-label label-_noo_job_field_company_phone \'>\n<i class=\'fa fa-blank\'>\n</i>\nCompany Phone\n</strong>\n<span class=\'value-_noo_job_field_company_phone cf-number-value\'>+248 428 4000</span></li>                        </ul>\n                    </div>\n                </div>\n            \t\t<h3>ONLY SEYCHELLOIS CANDIDATES CAN APPLY FOR THIS POST</h3>\n<h3>Job Description</h3>\n<p>Join Cable &amp; Wireless Seychelles as a Legal and Regulatory Officer, supporting the company in meeting its legal, regulatory and compliance obligations. You will provide legal and regulatory advice, draft and review contracts and project documents, support negotiations and dispute resolution, and liaise with external counsel, regulators and internal stakeholders. The role includes monitoring legislative and regulatory developments, reviewing policies, preparing regulatory submissions and reports, and supporting compliance with tariff, spectrum and numbering requirements. You will also help identify and manage legal and regulatory risks, support fraud investigations and ethical conduct, and assist the Chief Legal, Risks and Compliance Officer with board secretarial and related governance duties.</p>\n<h3>Job Requirements</h3>\n<p><strong>Qualifications &amp; Experience</strong></p>\n<p><strong>Essential</strong></p>\n<ul>\n<li>Degree in Law, Business Law, Telecommunications Management or any related field.</li>\n<li>2–5 years’ experience.</li>\n<li>Strong organisational and planning skills, with the ability to multitask.</li>\n<li>Proficiency in Microsoft Excel and Word.</li>\n<li>Good oral, written and presentation skills, with strategic thinking, planning, negotiation and influencing skills.</li>\n<li>Trustworthiness, discretion, confidentiality and exemplary work ethics.</li>\n<li>A valid driving licence.</li>\n</ul>\n<p><strong>Desirable</strong></p>\n<ul>\n<li>Legal experience in the telecommunications sector.</li>\n</ul>\n<h3>How to Apply</h3>\n<p>Interested candidates should <strong><a href="https://jobo.sc/member?v=1f1ed7ce56d6">Sign-up or login to apply now</a></strong> or e-mail your application to <a href="/cdn-cgi/l/email-protection#0862676a7b486b7f7b6d716b606d64646d7b266b6765"><span class="__cf_email__" data-cfemail="0862676a7b486b7f7b6d716b606d64646d7b266b6765">[email&#160;protected]</span></a></p>\n<p><strong>Deadline for Application is 16th November 2026.</strong></p>\n<h3>Note:</h3>\n<p>In order to increase your chances of a successful selection, kindly ensure that your application is complete and that all relevant information such as your qualifications have been provided with your application. \xa0 Otherwise, the Employer reserves the right not to consider your application for selection.</p>\n\t\t\t</div>\n\t\n\t'
+    AD_RELATED_OPEN = '<div id="scroll6aeaa67d02f45" class="jobs posts-loop related-jobs hidden-print">'
+
+    def _page(self, cartes, annonce=True, pager=True):
+        """Une page de liste, ASSEMBLEE de tranches verbatim de l hote."""
+        bouts = [self.TEL_SITE]
+        if annonce:
+            bouts.append(self.ANNONCE)
+        bouts.extend(cartes)
+        if pager:
+            bouts.append(self.PAGER19)
+        return "<html><body>" + "".join(bouts) + "</body></html>"
+
+    def _run(self, argv, pages, ad=None):
+        """`pages` est une LISTE de corps servis dans l ordre ; au-dela, 404 — ce que
+        l hote rend lui-meme a la page 20. Rend (lignes, stderr, code, urls)."""
+        import contextlib
+        import jobo as m
+        suite = list(pages)
+        urls = []
+        vrai = m.request
+
+        def servir(url):
+            urls.append(url)
+            if ad is not None and "/page/" not in url and url != m.LIST:
+                return 200, ad
+            if url == m.LIST:
+                n = 0
+            else:
+                n = int(url.rstrip("/").rsplit("/", 1)[-1]) - 1
+            if n < len(suite):
+                return 200, suite[n]
+            return 404, ""
+        m.request = servir
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    # **LA VALEUR DE RETOUR, pas seulement SystemExit.** `main` RENDS son code
+                    # et c est `sys.exit(main())` qui leve, hors du banc : lire le seul
+                    # SystemExit rend 0 a tous les coups et toute assertion de code devient
+                    # vide. Un cas l a montre en rougissant.
+                    code = m.main(argv) or 0
+                except SystemExit as e:
+                    code = e.code or 0
+        finally:
+            m.request = vrai
+        lignes = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return lignes, err.getvalue(), code, urls
+
+    # ------------------------------------------------------------------ les pieges
+
+    def test_the_jobo_fixtures_arm_the_traps_this_class_judges(self):
+        """Sans ceci, chaque cas plus bas pourrait passer sur une fixture desarmee."""
+        self.assertIn("&ndash;", self.ANNONCE,
+                      "the stated line must carry the ENTITY, or the entity test is void")
+        self.assertNotIn("\u2013 10 of", self.ANNONCE)
+        self.assertIn("- 16/11/2026", self.CARTE_A,
+                      "the closing span must carry the layout dash, or its test is void")
+        self.assertIn("job-date-ago", self.CARTE_A,
+                      "the relative age must be present, or it cannot be shown unread")
+        self.assertIn("&#038;", self.CARTE_A,
+                      "the employer must be HTML-escaped, or unescaping proves nothing")
+        self.assertIn("data-security", self.CARTE_A,
+                      "the nonce must be present, or its absence downstream proves nothing")
+        self.assertIn("/jobs/page/19/", self.PAGER19)
+        self.assertIn("+248 2610105", self.TEL_SITE)
+        self.assertIn("Company Phone", self.AD_DESC)
+        self.assertIn("related-jobs", self.AD_RELATED_OPEN)
+        # et les deux dates de la carte sont valides lues DANS LES DEUX SENS, sans quoi
+        # un mois-d abord leverait et la garde se lirait comme une garde de FORMAT
+        self.assertIn("03/11/2026", self.CARTE_A)
+        self.assertIn('datetime="2026-11-03', self.CARTE_A)
+
+    def test_the_stated_total_is_read_through_the_entity_the_page_writes(self):
+        import jobo as m
+        self.assertEqual(m.stated(self._page([self.CARTE_A])), 184)
+        # la forme DECODEE n est pas dans la page : un motif compose sur elle rend None,
+        # et ce None se lit « ce board n annonce aucun total »
+        decodee = self.ANNONCE.replace("&ndash;", "\u2013")
+        self.assertIsNone(
+            m.STATED_RE.search(self.ANNONCE.replace("&ndash;", "")),
+            "a dash-less line must not match: the motif would then accept anything")
+        self.assertIsNotNone(m.STATED_RE.search(decodee),
+                             "the motif accepts the decoded dash too, so a host that stops "
+                             "escaping it keeps being read")
+
+    def test_the_total_is_carried_from_page_one_because_page_two_states_none(self):
+        """La page 2 n annonce rien — mesure sur la page 15 reelle, `[]`."""
+        import jobo as m
+        p1 = self._page([self.CARTE_A])
+        p2 = self._page([self.CARTE_B], annonce=False)
+        self.assertIsNone(m.stated(p2), "the fixture must not state a total on page 2")
+        lignes, err, code, _u = self._run(["jobs"], [p1, p2])
+        self.assertEqual(len(lignes), 2)
+        self.assertIn("the list states 184", err,
+                      "the total read on page 1 must survive the pages that state none")
+
+    def test_a_pager_link_under_the_list_prefix_is_refused_as_an_advert(self):
+        import jobo as m
+        faux = self.CARTE_A.replace("https://jobo.sc/jobs/legal-and-regulatory-officer/",
+                                    "https://jobo.sc/jobs/page/2/")
+        self.assertNotEqual(faux, self.CARTE_A)
+        r, why = m.card(faux, "SC", 1)
+        self.assertIsNone(r, "a pager link must not become an advert")
+        self.assertIn("PAGER", why,
+                      "the refusal must NAME the pager: tested after the one-segment shape "
+                      "this branch is UNREACHABLE for the host's real /jobs/page/2/")
+        # et aucune URL emise par une marche entiere n est une page du pager
+        lignes, _e, _c, _u = self._run(["jobs"], [self._page([self.CARTE_A, self.CARTE_B])])
+        self.assertTrue(lignes)
+        for ligne in lignes:
+            self.assertNotIn("/page/", ligne["url"])
+
+    def test_the_day_first_reading_is_confirmed_by_the_cards_own_instant(self):
+        import jobo as m
+        r, why = m.card(self.CARTE_A, "SC", 1)
+        self.assertIsNone(why)
+        self.assertEqual(r["posted_date"], "2026-11-03")
+        self.assertEqual(r["posted"][:10], r["posted_date"],
+                         "the card's own datetime is the witness of the format")
+        # mois-d abord: meme carte, lecture inversee -> 2026-03-11, bien formee et FAUSSE
+        self.assertNotEqual(r["posted_date"], "2026-03-11")
+
+    def test_a_card_whose_two_dates_disagree_stops_the_run(self):
+        """La garde qui tire : le format serait celui de CETTE installation, pas le mesure."""
+        import contextlib
+        import jobo as m
+        menteuse = self.CARTE_A.replace('datetime="2026-11-03', 'datetime="2026-03-11')
+        self.assertNotEqual(menteuse, self.CARTE_A)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            with self.assertRaises(SystemExit) as pris:
+                m.card(menteuse, "SC", 1)
+        self.assertEqual(pris.exception.code, m.EXIT_BROKEN)
+        self.assertIn("day-first", err.getvalue())
+        self.assertIn("2026-03-11", err.getvalue(),
+                      "the refusal must NAME both readings, or it cannot be arbitrated")
+
+    def test_the_layout_dash_of_the_closing_span_is_not_part_of_the_date(self):
+        import jobo as m
+        r, _w = m.card(self.CARTE_A, "SC", 1)
+        self.assertEqual(r["closes_as_written"], "- 16/11/2026")
+        self.assertEqual(r["closes_date"], "2026-11-16",
+                         "taken raw the closing span is not a date at all")
+        self.assertIsNone(m.dmy("16/11/2026 - 18/11/2026", "two")[0],
+                          "a span holding two dates is not one date")
+
+    def test_the_relative_age_never_becomes_a_date(self):
+        import jobo as m
+        r, _w = m.card(self.CARTE_A, "SC", 1)
+        plat = json.dumps(r, ensure_ascii=False)
+        self.assertNotIn("hours ago", plat)
+        self.assertNotIn("15 hours", plat)
+
+    def test_the_sites_own_telephone_is_not_withheld_from_a_single_record(self):
+        """Le #1005 par l autre bout : une retenue REVENDIQUEE que personne n a exercee."""
+        page = self._page([self.CARTE_A, self.CARTE_B])
+        self.assertIn("+248 2610105", page, "the chrome's number must be on the page")
+        lignes, err, code, _u = self._run(["jobs", "--country-code", "sc"], [page])
+        self.assertEqual(len(lignes), 2)
+        for ligne in lignes:
+            self.assertEqual(ligne["withheld_fields"], [],
+                             "0 of the cards carry a telephone; the page's own number is "
+                             "NOT a record's contact")
+            self.assertNotIn("contacts_withheld", ligne)
+            self.assertNotIn("+248", json.dumps(ligne, ensure_ascii=False))
+            self.assertNotIn("data-security", json.dumps(ligne, ensure_ascii=False))
+        self.assertIn("MEASURED, not assumed", err)
+
+    def test_the_escaped_employer_is_unescaped_once_and_not_twice(self):
+        import jobo as m
+        r, _w = m.card(self.CARTE_A, "SC", 1)
+        self.assertEqual(r["employer"], "Cable & Wireless (Seychelles) Ltd")
+        self.assertEqual(r["employer_slug"], "cable-wireless-seychelles-ltd")
+        self.assertEqual(r["title"], "Legal and Regulatory Officer")
+
+    def test_fewer_than_the_board_states_is_partial_and_says_short(self):
+        """Une marche courte sous un total ANNONCE n est pas un succes."""
+        lignes, err, code, _u = self._run(["jobs"], [self._page([self.CARTE_A])])
+        self.assertEqual(len(lignes), 1)
+        self.assertIn("184", err)
+        self.assertIn("short", err)
+        self.assertIn("DISAGREE", err)
+        self.assertEqual(code, 6, "a walk short of the stated count exits PARTIAL")
+
+    def test_a_bounded_run_makes_no_comparison_at_all(self):
+        """Une tranche BORNEE n est pas une marche courte, et elle ne se compare pas."""
+        lignes, err, code, _u = self._run(
+            ["jobs", "--max-pages", "1"], [self._page([self.CARTE_A])])
+        self.assertEqual(code, 0)
+        self.assertIn("stopped early, so no comparison is made", err)
+        self.assertNotIn("short", err)
+
+    def test_a_first_page_without_a_card_is_not_an_empty_board(self):
+        lignes, err, code, _u = self._run(["jobs"], [self._page([])])
+        self.assertEqual(lignes, [])
+        self.assertEqual(code, 6)
+        self.assertIn("NOT an", err)
+
+    def test_the_two_witnesses_are_compared_to_each_other_and_not_only_to_us(self):
+        """19 pages et 184 annonces a 10 par page : les deux temoins se recoupent."""
+        pages = [self._page([self.CARTE_A]), self._page([self.CARTE_B], annonce=False)]
+        _l, err, _c, _u = self._run(["jobs", "--max-pages", "2"], pages)
+        self.assertIn("the pager names page 19 as its last", err)
+        self.assertIn("184 at 10 a page needs", err)
+        # et un desaccord ENTRE les deux temoins se dit
+        p1 = self._page([self.CARTE_A]).replace("/jobs/page/19/", "/jobs/page/4/")
+        _l2, err2, _c2, _u2 = self._run(["jobs", "--max-pages", "1"], [p1])
+        self.assertIn("DISAGREE with each other", err2)
+
+    def test_the_related_adverts_of_an_advert_page_stay_out_of_its_record(self):
+        """Cinq `<article>` sur une page d annonce, et ce sont ceux des VOISINS."""
+        page = ("<html><body>" + self.AD_TITRE + self.AD_DESC
+                + '<div class="job-action hidden-print clearfix"></div>'
+                + self.AD_RELATED_OPEN + self.CARTE_A + "</body></html>")
+        lignes, err, code, _u = self._run(
+            ["ad", "--url", "https://jobo.sc/jobs/legal-and-regulatory-officer/"],
+            [], ad=page)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(lignes), 1, "one advert, never its neighbours")
+        self.assertEqual(lignes[0]["title"], "Legal and Regulatory Officer")
+        self.assertNotIn("Legal and Regulatory Officer\nCasual Bartender",
+                         lignes[0]["description"] or "")
+        self.assertNotIn("<article", lignes[0]["description"] or "")
+
+    def test_both_telephone_fields_of_the_advert_page_are_withheld(self):
+        page = ("<html><body>" + self.AD_TITRE + self.AD_DESC
+                + "<li class=\"job-cf\"><strong class='noo-label label-_jm_company_phone '>"
+                + "\nContact Phone\n</strong>\n<span class='value cf-number-value'>"
+                + "+248 4284000</span></li>"
+                + '<div class="job-action hidden-print clearfix"></div>'
+                + self.AD_RELATED_OPEN + "</body></html>")
+        lignes, err, code, _u = self._run(
+            ["ad", "--url", "https://jobo.sc/jobs/legal-and-regulatory-officer/"],
+            [], ad=page)
+        self.assertEqual(code, 0)
+        r = lignes[0]
+        self.assertEqual(r["withheld_fields"], ["telephone"])
+        self.assertIs(r["contacts_withheld"], True)
+        self.assertEqual(sorted(r["third_party_withheld"]),
+                         ["company_phone", "contact_phone"],
+                         "both of the host's telephone fields are third-party data")
+        self.assertEqual(r["third_party_inspected"], ["company_phone", "contact_phone"])
+        self.assertNotIn("+248", json.dumps(r, ensure_ascii=False))
+        # l industrie n est PAS un contact : la classer ainsi revendiquerait une retenue
+        # sur un champ que personne ne retiendrait
+        self.assertEqual(r["industry"], "Telecommunications")
+        self.assertNotIn("industry", r["third_party_inspected"])
+
+    def test_the_host_hides_the_application_address_with_its_own_placeholder(self):
+        """`[email protected]` est de l HOTE (`data-cfemail`) ; le notre est
+        `[e-mail withheld]`, et les deux ne se lisent pas comme un seul."""
+        page = ("<html><body>" + self.AD_TITRE
+                + '<div class="job-desc" ><p>e-mail your application to '
+                + '[email&#160;protected]</p></div>'
+                + '<div class="job-action hidden-print clearfix"></div>'
+                + self.AD_RELATED_OPEN + "</body></html>")
+        lignes, _e, code, _u = self._run(
+            ["ad", "--url", "https://jobo.sc/jobs/legal-and-regulatory-officer/"],
+            [], ad=page)
+        self.assertEqual(code, 0)
+        self.assertEqual(lignes[0]["withheld_fields"], [],
+                         "no address is THERE to withhold, so none is claimed")
+        self.assertIn("[email protected]", lignes[0]["description"])
+        self.assertNotIn("[e-mail withheld]", lignes[0]["description"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
