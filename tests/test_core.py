@@ -55390,5 +55390,241 @@ class AnEmptyBodyIsTheEscapeThisToolNamesAndBothGatesKeyedOnTruthiness(unittest.
         self.assertIsNone(req.data)
 
 
+class AnEmptyFilterMeansNoValueMatchesAndTheDzongkhagMapIsWrongOnExactlyOneOfTwenty(unittest.TestCase):
+    """**`zrs.py`, 2026-11-04 (#681).** Bhutan's Royal Civil Service Commission, whose
+    search opens with every multi-select FULLY CHECKED — so an empty `ConditionNN` is
+    read as «no value matches» and the board answers `[]`.
+
+    **THE BLOCKING QUESTION THIS ADAPTER WAS HELD ON WAS POSED ON THE WRONG OBJECT.**
+    `/Application/GetVacancyCondition` was taken for the carrier of the four filter
+    lists; it answers `null` to a plain client, twice, and the route was declared to
+    depend on it. It is the restoration of a PREVIOUSLY SAVED search, the page guards
+    against its own `null` (`if (ret != null && ret != "")`), and the search runs
+    without it — `if (IsClear) { btnSearch_Click(false); }`. *The lists live on four
+    other endpoints, which the page's own dropdown descriptors name. A measurement
+    aimed at the wrong object is not a failed measurement: it answers, and its answer
+    is about something else.*
+
+    **THE FLOOR IS POSITIVE, and it is the one guard this board cannot do without.**
+    An empty filter set would make the search answer `[]`, and that `[]` is a
+    well-formed empty list from a board that holds sixteen vacancies — a false zero
+    about the host, published as a fact. So a set that comes back empty stops the run.
+
+    **AND DERIVING THE TWENTY LOCATION FIELDS NAIVELY IS WRONG ON EXACTLY ONE OF THE
+    TWENTY.** Each row carries `locBumthang`, `locChukha` … one per dzongkhag.
+    `"loc" + name.replace(" ", "")` is faithful on 19 — `Wangdue Phodrang` becomes
+    `locWangduePhodrang` and that is right — and FAILS on `Pema Gatshel`, whose field
+    is `locPemagatshel` with a lowercase `g`. *So the discriminant is the CASE and not
+    the space, which is why the fixture carries both names.* It would not raise: the
+    vacancy simply comes out with no location, which is well formed and false. Hence a
+    case-insensitive match asserted a TOTAL BIJECTION, or the run stops.
+
+    *The names and the field spellings are the host's own, extracted from
+    `GetDzongkhagData` and from a real row, never composed — a list composed by hand
+    omits one member and the omission leaves no trace. The vacancy values are
+    INVENTED, and this repository is public. Nothing here touches the network: `post`
+    is replaced throughout.*"""
+
+    # EXTRAITS de l `hote`, jamais composes : `Pema Gatshel` est le seul des vingt dont
+    # la derivation naive echoue, et `Wangdue Phodrang` est celui qui REUSSIT — sans lui
+    # la garde se lirait comme une garde sur l ESPACE.
+    NOMS = ["Bumthang", "Chukha", "Dagana", "Gasa", "Haa", "Lhuentse", "Mongar", "Paro",
+            "Pema Gatshel", "Punakha", "Samdrupjongkhar", "Samtse", "Sarpang", "Thimphu",
+            "Trashigang", "Trashiyangtse", "Trongsa", "Tsirang", "Wangdue Phodrang",
+            "Zhemgang"]
+    CHAMPS = ["locBumthang", "locChukha", "locDagana", "locGasa", "locHaa", "locLhuentse",
+              "locMongar", "locParo", "locPemagatshel", "locPunakha", "locSamdrupjongkhar",
+              "locSamtse", "locSarpang", "locThimphu", "locTrashigang", "locTrashiyangtse",
+              "locTrongsa", "locTsirang", "locWangduePhodrang", "locZhemgang"]
+
+    def _listes(self):
+        return {
+            "GetSuperStructureData": [{"superStructureID": i,
+                                       "superStructureName": "Service %d" % i}
+                                      for i in (1, 2, 3, 4, 6, 7)],
+            "GetEmploymentTypeData": [{"employmentTypeCD": c, "employmentTypeName": n}
+                                      for c, n in (("R", "Regular"), ("C", "Contract"))],
+            "GetCategoryData": [{"categoryCD": c, "categoryName": "Cat %s" % c}
+                                for c in ("N", "E", "F", "O", "L")],
+            "GetDzongkhagData": [{"dzongkhagID": i, "dzongkhagName": n}
+                                 for i, n in enumerate(self.NOMS, 1)],
+        }
+
+    def _vacance(self, n, total, ou="Pema Gatshel"):
+        r = {"recruitmentID": 100 + n, "positionID": 400 + n,
+             "positionTitle": "Technician %d" % n, "recruitmentName": "Bio-Medical %d" % n,
+             "qualificationName": "Cl X with NC3", "agencyName": "Ministry of Health",
+             "superStructureName": "Technical Service", "employmentTypeName": "Regular",
+             "categoryName": "Normal Recruitment", "positionLevelName": "S3",
+             "minPayScale": 16535, "maxPayScale": 21560, "slots": 1, "applicantsCount": 11,
+             "vaPublishDate": "2026-11-03T00:00:00", "vaEndDate": "2026-11-09T00:00:00",
+             "applicationFrom": "2026-10-17T00:00:00", "applicationTo": "2026-11-09T00:00:00",
+             "totaL_ROW_COUNT": total}
+        for k in self.CHAMPS:
+            r[k] = False
+        r["loc" + ou.replace(" ", "").replace("Gatshel", "gatshel")] = True
+        return r
+
+    def _run(self, argv, pages, listes=None, total=None):
+        """`pages` is a SEQUENCE of row-batches served in order; the four list endpoints
+        answer from `listes`. Returns (rows, stderr, the FORMS actually sent)."""
+        import contextlib
+        import zrs as m
+        L = self._listes() if listes is None else listes
+        suite = iter(list(pages))
+        envoyes = []
+        vrai = m.post
+
+        def servir(url, form):
+            envoyes.append((url, dict(form)))
+            for action in L:
+                if url.endswith(action):
+                    return 200, json.dumps(L[action])
+            try:
+                return 200, json.dumps(next(suite))
+            except StopIteration:
+                return 200, "[]"
+        m.post = servir
+        out, err = io.StringIO(), io.StringIO()
+        code = 0
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    m.main(argv)
+                except SystemExit as e:
+                    code = e.code or 0
+        finally:
+            m.post = vrai
+        texte = out.getvalue()
+        rows = json.loads(texte) if texte.strip().startswith("[") else []
+        return rows, err.getvalue(), envoyes, code
+
+    def test_the_zrs_fixtures_arm_the_traps_this_class_judges(self):
+        """A fixture that does not carry `Pema Gatshel` leaves the bijection guard
+        testing nothing, and its mutation comes back GREEN."""
+        self.assertEqual(len(self.NOMS), 20)
+        self.assertEqual(len(self.CHAMPS), 20)
+        naif = {"loc" + n.replace(" ", "") for n in self.NOMS}
+        divergent = sorted(naif - set(self.CHAMPS))
+        self.assertEqual(divergent, ["locPemaGatshel"],
+                         "the fixture must carry the ONE name whose naive derivation fails, "
+                         "and only that one")
+        self.assertIn("locWangduePhodrang", self.CHAMPS,
+                      "it must also carry a SPACE-bearing name that derives correctly, or "
+                      "this class reads as a guard about the space")
+        r = self._vacance(1, 16)
+        self.assertTrue(r["locPemagatshel"], "the armed row must sit in the trapped dzongkhag")
+
+    def test_an_empty_filter_set_stops_the_run_instead_of_searching(self):
+        """It would answer `[]`, and that `[]` is a false zero about a board that
+        holds sixteen vacancies."""
+        L = self._listes()
+        L["GetDzongkhagData"] = []
+        rows, err, envoyes, code = self._run(["jobs"], [[self._vacance(1, 16)]], listes=L)
+        self.assertEqual(code, 2, "an empty filter set must STOP the run")
+        self.assertEqual(rows, [])
+        self.assertIn("false zero", err,
+                      "the refusal must say WHY: an empty field means «no value matches»")
+        self.assertFalse([u for u, _f in envoyes if u.endswith("GetVacancyAnnouncement")],
+                         "the search must never be sent once a set is known empty")
+
+    def test_every_filter_field_is_sent_in_full_and_ends_in_a_comma(self):
+        """`GetCondition()` appends `value + ","` per checked item, so each field ENDS
+        in a comma. Dropping it changes what the server splits on."""
+        _rows, _err, envoyes, _c = self._run(["jobs"], [[self._vacance(1, 1)]])
+        forms = [f for u, f in envoyes if u.endswith("GetVacancyAnnouncement")]
+        self.assertTrue(forms, "the search was never sent")
+        f = forms[0]
+        attendu = {"Condition02": 6, "Condition03": 2, "Condition04": 5, "Condition05": 20}
+        for champ, n in attendu.items():
+            v = f["Condition[%s]" % champ]
+            self.assertTrue(v.endswith(","),
+                            "%s does not end in a comma: the page appends one per item "
+                            "and the server splits on it (%r)" % (champ, v[-20:]))
+            self.assertEqual(v.count(","), n,
+                             "%s carries %d member(s), the host declares %d — a set sent "
+                             "SHORT is read as «no value matches» for what is missing"
+                             % (champ, v.count(","), n))
+        self.assertIn("Pema Gatshel,", f["Condition[Condition05]"],
+                      "the dzongkhag whose field name is irregular must still be SENT")
+
+    def test_the_order_field_is_required_and_is_sent(self):
+        """The page refuses its own search without `Condition10` — `D`, `C` or `A`."""
+        _rows, _err, envoyes, _c = self._run(["jobs"], [[self._vacance(1, 1)]])
+        f = [f for u, f in envoyes if u.endswith("GetVacancyAnnouncement")][0]
+        self.assertIn("Condition[Condition10]", f,
+                      "Condition10 is REQUIRED: the page's own switch refuses D/C/A absent")
+        self.assertIn(f["Condition[Condition10]"], ("D", "C", "A"))
+
+    def test_the_dzongkhag_map_matches_case_insensitively_or_the_run_stops(self):
+        """`"loc" + name.replace(" ", "")` is right on 19 of 20 and wrong on
+        `Pema Gatshel`. The vacancy would come out with NO location — well formed and
+        false — so the map is asserted a total bijection."""
+        rows, _err, _e, code = self._run(["jobs"], [[self._vacance(1, 1)]])
+        self.assertEqual(code, 0)
+        self.assertEqual(rows[0]["locations"], ["Pema Gatshel"],
+                         "the location came out %r: a naive derivation loses exactly this "
+                         "dzongkhag, and it loses it SILENTLY" % (rows[0]["locations"],))
+
+    def test_a_row_the_map_cannot_claim_stops_the_run(self):
+        """A dzongkhag the host adds, whose `loc*` field the row does not carry, must
+        not pass as a vacancy with no location."""
+        L = self._listes()
+        L["GetDzongkhagData"] = L["GetDzongkhagData"] + [{"dzongkhagID": 99,
+                                                          "dzongkhagName": "Neuf Dzongkhag"}]
+        rows, err, _e, code = self._run(["jobs"], [[self._vacance(1, 1)]], listes=L)
+        self.assertEqual(code, 2, "21 names against 20 fields is not a bijection")
+        self.assertEqual(rows, [])
+        self.assertIn("bijection", err)
+
+    def test_the_board_states_its_own_count_and_agreement_is_said(self):
+        """`totaL_ROW_COUNT` is the BOARD's field, read by the page itself as
+        `ret[0].totaL_ROW_COUNT` — it is not derived from anything we extracted."""
+        pages = [[self._vacance(n, 16) for n in range(1, 11)],
+                 [self._vacance(n, 16) for n in range(11, 17)]]
+        rows, err, _e, code = self._run(["jobs"], pages)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(rows), 16)
+        self.assertEqual(len({r["ledger_id"] for r in rows}), 16, "a row was served twice")
+        self.assertIn("they agree", err)
+        self.assertIn("never", err, "the stated count is the search's, not the board's size")
+
+    def test_fewer_rows_than_the_board_states_is_partial_and_not_a_success(self):
+        pages = [[self._vacance(n, 16) for n in range(1, 11)]]      # puis []
+        rows, err, _e, code = self._run(["jobs"], pages)
+        self.assertEqual(len(rows), 10)
+        self.assertEqual(code, 6, "10 emitted against 16 stated must exit PARTIAL")
+        self.assertIn("SHORT", err)
+
+    def test_the_dates_are_recorded_as_written_with_no_offset_invented(self):
+        """The host writes `2026-11-09T00:00:00` and states no offset. Bhutan is
+        `+06:00`; stamping it would make the offset OURS and not the host's."""
+        rows, _err, _e, _c = self._run(["jobs"], [[self._vacance(1, 1)]])
+        for champ in ("posted_as_written", "closes_as_written",
+                      "application_from_as_written", "application_to_as_written"):
+            v = rows[0][champ]
+            self.assertTrue(v, "%s is empty" % champ)
+            self.assertNotIn("+", v, "%s carries an offset the host never wrote: %r"
+                                     % (champ, v))
+            self.assertFalse(v.endswith("Z"), "%s was stamped UTC: %r" % (champ, v))
+
+    def test_a_record_claims_no_redaction_it_did_not_exercise(self):
+        """Measured on all 16 real rows: zero e-mail and zero telephone. A
+        `withheld_fields` that names what nobody deposited lies about OUR discretion."""
+        rows, _err, _e, _c = self._run(["jobs"], [[self._vacance(1, 1)]])
+        self.assertEqual(rows[0]["withheld_fields"], [])
+        self.assertNotIn("contacts_withheld", rows[0])
+
+    def test_the_floor_still_fires_when_a_set_carries_rows_without_their_value_key(self):
+        """A set that is non-empty but whose rows carry no value is the same false zero
+        one step further in: `len(vals) != len(rows)` is a POSITIVE floor too."""
+        L = self._listes()
+        L["GetCategoryData"] = [{"categoryName": "Cat sans code"}]
+        rows, err, _e, code = self._run(["jobs"], [[self._vacance(1, 1)]], listes=L)
+        self.assertEqual(code, 2)
+        self.assertEqual(rows, [])
+        self.assertIn("carry no", err)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
