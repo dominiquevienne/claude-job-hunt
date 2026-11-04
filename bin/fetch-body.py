@@ -98,7 +98,8 @@ sys.path.insert(0, os.path.join(
     "skills", "job-scan", "scripts"))
 
 from _provenance import (record, rules_refusal, save,  # noqa: E402
-                         sent_summary, transport_failure, vendor_headers)
+                         sent_summary, transport_failure, vendor_headers,
+                         cache_state)
 import _tls                           # noqa: E402
 from _robots import (allowed, full_path, rules_fingerprint,  # noqa: E402
                      verdict, wire_url)
@@ -505,10 +506,17 @@ def main():
             status, body, landed = r.getcode(), r.read(), r.geturl()
             enc = (r.headers.get("Content-Encoding") or "").strip().lower()
             heads = vendor_headers(r.headers)
+            # **QUI a repondu, et DEPUIS QUAND — les deux, parce que le second
+            # manquait et qu une garde livree le 2026-11-04 decide dessus.** Ce
+            # champ est TOUJOURS ecrit, donc son absence d un enregistrement dit
+            # « ecrit par un outil qui ne regardait pas » et jamais « regarde,
+            # rien trouve ». #1262.
+            cache = cache_state(r.headers)
     except urllib.error.HTTPError as e:
         status, body, landed = e.code, e.read(), e.geturl()
         enc = (e.headers.get("Content-Encoding") or "").strip().lower()
         heads = vendor_headers(e.headers)
+        cache = cache_state(e.headers)
     except (urllib.error.URLError, OSError) as e:
         print(f"ERROR: {a.url}: {type(e).__name__}: {e}", file=sys.stderr)
         # **A failure that leaves no record is the one that gets misread.** A
@@ -543,7 +551,7 @@ def main():
                # **Who answered, not only that we were refused.** Without
                # these the record can say *the same 25-byte body* and no more,
                # and 25 bytes of a standard sentence is expected to be shared.
-               vendor=heads, **sent)
+               vendor=heads, cache=cache, **sent)
         return EXIT_HTTP
 
     # **The rate a measurement was taken at belongs in the record.** It was
@@ -559,7 +567,7 @@ def main():
     wire = len(body)
     body, undone = decoded(body, enc)
     rec = save(a.out, body, url=a.url, status=status, agent=UA,
-               crawl_delay_s=delay, vendor=heads,
+               crawl_delay_s=delay, vendor=heads, cache=cache,
                final_url=(landed if landed and landed != a.url else None),
                content_encoding=undone,
                encoded_bytes=(wire if undone else None), **sent)

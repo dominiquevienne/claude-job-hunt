@@ -56289,5 +56289,155 @@ class AListServedFromACacheOlderThanTheSweepIsNotTodaysList(unittest.TestCase):
                       "le message nomme le MEMBRE fautif, pas seulement la chaine")
 
 
+class TheRecordSaysWhoAnsweredAndNowAlsoHowOldTheBodyWas(unittest.TestCase):
+    """**#1262.** `VENDOR_HEADERS` names **who answered** — `tests` elsewhere calls them
+    «&nbsp;those six headers&nbsp;» — and nothing in the record said **how old the body
+    was**. So a trace could say *served from a cache* and not *since when*: half of a fact.
+
+    **IT COST A MEASUREMENT THAT DECIDED.** On 2026-11-04 `jobup.py` returned a list that was
+    a cached body **51.6 h old** — status 200, `exit 0`, well-formed advertisements, three
+    daily sweeps with no new ad, and the only symptom an absence. The one witness that
+    establishes it is `Age`. Two hands had to work around the gap the same day, one calling
+    `urlopen` directly, the other fabricating fresh keys where `Age` would have answered in a
+    single request. **And the specimen is consumed for good:** the `Age` of the `infirmier`
+    entry — 1 807 ads against 1 824 at the origin, six days behind — is lost because this
+    field did not exist, and the entry has since been repopulated by the controls themselves.
+
+    **WHY IT IS NOT «&nbsp;add `age` TO `VENDOR_HEADERS`&nbsp;».** That set names an
+    IDENTITY and `Age` is a STATE. Merging them would give a class that is no longer
+    homogeneous — so a `grep` over it would answer a question that no longer exists — and
+    would falsify a count written in prose. This repository corrects that shape everywhere
+    else; it does not introduce it here.
+
+    **AND THE FIELD IS ALWAYS WRITTEN, which is the whole mechanism:** its ABSENCE from a
+    record means *written by a tool that was not looking*, which is distinguishable from
+    *looked, and found nothing*. Without that the two read alike, and reading one as the
+    other is exactly the defect #1260 paid for. It therefore does NOT fail on historical
+    records: they simply carry no `cache` key, and that says what it says."""
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import _provenance
+        self.p = _provenance
+
+    def test_the_two_vocabularies_are_declared_and_disjoint(self):
+        """Sinon un `grep` sur l un repond a une question qui n existe plus."""
+        v, c = set(self.p.VENDOR_HEADERS), set(self.p.CACHE_HEADERS)
+        self.assertEqual(v & c, set(),
+                         "une identite et un etat ne se melangent pas")
+        self.assertEqual(len(self.p.VENDOR_HEADERS), 6,
+                         "la suite ecrit ailleurs « those six headers » : ce compte "
+                         "est cite en PROSE, donc l elargir rendrait la prose fausse")
+        self.assertIn("age", c)
+        self.assertNotIn("age", v)
+
+    def test_a_cache_miss_is_fresh_by_construction_and_not_an_unknown(self):
+        """Sur un MISS il n y a pas d `Age`, et le corps vient de l origine."""
+        r = self.p.cache_state({"X-Cache": "Miss from cloudfront"})
+        self.assertEqual(r["reading"], "fresh-by-construction")
+        self.assertEqual(r["served_from"], "origin")
+        self.assertIsNone(r["age_s"])
+
+    def test_a_readable_age_bounds_the_reading_and_says_the_number(self):
+        """`Age` 185 671 s est le temoin qui a etabli #1260."""
+        r = self.p.cache_state({"X-Cache": "Hit from cloudfront", "Age": "185671",
+                                "Vary": "Accept-Encoding"})
+        self.assertEqual(r["reading"], "bounded")
+        self.assertEqual(r["served_from"], "edge")
+        self.assertEqual(r["age_s"], 185671)
+
+    def test_a_cache_hit_whose_age_cannot_be_read_is_the_only_unestablished_case(self):
+        """L ignorance ne libere pas, et elle n accuse pas non plus : elle se DIT."""
+        for h in ({"X-Cache": "Hit from cloudfront"},
+                  {"X-Cache": "Hit from cloudfront", "Age": "pas-un-nombre"}):
+            r = self.p.cache_state(h)
+            self.assertEqual(r["reading"], "unestablished", h)
+            self.assertEqual(r["served_from"], "edge", h)
+            self.assertIsNone(r["age_s"], h)
+
+    def test_the_three_readings_are_the_only_ones_and_a_miss_never_reads_unestablished(self):
+        """**Le cas qui rougit si un MISS se met a etre enregistre comme illisible.**"""
+        vus = set()
+        for h in (None, {}, {"X-Cache": "Miss from cloudfront"},
+                  {"X-Cache": "Hit from cloudfront", "Age": "41400"},
+                  {"X-Cache": "Hit from cloudfront"}):
+            vus.add(self.p.cache_state(h)["reading"])
+        self.assertEqual(vus, {"fresh-by-construction", "bounded", "unestablished"})
+        # la direction qui compte : un MISS ne doit JAMAIS se lire « on ne sait pas »
+        self.assertNotEqual(
+            self.p.cache_state({"X-Cache": "Miss from cloudfront"})["reading"],
+            "unestablished",
+            "un MISS est l origine : le compter comme un inconnu ferait tirer une "
+            "garde sur la moitie des traces")
+
+    def test_the_header_names_are_read_whatever_their_case(self):
+        """Defaut trouve en EXECUTANT la fonction, pas en la relisant.
+
+        La premiere version essayait le nom, sa minuscule et sa MAJUSCULE, jamais
+        la forme `Title-Case` : donc `{"Age": "185671"}` — ce qu un dict porte et
+        ce que tout banc ecrit — rendait `headers` VIDE pendant que `age_s`
+        marchait par accident, parce qu il etait interroge avec le litteral
+        capitalise. **Une sortie bien formee et a moitie vide, et rien dedans ne
+        le disait** ; les objets `Message` sont insensibles a la casse et
+        cachaient le cas entier.
+        """
+        import email.message
+        attendu = {"age": "185671", "vary": "Accept-Encoding"}
+        for h in ({"Age": "185671", "Vary": "Accept-Encoding"},
+                  {"age": "185671", "vary": "Accept-Encoding"},
+                  {"AGE": "185671", "VARY": "Accept-Encoding"}):
+            self.assertEqual(self.p.cache_state(h)["headers"], attendu, h)
+        m = email.message.Message()
+        m["Age"] = "185671"
+        m["Vary"] = "Accept-Encoding"
+        self.assertEqual(self.p.cache_state(m)["headers"], attendu)
+
+    def test_the_field_travels_into_the_record_and_survives_a_round_trip(self):
+        """Pris sur le CHEMIN — `save` puis `load` — et pas sur la fonction seule."""
+        import tempfile
+        r = self.p.cache_state({"X-Cache": "Hit from cloudfront", "Age": "185671"})
+        with tempfile.TemporaryDirectory() as d:
+            chemin = os.path.join(d, "corps.html")
+            self.p.save(chemin, b"<html></html>", url="https://h/x", status=200,
+                        agent="claude-user", cache=r)
+            corps, rec = self.p.load(chemin)
+        self.assertEqual(corps, b"<html></html>")
+        self.assertEqual(rec["cache"]["age_s"], 185671)
+        self.assertEqual(rec["cache"]["reading"], "bounded")
+        # et l identite reste a sa place : les deux champs COEXISTENT
+        self.assertNotIn("age", rec)
+
+    def test_a_record_without_the_field_says_a_tool_was_not_looking(self):
+        """L absence du champ est une INFORMATION, pas une absence d information."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            chemin = os.path.join(d, "vieux.html")
+            self.p.save(chemin, b"x", url="https://h/y", status=200, agent="a")
+            _corps, rec = self.p.load(chemin)
+        self.assertNotIn("cache", rec,
+                         "un enregistrement ECRIT SANS ce champ doit rester lisible : "
+                         "echouer dessus casserait tout le side-car historique")
+        # et c est ce qui distingue les trois etats
+        self.assertIsNone(rec.get("cache"))
+        self.assertEqual(self.p.cache_state({})["reading"], "fresh-by-construction")
+
+    def test_the_prescribed_tool_passes_the_field_on_BOTH_of_its_paths(self):
+        """Le refus ET le succes, parce qu une garde qui eprouve la fonction ne
+        voit pas une substitution sur le chemin (#942) — et le chemin du REFUS
+        est celui qui n a pas de corps, donc celui qu on oublie."""
+        # la racine se derive de `SCRIPTS`, comme le fait deja le voisin `_fb()` :
+        # inventer un nom de global pour ca en ferait un second, a desynchroniser
+        root = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPTS)))
+        src = io.open(os.path.normpath(os.path.join(root, "bin", "fetch-body.py")),
+                      encoding="utf-8").read()
+        self.assertEqual(src.count("cache_state("), 2,
+                         "un par chemin : `urlopen` et `HTTPError`")
+        self.assertEqual(src.count("cache=cache"), 2,
+                         "un par site d ecriture : `record()` (refus) et `save()`")
+        self.assertIn("cache_state", src.split("from _provenance import")[1][:400]
+                      if "from _provenance import" in src else src,
+                      "la fonction doit etre IMPORTEE, sinon le module leve au chargement")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
