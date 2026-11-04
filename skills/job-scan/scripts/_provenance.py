@@ -53,6 +53,19 @@ WHAT IS RECORDED, AND WHY EACH FIELD IS THERE
     agent      the identity actually sent      a tool's identity appears nowhere
                                                in its output; it is verified,
                                                never observed
+    cache      what the response said about     `x-cache` said *served from a
+               its OWN freshness, as a          cache* and nothing said SINCE
+               declared three-value reading     WHEN — half of a fact, and a
+               (#1262)                          cached list 51.6 h old was read
+                                               as today's with status 200 and
+                                               `exit 0` (#1260). `cache_state()`
+                                               has the vocabulary and the limit
+
+**AND `cache` IS WRITTEN EVEN WHEN IT FINDS NOTHING, which is the mechanism and
+not a detail:** its ABSENCE from a record therefore means *written by a tool
+that was not looking*, which is distinguishable from *looked, and found
+nothing*. Historical sidecars carry no `cache` key and stay readable — failing
+on them would break every body fetched before 2026-11-04 to gain nothing.
 
 **`bytes` and `md5` are of the bytes as received.** No strip, no newline
 normalisation, no decode. That is the whole point of recording them.
@@ -386,6 +399,108 @@ VENDOR_HEADERS = ("server", "cf-ray", "via", "x-served-by", "x-cache",
                   "x-amz-cf-pop")
 
 
+
+# **CE QUE LA REPONSE A DIT DE SA PROPRE FRAICHEUR — vocabulaire FERME, et il est
+# SEPARE de `VENDOR_HEADERS` expres.** Celui-la nomme QUI A REPONDU et rien de
+# plus ; `Age` est un ETAT. Les fondre donnerait une classe qui n est plus
+# homogene — donc un `grep` dessus repondrait a une question qui n existe plus —
+# et rendrait faux le « those six headers » que la suite ecrit. #1262.
+CACHE_HEADERS = ("age", "cache-control", "expires", "vary")
+
+
+def cache_state(headers):
+    """Ce que la reponse dit de sa propre fraicheur. Vocabulaire DECLARE. #1262.
+
+    Rend TOUJOURS un dict, et c est le point : **son ABSENCE d un
+    enregistrement signifie « ecrit par un outil qui ne regardait pas »**, ce
+    qui se distingue de « regarde, et rien trouve ». Sans ca les deux se
+    relisent pareil, et c est exactement le defaut que #1260 a paye.
+
+    POURQUOI CE CHAMP EXISTE, et c est une mesure et pas une precaution. Le
+    2026-11-04, `jobup.py` rendait une liste qui etait un corps en cache de
+    **51,6 h** : statut 200, `exit 0`, annonces bien formees, trois balayages
+    quotidiens sans une annonce neuve, et le seul symptome etait une ABSENCE. Le
+    SEUL temoin qui l etablit est `Age`. Or l outil que la doctrine impose pour
+    toute recuperation enregistrait `x-cache` — donc « servi depuis un cache » —
+    **sans pouvoir dire DEPUIS QUAND** : la moitie d un fait. Deux mains ont du
+    contourner le meme jour, l une en appelant `urlopen` directement, l autre en
+    fabriquant des cles neuves la ou `Age` repondait en une requete. Et le
+    specimen qui decidait est **definitivement consomme** : l`Age` de l entree
+    `infirmier` — 1 807 annonces contre 1 824 a l origine, six jours de retard —
+    est perdu parce que ce champ n existait pas, et l entree a depuis ete
+    repeuplee par les controles eux-memes.
+
+    LES TROIS LECTURES, et elles ne se substituent pas :
+
+        fresh-by-construction   aucun `Age` et rien ne dit qu un cache a servi
+                                -> le corps vient de l origine. PAS un inconnu.
+        bounded                 un `Age` lisible : rien de publie depuis N
+                                secondes ne peut etre dans ce corps. VRAI
+                                INCONDITIONNELLEMENT, donc jamais un faux
+                                positif, et ca n accuse pas l hote — un terme
+                                calme sert vieux ET juste.
+        unestablished           un cache a servi ET son `Age` est illisible.
+                                Le seul cas ou l on ne sait pas, et il se DIT
+                                au lieu d etre compte d un cote ou de l autre.
+
+    **ET `fresh-by-construction` SANS `x-cache` REPOSE SUR UN RAISONNEMENT QUI
+    SE DECLARE :** `Age` est l en-tete qu un cache est TENU d emettre, donc son
+    absence est un indice qu aucun cache n est intervenu. Un cache non conforme
+    qui l omettrait serait lu comme une origine — borne nommee ici plutot que
+    decouverte plus tard, et elle penche du cote qui ne crie pas au loup.
+
+    **ET CE CHAMP BORNE UNE LECTURE, IL NE COMPARE JAMAIS DEUX DOCUMENTS.**
+    `Age` decrit le TRANSFERT, exactement comme `encoded_bytes` : deux reponses
+    identiques, l une du cache et l autre de l origine, portent des `Age`
+    differents pour le MEME contenu — mesure, un `Hit` et un `Miss` de la meme
+    cle rendant des totaux egaux a l unite. S en servir pour comparer deux
+    corps serait la quatrieme route vers le faux « le fichier a change » que
+    `decoded()` documente deja.
+    """
+    out = {"reading": "fresh-by-construction", "served_from": "unknown",
+           "age_s": None, "headers": {}}
+    if not headers:
+        return out
+    # **UN INDEX INSENSIBLE A LA CASSE, construit UNE fois — et c est un defaut
+    # trouve en EXECUTANT cette fonction, pas en la relisant.** La premiere
+    # version essayait le nom, sa minuscule et sa MAJUSCULE, jamais la forme
+    # `Title-Case` : donc `{"Age": "185671"}` — ce qu un dict porte, et ce que
+    # tout banc ecrit — rendait `headers` VIDE pendant que `age_s` marchait par
+    # accident, parce qu il etait interroge avec le litteral capitalise. Une
+    # sortie bien formee et a moitie vide, et rien dedans ne le disait. Les
+    # objets `email.message.Message` sont insensibles a la casse et cachaient
+    # le cas entier.
+    try:
+        idx = {str(k).lower(): v for k, v in headers.items()}
+    except Exception:                                           # noqa: BLE001
+        try:
+            idx = {str(k).lower(): headers.get(k) for k in CACHE_HEADERS + ("x-cache",)}
+        except Exception:                                       # noqa: BLE001
+            return out
+    def champ(nom):
+        return idx.get(nom.lower())
+    for h in CACHE_HEADERS:
+        v = champ(h)
+        if v:
+            out["headers"][h] = str(v)[:120]
+    xc = (champ("x-cache") or "").lower()
+    if "hit" in xc:
+        out["served_from"] = "edge"
+    elif "miss" in xc:
+        out["served_from"] = "origin"
+    brut = champ("Age")
+    if brut is not None:
+        try:
+            out["age_s"] = int(str(brut).strip())
+        except ValueError:
+            out["age_s"] = None
+    if out["age_s"] is not None:
+        out["reading"] = "bounded"
+    elif out["served_from"] == "edge":
+        # Un cache a servi et il n a pas date son corps : l ignorance ne libere
+        # pas, et elle n accuse pas non plus — elle se declare.
+        out["reading"] = "unestablished"
+    return out
 def vendor_headers(headers):
     """The infrastructure-naming headers present, lowercased, or `{}`."""
     if not headers:
