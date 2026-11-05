@@ -57632,7 +57632,9 @@ class ASitemapEnumeratesAndThePostPageIsTheRecordBecauseTheFeedIsRefusedInWritin
     the title taken from the JSON-LD instead of the page reddens the blockless
     row; dropping the `vcv-src__l` condition reddens the labels with the
     sidebar's; the empty-value repair removed reddens the malformed row; the
-    phone pattern widened to any seven digits reddens the escudo assertion; and
+    `[259]` anchor dropped for a bare `\\d{3}` reddens the escudo assertion -- on a
+    BARE seven-digit amount beginning 1, the only form of it a mutation can reach,
+    the dotted ones being structurally unreachable by any 3-2-2 motif; and
     `contacts_withheld` made unconditional reddens the quiet row."""
 
     def _mod(self):
@@ -57742,11 +57744,18 @@ class ASitemapEnumeratesAndThePostPageIsTheRecordBecauseTheFeedIsRefusedInWritin
         # a quiet post: the witness names nothing and the declaration is ABSENT, not False
         rows2, _e, _a = self._run(
             mod, [(200, self._sitemap(["/2026/07/x.html"])),
-                  (200, self._page(corps="Salario entre 50.000$00 e 1.500.000$00, CVE 60000. Candidate-se no portal."))], max=1)
+                  (200, self._page(corps="Salario entre 50.000$00 e 1.500.000$00, CVE 60000, orcamento 1500000. Candidate-se no portal."))], max=1)
         self.assertEqual(rows2[0]["withheld_fields"], None)
         self.assertNotIn("contacts_withheld", rows2[0])
         self.assertIn("50.000$00", rows2[0]["text"])
         self.assertIn("1.500.000$00", rows2[0]["text"])
+        # **THE DISCRIMINATING ONE, and the others are not.** `1500000` is a BARE
+        # seven-digit amount beginning 1: the `[259]` anchor spares it and a widened
+        # `\d{3}` would take it, so this is the only assertion here that a mutation of
+        # the pattern can redden. The dotted forms above are structurally unreachable by
+        # any 3-2-2 motif -- the `$` and the grouping split them -- so they state an
+        # intent and prove nothing, which is said rather than left to look like a guard.
+        self.assertIn("1500000", rows2[0]["text"])
 
     def test_the_refused_paths_are_never_sent_and_the_apex_is_never_asked(self):
         """**This exercises a guard UNREACHABLE from `list` and `ad`**, which is
