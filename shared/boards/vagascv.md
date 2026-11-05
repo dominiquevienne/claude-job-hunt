@@ -1,12 +1,94 @@
-# Board measurement — Vagas CV (`www.vagascv.info`, Cabo Verde): «VAGAS CABO VERDE» — «the largest employment portal in Cabo Verde» by its own description, a Blogger blog of vacancies, internships, competitions and visas (labels), served to the declared client (494 KB, identical twice) with its Blogger feed declared, rules open; no adapter yet
+# Board measurement — Vagas CV (`www.vagascv.info`, Cabo Verde): «VAGAS CABO VERDE» — «the largest employment portal in Cabo Verde» by its own description, a Blogger blog of vacancies, internships, competitions and visas (labels), served to the declared client (494 KB, identical twice) whose Blogger feed it declares and whose rules REFUSE it in writing while an explicit `Allow: /*.html` opens the posts — so `vagascv.py` enumerates by the SITEMAP and reads each POST PAGE since 2026-11-05, the JSON-LD being the theme’s own authoring artefact and a bonus
 
 <!-- verified: 2026-11-05 -->
 
 <!-- hosts: www.vagascv.info -->
-<!-- script: none -->
+<!-- script: vagascv.py -->
+<!-- route: http · 405 · 2026-11-05 -->
 <!-- countries: CV -->
 <!-- content: measured · **the root (200, 494 326 B, md5 57874207610e identical on two reads) is a Blogger blog — posts with «1 vaga» in their text, labels (`/search/label/Vistos` …), the feeds `/feeds/posts/default` and `?alt=rss` declared; no total on the root, no JobPosting; `_robots.allowed('www.vagascv.info','/')` → open, certain; the feed and the posts not read** · 2026-09-18 -->
-<!-- witness: NONE, and the one this card promised is REFUSED IN WRITING — the Blogger feed’s `openSearch:totalResults` is unreachable, `www.vagascv.info` writing `Disallow: /feeds*` to `User-agent: *` (measured 2026-11-05, `state: read`, `certain: True`). The allowed enumerator is `/sitemap.xml`, which states nothing and LISTS 405 post paths; a count of `<loc>` names a SIZE and never a nature, and whether a second sitemap page exists beyond the 405 is NOT established · 2026-11-05 -->
+<!-- witness: NONE, and the one this card promised is REFUSED IN WRITING — the Blogger feed’s `openSearch:totalResults` is unreachable, `www.vagascv.info` writing `Disallow: /feeds*` to `User-agent: *` (measured 2026-11-05, `state: read`, `certain: True`). The allowed enumerator is `/sitemap.xml`, which states nothing and LISTS 405 post paths; a count of `<loc>` names a SIZE and never a nature, and the 405 are now ESTABLISHED to exhaust the posts — `?page=1` returns them so the parameter is HONOURED, `?page=2` returns an EMPTY urlset, and `sitemap-pages.xml` holds 16 static pages and ZERO post · 2026-11-05 -->
+
+## The adapter, shipped — the sitemap enumerates and the POST PAGE is the record
+
+**`vagascv.py` is shipped.** The route this card and #694 both named is refused IN
+WRITING, and the section above measures that; what follows is the route that works.
+
+**THE THREE QUANTITIES THE SECTION ABOVE LEFT UNESTABLISHED ARE NOW MEASURED**, on 26
+posts spread across the whole sitemap — every 15th, index 0 to 375 — and never the
+newest 26, because a date-ordered sample selects a GENRE and not a rate:
+
+```
+no `application/ld+json` block at all   18/26   69 %
+a block that will not parse              7/26   27 %
+a clean block                             1/26    4 %
+```
+
+**And all eighteen without a block are plainly vacancies** — «Su-Chef de Cozinha»,
+«Engenheiro Civil», «Rececionista», «Mecânico de Primeira». *So the hypothesis that an
+absent block means «this is not a vacancy» is REFUTED*: an adapter built on the JSON-LD
+would emit 8 of 26 and lose eighteen real adverts. **The cause is in the page, and it
+settles the design: the theme's own script GENERATES the block at authoring time**
+(`return { html: html, code: html + '<script type=…ld+json'`), so it is absent when the
+author skipped the widget and malformed when a field was left blank. Hence the record is
+read from the PAGE and the block is a BONUS the record never depends on.
+
+The malformations are TWO superposed defects: a bare control character inside the
+`description` string, which `strict=False` accepts, and then `"minValue": ,` /
+`"maxValue": ,` — an empty value it does not. Both are handled; an irreparable block
+returns `None` rather than a guess.
+
+**And the sitemap EXHAUSTS the posts**, which is measured and not assumed: `?page=1`
+returns the 405 — so the parameter is HONOURED — while `?page=2` returns an EMPTY
+`urlset`, so the empty page is an answer and not an ignored argument; and the second
+declared sitemap, `sitemap-pages.xml`, holds **16 static `/p/` pages and ZERO post**.
+
+**THE PAGE CARRIES EVERYTHING, 26/26** on the same spread sample: `<h1
+class='vcv-vsrc__title'>`, `og:title`, `og:url`, `data-id`, `data-url`, an ISO timestamp
+beside `data-id`, the post's own label anchors, and a named body container
+(`vcv-vsrc__body`, 26/26) whose extracted text runs 1 117 to 4 134 characters.
+
+> **The attributes are written with SINGLE quotes, and a first probe that assumed double
+> ones reported every field ABSENT.** The motif is tried on the form the data has AT THE
+> POINT OF CALL — and the same lesson bit twice more here: an unscoped label motif named
+> the BLOG's taxonomy while claiming the POST's (29 label links on one page — 11 in a
+> dropdown, 11 in the sidebar, 5 in the footer, and two from a template COMMENT that
+> mentions `/search/label/` in prose, **the third time on this host that the page talks
+> about itself**), and a motif written through a shell heredoc arrived with a doubled
+> backslash and could match nothing. *What caught the last one was that the field
+> CONTRADICTED a specimen already measured, never a re-reading.*
+
+**THE CONTACTS ARE REAL, AND THE AFFILIATE BLOCK IS DROPPED CONDITIONALLY.** 21 of those
+26 bodies (81 %) carry a recruiter's e-mail and 3 a telephone. `withheld_fields` names
+what was ACTUALLY removed and the declaration goes through the repository's single point
+of judgement, never the truthiness of that list. The phone pattern is Cabo Verde's own
+(`+238`, seven digits beginning 2, 5 or 9) and was tried **in both directions against the
+escudo**, the country's currency: `50.000$00`, `100 000$00`, `CVE 60000`,
+`1.500.000$00` and `75.000 escudos` are untouched. *Residue declared: a BARE seven-digit
+amount beginning 2, 5 or 9 would be taken for a number; zero such amount appears in the
+26 bodies, so this is a measured risk and not a measured defect.*
+
+And the author pastes an `elementskit_alert` box of `go.hotmart.com` affiliate links
+INSIDE the advert — 17 of 26 bodies carried it. It is dropped **only when it carries an
+affiliate link**, never on the class alone, because a legitimate notice is written in the
+same box and an over-redaction is the one defect whose output does not differ from a
+well-conducted discretion. The close is found by COUNTING `<div>`/`</div>`, the block
+nesting an `alert_message`.
+
+```
+GET /sitemap.xml                       200, 50 137 B — 405 <loc>, all distinct, all post paths
+GET /sitemap.xml?page=1 / ?page=2      200 — 405 <loc> / an EMPTY urlset (so the param is honoured)
+GET /sitemap-pages.xml                 200, 1 776 B — 16 static /p/ pages, ZERO post
+GET /<yyyy>/<mm>/<slug>.html  x26      200 x26 — spread every 15th over the 405
+vagascv.py list --max 3                3 emitted, labels per post, contacts withheld on 3/3
+vagascv.py ad --url <a blockless post> a COMPLETE record with `ldjson: false`
+```
+
+*What it will never give: the recruiters' contacts, and the employers' own application
+routes are never followed. `/feeds*` and `/search*` are never requested — the labels are
+read from the LINK TEXTS of a page already held — and the apex is never asked, its
+`allowed=True` on the refused paths being a sibling-host circumvention and not an opening.*
+
 
 ## The route this card and its issue both name is refused in writing
 

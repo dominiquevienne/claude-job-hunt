@@ -57602,5 +57602,223 @@ class NoCardNamesTheLocalRulesFileInAnyForm(unittest.TestCase):
             + str(nommees))
 
 
+class ASitemapEnumeratesAndThePostPageIsTheRecordBecauseTheFeedIsRefusedInWriting(unittest.TestCase):
+    """**`vagascv.py`, 2026-11-05 (#694).** Vagas CV is a Blogger blog whose
+    **feed is refused IN WRITING** — `Disallow: /feeds*` to `User-agent: *`,
+    `state: read`, `certain: True` — while `Allow: /*.html` opens the posts on
+    purpose. So borne 1 closes the route the issue named, the sitemap is the
+    only enumerator, and the record is read from the post page.
+
+    **THE JSON-LD IS AN AUTHORING ARTEFACT, NOT A DATA SOURCE**, and that is
+    what these cases exist to hold. Measured on 26 posts spread across the whole
+    sitemap (every 15th, index 0 to 375), never the newest 26: **18/26 carry no
+    block at all (69 %), 7/26 carry one that will not parse (27 %), 1/26 is
+    clean** — and all eighteen without a block are plainly vacancies
+    («Su-Chef de Cozinha», «Engenheiro Civil», «Rececionista»). The hypothesis
+    that an absent block means «not a vacancy» is REFUTED: a JSON-LD adapter
+    would emit 8 of 26 and lose eighteen real adverts. The cause is in the page:
+    the theme's own script GENERATES the block at authoring time, so it is
+    absent when the author skipped the widget and malformed when a field was
+    left blank (`"minValue": ,`).
+
+    **The labels are SCOPED to the post's own anchors.** Unscoped, the field
+    named the BLOG's taxonomy while claiming the POST's: 29 label links on one
+    page, 11 in a dropdown, 11 in the sidebar, 5 in the footer, and two more
+    from a template COMMENT that mentions `/search/label/` in prose — the third
+    time on this host that the page talks about itself. A field that
+    over-declares is worse than an absent one.
+
+    Mutated (`-B`, isolated worktree), the expected red NAMED before mutating:
+    the title taken from the JSON-LD instead of the page reddens the blockless
+    row; dropping the `vcv-src__l` condition reddens the labels with the
+    sidebar's; the empty-value repair removed reddens the malformed row; the
+    `[259]` anchor dropped for a bare `\\d{3}` reddens the escudo assertion -- on a
+    BARE seven-digit amount beginning 1, the only form of it a mutation can reach,
+    the dotted ones being structurally unreachable by any 3-2-2 motif; and
+    `contacts_withheld` made unconditional reddens the quiet row."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_vagascv", os.path.join(SCRIPTS, "vagascv.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    SIDEBAR = ("<div class='vcv-cat'><a href='/search/label/Administrativo'>Administrativo</a>"
+               "<a href='/search/label/Comercial'>Comercial</a></div>"
+               "<div class='vcv-footer__title'><a href='/search/label/Vistos'>Vistos</a></div>"
+               "<!-- o resto filtra no navegador: /search/label/X) -->")
+
+    def _page(self, pid="4491283858416126862", titre="Engenheiro Civil",
+              when="2026-07-06T16:59:00-01:00", corps="A TECNOVIA CV contrata. Envie CV a rh@example.cv ou ligue 262 42 97. Salario 100.000$00.",
+              labels=("Engenharia", "Sal"), ld=None):
+        bloc = ("<script type='application/ld+json'>%s</script>" % ld) if ld else ""
+        ancres = "".join("<a class='vcv-src__l' href='https://www.vagascv.info/search/label/%s'>%s</a>"
+                         % (urllib.parse.quote(l), l) for l in labels)
+        return ("<html><head><title>%s - VAGAS CABO VERDE</title>"
+                "<meta content='https://www.vagascv.info/2026/07/x.html' property='og:url'/>"
+                "<meta content='%s' property='og:title'/></head><body>%s"
+                "<article><div class='vcv-vsrc' data-when='%s' data-id='%s' data-url='https://www.vagascv.info/2026/07/x.html'>"
+                "<h1 class='vcv-vsrc__title'>%s</h1>"
+                "<div class='vcv-vsrc__body'><p>%s</p></div>%s"
+                "<div class='vcv-src__labels'>%s</div></div></article>"
+                "<section class='vcv-rel'></section></body></html>"
+                % (titre, titre, self.SIDEBAR, when, pid, titre, corps, bloc, ancres))
+
+    LD_SALE = ('{"@context":"https://schema.org","@type":"JobPosting","title":"T",'
+               '"hiringOrganization":{"@type":"Organization","name":"TECNOVIA"},'
+               '"validThrough":"2026-12-04T00:00:00","employmentType":"FULL_TIME",'
+               '"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressRegion":"Santiago"}},'
+               '"baseSalary":{"@type":"MonetaryAmount","value":{"@type":"QuantitativeValue",'
+               '"minValue": ,"maxValue": }}}')
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(max=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def _sitemap(self, paths):
+        return ("<?xml version='1.0' encoding='UTF-8'?><urlset>"
+                + "".join("<url><loc>https://www.vagascv.info%s</loc></url>" % p for p in paths)
+                + "</urlset>")
+
+    def test_the_record_does_not_depend_on_the_jsonld_and_the_labels_are_the_posts_own(self):
+        mod = self._mod()
+        rows, err, asked = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html", "/p/empresas.html"])),
+                  (200, self._page())], max=1)
+        self.assertEqual(asked, ["https://www.vagascv.info/sitemap.xml",
+                                 "https://www.vagascv.info/2026/07/x.html"])
+        r = rows[0]
+        # a page with NO ld+json block still yields a complete record
+        self.assertEqual((r["source"], r["country"], r["ledger_id"], r["id"], r["title"],
+                          r["published"], r["ldjson"], r["employer"], r["language"]),
+                         ("vagascv", "CV", "vagascv:4491283858416126862", "4491283858416126862",
+                          "Engenheiro Civil", "2026-07-06", False, None, "pt"))
+        # the labels are the POST's, never the sidebar's, the footer's or a comment's
+        self.assertEqual(r["labels"], ["Engenharia", "Sal"])
+        self.assertNotIn("Administrativo", r["labels"] or [])
+        self.assertIn("read from the PAGE", err)
+        # the static page the sitemap also lists is not a post and is never asked
+        self.assertIn("/p/empresas.html", self._sitemap(["/p/empresas.html"]))
+
+    def test_a_malformed_block_is_repaired_when_it_can_be_and_the_record_stands_either_way(self):
+        mod = self._mod()
+        rows, _e, _a = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html"])),
+                  (200, self._page(ld=self.LD_SALE))], max=1)
+        r = rows[0]
+        # `"minValue": ,` is what the theme emits for a blank field; repaired, the bonus reads
+        self.assertEqual((r["ldjson"], r["employer"], r["valid_through"],
+                          r["employment_type"], r["region"]),
+                         (True, "TECNOVIA", "2026-12-04", "FULL_TIME", "Santiago"))
+        # and an irreparable block changes nothing about the record
+        rows2, _e2, _a2 = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html"])),
+                  (200, self._page(ld="{this is not json at all"))], max=1)
+        self.assertEqual((rows2[0]["ldjson"], rows2[0]["title"], rows2[0]["id"]),
+                         (False, "Engenheiro Civil", "4491283858416126862"))
+
+    def test_the_withheld_witness_is_derived_and_the_phone_rule_spares_the_escudo(self):
+        mod = self._mod()
+        rows, err, _a = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html"])), (200, self._page())], max=1)
+        r = rows[0]
+        self.assertEqual((r["withheld_fields"], r["contacts_withheld"]),
+                         (["email", "telephone"], True))
+        # the escudo is the country's currency and it is NOT a telephone
+        self.assertIn("100.000$00", r["text"])
+        self.assertIn("[e-mail withheld]", r["text"])
+        self.assertIn("[telephone withheld]", r["text"])
+        # a quiet post: the witness names nothing and the declaration is ABSENT, not False
+        rows2, _e, _a = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html"])),
+                  (200, self._page(corps="Salario entre 50.000$00 e 1.500.000$00, CVE 60000, orcamento 1500000. Candidate-se no portal."))], max=1)
+        self.assertEqual(rows2[0]["withheld_fields"], None)
+        self.assertNotIn("contacts_withheld", rows2[0])
+        self.assertIn("50.000$00", rows2[0]["text"])
+        self.assertIn("1.500.000$00", rows2[0]["text"])
+        # **THE DISCRIMINATING ONE, and the others are not.** `1500000` is a BARE
+        # seven-digit amount beginning 1: the `[259]` anchor spares it and a widened
+        # `\d{3}` would take it, so this is the only assertion here that a mutation of
+        # the pattern can redden. The dotted forms above are structurally unreachable by
+        # any 3-2-2 motif -- the `$` and the grouping split them -- so they state an
+        # intent and prove nothing, which is said rather than left to look like a guard.
+        self.assertIn("1500000", rows2[0]["text"])
+
+    def test_the_refused_paths_are_never_sent_and_the_apex_is_never_asked(self):
+        """**This exercises a guard UNREACHABLE from `list` and `ad`**, which is
+        why it is called directly: `list` only asks the sitemap and the paths it
+        gives, `ad` rejects a non-post address first. A guard nobody can reach
+        and nobody tests is inert, and its green says nothing."""
+        mod = self._mod()
+        for bad in ("https://www.vagascv.info/feeds/posts/default?alt=json",
+                    "https://www.vagascv.info/search/label/Vistos"):
+            with self.assertRaises(SystemExit) as c:
+                mod.request(bad)
+            self.assertEqual(c.exception.code, mod.EXIT_REFUSED, bad)
+        # the apex answers `allowed=True` for the refused paths: using it would
+        # circumvent a written refusal through a sibling host
+        with self.assertRaises(SystemExit) as c:
+            mod.request("https://vagascv.info/2026/07/x.html")
+        self.assertEqual(c.exception.code, mod.EXIT_REFUSED)
+        for bad in ("https://vagascv.info/2026/07/x.html",
+                    "https://www.vagascv.info/search/label/X",
+                    "https://example.com/2026/07/x.html"):
+            with self.assertRaises(SystemExit):
+                self._run(mod, [], cmd="ad", url=bad)
+
+
+    def test_the_affiliate_block_goes_only_when_it_carries_an_affiliate_link(self):
+        """**The removal is CONDITIONAL, and that is the whole guard.** The author
+        pastes an `elementskit_alert` box with `go.hotmart.com` links INSIDE the
+        advert — 17 of 26 bodies in a spread sample carried it. Dropping it on the
+        CLASS alone would eat a legitimate notice written in the same box, and an
+        over-redaction is the one defect whose output is indistinguishable from a
+        well-conducted discretion. The close is found by COUNTING `<div>`/`</div>`,
+        because the block nests an `alert_message` and a non-greedy `</div>` cuts
+        inside it."""
+        mod = self._mod()
+        AFF = ("<div class=\"elementskit_alert alert_success\"><div class=\"alert_message\">"
+               "Quer <b>Monetizar blogs</b>? | <a href=\"https://go.hotmart.com/R878\">Clique Aqui</a>"
+               "</div></div>")
+        LEGIT = ("<div class=\"elementskit_alert alert_success\"><div class=\"alert_message\">"
+                 "As candidaturas fecham no dia 30. | <a href=\"https://www.vagascv.info/p/empresas.html\">Veja aqui</a>"
+                 "</div></div>")
+        corps = "A TECNOVIA CV contrata." + AFF + LEGIT + "Envie o CV."
+        rows, _e, _a = self._run(
+            mod, [(200, self._sitemap(["/2026/07/x.html"])),
+                  (200, self._page(corps=corps))], max=1)
+        t = rows[0]["text"]
+        self.assertNotIn("Monetizar", t)          # the affiliate box is gone
+        self.assertNotIn("Clique Aqui", t)
+        self.assertIn("As candidaturas fecham no dia 30", t)   # the legitimate box STAYS
+        self.assertIn("Veja aqui", t)
+        self.assertIn("A TECNOVIA CV contrata", t)
+        self.assertIn("Envie o CV", t)
+        # and the counter finds the right close: nothing of the inner div survives either
+        self.assertNotIn("alert_message", t)
+
+    def test_a_sitemap_that_lists_no_post_path_reddens_rather_than_emitting_nothing(self):
+        """**A zero that affirms instead of missing.** A sitemap served with
+        `<loc>` entries and not one post path is a shape change, not an empty
+        blog, and the two must not read alike."""
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as c:
+            self._run(mod, [(200, self._sitemap(["/p/empresas.html", "/p/bookmarks.html"]))], max=1)
+        self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
