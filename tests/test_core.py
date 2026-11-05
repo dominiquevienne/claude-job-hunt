@@ -57370,5 +57370,150 @@ class TheStatedTotalIsAnArchiveAndTheTwoDatesDifferByADayAtMidnight(unittest.Tes
                          "n ecrit aucun `Crawl-delay`, donc elle est a nous")
 
 
+class ABloggerFeedThatServesFewerEntriesThanAskedWithoutSayingSoAndWhoseLabelsAreAnOrganisationTaxonomy(unittest.TestCase):
+    """**`vagaservisu.py`, 2026-11-05 (#687).** Vaga Servisu TL is a Blogger
+    blog carrying Timor-Leste's NGO, UN and government vacancies mixed with
+    scholarships and public notices. Two defects are guarded, both measured
+    on the live host and neither visible in any verdict.
+
+    **The walk must advance by what it RECEIVED.** At `max-results=500` the
+    feed states `itemsPerPage=500` and `totalResults=1551` and serves 125,
+    108, 87 entries — short, with no error, no non-zero code and no message —
+    while at `max-results=50` it serves full pages. So no page size is known
+    to be honoured, and a walk that steps by the size ASKED skips everything
+    between what it got and what it requested. `start-index=126` after a page
+    of 125 returns 108 with zero overlap, union exactly 233, so the indices
+    are correct and it is the count served that varies. A SHORT page is
+    therefore never the end of the feed: only an EMPTY page is.
+
+    **Nothing is dropped, and the kind is OURS.** A label-only filter loses
+    real vacancies: of the 126 held posts carrying no vacancy label, the
+    median is a UNICEF consultancy and the last a PNTL police recruitment,
+    both labelled only by their ORGANISATION. So the kind is derived from the
+    labels AND the title, and `--kind` is the caller's.
+
+    And `withheld_fields` is DERIVED from what was actually removed — 15 of
+    the 25 newest bodies carry a recruiter's address, so a card that asserted
+    the witness would be right here and would lie on the quiet posts. The
+    phone pattern is Timor-Leste's own and was tried against USD amounts in
+    both directions, the country paying in dollars.
+
+    Mutated (`-B`, detached copy): `start += len(entries)` -> `+= PER_PAGE`
+    reddens the asked URLs; adding `or len(entries) < PER_PAGE` to the break
+    reddens the page count; the kind taken from the labels alone reddens the
+    UNICEF row; `contacts_withheld` asserted True reddens the quiet row; the
+    phone pattern widened to any 7 digits reddens the USD assertion."""
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location("_vagaservisu", os.path.join(SCRIPTS, "vagaservisu.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _entry(pid, slug, title, labels, content, published="2026-11-05T09:00:00.000+09:00"):
+        return {"id": {"$t": f"tag:blogger.com,1999:blog-429.post-{pid}"}, "published": {"$t": published}, "updated": {"$t": published},
+                "category": [{"scheme": "http://www.blogger.com/atom/ns#", "term": t} for t in labels], "title": {"type": "text", "$t": title},
+                "content": {"type": "html", "$t": content},
+                "link": [{"rel": "self", "href": "x"}, {"rel": "alternate", "type": "text/html", "href": f"https://www.vagaservisu.com/2026/11/{slug}.html", "title": title}],
+                "author": [{"name": {"$t": "Vaga Servisu TL"}}]}
+
+    def _feed(self, entries, total=1551, start=1, per=500):
+        return json.dumps({"feed": {"openSearch$totalResults": {"$t": str(total)}, "openSearch$startIndex": {"$t": str(start)},
+                                    "openSearch$itemsPerPage": {"$t": str(per)}, "entry": entries, "link": []}})
+
+    def _run(self, mod, served, cmd="list", **kw):
+        import contextlib
+        asked = []
+        it = iter(served)
+
+        def request(url):
+            asked.append(url)
+            return next(it)
+        mod.request = request
+        ns = argparse.Namespace(pages=None, kind=None) if cmd != "ad" else argparse.Namespace()
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            {"list": mod.cmd_list, "ad": mod.cmd_ad}[cmd](ns)
+        return [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")], err.getvalue(), asked
+
+    def test_a_short_page_does_not_end_the_walk_and_the_step_is_what_was_received(self):
+        mod = self._mod()
+        mod.PER_PAGE = 5
+        p1 = [self._entry("1", "a", "Vaga Servisu - Officer - CARE", ["Anunsiu Vaga"], "<p>One.</p>"),
+              self._entry("2", "b", "Vaga Servisu - Driver - OXFAM", ["Job Vacancy"], "<p>Two.</p>")]
+        p2 = [self._entry("3", "c", "Vaga Servisu - Nurse - HAMNASA", ["Vaga Servicu"], "<p>Three.</p>")]
+        rows, err, asked = self._run(mod, [(200, self._feed(p1, per=5)), (200, self._feed(p2, start=3, per=5))], pages=2)
+        # two entries served for five asked -> the NEXT index is 3, never 6
+        self.assertEqual(asked, ["https://www.vagaservisu.com/feeds/posts/default?alt=json&start-index=1&max-results=5",
+                                 "https://www.vagaservisu.com/feeds/posts/default?alt=json&start-index=3&max-results=5"])
+        self.assertEqual([r["id"] for r in rows], ["1", "2", "3"])
+        self.assertIn("served [2, 1]", err)
+        self.assertIn("a short page is not the end of the feed", err)
+        self.assertIn("counts ALL POSTS and not vacancies", err)
+
+    def test_an_empty_page_ends_the_walk_and_a_feed_that_states_a_total_and_lists_nothing_reddens(self):
+        mod = self._mod()
+        mod.PER_PAGE = 5
+        p1 = [self._entry("1", "a", "Vaga Servisu - Officer - CARE", ["Anunsiu Vaga"], "<p>One.</p>")]
+        rows, err, asked = self._run(mod, [(200, self._feed(p1, per=5)), (200, self._feed([], start=2, per=5))], pages=4)
+        self.assertEqual(len(asked), 2)          # the empty page stops it; the fourth is never asked
+        self.assertEqual([r["id"] for r in rows], ["1"])
+        with self.assertRaises(SystemExit) as c:
+            self._run(mod, [(200, self._feed([], per=5))], pages=2)
+        self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+
+    def test_the_kind_is_ours_and_a_vacancy_labelled_only_by_its_organisation_is_kept(self):
+        mod = self._mod()
+        mod.PER_PAGE = 5
+        unicef = self._entry("10", "consultant", "National/International Consultant for Radio Spot Production for Spotlight Initiative - UNICEF", ["UN", "UNICEF"], "<p>Terms of reference.</p>")
+        pntl = self._entry("11", "pntl", "An\u00fansiu P\u00fabliku - Krit\u00e9riu Formul\u00e1riu Aplikasaun Rekrutamentu Ofisi\u00e1l PNTL 2025", ["PNTL", "Recruitment"], "<p>Notice.</p>")
+        bolsa = self._entry("12", "bolsa", "PROGRAMA BOLSA ESTUDU - JDS Scholarship 2026", ["Anunsiu Bolsa Estudu", "Japan"], "<p>Scholarship.</p>")
+        rows, err, asked = self._run(mod, [(200, self._feed([unicef, pntl, bolsa], per=5)), (200, self._feed([], start=4, per=5))], pages=2)
+        self.assertEqual([(r["id"], r["kind"], r["kind_is_ours"]) for r in rows],
+                         [("10", "vacancy", True), ("11", "vacancy", True), ("12", "scholarship", True)])
+        self.assertIn("kind is OURS", err)
+        self.assertIn("scholarship 1, vacancy 2", err)
+        # nothing is dropped unless the caller asks
+        kept, err2, _ = self._run(mod, [(200, self._feed([unicef, pntl, bolsa], per=5)), (200, self._feed([], start=4, per=5))], pages=2, kind="scholarship")
+        self.assertEqual([r["id"] for r in kept], ["12"])
+        self.assertIn("1 emitted of 3 read (--kind scholarship)", err2)
+
+    def test_the_withheld_witness_is_derived_and_the_phone_rule_spares_the_dollar(self):
+        mod = self._mod()
+        mod.PER_PAGE = 5
+        loud = self._entry("20", "loud", "Vaga Servisu - Officer - Plan", ["Anunsiu Vaga"],
+                           "<p>Send your CV to benigna.martins@example.org or call +670 7740-3881 or 331 2492.</p>")
+        quiet = self._entry("21", "quiet", "Vaga Servisu - Driver - CRS", ["Job Vacancy"],
+                            "<p>Salary USD 1,200 per month, range $1,500-$2,000, budget $35000. Apply on our portal.</p>")
+        rows, err, asked = self._run(mod, [(200, self._feed([loud, quiet], per=5)), (200, self._feed([], start=3, per=5))], pages=2)
+        a, b = rows
+        self.assertEqual((a["withheld_fields"], a["contacts_withheld"]), (["email", "telephone"], True))
+        self.assertTrue(mod.withheld_a_contact(a["withheld_fields"]))   # the judgement is the repository's one point
+        self.assertEqual(a["text"], "Send your CV to [e-mail withheld] or call [telephone withheld] or [telephone withheld].")
+        # the quiet post: the witness NAMES nothing, and the declaration is ABSENT
+        # rather than False -- an absence is not a claim, and that is the repository's
+        # form (`_withheld`, #1238), which an `else` branch would break.
+        self.assertEqual(b["withheld_fields"], None)
+        self.assertNotIn("contacts_withheld", b)
+        self.assertEqual(b["text"], "Salary USD 1,200 per month, range $1,500-$2,000, budget $35000. Apply on our portal.")
+        self.assertIn("a contact was removed from 1 of 2", err)
+
+    def test_the_ad_asks_the_feed_by_path_and_the_blogs_search_is_never_sent(self):
+        mod = self._mod()
+        e = self._entry("30", "child-rights", "Vaga Servisu - Child Rights Project Officer - Plan International Timor-Leste", ["Anunsiu Vaga", "Plan"], "<p>Call 7740 3881.</p>")
+        rows, err, asked = self._run(mod, [(200, self._feed([e]))], cmd="ad", url="https://www.vagaservisu.com/2026/11/child-rights.html")
+        self.assertEqual(asked, ["https://www.vagaservisu.com/feeds/posts/default?alt=json&path=/2026/11/child-rights.html"])
+        self.assertEqual((rows[0]["ledger_id"], rows[0]["kind"], rows[0]["withheld_fields"]), ("vagaservisu:30", "vacancy", ["telephone"]))
+        with self.assertRaises(SystemExit) as c:
+            self._run(mod, [(200, self._feed([], per=5))], cmd="ad", url="https://www.vagaservisu.com/2026/11/gone.html")
+        self.assertEqual(c.exception.code, mod.EXIT_GONE)
+        for bad in ("https://www.vagaservisu.com/search/label/Anunsiu%20Vaga", "https://example.com/2026/11/x.html"):
+            with self.assertRaises(SystemExit):
+                self._run(mod, [], cmd="ad", url=bad)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
