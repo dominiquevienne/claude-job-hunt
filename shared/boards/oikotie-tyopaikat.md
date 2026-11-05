@@ -64,7 +64,8 @@ observation that would reopen it.
 **non faisable — validé par le propriétaire le 14.09.2026 (verbatim : « 1, 2, 3 => exclure. Plus disponible »)** — relayed verbatim by the pilot (#375). What was measured above is
 unchanged; what changes is who says «closed»: until this line the card
 could only say what it had read and that the verdict was the owner's to
-give (CLAUDE.md §2 sexies) — he has given it. The `route: none` line
+give — a closure is the owner's DECISION and never a reading of ours — and he
+has given it. The `route: none` line
 leads with it, dated, so the Atlas and the country page (#404: a card
 declaring `route: none` is «non faisable», excluded from the feasible
 denominator) read a decision and not a measurement. A re-measure stays possible — the host, the date and the two md5 are above — but it is not owed: the owner has excluded the board.
