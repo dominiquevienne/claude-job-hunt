@@ -57515,5 +57515,92 @@ class ABloggerFeedThatServesFewerEntriesThanAskedWithoutSayingSoAndWhoseLabelsAr
                 self._run(mod, [], cmd="ad", url=bad)
 
 
+class NoCardNamesTheLocalRulesFileInAnyForm(unittest.TestCase):
+    """**#1275, 2026-11-05.** The repository's local rules file at the root is
+    gitignored and untracked, so a card that names it builds a reference that
+    resolves on a working copy and in **no checkout**. `main` went red on
+    2026-09-08 for a single such citation, and #1273 removed six of them.
+
+    **WHY THIS IS NOT A SECOND COPY OF `test_every_cited_markdown_file_resolves`.**
+    That one reads `_cited()`, whose extractors take names **between backticks
+    only** — deliberately, because widening them would catch every `.md`
+    mentioned in prose (its sibling's docstring measures that: 538 against the
+    532 the tables cite). So the BARE form is conformant to that guard and an
+    infraction against the rule, and the only thing separating the sound state
+    from a red `main` is that no hand has added a backtick — while we put them
+    on every filename in every sentence. The six cards #1273 repaired carried
+    the bare form and that guard was **green on all six, rightly**: it was not
+    lying, it was not looking there.
+
+    **THE SCOPE IS FORCED AND NOT PREFERRED, and it is measured.** An absolute
+    guard at the scale of the repository is **unsatisfiable by construction** —
+    it would fire on its own citations. Measured on 2026-11-05, outside the
+    cards and outside `.gitignore`: `tests/test_core.py` 9 (this class among
+    them), `bin/fetch-body.py` 5, `lambdaglobal.py` 2, `release.yml` 1,
+    `_robots.py` 1, `_withheld.py` 1 — **19**. An unsatisfiable guard gets
+    DISCONNECTED, not corrected, and it accuses the object rather than the model
+    one has of it.
+
+    So the scope is the CARDS, and it is licit for a mechanical reason: `tests/`
+    is not among the roots the citation guard reads (`shared/boards`, `shared`,
+    `.`), which is why nine occurrences can sit in this file with that guard
+    green — the proof is the current state, not an argument. **This is a
+    declared SCOPE and never a list of exceptions**: an absolute guard beats one
+    with declared exceptions, because an exception always receives a second.
+
+    **RESIDUE, DECLARED: the 19 citations outside the cards are NOT covered and
+    cannot be.** The rule they would break does not apply to them — the
+    preamble forbids a card from citing the file, because a card's references
+    are resolved; a test or a script naming it in a comment resolves nothing and
+    promises nothing. What is NOT guarded anywhere is a citation added to a
+    `.py` or a `.yml`, and that is accepted rather than hidden.
+
+    Mutated in both directions, the expected red NAMED before mutating: a BARE
+    citation put back in a card reddens THIS class in `shared/boards/<card>.md`
+    while `test_every_cited_markdown_file_resolves` stays GREEN on the same
+    mutation — that contrast is what proves this is not a second copy — and
+    removing it returns both to green."""
+
+    NAME = "CLAUDE" + ".md"      # split so that a grep for the citation does not
+                                 # find this file by its own guard's constant
+
+    @classmethod
+    def _cards(cls):
+        import glob
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        out = []
+        for d in ("shared/boards", "shared"):
+            for p in sorted(glob.glob(os.path.join(root, d, "*.md"))):
+                out.append((os.path.relpath(p, root), io.open(p, encoding="utf-8", errors="replace").read()))
+        return out
+
+    def test_the_corpus_is_not_empty_and_the_search_still_finds_what_is_there(self):
+        """**The positive floor, so that a zero cannot say «I did not look».**
+        A sweep that stopped finding anything would be green for the wrong
+        reason, and this repository has named that defect too many times to
+        ship another one. The control is a name that IS cited, read by the
+        same instrument on the same corpus."""
+        cards = self._cards()
+        self.assertGreater(len(cards), 400,
+                           "too few cards read: the sweep no longer measures anything")
+        temoin = [n for n, t in cards if "`empleosenuruguay.md`" in t]
+        self.assertGreaterEqual(
+            len(temoin), 2,
+            "the instrument no longer finds a name that IS cited, so a zero on "
+            "the rules file would be unattributable: " + str(temoin))
+
+    def test_no_card_names_the_local_rules_file(self):
+        """Both forms confounded — a plain substring, so the typography cannot
+        matter. The rule is absolute and independent of backticks; the guard
+        must be too."""
+        nommees = [n for n, t in self._cards() if self.NAME in t]
+        self.assertEqual(
+            nommees, [],
+            "these cards name the local rules file, which is gitignored and "
+            "resolves in no checkout; keep the FACT and drop the file "
+            "citation, and what a card must cite lives in `shared/`: "
+            + str(nommees))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
