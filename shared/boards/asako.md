@@ -11,6 +11,34 @@
 <!-- witness: `totalCount: 479` in the RSC flight of `/emploi` AND of `/emploi/page/2`, the structural witness the redesign did not move, beside «479 offres disponibles» still served on page 2 — and the two enumerators AGREE, which was checked and not assumed: the 40 ad links of pages 1–2 are ALL in `/sitemap-jobs.xml` (0 outside) and its 479 rows match the 479 the page states, so the sitemap is a witness and not a second population; `/emploi/page/N` is a measured fallback route; a page with no witness at all still exits 6 · 2026-11-02 -->
 <!-- route: http · 478 · 2026-11-02 -->
 
+## 2026-11-04 18:03:59Z — the refused row is GONE, which is not «repaired» (#1245)
+
+**Zero rows of `/sitemap-jobs.xml` are set aside today, so the premise of #1245 is
+WITHOUT OBJECT rather than fixed.** Read 2026-11-04 18:03:59Z under the declared
+`Claude-User`: 200 on Vercel, 81 541 B, `md5 e9d3320036a4630d12893f2483681435`,
+`Age: 2846` so the body was up to 48 min old at the edge — **541 `<loc>` rows, 541
+distinct, 541 accepted by the address pattern, 0 set aside**. The row this card names,
+`/annonces/sdr-b2b-freelance7d468b86`, is NO LONGER IN THE SITEMAP. The pattern was not
+touched and nothing was emitted: this pass held the sitemap and read it.
+
+**The discriminant between «repaired» and «expired», because the two call for opposite
+conduct.** The ad is gone AND the address form is unchanged: 541 of 541 rows are
+`<slug>-<hex>`, and **ZERO** carry a hex run glued to the slug with no separating
+hyphen. So nothing on the site stops the next ad from being named the same way, and the
+decision this card declines — guessing where a slug ends — remains the only way such a
+row could be emitted. «Repaired» would assert a property of the SITE where there is
+only a dated behaviour, and it would close an issue that can reopen by itself.
+
+**Two numbers, two grandeurs: the 541 above does NOT correct the 478 of `route:`.**
+`478` is what the adapter EMITS of the `479` the LISTING states, read from the
+`totalCount` of its RSC flight on 2026-11-02; `541` is the ROW COUNT OF THE SITEMAP,
+read today. The sitemap has grown, 479 → 541 rows. **NOT established, and declared:**
+the listing's `totalCount` was NOT read on 2026-11-04, so the `witness:` line above —
+the two enumerators agree — is neither confirmed nor refuted for today, and the
+sitemap's 541 is not a second population until it is checked against the listing again.
+`route:`, `content:`, `witness:` and `verified:` are therefore LEFT AS THEY STAND:
+re-verifying means RUNNING the adapter, which this pass did not do.
+
 ## 2026-11-02 03:14–03:17Z — two things moved, the adapter's guard caught both, and #1239 is the remeasurement
 
 **The adapter exited `rc=6` on «200 and no «N offres disponibles»» and that verdict was
