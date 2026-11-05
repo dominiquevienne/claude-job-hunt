@@ -63,8 +63,12 @@ the first three — and they return **three different results**:
 **And the first count said «JobPosting: True» on all three, which was a false positive
 of our own motif** — it searched for `application/ld+json` anywhere in a page whose
 template mentions it. *Counting a string on a page that TALKS about that string yields
-a false fact*, the same defect `CLAUDE.md` §4 records for `<script>`, one object
-further along.
+a false fact* — the same defect this repository already records for `<script>`,
+one object further along. *The rule is not cited by name here: no file of the
+repository may cite the local rules file, which is gitignored, so the citation
+resolves on a working copy and NOT on a checkout — and the guard that catches it
+reads names in BACKTICKS only, which is why five cards carry the bare name and
+escape it.*
 
 **WHAT IS NOT ESTABLISHED, and each of the three decides a branch of the adapter.** A
 denominator of **3** is not a rate: the share of posts whose `JobPosting` is
