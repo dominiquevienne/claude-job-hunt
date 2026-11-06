@@ -57820,5 +57820,374 @@ class ASitemapEnumeratesAndThePostPageIsTheRecordBecauseTheFeedIsRefusedInWritin
         self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
 
 
+class AnApiTheBundleDeclaresAndTwoReasonsAnAdvertIsNotApplicable(unittest.TestCase):
+    """**`jobsyria.py`, 2026-11-06 (#1278).** Syria's second adapter, and the
+    first in this repository whose ROUTE had to be read out of the site's own
+    JavaScript. Six things, and three of them are about a field being present
+    and a field being usable:
+
+    * **the route is DECLARED, not guessed**: the root is not the enumerator
+      (four «no result», zero advert link), `main.js` carries only
+      `jobs/filters`, and the list endpoint lives in a LAZY chunk — so the
+      six chunks the public route config names were guarded and read, and
+      `common.*.js` declares `jobs`, `jobs?size=` and `jobs/show/`. An adapter
+      built on the main bundle alone would have concluded there is no list;
+    * **`show` takes the CODE and the id returns 404**, with the id sitting
+      right there in the record as the natural argument — a chemin that works
+      masking the one that does not;
+    * **the list serves CLOSED adverts and page 1 cannot show it**: a spread
+      sample of 93 over pages 1/81/163/244/325 is 40 `open` and 53 `closed`,
+      where page 1 alone reads 100 % open;
+    * **and `status` is not a freshness signal either** — 23 of those 40
+      `open` were already past their `deadline`, so a filter on `status`
+      alone leaves 58 % of what it keeps expired. Two independent reasons,
+      counted APART, each lifted by its own flag. *An absent deadline is
+      never an expiry, and no record of the 93 lacked one: that branch is
+      exercised here and not by the board;*
+    * **`application_link` is judged PER HREF, never per field.** One advert
+      of twenty carries four links of which three are legitimate routes
+      (`europass.europa.eu`, two `ec.europa.eu/echo` pages) and one is a
+      `mailto:`; dropping the field would destroy the three — the
+      over-redaction whose output does not differ from a well-conducted
+      discretion. And `apply_url` is emitted only when EXACTLY ONE http route
+      survives (17 of 20), because when several do, which one applies is not
+      established;
+    * **the phone rule is anchored on the dialling code, never on a digit
+      count**, and tried in both directions — the Syrian pound is written in
+      millions, and a length rule on a currency is how 113 of 115 salaries
+      were once destroyed. Arabic-Indic digits in both columns.
+
+    Four surfaces are never asked, and the reason is per path: `jobs/submit`,
+    `jobs/offsite_applied` and `jobs/report` act FOR a person,
+    `jobs/recommended` is bound to an account, `admin/*` is not ours, and
+    `tenders` is 291 PUBLIC TENDERS — a separate population, out of SCOPE,
+    which is not the same as refused. `list` and `ad` cannot reach any of
+    them, so the refusal is exercised DIRECTLY: a guard nobody can reach and
+    nobody tests is inert, and its green says nothing.
+
+    **Mutated with `-B`, the red NAMED before each mutation:** ten for ten,
+    and each red is the one that was named.
+
+    | the mutation | the red OBTAINED (not deduced), and the case that fired |
+    | :-- | :-- |
+    | the `status != open` filter dropped | `Lists differ: [10, 11] != [10]` — *the two reasons* |
+    | the deadline filter dropped | `Lists differ: [10, 12] != [10]` — *the two reasons* |
+    | the deadline filter made to fire on an ABSENT deadline | `Lists differ: [] != [20, 21]` — *an absent deadline* |
+    | `len(gardes) == 1` → `>= 1` | `'apply_url' unexpectedly found` — *what the record carries* |
+    | the anchor rendered as its text alone | `'europass.europa.eu/en/create-europass-cv' not found` |
+    | `reached_a_person` not passed to `_withheld` | `None is not true` — *a messaging host* |
+    | the e-mail scrub dropped | `Lists differ: ['telephone'] != ['email', 'telephone']` |
+    | the phone anchor loosened to nine bare digits | `None is not true : DOIT PRENDRE '00963944123456'` |
+    | `success: false` ignored | `SystemExit not raised` — **and this one came back GREEN first** |
+    | the host test dropped | `2 != 7 : https://jobsyria.org/api/jobs` |
+
+    **The ninth is the one worth reading.** It came back GREEN, and the fault was in the
+    FIXTURE and not in the code: its payload was `data: {}`, so the envelope check refused it
+    by another branch with the SAME exit 6 — the case could not tell «the refusal was read»
+    from «the envelope was malformed». The payload is well-formed now, and the stderr is
+    asserted, so only the `success` test can reach that exit. *A red reached by another path
+    satisfies the assertion without the guard it names: that is the «non exercée» species, and
+    a mutation is the only thing that shows it.*
+    """
+
+    HOTE = "api.jobsyria.org"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_jobsyria", os.path.join(SCRIPTS, "jobsyria.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _job(ident, **kw):
+        tr = {"id": 900 + ident, "job_id": ident, "language": "en",
+              "title": f"Officer {ident}", "description": None, "responsibilities": None,
+              "requirements": None, "how_to_apply": None, "is_auto_translation": False}
+        tr.update(kw.pop("tr", {}))
+        j = {"id": ident, "code": f"COde{ident}xxxxxxx", "title": f"Officer {ident}",
+             "client_id": 4, "client": {"id": 4, "name": "منظمة", "description": None},
+             "cities": [{"id": 10, "name": "دمشق"}], "cities_names": "دمشق",
+             "category_id": 22, "category": {"id": 22, "name": "اللوجستيك"},
+             "types": [{"id": 20, "name": "دوام كامل"}],
+             "published_at": "2026-11-05 10:03", "published_at_timeleft": "",
+             "deadline": "2099-12-31 16:00", "deadline_remaining_time": "",
+             "status": "open", "status_label": "مفتوح", "views": 3,
+             "monthly_salary": "", "application_method": "link",
+             "application_link": '<p><a href="https://ri.bamboohr.com/careers/389">apply</a></p>',
+             "permanent_link": f"https://www.jobsyria.org/jobs/details/COde{ident}xxxxxxx",
+             "last_update": "2026-11-06 22:28:24", "cover_image": "", "is_featured": False,
+             "require_resume": False, "required_motivation_letter": False,
+             "attachment_file": "", "candidate_selected": False, "timezone": None,
+             "translations": {"en": tr}}
+        j.update(kw)
+        return j
+
+    @staticmethod
+    def _env(jobs, p=1, total=None, last=1):
+        return (200, json.dumps(
+            {"locale": "ar", "success": True, "message": "Jobs.",
+             "data": {"data": jobs, "links": {}, "meta": {
+                 "current_page": p, "per_page": 20, "from": 1, "to": len(jobs),
+                 "total": total if total is not None else len(jobs), "last_page": last,
+                 "path": f"https://api.jobsyria.org/api/jobs"}}}, ensure_ascii=False))
+
+    def _list(self, mod, reponses, **kw):
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return reponses[min(len(asked) - 1, len(reponses) - 1)]
+        mod.request = request
+        ns = argparse.Namespace(max=0, with_closed=False, with_expired=False)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_list(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return ([json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")],
+                err.getvalue(), asked)
+
+    def _ad(self, mod, reponse, code="COde1xxxxxxx"):
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            return reponse
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_ad(argparse.Namespace(code=code))
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return (rows[0] if rows else None), err.getvalue(), asked
+
+    def test_what_the_record_carries_and_what_it_never_does(self):
+        mod = self._mod()
+        # **The advert measured on the board**: four links, three legitimate and one that
+        # reaches a person. Plus a body carrying a contact AND a salary in millions.
+        quatre = ('<p>Apply via <a href="https://europass.europa.eu/en/create-europass-cv">'
+                  'Europass</a> or write to <a href="mailto:echo@echofield.eu?subject=x">'
+                  'echo@echofield.eu</a>. See the <a href="https://ec.europa.eu/echo/network">'
+                  'network</a> and the <a href="https://ec.europa.eu/echo/privacy">privacy '
+                  'statement</a>.</p>')
+        corps = ("Salary 1 500 000 SYP, ٢٥٠ ٠٠٠ ل.س before 31/12/2026 — ISO 9001. "
+                 "Call 0944123456 or ٠٩٤٤١٢٣٤٥٦ or write hr@x.org")
+        jobs = [self._job(1, application_link=quatre,
+                          tr={"description": corps, "responsibilities": "<p>Lead</p>",
+                              "requirements": "<p>Degree</p>"})]
+        rows, err, asked = self._list(mod, [self._env(jobs, total=6493, last=325)], max=1)
+        self.assertEqual(asked, [f"https://{self.HOTE}/api/jobs?page=1&size=20"])
+        r = rows[0]
+        blob = json.dumps(rows, ensure_ascii=False)
+        # **no contact, by any route** — the link, the free text, and both digit scripts
+        self.assertNotIn("echo@echofield.eu", blob)
+        self.assertNotIn("hr@x.org", blob)
+        self.assertNotIn("0944123456", blob)
+        self.assertNotIn("٠٩٤٤١٢٣٤٥٦", blob)
+        # **AND THE THREE LEGITIMATE ROUTES SURVIVED THE WITHDRAWAL OF THE FOURTH.** This is
+        # the assertion that separates a per-href judgement from dropping the field: all
+        # three are in `application_text`, and none of them is a way to reach a person.
+        self.assertIn("europass.europa.eu/en/create-europass-cv", r["application_text"])
+        self.assertIn("ec.europa.eu/echo/network", r["application_text"])
+        self.assertIn("ec.europa.eu/echo/privacy", r["application_text"])
+        # **`apply_url` is ABSENT: three routes survived, so which one applies is not
+        # established.** The count travels instead, so the absence is not silent.
+        self.assertNotIn("apply_url", r)
+        self.assertEqual(r["apply_routes_several"], 3)
+        # **the witness is DERIVED and names what was actually taken**
+        self.assertEqual(r["withheld_fields"], ["email", "telephone", "application_link"])
+        # `application_link` is ONE name for THREE causes; the CAUSE made this one declare
+        self.assertTrue(r["contacts_withheld"])
+        # **the salary and the date survive, in both digit scripts** — the kyat lesson
+        self.assertIn("1 500 000 SYP", r["description"])
+        self.assertIn("٢٥٠ ٠٠٠", r["description"])
+        self.assertIn("31/12/2026", r["description"])
+        self.assertIn("ISO 9001", r["description"])
+        self.assertEqual(r["description"].count("[telephone withheld]"), 2)
+        self.assertIn("[e-mail withheld]", r["description"])
+        # **the record's own identity, and the body it did NOT read**
+        self.assertEqual(r["ledger_id"], "jobsyria:COde1xxxxxxx")
+        self.assertEqual(r["url"], "https://www.jobsyria.org/jobs/details/COde1xxxxxxx")
+        self.assertEqual((r["country"], r["language"], r["alt_language"]), ("SY", "ar", "en"))
+        self.assertEqual((r["cities"], r["category"]), (["دمشق"], "اللوجستيك"))
+        self.assertEqual(r["published"], "2026-11-05")
+        self.assertIs(r["auto_translation"], False)
+        self.assertFalse(r["detail_read"])
+        self.assertNotIn("monthly_salary", r)        # empty is ABSENT, not an empty string
+        # **the witness printed beside what we emit is the count the LIST honours**
+        self.assertIn("meta.total = 6 493", err)
+        self.assertIn("never used as a denominator", err)
+        self.assertIn("never asked", err)
+
+    def test_one_surviving_route_is_emitted_and_a_form_is_not_a_contact(self):
+        mod = self._mod()
+        jobs = [self._job(2, application_link='<a href="https://forms.gle/abc">apply</a>')]
+        rows, _err, _a = self._list(mod, [self._env(jobs)])
+        # a form is where the job is described, not a way to reach someone
+        self.assertEqual(rows[0]["apply_url"], "https://forms.gle/abc")
+        self.assertIsNone(rows[0]["withheld_fields"])
+        self.assertNotIn("contacts_withheld", rows[0])
+        self.assertNotIn("apply_routes_several", rows[0])
+
+    def test_a_messaging_host_reaches_a_person_and_an_unusable_link_reaches_nobody(self):
+        mod = self._mod()
+        jobs = [self._job(3, application_link='<a href="https://wa.me/963997679129">x</a>'),
+                self._job(4, application_link='<a href="http://www. homs">x</a>')]
+        rows, _err, _a = self._list(mod, [self._env(jobs)])
+        self.assertNotIn("wa.me", json.dumps(rows))
+        self.assertEqual(rows[0]["withheld_fields"], ["application_link"])
+        # `.get` and not `[...]`: a KeyError is a red that does not NAME the fact
+        self.assertTrue(rows[0].get("contacts_withheld"))
+        # **the same name, the other cause**: not an address at all, so NOBODY is reached —
+        # declaring a contact here would be #1007's defect, one class further along.
+        self.assertEqual(rows[1]["withheld_fields"], ["application_link"])
+        self.assertNotIn("contacts_withheld", rows[1])
+
+    def test_the_two_reasons_an_advert_is_skipped_are_counted_apart(self):
+        mod = self._mod()
+        jobs = [self._job(10),                                          # open, to come
+                self._job(11, status="closed"),                         # reason 1
+                self._job(12, deadline="2020-01-01 16:00"),             # reason 2, still `open`
+                self._job(13, status="closed", deadline="2020-01-01 16:00")]
+        rows, err, _a = self._list(mod, [self._env(jobs)])
+        self.assertEqual([r["id"] for r in rows], [10])
+        self.assertIn("2 record(s) skipped as `status != open`", err)
+        self.assertIn("1 further record(s) skipped as their `deadline` is before", err)
+        # **each flag lifts ONE reason** — they are not the same fact worded twice
+        rows, _e, _a = self._list(mod, [self._env(jobs)], with_closed=True)
+        self.assertEqual([r["id"] for r in rows], [10, 11])
+        rows, _e, _a = self._list(mod, [self._env(jobs)], with_expired=True)
+        self.assertEqual([r["id"] for r in rows], [10, 12])
+        rows, _e, _a = self._list(mod, [self._env(jobs)], with_closed=True, with_expired=True)
+        self.assertEqual([r["id"] for r in rows], [10, 11, 12, 13])
+
+    def test_an_absent_deadline_is_never_an_expiry(self):
+        """**Exercised HERE and not by the board**: none of the 93 records read lacked a
+        deadline, so this branch has no specimen upstream. An absence is not a claim."""
+        mod = self._mod()
+        jobs = [self._job(20, deadline=None), self._job(21, deadline="")]
+        rows, err, _a = self._list(mod, [self._env(jobs)])
+        self.assertEqual([r["id"] for r in rows], [20, 21])
+        self.assertIn("0 further record(s) skipped", err)
+        self.assertIsNone(rows[0]["deadline"])
+
+    def test_the_surfaces_this_adapter_never_asks(self):
+        """`list` and `ad` cannot reach these, so the refusal is exercised DIRECTLY — and it
+        fires BEFORE any network call, which is why no robots fetch happens here."""
+        mod = self._mod()
+        for chemin in ("/api/jobs/submit/6693", "/api/jobs/offsite_applied/6693",
+                       "/api/jobs/report/6693", "/api/jobs/recommended",
+                       "/api/jobs/recommended/6693", "/api/admin/reports/overview",
+                       "/api/profile/profile", "/api/auth/login", "/api/tenders"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+                mod.request(f"https://{self.HOTE}{chemin}")
+            self.assertEqual(c.exception.code, mod.EXIT_REFUSED, chemin)
+            self.assertIn("never asked", e.getvalue())
+        # **and the reason is PER PATH**: tenders are out of SCOPE, which is not «refused»
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()) as e:
+            mod.request(f"https://{self.HOTE}/api/tenders")
+        self.assertIn("out of SCOPE", e.getvalue())
+        self.assertIn("procurement into a job register", e.getvalue())
+
+    def test_another_host_is_refused_including_the_site_that_serves_the_shell(self):
+        mod = self._mod()
+        for url in (f"https://jobsyria.org/api/jobs",          # the apex is not the API host
+                    f"https://www.jobsyria.org/jobs/details/x",
+                    f"http://{self.HOTE}.evil.test/api/jobs"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(url)
+            self.assertEqual(c.exception.code, mod.EXIT_REFUSED, url)
+
+    def test_a_refusal_by_the_api_is_not_an_empty_board(self):
+        mod = self._mod()
+        # **The payload is WELL-FORMED on purpose.** With `data: {}` the envelope check
+        # refuses it by ANOTHER branch and the same exit 6, so the case could not tell «the
+        # refusal was read» from «the envelope was malformed» — and the mutation that drops
+        # the `success` test came back GREEN. A refusal whose payload is otherwise perfect is
+        # still a refusal, and now only the `success` test can reach it.
+        refus = (200, json.dumps({"locale": "ar", "success": False, "message": "Nope.",
+                                  "data": {"data": [self._job(50)], "links": {},
+                                           "meta": {"current_page": 1, "per_page": 20,
+                                                    "from": 1, "to": 1, "total": 1,
+                                                    "last_page": 1, "path": "x"}}}))
+        with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+            self._list(mod, [refus])
+        self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+        self.assertIn("a REFUSAL", e.getvalue())
+        self.assertIn("not an empty board", e.getvalue())
+        # a 200 that is not JSON, and a 200 whose envelope changed, are the same species
+        for mauvais in ((200, "<html>maintenance</html>"), (200, json.dumps({"ok": 1}))):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()):
+                self._list(mod, [mauvais])
+            self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+
+    def test_an_empty_first_page_is_indeterminate_and_a_later_one_is_the_end(self):
+        mod = self._mod()
+        with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+            self._list(mod, [self._env([], total=6493, last=325)])
+        self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+        self.assertIn("INDETERMINATE", e.getvalue())
+        # **past the first page an empty page IS the answer** — the parameter is honoured,
+        # measured: page 326 returns zero records and ZERO overlap with page 1.
+        rows, err, asked = self._list(
+            mod, [self._env([self._job(30)], p=1, total=1, last=9), self._env([], p=2, total=1, last=9)],
+            max=5)
+        self.assertEqual([r["id"] for r in rows], [30])
+        self.assertEqual(len(asked), 2)
+
+    def test_show_takes_the_code_and_the_numeric_id_is_refused_before_the_network(self):
+        mod = self._mod()
+        j = self._job(40, tr={"description": "<p>Body</p>"})
+        fiche = (200, json.dumps({"locale": "ar", "success": True, "message": "Job.",
+                                  "data": {"job": j, "messages": "", "user_can_apply": True,
+                                           "collect_application_status": False}},
+                                 ensure_ascii=False))
+        r, err, asked = self._ad(mod, fiche, code="COde40xxxxxxx")
+        self.assertEqual(asked, [f"https://{self.HOTE}/api/jobs/show/COde40xxxxxxx"])
+        self.assertTrue(r["detail_read"])
+        self.assertEqual(r["description"], "Body")
+        self.assertIn("body fields present", err)
+        # **the id is not a code, and it is refused WITHOUT asking** — the board answers 404
+        # to it, and the id is the natural argument because the record carries it
+        for mauvais in ("6693", "", "   ", "pas-un-code!"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()):
+                self._ad(mod, fiche, code=mauvais)
+            self.assertEqual(c.exception.code, mod.EXIT_BROKEN, repr(mauvais))
+        # and a 404 from the host is GONE, with the cause named
+        with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+            self._ad(mod, (404, ""), code="COde40xxxxxxx")
+        self.assertEqual(c.exception.code, mod.EXIT_GONE)
+        self.assertIn("takes the CODE and not the id", e.getvalue())
+
+    def test_the_phone_rule_is_anchored_on_the_dialling_code_in_both_directions(self):
+        """A digit-count rule on a currency is how 113 of 115 salaries were once destroyed,
+        and the Syrian pound is written in millions. The anchors are the dialling code and
+        the leading zero, in BOTH digit scripts."""
+        mod = self._mod()
+        for s in ("+963 944 123 456", "00963944123456", "0944123456", "+963-11-123-456",
+                  "+963 11 123 4567", "0932 456 789", "094-412-3456", "094.412.3456",
+                  "0944 123 456",
+                  "٠٩٤٤١٢٣٤٥٦",
+                  "+٩٦٣ ٩٤٤ ١٢٣ ٤٥٦"):
+            self.assertTrue(mod.PHONE_RE.search(s), f"DOIT PRENDRE {s!r}")
+        for s in ("2026", "6493 annonces", "1 500 000 SYP", "250 000 SYP par mois",
+                  "USD 2,500", "7-10 years", "0.9442", "963 postes", "en 2025-2026",
+                  "reference 2024/963/11", "1,500,000", "salaire 850000 SYP", "ISO 9001",
+                  "article 123 456 789 du code", "budget 1 500 000 000", "version 0.9.4",
+                  "٢٥٠ ٠٠٠ ل.س"):
+            self.assertIsNone(mod.PHONE_RE.search(s), f"DOIT LAISSER {s!r}")
+        # and the scrub's witness is what it ACTUALLY removed
+        self.assertEqual(mod.scrub("rien ici, 1 500 000 SYP")[1], [])
+        self.assertEqual(mod.scrub("hr@x.org et 0944123456")[1], ["email", "telephone"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
