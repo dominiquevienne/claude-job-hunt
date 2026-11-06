@@ -58189,5 +58189,327 @@ class AnApiTheBundleDeclaresAndTwoReasonsAnAdvertIsNotApplicable(unittest.TestCa
         self.assertEqual(mod.scrub("hr@x.org et 0944123456")[1], ["email", "telephone"])
 
 
+class TwoEnumeratorsThatAgreeAndAnIdHidingInItsOwnTitle(unittest.TestCase):
+    """**`maliemploi.py`, 2026-11-06 (#1279).** Mali's second adapter, and the
+    finding is a motif of OURS rather than anything the host did. Six things:
+
+    * **the id is the LAST number of the slug, never the first.** A
+      non-anchored `[a-z0-9-]*?(\\d+)\\b` takes the first, and the slug
+      `grand-recrutement-50-agents-...-bamako-54` carries «50» from its own
+      TITLE — so the feed read as `{26, 50, 51, 56}` against the list's
+      `{26, 51, 54, 56}`, **a fabricated disjointness, a fabricated «no
+      witness», and a design justified by a defect of the instrument.** What
+      caught it is that the adapter's anchored motif DISAGREED with the
+      hand-rolled one on the same held bytes: `CLAUDE.md` §4's third way for a
+      motif to be false, by its FORM, and no re-reading finds it;
+    * **the two enumerators AGREE**, and that is derived from what they return
+      in the run rather than recopied from a docstring — a divergence prints
+      itself and names which member belongs to which;
+    * **an expired advert stays reachable at its own address**: id 50,
+      `validThrough` thirteen days past, is listed by NEITHER enumerator and
+      still answers 200 with a complete record. So the enumerators track
+      expiry while a per-id address does not, and `ad` SAYS which it read;
+    * **three fields of the `JobPosting` are stand-ins**, measured on the
+      population and not inferred from one specimen: `hiringOrganization.name`
+      is the board's own name on 5 of 5, and `baseSalary.currency` is «$» with
+      an EMPTY value on a market whose currency is the CFA franc. So the
+      employer is ABSENT rather than false, and a salary needs its VALUE;
+    * **the phone rule is anchored on the +223 code or on separated pairs, and
+      NEVER on a run of digits.** The one long bare run in the corpus is not a
+      number at all — `id6755939312`, an App Store app id inside a URL — which
+      only reading its clause said, and a digit-count rule on a currency is how
+      113 of 115 salaries were once destroyed;
+    * **`/cvtheque/` and `/deposer-cv/` are permitted by this host's rules and
+      never requested.** They are NAMED on the pages we hold, so a link walk
+      would reach them; the refusal is exercised DIRECTLY and in both
+      directions, because «the rules permit» is not «it is ours to take».
+
+    This host also served an Apache *403* page as its `robots.txt` once (#128,
+    #138): `certain` is the field that tells a read file from a body nobody
+    recognised, and an uncertain verdict is SAID rather than treated as a
+    refusal.
+
+    **Mutated in a DETACHED worktree with `-B`, the red NAMED before each, the
+    line touched printed, `mut != src` asserted, and the contre-essai without
+    any mutation GREEN — so the bench is armed. Eleven for eleven, and the
+    table carries the red OBTAINED rather than one deduced from the formula:**
+
+    | the mutation | the red OBTAINED, and the case that fired |
+    | :-- | :-- |
+    | the id motif UN-anchored (the original fault, kept as a guard) | `Lists differ: ['26', '54', '54'] != ['26', '54']` |
+    | the board-name test dropped | `'Mali Emploi' is not None` |
+    | the salary floor dropped in BOTH its layers | `'salary' unexpectedly found` |
+    | «$» accepted as a currency | `'currency' unexpectedly found` |
+    | the union replaced by the list alone | `Lists differ: ['26', '54'] != ['26', '50', '54']` |
+    | the divergence branch inverted | `'THE TWO ENUMERATORS DIVERGE IN THIS RUN' not found` |
+    | the CV-path refusal dropped | `2 != 7 : /cvtheque/` |
+    | the host test dropped | `2 != 7 : …evil.example/emplois/` |
+    | the +223 branch dropped | `None is not true : DOIT PRENDRE '+223 76123456'` |
+    | the phone loosened to a bare digit run | `match='85 000 000' is not None : DOIT LAISSER` |
+    | the expiry statement dropped | `'EXPIRED on 2026-10-24' not found` |
+
+    **Two of them say more than their red.** *The salary floor came back GREEN
+    when mutated in ONE place: it is a DOUBLE layer, once in `salaire()` and
+    once in `record()`, so a single cut proves nothing — the green documents a
+    redundancy that is wanted, and a green left unexplained reads as an
+    undeclared inert guard.* And the +223 and bare-run anchors **rendered «0
+    occurrence» on the first attempt because the motif had been RETYPED instead
+    of EXTRACTED from the file** — the rule this adapter's own finding is about,
+    broken in the turn that applied it elsewhere; extracted, both fire."""
+
+    HOST = "maliemploi.org"
+    FEED = "https://maliemploi.org/feed/wpjobportal_jobsfeed/"
+    LISTE = "https://maliemploi.org/emplois/"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_maliemploi", os.path.join(SCRIPTS, "maliemploi.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _jp(ident, slug=None, **kw):
+        d = {
+            "@context": "https://schema.org/", "@type": "JobPosting",
+            "url": f"https://maliemploi.org/offre/job/{slug or 'avis-de-recrutement-bamako'}-{ident}",
+            "title": f"Avis {ident}", "description": "<p>Un poste a Bamako</p>",
+            "identifier": {"@type": "PropertyValue", "name": "Mali Emploi ·", "value": str(ident)},
+            "datePosted": "2026-10-15 08:19:09", "validThrough": "2099-11-12 00:00:00",
+            "employmentType": "CDI",
+            "hiringOrganization": {"@type": "Organization", "name": "Mali Emploi ·"},
+            "jobLocation": {"@type": "Place", "address": {
+                "@type": "PostalAddress", "addressLocality": "Bamako", "addressCountry": "ML"}},
+            "baseSalary": {"@type": "MonetaryAmount", "currency": "$", "value": {
+                "@type": "QuantitativeValue", "value": "", "unitText": "Per Month"}},
+        }
+        d.update(kw)
+        return d
+
+    def _page(self, *jps):
+        bloc = "".join(
+            '<script type="application/ld+json">%s</script>' % json.dumps(j, ensure_ascii=False)
+            for j in jps)
+        return (200, "<html><head><title>x</title>" + bloc +
+                "</head><body><a href='/cvtheque/'>CV</a><a href='/deposer-cv/'>depot</a>"
+                "<h1>Detail de l offre</h1></body></html>")
+
+    def _feed(self, slugs):
+        items = "".join(
+            f"<item><title>t</title><link>https://maliemploi.org/emplois/job/{s}</link>"
+            f"<pubDate>Thu, 05 Nov 2026 11:19:45 +0000</pubDate></item>" for s in slugs)
+        return (200, '<?xml version="1.0"?><rss version="2.0"><channel>' + items + "</channel></rss>")
+
+    def _liste(self, ids):
+        liens = "".join(
+            "<a href='/offre/?wpjobportalme=job&wpjobportallt=viewjob&wpjobportalid=%s'>o</a>" % i
+            for i in ids)
+        return (200, "<html><body>" + liens + "<a href='/deposer-cv/'>d</a></body></html>")
+
+    def _run(self, mod, feed, liste, pages, **kw):
+        asked = []
+
+        def request(url):
+            asked.append(url)
+            if url == self.FEED:
+                return feed
+            if url == self.LISTE:
+                return liste
+            m = re.search(r"wpjobportalid=(\d+)", url) or re.search(r"-(\d+)$", url)
+            return pages.get(m.group(1) if m else None, (404, ""))
+        mod.request = request
+        ns = argparse.Namespace(max=0)
+        for k, v in kw.items():
+            setattr(ns, k, v)
+        out, err = io.StringIO(), io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.cmd_list(ns)
+        except SystemExit:
+            sys.stderr.write(err.getvalue())
+            raise
+        return ([json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")],
+                err.getvalue(), asked)
+
+    def test_the_id_is_the_last_number_of_the_slug_and_not_the_first(self):
+        """**The regression this adapter exists to have survived.** The slug
+        carries «50» in its own TITLE; the id is 54, at the end."""
+        mod = self._mod()
+        piege = "grand-recrutement-50-agents-commerciaux-terrain-h-f-a-bamako-bamako-54"
+        feed = self._feed([piege, "avis-de-recrutement-bamako-26"])
+        liste = self._liste(["54", "26"])
+        pages = {"54": self._page(self._jp(54, slug="grand-recrutement-50-agents")),
+                 "26": self._page(self._jp(26))}
+        rows, err, asked = self._run(mod, feed, liste, pages)
+        self.assertEqual(sorted(r["id"] for r in rows), ["26", "54"])
+        # **«50» is in the slug and is NOT an id** — a non-anchored motif would put it here
+        self.assertNotIn("50", [r["id"] for r in rows])
+        self.assertNotIn("maliemploi:50", [r["ledger_id"] for r in rows])
+        # and the two enumerators AGREE, derived from what they returned
+        self.assertIn("AGREE in this run", err)
+        self.assertTrue(all(r["enumerator"] == "feed+list" for r in rows))
+
+    def test_what_the_record_carries_and_what_it_never_does(self):
+        mod = self._mod()
+        corps = ("<p>PACK COMPLET : 24 000 FCFA. Budget 75000000 FCFA. "
+                 "App https://apps.apple.com/us/app/telimani/id6755939312 . "
+                 "Infos : +223 70 57 43 57 ou WhatsApp au 94 48 32 30, "
+                 "ecrire a recrutements@sa-i.com . Formulaire https://forms.gle/ZXYr5RQ</p>")
+        pages = {"26": self._page(self._jp(26, description=corps))}
+        rows, err, asked = self._run(mod, self._feed(["avis-de-recrutement-bamako-26"]),
+                                     self._liste(["26"]), pages)
+        self.assertEqual(asked[:2], [self.FEED, self.LISTE])
+        r = rows[0]
+        blob = json.dumps(rows, ensure_ascii=False)
+        # **no contact, by any route**
+        self.assertNotIn("recrutements@sa-i.com", blob)
+        self.assertNotIn("+223 70 57 43 57", blob)
+        self.assertNotIn("94 48 32 30", blob)
+        # **and the amounts, the date-like runs and the APP ID survive** — the kyat lesson
+        self.assertIn("24 000 FCFA", r["text"])
+        self.assertIn("75000000 FCFA", r["text"])
+        self.assertIn("id6755939312", r["text"])          # an app id is not a number
+        self.assertIn("forms.gle/ZXYr5RQ", r["text"])     # a form is not a contact
+        self.assertEqual(r["withheld_fields"], ["email", "telephone"])
+        self.assertTrue(r["contacts_withheld"])
+        # **the address is the one the RECORD states**, not the one asked
+        self.assertEqual(r["url"], "https://maliemploi.org/offre/job/avis-de-recrutement-bamako-26")
+        self.assertIn("wpjobportalid=26", r["asked"])
+        self.assertEqual((r["country"], r["language"], r["city"]), ("ML", "fr", "Bamako"))
+        self.assertEqual(r["ledger_id"], "maliemploi:26")
+        self.assertEqual(r["published"], "2026-10-15")
+
+    def test_the_boards_own_name_is_never_emitted_as_the_employer(self):
+        mod = self._mod()
+        pages = {"26": self._page(self._jp(26)),
+                 "51": self._page(self._jp(51, hiringOrganization={
+                     "@type": "Organization", "name": "Jobmaster SARL"}))}
+        rows, err, _a = self._run(mod, self._feed(["a-26", "b-51"]), self._liste(["26", "51"]), pages)
+        par_id = {r["id"]: r for r in rows}
+        # the stand-in is ABSENT rather than false...
+        self.assertIsNone(par_id["26"]["employer"])
+        # ...and a REAL employer is emitted, so the test is not «always None»
+        self.assertEqual(par_id["51"]["employer"], "Jobmaster SARL")
+        self.assertIn("carry an `employer`", err)
+        # the variants the board writes are all the board's own name
+        self.assertIsNone(mod.un_vrai_employeur("Mali Emploi ·"))
+        self.assertIsNone(mod.un_vrai_employeur("  mali   emploi  "))
+        self.assertIsNone(mod.un_vrai_employeur("maliemploi.org"))
+        self.assertIsNone(mod.un_vrai_employeur(""))
+        self.assertEqual(mod.un_vrai_employeur("Mali Emploi Services"), "Mali Emploi Services")
+
+    def test_a_salary_needs_its_value_filled_and_the_dollar_is_not_a_currency_here(self):
+        mod = self._mod()
+        pages = {
+            "26": self._page(self._jp(26)),                                   # «$» + empty value
+            "51": self._page(self._jp(51, baseSalary={"currency": "$", "value": {
+                "value": "150000", "unitText": "Per Month"}})),               # filled, bogus currency
+            "54": self._page(self._jp(54, baseSalary={"currency": "XOF", "value": {
+                "value": "250000"}})),                                        # filled and real
+        }
+        rows, _e, _a = self._run(mod, self._feed(["a-26", "b-51", "c-54"]),
+                                 self._liste(["26", "51", "54"]), pages)
+        par = {r["id"]: r for r in rows}
+        self.assertNotIn("salary", par["26"])      # PRESENT is not FILLED
+        self.assertNotIn("currency", par["26"])
+        self.assertEqual(par["51"]["salary"], "150000")
+        self.assertNotIn("currency", par["51"])    # «$» is dropped, the amount is kept
+        self.assertEqual((par["54"]["salary"], par["54"]["currency"]), ("250000", "XOF"))
+
+    def test_a_divergence_between_the_two_enumerators_prints_itself(self):
+        """They agreed when this was written, so this case is what makes a CHANGE in the host
+        visible instead of silent — and the union is what gets emitted."""
+        mod = self._mod()
+        feed = self._feed(["a-26", "b-50"])        # 26, 50
+        liste = self._liste(["26", "54"])          # 26, 54
+        pages = {i: self._page(self._jp(int(i))) for i in ("26", "50", "54")}
+        rows, err, _a = self._run(mod, feed, liste, pages)
+        self.assertEqual(sorted(r["id"] for r in rows), ["26", "50", "54"])
+        par = {r["id"]: r["enumerator"] for r in rows}
+        self.assertEqual(par, {"26": "feed+list", "50": "feed", "54": "list"})
+        self.assertIn("THE TWO ENUMERATORS DIVERGE IN THIS RUN", err)
+        self.assertIn("['50']", err)
+        self.assertIn("['54']", err)
+        self.assertIn("not its ordinary state", err)
+
+    def test_the_cv_paths_are_never_requested(self):
+        """`list` and `ad` cannot reach these, so the refusal is exercised DIRECTLY — and it
+        fires BEFORE the robots fetch, which is why no network call happens here."""
+        mod = self._mod()
+        for chemin in ("/cvtheque/", "/cvtheque", "/deposer-cv/", "/deposer-cv",
+                       "/offre/?wpjobportalme=resume&wpjobportalid=1",
+                       "/offre/?wpjobportallt=viewresume"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+                mod.request(f"https://{self.HOST}{chemin}")
+            self.assertEqual(c.exception.code, mod.EXIT_REFUSED, chemin)
+            self.assertIn("never asked", e.getvalue())
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()) as e:
+            mod.request(f"https://{self.HOST}/cvtheque/")
+        self.assertIn("REAL PEOPLE", e.getvalue())
+        self.assertIn("not a permission", e.getvalue())
+        # **the other direction**: the job paths are NOT caught by the same test
+        for ok in ("/emplois/", "/offre/?wpjobportalme=job&wpjobportalid=26",
+                   "/feed/wpjobportal_jobsfeed/"):
+            self.assertFalse(any(m.search(ok) for m, _ in mod.JAMAIS_DEMANDE), ok)
+
+    def test_another_host_is_refused(self):
+        mod = self._mod()
+        for url in ("https://maliemploi.org.evil.example/emplois/",
+                    "https://emploimali.net/emplois/",      # a different host, near-anagram slug
+                    "https://example.com/emplois/"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()):
+                mod.request(url)
+            self.assertEqual(c.exception.code, mod.EXIT_REFUSED, url)
+
+    def test_an_expired_advert_is_reachable_by_id_and_said_to_be(self):
+        """A per-id address is not an enumerator: id 50 is listed by neither and answers 200."""
+        mod = self._mod()
+        fiche = self._page(self._jp(50, validThrough="2026-10-24 00:00:00"))
+
+        def request(url):
+            return fiche
+        mod.request = request
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            mod.cmd_ad(argparse.Namespace(id="50", url=None))
+        r = json.loads(out.getvalue().splitlines()[0])
+        self.assertEqual(r["valid_through"], "2026-10-24")
+        self.assertIn("EXPIRED on 2026-10-24", err.getvalue())
+        # and a valid one says so instead
+        mod.request = lambda url: self._page(self._jp(26))
+        out2, err2 = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out2), contextlib.redirect_stderr(err2):
+            mod.cmd_ad(argparse.Namespace(id="26", url=None))
+        self.assertIn("valid through 2099-11-12", err2.getvalue())
+        self.assertNotIn("EXPIRED", err2.getvalue())
+
+    def test_no_jobposting_is_a_shape_change_and_not_an_empty_page(self):
+        mod = self._mod()
+        mod.request = lambda url: (200, "<html><body>une page sans ld+json</body></html>")
+        with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()) as e:
+            mod.cmd_ad(argparse.Namespace(id="26", url=None))
+        self.assertEqual(c.exception.code, mod.EXIT_PARTIAL)
+        self.assertIn("shape change and not an empty page", e.getvalue())
+        # an id that is not an id is refused BEFORE the network
+        for mauvais in ("abc", "", "26/x", "-1"):
+            with self.assertRaises(SystemExit) as c, contextlib.redirect_stderr(io.StringIO()):
+                mod.cmd_ad(argparse.Namespace(id=mauvais, url=None))
+            self.assertEqual(c.exception.code, mod.EXIT_BROKEN, repr(mauvais))
+
+    def test_the_phone_rule_is_anchored_and_never_a_run_of_digits(self):
+        mod = self._mod()
+        for s in ("+223 70 57 43 57", "00223 76 12 34 56", "+223 76123456", "94 48 32 30",
+                  "70.57.43.57", "76-12-34-56"):
+            self.assertTrue(mod.PHONE_RE.search(s), f"DOIT PRENDRE {s!r}")
+        for s in ("24 000 FCFA", "24 000", "150 000 FCFA", "1 500 000 FCFA", "750 000 XOF",
+                  "85 000 000", "75000000 FCFA", "24/10", "14 & 15 NOVEMBRE 2026", "2026",
+                  "https://apps.apple.com/us/app/telimani/id6755939312", "id6755939312",
+                  "6755939312", "223 postes", "Bamako 1334", "ISO 9001"):
+            self.assertIsNone(mod.PHONE_RE.search(s), f"DOIT LAISSER {s!r}")
+        self.assertEqual(mod.scrub("rien, 24 000 FCFA et id6755939312")[1], [])
+        self.assertEqual(mod.scrub("ecrire a hr@x.ml ou au 94 48 32 30")[1],
+                         ["email", "telephone"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
