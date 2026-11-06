@@ -1,12 +1,30 @@
-# Board measurement — Syria Jobs Network (`jobsyria.org`, Syria): «شبكة وظائف سوريا» — on 2026-09-17 the root stated «+6356 فرصة» with its category counts and the newest NGO ads (844 470 B); **on 2026-09-22 the same root serves 293 545 B with no advert and no count, `/jobs/list` renders «لم يتم العثور على وظائف», and the board's own API answers HTTP 500 — a dated state of the site, not an empty board**; no adapter yet
+# Board measurement — Syria Jobs Network (`jobsyria.org`, Syria): «شبكة وظائف سوريا» — on 2026-09-17 the root stated «+6356 فرصة» with its category counts and the newest NGO ads (844 470 B); **on 2026-09-22 the same root serves 293 545 B with no advert and no count, `/jobs/list` renders «لم يتم العثور على وظائف», and the board's own API answers HTTP 500 — a dated state of the site, not an empty board**; **on 2026-11-06 that API answers 200 again and states its own counters, while the root still carries no advert**; no adapter yet
 
-<!-- verified: 2026-09-22 -->
+<!-- verified: 2026-11-06 -->
 
 <!-- hosts: jobsyria.org -->
 <!-- script: none -->
 <!-- countries: SY -->
+<!-- route: http · the board's own API answers again — `api.jobsyria.org/api/home` 200, 121 344 B, md5 `62bb56f29b71`, valid JSON, `success: true` — and the ROOT is not the enumerator (four «لم يتم العثور», zero advert link), so what an adapter would read is the API and not the root; no listing endpoint has been exercised, so no count is published · 2026-11-06 -->
+<!-- content: measured · **the condition this card named for its own lifting is SATISFIED** — it said « What would lift it: `api/home` answering 200 », and on 2026-11-06 `api.jobsyria.org/api/home` answers **200, 121 344 B, md5 `62bb56f29b71`**, valid JSON with `success: true` and `counters = {jobs: 6538, tenders: 291, clients: 619, categories: 31}`; the root answers **200, 855 668 B, md5 `5808c6adbc04`** against 293 545 B on 2026-09-22, and it is still NOT the enumerator — four «لم يتم العثور» and zero advert link — so the route is the API. The 6538 is the BOARD's own counter and never our extraction, and nothing of ours has been enumerated, so this card publishes no count of its own · 2026-11-06 -->
+<!-- witness: the host's OWN `counters` object from `api/home`, `jobs: 6538` stated by the site itself and read by the declared client on 2026-11-06 00:52–00:53 UTC — our own extraction has enumerated nothing, so no figure of ours stands beside it · 2026-11-06 -->
 <!-- content: measured · **not an empty board — a BROKEN one**; the page is rendered SERVER-side, so this is not a shell waiting for its JS; it prints «no result» four times and its API answers 500 naming a missing PHP class; it stated «+6356 فرصة» on 2026-09-17. What would lift it: `api/home` answering 200. **2026-09-22, two reads of each path by the declared client, the guard on the exact path: the root 200 twice, 293 545 B, md5 707947a623f1 identical — server-rendered (`ng-server-context="ssr"`, 42 hydration markers) and carrying «لم يتم العثور» four times, no advert link, no «6356» anywhere; `/jobs/list` 200 twice, 264 984 B, md5 a4c35401a112 identical, «لم يتم العثور على وظائف — نأسف, لا توجد سجلات توافق معطيات بحثك»; the site's own API `api.jobsyria.org` answers HTTP 500 on `/api/home` (twice, 1 116 994 and 1 116 990 B) and on `/api/settings` (1 117 152 B), each a PHP fatal-error page naming `Class "Monolog\Logger" not found`. On 2026-09-17 the same root was 844 470 B, md5 3fc6d37c571c twice, and stated «+6356 فرصة» with category counts (136, 306, 1324, 409). Rules open and certain on `jobsyria.org` and on `api.jobsyria.org`, no Crawl-delay** · 2026-09-22 -->
 <!-- witness: the root's own «+6356 فرصة» and category counts on 2026-09-17; on 2026-09-22 the root's own «لم يتم العثور» and the API's own 500 · 2026-09-22 -->
+
+## What the host serves now, and what this card said before
+
+**Measured by the declared client, the guard on each exact URL in a tour DISTINCT from the
+retrieval, one token (`claude-user`): open and certain on every path, no written rule, no
+`Crawl-delay` — so the cadence is ours to set.** The reading lives in #1278.
+
+What the header said until today, kept because a correction cites what it corrects:
+
+    verified: 2026-09-22
+    content:  measured · **not an empty board — a BROKEN one** … What would lift it: `api/home` answering 200 · 2026-09-22
+
+**The condition was its own, and it is met.** What does NOT follow is a board: the root is
+bigger and still prints « no result », so the enumerator remains to be found — on the API, which
+is where the next reading goes. *A measurement, not an adapter.*
 
 **Found by the Syria search of #608 (a country never searched), measured
 2026-09-17 13:46–13:47 UTC and again 2026-09-22 13:00–13:06 UTC by the declared

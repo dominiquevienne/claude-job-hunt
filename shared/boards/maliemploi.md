@@ -1,12 +1,36 @@
-# Board measurement — Maliemploi (`maliemploi.org`, Mali): served to our client today, and every path is the front page — seven posts, no addresses, a one-item feed
+# Board measurement — Maliemploi (`maliemploi.org`, Mali): on 2026-09-12 every path answered with the front page — seven posts, no addresses, a one-item feed; **on 2026-11-06 the host serves a WordPress site running `wpjobportal`, with its own advert paths, a faceted list and a DECLARED feed — and a CV database that no rule protects**
 
-<!-- verified: 2026-09-12 -->
+<!-- verified: 2026-11-06 -->
 
 <!-- hosts: maliemploi.org, www.maliemploi.org -->
 <!-- script: none -->
 <!-- countries: ML -->
+<!-- route: http · WordPress + `wpjobportal`: the adverts have their own paths (`/offre/?wpjobportalme=job&wpjobportallt=viewjob&wpjobportalid=<N>`), the list is `/emplois/` with facets, and a feed is DECLARED at `/feed/wpjobportal_jobsfeed/` — none of the three has been walked, so no count is published · 2026-11-06 -->
+<!-- content: measured · **the « every path is the front page » of 2026-09-12 is PERIMEE, and so is the count that rested on it** — the host now serves a WordPress site running `wpjobportal`: root **200, 132 382 B, md5 `0f13c8dae42c`**, 3 795 visible characters, and « Publié il y a » returns ZERO occurrence against the 7 timestamps counted on 2026-09-12, so the seven posts that card counted are not on the page any more. The adverts have their own paths (`/offre/?wpjobportalme=job&wpjobportallt=viewjob&wpjobportalid=<N>`), the list is `/emplois/` with facets, a feed is DECLARED at `/feed/wpjobportal_jobsfeed/`, and NONE of them has been walked — so no count of ours is published. **SAFETY BORNE, a condition and not an optimisation: `/cvtheque/` and `/deposer-cv/` are a database of CVs of REAL PEOPLE behind a `robots.txt` that forbids NOTHING** — the family of the Tajik board where 34 894 of 42 851 `<loc>` were candidates' CVs — so an adapter here filters its paths to the job ones, and « the rules permit » is not « it is ours to take » · 2026-11-06 -->
+<!-- witness: none — the site states no count, the 7 of 2026-09-12 cannot be recounted (« Publié il y a » now returns zero), and the declared `wpjobportal` feed has not been walked, so neither a figure of ours nor one of the host's stands today · 2026-11-06 -->
 <!-- content: measured · **7 job posts on the front page** (6 «Publié il y a 1–2 jours», 1 «18 heures»; 5 CDI, 2 Stage; all Bamako), and no other page exists to read — `/robots.txt`, `/wp-json/wp/v2/types` and `/` answer the same 193 913-byte document (md5 `9978fa37…`), the RSS feed holds one item, «Hello world!»; four requests with the declared client, all HTTP 200 · 2026-09-12 -->
 <!-- witness: none — the site states no count and links every post to `/`; the seven were counted by the «Publié il y a» stamps on the one page the site serves · 2026-09-12 -->
+
+## What the host serves now, and the borne that comes with it
+
+**Measured by the declared client, the guard on each exact URL in a tour DISTINCT from the
+retrieval, one token (`claude-user`): open and certain, no written rule, no `Crawl-delay`.**
+The reading lives in #1279.
+
+What the header said until today, kept because a correction cites what it corrects:
+
+    verified: 2026-09-12
+    content:  measured · **7 job posts on the front page** … and no other page exists to read · 2026-09-12
+    witness:  none — the site states no count and links every post to `/` · 2026-09-12
+
+**« Links every post to `/` » is what stopped being true**, and with it the only reason this card
+gave for having no list to read. The catch-all is gone; the paths exist; the feed is declared by
+the host itself.
+
+**And the borne is the part that must not be read as an optimisation.** The rules file forbids
+nothing, so a guard permits `/cvtheque/` exactly as it permits `/emplois/` — and behind it are
+the CVs of real people. An adapter that walked whatever the rules allow would exfiltrate them.
+*A host that forbids nothing has not consented to our taking everything it exposes.*
 
 **Mali's named board, in the #222 candidate list as «403 Apache
 intermittent» from the country page** — *four requests with the declared
