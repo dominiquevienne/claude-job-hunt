@@ -53704,9 +53704,16 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
     portée ne s'élargit pas sur la foi de cette garde.
     """
 
+    # **Le nom de la variable d'enregistrement n'est PAS une propriete du defaut.** Ce motif
+    # epelait `r["contacts_withheld"]` litteralement, et il a rate le site de `jobsmu.py` dont
+    # `cmd_jobs` nomme son record `rec` : la mutation n'atteignait qu'un des deux porteurs du
+    # fichier, le second restait garde, et la garde rougissait en disant « la garde ne lit pas
+    # ce qu'elle croit » — un diagnostic qui ACCUSE le fichier mesure pour une etroitesse du
+    # motif. `_sites` est AST et voyait les deux ; seule la MUTATION etait liee a une habitude
+    # de nommage. Mesure le 2026-11-07 (#698).
     MUTATION = re.compile(
-        r'(?m)^(\s*)if withheld_a_contact\(.*\):\n\s+r\["contacts_withheld"\] = True\n')
-
+        r'(?m)^(\s*)if withheld_a_contact\(.*\):\n\s+([A-Za-z_]\w*)'
+        r'\["contacts_withheld"\] = True\n')
     @staticmethod
     def _rapporteuses(arbre):
         """Les routines du module qui RENDENT ce qu'elles ont retiré."""
@@ -53893,9 +53900,14 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         portee = self._en_portee()
         self.assertTrue(portee, "aucun porteur en portee : rien a muter")
         for nom, src, sites in portee:
-            mut, combien = self.MUTATION.subn(r'\1r["contacts_withheld"] = True\n', src)
+            mut, combien = self.MUTATION.subn(
+                r'\1\2["contacts_withheld"] = True\n', src)
             self.assertNotEqual(mut, src, "%s : la mutation n'a MUTE personne" % nom)
-            self.assertGreater(combien, 0, nom)
+            gardes = sum(1 for _l, p, g in sites if p and g)
+            self.assertEqual(combien, gardes,
+                             "%s : la mutation a atteint %d site(s) sur %d GARDES. Une "
+                             "mutation PARTIELLE laisse un site garde et fait accuser le "
+                             "fichier mesure pour une etroitesse du MOTIF" % (nom, combien, gardes))
             compile(mut, nom, "exec")
             avant = [g for _l, p, g in sites if p]
             apres = [g for _l, p, g in self._sites(mut, nom) if p]
@@ -58511,5 +58523,495 @@ class TwoEnumeratorsThatAgreeAndAnIdHidingInItsOwnTitle(unittest.TestCase):
                          ["email", "telephone"])
 
 
+class AWitnessThatOverCountsAndAFeedWhoseOwnLinksAreGone(unittest.TestCase):
+    """**`jobsmu.py`, 2026-11-07 (#698).** Jobs.mu is the second Mauritian board here
+    and the opposite shape to CareerHub's: it serves everything it has, its list
+    is rendered server-side, its pager carries one page, and **it states no total
+    of its own**. So the question is not «how much is hidden» but «what can stand
+    in for a total», and #698 proposed an answer that is wrong.
+
+    **THE WITNESS THE ISSUE PROPOSED OVER-COUNTS, AND THE MEMBER IS NAMED.** #698
+    wrote «la somme des compteurs de catégorie comme témoin». On 2026-11-07 the
+    seven non-empty categories summed to **9** while the list served **8** — and
+    that DISAGREEMENT is what tested it, an agreement on the small case being
+    exactly the regime where a page count and a board count coincide. The seven
+    category pages were walked: their UNION is **8 distinct ids, the list's own
+    members**, so no ninth advert is withheld. The cause is MULTI-MEMBERSHIP —
+    advert **139890** is filed under both `707 accounting-finance` and
+    `703 customer-service-bpo`. *A sum over categories is not a count of adverts,
+    and it is wrong by exactly the number filed twice.*
+
+    **WHAT STANDS IN IS THE RSS FEED, BECAUSE IT IS A SECOND ENUMERATOR AND NOT A
+    SECOND READING OF THE FIRST.** `/rss/` carries 8 `<item>`s naming the same 8
+    ids. Three instruments then agree on the same MEMBERS: the page's `ItemList`
+    (`numberOfItems: 8`, 8 elements, 8 distinct hrefs for 16 links — each advert
+    is linked twice in its card), the feed, and the union of the categories.
+
+    **AND THE FEED'S OWN LINKS ARE DEAD, WHICH DECIDES THE SHAPE OF `ad`.** Its
+    `<link>`/`<guid>` are **CDATA** under `/display-job/<id>/<Title>.html`, and
+    `/display-job/139963/Driver.html` returned **HTTP 404** while the list's
+    `/job/139963/driver/` returned 200. So the feed enumerates correctly and
+    addresses wrongly: its IDS are read and its URLS never followed, and the form
+    is refused BY NAME rather than by a request whose answer is already known.
+    *What makes those ids usable at all is that the slug is OPTIONAL —
+    `/job/139963/` is **identical to the byte** (71 529 B, md5 09ed83f51bea) to
+    the slugged form — because a slug is not reconstructible from a title
+    (`Receptionist - Réceptionniste` becomes `receptionist-receptionniste`).*
+
+    **PAGINATION IS NOT ESTABLISHED, AND THAT IS THE RESIDUE THAT MATTERS.** The
+    pager renders exactly `data-num="1"`; `?page=2` returns the SAME 8 ids. **On a
+    one-page list that cannot distinguish a pager that clamps from a parameter
+    that is ignored**, and CareerHub's conclusion does NOT transpose — there the
+    pager offered further pages. So the adapter follows the pager's own `data-num`
+    and claims nothing, and its multi-page branch is the **fifth species**: green
+    on a fixture, never taken on the live board. The run SAYS which happened.
+
+    TWO DEFECTS FOUND BY RUNNING IT, AND THE SECOND IS THE FIRST ONE MOVED:
+    a hand-rolled table of six named entities put `Vos responsabilit&eacute;s` in
+    an `excerpt`; fixing it for the LIST did not audit the ADVERT, which reads
+    its text from the posting and never passes through `text_of`, so a live `ad`
+    emitted `client&rsquo;s representative`. **A hand-rolled decode does not
+    raise — it returns TEXT.** And the first path filter was a REFUSAL list that
+    was INERT: the advert motif refused anything outside `/job/<id>/` before
+    `request()` was reached, so `ad --url .../registration/` was refused by the
+    WRONG guard with the wrong reason. It is now a POSITIVE allowlist whose
+    default fails visibly.
+
+    MUTATIONS, and the red OBTAINED:
+
+    | # | the mutation | the red |
+    | - | - | - |
+    | 1 | classify the footer by POSITION instead of by icon | shuffled footer: employer == `Rs 1,000`, `AssertionError` |
+    | 2 | an unknown icon filed under the last field that matched | `unclassified` empty and no note, `AssertionError` |
+    | 3 | `money()` returns the text whenever it is non-empty | `Not disclosed` emitted as a salary |
+    | 4 | the phone anchor drops its dialling code and its label | the sixteen ISO dates this adapter emits become `[telephone withheld]` |
+    | 5 | `text_of` back to the six-entity table | `&acirc;` survives in `excerpt` |
+    | 6 | `plain()` removed from the advert's text fields | `&rsquo;` survives in `description` |
+    | 7 | `ALLOWED_PATHS` default inverted to « allow unknown » | `/registration/` reaches `gate()`, exit 0 — **and this one came back GREEN first** |
+    | 8 | `item_list()` reads `_ldjson.objects()` | no `ItemList` among them, total `None` |
+    | 9 | `feed_ids()` motif assumes bare text, not CDATA | 0 ids, witness silent |
+    | 10 | `FEED_PATH_RE` removed | the 404 form reaches `request()` |
+    | 11 | `AD_PATH_RE` made to require a slug | `--code` builds a URL its own motif refuses |
+    | 12 | the witness reports a COUNT and not its MEMBERS | sets of different sizes, members unnamed |
+
+    *Mutation 7 is the one that came back **GREEN**, and it is recorded because the green was
+    the finding. The first version of its test judged only `ALLOWED_PATHS` — the MOTIFS — so
+    inverting the branch that USES them changed nothing: the **« non exercée » species**, whose
+    green reads « covered » and whose repair is a case, not a stronger guard.
+    `test_the_path_floor_is_REACHED_before_any_request_is_made` exercises `request()` itself and
+    pins the ORDER too — `gate()` is replaced by a recorder and must stay untouched — so the
+    floor is proved to run before the guard and before anything leaves the machine.*
+
+    *Mutation 4 is the one that had to be MEASURED rather than assumed, and the first
+    version of its test was DISARMED: it claimed the rupee range was the candidate, and the
+    bare motif does not take `Rs 12,501 - Rs 25,000` at all — the `Rs` between the two
+    numbers interrupts it. Measured on what the adapter EMITS, the real candidates are this
+    board's own ISO dates and, over the whole page, the `rgba()` numbers of its stylesheet.
+    A banc whose premise is false renders two equal strings, and two equal strings are
+    exactly what a refutation renders.*
+    """
+
+    ICONS = ("icon-feather-briefcase", "icon-material-outline-location-on",
+             "icon-line-awesome-money", "icon-material-outline-access-time",
+             "icon-material-outline-access-alarm")
+    # the BARE motif, kept to show by CONTRAST that the anchor is load-bearing
+    BARE = re.compile(r"(?<![\w/])\(?\+?\(?\d[\d\s().,\-/]{6,}\d(?!\w)")
+
+    def _carte(self, ident="139963", titre="Driver", champs=None, icones=None,
+               excerpt="Vos responsabilit&eacute;s cl&eacute;s et t&acirc;ches"):
+        champs = champs or ["FTM(Mauritius) Ltd", "Pailles, Port Louis",
+                            "Rs 12,501 - Rs 25,000", "Added: Nov 4, 2026",
+                            "Closing: Dec 4, 2026"]
+        icones = icones or list(self.ICONS)
+        lis = "".join(f'<li><i class="{c}"></i> <span>{v}</span></li>'
+                      for c, v in zip(icones, champs))
+        return (f'<a href="https://www.jobs.mu/job/{ident}/{titre.lower()}/" '
+                f'class="utf-job-listing"> <div class="utf-job-listing-details">'
+                f'<div class="utf-job-listing-description">'
+                f'<span class="dashboard-status-button utf-job-status-item green">'
+                f'<i class="icon-material-outline-business-center"></i> Full time</span>'
+                f'<h3 class="utf-job-listing-title">{titre}</h3>'
+                f'<div class="listing-item__desc">{excerpt}</div>'
+                f'<div class="utf-job-listing-footer"><ul>{lis}</ul></div>'
+                f'</div></div></a>')
+
+    def _liste(self, ids=("139963", "139924"), total=None, pages=(1,), cartes=None,
+               champs=None, icones=None):
+        total = len(ids) if total is None else total
+        bloc = json.dumps({"@context": "https://schema.org", "@type": "ItemList",
+                           "name": "Jobs in Mauritius", "numberOfItems": total,
+                           "itemListElement": [
+                               {"@type": "ListItem", "position": i + 1,
+                                "url": f"https://www.jobs.mu/job/{u}/x/"}
+                               for i, u in enumerate(ids)]}, ensure_ascii=False)
+        autre = json.dumps({"@context": "https://schema.org", "@type": "WebSite",
+                            "name": "Jobs.mu"})
+        corps = cartes if cartes is not None else "".join(
+            self._carte(ident=u, titre=f"Poste{i}", champs=champs, icones=icones)
+            for i, u in enumerate(ids, 1))
+        pager = "".join(f'<li class="pageNum" data-num="{n}">'
+                        f'<a href="?page={n}">{n}</a></li>' for n in pages)
+        # the site's OWN telephone, in the footer and OUTSIDE every advert
+        pied = ('<div id="footer"><h3>Jobs by Category</h3>'
+                '<li><a href="/category/708/administration-jobs/"> Administration (2)</a></li>'
+                '<p>Call us on +230 268 2222</p></div>')
+        return ('<html><head><link rel="canonical" href="https://www.jobs.mu/jobs/"/>'
+                f'<script type="application/ld+json">{bloc}</script>'
+                f'<script type="application/ld+json">{autre}</script></head><body>'
+                f'{corps}<nav class="pagination"><ul>{pager}</ul></nav>{pied}</body></html>')
+
+    def _flux(self, ids=("139963", "139924")):
+        """The feed as it is served: its links are CDATA, and they address the 404 form."""
+        items = "".join(
+            '<item><title><![CDATA[Poste]]></title>'
+            f'<link><![CDATA[https://www.jobs.mu/display-job/{u}/Poste.html]]></link>'
+            f'<guid><![CDATA[https://www.jobs.mu/display-job/{u}/Poste.html]]></guid>'
+            '</item>' for u in ids)
+        return f'<?xml version="1.0"?><rss><channel>{items}</channel></rss>'
+
+    def _annonce(self, avec_contact=False, desc="Deliver to client&rsquo;s representative."):
+        if avec_contact:
+            # DEUX formes, et chacune exerce UNE alternative de l'ancre : l'indicatif, et
+            # le LIBELLE sans indicatif. Sans la seconde, retirer l'etiquetee revenait VERT.
+            desc += (" Write to rh@example.invalid or Tel : +230 111 1111,"
+                     " or the local Tel : 268 2222.")
+        bloc = json.dumps({
+            "@context": "https://schema.org/", "@type": "JobPosting",
+            "title": "Driver", "description": desc,
+            "datePosted": "2026-11-04", "validThrough": "2026-12-04",
+            "employmentType": "FULL_TIME", "directApply": True,
+            "hiringOrganization": {"@type": "Organization", "name": "FTM(Mauritius) Ltd",
+                                   "sameAs": "www.ftmgroup.mu"},
+            "identifier": {"@type": "PropertyValue", "name": "FTM", "value": "139963"},
+            "jobLocation": {"@type": "Place", "address": {
+                "@type": "PostalAddress", "addressLocality": "Pailles",
+                "addressRegion": "Port Louis", "addressCountry": "MU"}},
+            "baseSalary": {"@type": "MonetaryAmount", "currency": "MUR",
+                           "value": {"@type": "QuantitativeValue", "minValue": 12501,
+                                     "maxValue": 25000, "unitText": "MONTH"}},
+        }, ensure_ascii=False)
+        return ('<html><head><link rel="canonical" '
+                'href="https://www.jobs.mu/job/139963/driver/"/>'
+                f'<script type="application/ld+json">{bloc}</script></head>'
+                '<body><p>Call us on +230 268 2222</p></body></html>')
+
+    def _run(self, mod, argv, par_url):
+        """`par_url` maps a URL to `(code, body)` — this adapter makes TWO different
+        requests in one run, so a single fixed body could not exercise the witness."""
+        import contextlib
+        import io as _io
+        vus = []
+        real = mod.request
+
+        def faux(u):
+            vus.append(u)
+            for cle, rep in par_url.items():
+                if cle in u:
+                    return rep
+            raise AssertionError(f"the run asked for {u!r}, which the fixture does not serve")
+
+        mod.request = faux
+        out, err = _io.StringIO(), _io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                mod.main(argv)
+        finally:
+            mod.request = real
+        rows = [json.loads(l) for l in out.getvalue().splitlines() if l.startswith("{")]
+        return rows, err.getvalue(), vus
+
+    def test_the_jobsmu_fixtures_carry_the_shapes_this_class_judges(self):
+        lst, flux, ad = self._liste(), self._flux(), self._annonce()
+        self.assertIn('"numberOfItems": 2', lst)
+        self.assertIn('class="utf-job-listing"', lst)
+        self.assertEqual(lst.count('icon-line-awesome-money'), 2, "a money icon per card")
+        self.assertIn('&eacute;', lst, "the list fixture must carry an ENTITY, undecoded")
+        self.assertIn('CDATA', flux, "the feed's links are CDATA, which is the point")
+        self.assertIn('/display-job/', flux, "the feed addresses the 404 form")
+        self.assertIn('&rsquo;', ad, "the advert fixture must carry an entity inside its JSON-LD")
+        self.assertIn('+230 268 2222', lst, "the SITE's own number, in the footer")
+
+    def test_the_footer_fields_are_classified_by_icon_and_not_by_position(self):
+        """An icon class is a DECLARATION; the order of the `<li>`s is a motif."""
+        import jobsmu as m
+        melange = [self.ICONS[2], self.ICONS[0], self.ICONS[4], self.ICONS[1], self.ICONS[3]]
+        valeurs = ["Rs 1,000 - Rs 2,000", "Acme Ltd", "Closing: Dec 4, 2026",
+                   "Curepipe, Plaines Wilhems", "Added: Nov 4, 2026"]
+        html_ = self._liste(ids=("1",), champs=valeurs, icones=melange)
+        rows, _err, _v = self._run(m, ["jobs"],
+                                   {"/jobs/": (200, html_), "/rss/": (200, self._flux(("1",)))})
+        self.assertEqual(rows[0]["employer"], "Acme Ltd",
+                         "the fields were read by POSITION, so a shuffled footer mislabels them")
+        self.assertEqual(rows[0]["salary_text"], "Rs 1,000 - Rs 2,000")
+        self.assertEqual(rows[0]["location_text"], "Curepipe, Plaines Wilhems")
+        self.assertEqual(rows[0]["posted"], "2026-11-04")
+        self.assertEqual(rows[0]["closes"], "2026-12-04")
+
+    def test_an_unknown_icon_goes_unclassified_and_the_run_says_so(self):
+        """A default that fails VISIBLY, rather than filing a stranger under the last match."""
+        import jobsmu as m
+        icones = list(self.ICONS[:4]) + ["icon-brand-new-thing"]
+        html_ = self._liste(ids=("1",), icones=icones)
+        rows, err, _v = self._run(m, ["jobs"],
+                                  {"/jobs/": (200, html_), "/rss/": (200, self._flux(("1",)))})
+        self.assertIsNone(rows[0].get("closing_text"),
+                          "the stranger was filed under a field instead of being set aside")
+        self.assertIn("icon-brand-new-thing", err,
+                      "the run must NAME the icon class it does not know")
+        self.assertIn("unclassified", err)
+
+    def test_the_salary_floor_is_positive_and_not_a_list_of_sentinels(self):
+        """A list of sentinels bets that we enumerated the ways a board says «nothing»."""
+        import jobsmu as m
+        self.assertIsNone(m.money("Not disclosed"))
+        self.assertIsNone(m.money("Negociable"), "a sentinel nobody enumerated must also fall")
+        self.assertIsNone(m.money(""))
+        self.assertIsNone(m.money(None))
+        self.assertEqual(m.money("Rs 12,501 - Rs 25,000"), "Rs 12,501 - Rs 25,000")
+
+    def test_the_phone_anchor_does_not_take_this_boards_own_dates(self):
+        """Measured by CONTRAST on what the adapter EMITS, not on a recomposed string.
+
+        **The first version of this test claimed the rupee range was the candidate, and it was
+        disarmed: the bare motif does NOT take `Rs 12,501 - Rs 25,000`**, because the `Rs`
+        between the two numbers interrupts it. The real candidate was measured on the live
+        board instead: the bare motif takes **the sixteen ISO dates** this adapter emits —
+        `2026-11-04`, `2026-12-04` and their fourteen siblings — and, over the whole advert
+        page, the `rgba()` numbers of the site's own stylesheet. The anchored motif takes
+        NONE of them, and it takes nothing at all on this board, whose adverts deposit no
+        telephone: so `withheld_fields: []` here is honest and not a silence.
+        """
+        import jobsmu as m
+        for date in ("2026-11-04", "2026-12-04", "2026-10-23"):
+            self.assertTrue(self.BARE.search(date),
+                            "the BARE motif no longer takes an ISO date, so this contrast is "
+                            "gone and the anchor's reason must be re-measured")
+            self.assertEqual(m.scrub(date), (date, []),
+                             "the anchored motif took this board's own DATE for a telephone")
+        for css in ("0, 0, 0, 0.03", "216, 216, 216, 0.7"):
+            self.assertTrue(self.BARE.search(css))
+            self.assertEqual(m.scrub(css), (css, []))
+        # the anchor's two alternatives, each exercised on its own: the dialling code, and a
+        # WRITTEN LABEL on a local number that no dialling code would catch
+        pris, kinds = m.scrub("Tel : +230 268 2222")
+        self.assertIn("[telephone withheld]", pris)
+        self.assertEqual(kinds, ["telephone"])
+        pris, kinds = m.scrub("ecrire a rh@x.mu ou Mobile : 5 123 4567")
+        self.assertEqual(kinds, ["email", "telephone"])
+
+    def test_the_salary_field_is_never_scrubbed_at_all(self):
+        """A redaction rule does not touch a field whose MEANING is known — the kyat lesson.
+
+        `salary_text` reaches the record through `money()` and never through `scrub()`, so no
+        motif, anchored or not, can reach it. That is structural rather than careful.
+        """
+        import jobsmu as m
+        rows, _err, _v = self._run(
+            m, ["jobs"], {"/jobs/": (200, self._liste(ids=("1",))),
+                          "/rss/": (200, self._flux(("1",)))})
+        self.assertEqual(rows[0]["salary_text"], "Rs 12,501 - Rs 25,000")
+        self.assertEqual(rows[0]["withheld_fields"], [],
+                         "nothing was deposited on this fixture, so nothing may be declared")
+
+    def test_the_list_decode_is_the_librarys_and_not_a_hand_rolled_table(self):
+        """A hand-rolled decode does not raise: it returns TEXT, and the text is wrong."""
+        import jobsmu as m
+        self.assertEqual(m.text_of("<p>Vos responsabilit&eacute;s cl&eacute;s "
+                                   "et t&acirc;ches</p>"),
+                         "Vos responsabilités clés et tâches")
+        self.assertEqual(m.text_of("A &amp; B &#8217;s &lt;x&gt;"), "A & B ’s <x>")
+        rows, _err, _v = self._run(m, ["jobs"],
+                                   {"/jobs/": (200, self._liste(ids=("1",))),
+                                    "/rss/": (200, self._flux(("1",)))})
+        self.assertNotIn("&", rows[0]["excerpt"] or "",
+                         "an entity survived into a field a candidate reads")
+
+    def test_the_advert_decode_is_the_same_defect_one_consumer_further(self):
+        """Fixing the LIST's decode did not audit the ADVERT, which never calls `text_of`."""
+        import jobsmu as m
+        self.assertEqual(m.plain("Deliver to client&rsquo;s representative."),
+                         "Deliver to client’s representative.")
+        self.assertEqual(m.plain("a&nbsp;b"), "a b")
+        rows, _err, _v = self._run(m, ["ad", "--code", "139963"],
+                                   {"/job/139963/": (200, self._annonce())})
+        self.assertNotIn("&rsquo;", rows[0]["description"])
+        self.assertIn("’", rows[0]["description"])
+
+    def test_the_path_floor_is_positive_and_its_default_refuses(self):
+        """`allowed()` permits `/registration/` here: the rules carry no `Disallow` at all."""
+        import jobsmu as m
+        self.assertTrue(any(p.match("/jobs/") for p in m.ALLOWED_PATHS))
+        self.assertTrue(any(p.match("/rss/") for p in m.ALLOWED_PATHS))
+        self.assertTrue(any(p.match("/job/139963/") for p in m.ALLOWED_PATHS))
+        self.assertTrue(any(p.match("/job/139963/driver/") for p in m.ALLOWED_PATHS))
+        for refuse in ("/registration/", "/login/", "/companies/", "/password-recovery/",
+                       "/jobs/cv/", "/"):
+            self.assertFalse(any(p.match(refuse) for p in m.ALLOWED_PATHS),
+                             f"{refuse} passed a floor that is supposed to be POSITIVE")
+
+    def test_the_path_floor_is_REACHED_before_any_request_is_made(self):
+        """Mutation 7 came back GREEN, and this is the test that was missing.
+
+        The first version judged only `ALLOWED_PATHS` — the MOTIFS — so inverting the
+        branch that USES them changed nothing: the «non exercée» species, whose green reads
+        «covered». This exercises `request()` itself, and it also pins the ORDER: `gate()`
+        is replaced by a recorder, and it must stay untouched, which proves the floor runs
+        BEFORE the guard and before anything leaves the machine.
+        """
+        import contextlib
+        import io as _io
+        import jobsmu as m
+        vu, real = [], m.gate
+        m.gate = lambda u: vu.append(u)
+        try:
+            for refuse in ("https://www.jobs.mu/registration/",
+                           "https://www.jobs.mu/companies/",
+                           "https://www.jobs.mu/login/",
+                           "https://www.jobs.mu/"):
+                err = _io.StringIO()
+                with self.assertRaises(SystemExit) as ctx, contextlib.redirect_stderr(err):
+                    m.request(refuse)
+                self.assertEqual(ctx.exception.code, m.EXIT_REFUSED, refuse)
+                self.assertIn("rules permit it", err.getvalue(),
+                              "the refusal must SAY the host's rules allowed it, or it reads "
+                              "as a `Disallow` the host never wrote")
+        finally:
+            m.gate = real
+        self.assertEqual(vu, [],
+                         "a refused path reached the guard, so the floor is not a floor and "
+                         "the order of the two checks is not what the docstring claims")
+
+    def test_the_page_total_is_read_from_the_container_and_called_the_pages(self):
+        import jobsmu as m
+        lst = self._liste(ids=("1", "2"), total=2)
+        self.assertNotIn("ItemList",
+                         {str(o.get("@type")) for o in _ldjson.objects(lst) if hasattr(o, "get")},
+                         "`objects()` now exposes the container, so the reason in the docstring "
+                         "is stale")
+        self.assertEqual((m.item_list(lst) or {}).get("numberOfItems"), 2)
+        _rows, err, _v = self._run(m, ["jobs"],
+                                   {"/jobs/": (200, lst), "/rss/": (200, self._flux(("1", "2")))})
+        self.assertIn("the PAGE's, not the board's", err,
+                      "an `ItemList` total on a list page counts the PAGE; this board states no "
+                      "total of its own, and the run must not let the two be read as one")
+
+    def test_the_feed_ids_are_read_out_of_cdata(self):
+        import jobsmu as m
+        flux = self._flux(("139963", "139924"))
+        self.assertIn("CDATA", flux)
+        self.assertEqual(m.feed_ids(flux), {"139963", "139924"})
+        nu = re.findall(r"<link>https://[^<]*/display-job/(\d+)/", flux)
+        self.assertEqual(nu, [],
+                         "a motif that assumed bare text now matches, so CDATA is no longer "
+                         "what this test is about")
+
+    def test_the_feed_urls_are_never_followed_and_the_form_is_refused_by_name(self):
+        import jobsmu as m
+        rows, err, vus = self._run(m, ["jobs"],
+                                   {"/jobs/": (200, self._liste(ids=("1",))),
+                                    "/rss/": (200, self._flux(("1",)))})
+        self.assertTrue(rows)
+        self.assertFalse([u for u in vus if "/display-job/" in u],
+                         "the run followed a link measured HTTP 404 on 2026-11-07")
+        self.assertIn("IDS are read, its URLS are not", err)
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(m, ["ad", "--url",
+                          "https://www.jobs.mu/display-job/139963/Driver.html"], {})
+        self.assertEqual(ctx.exception.code, m.EXIT_GONE)
+
+    def test_the_slug_is_optional_which_is_what_lets_ad_code_exist(self):
+        """`/job/139963/` is identical to the byte to the slugged form — measured."""
+        import jobsmu as m
+        self.assertEqual(m.AD_PATH_RE.match("/job/139963/").group(1), "139963")
+        self.assertEqual(m.AD_PATH_RE.match("/job/139963/driver/").group(1), "139963")
+        self.assertIsNone(m.AD_PATH_RE.match("/job/abc/"))
+        rows, err, vus = self._run(m, ["ad", "--code", "139963"],
+                                   {"/job/139963/": (200, self._annonce())})
+        self.assertEqual(rows[0]["id"], "139963")
+        self.assertEqual(rows[0]["url"], "https://www.jobs.mu/job/139963/driver/",
+                         "the record must carry the board's OWN canonical, not the URL we built")
+        self.assertIn("the slug is OPTIONAL", err)
+        self.assertEqual(vus, ["https://www.jobs.mu/job/139963/"])
+
+    def test_a_witness_that_disagrees_names_its_members_and_not_a_count(self):
+        """Two sets of different sizes do not say WHICH members are missing."""
+        import jobsmu as m
+        _rows, err, _v = self._run(m, ["jobs"],
+                                   {"/jobs/": (200, self._liste(ids=("1", "2"))),
+                                    "/rss/": (200, self._flux(("2", "9")))})
+        self.assertIn("WITNESS DISAGREES", err)
+        self.assertIn("Only in the feed: 9", err)
+        self.assertIn("Only in the list: 1", err)
+
+    def test_the_multi_page_branch_is_green_on_a_fixture_and_dead_on_the_board(self):
+        """The fifth species: the mutation reds on the fixture, the corpus never takes it."""
+        import jobsmu as m
+        une = self._liste(ids=("1",), pages=(1,))
+        _rows, err, vus = self._run(m, ["jobs"],
+                                    {"/jobs/": (200, une), "/rss/": (200, self._flux(("1",)))})
+        self.assertEqual([u for u in vus if "page=" in u], [],
+                         "a one-page pager must not be followed anywhere")
+        self.assertIn("multi-page branch was NOT taken", err)
+        self.assertIn("cannot distinguish a pager that clamps", err,
+                      "the run must make NO claim about `?page=N` on a one-page board")
+        deux = {"/jobs/?page=2": (200, self._liste(ids=("2",), pages=(1, 2))),
+                "/jobs/": (200, self._liste(ids=("1",), pages=(1, 2))),
+                "/rss/": (200, self._flux(("1", "2")))}
+        rows, err2, vus2 = self._run(m, ["jobs"], deux)
+        self.assertEqual(sorted(r["id"] for r in rows), ["1", "2"],
+                         "the branch the live board never takes must still work")
+        self.assertIn("?page=2", " ".join(vus2))
+        self.assertIn("took the multi-page branch", err2)
+
+    def test_an_empty_list_with_links_present_is_a_changed_page_not_an_empty_board(self):
+        import jobsmu as m
+        sans = self._liste(ids=("1", "2"), cartes="")
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(m, ["jobs"], {"/jobs/": (200, sans), "/rss/": (200, self._flux())})
+        self.assertEqual(ctx.exception.code, m.EXIT_PARTIAL,
+                         "a zero whose page still carries advert links is a page that CHANGED")
+
+    def test_no_witness_is_announced_as_no_witness(self):
+        """A silence that reads like agreement is the defect; `--no-witness` must speak."""
+        import jobsmu as m
+        _rows, err, vus = self._run(m, ["jobs", "--no-witness"],
+                                    {"/jobs/": (200, self._liste(ids=("1",)))})
+        self.assertEqual([u for u in vus if "/rss/" in u], [])
+        self.assertIn("NO witness", err)
+        _rows, err2, _v = self._run(m, ["jobs"],
+                                    {"/jobs/": (200, self._liste(ids=("1",))),
+                                     "/rss/": (500, "")})
+        self.assertIn("no witness this run", err2,
+                      "a feed that refuses must be reported, not absorbed")
+
+    def test_the_card_declares_the_script_this_class_judges(self):
+        """The denial is judged on the H1 LINE and not on the flattened card.
+
+        A correction CITES what it corrects, so the card's body legitimately quotes the head it
+        replaced — «no adapter yet» — exactly as `careerhub-mu.md` does. A guard that flattened
+        the whole card would red on the house convention: the third species, rouge sur du
+        correct, and it would send someone to delete a citation that is doing its job.
+        """
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        fiche = os.path.join(root, "shared", "boards", "jobs-mu.md")
+        with open(fiche, encoding="utf-8") as fh:
+            texte = fh.read()
+        plat = re.sub(r"\s+", " ", texte)
+        self.assertIn("<!-- script: jobsmu.py -->", plat,
+                      "the card must declare the script the repository ships")
+        self.assertIn("<!-- hosts: www.jobs.mu -->", plat)
+        self.assertEqual(plat.count("<!-- script:"), 1,
+                         "one structural field per card: the shipped cards carry exactly one "
+                         "`script:`, and only `content:`/`witness:` accumulate")
+        h1 = texte.splitlines()[0]
+        self.assertTrue(h1.startswith("# Board adapter"), h1[:60])
+        self.assertNotIn("no adapter", h1.lower(),
+                         "the H1 denies an adapter the card itself declares")
+        self.assertIn("no adapter yet", plat,
+                      "the card must still CITE the head it replaced; a correction cites what "
+                      "it corrects, and dropping the citation hides what changed")
+        self.assertTrue(re.search(r"<!-- route: http \u00b7 \d+ \u00b7 \d{4}-\d{2}-\d{2} -->", plat),
+                        "the `route:` line must be NUDE: the ROUTE regex is anchored on `$` with "
+                        "a digits-only second field, so prose parses to None")
 if __name__ == "__main__":
     unittest.main(verbosity=2)
