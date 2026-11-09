@@ -59814,5 +59814,220 @@ class ATimorWorkVacancyCarriesItsDeadlineAndTheNavCarriesSomebodyElsesTags(unitt
                          today=self.AUJ)
         self.assertIn("the page shape moved", str(caught.exception))
 
+
+class GuyanaJobsHasTwoPopulationsAndOnlyTheMemberSeparatesThem(unittest.TestCase):
+    """**`guyanajobs.py`, measured 2026-11-09 12:37-12:43 UTC (#705).**
+
+    The board publishes two things that are not the same kind of object.
+    `job_listing-sitemap.xml` holds **3** `/job/<slug>/` entries, each with a
+    full `JobPosting` (4 035 characters of description on the one measured);
+    `post-sitemap.xml` holds **18** flyers at a flat `/<slug>/`, and
+    `_ldjson.postings()` returns **0** on them with `absent_reason()` saying
+    `no-jobposting, our_fault=False` -- **the vacancy text is inside the
+    image**, which this adapter does not read. So #705's blocker is answered,
+    and answered DIFFERENTLY for the two.
+
+    **THE KIND COMES FROM THE MEMBER AND NEVER FROM THE SHAPE, and deciding
+    on the shape was my own first version.** A flyer and an ordinary page are
+    the SAME shape -- a flat `/<slug>/` -- so the shape test counted
+    `page-sitemap.xml` as twelve flyers (`/about-us/`, `/contact-us/`,
+    `/privacy-policy/`, `/cv-template/`, `/terms-and-conditions/`, `/blog/`,
+    `/employer-submit-job/`, `/employer-job-dashboard/`, `/sponsored-jobs/`,
+    `/guyana-jobs-telegram/`, `/government-ministries-directory-guyana/`,
+    `/job-listing/find-your-next-job-in-guyana/`) and reported **30 flyers
+    where there are 18**. A plausible number, produced by reading a path
+    shape as a nature.
+
+    **AND COUNTING `<loc>` WOULD REPORT THE BOARD TWO AND A HALF TIMES TOO
+    LARGE.** `_sitemap.count_says()` said so first: 46 `<loc>` against 19
+    `<url>` on the posts, 5 against 3 on the plugin's. The excess are
+    `<image:loc>` -- a flyer's image, a company logo -- which
+    `_sitemap.locs()` matches because it tolerates a namespace prefix, which
+    is correct for ITS job. So the count is taken on `<url>` blocks and the
+    address on the FIRST `<loc>` inside each, which makes an image
+    structurally uncountable instead of filtered afterwards. **`locs()` is
+    SOUND and is not to be repaired.**
+
+    **No witness is reachable by our route**: #705 proposes `X-WP-Total`, a
+    response HEADER, and `bin/fetch-body.py` records no arbitrary response
+    header. The site states no count. So the figures are this adapter's own
+    extraction, and the `<url>`/`<loc>` split is the only thing between 21
+    and 51.
+
+    The fixtures are VERBATIM `<url>` blocks of the three members measured --
+    one flyer carrying its `<image:loc>`, one plugin entry, and the
+    `/about-us/` page that must not count."""
+
+    FX = (
+        '<url>\n'
+        '\t\t<loc>https://guyanajobs.net/post-jobs-in-guyana/</loc>\n'
+        '\t\t<lastmod>2026-11-05T15:38:09+00:00</lastmod>\n'
+        '\t\t<image:image>\n'
+        '\t\t\t<image:loc>https://guyanajobs.net/wp-content/uploads/2026/10/GuyanaJobs-Hiring-Banner.png</image:loc>\n'
+        '\t\t</image:image>\n'
+        '\t\t<image:image>\n'
+        '\t\t\t<image:loc>https://guyanajobs.net/wp-content/uploads/2026/10/Design-Studio-2026-10-10.jpg</image:loc>\n'
+        '\t\t</image:image>\n'
+        '\t\t<image:image>\n'
+        '\t\t\t<image:loc>https://guyanajobs.net/wp-content/uploads/2026/10/GuyanaJobs.net-Hiring-Solutions-Flyer.png</image:loc>\n'
+        '\t\t</image:image>\n'
+        '\t</url>\n'
+        '@@@\n'
+        '<url>\n'
+        '\t\t<loc>https://guyanajobs.net/job/arnhold-institute-for-global-health-at-mount-sinai-georgetown-guyana-full-time-director-digital-health-training-institute/</loc>\n'
+        '\t\t<lastmod>2026-11-02T18:37:44+00:00</lastmod>\n'
+        '\t\t<image:image>\n'
+        '\t\t\t<image:loc>https://guyanajobs.net/wp-content/uploads/job-manager-uploads/company_logo/2026/11/Screenshot-2026-11-02-at-13.08.32.png</image:loc>\n'
+        '\t\t</image:image>\n'
+        '\t</url>\n'
+        '@@@\n'
+        '<url>\n'
+        '\t\t<loc>https://guyanajobs.net/about-us/</loc>\n'
+        '\t\t<lastmod>2026-09-11T05:15:28+00:00</lastmod>\n'
+        '\t\t<image:image>\n'
+        '\t\t\t<image:loc>https://guyanajobs.net/wp-content/uploads/2026/06/collage-2026-06-20T115134.193.jpg</image:loc>\n'
+        '\t\t</image:image>\n'
+        '\t</url>\n')
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_guyanajobs", os.path.join(SCRIPTS, "guyanajobs.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _page(self, titre, dedans=""):
+        """A page of REALISTIC size.
+
+        `_ldjson.absent_reason()` classes a suspiciously small body as
+        `short-page, our_fault=True` -- correctly, since that is what a
+        truncated fetch looks like. The real pages here are 175-188 KB, so a
+        90-byte fixture trips a guard written for a different condition and
+        never reaches the branch under test. The padding is inert chrome.
+        """
+        bourre = "<div class=\"chrome\">" + ("inert page furniture. " * 400) + "</div>"
+        return ("<html><head><title>" + titre + " - guyanajobs.net</title>"
+                + dedans + "</head><body><p>flyer</p>" + bourre + "</body></html>")
+
+    def _blocs(self):
+        b = self.FX.split("\n@@@\n")
+        self.assertEqual(3, len(b))
+        return b
+
+    def test_the_fixture_still_carries_the_image_trap_it_exists_for(self):
+        billet, emploi, page = self._blocs()
+        self.assertIn("image:loc", billet,
+                      "without an <image:loc> the <url>-vs-<loc> assertion "
+                      "proves nothing")
+        self.assertIn("/job/", emploi)
+        self.assertIn("/about-us/", page)
+
+    def test_the_address_is_the_first_loc_of_each_url_block_never_an_image(self):
+        mod = self._mod()
+        billet, emploi, page = self._blocs()
+        for b, attendu in ((emploi, "/job/"), (page, "/about-us/")):
+            e = mod.entries(b)
+            self.assertEqual(1, len(e), "one <url> block is ONE address")
+            self.assertIn(attendu, e[0][0])
+            self.assertNotIn("/wp-content/", e[0][0])
+        e = mod.entries(billet)
+        self.assertEqual(1, len(e))
+        self.assertNotIn("/wp-content/", e[0][0],
+                         "the first <loc> of the block, not its <image:loc>")
+
+    def test_counting_loc_instead_of_url_would_inflate_the_board(self):
+        """The defect, reproduced -- and proven to BE one on this input."""
+        mod = self._mod()
+        tout = "<urlset>" + "".join(self._blocs()) + "</urlset>"
+        par_url = len(mod.entries(tout))
+        par_loc = len(mod.FIRST_LOC_RE.findall(tout))
+        # the mutant must differ on the input the test supplies
+        self.assertNotEqual(par_loc, par_url, "EQUIVALENT MUTANT: not a trial")
+        self.assertEqual(3, par_url)
+        self.assertGreater(par_loc, par_url, "the excess are the <image:loc>")
+
+    def test_the_kind_is_the_members_and_a_page_is_not_a_flyer(self):
+        mod = self._mod()
+        self.assertEqual("job", mod.kind_from_member(
+            "https://guyanajobs.net/job_listing-sitemap.xml"))
+        self.assertEqual("flyer", mod.kind_from_member(
+            "https://guyanajobs.net/post-sitemap.xml"))
+        # the three members that hold NEITHER -- this is what reported 30
+        for m in ("page-sitemap.xml", "category-sitemap.xml",
+                  "job_listing_region-sitemap.xml"):
+            self.assertIsNone(mod.kind_from_member("https://guyanajobs.net/" + m), m)
+
+    def test_the_shape_alone_cannot_tell_a_flyer_from_a_page(self):
+        mod = self._mod()
+        # and it says so by calling it `flat`, not `flyer`
+        self.assertEqual("flat", mod.shape_of("https://guyanajobs.net/about-us/"))
+        self.assertEqual("flat", mod.shape_of(
+            "https://guyanajobs.net/aviation-security-officer-correia-mining-company/"))
+        self.assertEqual("job", mod.shape_of("https://guyanajobs.net/job/x/"))
+        for autre in ("https://guyanajobs.net/",
+                      "https://guyanajobs.net/wp-content/uploads/2026/09/a.png",
+                      "https://guyanajobs.net/a/b/"):
+            self.assertIsNone(mod.shape_of(autre), autre)
+
+    def test_a_flyer_declares_that_its_text_is_in_the_image(self):
+        mod = self._mod()
+        page = self._page("Aviation Security Officer")
+        rec, notes = mod.parse_ad(
+            "https://guyanajobs.net/aviation-security-officer-correia-mining-company/",
+            page)
+        self.assertEqual("flyer", rec["kind"])
+        # the site's suffix is stripped from every title
+        self.assertEqual("Aviation Security Officer", rec["title"])
+        self.assertTrue(rec["text_in_image"])
+        self.assertIsNone(rec["description"],
+                          "a description that does not exist and an empty one "
+                          "read the same downstream, so it is None and said")
+        self.assertTrue(rec["kind_from_shape_only"],
+                        "a single URL carries no member, so the kind here is "
+                        "the shape's and that limit is declared")
+        self.assertTrue(any("inside the image" in n for n in notes), notes)
+
+    def test_a_plugin_entry_maps_the_jobposting_it_carries(self):
+        mod = self._mod()
+        ld = json.dumps({
+            "@context": "https://schema.org", "@type": "JobPosting",
+            "title": "Director, Digital Health Training Institute",
+            "datePosted": "2026-11-02T18:37:44+00:00",
+            "validThrough": "2026-12-02T23:59:59+00:00",
+            "employmentType": ["FULL_TIME"], "directApply": True,
+            "hiringOrganization": {"@type": "Organization",
+                                   "name": "Arnhold Institute for Global Health "
+                                           "at Mount Sinai"},
+            "jobLocation": {"@type": "Place",
+                            "address": {"@type": "PostalAddress",
+                                        "addressRegion": "Region 4 Demerara-Mahaica"}},
+            "description": "<p>Position Title : Director</p>"})
+        page = self._page("x", '<script type="application/ld+json">' + ld
+                          + '</script>')
+        rec, notes = mod.parse_ad("https://guyanajobs.net/job/arnhold-director/", page)
+        self.assertEqual([], notes)
+        self.assertEqual("job", rec["kind"])
+        self.assertEqual("Arnhold Institute for Global Health at Mount Sinai",
+                         rec["employer"])
+        self.assertEqual("Region 4 Demerara-Mahaica", rec["region"])
+        self.assertEqual("2026-12-02T23:59:59+00:00", rec["valid_through"])
+        self.assertEqual("FULL_TIME", rec["employment_type"])
+        self.assertTrue(rec["direct_apply"])
+        self.assertFalse(rec["text_in_image"])
+        self.assertIn("Position Title", rec["description"])
+
+    def test_a_plugin_entry_without_a_jobposting_says_the_board_changed(self):
+        mod = self._mod()
+        page = self._page("x")
+        rec, notes = mod.parse_ad("https://guyanajobs.net/job/x/", page)
+        self.assertEqual("job", rec["kind"])
+        self.assertIsNone(rec["text_in_image"], "unknown, not False")
+        self.assertTrue(any("change in the board" in n for n in notes), notes)
+
+    def test_an_address_of_neither_shape_raises(self):
+        mod = self._mod()
+        with self.assertRaises(mod.ShapeMoved):
+            mod.parse_ad("https://guyanajobs.net/wp-content/uploads/a.png", "<html></html>")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
