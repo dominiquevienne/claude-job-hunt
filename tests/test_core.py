@@ -60029,5 +60029,314 @@ class GuyanaJobsHasTwoPopulationsAndOnlyTheMemberSeparatesThem(unittest.TestCase
         with self.assertRaises(mod.ShapeMoved):
             mod.parse_ad("https://guyanajobs.net/wp-content/uploads/a.png", "<html></html>")
 
+
+class GuyanaCareersDeclaresAnEnumeratorThatIsItsFrontPage(unittest.TestCase):
+    """**`guyanacareers.py`, measured 2026-11-09 19:20-19:34 UTC (#707).**
+
+    `robots.txt` is 73 bytes and DECLARES `Sitemap:
+    https://guyana-careers.com/?sitemap.xml`. `sitemaps_for()` returns it and
+    `ignored_for()` returns `[]`, so the parser dropped nothing. **Fetched,
+    that URL returns 200 and 196 461 bytes of the HOME PAGE** -- zero
+    `<urlset`, zero `sitemapindex`, `<title>Home - Guyana Careers</title>`.
+    The cause is structural and the trace names it: `final_url` came back as
+    `?sitemap_xml`, because `.` is not legal in a PHP query parameter name and
+    is folded to `_`. **That declaration can never resolve to a sitemap.** A
+    walk of it would read a 196 kB page, find no address, and report an empty
+    board -- a readable body is not a response.
+
+    **The real enumerator answers its own count IN ITS BODY.**
+    `/wp-json/wp/v2/job_listing?per_page=100` returns **46** records, all
+    `publish`. Forty-six is below the hundred asked for, so 46 is the total
+    and it is read off the array -- which matters, because the count
+    WordPress states for that query lives in the `X-WP-Total` response HEADER
+    and `bin/fetch-body.py` records no arbitrary response header. A witness
+    can be perfectly valid and reachable by no route we have.
+
+    **And it is corroborated independently**: `/job-list/` carries **10
+    distinct** vacancies behind **20** `/job/<slug>/` links -- each is linked
+    twice, so an extractor that does not deduplicate reports double -- and
+    its pager names 2, 3 and 5, bounding the board at 50.
+
+    **THE EMPLOYER IS NOT PUBLISHED, AND BOTH SOURCES AGREE ON THE
+    WRONG-LOOKING ANSWER.** The ad page's `hiringOrganization.name` is
+    `Guyana Careers`, the board itself. That looks like a defect to route
+    around, and it is not: `metas._job_employer_name` holds the same string
+    on **46 of 46**, so the field is CONSTANT and discriminates nothing --
+    the board posts under its own name. So `employer` is `None` and the
+    record says why, because writing `Guyana Careers` on all forty-six would
+    be specific, plausible and false on every one.
+
+    **Nothing is declared withheld, because nothing is deposited.**
+    `_job_apply_email` is filled on **0 of 46** and no `_job_apply_url`
+    carries an `@`. A `withheld_fields` naming a contact would claim a
+    discretion this adapter never exercised.
+
+    MUTATIONS, each asserted to CREATE its defect on the input the test
+    supplies before its colour was read:
+
+      `is_sitemap` made to return True unconditionally  -> red here
+      `ads_on` made to return every link, not the set   -> red (20 vs 10)
+      `location_of` made to join its terms              -> red (Georgetown, Guyana)
+      `_expired` made to use `date.today()`             -> red on the dated case
+      `second_unescape` made unconditional              -> red on the sound field
+      `second_unescape` made to never fire              -> red on the escaped one
+
+    **One came back GREEN and proved nothing**: dropping the `narrow` filter
+    in `location_of` while the fixture held only `{'178': 'Georgetown'}` --
+    `mut != src` was true and the mutant was EQUIVALENT for that input. The
+    fixture now carries the map that holds the city AND the country, which is
+    the 12-of-46 case, and the assertions below check the mutant differs
+    before the colour is read.
+    """
+
+    REST = [{
+        "id": 1, "slug": "admin-assitant-social-media-manager",
+        "status": "publish", "date": "2026-10-30T16:07:27",
+        "link": "https://guyana-careers.com/job/admin-assitant-social-media-manager/",
+        "title": {"rendered": "Admin Assitant / Social Media Manager"},
+        "content": {"rendered": "<p>Manage Social Media Accounts</p>"},
+        "metas": {
+            "_job_employer_name": "Guyana Careers",
+            # the 12-of-46 case: the map holds the CITY and the COUNTRY
+            "_job_location": {"178": "Georgetown", "153": "Guyana"},
+            "_job_type": {"74": "Full Time"},
+            "_job_category": {"190": "Food &amp; Beverage"},
+            "_job_expiry_date": "2026-12-31",
+            "_job_application_deadline_date": "",
+            "_job_apply_email": "",
+            "_job_apply_type": "external",
+            "_job_apply_url":
+                "https://applicant.careerstruck.com/jobs/273e42ac-6842-43e6-8fb5-49bee244d811",
+        },
+    }, {
+        "id": 2, "slug": "senior-client-relationship-manager",
+        "status": "publish", "date": "2026-10-28T16:57:04",
+        "link": "https://guyana-careers.com/job/senior-client-relationship-manager/",
+        "title": {"rendered": "Senior Client Relationship Manager"},
+        "content": {"rendered": "<p>Commercial banking experience.</p>"},
+        "metas": {
+            "_job_employer_name": "Guyana Careers",
+            # the 10-of-46 case: the COUNTRY alone, which is not a place
+            "_job_location": {"153": "Guyana"},
+            "_job_type": {"74": "Full Time"},
+            "_job_category": {"37": "Accounting / Finance"},
+            "_job_expiry_date": "2026-11-30",
+            "_job_apply_email": "",
+            "_job_apply_url":
+                "https://applicant.careerstruck.com/jobs/faaef324-9676-4299-a6c3-df61abcadfe7",
+        },
+    }]
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_guyanacareers", os.path.join(SCRIPTS, "guyanacareers.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _bourre(self):
+        """Inert chrome, so a fixture is not mistaken for a truncated fetch.
+
+        `_ldjson.absent_reason()` classes a suspiciously small body as
+        `short-page, our_fault=True` -- correctly, since that is what a
+        truncated fetch looks like. The real pages here are 154-196 KB, so a
+        90-byte fixture trips a guard written for a different condition and
+        never reaches the branch under test.
+        """
+        return "<div class=\"chrome\">" + ("inert page furniture. " * 400) + "</div>"
+
+    def _accueil(self):
+        """What the DECLARED `Sitemap:` actually serves -- its front page."""
+        return ("<!DOCTYPE html>\n<html lang=\"en-US\" class=\"no-js\">\n<head>\n"
+                "\t<meta charset=\"UTF-8\">\n"
+                "\t<title>Home - Guyana Careers</title>\n"
+                "\t<meta name=\"description\" content=\"Aligning skilled "
+                "professionals with their ideal opportunities.\" />\n</head>"
+                "<body>" + self._bourre() + "</body></html>")
+
+    def _job_list(self):
+        """Each vacancy linked TWICE, as the served page links them."""
+        liens = ""
+        for slug in ("accountant-business-manager", "customer-service-officer",
+                     "human-resources-manager"):
+            u = "https://guyana-careers.com/job/" + slug + "/"
+            liens += ("<div class=\"job\"><a href=\"" + u + "\">"
+                      "<img src=\"/logo.png\"></a>"
+                      "<h3><a href=\"" + u + "\">" + slug + "</a></h3></div>")
+        pager = ("<nav><a href=\"/job-list/page/2/\">2</a>"
+                 "<a href=\"/job-list/page/3/\">3</a>"
+                 "<span>...</span><a href=\"/job-list/page/5/\">5</a></nav>")
+        return ("<html><head><title>Job List - Guyana Careers</title></head><body>"
+                + liens + pager + self._bourre() + "</body></html>")
+
+    def _annonce(self):
+        """An ad page whose JSON-LD is DOUBLY escaped, as the served one is."""
+        ld = ('{"@context":"https://schema.org","@graph":[{"@type":"JobPosting",'
+              '"title":"Accountant / Business Manager",'
+              '"description":"Financial Management &amp;amp; Accounting the '
+              'company&amp;#8217;s day-to-day activities",'
+              '"datePosted":"2026-09-23T11:06:09+00:00",'
+              '"validThrough":"2026-12-31",'
+              '"hiringOrganization":{"@type":"Organization","name":"Guyana Careers"},'
+              '"jobLocation":{"@type":"Place","address":"Berbice"}}]}')
+        return ("<html><head><title>Accountant / Business Manager - Guyana Careers"
+                "</title><script type=\"application/ld+json\">" + ld
+                + "</script></head><body>" + self._bourre() + "</body></html>")
+
+    def test_the_fixtures_still_carry_the_traps_they_exist_for(self):
+        self.assertIn("&amp;amp;", self._annonce(),
+                      "without a DOUBLE escape the second-pass assertion "
+                      "proves nothing")
+        self.assertIn("Home - Guyana Careers", self._accueil())
+        self.assertEqual(6, self._job_list().count("/job/"),
+                         "three vacancies, each linked twice")
+        self.assertEqual({"178": "Georgetown", "153": "Guyana"},
+                         self.REST[0]["metas"]["_job_location"],
+                         "the city AND the country, which is the 12-of-46 case")
+
+    def test_the_declared_enumerator_is_the_front_page_and_is_not_a_sitemap(self):
+        mod = self._mod()
+        self.assertFalse(mod.is_sitemap(self._accueil()),
+                         "200 and a readable body is not an enumerator")
+        self.assertTrue(mod.is_sitemap(
+            "<urlset xmlns=\"x\"><url><loc>https://a/</loc></url></urlset>"))
+        self.assertTrue(mod.is_sitemap("<sitemapindex><sitemap/></sitemapindex>"))
+        # the mutant -- always True -- must differ on the input supplied
+        self.assertNotEqual(mod.is_sitemap(self._accueil()), True,
+                            "EQUIVALENT MUTANT: not a trial")
+
+    def test_every_vacancy_is_linked_twice_so_the_count_is_the_distinct_set(self):
+        mod = self._mod()
+        page = self._job_list()
+        distincts = mod.ads_on(page)
+        brut = mod.AD_LINK_RE.findall(page)
+        self.assertNotEqual(len(brut), len(distincts),
+                            "EQUIVALENT MUTANT: not a trial")
+        self.assertEqual(3, len(distincts))
+        self.assertEqual(6, len(brut), "the defect, reproduced on this input")
+        self.assertEqual(["accountant-business-manager", "customer-service-officer",
+                          "human-resources-manager"], distincts,
+                         "the order the page links them, deduplicated")
+
+    def test_the_pager_is_a_bound_and_it_omits_a_page(self):
+        mod = self._mod()
+        page = self._job_list()
+        self.assertEqual(5, mod.pager_max(page))
+        self.assertNotIn("/job-list/page/4/", page,
+                         "it names 2, 3 and 5: a BOUND, never a count")
+        self.assertIsNone(mod.pager_max("<html><body>no pager</body></html>"))
+
+    def test_the_employer_is_not_published_and_the_record_says_which(self):
+        mod = self._mod()
+        rows = mod.records(self.REST, None)
+        noms = {str((e["metas"]).get("_job_employer_name")) for e in self.REST}
+        self.assertEqual(1, len(noms),
+                         "CONSTANT across the records: it discriminates nothing")
+        for r in rows:
+            self.assertIsNone(r["employer"],
+                              "writing the board's name here would be false on "
+                              "every record")
+            self.assertIn("not published", r["employer_note"])
+
+    def test_the_ad_page_names_the_board_as_hiring_and_employer_stays_none(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad(
+            "https://guyana-careers.com/job/accountant-business-manager/",
+            self._annonce())
+        self.assertEqual("Guyana Careers", rec["board_name_as_employer"])
+        self.assertIsNone(rec["employer"])
+        self.assertTrue(any("which is the board" in n for n in notes))
+
+    def test_nothing_is_declared_withheld_because_nothing_is_deposited(self):
+        mod = self._mod()
+        for e in self.REST:
+            self.assertEqual("", e["metas"].get("_job_apply_email", ""),
+                             "0 of 46 deposit one")
+            self.assertNotIn("@", e["metas"]["_job_apply_url"])
+        for r in mod.records(self.REST, None):
+            self.assertEqual([], r["withheld_fields"],
+                             "claiming a discretion never exercised is the "
+                             "`withheld_fields` lie")
+            self.assertIsNone(r["contact"])
+            self.assertEqual("applicant.careerstruck.com", r["apply_host"],
+                             "where the application actually goes")
+
+    def test_the_location_map_holds_the_country_too_and_is_not_joined(self):
+        mod = self._mod()
+        ville, termes = mod.location_of({"178": "Georgetown", "153": "Guyana"})
+        self.assertEqual("Georgetown", ville)
+        self.assertEqual(["Georgetown", "Guyana"], termes,
+                         "both are kept, and only one is the place")
+        # the mutant -- a join -- must differ on this input
+        self.assertNotEqual(ville, ", ".join(termes),
+                            "EQUIVALENT MUTANT: not a trial")
+        seul, termes = mod.location_of({"153": "Guyana"})
+        self.assertIsNone(seul, "the country alone is not a place")
+        self.assertEqual(["Guyana"], termes)
+        self.assertEqual((None, []), mod.location_of(None))
+
+    def test_expiry_decides_against_a_parameter_and_never_the_clock(self):
+        mod = self._mod()
+        jour = datetime.date(2026, 12, 15)
+        self.assertFalse(mod._expired("2026-12-31", jour))
+        self.assertTrue(mod._expired("2026-11-30", jour))
+        self.assertIsNone(mod._expired("", jour), "unreadable reads as UNKNOWN")
+        self.assertIsNone(mod._expired("bientot", jour))
+        self.assertIsNone(mod._expired("2026-11-30", None),
+                          "no `today` supplied: the question has no answer")
+        rows = mod.records(self.REST, jour)
+        self.assertEqual([False, True], [r["expired"] for r in rows],
+                         "the two cases differ on this date, so a mutant that "
+                         "reads the clock cannot be equivalent")
+
+    def test_the_second_unescape_is_conditional_and_spares_a_sound_field(self):
+        mod = self._mod()
+        sain, applique = mod.second_unescape("Management & Accounting")
+        self.assertFalse(applique, "a sound field is not touched")
+        self.assertEqual("Management & Accounting", sain)
+        double, applique = mod.second_unescape("Management &amp; Accounting")
+        self.assertTrue(applique)
+        self.assertEqual("Management & Accounting", double)
+        # a blind second pass fabricates markup -- measured
+        self.assertEqual(("<3", True), mod.second_unescape("&lt;3"))
+
+    def test_the_ad_description_loses_its_entities_and_the_record_says_so(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad(
+            "https://guyana-careers.com/job/accountant-business-manager/",
+            self._annonce())
+        self.assertIn("Financial Management & Accounting", rec["description"])
+        self.assertNotIn("&amp;", rec["description"])
+        self.assertNotIn("&#8217;", rec["description"])
+        self.assertTrue(any("doubly escaped" in n for n in notes))
+        self.assertEqual("Berbice", rec["place"],
+                         "the address is a plain STRING on this host")
+
+    def test_the_category_names_carry_html_entities(self):
+        mod = self._mod()
+        rows = mod.records(self.REST, None)
+        self.assertEqual(["Food & Beverage"], rows[0]["categories"])
+        self.assertEqual(["Accounting / Finance"], rows[1]["categories"])
+        self.assertEqual([], mod._terms(None))
+
+    def test_a_payload_that_is_not_the_list_of_posts_raises(self):
+        mod = self._mod()
+        with self.assertRaises(mod.ShapeMoved):
+            mod.records({"code": "rest_no_route"}, None)
+        with self.assertRaises(mod.ShapeMoved):
+            mod.records([{"id": 1}], None)
+        self.assertEqual([], mod.records([], None),
+                         "an EMPTY list is a board with nothing in it, which "
+                         "is not a moved shape")
+
+    def test_an_address_that_is_not_a_vacancy_raises(self):
+        mod = self._mod()
+        for u in ("https://guyana-careers.com/un-slug-plat/",
+                  "https://guyana-careers.com/job-list/",
+                  "https://guyana-careers.com/job/Majuscule/",
+                  "https://autre.example/job/x/"):
+            with self.assertRaises(mod.ShapeMoved, msg=u):
+                mod.parse_ad(u, self._annonce())
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
