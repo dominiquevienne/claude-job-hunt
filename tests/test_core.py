@@ -59013,5 +59013,247 @@ class AWitnessThatOverCountsAndAFeedWhoseOwnLinksAreGone(unittest.TestCase):
         self.assertTrue(re.search(r"<!-- route: http \u00b7 \d+ \u00b7 \d{4}-\d{2}-\d{2} -->", plat),
                         "the `route:` line must be NUDE: the ROUTE regex is anchored on `$` with "
                         "a digits-only second field, so prose parses to None")
+
+class AnInpaDetailPageCarriesItsVacancyAndTwoMotifsWalkIntoItsMarkup(unittest.TestCase):
+    """**`inpa.py`, measured 2026-11-07 19:19-19:21 UTC (#1055).** The issue
+    named `/wp-json/wcc/v1/` as the route; `robots.txt` refuses `/wp-json/` IN
+    WRITING on both host forms -- `allowed=False, state=read, certain=True` --
+    and `wcc` is WebToffee Cookie Consent, so that namespace would never have
+    served a vacancy. The permitted route is the `Sitemap:` the rules file
+    DECLARES, which `_robots.sitemaps_for()` returns; `delay_for()` returns
+    `None`, so the 2 s pace is ours.
+
+    The detail page is SERVER-RENDERED and carries no JSON-LD at all -- 0
+    `JobPosting`, 0 `ld+json`, 0 `__NEXT_DATA__` on the three measured -- so
+    the fields are read from the markup, and **two motifs walk into it**:
+    `Data chiusura candidature`'s value span is not closed by `</p>` (the
+    markup is `</span></div>`), so an anchor on the paragraph loses the
+    DEADLINE; and `Stato` does not use `concorso-content` at all, living in
+    `class="concorso-status Aperto"`, so one motif over the content span
+    misses the field that says whether the vacancy is open.
+
+    **The fixture is a VERBATIM slice of the body measured on 2026-11-07**,
+    not composed -- the missing `</p>` and the status class are asserted
+    present in it before it is used -- and it carries the header's
+    `/ui/public-area/login` decoy FIRST, because the page has TWO
+    `/ui/public-area/` links and a motif on the host alone captures the
+    header's. That capture was 47 characters and IDENTICAL on all three
+    advertisements; its constancy was the only tell.
+
+    Exercised in both directions on the real bodies: the id cross-check on
+    the apply link fires on a wrong id and stays silent on the right one; a
+    body with neither an `<h1>` nor a pair raises `ShapeMoved` rather than
+    reporting an empty advertisement; the deadline still reads when the
+    missing `</p>` is RESTORED, so the anchor is not lucky; the status class
+    and its `<strong>` text are compared and disagreement is reported; an
+    absent status class yields `None` and never an invented value.
+
+    **Mutated (`-B`, detached worktree), each red NAMED before mutating and
+    each mutation asserted to have mutated and to compile:** `APPLY_RE`
+    re-anchored on the host -> the apply-link case reddens; `PAIR_RE` made to
+    require the `</p>` -> the field case reddens; `STATUS_RE` made to match
+    nothing -> the field case reddens; the id cross-check short-circuited ->
+    the mismatch case reddens; `ShapeMoved` no longer raised -> the shape
+    case reddens; `novembre` dropped from `MONTHS` -> the month case
+    reddens; `AD_RE` made to accept a path SEGMENT -> the shape case reddens.
+
+    **And the seventh mutation first came back GREEN, which proved nothing:**
+    it was written as `[?/]concorso_id?=?…` and does NOT match a bare path
+    segment, so it never created the defect it named. `mut != src` was true
+    and it compiled -- **neither of those establishes that a defect
+    exists**, and a sweep's green is then indistinguishable from an inert
+    guard. The mutation now ASSERTS that the permissive pattern matches the
+    segment before the red is judged."""
+
+    FIXTURE = (
+        '<a href="https://portale.inpa.gov.it/ui/public-area/login" class="btn btn-primary login-cta mt-4 mt-md-0 w-100" title="Accedi all\'area personale" aria-label="Accedi all\'area personale"><i class="fa-solid fa-circle-user fa-xl me-1"></i>Accedi all\'area personale</a>\n'
+        '<h1 class="h5">COMUNE DI JESOLO &#8211; CONCORSO PUBBLICO PER ESAMI PER L&rsquo;ASSUNZIONE A TEMPO PIENO E INDETERMINATO DI N. 1 UNITA&rsquo; DI PERSONALE &ndash; PROFILO PROFESSIONALE &ldquo;FUNZIONARIO DI POLIZIA LOCALE&rdquo;, AREA DEI FUNZIONARI E DELLA ELEVATA QUALIFICAZIONE.<br />\n'
+        '</h1>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Descrizione: </span></p>\n'
+        '<div class="font-lora">\n'
+        '<p>Il Comune di Jesolo ricerca n. 1 unit&agrave; a tempo pieno e indeterminato con profilo professionale funzionario di polizia locale, area dei funzionari e della elevata qualificazione.&nbsp;</p>\n'
+        '</div>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Area geografica: </span><span class="concorso-content font-lora">Veneto</span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Valutazione: </span><span class="concorso-content font-lora d-inline-block">Per esami</span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-0"><span class="concorso-label fw-bold me-2">Stato: </span><span class="concorso-status Aperto py-2 my-2 px-4 br-xx d-inline-block"><strong class="fw-bold text-uppercase">Aperto</strong></span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Data apertura candidature: </span><span class="concorso-content font-lora">30 Ottobre 2026  14:00</span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Data chiusura candidature: </span><span class="concorso-content font-lora">30 Novembre 2026  10:00</span></div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Numero di posti: </span><span class="concorso-content font-lora">1</span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2"><span class="concorso-label fw-bold">Ente di riferimento: </span><span class="concorso-content font-lora">Comune di Jesolo</span></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left">\n'
+        '<p class="mb-2 d-inline-block"><span class="concorso-label fw-bold">Bando/Avviso e Allegati: </span></p>\n'
+        '<p class="concorso-content font-lora"><a href="https://portale.inpa.gov.it/api/media/656e6d67-fcee-4247-b197-38039fe36c44" title="Bando n. 1 funzionario polizia locale.pdf" aria-label="Bando n. 1 funzionario polizia locale.pdf" class="text-break">Bando n. 1 funzionario polizia locale.pdf (Pubblicato il 30 Ottobre 2026  14:00)</a></p>\n'
+        '<p class="concorso-content font-lora"><a href="https://portale.inpa.gov.it/api/media/2279b9ac-5eb9-4e02-8b7f-7573cf5827bf" title="Bando n. 1 funzionario polizia locale.pdf.p7m" aria-label="Bando n. 1 funzionario polizia locale.pdf.p7m" class="text-break">Bando n. 1 funzionario polizia locale.pdf.p7m (Pubblicato il 30 Ottobre 2026  14:00)</a></p>\n'
+        '</div>\n'
+        '</div>\n'
+        '<div class="row">\n'
+        '<div class="col-12 text-left mt-5"><a href="https://portale.inpa.gov.it/ui/public-area/login?returnUrl=%2Fpublic-area%2Fconcoursedetail%2F7cac2ca739ce406186c9611f17679615" title="Invia la tua candidatura" aria-label="Invia la tua candidatura" class="btn btn-primary mr-3 invia-candidatura text-start">Invia la tua candidatura</a>\n')
+
+    ID = "7cac2ca739ce406186c9611f17679615"
+    URL = ("https://inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/"
+           "?concorso_id=7cac2ca739ce406186c9611f17679615")
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_inpa", os.path.join(SCRIPTS, "inpa.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_fixture_still_carries_both_traps_this_motif_exists_for(self):
+        # a fixture that lost the traps would make every assertion below pass
+        # for the wrong reason -- so the traps are asserted, not assumed
+        self.assertIn("30 Novembre 2026  10:00</span></div>", self.FIXTURE,
+                      "the missing `</p>` is the first trap; without it in "
+                      "the fixture the deadline assertion proves nothing")
+        self.assertIn('class="concorso-status Aperto', self.FIXTURE,
+                      "the status lives in the class; without it in the "
+                      "fixture the status assertion proves nothing")
+        self.assertEqual(
+            2, self.FIXTURE.count("portale.inpa.gov.it/ui/public-area/"),
+            "the fixture must carry the header decoy AND the apply button, "
+            "or the class anchor is not discriminating anything")
+
+    def test_the_served_fields_are_read_including_the_two_the_motifs_miss(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad(self.ID, self.URL, self.FIXTURE)
+        self.assertEqual([], notes)
+        self.assertEqual("Comune di Jesolo", rec["employer"])
+        self.assertEqual("Veneto", rec["region"])
+        self.assertEqual("Per esami", rec["selection"])
+        self.assertEqual(1, rec["posts"])
+        # the deadline, past the missing `</p>`
+        self.assertEqual("2026-11-30T10:00", rec["closes"])
+        self.assertEqual("2026-10-30T14:00", rec["opens"])
+        # the page declares no zone anywhere, and naming one would be a
+        # figure it does not carry
+        self.assertIsNone(rec["dates_tz"])
+        # the page serves TWO spaces before the time and `text()` collapses
+        # runs of spaces, as it does for every field: `*_raw` is the served
+        # string whitespace-normalised, not a byte copy
+        self.assertEqual("30 Novembre 2026 10:00", rec["closes_raw"])
+        self.assertIn("30 Novembre 2026  10:00", self.FIXTURE)
+        # the status, past the absent content span
+        self.assertEqual("Aperto", rec["status"])
+        self.assertEqual("Aperto", rec["status_text"])
+        # entities are decoded: the title carries `&#8211;` and `&rsquo;`
+        self.assertIn("\u2013", rec["title"])
+        self.assertNotIn("&#8211;", rec["title"])
+        self.assertEqual(2, len(rec["attachments"]))
+        # a field this adapter does not name is still visible to the reader
+        self.assertIn("Area geografica", rec["fields_seen"])
+
+    def test_the_apply_link_is_the_button_and_not_the_header_login(self):
+        mod = self._mod()
+        rec, _ = mod.parse_ad(self.ID, self.URL, self.FIXTURE)
+        self.assertIn("returnUrl", rec["apply_url"])
+        # the id round-trips: a cross-check that cannot pass by accident
+        self.assertIn(self.ID, rec["apply_url"])
+        self.assertNotEqual(
+            "https://portale.inpa.gov.it/ui/public-area/login",
+            rec["apply_url"],
+            "this is the header's login link -- the motif took the FIRST "
+            "`/ui/public-area/` in the page instead of the apply button")
+
+    def test_an_apply_link_for_another_advertisement_is_reported(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad("0" * 32, self.URL, self.FIXTURE)
+        self.assertTrue(any("does not carry this advertisement's id" in n
+                            for n in notes), notes)
+        self.assertIn("apply_mismatch", rec)
+
+    def test_the_deadline_still_reads_when_the_missing_p_is_restored(self):
+        mod = self._mod()
+        patched = self.FIXTURE.replace(
+            "30 Novembre 2026  10:00</span></div>",
+            "30 Novembre 2026  10:00</span></p>")
+        self.assertNotEqual(patched, self.FIXTURE, "the patch did not patch")
+        rec, _ = mod.parse_ad(self.ID, self.URL, patched)
+        self.assertEqual("2026-11-30T10:00", rec["closes"],
+                         "the anchor must hold under BOTH markup forms, or it "
+                         "is a lucky match on one page's malformation")
+
+    def test_a_status_class_that_contradicts_its_own_text_is_reported(self):
+        mod = self._mod()
+        patched = self.FIXTURE.replace("concorso-status Aperto",
+                                       "concorso-status Chiuso", 1)
+        self.assertNotEqual(patched, self.FIXTURE, "the patch did not patch")
+        rec, notes = mod.parse_ad(self.ID, self.URL, patched)
+        self.assertEqual("Chiuso", rec["status"])
+        self.assertEqual("Aperto", rec["status_text"])
+        self.assertIn("status_disagreement", rec)
+        self.assertTrue(any("disagree" in n for n in notes), notes)
+
+    def test_an_absent_status_class_yields_none_and_never_a_guess(self):
+        mod = self._mod()
+        patched = self.FIXTURE.replace("concorso-status Aperto",
+                                       "concorso-autrechose", 1)
+        self.assertNotEqual(patched, self.FIXTURE, "the patch did not patch")
+        rec, _ = mod.parse_ad(self.ID, self.URL, patched)
+        self.assertIsNone(rec["status"])
+
+    def test_a_page_with_neither_shape_raises_rather_than_reporting_empty(self):
+        mod = self._mod()
+        with self.assertRaises(mod.ShapeMoved) as caught:
+            mod.parse_ad(self.ID, self.URL, "<html><body><p>nothing</p></body></html>")
+        self.assertIn("the page shape moved", str(caught.exception))
+
+    def test_an_italian_month_that_is_not_one_is_named_and_not_guessed(self):
+        mod = self._mod()
+        self.assertEqual(("2026-11-30T10:00", None),
+                         mod.when("30 Novembre 2026  10:00"))
+        iso, why = mod.when("30 Brumaire 2026 10:00")
+        self.assertIsNone(iso)
+        self.assertIn("Brumaire", why)
+        self.assertEqual((None, "no value"), mod.when(""))
+
+    def test_the_advertisement_shape_takes_the_query_string_not_a_segment(self):
+        mod = self._mod()
+        # the slug IS a query string; both host forms are guarded and permitted
+        for host in ("inpa.gov.it", "www.inpa.gov.it"):
+            self.assertTrue(mod.AD_RE.match(
+                f"https://{host}/bandi-e-avvisi/dettaglio-bando-avviso/"
+                f"?concorso_id={self.ID}"), host)
+        # and nothing else of that family is an advertisement
+        for other in ("https://inpa.gov.it/bandi-e-avvisi/",
+                      "https://inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/",
+                      f"https://inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/{self.ID}",
+                      "https://inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/?concorso_id=xyz"):
+            self.assertIsNone(mod.AD_RE.match(other), other)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
