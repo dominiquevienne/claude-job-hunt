@@ -93,10 +93,28 @@ jobs:
             echo "go=no" >> "$GITHUB_OUTPUT"; exit 0
           fi
           n=$(git rev-list --count "$last"..HEAD)
-          echo "last tag: $last · commits since: $n"
-          if [ "$n" -eq 0 ]; then
+          # **The question is whether the PUBLISHED CONTENT moved, not how many
+          # commits landed — and counting commits answered the wrong one.** A
+          # release publishes its tag on the version commit and THEN merges its
+          # own PR, so `main` sits one commit after the tag with an IDENTICAL
+          # tree. `n` was 1, `go=yes`, and the next step then demanded a `core`
+          # verdict for a commit a `GITHUB_TOKEN` merge never triggers one for:
+          # three quiet nights came out `failure` while this step's own comment
+          # said a quiet half-day is not one. Measured on 19f6bbed, 9ab07202 and
+          # d4952783 — 1 commit, identical tree — against 5c416fd5, a real
+          # delivery, 5 commits and a different tree. #1288.
+          #
+          # **The tree is also the grandeur that cannot be got wrong by a list:**
+          # excluding "the release merge" would need a motif on a message or an
+          # author, and a motif is false by its members. A commit that changes
+          # nothing has not moved what we publish, whatever it is called.
+          tag_tree=$(git rev-parse "$last^{tree}")
+          head_tree=$(git rev-parse 'HEAD^{tree}')
+          if [ "$tag_tree" = "$head_tree" ]; then shape=identical; else shape=different; fi
+          echo "last tag: $last · commits since: $n · tree $shape"
+          if [ "$tag_tree" = "$head_tree" ]; then
             # **A quiet half-day is the expected case, not a failure.**
-            echo "Nothing landed since $last. No release, and that is the rule working."
+            echo "Nothing landed since $last ($n commit(s), identical tree). No release, and that is the rule working."
             echo "go=no" >> "$GITHUB_OUTPUT"
           else
             git log --format='  %s' "$last"..HEAD

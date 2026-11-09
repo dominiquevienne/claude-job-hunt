@@ -59255,5 +59255,240 @@ class AnInpaDetailPageCarriesItsVacancyAndTwoMotifsWalkIntoItsMarkup(unittest.Te
                       "https://inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/?concorso_id=xyz"):
             self.assertIsNone(mod.AD_RE.match(other), other)
 
+
+@unittest.skipUnless(os.name == "posix", "the step under test runs on "
+                     "`runs-on: ubuntu-latest` and nowhere else, so a POSIX-only "
+                     "bank covers the whole domain of the object -- this is a "
+                     "DECLARED scope, not a gap")
+class AQuietNightAfterAReleaseIsNotAFailureAndTheGrandeurIsTheTree(unittest.TestCase):
+    """**`release.yml` step 3, #1288.** A release publishes its tag on the
+    version commit and THEN merges its own PR, so `main` sits ONE commit after
+    the tag with an IDENTICAL tree. Step 3 counted COMMITS, got `1`, said
+    `go=yes`, and step 4 then demanded a `core` verdict for a commit a
+    `GITHUB_TOKEN` merge never triggers one for: three quiet nights came out
+    `failure` while step 3's own comment says a quiet half-day is not one.
+
+    Measured on the object: `19f6bbed`, `9ab07202` and `d4952783` all carry 1
+    commit since their tag and an IDENTICAL tree; the positive contingent is
+    `5c416fd5`, a real delivery, 5 commits and a DIFFERENT tree. **And the
+    discriminant must be taken on HEAD and never on `HEAD^`** -- on `HEAD^`
+    `git describe` resolves to the PREVIOUS tag and reports "different" on all
+    three, innocenting the defect with perfectly well-formed output.
+
+    **The shell under test is EXTRACTED from the workflow, never
+    reimplemented** -- a copy of the logic would pass while the file that runs
+    in CI said something else. No YAML library: PyYAML is absent from this
+    machine AND the CI installs nothing, so a test importing it would pass
+    nowhere; measured before writing rather than assumed.
+
+    **The grandeur is the TREE and not a list.** Excluding "the release merge"
+    would need a motif on a message or an author, and a motif is false by its
+    members; a commit that changes nothing has not moved what we publish,
+    whatever it is called.
+
+    **Step 4 is NOT touched, and it has TWO layers** -- which its own comment
+    records: the absent-verdict branch owns the MESSAGE, and
+    `[ "$concl" != "success" ]` owns the REFUSAL. Disarming the first alone is
+    an EQUIVALENT mutant: the refusal still fires, exit stays 1. So the two
+    properties are tested separately, and the equivalence was caught by the
+    third mutation control rather than by reading the diff.
+
+    **Every mutation here asserts it CREATES the defect on the input the test
+    supplies, before any colour is read** (§4 ter, third control): `mut != src`
+    and "it compiles" are both true of a mutant that changes nothing, and a
+    sweep's green is then indistinguishable from an inert guard."""
+
+    WF = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        ".github", "workflows", "release.yml")
+
+    def _step(self, nom, src=None):
+        """The `run:` block of one named step, dedented, as the file carries it."""
+        if src is None:
+            with io.open(self.WF, encoding="utf-8") as fh:
+                src = fh.read()
+        s = src
+        i = s.index("- name: " + nom)
+        j = s.index("run: |", i)
+        lignes = s[j:].split("\n")[1:]
+        base = len(lignes[0]) - len(lignes[0].lstrip())
+        out = []
+        for l in lignes:
+            if l.strip() and (len(l) - len(l.lstrip())) < base:
+                break
+            out.append(l[base:] if len(l) >= base else "")
+        return "\n".join(out).rstrip() + "\n"
+
+    def _depot(self, d, calme):
+        """A repository in the state a quiet night leaves, or a real one."""
+        import subprocess
+        g = lambda *a: subprocess.run(("git",) + a, cwd=d, check=True,
+                                      capture_output=True, text=True)
+        g("init", "-q", "-b", "main")
+        g("config", "user.email", "t@example.invalid")
+        g("config", "user.name", "t")
+        with io.open(os.path.join(d, "f.txt"), "w") as fh:
+            fh.write("un\n")
+        g("add", "-A"); g("commit", "-qm", "the version commit"); g("tag", "v1.0.0")
+        if calme:
+            # exactly what a release leaves behind: the tag on the version
+            # commit, then its own merge on top, changing nothing
+            g("commit", "--allow-empty", "-qm",
+              "Merge pull request #9 from release/v1.0.0")
+        else:
+            with io.open(os.path.join(d, "f.txt"), "w") as fh:
+                fh.write("deux\n")
+            g("add", "-A"); g("commit", "-qm", "real content")
+        return g
+
+    def _tire3(self, sh, calme):
+        """`(exit, GITHUB_OUTPUT, log)` of step 3 against one repository state."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as d:
+            self._depot(d, calme)
+            sortie = os.path.join(d, "out.txt")
+            io.open(sortie, "w").close()  # le fichier que l'etape APPENDE
+            r = subprocess.run(["bash", "-e", "-c", sh], cwd=d, text=True,
+                               capture_output=True,
+                               env={**os.environ, "GITHUB_OUTPUT": sortie})
+            with io.open(sortie) as fh:
+                return r.returncode, fh.read().strip(), r.stdout
+
+    def _tire4(self, sh, reponse):
+        """`(exit, log)` of step 4 with `gh` stubbed to answer `reponse`."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as d:
+            bink = os.path.join(d, "bin")
+            os.mkdir(bink)
+            gh = os.path.join(bink, "gh")
+            # a heredoc with a QUOTED delimiter: the TAB arrives real and
+            # nothing is re-evaluated. Built with `repr()` first, it delivered
+            # a literal `\t` and the bank read as a broken step -- a bank that
+            # shares a defect with what it measures gives itself the answer.
+            with io.open(gh, "w", encoding="utf-8") as fh:
+                fh.write("#!/bin/sh\ncat <<'FIN'\n" + reponse + "\nFIN\n")
+            os.chmod(gh, 0o755)
+            r = subprocess.run(
+                ["bash", "-e", "-c", sh], cwd=d, capture_output=True, text=True,
+                env={**os.environ, "PATH": bink + os.pathsep + os.environ["PATH"],
+                     "GITHUB_SHA": "deadbeef", "GH_TOKEN": "x"})
+            return r.returncode, r.stdout + r.stderr
+
+    # ---- the extraction itself, before anything is concluded from it
+
+    def test_the_extraction_yields_the_shell_the_workflow_actually_runs(self):
+        sh = self._step("Has main moved since the last tag?")
+        self.assertIn("git describe --tags --abbrev=0", sh)
+        self.assertIn("GITHUB_OUTPUT", sh)
+        # it must not have run past the end of the step into the next one
+        self.assertNotIn("- name:", sh)
+        self.assertNotIn("Is `core` green", sh)
+        # and it must be the TREE that decides, not the commit count
+        self.assertIn('[ "$tag_tree" = "$head_tree" ]', sh)
+
+    def test_the_workflow_resolves_the_tag_on_head_and_never_on_head_caret(self):
+        with io.open(self.WF, encoding="utf-8") as fh:
+            s = fh.read()
+        # `HEAD^` resolves to the PREVIOUS tag and would report "different" on
+        # every quiet night, innocenting the defect with well-formed output
+        self.assertNotIn("describe --tags --abbrev=0 HEAD^", s)
+        self.assertNotIn("describe --tags --abbrev=0 'HEAD^'", s)
+
+    # ---- step 3, both directions
+
+    def test_a_quiet_night_after_a_release_says_there_is_nothing_to_publish(self):
+        code, out, log = self._tire3(
+            self._step("Has main moved since the last tag?"), calme=True)
+        self.assertEqual(0, code, log)
+        self.assertIn("go=no", out)
+        self.assertNotIn("go=yes", out)
+        self.assertIn("Nothing landed since", log)
+        # the commit count is still REPORTED -- it is informative and it is no
+        # longer what decides
+        self.assertIn("commits since: 1", log)
+        self.assertIn("tree identical", log)
+
+    def test_a_night_that_landed_content_continues_to_the_core_verdict(self):
+        code, out, log = self._tire3(
+            self._step("Has main moved since the last tag?"), calme=False)
+        self.assertEqual(0, code, log)
+        self.assertIn("go=yes", out)
+        self.assertIn("last=v1.0.0", out)
+        # **this fixture also has ONE commit since the tag** -- which is what
+        # makes it the discriminant: the commit count cannot tell the two
+        # states apart, and the tree can
+        self.assertIn("commits since: 1", log)
+        self.assertIn("tree different", log)
+
+    # ---- step 3, mutated, each mutation proven to create its defect
+
+    def test_counting_commits_again_would_call_a_quiet_night_a_release(self):
+        sh = self._step("Has main moved since the last tag?")
+        vieux = 'if [ "$tag_tree" = "$head_tree" ]; then\n  # **A quiet half-day'
+        self.assertEqual(1, sh.count(vieux))
+        mut = sh.replace(vieux, 'if [ "$n" -eq 0 ]; then\n  # **A quiet half-day', 1)
+        self.assertNotEqual(mut, sh, "the mutation did not mutate")
+        _, src_out, _ = self._tire3(sh, calme=True)
+        _, mut_out, _ = self._tire3(mut, calme=True)
+        # the THIRD control, before any colour is read
+        self.assertNotEqual(mut_out, src_out,
+                            "EQUIVALENT MUTANT: this is not a trial")
+        self.assertIn("go=no", src_out)
+        self.assertIn("go=yes", mut_out)   # the regression, reproduced
+
+    def test_a_comparison_that_is_always_true_would_never_publish(self):
+        sh = self._step("Has main moved since the last tag?")
+        vieux = 'tag_tree=$(git rev-parse "$last^{tree}")'
+        self.assertEqual(1, sh.count(vieux))
+        mut = sh.replace(vieux, "tag_tree=$(git rev-parse 'HEAD^{tree}')", 1)
+        self.assertNotEqual(mut, sh, "the mutation did not mutate")
+        _, src_out, _ = self._tire3(sh, calme=False)
+        _, mut_out, _ = self._tire3(mut, calme=False)
+        self.assertNotEqual(mut_out, src_out,
+                            "EQUIVALENT MUTANT: this is not a trial")
+        self.assertIn("go=yes", src_out)
+        self.assertIn("go=no", mut_out)
+
+    # ---- step 4 is NOT touched: its two layers, as two properties
+
+    def test_step_four_still_reads_the_four_verdict_states(self):
+        sh = self._step("Is `core` green on this commit?")
+        # the bank's own positive control: a success must PASS, or the TAB is
+        # not arriving and the bank is disarmed rather than the step broken
+        self.assertEqual(0, self._tire4(sh, "success\thttps://x")[0],
+                         "the bank is disarmed, not the step")
+        for reponse in ("", "null\thttps://x", "failure\thttps://x"):
+            self.assertEqual(1, self._tire4(sh, reponse)[0], repr(reponse))
+
+    def test_disarming_both_layers_is_what_it_takes_to_lose_the_refusal(self):
+        sh = self._step("Is `core` green on this commit?")
+        a = 'if [ -z "$got" ] || [ "$concl" = "null" ] || [ -z "$concl" ]; then'
+        b = 'if [ "$concl" != "success" ]; then'
+        self.assertEqual(1, sh.count(a))
+        self.assertEqual(1, sh.count(b))
+        # disarming the FIRST alone is an equivalent mutant -- the refusal
+        # still fires from the second -- so both go together
+        mut = sh.replace(a, "if false; then", 1).replace(b, "if false; then", 1)
+        self.assertNotEqual(mut, sh, "the mutation did not mutate")
+        c_src = self._tire4(sh, "")[0]
+        c_mut = self._tire4(mut, "")[0]
+        self.assertNotEqual(c_mut, c_src, "EQUIVALENT MUTANT: this is not a trial")
+        self.assertEqual(1, c_src, "an absent verdict is not a pass (#143)")
+        self.assertEqual(0, c_mut)
+
+    def test_the_first_layer_is_what_names_the_absence_in_the_message(self):
+        sh = self._step("Is `core` green on this commit?")
+        a = 'if [ -z "$got" ] || [ "$concl" = "null" ] || [ -z "$concl" ]; then'
+        mut = sh.replace(a, "if false; then", 1)
+        self.assertNotEqual(mut, sh, "the mutation did not mutate")
+        _, log_src = self._tire4(sh, "")
+        _, log_mut = self._tire4(mut, "")
+        self.assertNotEqual(log_mut, log_src,
+                            "EQUIVALENT MUTANT on the MESSAGE: not a trial")
+        self.assertIn("No `core` run for", log_src)
+        # without it the refusal still fires and stops naming what is missing
+        self.assertNotIn("No `core` run for", log_mut)
+        self.assertIn("`core` is ``", log_mut)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
