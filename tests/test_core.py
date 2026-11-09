@@ -59490,5 +59490,329 @@ class AQuietNightAfterAReleaseIsNotAFailureAndTheGrandeurIsTheTree(unittest.Test
         self.assertNotIn("No `core` run for", log_mut)
         self.assertIn("`core` is ``", log_mut)
 
+
+class ATimorWorkVacancyCarriesItsDeadlineAndTheNavCarriesSomebodyElsesTags(unittest.TestCase):
+    """**`timorwork.py`, measured 2026-11-09 12:13-12:15 UTC (#686).**
+
+    #686 and the card call this "a Ghost publication" paginating by
+    `/page/N/`. **It is Django and Wagtail** -- `robots.txt` says so in its
+    own comments and every body is a StreamField carrying `data-block-key` --
+    and `ghost` occurs in a vacancy page exactly once, as
+    `class="btn btn-ghost"`, a DaisyUI button. A platform was read off a CSS
+    class. There is no `/page/N/` pager either: `?page=` and `/page/` occur
+    ZERO times on the front, and the bare `/jobs/` is a 404; what exists is
+    `/jobs/tag/<slug>/` and `/jobs/employer/<slug>/`.
+
+    **THE SITEMAP IS NOT PRUNED, and that is what the count may not claim.**
+    1 306 `<loc>`, 1 305 distinct (the duplicate is the ROOT, listed twice),
+    so 1 304 vacancy addresses; `lastmod` spans 2024-02-04 to 2026-11-07, and
+    the first, median and last members all carried EXPIRED deadlines. The
+    front's 30 cards are ALL in the sitemap -- difference empty -- so the two
+    enumerators NEST and the sitemap is a genuine superset.
+
+    **THE MONTH IS DJANGO'S AP-STYLE `N` AND THE STDLIB ABBREVIATION FAILS
+    SILENTLY ON IT.** Five months are full and unpunctuated -- March, April,
+    May, June, July -- and `Sept.` is four letters. Measured on the 36 date
+    values held: `Nov.` 16, **`June` 13**, `Oct.` 4, `Feb.` 2, `Dec.` 1, and
+    the stdlib abbreviated-month directive REJECTS `June`. An ad-hoc parser
+    lost 13 of 36 without raising, and an unreadable deadline reads as
+    "unknown" -- which, treated as current, surfaces a two-year-old vacancy.
+    So `expired` is `None` there and **never `False` by default**.
+
+    **`today` is a PARAMETER of the pure functions**, never the real clock
+    inside them: asserting expiry against today is the dated literal that
+    passes until a date passes.
+
+    **The fixtures are THREE VERBATIM SLICES of the bodies measured, joined**
+    -- a piece of the NAV with its BARE `/jobs/tag/` links, the narrow card,
+    and the title with a cut-and-closed body. The nav slice is the decoy and
+    is asserted present: without it, the pill scoping discriminates nothing.
+    A motif on the href alone returned `education, communications,
+    health-medicine, accounting-finance, governance` **identically on all
+    three vacancies**, and that constancy was the only tell -- the same
+    fault, on the same day, as taking the first `/ui/public-area/` link on
+    another board."""
+
+    AD = (
+        '<a href="/jobs/tag/education/"\n'
+        '               class="">Education</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/communications/"\n'
+        '               class="">Communications</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/health-medicine/"\n'
+        '               class="">Health & Medicine</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/accounting-finance/"\n'
+        '               class="">Accounting & Finance</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/governanc\n'
+        '<!-- Narrower card taking up 4 columns -->\n'
+        '      <div class="col-span-12 md:col-span-4 md:order-2 bg-white p-6 rounded-lg shadow-md text-center">\n'
+        '        <!-- Content for the narrower card -->\n'
+        '        \n'
+        '          <div class="w-full flex justify-center mb-2">\n'
+        '            \n'
+        '            <img src="/media/images/1706743892_FZ6Hm_.original.png"\n'
+        '                 alt="Palladium logo"\n'
+        '                 class="max-w-md w-full h-auto">\n'
+        '          </div>\n'
+        '        \n'
+        '        <h2 class="text-xl font-bold text-center">Palladium</h2>\n'
+        '        <div class="my-2">\n'
+        '          <span class="text-sm">Posted: Oct. 12, 2024</span>\n'
+        '        </div>\n'
+        '        <p class="text-sm my-2 italic text-gray-500 job-deadline">Deadline: Oct. 26, 2024</p>\n'
+        '        <p class="text-sm my-2 italic job-location">Dili</p>\n'
+        '        <div class="my-2">\n'
+        '          \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/health-medicine/" class="hover:text-blue-700">Health &amp; medicine</a>\n'
+        '</span>\n'
+        '\n'
+        '          \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/usaid/" class="hover:text-blue-700">USAID</a>\n'
+        '</span>\n'
+        '\n'
+        '          \n'
+        '        </div>\n'
+        '      </div>\n'
+        '      \n'
+        '<h1 class="pg-title">Technical Advisor, Social Behavior Change, USAID Integrated Health System Activity</h1>\n'
+        '        <h2 class="pg-subtitle"></h2>\n'
+        '        <p></p>\n'
+        '        <div class="my-2 pg-content"><h2 data-block-key="dr7tz">Position Summary</h2><p data-block-key="ov2hh">The position provides technical support to improve institutional capacities for Social Behavior Change interventions, including the full continuum of SBC activities such as community mobilization and engagement, and healthcare worker interpersonal and counseling skills to improve demand, access and utilization for primary healthcare services with emphasis on Family Planning/ Reproductive Health (FP/RH), Maternal, Newborn, Child, and Adolescent Health (MNCAH) and Nutrition.</p></div>\n')
+
+    LISTE = (
+        '<a href="/jobs/tag/education/"\n'
+        '               class="">Education</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/communications/"\n'
+        '               class="">Communications</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/health-medicine/"\n'
+        '               class="">Health & Medicine</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/accounting-finance/"\n'
+        '               class="">Accounting & Finance</a>\n'
+        '          </li>\n'
+        '          <li>\n'
+        '            <a href="/jobs/tag/governanc\n'
+        '<div class="bg-white rounded-lg border bg-card text-card-foreground shadow-sm p-5 text-gray-900">\n'
+        '    \n'
+        '        <div class="p-4">\n'
+        '            \n'
+        '            <a href="/child-fund-head-of-program/" class="hover:underline">\n'
+        '                <img src="/media/images/childfund.original.jpg"\n'
+        '                     alt="Job Image"\n'
+        '                     style="height: 120px;\n'
+        '                            width: auto"\n'
+        '                     class="mx-auto transition-transform duration-300 hover:scale-110" />\n'
+        '            </a>\n'
+        '        </div>\n'
+        '    \n'
+        '    \n'
+        '        <p class="text-md text-blue-500 font-semibold">\n'
+        '            <a href="/jobs/employer/child-fund/"\n'
+        '               class="hover:underline">Child Fund</a>\n'
+        '        </p>\n'
+        '    \n'
+        '    <h2 class="text-2xl font-bold mt-2">\n'
+        '        <a href="/child-fund-head-of-program/" class="hover:underline">Head of Program</a>\n'
+        '    </h2>\n'
+        '    <div class="flex items-center mt-2 job-location">\n'
+        '        <span class="text-gray-600 text-sm">Dili</span>\n'
+        '    </div>\n'
+        '    <p class="text-sm text-gray-600 mt-2 line-clamp-3 job-description">\n'
+        '        \n'
+        '            Lead and coordinate a child-focused programs portfolio in Timor-Leste, managing teams, local partnerships and proposal development as part of the Senior Leadership Team.\n'
+        '        \n'
+        '    </p>\n'
+        '    <p class="text-sm my-2 italic text-gray-500 job-deadline">Deadline: Nov. 20, 2026</p>\n'
+        '    <div class="mt-2">\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/ngo/" class="hover:text-blue-700">NGO</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/international/" class="hover:text-blue-700">International</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/senior-level/" class="hover:text-blue-700">Senior-level</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/manager/" class="hover:text-blue-700">Manager</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/gedsi/" class="hover:text-blue-700">GEDSI</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/education/" class="hover:text-blue-700">Education</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '            <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">\n'
+        '    <a href="/jobs/tag/health-medicine/" class="hover:text-blue-700">Health &amp; medicine</a>\n'
+        '</span>\n'
+        '\n'
+        '        \n'
+        '    </div></div>\n')
+
+    AUJ = datetime.date(2026, 11, 9)
+    URL = "https://timor.work/palladium-technical-advisor-social-behavior-change/"
+    SLUG = "palladium-technical-advisor-social-behavior-change"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_timorwork", os.path.join(SCRIPTS, "timorwork.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_fixtures_still_carry_the_nav_decoy_and_the_pills(self):
+        # without the decoy every tag assertion below passes for the wrong reason
+        self.assertGreaterEqual(self.AD.count("/jobs/tag/"), 5)
+        self.assertEqual(2, self.AD.count("inline-block bg-gray-200"),
+                         "the vacancy's own tags are the PILLS; the nav slice "
+                         "must carry BARE links and no pill")
+        self.assertIn('alt="Palladium logo"', self.AD)
+        self.assertIn("job-deadline", self.AD)
+        self.assertIn("job-location", self.AD)
+        self.assertIn("job-deadline", self.LISTE)
+
+    def test_the_served_fields_of_one_vacancy_are_read(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad(self.SLUG, self.URL, self.AD, today=self.AUJ)
+        self.assertEqual([], notes)
+        self.assertEqual("Palladium", rec["employer"])
+        # the logo's alt is the second source and it agrees here
+        self.assertEqual("Palladium", rec["employer_alt"])
+        self.assertEqual("Dili", rec["city"])
+        self.assertEqual("2024-10-12", rec["posted"])
+        self.assertEqual("2024-10-26", rec["closes"])
+        self.assertEqual("Oct. 26, 2024", rec["closes_raw"])
+        self.assertTrue(rec["expired"], "deadline 2024-10-26 against 2026-11-09")
+        self.assertEqual("2026-11-09", rec["as_of"])
+        self.assertIsNone(rec["dates_tz"])
+        self.assertEqual("TL", rec["country"])
+
+    def test_the_tags_are_the_vacancys_own_and_not_the_nav_menu(self):
+        mod = self._mod()
+        rec, _ = mod.parse_ad(self.SLUG, self.URL, self.AD, today=self.AUJ)
+        slugs = [t["slug"] for t in rec["tags"]]
+        self.assertEqual(["health-medicine", "usaid"], slugs)
+        for nav in ("education", "communications", "accounting-finance",
+                    "governance", "law-legal"):
+            self.assertNotIn(nav, slugs, "this is the nav menu, not this vacancy")
+
+    def test_a_motif_on_the_href_alone_would_return_the_nav_menu(self):
+        """The defect, reproduced -- and proven to BE one on this input."""
+        mod = self._mod()
+        nu = re.compile(r'(?is)<a href="/jobs/tag/([^"/]+)/"')
+        pastilles = [t["slug"] for t in mod._tags(self.AD)]
+        nus = []
+        for sl in nu.findall(self.AD):
+            if sl not in nus:
+                nus.append(sl)
+        # the mutant must produce something DIFFERENT on the input the test
+        # supplies, or it is not a trial at all
+        self.assertNotEqual(nus, pastilles, "EQUIVALENT MUTANT: not a trial")
+        self.assertIn("education", nus)
+        self.assertNotIn("education", pastilles)
+
+    def test_the_tags_are_deduplicated_in_order_of_appearance(self):
+        mod = self._mod()
+        # they appear twice per page: the narrow card and the footer block
+        doubled = self.AD + self.AD
+        self.assertEqual([t["slug"] for t in mod._tags(self.AD)],
+                         [t["slug"] for t in mod._tags(doubled)])
+
+    def test_the_front_card_carries_the_whole_record_inline(self):
+        mod = self._mod()
+        rows, notes = mod.parse_listing(self.LISTE, today=self.AUJ)
+        self.assertEqual([], notes)
+        self.assertEqual(1, len(rows))
+        r = rows[0]
+        self.assertEqual("Child Fund", r["employer"])
+        self.assertEqual("child-fund", r["employer_slug"])
+        self.assertEqual("Head of Program", r["title"])
+        self.assertEqual("Dili", r["city"])
+        self.assertEqual("2026-11-20", r["closes"])
+        self.assertFalse(r["expired"], "2026-11-20 is after 2026-11-09")
+        self.assertEqual("https://timor.work/child-fund-head-of-program/", r["url"])
+        self.assertIn("child-focused", r["description"])
+
+    def test_the_undotted_full_month_django_serves_is_read(self):
+        mod = self._mod()
+        # `June` is 13 of the 36 values held, and the stdlib abbreviation rejects it
+        with self.assertRaises(ValueError):
+            datetime.datetime.strptime("June", "%" + "b")
+        self.assertEqual(("2026-06-05", None), mod.when("June 5, 2026"))
+        for s, attendu in (("Nov. 20, 2026", "2026-11-20"),
+                           ("Sept. 1, 2026", "2026-09-01"),
+                           ("March 3, 2026", "2026-03-03"),
+                           ("July 9, 2026", "2026-07-09")):
+            self.assertEqual((attendu, None), mod.when(s), s)
+
+    def test_an_unreadable_month_is_named_and_expiry_stays_unknown(self):
+        mod = self._mod()
+        iso, why = mod.when("Brumaire 30, 2026")
+        self.assertIsNone(iso)
+        self.assertIn("Brumaire", why)
+        self.assertIn("June", why, "the message must name the irregular months")
+        self.assertIsNone(mod._expired(None, self.AUJ))
+        patched = self.AD.replace("Oct. 26, 2024", "Brumaire 30, 2024")
+        self.assertNotEqual(patched, self.AD, "the patch did not patch")
+        rec, notes = mod.parse_ad(self.SLUG, self.URL, patched, today=self.AUJ)
+        self.assertIsNone(rec["closes"])
+        self.assertIsNone(rec["expired"], "never False by default")
+        self.assertTrue(any("Brumaire" in n for n in notes), notes)
+
+    def test_an_employer_heading_that_contradicts_the_logo_is_reported(self):
+        mod = self._mod()
+        patched = self.AD.replace('alt="Palladium logo"', 'alt="Autre Chose logo"', 1)
+        self.assertNotEqual(patched, self.AD, "the patch did not patch")
+        rec, notes = mod.parse_ad(self.SLUG, self.URL, patched, today=self.AUJ)
+        self.assertEqual("Palladium", rec["employer"])
+        self.assertEqual("Autre Chose", rec["employer_alt"])
+        self.assertTrue(any("disagree" in n for n in notes), notes)
+
+    def test_the_vacancy_shape_is_one_flat_segment_and_nothing_else(self):
+        mod = self._mod()
+        self.assertTrue(mod.AD_RE.match("https://timor.work/child-fund-head-of-program/"))
+        self.assertTrue(mod.AD_RE.match("https://timor.work/driver/"))
+        for autre in ("https://timor.work/",
+                      "https://timor.work/jobs/tag/usaid/",
+                      "https://timor.work/jobs/employer/palladium/",
+                      "https://timor.work/media/images/x.png",
+                      "https://timor.work/child-fund-head-of-program",
+                      "https://www.timor.work/driver/"):
+            self.assertIsNone(mod.AD_RE.match(autre), autre)
+
+    def test_a_page_with_neither_shape_raises_rather_than_reporting_empty(self):
+        mod = self._mod()
+        with self.assertRaises(mod.ShapeMoved) as caught:
+            mod.parse_ad(self.SLUG, self.URL, "<html><body><p>nothing</p></body></html>",
+                         today=self.AUJ)
+        self.assertIn("the page shape moved", str(caught.exception))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
