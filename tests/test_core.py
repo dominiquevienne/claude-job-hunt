@@ -60338,5 +60338,352 @@ class GuyanaCareersDeclaresAnEnumeratorThatIsItsFrontPage(unittest.TestCase):
             with self.assertRaises(mod.ShapeMoved, msg=u):
                 mod.parse_ad(u, self._annonce())
 
+
+class DadliJobsHasNoCountAndTwoTrapsInItsOwnMarkup(unittest.TestCase):
+    """**`dadlijobs.py`, measured 2026-11-10 03:29-03:33 UTC (#730).**
+
+    `robots.txt` is 366 bytes: one `*` group whose six `Disallow` lines are
+    all WooCommerce, one `Allow: /wp-admin/admin-ajax.php`, and two
+    `Sitemap:`. `sitemaps_for()` returns both, `ignored_for()` returns `[]`
+    -- the parser dropped nothing -- and `delay_for()` returns `None`, so the
+    2 s pace is ours.
+
+    **A PLAIN CLIENT CANNOT SEE THE LIST, AND NOTHING ON THE PAGE SAYS SO.**
+    `/` states «Displayed Here: 1 - 25 Jobs» and links 27 vacancies;
+    `/jobs-listing/` states «Displayed Here: 1 - 15 Jobs» and links 15 behind
+    **31** hrefs -- each is linked about twice, so an extractor that does not
+    deduplicate reports double. Both strings are page RANGES. Pagination runs
+    through `jobsearch_job_pagenation_ajax` on `admin-ajax.php`, so page one
+    is all a plain client gets.
+
+    **A HUNDRED IS A ROUND NUMBER, SO IT WAS EPROUVED.** `/sitemap.xml` is a
+    real `sitemapindex`; `job-sitemap.xml` carries **100** `/job/<slug>/`
+    addresses. AIOSEO paginates as `job-sitemap1.xml` and lists each page in
+    the index, which named ONE child for jobs -- and fetched,
+    `job-sitemap1.xml` returns 200 whose `final_url` is `job-sitemap.xml`:
+    the paginated form REDIRECTS to the canonical one. The two bodies carry
+    **the same 100 addresses**, difference empty both ways, and their `md5`
+    differ only by the generation timestamp each file states in its own
+    comment. So 100 is the whole population and not a truncation.
+
+    **It is still not a count the board states**, and there is no second one:
+    `/wp-json/wp/v2/types` lists fifteen types and **the job type is not
+    among them** -- measured by reading what the host publishes about itself,
+    not by probing a path and reading a 404 as an absence.
+
+    **TWO TRAPS LIVE IN THE HOST'S OWN MARKUP, AND BOTH RETURN A FALSE
+    ZERO.** Every `<loc>` is wrapped in `<![CDATA[...]]>`, so
+    `<loc>([^<]+)</loc>` returns **0** on a sitemap holding a hundred
+    addresses. And the page's inline CSS NAMES `.jobsearch-description`, so a
+    search run before `<style>` is stripped finds the STYLESHEET -- which
+    made a first census report the description absent on 10 of 10 when it is
+    present on 10 of 10. A non-greedy `(.*?)</div>` then truncates it: 317
+    characters where the block holds 1 282, and the recruiter address past
+    the cut reads as absent.
+
+    **THE EMPLOYER IS PUBLISHED AND IT VARIES** -- filled on 10 of 10 with 7
+    distinct values -- which is the opposite of the Guyana Careers finding of
+    the day before, so the conduct does not transport. It is read from inside
+    `<figure class="jobsearch-jobdetail-list">` and never page-wide, because
+    `/employer/<slug>/` also appears in the related-jobs rail.
+
+    **ONE ESCAPE PASS.** Zero occurrences of the doubled `&amp;<entity>;` and
+    zero residual entities across twenty emitted fields after a single
+    `html.unescape`, so a second pass has nothing to consume and could only
+    turn `&amp;lt;3` into markup.
+
+    **THE DECLARATION IS DERIVED FROM WHAT WAS TAKEN.** The apply route
+    splits 10 of 10: a `mailto:` button whose `data-id` EQUALS the Job ID
+    with the same address in the prose (6), or no button, an `N
+    Application(s)` counter and no recruiter email (4, the OSEC notices).
+    **A first pass read that as "four deposit nothing" and it was wrong**:
+    the OSEC notices publish OSEC's own jobseeker lines in seven local digits
+    with no 268 prefix, which a pattern anchored on 268 cannot see. All ten
+    deposit at least one contact form.
+
+    Six mutations, below. `expired` is **constant False on 10 of 10**, so it
+    discriminates nothing today, and **none of the adapter's five note
+    branches fires on any of the ten** -- they redden on fixtures and are
+    silent on the corpus, which is declared here rather than found later.
+    """
+
+    HOST = "dadlijobs.com"
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(SCRIPTS, "dadlijobs.py")
+        spec = importlib.util.spec_from_file_location("dadlijobs_t", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _bourre(s, n=4000):
+        """Pad so a fixture is never read as a truncated fetch."""
+        return s + "\n<!-- " + ("x" * n) + " -->\n"
+
+    def _index(self):
+        return self._bourre(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!-- dynamically generated on November 10, 2026 at 3:30 am -->\n'
+            '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            '<sitemap><loc><![CDATA[https://dadlijobs.com/page-sitemap.xml]]></loc>'
+            '<lastmod><![CDATA[2026-10-18T05:00:58+00:00]]></lastmod></sitemap>\n'
+            '<sitemap><loc><![CDATA[https://dadlijobs.com/job-sitemap.xml]]></loc>'
+            '<lastmod><![CDATA[2026-11-09T23:32:42+00:00]]></lastmod></sitemap>\n'
+            '<sitemap><loc><![CDATA[https://dadlijobs.com/sector-sitemap.xml]]></loc>'
+            '<lastmod><![CDATA[2026-11-09T23:39:47+00:00]]></lastmod></sitemap>\n'
+            '</sitemapindex>\n')
+
+    def _jobmap(self):
+        rows = "".join(
+            f'<url><loc><![CDATA[https://dadlijobs.com/job/poste-{i}/]]></loc>'
+            f'<lastmod><![CDATA[2026-11-0{i % 9 + 1}T10:00:00+00:00]]></lastmod></url>\n'
+            for i in range(1, 8))
+        return self._bourre(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + rows +
+            '<url><loc><![CDATA[https://dadlijobs.com/job/poste-3/]]></loc></url>\n'
+            '<url><loc><![CDATA[https://dadlijobs.com/full-time-jobs/]]></loc></url>\n'
+            '</urlset>\n')
+
+    def _annonce(self, mail=True, tel=False, apply_id="4242", figure=True,
+                 rail=True, style_only=False, route="email", rail_first=False):
+        """One ad, with the host's own two traps reproduced.
+
+        `style_only` puts `.jobsearch-description` ONLY in the stylesheet,
+        which is what made a first census report the block absent.
+        """
+        corps = (
+            "<p>Must be punctual and courteous.</p>"
+            "<div class='inner'><p>Must interact well with staff at all levels.</p></div>"
+            "<p>To Apply: " + ("recruteur@exemple.ag" if mail else "in person at the desk")
+            + "</p>"
+            + ("<p>WhatsApp Us at: 736-3227</p>" if tel else "")
+            + "<p>Deadline for all applications: NOVEMBER 12, 2026</p>")
+        desc = ("" if style_only else
+                f'<div class="jobsearch-description"><h4>Job Description</h4>{corps}</div>')
+        fig = (
+            '<figure class="jobsearch-jobdetail-list">'
+            '<span class="jobsearch-jobdetail-listthumb">'
+            '<a href="https://dadlijobs.com/employer/fries-guys/"><img src="x"></a></span>'
+            '<figcaption><h1 class="dadli-job-title"> Kitchen Aide </h1><span><small>'
+            '<a href="https://dadlijobs.com/full-time-jobs/" '
+            'class="jobsearch-jobdetail-type"> Full time </a></small>'
+            '<a href="https://dadlijobs.com/employer/fries-guys/">'
+            '@Fries Guys &#038; The Side Caf&#233;</a>'
+            '<small class="jobsearch-jobdetail-postinfo"> posted 16 hours ago</small>'
+            '<small class="post-in-category"> in '
+            '<a href="https://dadlijobs.com/restaurant-food-services-jobs/">'
+            ' Restaurant / Food Services </a></small></span>'
+            '<ul class="jobsearch-jobdetail-options">'
+            '<li><i class="jobsearch-icon jobsearch-maps-and-flags"></i> '
+            'All Saints Road <a href="https://www.google.com/maps/search/'
+            '17.1226312839702%2C-61.84523846076905" class="jobsearch-jobdetail-view">'
+            'View on Map</a></li>'
+            '<li><i class="jobsearch-icon jobsearch-calendar"></i> Post Date '
+            ': November 9, 2026 </li>'
+            '<li><i class="jobsearch-icon jobsearch-calendar"></i> Apply Before '
+            ': November 12, 2026 </li>'
+            + ('<li><i class="jobsearch-icon jobsearch-summary"></i> 0 Application(s) </li>'
+               if route == "on_site" else "")
+            + '</ul></figcaption></figure>') if figure else "<figure>moved</figure>"
+        bouton = (
+            f'<a href="mailto:recruteur@exemple.ag" data-id="{apply_id}" '
+            f'class="jobsearch-applyjob-btn">Apply</a>'
+            if route == "email" else "")
+        rail_html = (
+            '<div class="related"><a href="https://dadlijobs.com/employer/autre-patron/">'
+            '@Autre Patron</a></div>' if rail else "")
+        tete = rail_html if rail_first else ""
+        queue = "" if rail_first else rail_html
+        return self._bourre(
+            "<!DOCTYPE html><html><head><title>Kitchen Aide - Dadli Jobs</title>"
+            "<style>.jobsearch-description h4 { font-weight: 600; }\n"
+            ".jobsearch-jobdetail-services { float: left; }</style></head><body>"
+            + tete + fig + desc + bouton +
+            '<div class="jobsearch-jobdetail-services"><ul><li>'
+            '<i class="jobsearch-icon jobsearch-briefcase"></i>'
+            '<div class="jobsearch-services-text">Job ID <small>4242</small></div>'
+            "</li></ul></div>" + queue +
+            '<ul class="footer"><li><a href="tel:+268-773-6837">+268-773-6837</a></li>'
+            "<li>dadlidirectory@gmail.com</li></ul></body></html>")
+
+    # ---- the enumerator is retrieved and VERIFIED, never believed
+
+    def test_a_sitemap_index_is_not_a_urlset_and_the_adapter_tells_them_apart(self):
+        mod = self._mod()
+        self.assertTrue(mod.is_sitemap_index(self._index()))
+        self.assertFalse(mod.is_urlset(self._index()))
+        self.assertTrue(mod.is_urlset(self._jobmap()))
+        self.assertFalse(mod.is_sitemap_index(self._jobmap()))
+
+    def test_a_front_page_served_as_a_sitemap_is_refused_as_one(self):
+        mod = self._mod()
+        page = self._bourre("<!DOCTYPE html><html><head><title>Home - Dadli Jobs"
+                            "</title></head><body>Displayed Here: 1 - 25 Jobs</body></html>")
+        self.assertFalse(mod.is_urlset(page))
+        self.assertFalse(mod.is_sitemap_index(page))
+        self.assertEqual(mod.locs(page), [])
+
+    def test_the_naive_loc_pattern_returns_zero_where_locs_returns_every_address(self):
+        """Every `<loc>` is CDATA-wrapped: the usual pattern is a false zero."""
+        mod, body = self._mod(), self._jobmap()
+        self.assertEqual(re.findall(r"<loc>([^<]+)</loc>", body), [])
+        self.assertEqual(len(mod.locs(body)), 9)
+
+    def test_the_job_child_is_found_by_name_and_never_by_position(self):
+        mod = self._mod()
+        self.assertEqual(mod.job_sitemap_of(self._index()),
+                         "https://dadlijobs.com/job-sitemap.xml")
+        sans = self._index().replace("job-sitemap.xml", "jobtype-sitemap.xml")
+        with self.assertRaises(mod.ShapeMoved):
+            mod.job_sitemap_of(sans)
+
+    def test_facet_addresses_are_not_vacancies_and_duplicates_collapse(self):
+        mod = self._mod()
+        ads = mod.ads_of(mod.locs(self._jobmap()))
+        self.assertEqual(len(ads), 7)
+        self.assertNotIn("full-time-jobs",
+                         [s for _, s, _ in ads])
+
+    # ---- the two traps the host's own markup sets
+
+    def test_what_keeps_the_stylesheet_out_is_the_tight_form_and_not_the_strip(self):
+        """A bare substring lands in the CSS; the tight `<div class=` cannot.
+
+        Measured on a served ad: `find("jobsearch-description")` returns
+        215 829, inside the inline `<style>`, while
+        `<div class="jobsearch-description"` is at 671 315 -- and the CSS
+        cannot contain the tight form at all. So what protects the locator is
+        its SHAPE, and a mutation of `strip_style` to the identity creates a
+        measurable difference and reddens NOTHING: it is kept as a belt for
+        the day a pattern loosens, declared non-load-bearing on 2026-11-10
+        rather than claimed as a guard.
+        """
+        mod = self._mod()
+        body = self._annonce()
+        self.assertLess(body.index("jobsearch-description"),
+                        body.index('<div class="jobsearch-description"'))
+        feuille = "".join(re.findall(r"(?is)<style\b[^>]*>(.*?)</style>", body))
+        self.assertIn("jobsearch-description", feuille)
+        self.assertNotIn('<div class="jobsearch-description"', feuille)
+        with self.assertRaises(mod.ShapeMoved):
+            mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                         self._annonce(style_only=True))
+
+    def test_a_non_greedy_close_truncates_the_description_and_balancing_does_not(self):
+        """The contact lives PAST the first nested `</div>`."""
+        mod, body = self._mod(), self._annonce(mail=True)
+        clean = mod.strip_style(body)
+        i = mod.DESC_OPEN_RE.search(clean).start()
+        court = re.search(r'(?s)<div class="jobsearch-description".*?</div>', clean).group(0)
+        entier = mod.div_block(clean, i)
+        self.assertNotIn("recruteur@exemple.ag", court)
+        self.assertIn("recruteur@exemple.ag", entier)
+        self.assertGreater(len(entier), len(court))
+
+    # ---- what the record says, and what it refuses to say
+
+    def test_the_employer_is_read_from_the_figure_and_not_from_the_related_rail(self):
+        """The rail comes FIRST here, which the corpus does not do.
+
+        Measured on the sampled ad that carries two employer slugs page-wide:
+        the figure's is at offset 17 184 and the rail's at 27 983, so a
+        page-wide search returns the right answer BY LUCK and a mutation to
+        `markup` is an EQUIVALENT mutant -- it creates no defect, so it is not
+        an essai. This fixture puts the rail before the figure so the anchor
+        is the only thing that can decide.
+        """
+        mod = self._mod()
+        adverse = self._annonce(rail=True, rail_first=True)
+        self.assertLess(adverse.index("autre-patron"),
+                        adverse.index('<figure class="jobsearch-jobdetail-list">'))
+        rec, _ = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/", adverse)
+        self.assertEqual(rec["employer_slug"], "fries-guys")
+        self.assertEqual(rec["employer"], "Fries Guys & The Side Café")
+        self.assertNotEqual(rec["employer_slug"], "autre-patron")
+
+    def test_one_unescape_resolves_the_entities_and_a_second_would_fabricate(self):
+        mod = self._mod()
+        self.assertEqual(mod.unescape_once("Fries Guys &#038; The Side Caf&#233;"),
+                         "Fries Guys & The Side Café")
+        self.assertFalse(mod.residual_entities(
+            mod.unescape_once("Fries Guys &#038; The Side Caf&#233;")))
+        once = mod.unescape_once("&amp;lt;3")
+        self.assertEqual(once, "&lt;3")
+        self.assertNotIn("<3", once)
+
+    def test_withheld_fields_names_only_what_redact_actually_removed(self):
+        mod = self._mod()
+        avec, pris = mod.redact("To Apply: recruteur@exemple.ag")
+        self.assertEqual(pris, ["contact_email"])
+        self.assertNotIn("recruteur@exemple.ag", avec)
+        sans, rien = mod.redact("Apply in person at the desk.")
+        self.assertEqual(rien, [])
+        self.assertEqual(sans, "Apply in person at the desk.")
+
+    def test_an_ad_that_deposits_nothing_declares_nothing_withheld(self):
+        mod = self._mod()
+        rec, notes = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                                  self._annonce(mail=False, route="on_site"))
+        self.assertEqual(rec["withheld_fields"], [])
+        self.assertIsNone(rec["contact"])
+        self.assertEqual(rec["apply_route"], "on_site")
+        self.assertTrue(any("nothing was removed" in n for n in notes))
+
+    def test_no_contact_survives_into_the_emitted_record(self):
+        mod = self._mod()
+        rec, _ = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                              self._annonce(mail=True, tel=True))
+        blob = json.dumps(rec, ensure_ascii=False)
+        self.assertNotIn("recruteur@exemple.ag", blob)
+        self.assertNotIn("736-3227", blob)
+        self.assertEqual(rec["withheld_fields"], ["contact_email", "contact_phone"])
+
+    def test_the_sector_drops_the_template_word_and_keeps_the_term(self):
+        mod = self._mod()
+        rec, _ = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/", self._annonce())
+        self.assertEqual(rec["sector"], "Restaurant / Food Services")
+        self.assertEqual(rec["employment_type"], "Full time")
+
+    def test_the_coordinates_are_read_and_dropped_and_the_record_says_so(self):
+        mod = self._mod()
+        rec, _ = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/", self._annonce())
+        self.assertEqual(rec["location"], "All Saints Road")
+        self.assertNotIn("17.12", json.dumps(rec))
+        self.assertIn("lat/lon", rec["location_precision"])
+
+    def test_the_apply_button_data_id_is_a_cross_control_on_the_job_id(self):
+        mod = self._mod()
+        ok, _ = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                             self._annonce(apply_id="4242"))
+        self.assertEqual(ok["job_id"], "4242")
+        ko, notes = mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                                 self._annonce(apply_id="9999"))
+        self.assertIsNone(ko["job_id"])
+        self.assertTrue(any("data-id" in n for n in notes))
+
+    def test_the_dates_are_parsed_without_a_locale_and_an_ignorance_is_not_a_verdict(self):
+        mod = self._mod()
+        self.assertEqual(mod.parse_date("Apply Before : November 12, 2026"), "2026-11-12")
+        self.assertIsNone(mod.parse_date("Apply Before : Brumaire 12, 2026"))
+        self.assertIsNone(mod.expired("2026-11-12", None))
+        self.assertIsNone(mod.expired(None, datetime.date(2026, 11, 10)))
+        self.assertFalse(mod.expired("2026-11-12", datetime.date(2026, 11, 10)))
+        self.assertTrue(mod.expired("2026-11-09", datetime.date(2026, 11, 10)))
+
+    def test_a_shape_that_moved_raises_instead_of_emitting_a_plausible_record(self):
+        mod = self._mod()
+        for u in ("https://dadlijobs.com/full-time-jobs/",
+                  "https://dadlijobs.com/employer/fries-guys/",
+                  "https://example.org/job/kitchen-aide/"):
+            with self.assertRaises(mod.ShapeMoved):
+                mod.parse_ad(u, self._annonce())
+        with self.assertRaises(mod.ShapeMoved):
+            mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
+                         self._annonce(figure=False))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
