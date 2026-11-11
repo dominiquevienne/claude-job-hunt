@@ -1096,7 +1096,7 @@ absence:
 ```
 
 `<state> · <method or reason, with the figure and its unit> · <YYYY-MM-DD>` — **three fields, and the state is one of four,
-not two.** `shared/plausible-and-false.md` carries the reasoning; the short
+not two.** **ET LE `·` EST LE SÉPARATEUR, DONC IL EST RÉSERVÉ : le champ du milieu n'en porte AUCUN, et c'est cette ligne-ci qui pousse à l'y mettre puisqu'elle exige une FIGURE. Mesuré le 2026-11-11 sur `jwennjob.md`, dont la raison portait un chiffre composé — `total 238 · per_page 12 · last_page 20` — ce qui fait CINQ champs : la suite rougit en disant `got 5 field(s)`, c'est-à-dire qu'elle nomme le COMPTE et jamais le séparateur, donc le rouge envoie relire l'état et la date d'une mesure parfaitement juste.** *Un chiffre composé s'écrit avec des virgules — `total 238, per_page 12, last_page 20` — et la contrainte vit ici parce que c'est ici qu'on écrit la ligne.* `shared/plausible-and-false.md` carries the reasoning; the short
 version is that **an inapplicable result and a conclusive one are
 indistinguishable once written down.** The fabrication sieve compares sets of
 title words and *assumes the corpora label in the same language* — true by
