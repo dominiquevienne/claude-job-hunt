@@ -98,6 +98,13 @@ So `withheld_fields` names `contact_email` or `contact_phone` **only when
 nothing: naming a contact there would claim a discretion never exercised.
 That last branch is DEAD on the corpus measured — see below.
 
+And `contacts_withheld` is DERIVED from that same witness through `_withheld`,
+which classifies `contact_email` and `contact_phone` as things that reach a
+person: it is absent rather than false when nothing was taken. Since the
+witness is non-empty on 10 of 10, the declaration is True on 10 of 10 and it is
+its FALSE branch that is dead on this corpus — the mirror of `jobsdz`, whose
+redaction is silent on all three of its ads.
+
 The board's own address and phone — `dadlidirectory@gmail.com` and
 `268-773-6837`, constant on 10 of 10 — live in the page FOOTER and in neither
 the figure nor the description, so scoping the redaction to the ad's own
@@ -166,6 +173,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 BASE = "https://dadlijobs.com"
 INDEX = BASE + "/sitemap.xml"
@@ -480,6 +488,8 @@ def parse_ad(url, body, today=None):
         "contact": None,
         "withheld_fields": sorted(set(took)),
     }
+    if withheld_a_contact(took):
+        rec["contacts_withheld"] = True
     if not took:
         notes.append("nothing was removed from this ad, so withheld_fields is "
                      "empty: it deposits no recruiter contact "
