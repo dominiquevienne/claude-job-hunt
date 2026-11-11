@@ -129,6 +129,14 @@ publishes into a withheld field instead of a leak. It runs on the free-text
 description ONLY: `title`, `employer` and `location` have a known meaning, and
 an Algerian monthly wage in dinars is five or six figures while the phone form
 below demands a leading `0` or `+213` and eight more.
+
+`contacts_withheld` is DERIVED from what `redact` actually took, through
+`_withheld`, so it is absent rather than false when nothing was removed — and
+on this corpus of three it is absent on 3 of 3, which makes its TRUE branch
+dead in the world and alive only in `tests/` (§4 ter, fifth species: a branch
+green on its fixtures can be dead on the corpus, and the two instruments are
+disjoint). It is kept because the first recruiter address this board publishes
+would otherwise leave the record without a word said about it.
 """
 
 import os
@@ -150,6 +158,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 BASE = "https://jobsdz.com"
 INDEX = BASE + "/sitemap_index.xml"
@@ -498,6 +507,8 @@ def parse_ad(url, body, today=None):
         "contact": None,
         "withheld_fields": sorted(set(took)),
     }
+    if withheld_a_contact(took):
+        rec["contacts_withheld"] = True
     if not took:
         notes.append("nothing was removed from this ad, so withheld_fields is "
                      "empty: it deposits no recruiter contact in its description.")

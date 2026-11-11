@@ -52,6 +52,18 @@ CONTACT = frozenset({
     "employer_phone",
     "application_email",
     "submission_email",
+    # SYNONYMS, not finer classes. A witness names what ITS OWN adapter removed, so
+    # this vocabulary records the names our source emits instead of imposing one —
+    # `telephone`, `phone` and `employer_phone` already coexist here for that reason.
+    # `mailto` is an address inside an href and `contact_email` one in prose: the FORM
+    # differs, the class does not, and the description's own marker says which. Added
+    # on 2026-11-11 for `jobsdz` and `dadlijobs`, after MEASURING that adding them
+    # brings NO further file into the guard's derived scope and leaves no site
+    # unguarded — 20 carriers and 28 sites before as after, on a bench armed by
+    # emptying CONTACT, which collapses that scope to 0.
+    "mailto",
+    "contact_email",
+    "contact_phone",
 })
 
 # withheld for a reason that is NOT a contact

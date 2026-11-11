@@ -53715,6 +53715,30 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         r'(?m)^(\s*)if withheld_a_contact\(.*\):\n\s+([A-Za-z_]\w*)'
         r'\["contacts_withheld"\] = True\n')
     @staticmethod
+    def _emet_temoin(fn):
+        """Cette fonction ÉMET-elle `withheld_fields` — donc est-elle le BÂTISSEUR de
+        l'enregistrement ?
+
+        En UN point, parce que `_sites` et `_vocabulaire` en décident tous les deux, et
+        parce que `_withheld` porte déjà l'argument : quatre copies d'un même jugement
+        dérivent.
+        """
+        import ast
+        for d in ast.walk(fn):
+            if isinstance(d, ast.Dict):
+                for k, v in zip(d.keys, d.values):
+                    if isinstance(k, ast.Constant) and k.value == "withheld_fields" \
+                            and not isinstance(v, ast.Constant):
+                        return True
+            if isinstance(d, ast.Assign):
+                for t in d.targets:
+                    if isinstance(t, ast.Subscript) \
+                            and isinstance(t.slice, ast.Constant) \
+                            and t.slice.value == "withheld_fields":
+                        return True
+        return False
+
+    @staticmethod
     def _rapporteuses(arbre):
         """Les routines du module qui RENDENT ce qu'elles ont retiré."""
         import ast
@@ -53768,19 +53792,7 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
             if fn is None:
                 out.append((ligne, False, garde))
                 continue
-            temoin = False
-            for dd in ast.walk(fn):
-                if isinstance(dd, ast.Dict):
-                    for k, v in zip(dd.keys, dd.values):
-                        if isinstance(k, ast.Constant) and k.value == "withheld_fields" \
-                                and not isinstance(v, ast.Constant):
-                            temoin = True
-                if isinstance(dd, ast.Assign):
-                    for t in dd.targets:
-                        if isinstance(t, ast.Subscript) \
-                                and isinstance(t.slice, ast.Constant) \
-                                and t.slice.value == "withheld_fields":
-                            temoin = True
+            temoin = cls._emet_temoin(fn)
             nomme = any(isinstance(c, ast.Constant) and c.value in CONTACT
                         for c in ast.walk(fn))
             appelle = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
@@ -53807,13 +53819,29 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
                 out.append((nom, src, sites))
         return out
 
-    @staticmethod
-    def _vocabulaire(src, chemin):
+    @classmethod
+    def _vocabulaire(cls, src, chemin, large=False):
         """Les littéraux qui peuvent entrer dans un témoin PASSÉ au classifieur.
 
         **Portée déclarée** : des LITTÉRAUX seulement. Un nom qui arrive par une
         variable — `withheld.append(dropped)` chez `wazefnisy` — n'y est pas, et c'est
         le `raise` de `_withheld` qui le couvre.
+
+        **Et le 2e élément d'un retour en COUPLE n'est un témoin que si la fonction
+        n'est PAS le bâtisseur de l'enregistrement** : celui-là rend `(record, notes)`,
+        donc récolter ses littéraux ramasse des PHRASES comme si elles étaient des noms
+        de champ, et la garde rougit sur du code CORRECT — la troisième espèce de
+        `CLAUDE.md` §4 ter. Le défaut était LATENT derrière un chemin qui réussit :
+        des 60 fonctions rendant un couple chez les porteurs, TROIS sont des
+        bâtisseurs, et la seule qui préexistait — `jobo.card` — n'appende jamais de
+        littéral à son `why`. Mesuré le 2026-11-11 en portant le témoin sur `jobsdz`
+        et `dadlijobs`, les deux premiers à appender de la prose à leurs `notes`.
+
+        `large=True` rejoue l'état d'AVANT ce rétrécissement, et le test ci-dessous
+        l'exerce dans les DEUX sens : la prose doit être ramassée par le large et
+        jamais par le strict, et un `scrub` qui rend sa liste sous un AUTRE nom doit
+        rester ramassé par les deux — sinon le rétrécissement aurait coûté une
+        couverture au lieu d'un faux rouge.
         """
         import ast
         arbre = ast.parse(src, chemin)
@@ -53829,11 +53857,12 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         for fn in [x for x in ast.walk(arbre)
                    if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef))]:
             locaux = set(temoins)
-            for r in ast.walk(fn):
-                if isinstance(r, ast.Return) and isinstance(r.value, ast.Tuple) \
-                        and len(r.value.elts) == 2 \
-                        and isinstance(r.value.elts[1], ast.Name):
-                    locaux.add(r.value.elts[1].id)
+            if large or not cls._emet_temoin(fn):
+                for r in ast.walk(fn):
+                    if isinstance(r, ast.Return) and isinstance(r.value, ast.Tuple) \
+                            and len(r.value.elts) == 2 \
+                            and isinstance(r.value.elts[1], ast.Name):
+                        locaux.add(r.value.elts[1].id)
             for n in ast.walk(fn):
                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) \
                         and n.func.attr == "append" \
@@ -53939,6 +53968,73 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
             vus |= noms
         self.assertGreaterEqual(len(vus), 6,
                                 "le vocabulaire collecte a maigri : controle inerte")
+
+    def test_the_notes_of_a_record_builder_are_not_read_as_a_witness(self):
+        """**Le 2e élément d'un retour en COUPLE n'est pas toujours un témoin**, et le
+        croire fait rougir la garde sur du code CORRECT — la troisième espèce de
+        `CLAUDE.md` §4 ter.
+
+        Le contraste vit DANS la suite plutôt que promis une fois dans une PR :
+        `large=True` rejoue l'état d'AVANT le rétrécissement, et il doit ramasser de la
+        PROSE sur au moins un porteur RÉEL. Et le rétrécissement ne coûte aucune
+        couverture : **20 des 22 porteurs en portée rendaient le MÊME ensemble des deux
+        côtés** au 2026-11-11, donc le seul effet mesuré est de cesser de lire des
+        phrases comme des noms de champ. Le compte se REFAIT dans le tour qui en
+        dépend ; ce qui est asserté ici est la FORME.
+
+        **Et l'heuristique se RÉTRÉCIT au lieu de se RETIRER, ce qui est mesuré et non
+        choisi** : coupée entièrement, **DIX des 22 porteurs** ne collectent plus aucun
+        nom — leur `scrub` rend sa liste sous un nom que le classifieur ne voit pas —
+        donc le contrôle deviendrait inerte sur près de la moitié de sa portée. Les
+        deux mutants le disent : `if True` (l'état d'avant) et `if False` (le retrait)
+        rougissent tous les deux, et pour des raisons OPPOSÉES.
+        """
+        portee = self._en_portee()
+        self.assertTrue(portee, "aucun porteur en portee : rien a mesurer")
+        avec_prose = []
+        for nom, src, _s in portee:
+            strict = self._vocabulaire(src, nom)
+            large = self._vocabulaire(src, nom, large=True)
+            phrases = sorted(n for n in strict if " " in n)
+            self.assertEqual(phrases, [],
+                             "%s : un nom de champ ne porte pas d'espace, donc ceci "
+                             "est une PHRASE lue comme un temoin : %r" % (nom, phrases))
+            self.assertTrue(strict <= large,
+                            "%s : le strict n'est pas inclus dans le large, donc les "
+                            "deux ne mesurent plus la meme chose" % nom)
+            if any(" " in n for n in large - strict):
+                avec_prose.append(nom)
+        self.assertTrue(avec_prose,
+                        "AUCUN porteur ne ramasse de prose avec `large` : le contraste "
+                        "est INERTE et son vert ne dit plus rien")
+
+        # Et il ne coute AUCUNE couverture : un `scrub` qui rend sa liste sous un AUTRE
+        # nom que celui du classifieur reste ramasse par les DEUX. Source SYNTHETIQUE,
+        # declaree comme telle (§4 ter : une fixture inventee porte les valeurs de qui
+        # l'ecrit) -- aucun porteur reel ne porte cette forme aujourd'hui, et c'est
+        # precisement la capacite que l'heuristique achetait.
+        synth = (
+            "def scrub(v):\n"
+            "    taken = []\n"
+            "    taken.append('employer_email')\n"
+            "    return v, taken\n"
+            "def record(v):\n"
+            "    notes = []\n"
+            "    notes.append('une phrase entiere que personne ne classe')\n"
+            "    body, took = scrub(v)\n"
+            "    r = {'withheld_fields': sorted(set(took))}\n"
+            "    if withheld_a_contact(took):\n"
+            "        r['contacts_withheld'] = True\n"
+            "    return r, notes\n")
+        strict = self._vocabulaire(synth, "<synthetique>")
+        large = self._vocabulaire(synth, "<synthetique>", large=True)
+        self.assertIn("employer_email", strict,
+                      "le retrecissement a coute la capacite qu'il devait garder : un "
+                      "`scrub` qui rend sa liste sous un autre nom n'est plus lu")
+        self.assertIn("employer_email", large)
+        self.assertEqual(sorted(n for n in strict if " " in n), [])
+        self.assertIn("une phrase entiere que personne ne classe", large,
+                      "le large ne rejoue pas l'etat d'avant : le banc est desarme")
 
     def test_the_classifier_refuses_a_name_it_does_not_know(self):
         """**Le cas par défaut ÉCHOUE visiblement, et c'est tout le mécanisme.**
