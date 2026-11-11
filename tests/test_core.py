@@ -45197,7 +45197,14 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
     # measured a board size. *A count is not invented to satisfy a format*, so
     # they read «non déclaré» — true of their FIELDS — and the declaration
     # they are owed is a measurement this change cannot manufacture.
-    DECLARED = ()
+    #  **ET `jwennjob` EN SORT, parce qu'il DECLARE maintenant au lieu de
+    #  laisser sa prose parler.** #778 a livre son adaptateur le 2026-11-11 :
+    #  sa route est `http · 238 · 2026-11-11`, donc un compte au-dessus de zero
+    #  ET une date, c'est-a-dire exactement ce que la garde de #264 exige et ce
+    #  que les deux ci-dessous ne peuvent pas fabriquer. Son nom reste dans
+    #  `LABELLED` : une correction CITE ce qu'elle corrige, et il a bien ete
+    #  etiquete depuis sa prose le 2026-10-05.
+    DECLARED = ("jwennjob",)
 
     def _cb(self):
         import importlib.util
