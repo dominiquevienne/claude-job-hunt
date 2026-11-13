@@ -60788,5 +60788,179 @@ class DadliJobsHasNoCountAndTwoTrapsInItsOwnMarkup(unittest.TestCase):
             mod.parse_ad("https://dadlijobs.com/job/kitchen-aide/",
                          self._annonce(figure=False))
 
+
+class TheEventsSheetReaderRefusesRatherThanReadingNothing(unittest.TestCase):
+    """#1307 tranche 1. **Every case DRIVES the module**, because the defect this
+    class exists for is a reader that answers «no events» to a file it could not
+    read — and a re-derivation of its logic would agree with itself.
+
+    *`export` is not covered because it is not shipped: its premise is the
+    ledger's shape plus two optional bullets of `employers.md`, unmeasured when
+    this was written. A chain left open on a DECLARED dependency is a debt.*
+    """
+
+    EVT = ("date_evenement,message_id,candidature_id,candidats_possibles,"
+           "entreprise,poste,type,motif_refus,action_requise,echeance,"
+           "thread_url,archive,confiance,traite_le")
+    CAND = ("id,entreprise,alias_entreprise,domaines_expediteurs,poste,canal,"
+            "statut_ledger,date_envoi,date_statut,statut_pre")
+
+    @classmethod
+    def _mod(cls):
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        p = os.path.join(root, "skills", "job-sync", "scripts",
+                         "events_sheet.py")
+        spec = importlib.util.spec_from_file_location("events_sheet_1307", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _write(self, name, text, trailing=True):
+        import tempfile
+        d = getattr(self, "_dir", None)
+        if d is None:
+            d = self._dir = tempfile.mkdtemp(prefix="events-sheet-1307-")
+        p = os.path.join(d, name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text + ("\n" if trailing else ""))
+        return p
+
+    def test_a_csv_with_no_trailing_newline_keeps_its_last_row(self):
+        """**The export has none** — measured at 111 bytes with `wc -l` = 0 — and
+        that last line is a real event."""
+        mod = self._mod()
+        p = self._write("evt.csv", "\n".join([
+            self.EVT,
+            "2026-11-10,m1,linkedin:1,,A,Dev,accuse_reception,,,,u,,haute,",
+            "2026-11-11,m2,linkedin:2,,B,Ops,refus,,,,u,,haute,"]),
+            trailing=False)
+        with io.open(p, "rb") as fh:
+            self.assertFalse(fh.read().endswith(b"\n"),
+                             "the fixture must have NO final newline or this "
+                             "case cannot fail")
+        self.assertEqual(mod.events(p)["lus"], 2)
+
+    def test_a_mismatched_header_is_refused_and_never_read_as_no_events(self):
+        mod = self._mod()
+        p = self._write("autre.csv", "date,message,autre\n1,2,3")
+        with self.assertRaises(mod.SheetRefused) as cm:
+            mod.events(p)
+        self.assertEqual(cm.exception.code, mod.EXIT_HEADER)
+
+    def test_an_unreadable_file_and_a_wrong_tab_carry_DIFFERENT_codes(self):
+        """«Not there» and «not this tab» send a reader to different places."""
+        mod = self._mod()
+        absent = os.path.join(self._write("x.csv", self.EVT) + ".nope")
+        with self.assertRaises(mod.SheetRefused) as a:
+            mod.events(absent)
+        self.assertEqual(a.exception.code, mod.EXIT_UNREADABLE)
+        wrong = self._write("cand.csv", self.CAND)
+        with self.assertRaises(mod.SheetRefused) as b:
+            mod.events(wrong)
+        self.assertEqual(b.exception.code, mod.EXIT_HEADER)
+        self.assertNotEqual(mod.EXIT_UNREADABLE, mod.EXIT_HEADER)
+
+    def test_an_empty_file_is_a_refusal_because_a_tab_carries_its_header(self):
+        mod = self._mod()
+        p = self._write("vide.csv", "", trailing=False)
+        with self.assertRaises(mod.SheetRefused):
+            mod.events(p)
+
+    def test_a_replayed_message_id_is_counted_once(self):
+        mod = self._mod()
+        p = self._write("dbl.csv", "\n".join([
+            self.EVT,
+            "2026-11-10,m1,linkedin:1,,A,Dev,accuse_reception,,,,u,,haute,",
+            "2026-11-11,m1,linkedin:1,,A,Dev,refus,,,,u,,haute,"]))
+        got = mod.events(p)
+        self.assertEqual(got["doublons_message_id"], 1)
+        self.assertEqual(got["dernier_par_candidature"]["linkedin:1"]["type"],
+                         "accuse_reception",
+                         "the replayed row must not become the latest event")
+
+    def test_a_tie_on_the_date_keeps_the_order_of_the_sheet(self):
+        """Which is why nothing here sorts: a stable scan cannot reorder a tie."""
+        mod = self._mod()
+        p = self._write("tie.csv", "\n".join([
+            self.EVT,
+            "2026-11-12,m1,linkedin:1,,A,Dev,refus,,,,u,,haute,",
+            "2026-11-12,m2,linkedin:1,,A,Dev,entretien,,,,u,,haute,"]))
+        self.assertEqual(
+            mod.events(p)["dernier_par_candidature"]["linkedin:1"]["type"],
+            "refus")
+
+    def test_an_unknown_type_or_confidence_is_NAMED_and_never_coerced(self):
+        """When a sort has a default, the default is the one that fails VISIBLY:
+        mapping an unknown kind onto `autre` would make a producer's new event
+        look like a deliberate «other»."""
+        mod = self._mod()
+        p = self._write("inc.csv", "\n".join([
+            self.EVT,
+            "2026-11-12,m1,linkedin:1,,A,Dev,nouveau_type,,,,u,,tres_haute,"]))
+        got = mod.events(p)
+        self.assertEqual(
+            got["dernier_par_candidature"]["linkedin:1"]["type"],
+            "nouveau_type", "the value is carried as it came, not coerced")
+        named = {tuple(sorted(d)) for d in got["valeurs_inconnues"]}
+        self.assertIn(("message_id", "type"), named)
+        self.assertIn(("confiance", "message_id"), named)
+
+    def test_an_event_naming_no_single_application_leaves_as_a_suggestion(self):
+        mod = self._mod()
+        p = self._write("multi.csv", "\n".join([
+            self.EVT,
+            "2026-11-09,m4,,jobup:7|jobup:8,B,Ops,refus,,,,u,,basse,"]))
+        got = mod.events(p)
+        self.assertEqual(got["dernier_par_candidature"], {})
+        self.assertEqual(got["sans_candidature"][0]["candidats_possibles"],
+                         ["jobup:7", "jobup:8"])
+        self.assertTrue(got["sans_candidature"][0]["a_confirmer"])
+
+    def test_the_merge_never_deletes_a_row_the_sheet_holds(self):
+        """A CSV import REPLACES the tab, so this is the only safe shape."""
+        mod = self._mod()
+        held = self._write("held.csv", "\n".join([
+            self.CAND,
+            "linkedin:1,A,,,Dev,linkedin,applied,2026-11-01,2026-11-01,non_declare",
+            "linkedin:9,Z,,,Data,jobup,applied,2026-10-20,2026-10-20,declare"]))
+        mine = self._write("mine.csv", "\n".join([
+            self.CAND,
+            "linkedin:1,A,,,Dev,linkedin,rejected,2026-11-12,2026-11-12,non_declare"]))
+        rows, counts = mod.merge(held, mine)
+        self.assertIn("linkedin:9", [r["id"] for r in rows],
+                      "a row the sheet holds and we do not know about is kept")
+        self.assertEqual(counts["supprimees"], 0)
+
+    def test_the_send_date_survives_applied_to_rejected(self):
+        """Owner's decision 1: `date_envoi` is written once and never after."""
+        mod = self._mod()
+        held = self._write("h2.csv", "\n".join([
+            self.CAND,
+            "linkedin:1,A,,,Dev,linkedin,applied,2026-11-01,2026-11-01,non_declare"]))
+        mine = self._write("m2.csv", "\n".join([
+            self.CAND,
+            "linkedin:1,A,,,Dev,linkedin,rejected,2026-11-12,2026-11-12,non_declare"]))
+        rows, counts = mod.merge(held, mine)
+        self.assertEqual(rows[0]["date_envoi"], "2026-11-01")
+        self.assertEqual(rows[0]["statut_ledger"], "rejected",
+                         "everything else DOES move")
+        self.assertEqual(counts["dates_envoi_conservees"], 1)
+
+    def test_a_sentinel_cell_is_not_a_value(self):
+        """The floor is POSITIVE: a cell is a value when it passes a test, never
+        because it is missing from a list of refusals."""
+        mod = self._mod()
+        self.assertEqual(mod.declared("Pas de donnée"), (None, "sentinel"))
+        self.assertEqual(mod.declared("   "), (None, "present but empty"))
+        self.assertEqual(mod.declared(None), (None, "absent"))
+        self.assertEqual(mod.declared(" linkedin:1 "),
+                         ("linkedin:1", "declared"))
+
+    def test_a_short_row_is_refused_rather_than_shifting_every_field(self):
+        mod = self._mod()
+        p = self._write("court.csv", self.EVT + "\n2026-11-10,m1,linkedin:1")
+        with self.assertRaises(mod.SheetRefused):
+            mod.events(p)
 if __name__ == "__main__":
     unittest.main(verbosity=2)
