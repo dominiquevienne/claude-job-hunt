@@ -279,7 +279,24 @@ def cmd_lookup(a):
             "not belong there**: every row of that table carries a lifting "
             "date and a preference is not lifted — filed there it reads as a "
             "decision nobody ended.")
-    if not prefs and hits:
+    # **#1306 — `asked` separe « demande et decline » de « jamais
+    # demande », et le message lisait `value`, qui ne le peut pas.** Une
+    # reponse *neither* laisse `value` a None, donc elle tombait dans la
+    # branche « never asked » et la competence reposait au candidat une
+    # question a laquelle il avait repondu. Un jeu de sections MIXTE —
+    # certaines interrogees, d'autres non — tombe dans la branche du bas
+    # EXPRES : la question reste due pour celles a qui personne ne l'a posee.
+    declinees = [h["preference"] for h in hits
+                 if h["preference"]["asked"] and not h["preference"]["value"]]
+    if not prefs and hits and len(declinees) == len(hits):
+        quand = next((p["since"] for p in declinees if p["since"]), None)
+        tete = ("**Asked on %s, answered neither.**" % quand) if quand \
+            else "**Asked already, answered neither.**"
+        out["preference_says"] = (
+            tete + " Do not ask again for this employer: *neither* is an "
+            "answer and not a gap, and `value` alone cannot tell the two "
+            "apart — that is what `asked` is for.")
+    elif not prefs and hits:
         out["preference_says"] = (
             "**No preference recorded — which means never asked, not "
             "neutral.** Ask once at the go/no-go gate, then never again for "

@@ -49962,6 +49962,90 @@ class APreferenceThatIsOnlyNamedWasReadAsDeclared(unittest.TestCase):
             "pour que la branche fautive soit atteinte")
 
 
+class AMessageThatIgnoresItsOwnAskedFieldReAsksAnAnsweredQuestion(unittest.TestCase):
+    """**#1306, 12.11.2026 — le message de `cmd_lookup` disait « never asked »
+    pour un employeur dont la MEME sortie portait `asked: true`.**
+
+    *`prefs` ne retient que les `value` VRAIES, et une reponse *neither* laisse
+    `value` a None&nbsp;: elle tombait donc dans la branche ecrite pour « jamais
+    demande ».* Le champ `asked` existe PRECISEMENT pour separer les deux —
+    la docstring de `preference()` le dit — et il etait calcule puis jamais lu
+    par la phrase qui decide de la conduite.
+
+        avant   « Ask once at the go/no-go gate » sur un employeur deja interroge
+        apres   « Asked on <date>, answered neither » — et la question ne se repose plus
+
+    **Le dommage n'est pas une donnee fausse, c'est une CONDUITE&nbsp;:** la
+    competence suit le message, donc `cover-letter` reposait la question au
+    candidat a chaque annonce du meme employeur, contre sa propre regle « une
+    fois par employeur, jamais une fois par annonce ».
+    """
+
+    ENTETE = "# Employers\n\nprose du preambule\n\n---\n\n"
+    DECLINEE = ENTETE + ("## ElevenLabs\n\n- **Preference** - `neither`, "
+                         "2026-11-12. Demandee et declinee.\n")
+    MUETTE = ENTETE + "## ElevenLabs\n\n- **Address** - Rue de l'Exemple 1\n"
+    MIXTE = ENTETE + (
+        "## Acme One\n\n- **Preference** - `neither`, 2026-11-12.\n\n"
+        "## Acme Two\n\n- **Address** - Rue de l'Exemple 2\n")
+
+    def _dit(self, texte, nom="ElevenLabs"):
+        """Rend la sortie DECODEE de `cmd_lookup`, apres avoir prouve que la
+        fixture a ete LUE — sans quoi un vert dirait « je n'ai pas regarde »."""
+        with tempfile.TemporaryDirectory() as d:
+            chemin = os.path.join(d, "employers.md")
+            with io.open(chemin, "w", encoding="utf-8") as fh:
+                fh.write(texte)
+            flux = io.StringIO()
+            with contextlib.redirect_stdout(flux):
+                code = emp.cmd_lookup(argparse.Namespace(file=chemin, name=nom))
+        self.assertEqual(0, code)
+        rendu = json.loads(flux.getvalue())
+        self.assertTrue(rendu.get("employers"),
+                        "la fixture n'a produit AUCUNE section : le cas serait "
+                        "NON EXERCE et son vert ne dirait rien")
+        self.assertIn("preference_says", rendu,
+                      "une section EXISTE, donc la phrase qui decide de la "
+                      "conduite est DUE. Le banc a trouve ce manque : sans "
+                      "cette ligne, desarmer la branche du bas rend un "
+                      "KeyError, et un rouge de CRASH ne dit pas ce qui "
+                      "manque — il se compte comme un rouge d'assertion")
+        return rendu
+
+    def test_an_answered_neither_is_never_reported_as_never_asked(self):
+        """*La garde porte sur le MESSAGE et pas sur le parseur&nbsp;: `preference()`
+        rendait deja `asked` juste, et la phrase ne le lisait pas.*"""
+        rendu = self._dit(self.DECLINEE)
+        pref = rendu["employers"][0]["preference"]
+        self.assertTrue(pref["asked"], "la branche visee n'est pas atteinte")
+        self.assertIsNone(pref["value"])
+        self.assertIn("preference_says", rendu)
+        dit = rendu["preference_says"]
+        self.assertNotIn("never asked", dit,
+                         "la question se repose a un employeur qui a repondu")
+        self.assertIn("answered neither", dit)
+        self.assertIn("2026-11-12", dit,
+                      "la date repond a « quand l'ai-je demande » ; sans elle "
+                      "le lecteur ne peut pas dater sa propre decision")
+
+    def test_a_section_nobody_asked_still_gets_the_question(self):
+        """**Les DEUX sens&nbsp;:** une garde qui ne peut plus rendre « never
+        asked » serait inerte dans l'autre direction, et son vert aussi."""
+        rendu = self._dit(self.MUETTE)
+        self.assertFalse(rendu["employers"][0]["preference"]["asked"])
+        self.assertIn("never asked", rendu["preference_says"])
+
+    def test_a_mixed_hit_set_still_owes_the_question(self):
+        """*Declare et assert&nbsp;: certaines sections interrogees, d'autres non.
+        La question reste DUE pour celles a qui personne ne l'a posee, donc le
+        jeu mixte tombe dans la branche du bas — ce n'est pas un oubli.*"""
+        rendu = self._dit(self.MIXTE, nom="Acme")
+        self.assertEqual(2, len(rendu["employers"]))
+        asked = [h["preference"]["asked"] for h in rendu["employers"]]
+        self.assertEqual([True, False], asked, "la fixture ne MELANGE rien")
+        self.assertIn("never asked", rendu["preference_says"])
+
+
 class TwoCardsNamingOneHostForOneCountryCountThatSourceTwice(unittest.TestCase):
     """**#1102, trouvee par `ab` le 10.10.2026, remesuree par le pilote, et
     remesuree ICI le 20.10.2026 en LANCANT le generateur.**
