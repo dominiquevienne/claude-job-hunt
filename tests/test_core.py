@@ -50004,6 +50004,12 @@ class AMessageThatIgnoresItsOwnAskedFieldReAsksAnAnsweredQuestion(unittest.TestC
         self.assertTrue(rendu.get("employers"),
                         "la fixture n'a produit AUCUNE section : le cas serait "
                         "NON EXERCE et son vert ne dirait rien")
+        self.assertIn("preference_says", rendu,
+                      "une section EXISTE, donc la phrase qui decide de la "
+                      "conduite est DUE. Le banc a trouve ce manque : sans "
+                      "cette ligne, desarmer la branche du bas rend un "
+                      "KeyError, et un rouge de CRASH ne dit pas ce qui "
+                      "manque — il se compte comme un rouge d'assertion")
         return rendu
 
     def test_an_answered_neither_is_never_reported_as_never_asked(self):
