@@ -60843,7 +60843,17 @@ class TheEventsSheetReaderRefusesRatherThanReadingNothing(unittest.TestCase):
 
     def test_a_mismatched_header_is_refused_and_never_read_as_no_events(self):
         mod = self._mod()
-        p = self._write("autre.csv", "date,message,autre\n1,2,3")
+        #  **La largeur est JUSTE et les NOMS sont faux**, et c'est le banc qui
+        #  l'a exige : avec un en-tete de trois colonnes, ce cas passait grace au
+        #  controle de LARGEUR et pas grace a celui de l'EN-TETE. Il portait donc
+        #  le nom d'une garde qu'il n'eprouvait pas, et un en-tete faux a la
+        #  bonne largeur lui aurait echappe.
+        faux = ",".join("col%d" % i for i in range(len(self.EVT.split(","))))
+        self.assertEqual(len(faux.split(",")), len(self.EVT.split(",")),
+                         "la largeur doit etre la BONNE ou ce cas retombe sur "
+                         "le controle de largeur")
+        p = self._write("autre.csv", faux + "\n" + ",".join("v" * 1 for _ in
+                                                            faux.split(",")))
         with self.assertRaises(mod.SheetRefused) as cm:
             mod.events(p)
         self.assertEqual(cm.exception.code, mod.EXIT_HEADER)
