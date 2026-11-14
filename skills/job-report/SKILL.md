@@ -55,6 +55,7 @@ a different period.
 | `--status` | `applied,rejected` | comma-separated kinds, or `all` (`applied`, `rejected`, `no-go`, `todo`, `discarded`) |
 | `--format` | `table` | `table` (terminal), `md` (markdown), `json` |
 | `--file` | `$JOB_HUNT_HOME/job-pipeline.md` | another ledger |
+| `--events CSV` | *(off)* | the `evenements` tab as CSV: adds a **State** column and flags anything below `haute` confidence |
 
 ```bash
 # this month (default)
@@ -151,6 +152,51 @@ by the other.
 **And when nothing comes back, say which silence it is** — no row carries a
 marker, or none falls in the window. A meeting nobody recorded looks exactly
 like a meeting that did not happen.
+
+### The state a mailbox scanner found — `--events`
+
+**Off unless the user asks.** It takes the `evenements` tab of the events sheet
+(issue #1307) exported as CSV, and adds a **State** column to the listing:
+`sent` · `acknowledged` · `interview` · `refused` · `action required`.
+
+```bash
+python3 scripts/list_applications.py --from 2026-11-01 --events ~/Downloads/evenements.csv
+```
+
+**The column carries its PROVENANCE, and that is not decoration.** A state read
+from the sheet is marked `from the sheet`; a row with no event keeps the state
+the **ledger** states. Two provenances under one word would make a mailbox
+event and our own record indistinguishable, and the repair for that is the
+label, never picking one of the two.
+
+**Nothing in this report edits the ledger.** When the two disagree — a refusal
+on a row still `applied`, or any later move on a row already `rejected` — the
+line is marked `DIVERGENCE` and the reason is printed. The edit itself belongs
+to `/job-sync`, which proposes it and applies nothing without a yes.
+
+**Read every `!` line under the table before reporting a state to the user.**
+Four of them change what a state is worth:
+
+- **below `haute` confidence** → marked `to confirm`. It is a proposal, not a
+  fact: say so when you relay it.
+- **an event naming no single application** → printed as **suggestions** with
+  its `candidats_possibles`. It is attached to nothing, and guessing which
+  application it belongs to is exactly what the producer refused to do.
+- **an event for an id this ledger does not know** → named, one line per id.
+  Someone believes an application was sent that we do not carry.
+- **a value the contract does not declare** → carried as it came. An unknown
+  event type shows as `? unknown event type: <value>` and is never folded into
+  `sent`, which is what would make a producer's new event look like a row
+  nothing has happened to.
+
+**A CSV it cannot read is REFUSED, with its own exit code** — `4` when the file
+is not there, `5` when it is readable and is not that tab — and never read as
+«no events». If the command exits non-zero, say which of the two it was; do not
+report a listing without states as if the sheet had been consulted.
+
+*`--events` does not combine with `--interviews`: that report filters on the
+meeting date and carries no state column. The command refuses the pair rather
+than ignoring the flag.*
 
 ### Follow-ups — TWO rules, and each line says which one brought it out
 

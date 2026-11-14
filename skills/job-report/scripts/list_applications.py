@@ -85,6 +85,175 @@ def parse_date(value: str) -> dt.date:
 IV_RE = re.compile(r"\bIV:(\d{4}-\d{2}-\d{2})(?:\s+([A-Za-z][\w -]{0,18}))?")
 
 
+
+# --- #1307 tranche 2: the state a mailbox scanner found -----------------------
+# The event vocabulary is the contract's (`shared/integrations/events-sheet.md`)
+# and the five state words are the ones issue #1307 fixes. `autre` is the
+# producer's own «other», DECLARED by the contract — it is not our default.
+EVENT_STATES = {
+    "accuse_reception": "acknowledged",
+    "refus": "refused",
+    "entretien": "interview",
+    "demande_action": "action required",
+    "autre": "other",
+}
+
+# What the LEDGER says, in the SAME words — otherwise the two cannot be
+# compared at all, and a column that mixes them carries no provenance.
+LEDGER_STATES = {
+    "applied": "sent", "postulé": "sent",
+    "rejected": "refused", "refusé": "refused",
+}
+
+# Which pairs cannot both describe the current state. **This is a declared
+# JUDGEMENT, not a measurement**: an acknowledgement, an interview or a
+# request for action on a row the ledger calls `sent` is PROGRESS on an
+# application that did leave, so it contradicts nothing. What cannot both be
+# true is a refusal on a row still `sent` (the ledger is behind), and any
+# later move on a row the ledger already calls `refused` (the refusal is not
+# the last word). Everything outside this set is reported as a state and
+# never as a disagreement.
+INCOMPATIBLE = frozenset({
+    ("sent", "refused"),
+    ("refused", "acknowledged"),
+    ("refused", "interview"),
+    ("refused", "action required"),
+})
+
+
+def _events_module():
+    """`skills/job-sync/scripts/events_sheet.py`, by PATH and never re-derived.
+
+    The reader is imported rather than reimplemented because the rule that
+    matters is the one a second reader loses: an unreadable or
+    header-mismatched CSV is REFUSED with its own exit code, never read as
+    «no events». The path is resolved against THIS file and not the working
+    directory, so the flag behaves the same wherever it is called from.
+    """
+    import importlib.util
+    here = os.path.dirname(os.path.abspath(__file__))
+    p = os.path.normpath(os.path.join(
+        here, os.pardir, os.pardir, "job-sync", "scripts", "events_sheet.py"))
+    if not os.path.exists(p):
+        raise SystemExit(
+            f"error: --events needs {p}, which is not there. The reader is "
+            f"shipped with the job-sync skill (issue #1307 tranche 1); "
+            f"refusing rather than reading the sheet with a second reader")
+    spec = importlib.util.spec_from_file_location("events_sheet_1307", p)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def attach_events(rows, path):
+    """Hang each application's latest event onto its ledger row.
+
+    Returns everything the caller must be TOLD, because a state column is a
+    place where an omission is invisible: a row with no event and a row whose
+    event we failed to attach render identically unless the counts are shown.
+    """
+    mod = _events_module()
+    try:
+        got = mod.events(path)
+    except mod.SheetRefused as e:
+        # The reader's codes are the point: «not there» (4) and «not this tab»
+        # (5) are different repairs, and NEITHER of them is «this sheet holds
+        # no event». The code travels out instead of degrading to an empty
+        # list — which is exactly what a state column would hide.
+        print(f"error: --events {path}: {e}", file=sys.stderr)
+        raise SystemExit(e.code)
+
+    latest = got["dernier_par_candidature"]
+    attached = 0
+    to_confirm = 0
+    divergences = []
+    for row in rows:
+        # The ledger's own statement first, so a row with no event still
+        # carries a state — and carries WHERE it comes from.
+        row["etat"] = LEDGER_STATES.get(row["kind"])
+        row["etat_source"] = "ledger" if row["etat"] else None
+        row["a_confirmer"] = False
+        row["divergence"] = None
+        ev = latest.get(row.get("id"))
+        if ev is None:
+            continue
+        attached += 1
+        kind = ev.get("type")
+        if kind is None:
+            etat = "? event carries no type"
+        elif kind in EVENT_STATES:
+            etat = EVENT_STATES[kind]
+        else:
+            # When a sort has a default, take the one that fails VISIBLY:
+            # folding an unknown kind onto `sent` would make a producer's new
+            # event look like a row nothing has happened to.
+            etat = f"? unknown event type: {kind}"
+        ledger_etat = row["etat"]
+        row["etat"] = etat
+        row["etat_source"] = "evenement"
+        row["evenement"] = ev
+        if ev.get("a_confirmer"):
+            to_confirm += 1
+            row["a_confirmer"] = True
+        if (ledger_etat, etat) in INCOMPATIBLE:
+            row["divergence"] = (
+                f"the ledger says {ledger_etat}, the event says {etat}")
+            divergences.append({
+                "id": row.get("id"), "ledger": ledger_etat, "evenement": etat,
+                "date_evenement": ev.get("date_evenement"),
+                "thread_url": ev.get("thread_url"),
+                "confiance": ev.get("confiance"),
+            })
+
+    # Ids the sheet carries that NO ledger row matches. Their MEMBERS are
+    # printed and never only their count: a count does not say which ones
+    # are missing, and these are applications someone believes we sent.
+    connus = {r.get("id") for r in rows}
+    orphelins = sorted(i for i in latest if i not in connus)
+    return {
+        "file": path,
+        "lus": got["lus"],
+        "doublons_message_id": got["doublons_message_id"],
+        "attaches": attached,
+        "a_confirmer": to_confirm,
+        "divergences": divergences,
+        "orphelins": orphelins,
+        "sans_candidature": got["sans_candidature"],
+        "sans_date_lisible": got["sans_date_lisible"],
+        "valeurs_inconnues": got["valeurs_inconnues"],
+    }
+
+
+def _warn_events(ev: dict) -> None:
+    """What the sheet said that the column cannot show."""
+    print()
+    print(f"  events: {ev['lus']} row(s) read from {ev['file']}, "
+          f"{ev['attaches']} attached to an application")
+    if ev["doublons_message_id"]:
+        print(f"  ! {ev['doublons_message_id']} replayed message_id(s) counted once")
+    if ev["a_confirmer"]:
+        print(f"  ! {ev['a_confirmer']} event(s) below `haute` confidence — marked")
+        print("    [to confirm]: they propose, they do not establish")
+    for d in ev["divergences"]:
+        print(f"  ! DIVERGENCE {d['id']}: {d['ledger']} in the ledger, "
+              f"{d['evenement']} in the sheet ({d['date_evenement']})")
+        print("    nothing is applied to the ledger here — /job-sync proposes the edit")
+    for o in ev["orphelins"]:
+        print(f"  ! the sheet carries an event for {o}, which this ledger "
+              f"does not know")
+    if ev["sans_candidature"]:
+        print(f"  ! {len(ev['sans_candidature'])} event(s) name no single "
+              f"application — SUGGESTIONS to confirm, never matches:")
+        for s in ev["sans_candidature"][:5]:
+            print(f"      {s.get('date_evenement')} {s.get('type')} -> "
+                  f"{' | '.join(s.get('candidats_possibles') or []) or '(none)'}")
+    if ev["sans_date_lisible"]:
+        print(f"  ! {len(ev['sans_date_lisible'])} event(s) carry no readable "
+              f"date, so they are not ordered against the others")
+    for u in ev["valeurs_inconnues"]:
+        print(f"  ! value the contract does not declare: {u}")
+
+
 def load_rows(path: str) -> tuple[list[dict], dict[str, int]]:
     """`(rows, skipped)` — see `_ledger_table`, issue #1182.
 
@@ -216,6 +385,8 @@ def _warn(meta: dict) -> None:
     if meta["jr_missing"]:
         print(f"  ! {meta['jr_missing']} application(s) carry JR:missing — sent but not yet")
         print("    declared to the unemployment office (whole ledger, not just this period)")
+    if meta.get("events") is not None:
+        _warn_events(meta["events"])
 
 
 def main() -> int:
@@ -241,6 +412,13 @@ def main() -> int:
              "date, not the application date — the question is 'how many of "
              "my applications led to a meeting?', and the two dates are "
              "different facts")
+    ap.add_argument(
+        "--events", metavar="CSV",
+        help="the `evenements` tab exported as CSV. Adds a state column "
+             "(sent / acknowledged / interview / refused / action required) "
+             "and flags any event below `haute` confidence. An unreadable or "
+             "header-mismatched file is REFUSED with its own exit code, never "
+             "read as «no events»")
     args = ap.parse_args()
 
     start = parse_date(args.start) if args.start else today.replace(day=1)
@@ -253,6 +431,16 @@ def main() -> int:
         wanted = {s.strip().lower() for s in args.status.split(",") if s.strip()}
 
     rows, skipped = load_rows(args.file)
+
+    events_meta = None
+    if args.events:
+        if args.interviews:
+            # Silently ignoring a flag is the invisible failure; the interview
+            # report filters on the MEETING date and has no state column.
+            raise SystemExit(
+                "error: --events does not apply to --interviews (that report "
+                "filters on the meeting date). Run them separately")
+        events_meta = attach_events(rows, args.events)
 
     if args.interviews:
         return report_interviews(rows, start, end, args)
@@ -301,6 +489,9 @@ def main() -> int:
         ),
     }
 
+    if events_meta is not None:
+        meta["events"] = events_meta
+
     if args.format == "json":
         print(json.dumps({"meta": meta, "applications": kept}, ensure_ascii=False, indent=2))
         return 0
@@ -308,7 +499,20 @@ def main() -> int:
     if args.format == "md":
         print(f"## Applications from {start} to {end} — {len(kept)}")
         print()
-        if kept:
+        if kept and events_meta is not None:
+            print("| Date | Role | Company | Status | State | Link |")
+            print("| :-- | :-- | :-- | :-- | :-- | :-- |")
+            for r in kept:
+                etat = r.get("etat") or "?"
+                if r.get("etat_source") == "evenement":
+                    etat += " (event)"
+                if r.get("a_confirmer"):
+                    etat += " [to confirm]"
+                if r.get("divergence"):
+                    etat += " **DIVERGENCE**"
+                print(f"| {r['date']} | {r['poste']} | {r['societe']} "
+                      f"| {r['statut']} | {etat} | {r['url']} |")
+        elif kept:
             print("| Date | Role | Company | Status | Link |")
             print("| :-- | :-- | :-- | :-- | :-- |")
             for r in kept:
@@ -326,6 +530,17 @@ def main() -> int:
     width_p = max(len(r["poste"]) for r in kept)
     for r in kept:
         print(f"  {r['date']}  {r['societe']:<{width_c}}  {r['poste']:<{width_p}}  {r['statut']}")
+        if events_meta is not None:
+            etat = r.get("etat") or "?"
+            marks = []
+            if r.get("etat_source") == "evenement":
+                marks.append("from the sheet")
+            if r.get("a_confirmer"):
+                marks.append("to confirm")
+            if r.get("divergence"):
+                marks.append(r["divergence"])
+            suffix = ("   (" + "; ".join(marks) + ")") if marks else ""
+            print(f"              state: {etat}{suffix}")
         if r["url"]:
             print(f"              {r['url']}")
         else:

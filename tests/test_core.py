@@ -61235,5 +61235,216 @@ class TheEventsSheetReaderRefusesRatherThanReadingNothing(unittest.TestCase):
         p = self._write("court.csv", self.EVT + "\n2026-11-10,m1,linkedin:1")
         with self.assertRaises(mod.SheetRefused):
             mod.events(p)
+
+
+class TheStateColumnNamesWhatItReadAndWhereItCameFrom(unittest.TestCase):
+    """#1307 tranche 2 — `--events` on `list_applications.py`.
+
+    **Every case DRIVES the script**, through `attach_events` or through the
+    process itself, because the defect this class exists for is a state column
+    that renders identically whether the sheet was read, misread, or never read
+    at all. A re-derivation of the mapping here would agree with itself.
+    """
+
+    EVT = ("date_evenement,message_id,candidature_id,candidats_possibles,"
+           "entreprise,poste,type,motif_refus,action_requise,echeance,"
+           "thread_url,archive,confiance,traite_le")
+    CAND = ("id,entreprise,alias_entreprise,domaines_expediteurs,poste,canal,"
+            "statut_ledger,date_envoi,date_statut,statut_pre")
+    LEDGER = (
+        "# Pipeline\n\n## Ads\n\n"
+        "| ID | Role | Company | Location / Mode | Posted | Match | Pay "
+        "| Status | Note |\n"
+        "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |\n"
+        "| linkedin:1 | Dev | Alpha | Lausanne | 2026-11-01 | 80 | - "
+        "| applied 2026-11-02 | |\n"
+        "| jobup:4 | SRE | Delta | Berne | 2026-11-01 | 65 | - "
+        "| rejected 2026-11-05 | |\n"
+        "| jobup:5 | QA | Epsilon | Basel | 2026-11-01 | 55 | - "
+        "| applied 2026-11-06 | |\n")
+
+    SCRIPT = ("skills", "job-report", "scripts", "list_applications.py")
+
+    @classmethod
+    def _root(cls):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(self._root(), *self.SCRIPT)
+        d = os.path.dirname(p)
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location("list_apps_1307", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            sys.path.remove(d)
+
+    def _dir(self):
+        import tempfile
+        d = getattr(self, "_tmp", None)
+        if d is None:
+            d = self._tmp = tempfile.mkdtemp(prefix="state-col-1307-")
+        return d
+
+    def _write(self, name, text):
+        p = os.path.join(self._dir(), name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text + "\n")
+        return p
+
+    def _evt(self, *lines):
+        return self._write("evenements.csv", "\n".join((self.EVT,) + lines))
+
+    def _attach(self, *lines):
+        """`(module, rows, meta)` — the script's own reading, then its own
+        attachment. Nothing here recomputes either."""
+        mod = self._mod()
+        rows, _skipped = mod.load_rows(self._write("job-pipeline.md",
+                                                   self.LEDGER))
+        meta = mod.attach_events(rows, self._evt(*lines))
+        return mod, {r["id"]: r for r in rows}, meta
+
+    def _run(self, *args):
+        import subprocess
+        p = os.path.join(self._root(), *self.SCRIPT)
+        cmd = [sys.executable, p, "--file",
+               self._write("job-pipeline.md", self.LEDGER),
+               "--from", "2026-11-01", "--to", "2026-11-30"] + list(args)
+        return subprocess.run(cmd, capture_output=True, text=True)
+
+    # -- the refusal, which is the whole reason the reader is reused ---------
+
+    def test_an_absent_file_and_a_wrong_tab_carry_the_readers_OWN_codes(self):
+        """«Not there» (4) and «not this tab» (5) are different repairs, and
+        NEITHER of them is «this sheet holds no event». A state column is
+        exactly where that degradation would be invisible."""
+        absent = os.path.join(self._dir(), "pas-la.csv")
+        self.assertFalse(os.path.exists(absent))
+        a = self._run("--events", absent)
+        self.assertEqual(a.returncode, 4, a.stderr)
+        self.assertNotIn("state:", a.stdout,
+                         "a refused sheet must not render a listing with "
+                         "states as if it had been consulted")
+        wrong = self._write("candidatures.csv", self.CAND)
+        b = self._run("--events", wrong)
+        self.assertEqual(b.returncode, 5, b.stderr)
+        self.assertNotEqual(4, 5)
+
+    def test_the_reader_is_the_one_job_sync_ships_and_not_a_second_one(self):
+        """The rule a second reader loses is the refusal above. This case
+        pins the dependency so a later hand cannot quietly re-derive it."""
+        mod = self._mod()
+        ev = mod._events_module()
+        self.assertEqual(
+            os.path.realpath(ev.__file__),
+            os.path.realpath(os.path.join(self._root(), "skills", "job-sync",
+                                          "scripts", "events_sheet.py")))
+        self.assertTrue(hasattr(ev, "SheetRefused"))
+        self.assertEqual(ev.EVENEMENTS[0], "date_evenement")
+
+    # -- the default that fails VISIBLY -------------------------------------
+
+    def test_an_unknown_event_type_is_NAMED_and_never_folded_onto_sent(self):
+        """Folding it onto `sent` would make a producer's new event look like a
+        row nothing has happened to — a sort's default takes the branch that
+        fails visibly."""
+        _m, rows, meta = self._attach(
+            "2026-11-07,m1,linkedin:1,,Alpha,Dev,genre_neuf,,,,u,,haute,")
+        etat = rows["linkedin:1"]["etat"]
+        self.assertIn("genre_neuf", etat, etat)
+        self.assertNotEqual(etat, "sent")
+        self.assertIn({"type": "genre_neuf", "message_id": "m1"},
+                      meta["valeurs_inconnues"])
+
+    # -- the provenance, which is the repair for two meanings in one word ---
+
+    def test_a_row_with_no_event_keeps_the_LEDGERS_state_and_says_so(self):
+        _m, rows, meta = self._attach(
+            "2026-11-07,m1,linkedin:1,,Alpha,Dev,accuse_reception,,,,u,,haute,")
+        self.assertEqual(rows["jobup:5"]["etat"], "sent")
+        self.assertEqual(rows["jobup:5"]["etat_source"], "ledger")
+        self.assertEqual(rows["linkedin:1"]["etat"], "acknowledged")
+        self.assertEqual(rows["linkedin:1"]["etat_source"], "evenement")
+        self.assertEqual(meta["attaches"], 1)
+
+    # -- confidence ---------------------------------------------------------
+
+    def test_an_event_below_haute_is_marked_to_confirm(self):
+        _m, rows, meta = self._attach(
+            "2026-11-07,m1,linkedin:1,,Alpha,Dev,entretien,,,,u,,moyenne,",
+            "2026-11-07,m2,jobup:5,,Epsilon,QA,entretien,,,,u,,haute,")
+        self.assertTrue(rows["linkedin:1"]["a_confirmer"])
+        self.assertFalse(rows["jobup:5"]["a_confirmer"])
+        self.assertEqual(meta["a_confirmer"], 1)
+
+    # -- the divergence, and what is NOT one --------------------------------
+
+    def test_a_refusal_on_a_row_still_applied_diverges_and_progress_does_not(self):
+        """The judgement is DECLARED, not measured: an acknowledgement on a
+        row the ledger calls `sent` is progress on an application that did
+        leave, so it contradicts nothing."""
+        _m, rows, meta = self._attach(
+            "2026-11-08,m1,linkedin:1,,Alpha,Dev,refus,Trop senior,,,u,,haute,",
+            "2026-11-08,m2,jobup:5,,Epsilon,QA,accuse_reception,,,,u,,haute,",
+            "2026-11-10,m3,jobup:4,,Delta,SRE,entretien,,,,u,,haute,")
+        self.assertIsNotNone(rows["linkedin:1"]["divergence"])
+        self.assertIsNone(rows["jobup:5"]["divergence"],
+                          "an acknowledgement on a sent row is progress")
+        self.assertIsNotNone(rows["jobup:4"]["divergence"],
+                             "a meeting after a `rejected` row is not the "
+                             "ledger's last word either")
+        ids = sorted(d["id"] for d in meta["divergences"])
+        self.assertEqual(ids, ["jobup:4", "linkedin:1"])
+
+    def test_nothing_in_this_report_edits_the_ledger(self):
+        """The divergence is REPORTED. Applying it belongs to `/job-sync`,
+        which proposes and applies nothing without a yes."""
+        with io.open(self._write("job-pipeline.md", self.LEDGER),
+                     encoding="utf-8") as fh:
+            before = fh.read()
+        r = self._run("--events", self._evt(
+            "2026-11-08,m1,linkedin:1,,Alpha,Dev,refus,,,,u,,haute,"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("DIVERGENCE", r.stdout)
+        with io.open(os.path.join(self._dir(), "job-pipeline.md"),
+                     encoding="utf-8") as fh:
+            after = fh.read()
+        self.assertEqual(before, after, "the ledger was rewritten")
+
+    # -- the orphan, printed by its MEMBERS ---------------------------------
+
+    def test_an_event_for_an_unknown_id_is_named_and_never_only_counted(self):
+        """A count does not say WHICH one is missing, and these are
+        applications someone believes were sent."""
+        _m, _rows, meta = self._attach(
+            "2026-11-07,m1,jobup:99,,Zeta,Who,accuse_reception,,,,u,,haute,")
+        self.assertEqual(meta["orphelins"], ["jobup:99"])
+        r = self._run("--events", self._evt(
+            "2026-11-07,m1,jobup:99,,Zeta,Who,accuse_reception,,,,u,,haute,"))
+        self.assertIn("jobup:99", r.stdout,
+                      "the id itself must reach the output, not just a count")
+
+    # -- the flag that must not be ignored ----------------------------------
+
+    def test_events_refuses_to_combine_with_interviews_rather_than_ignoring_it(self):
+        """Silently dropping a flag is the invisible failure."""
+        r = self._run("--interviews", "--events", self._evt(
+            "2026-11-07,m1,linkedin:1,,Alpha,Dev,entretien,,,,u,,haute,"))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--events", r.stderr + r.stdout)
+
+    def test_without_the_flag_no_row_and_no_meta_carries_a_state(self):
+        """The column is OFF by default: a state that appeared on its own
+        would be a second provenance nobody asked for."""
+        r = self._run("--format", "json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        self.assertNotIn("events", d["meta"])
+        self.assertFalse(any("etat" in a for a in d["applications"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
