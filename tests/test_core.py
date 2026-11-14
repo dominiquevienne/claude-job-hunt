@@ -58388,6 +58388,185 @@ class AnApiTheBundleDeclaresAndTwoReasonsAnAdvertIsNotApplicable(unittest.TestCa
         self.assertEqual(mod.scrub("hr@x.org et 0944123456")[1], ["email", "telephone"])
 
 
+class AnIdMotifAnchoredOnAListOfFollowersMissesTheAttributeQuote(unittest.TestCase):
+    """**`jobposting.py`, 2026-11-14 (#1311).** The board is `www.jobposting.pro`,
+    and the finding is a motif of OURS — the third way `CLAUDE.md` §4 names for a
+    motif to be false, by its FORM.
+
+    * **the id boundary is a NEGATIVE LOOKAHEAD on a digit, never a list of
+      followers.** A first version ended `(?:[/?#]|$)` and rendered **ZERO on the
+      list**, where the address is followed by the APOSTROPHE closing the `href`
+      attribute — while still rendering 22 988 from the sitemap, because there the
+      match is taken on the PARSED path, which ends the string. **The run was
+      perfectly well formed**: «page 1 carries ZERO advert ids», the walk stopped,
+      and three records came out of the sitemap — a zero that affirms instead of
+      missing. Nothing caught it by reading: what caught it is that the adapter's
+      anchored motif DISAGREED with a hand-rolled one on the same held bytes,
+      0 against 4 000. Both shapes the host actually serves are asserted here, and
+      so is the refusal of a suffix that is not `-1`.
+    * **only four path SHAPES are requestable, and that is a POSITIVE floor.** This
+      host's rules forbid NOTHING — 71 B, one `*` group whose `Disallow:` has an
+      empty value — so the guard answers `allowed=True` everywhere and the
+      restriction is ours. A list of refusals bets the problem has been enumerated;
+      the Tajik board where 34 894 of 42 851 `<loc>` were real people's CVs sat
+      behind a 105-byte file with no `Disallow` at all.
+    * **a salary written large must not read as a telephone.** The pattern has NO
+      branch on a bare run of digits: the Burmese kyat specimen turned
+      `350000 - 450000 MMK` into `[telephone withheld]` on 113 of 115 adverts, and
+      a Polish postal code (`00-105`) is in the corpus here. Exercised in BOTH
+      directions, and the witness is DERIVED from what was actually removed.
+    * **`monthsOfExperience` is floored on its VALUE**, so a legitimate 0 survives
+      where `if x` would drop it, and a present-but-unfilled field yields None.
+    * **a list page carries no `JobPosting` at all**, raw or escaped, so a verdict
+      of rendering taken on `/offres` says nothing about an advert page — and
+      `record()` must answer None rather than a half-built row."""
+
+    HOST = "www.jobposting.pro"
+
+    def _mod(self):
+        spec = importlib.util.spec_from_file_location(
+            "_jobposting", os.path.join(SCRIPTS, "jobposting.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _jp(ident, **kw):
+        d = {
+            "@context": "https://schema.org/", "@type": "JobPosting",
+            "url": f"https://www.jobposting.pro/emploi-{ident}-1",
+            "title": f"Poste {ident}", "description": "<p>Un poste</p>",
+            "identifier": {"@type": "PropertyValue", "name": "JobPosting.pro",
+                           "value": str(ident)},
+            "datePosted": "2026-11-13", "validThrough": "2026-12-18",
+            "employmentType": "INTERN", "directApply": False,
+            "experienceRequirements": {"@type": "OccupationalExperienceRequirements",
+                                       "monthsOfExperience": 1},
+            "hiringOrganization": {"@type": "Organization", "name": "ISEC FORMATION OUEST"},
+            "jobLocation": {"@type": "Place", "address": {
+                "@type": "PostalAddress", "addressLocality": "Le Port",
+                "postalCode": "97420", "addressCountry": "FR"}},
+        }
+        d.update(kw)
+        return d
+
+    def _page(self, *jps):
+        bloc = "".join(
+            '<script type="application/ld+json">%s</script>' % json.dumps(j, ensure_ascii=False)
+            for j in jps)
+        return ("<html><head><title>Poste - Le Port | ISEC FORMATION OUEST</title>"
+                + bloc + "</head><body><h1>Offre</h1></body></html>")
+
+    def test_the_id_motif_reads_both_shapes_the_host_actually_serves(self):
+        mod = self._mod()
+        # the LIST: single-quoted href, so the follower is an APOSTROPHE
+        liste = ("<h3 style='padding-top:1em;font-size:22px'>"
+                 "<a href='https://www.jobposting.pro/emploi-2750653-1'>Titre</a></h3>")
+        # the SITEMAP: the follower is `<`
+        sitemap = ("<url><loc>https://www.jobposting.pro/emploi-2750653-1</loc>"
+                   "<lastmod>2026-11-13</lastmod></url>")
+        self.assertEqual(
+            mod.AD_RE.findall(liste), ["2750653"],
+            "the LIST spells the address inside a single-quoted `href`, so the id is "
+            "followed by an APOSTROPHE. A boundary written as a LIST of followers "
+            "misses it and renders a well-formed ZERO -- which is the whole finding")
+        self.assertEqual(
+            mod.AD_RE.findall(sitemap), ["2750653"],
+            "the SITEMAP spells it inside `<loc>`, so the follower is `<`. Both shapes "
+            "must read the SAME id: it is their DISAGREEMENT that found the defect")
+        for s in ("/emploi-2750653-10", "/emploi-2750653-11", "/emploi-2750653-2"):
+            self.assertEqual(
+                mod.AD_RE.findall(s), [],
+                f"{s!r}: the suffix is `1` on the 22 988 + 4 000 occurrences read, and a "
+                f"lookahead on a digit is what keeps `-10` from reading as `-1`")
+
+    def test_only_four_path_shapes_are_ever_requested(self):
+        mod = self._mod()
+        for chemin in ("/robots.txt", "/sitemap.xml", "/sitemap-offres.xml",
+                       "/sitemap-page.xml", "/offres", "/offres?p=2", "/emploi-2750653-1"):
+            self.assertTrue(
+                any(m.match(chemin) for m in mod.DEMANDABLE),
+                f"{chemin!r} is one of the four shapes this adapter walks")
+        for chemin in ("/", "/acces-client", "/connexion", "/cv/1", "/candidat",
+                       "/offres?p=2&tri=x", "/emploi-2750653-2", "/sitemap.xml.bak"):
+            self.assertFalse(
+                any(m.match(chemin) for m in mod.DEMANDABLE),
+                f"{chemin!r} is NOT requestable: the rules here forbid nothing, so the "
+                f"floor is POSITIVE and anything this board may grow is refused by "
+                f"construction rather than by an enumeration someone must keep current")
+
+    def test_a_salary_written_large_is_not_read_as_a_telephone(self):
+        mod = self._mod()
+        for s in ("salaire 350000 - 450000 MMK par mois",
+                  "code postal 00-105 Warszawa",
+                  "reference 2750653 du poste",
+                  "budget de 2 000 000 EUR sur trois ans"):
+            self.assertIsNone(
+                mod.PHONE_RE.search(s),
+                f"MUST LEAVE {s!r}: the pattern has no branch on a bare run of digits -- "
+                f"the kyat specimen cost 113 salaries of 115")
+        for s in ("appelez le +33 6 12 34 56 78", "appelez le 06 12 34 56 78",
+                  "tel 00 48 22 123 45 67"):
+            self.assertIsNotNone(
+                mod.PHONE_RE.search(s), f"MUST TAKE {s!r}")
+        self.assertEqual(mod.scrub("rien ici, 350000 MMK")[1], [])
+        self.assertEqual(mod.scrub("hr@x.pro et +33 6 12 34 56 78")[1],
+                         ["email", "telephone"],
+                         "the witness is DERIVED from what was ACTUALLY removed, so a record "
+                         "cannot claim a discretion nobody exercised")
+
+    def test_experience_is_floored_on_its_value_and_a_legitimate_zero_survives(self):
+        mod = self._mod()
+        self.assertEqual(mod.mois_experience(
+            {"monthsOfExperience": 0}), 0,
+            "zero months is a FILLED field and an answer; `if x` would drop it")
+        self.assertEqual(mod.mois_experience({"monthsOfExperience": 60}), 60)
+        self.assertEqual(mod.mois_experience({"monthsOfExperience": "12"}), 12)
+        for req in ({}, {"monthsOfExperience": None}, {"monthsOfExperience": ""},
+                    {"monthsOfExperience": "beaucoup"}, {"monthsOfExperience": True},
+                    None, "pas un dict"):
+            self.assertIsNone(mod.mois_experience(req),
+                              f"{req!r}: PRESENT is not FILLED, and a bool is not a count")
+
+    def test_a_page_without_a_jobposting_yields_no_record_at_all(self):
+        mod = self._mod()
+        liste = ("<html><head><title>Offres d'emploi via Jobposting</title></head><body>"
+                 "<h3><a href='https://www.jobposting.pro/emploi-2750653-1'>T</a></h3>"
+                 "</body></html>")
+        self.assertIsNone(
+            mod.record("https://www.jobposting.pro/offres", liste, "list"),
+            "the LIST carries no `application/ld+json` at all, raw or escaped, so a "
+            "verdict of rendering taken on `/offres` says nothing about an advert page")
+        r = mod.record("https://www.jobposting.pro/emploi-2750653-1",
+                       self._page(self._jp(2750653)), "sitemap+list", "2026-11-13")
+        self.assertIsNotNone(r, "an advert page carried one block on 2 of 2")
+        self.assertEqual(
+            (r["id"], r["employer"], r["country"], r["postal_code"],
+             r["months_of_experience"], r["enumerator"], r["sitemap_lastmod"]),
+            ("2750653", "ISEC FORMATION OUEST", "FR", "97420", 1, "sitemap+list",
+             "2026-11-13"),
+            "`hiringOrganization.name` is the REAL employer on this board -- the opposite "
+            "of `maliemploi`, where it held the board's own name on 5 of 5 -- and `country` "
+            "travels PER RECORD because FR and PL were both read")
+        self.assertIsNone(r["withheld_fields"],
+                          "nothing was removed, so the witness is ABSENT and not an empty "
+                          "claim of discretion")
+        self.assertNotIn("language", r,
+                         "the two adverts read are in French and Polish and nothing in the "
+                         "markup declares a tongue; `addressCountry` is a country")
+        # the address is TAKEN from the record, never composed
+        ailleurs = mod.record(
+            "https://www.jobposting.pro/emploi-2750653-1",
+            self._page(self._jp(2750653, url="https://www.jobposting.pro/emploi-9-1")),
+            "list")
+        self.assertEqual((ailleurs["url"], ailleurs["asked"]),
+                         ("https://www.jobposting.pro/emploi-9-1",
+                          "https://www.jobposting.pro/emploi-2750653-1"),
+                         "`JobPosting.url` equals the page asked on 2 of 2 and is still TAKEN "
+                         "from the record: an adapter that composes an address inherits every "
+                         "future change of shape")
+
+
 class TwoEnumeratorsThatAgreeAndAnIdHidingInItsOwnTitle(unittest.TestCase):
     """**`maliemploi.py`, 2026-11-06 (#1279).** Mali's second adapter, and the
     finding is a motif of OURS rather than anything the host did. Six things:
