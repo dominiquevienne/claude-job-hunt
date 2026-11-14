@@ -152,6 +152,22 @@ NEVER   : anything outside the four requestable shapes; no pay field, since no
           `baseSalary` key exists; no `language`, since nothing declares one.
 ```
 
+### What this card does NOT say, and the three reserves that stay open
+
+**It does not say where the content stops.** *Pages 1–3 are full and 7–8 are the same empty body;
+pages 4, 5 and 6 were NOT probed, and three more megabytes would not have changed the design —
+the stop condition is a page with zero ids and that is the only one available.*
+
+**It does not say what a SEARCH on this board looks like.** *No search URL form was observed at
+all: only the paginated list and the declared sitemap were walked, so this board is reachable by
+ENUMERATION and not by query.* **An adapter that needed to filter before fetching would have to
+measure that form first, and nothing here establishes it exists.**
+
+**It does not say the redaction has ever fired on this host.** *Zero `mailto:`, zero `tel:` and
+zero e-mail in clear on the two adverts read — two specimens is not a census, so the rule is
+exercised by the suite in both directions and not by this board.* **A field PRESENT is not a
+field FILLED, and `withheld_fields` is derived from what was actually removed.**
+
 **Measured 2026-11-14 by the declared client, the guard taken on every exact path in a turn
 distinct from the retrieval, `bin/fetch-body.py` throughout with provenance kept, and the adapter
 RUN end to end — `ad --id 2750653` and `list --max 3 --pages 1`, whose own output reproduced the
