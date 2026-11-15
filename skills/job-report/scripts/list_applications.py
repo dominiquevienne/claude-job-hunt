@@ -16,6 +16,7 @@ import os
 import re
 import sys
 
+import _events_reader
 import _ledger_table
 
 JOB_HUNT_HOME = os.environ.get(
@@ -122,27 +123,16 @@ INCOMPATIBLE = frozenset({
 
 
 def _events_module():
-    """`skills/job-sync/scripts/events_sheet.py`, by PATH and never re-derived.
+    """`skills/job-sync/scripts/events_sheet.py`, through the ONE resolver.
 
     The reader is imported rather than reimplemented because the rule that
     matters is the one a second reader loses: an unreadable or
     header-mismatched CSV is REFUSED with its own exit code, never read as
-    «no events». The path is resolved against THIS file and not the working
-    directory, so the flag behaves the same wherever it is called from.
+    «no events». The resolution itself moved into `_events_reader` when a
+    second caller appeared (`jobroom_sync.py prefill`, #1307 tranche 3) — two
+    copies of a path are two places that refusal can be lost, so there is one.
     """
-    import importlib.util
-    here = os.path.dirname(os.path.abspath(__file__))
-    p = os.path.normpath(os.path.join(
-        here, os.pardir, os.pardir, "job-sync", "scripts", "events_sheet.py"))
-    if not os.path.exists(p):
-        raise SystemExit(
-            f"error: --events needs {p}, which is not there. The reader is "
-            f"shipped with the job-sync skill (issue #1307 tranche 1); "
-            f"refusing rather than reading the sheet with a second reader")
-    spec = importlib.util.spec_from_file_location("events_sheet_1307", p)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    return _events_reader.load("--events")
 
 
 def attach_events(rows, path):

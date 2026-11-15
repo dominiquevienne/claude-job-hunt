@@ -61446,5 +61446,379 @@ class TheStateColumnNamesWhatItReadAndWhereItCameFrom(unittest.TestCase):
         self.assertFalse(any("etat" in a for a in d["applications"]))
 
 
+
+
+class ThePrefillProposesAndSavesNothing(unittest.TestCase):
+    """#1307 tranche 3 — `jobroom_sync.py prefill`.
+
+    **Every case DRIVES the script**, through `build_prefill` or through the
+    process itself. A re-derivation of the mapping here would agree with
+    itself, and the defect this class exists for is a proposal list that reads
+    perfectly whether the sheet was read, misread, or never read at all.
+
+    Two of these cases exist because the first version of the command was
+    WRONG, and neither was found by rereading it:
+
+    * a row declared in job-room whose ledger status has not moved is in NONE
+      of `build_plan`'s three buckets, so indexing the plan alone reported it
+      as «an id the ledger does not carry» — the opposite answer, and the one
+      that sends the user hunting through their own file;
+    * the period gate compared a declaration date to the latest PASSED
+      deadline. A deadline is when a period *transmits*, not the span it
+      *covers*: October transmits on 6 November, so every row declared in
+      early November was marked frozen. That is the restrictive direction, and
+      a command that refuses too much looks exactly like a careful one.
+    """
+
+    EVT = ("date_evenement,message_id,candidature_id,candidats_possibles,"
+           "entreprise,poste,type,motif_refus,action_requise,echeance,"
+           "thread_url,archive,confiance,traite_le")
+    CAND = ("id,entreprise,alias_entreprise,domaines_expediteurs,poste,canal,"
+            "statut_ledger,date_envoi,date_statut,statut_pre")
+    LEDGER = (
+        "# Pipeline\n\n## Ads\n\n"
+        "| ID | Role | Company | Location / Mode | Posted | Match | Pay "
+        "| Status | Note |\n"
+        "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |\n"
+        "| linkedin:1 | Dev | Alpha SA | Lausanne | 2026-11-01 | 80 | - "
+        "| rejected 2026-11-05 | JR:2026-11-03 |\n"
+        "| jobup:4 | SRE | Delta SA | Berne | 2026-11-01 | 65 | - "
+        "| applied 2026-11-02 | JR:2026-11-03 |\n"
+        "| jobup:5 | QA | Epsilon SA | Basel | 2026-11-01 | 55 | - "
+        "| applied 2026-11-06 | JR:missing |\n"
+        "| indeed:9 | Ops | Zeta SA | Geneve | 2026-10-10 | 70 | - "
+        "| rejected 2026-10-20 | JR:2026-10-18 |\n"
+        "| jobup:7 | PM | Theta SA | Sion | 2026-10-01 | 60 | - "
+        "| rejected 2026-10-15 | JR:waived 2026-10-16 |\n")
+    PERIODS = ("Octobre 2026\nNombre saisi: 12\n"
+               "Transmission automatique le 06.11.2026 a 00 h 00\n"
+               "Novembre 2026\nNombre saisi: 4\n"
+               "Transmission automatique le 06.12.2026 a 00 h 00\n")
+
+    SCRIPT = ("skills", "job-report", "scripts", "jobroom_sync.py")
+
+    @classmethod
+    def _root(cls):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(self._root(), *self.SCRIPT)
+        d = os.path.dirname(p)
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location("jobroom_1307", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            sys.path.remove(d)
+
+    def _dir(self):
+        import tempfile
+        d = getattr(self, "_tmp", None)
+        if d is None:
+            d = self._tmp = tempfile.mkdtemp(prefix="prefill-1307-")
+        return d
+
+    def _write(self, name, text):
+        p = os.path.join(self._dir(), name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        return p
+
+    def _evt(self, *lines):
+        return self._write("evenements.csv",
+                           "\n".join((self.EVT,) + lines) + "\n")
+
+    def _build(self, *lines, periods=True, today="2026-11-15"):
+        """`(module, prefill)` — the script's own reading and its own build.
+        Nothing here recomputes either."""
+        mod = self._mod()
+        rows, skipped = mod.load_rows(self._write("job-pipeline.md",
+                                                  self.LEDGER))
+        plan = mod.build_plan(rows, {}, skipped)
+        ev = mod._events_reader.load("--events").events(self._evt(*lines))
+        per = mod.parse_periods(self.PERIODS) if periods else None
+        return mod, mod.build_prefill(plan, ev, rows, per, today)
+
+    def _by_id(self, pre, key="propositions"):
+        return {p["id"]: p for p in pre[key]}
+
+    def _run(self, *args):
+        import subprocess
+        p = os.path.join(self._root(), *self.SCRIPT)
+        cmd = [sys.executable, p,
+               "--file", self._write("job-pipeline.md", self.LEDGER),
+               "--state", os.path.join(self._dir(), "state.json"),
+               "prefill"] + list(args)
+        return subprocess.run(cmd, capture_output=True, text=True)
+
+    # -- what the form should read ------------------------------------------
+
+    def test_a_refusal_proposes_reponse_negative_and_NEVER_engagement(self):
+        """*Engagement* is the one wrong value on this form that is not merely
+        inaccurate: no mail establishes a hire. The zero is read against a
+        POSITIVE contingent on the same output, so it cannot be the silent
+        zero of a battery that measured nothing."""
+        mod, pre = self._build(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Profil retenu "
+            "ailleurs,,,https://mail/1,,haute,")
+        p = self._by_id(pre)["linkedin:1"]
+        self.assertEqual(p["resultat"], mod.RESULTAT_NEGATIF)
+        blob = json.dumps(pre, ensure_ascii=False)
+        self.assertEqual(blob.count("Engagement"), 0)
+        self.assertGreater(blob.count(mod.RESULTAT_NEGATIF), 0,
+                           "the contingent must fire, or the zero above is "
+                           "mute rather than measured")
+
+    def test_an_interview_ticks_a_box_and_leaves_the_result_en_suspens(self):
+        """An interview is not an outcome. Writing one into *Résultat* would
+        close a row the employer has not answered."""
+        mod, pre = self._build(
+            "2026-11-06,m3,linkedin:1,,Alpha SA,Dev,entretien,,,,"
+            "https://mail/3,,haute,")
+        p = self._by_id(pre)["linkedin:1"]
+        self.assertEqual(p["case_a_cocher"], mod.CASE_ENTRETIEN)
+        self.assertEqual(p["resultat"], mod.RESULTAT_EN_SUSPENS)
+
+    def test_a_type_the_contract_does_not_declare_is_named_never_coerced(self):
+        """`autre` is a declared value, not a bin. A fourth branch that
+        swallowed an unknown type would propose *En suspens* for something
+        nobody has read."""
+        _mod, pre = self._build(
+            "2026-11-06,m9,linkedin:1,,Alpha SA,Dev,convocation,,,,"
+            "https://mail/9,,haute,")
+        self.assertEqual(pre["propositions"], [])
+        self.assertEqual([r["type"] for r in pre["hors_registre"]],
+                         ["convocation"])
+
+    # -- the four refusals ---------------------------------------------------
+
+    def test_a_refusal_on_a_row_the_ledger_still_calls_applied_proposes_NOTHING(self):
+        """The ledger goes first. Declaring a negative answer on the strength
+        of a mail our own file has not absorbed puts an official declaration
+        ahead of the user's record.
+
+        It must also NOT be reported as an unknown id: `jobup:4` is declared
+        and quiet, so it sits in none of `build_plan`'s buckets. The first
+        version indexed the plan and answered «the ledger does not carry
+        this» — the opposite repair."""
+        _mod, pre = self._build(
+            "2026-11-06,m2,jobup:4,,Delta SA,SRE,refus,Pas de suite,,,"
+            "https://mail/2,,haute,")
+        self.assertEqual(pre["propositions"], [])
+        self.assertEqual([r["id"] for r in pre["retard_registre"]], ["jobup:4"])
+        self.assertEqual(pre["retard_registre"][0]["statut_ledger"], "applied")
+        self.assertEqual(pre["hors_registre"], [],
+                         "a declared, unmoved row is KNOWN to the ledger")
+
+    def test_a_row_not_declared_yet_has_no_field_to_prefill(self):
+        """It belongs to `plan`. Saying so is not the same as having nothing
+        to say, and it is not the same as proposing."""
+        _mod, pre = self._build(
+            "2026-11-07,m3,jobup:5,,Epsilon SA,QA,entretien,,,,"
+            "https://mail/3,,haute,")
+        self.assertEqual(pre["propositions"], [])
+        self.assertEqual([r["id"] for r in pre["non_declarees"]], ["jobup:5"])
+
+    def test_a_waived_row_is_never_proposed_again(self):
+        """`JR:waived` is a decision already taken. Re-proposing it is how a
+        deliberate choice gets quietly undone."""
+        _mod, pre = self._build(
+            "2026-10-16,m6,jobup:7,,Theta SA,PM,refus,x,,,https://mail/6,,"
+            "haute,")
+        self.assertEqual(pre["propositions"], [])
+        self.assertEqual([r["id"] for r in pre["deja_renoncees"]], ["jobup:7"])
+
+    def test_below_haute_the_proposal_demands_an_explicit_yes(self):
+        """Confidence below `haute` is a SUGGESTION. The flag travels on the
+        proposal AND into the printed output, because a reader who only sees
+        the table is the one who would save it."""
+        _mod, pre = self._build(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Pas retenu,,,"
+            "https://mail/1,,moyenne,")
+        self.assertTrue(
+            self._by_id(pre)["linkedin:1"]["confirmation_explicite_requise"])
+        r = self._run("--events", self._evt(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Pas retenu,,,"
+            "https://mail/1,,moyenne,"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("below `haute`", r.stdout)
+
+    # -- the Motif field, which is the one that bites ------------------------
+
+    def test_an_empty_motif_is_left_to_the_user_and_never_invented(self):
+        """*Motif* is mandatory on this form. A command that filled it from
+        the role or the company would be writing a refusal reason the employer
+        never gave, inside an official declaration."""
+        _mod, pre = self._build(
+            "2026-10-21,m4,indeed:9,,Zeta SA,Ops,refus,,,,https://mail/4,,"
+            "haute,")
+        p = self._by_id(pre)["indeed:9"]
+        self.assertTrue(p["motif_requis"])
+        self.assertIsNone(p["motif"])
+        self.assertTrue(p["motif_a_ecrire_par_le_candidat"])
+        self.assertFalse(p["motif_non_fiable"],
+                         "there is no third-party text here to distrust")
+
+    def test_a_motif_over_the_cap_is_NAMED_and_not_shortened(self):
+        """250 characters is the page's cap, measured on 2026-11-12. Trimming
+        someone else's sentence inside a declaration publishes a sentence
+        nobody wrote, so the overflow is reported and the text is kept
+        whole."""
+        mod, _ = self._build()
+        # No comma: the reader REFUSES a row whose cell count does not
+        # match the header, which is correct and is not what this case
+        # is about.
+        # Stripped, because the reader strips a cell: comparing against
+        # an unstripped fixture would fail on the whitespace and read
+        # exactly like a motif that HAD been trimmed.
+        long = ("Poste pourvu en interne apres un long entretien " * 6).strip()
+        self.assertGreater(len(long), mod.MOTIF_MAX)
+        _mod, pre = self._build(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,%s,,,"
+            "https://mail/1,,haute," % long)
+        p = self._by_id(pre)["linkedin:1"]
+        self.assertTrue(p["motif_trop_long"])
+        self.assertEqual(p["motif"], long, "the motif must not be trimmed")
+        self.assertEqual(p["motif_longueur"], len(long))
+        self.assertTrue(p["motif_non_fiable"])
+
+    # -- the transmitted-period gate -----------------------------------------
+
+    def test_the_gate_matches_the_MONTH_and_not_the_latest_passed_deadline(self):
+        """A deadline is when a period TRANSMITS, not the span it covers.
+
+        October transmits on 6 November. `indeed:9` is declared 2026-10-18 and
+        is frozen; `linkedin:1` is declared 2026-11-03 — a November row — and
+        is still open. The first version compared against the latest passed
+        deadline and froze both."""
+        _mod, pre = self._build(
+            "2026-10-21,m4,indeed:9,,Zeta SA,Ops,refus,Pas retenu,,,"
+            "https://mail/4,,haute,",
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Profil ailleurs,,,"
+            "https://mail/1,,haute,")
+        by = self._by_id(pre)
+        self.assertIs(by["indeed:9"]["periode_transmise"], True)
+        self.assertEqual(by["indeed:9"]["periode"], "Octobre 2026")
+        self.assertIs(by["linkedin:1"]["periode_transmise"], False)
+        self.assertEqual(by["linkedin:1"]["periode"], "Novembre 2026")
+
+    def test_a_gate_that_was_not_consulted_is_not_a_gate_that_said_open(self):
+        """Three outcomes, never two. Without the listing the verdict is
+        `None` and the output SAYS the gate was not consulted — folding that
+        into `False` would read as «editable, checked»."""
+        _mod, pre = self._build(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Pas retenu,,,"
+            "https://mail/1,,haute,", periods=False)
+        self.assertIsNone(self._by_id(pre)["linkedin:1"]["periode_transmise"])
+        self.assertFalse(pre["periodes"]["consulte"])
+        r = self._run("--events", self._evt(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Pas retenu,,,"
+            "https://mail/1,,haute,"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("NOT CONSULTED", r.stdout)
+
+    def test_a_month_word_the_table_does_not_hold_leaves_UNMATCHED(self):
+        """The month table is French because this page is French — measured,
+        not assumed. A label it does not hold is reported as unrecognised, and
+        rows of that month come back NOT ESTABLISHED rather than editable."""
+        mod = self._mod()
+        self.assertIsNone(mod.period_month("Wintermonat 2026"))
+        self.assertEqual(mod.period_month("Octobre 2026"), (2026, 10))
+        self.assertEqual(mod.period_month("OCTOBRE 2026"), (2026, 10),
+                         "case and accent must not change the answer")
+        gate = mod.periods_gate(
+            mod.parse_periods("Wintermonat 2026\nNombre saisi: 3\n"
+                              "Transmission automatique le 06.11.2026 a 00 h\n"),
+            "2026-11-15")
+        self.assertEqual(gate["par_mois"], {})
+        self.assertEqual(len(gate["non_reconnues"]), 1)
+        self.assertEqual(mod.period_of(gate, "2026-11-03"), (None, None))
+
+    # -- the refusals this command inherits ----------------------------------
+
+    def test_an_absent_file_and_a_wrong_tab_carry_the_readers_OWN_codes(self):
+        """«Not there» (4) and «not this tab» (5) are different repairs, and
+        NEITHER is «this sheet holds no event». A proposal list is exactly
+        where that would be invisible: it would simply come out empty."""
+        absent = os.path.join(self._dir(), "pas-la.csv")
+        self.assertFalse(os.path.exists(absent))
+        a = self._run("--events", absent)
+        self.assertEqual(a.returncode, 4, a.stderr)
+        self.assertNotIn("proposals (", a.stdout)
+        wrong = self._write("candidatures.csv", self.CAND + "\n")
+        b = self._run("--events", wrong)
+        self.assertEqual(b.returncode, 5, b.stderr)
+        self.assertNotIn("proposals (", b.stdout)
+
+    def test_a_listing_with_no_readable_period_is_a_read_failure_not_a_board(self):
+        """The same refusal `periods` already makes, for the same reason."""
+        r = self._run("--events", self._evt(), "--jobroom-text",
+                      self._write("vide.txt", "rien du tout\n"))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("could not read", r.stderr)
+
+    def test_both_consumers_resolve_the_reader_through_ONE_point(self):
+        """Two copies of a path are two places the reader's refusal can be
+        lost, one hand at a time. `jobroom_sync` and `list_applications` go
+        through the same `_events_reader`, and this pins it."""
+        import importlib.util
+        d = os.path.join(self._root(), "skills", "job-report", "scripts")
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "list_apps_1307b", os.path.join(d, "list_applications.py"))
+            la = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(la)
+        finally:
+            sys.path.remove(d)
+        js = self._mod()
+        self.assertIs(js._events_reader, la._events_reader)
+        self.assertEqual(js._events_reader.path(),
+                         os.path.join(self._root(), "skills", "job-sync",
+                                      "scripts", "events_sheet.py"))
+
+        # The first version of this case asserted the shared IMPORT and
+        # nothing else. A mutation that gave `list_applications` a private
+        # `spec_from_file_location` left that import untouched and the case
+        # came back GREEN — a vert that says «I did not look there». So the
+        # resolver is now observed being CALLED.
+        reader, calls = js._events_reader, []
+        real = reader.load
+        reader.load = lambda flag="--events": (calls.append(flag), real(flag))[1]
+        try:
+            self.assertTrue(hasattr(la._events_module(), "events"))
+        finally:
+            reader.load = real
+        self.assertEqual(len(calls), 1,
+                         "a second resolution would not come through here")
+
+        # And neither consumer carries a resolution of its own. The motif is
+        # read against a POSITIVE contingent on the resolver, so a zero here
+        # cannot be the silent zero of a motif that matches nothing.
+        srcs = {n: io.open(os.path.join(d, n), encoding="utf-8").read()
+                for n in ("jobroom_sync.py", "list_applications.py",
+                          "_events_reader.py")}
+        self.assertEqual(srcs["_events_reader.py"].count(
+            "spec_from_file_location"), 1)
+        for n in ("jobroom_sync.py", "list_applications.py"):
+            self.assertEqual(srcs[n].count("spec_from_file_location"), 0, n)
+
+    # -- what the command says about itself ----------------------------------
+
+    def test_the_output_says_on_every_run_that_nothing_is_saved(self):
+        """A command that proposes form values is exactly where a reader stops
+        assuming, so it is said in the output rather than in a doc nobody has
+        open."""
+        r = self._run("--events", self._evt(
+            "2026-11-06,m1,linkedin:1,,Alpha SA,Dev,refus,Pas retenu,,,"
+            "https://mail/1,,haute,"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("PROPOSALS ONLY", r.stdout)
+        self.assertIn("NEVER", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
