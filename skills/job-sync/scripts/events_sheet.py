@@ -98,12 +98,14 @@ import json
 import os
 import re
 import sys
+import tempfile
 import zipfile
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _ledger_reader  # noqa: E402  (after the path insert, by design)
+import _sheets  # noqa: E402  (same directory, same reason)
 
 EXIT_BROKEN = 2
 EXIT_UNREADABLE = 4      # the file is not there, or not readable text
@@ -774,6 +776,97 @@ def cmd_export(a):
              "`domaines_expediteurs` leave EMPTY, which the contract allows")
 
 
+def cmd_push(a):
+    """Read the tab, derive our rows, UNION them, and write the union IN PLACE.
+
+    This is the whole loop with no manual step, and it exists because the
+    owner refused the export-then-import cycle on 2026-11-15: *« il n'est pas
+    envisageable d'exporter... puis potentiellement importer la feuille »*.
+
+    **It reuses `merge` rather than re-deriving the union**, by writing both
+    sides to temporary CSVs: that function is the one the suite covers, and a
+    second implementation of "the only shape that cannot delete a row" is the
+    last thing this file needs. The cost is two temporary files; the gain is
+    that the union keeps being the union the tests assert.
+
+    **And nothing is written without `--apply`.** The skills already tell the
+    user that `/job-sync` "proposes it and applies nothing without a yes", so
+    a default that writes would make that sentence false.
+    """
+    try:
+        cred = _sheets.credential(a.key)
+        access = _sheets.token(cred)
+        held = _sheets.fetch_values(a.sheet, a.tab, access=access)
+    except _sheets.SheetsRefused as exc:
+        die(str(exc), exc.code)
+
+    if not held:
+        die(f"`{a.tab}` came back EMPTY — not even a header row. A union "
+            f"against nothing would write our rows over a tab whose shape we "
+            f"never saw", EXIT_HEADER)
+    if tuple(held[0]) != CANDIDATURES:
+        die(f"`{a.tab}` row 1 is not this contract's header. Read it, do not "
+            f"assume it: {held[0]}", EXIT_HEADER)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        cur = os.path.join(tmp, "current.csv")
+        new = os.path.join(tmp, "new.csv")
+        width = len(CANDIDATURES)
+        with io.open(cur, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            for row in held:
+                #  The API omits trailing empty cells, so a short row is the
+                #  NORMAL shape and not a malformed one. Padding here keeps the
+                #  CSV rectangular, which is what the reader expects.
+                w.writerow(list(row) + [""] * (width - len(row)))
+        lt = _ledger_reader.ledger("--pipeline")
+        rows, skipped = lt.load(a.pipeline, lt.HEADER_ALIASES)
+        rows = [lt.annotate(r) for r in rows]
+        facts, fold = {}, None
+        if a.employers:
+            em = _ledger_reader.employers("--employers")
+            facts, fold = employer_facts(a.employers, em), em.fold
+        out, counts = candidatures(rows, lt.sent, fold, facts, a.rejected_from)
+        with io.open(new, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh, lineterminator="\n")
+            w.writerow(CANDIDATURES)
+            for row in out:
+                w.writerow([row.get(c, "") for c in CANDIDATURES])
+        union, mc = merge(cur, new)
+        for line in lt.skipped_lines(skipped):
+            print(line.replace("  !", "[events_sheet] !", 1), file=sys.stderr)
+
+    values = [list(CANDIDATURES)] + [[row.get(c, "") for c in CANDIDATURES]
+                                     for row in union]
+    note(f"`{a.tab}` holds {len(held) - 1} row(s); the ledger gives "
+         f"{len(out)}; the UNION is {len(union)}")
+    note(f"{mc['ajoutees']} would be added, {mc['mises_a_jour']} updated, "
+         f"{mc['supprimees']} deleted — and a union cannot delete, so a "
+         f"non-zero deletion count is a defect and not a plan")
+    if mc["dates_envoi_conservees"]:
+        note(f"{mc['dates_envoi_conservees']} `date_envoi` kept as the sheet "
+             f"already had it — a send date is written once")
+    if counts["retenues_rejected"]:
+        note(f"{counts['retenues_rejected']} `rejected` row(s) HELD BACK: "
+             f"`--rejected-from <YYYY-MM-DD>` is what releases them")
+
+    if not a.apply:
+        w = csv.writer(sys.stdout, lineterminator="\n")
+        for row in values:
+            w.writerow(row)
+        note("DRY RUN — nothing was written. Add `--apply` to write it.")
+        return
+
+    last = chr(ord("A") + len(CANDIDATURES) - 1)
+    a1 = f"{a.tab}!A1:{last}{len(values)}"
+    try:
+        cells, rng = _sheets.write_values(a.sheet, a1, values, access=access)
+    except _sheets.SheetsRefused as exc:
+        die(str(exc), exc.code)
+    note(f"WRITTEN IN PLACE: {cells} cell(s) over {rng}. Nothing was cleared, "
+         f"so no row this sheet held can have been dropped")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     s = p.add_subparsers(dest="cmd", required=True)
@@ -799,6 +892,23 @@ def main():
                          "`rejected` rows leave only from this one, and with "
                          "no cut-off NONE of them leaves")
     px.set_defaults(fn=cmd_export)
+
+    pp = s.add_parser("push", help="the whole loop: read the tab, union, write")
+    pp.add_argument("--sheet", required=True,
+                    help="the spreadsheet id — NAMED and never defaulted: this "
+                         "is the egress, and which document it reaches is not "
+                         "something this file gets to assume")
+    pp.add_argument("--pipeline", required=True, help="job-pipeline.md")
+    pp.add_argument("--tab", default="candidatures")
+    pp.add_argument("--employers", default=None)
+    pp.add_argument("--key", default=None,
+                    help="the service-account key; the default and the "
+                         "environment variable are documented in `_sheets`")
+    pp.add_argument("--rejected-from", default=None, dest="rejected_from")
+    pp.add_argument("--apply", action="store_true",
+                    help="WRITE. Without it this prints the union and writes "
+                         "nothing, which is what the skills promise")
+    pp.set_defaults(fn=cmd_push)
 
     a = p.parse_args()
     try:
