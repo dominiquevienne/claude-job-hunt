@@ -764,12 +764,19 @@ URL, and notes on the site's structure — no part of your profile, name or
 application. The example ad URL is the one detail that says something about
 you, so the plugin offers to strip it before submitting.
 
-**2. The events sheet, and only if you switch it on.** Some people already run
-an agent that reads their mailbox and records what employers replied. If you
-do, you can give it a spreadsheet **you own** and let the two sides meet there
-— `integrations.events_sheet.enabled`, **off by default**. The sheet id is not
-a credential and stays in your own `config.yml`; **no credential for it lives
-in this repository.**
+**2. The events sheet, and only if you run it yourself.** Some people already
+run an agent that reads their mailbox and records what employers replied. If
+you do, you can give it a spreadsheet **you own** and let the two sides meet
+there. The sheet id is not a credential and stays in your own `config.yml`;
+**no credential for it lives in this repository.**
+
+**What keeps this off is not a setting — it is that nothing calls it.** No
+skill, no command and no run reaches the export: you type it yourself, or it
+does not happen. *The contract for this integration declares a future switch,
+`integrations.events_sheet.enabled`, and **no code reads that key today** — so
+if you ever see it described as the thing protecting you, that description is
+ahead of the code. Running the command by hand is a stronger gate than a flag
+would be, and it is the one that is actually there.*
 
 | | |
 | :-- | :-- |
