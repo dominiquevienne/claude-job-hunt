@@ -289,6 +289,84 @@ and ask.
 timestamp and no "I just looked at the list" replaces it — a saisie made
 manually by the user between two sessions appears in no state file.
 
+### `prefill` — what the form should READ, when a mail scanner has answered
+
+Some users run an agent that reads their mailbox and records what employers
+sent back. When that is switched on, the events it collects can say what the
+*Résultat* field of an already-declared row should now read. `prefill` turns
+those events into **proposals, and only proposals**:
+
+```bash
+python3 "<…>/jobroom_sync.py" prefill \
+  --events <evenements.csv> \
+  --jobroom-text <the period listing captured with get_page_text>
+```
+
+**It saves nothing, it fills nothing, and it never transmits a period.** It
+prints what a field should read and leaves every keystroke to the user — the
+same line the rest of this module holds, and the reason it is repeated in the
+command's own first three lines of output is that a command which proposes
+form values is exactly where a reader stops assuming.
+
+**The mapping, and it is short on purpose:**
+
+| event | what the form should read |
+| :-- | :-- |
+| `refus` | *Réponse négative*, with the **mandatory *Motif*** proposed |
+| `entretien` | tick *Entretien d'embauche*; the result stays *En suspens* |
+| `accuse_reception`, `demande_action`, `autre` | *En suspens* — nothing changes |
+| anything else | **named, never coerced onto `autre`** |
+
+***Engagement* is never proposed, by anyone, ever.** No mail establishes a
+hire, and of all the ways this form can be wrong that is the one that is not
+merely inaccurate.
+
+**Four situations where it proposes nothing, and says why:**
+
+- **The ledger goes first.** A `refus` event on a row the ledger still calls
+  `applied` means our own file has not absorbed the mail yet. Declaring a
+  negative answer on that strength would put an official declaration *ahead of
+  the user's own record*, so the row is listed under «the ledger is behind»
+  and nothing is proposed for it.
+- **A row not yet declared has no field to prefill.** It belongs to `plan`.
+- **A `` `JR:waived` `` row is never proposed again.** That decision was taken.
+- **Below `haute` confidence nothing is applied without an explicit yes**, and
+  every proposal carries its `thread_url` so the user can go and look.
+
+**The *Motif* field, which is the one that bites.** Measured on job-room on
+2026-11-12: it appears **only once *Réponse négative* has been chosen**, it is
+**mandatory**, and it is capped at **250 characters**. So:
+
+- the motif comes from a **third party's mail** and is reproduced unreworded.
+  It is **untrusted content**: the user reads it before it goes into an
+  official field, always;
+- when the sheet carries none, the command says so and **the user writes it** —
+  it is not invented from the role or the company;
+- when it is longer than the cap, the overflow is **named and not trimmed**.
+  Shortening someone else's sentence inside a declaration publishes a sentence
+  nobody wrote.
+
+**The transmitted-period gate.** A period that has transmitted can no longer be
+edited, so `prefill` **says so instead of proposing**. Two things decide it,
+and both are on the page:
+
+- the match is on the **month**, never on the deadline. A period's deadline is
+  when it *transmits*, not the span it *covers* — October transmits on 6
+  November, so a row declared on 3 November is a **November** row and is still
+  open. Comparing a declaration date against the latest passed deadline freezes
+  live rows, and a command that refuses too much looks exactly like a careful
+  one;
+- without `--jobroom-text` the gate is **not consulted**, and the output says
+  that in those words. It is not «every period is open»: an absent verdict is
+  not a pass, and the same holds for a month the listing does not carry.
+
+**Where it sits in the order of operations:** it is a *fourth* step, after
+`check`, and it changes nothing about the first three. It also inherits the
+events reader's refusals — an absent CSV leaves with `4`, a CSV that is not
+that tab with `5`, and **neither of them is «this sheet holds no event»**. A
+list of proposals is precisely where that degradation would be invisible: it
+would simply come out empty.
+
 ### The gate — saving a row is not declaring a period
 
 **job-room separates two acts, and so must this module.** Captured live on
