@@ -100,6 +100,70 @@ report, not a plan to carry out.
   when no `JR:` marker was recorded — which is a fourth state the three
   declared values do not cover.
 
+## The two matching columns — rules, and they are PERMANENT
+
+**Decided by the owner on 2026-11-15, and they bind every run of this command,
+not one batch.** The outside agent uses the `candidatures` tab as a WHITE LIST
+to recognise a recruiter's mail. With `alias_entreprise` and
+`domaines_expediteurs` empty it can only compare the full company name, which
+fails the moment the name carries a parenthesis or the mail comes from an
+agency. **So a row this command creates carries both columns at INSERTION, or
+it carries a declared blank.**
+
+**Separator: `|`, no stray space.**
+
+### `alias_entreprise` — short forms and variants
+
+The names under which the company can appear in a mail or a sender name.
+
+- **Strip the qualifiers**: `(client : …)`, `(partenaire non nommé)`,
+  `(groupe X)`, `(division …)`.
+- `Sword Group (client : Lombard Odier…)` → `Sword|Sword Group`
+- `Banque Cantonale Vaudoise (division Retail)` → `BCV|Banque Cantonale Vaudoise`
+- **NEVER the final client's name as an alias of the agency.** A mail from
+  Lombard Odier would then be read as a mail from Sword, which is the one
+  mistake this column can make that makes the white list worse than empty.
+
+### `domaines_expediteurs` — the company's OWN domains only
+
+Lower case, no `@`, no needless subdomain.
+
+- **NEVER a platform or a shared ATS domain** — `linkedin.com`, `indeed.com`,
+  `jobs.ch`, `job-room.ch`, `jobgether.com`, `greenhouse.io`, `lever.co`,
+  `workday`, `smartrecruiters`, `teamtailor` and their kind. One of those would
+  make ANY mail look like a reply to an application, which is the failure that
+  destroys the list rather than weakening it.
+- **A domain goes in only if it is CERTAIN** — the company's official site, or a
+  domain seen in an application mail already received.
+- **In doubt, leave it EMPTY.** A blank is better than a false domain, and the
+  asymmetry is the whole reason: a blank costs one unmatched mail, a false
+  domain mislabels every mail from that domain forever.
+
+### Before inserting a row
+
+1. **Look for the company in the tab FIRST.** If it is already there, REUSE its
+   existing alias and domain values instead of recomputing them — two rows for
+   one company must carry the same two cells, and a recomputation is how they
+   drift apart.
+2. **Never change the alias or domain of a row that already carries them**
+   without asking the owner. They may have been corrected by hand, and this
+   command cannot tell a correction from an older guess.
+3. A company that appears twice — the tab has such pairs — gets the SAME alias
+   and domains on both rows.
+
+### The control line, at the end of every sync
+
+Print it even when nothing was inserted, because a sync that inserted nothing
+and a sync that forgot the columns read the same otherwise:
+
+```
+CONTROLE : N ligne(s) inseree(s) | A avec alias | D avec domaine | N-D sans domaine
+```
+
+**And name the blanks out loud** — « N lignes sans domaine » — rather than
+leaving the owner to find them in the sheet. A column that is empty by DECISION
+and a column that is empty by OMISSION look identical there.
+
 ## The other direction
 
 `events` reads the tab the outside agent fills, from a CSV or an `.xlsx`
