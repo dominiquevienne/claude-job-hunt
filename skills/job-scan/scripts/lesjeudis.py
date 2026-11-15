@@ -55,6 +55,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots  # noqa: E402
 import _console  # noqa: F401,E402  (patches argparse's writer -- see #1166)
+from _withheld import withheld_a_contact  # noqa: E402
 
 EXIT_BROKEN = 2
 EXIT_REFUSED = 7
@@ -385,6 +386,11 @@ def cmd_ad(a):
     else:
         row["expired"] = None
         row["expired_against"] = None
+
+    # **La classe ne se lit pas dans le NOM** : la declaration passe par le point
+    # unique, qui separe ce qui atteint une personne du reste.
+    if withheld_a_contact(row["withheld_fields"]):
+        row["contacts_withheld"] = True
 
     print(json.dumps(row, ensure_ascii=False, sort_keys=True))
 

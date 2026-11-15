@@ -106,6 +106,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "www.subito.it"
 SECTION = "/annunci-italia/vendita/offerte-lavoro/"
@@ -387,6 +388,10 @@ def record(ad):
     tout = sorted(set(withheld) | set(w2))
     if tout:
         out["withheld_fields"] = tout
+        # **La classe ne se lit pas dans le NOM** : la declaration passe par le
+        # point unique, qui separe ce qui atteint une personne du reste.
+        if withheld_a_contact(out["withheld_fields"]):
+            out["contacts_withheld"] = True
     return out
 
 

@@ -134,6 +134,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "business.com.tm"
 BASE = "https://business.com.tm"
@@ -396,6 +397,10 @@ def notice(url):
     # on notice 5622 and NOT on notice 4888, so this varies on the real corpus.
     if withheld:
         out["withheld_fields"] = withheld
+        # **La classe ne se lit pas dans le NOM** : la declaration passe par le
+        # point unique, qui separe ce qui atteint une personne du reste.
+        if withheld_a_contact(out["withheld_fields"]):
+            out["contacts_withheld"] = True
     return out
 
 

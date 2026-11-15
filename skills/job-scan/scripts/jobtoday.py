@@ -84,6 +84,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots                                                  # noqa: E402
 import _provenance                                              # noqa: E402
+from _withheld import withheld_a_contact                         # noqa: E402
 
 EXIT_BROKEN = 2
 # **7, not 3 — the suite enforces one meaning per code across every adapter.**
@@ -251,7 +252,7 @@ def row(job, host, country):
     co = job.get("company") or {}
     hm = co.get("hiringManager") if isinstance(co.get("hiringManager"), dict) else {}
     tp = withheld_of(job)
-    return {
+    out = {
         "source": "jobtoday",
         "country": country.upper(),
         "ledger_id": f"jobtoday:{key}",
@@ -283,6 +284,13 @@ def row(job, host, country):
         "withheld_fields": tp["third_party_withheld"],
         **tp,
     }
+    # **La classe ne se lit pas dans le NOM, et ici la reponse est NON** : les six
+    # champs de `DROP` sont la geographie de l'annonce et la photo d'un recruteur,
+    # donc aucun n'atteint personne. Un `bool()` sur la liste aurait declare
+    # l'inverse sur chaque record, pour toujours.
+    if withheld_a_contact(out["withheld_fields"]):
+        out["contacts_withheld"] = True
+    return out
 
 
 def cmd_hosts(a):
