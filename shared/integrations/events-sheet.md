@@ -9,7 +9,14 @@ side writes the other's tab, and neither deletes a row.
 ## What leaves the machine, and under what condition
 
 **The integration is opt-in and off by default** (`integrations.events_sheet.enabled:
-false`). What leaves, when it is on: employer, role, board, dates and declaration
+false`). **DECLARED AND NOT YET READ — measured 2026-11-15, #1322: that key
+appears in this file and in the README's Privacy section, and in NO code
+path.** What gates the egress today is that **nothing calls `export`** — no
+skill, no command, no run — so the user's own invocation is the switch. *A
+README that names the key as the protection would be describing a flag that
+does not exist, which is the direction that costs on a Privacy section: it
+promises something. The key stays declared here because it is the shape the
+gate should take; whoever wires a caller owes the read.* What leaves, when it is on: employer, role, board, dates and declaration
 status, written to a sheet the user owns. **No credential lives in this
 repository.** The sheet id is not a credential and stays in the user's own
 `config.yml`.
