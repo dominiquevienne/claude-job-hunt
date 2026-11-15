@@ -62685,5 +62685,269 @@ class TheExportDerivesAndLeavesNothingGuessed(unittest.TestCase):
         self.assertIn("not an ISO date", r.stderr)
 
 
+class TheSheetsTransportRefusesBeforeItReachesTheNetwork(unittest.TestCase):
+    """#1316 — the transport added on 2026-11-15, after the owner refused the
+    export-then-import cycle and gave the service-account key.
+
+    **Every case here is OFFLINE.** The signing is a pure function and the
+    refusals all fire before the first request, which is exactly why they are
+    the part worth testing: a provider answers a bad credential with a message
+    about cryptography, and that message sends the reader to the wrong place.
+
+    **And the module is loaded by `spec_from_file_location` and not by a path
+    insert**, on purpose: a suite that puts the scripts directory on
+    `sys.path` supplies the very thing a resolution guard is meant to exercise,
+    and two mutations went green that way on 2026-11-15.
+    """
+
+    def _mod(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        p = os.path.join(root, "skills", "job-sync", "scripts", "_sheets.py")
+        spec = importlib.util.spec_from_file_location("_sheets_1316", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _dir(self):
+        d = getattr(self, "_tmp", None)
+        if d is None:
+            import tempfile
+            d = self._tmp = tempfile.mkdtemp(prefix="sheets-1316-")
+        return d
+
+    def _key(self, name, payload):
+        p = os.path.join(self._dir(), name)
+        with io.open(p, "w", encoding="utf-8") as fh:
+            fh.write(payload if isinstance(payload, str)
+                     else json.dumps(payload))
+        return p
+
+    def _real(self):
+        """A REAL 2048-bit key, generated HERE by openssl. A fixture private
+        key checked into a public repository would be a credential in the
+        tree, and generating it with a library would reintroduce the very
+        dependency this module exists to avoid."""
+        import subprocess
+        p = os.path.join(self._dir(), "gen.pem")
+        subprocess.run(["openssl", "genpkey", "-algorithm", "RSA",
+                        "-pkeyopt", "rsa_keygen_bits:2048", "-out", p],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       check=True)
+        with io.open(p, encoding="utf-8") as fh:
+            pem = fh.read()
+        return p, {"type": "service_account", "private_key": pem,
+                   "client_email": "x@y.iam.gserviceaccount.com",
+                   "token_uri": "https://oauth2.example/token",
+                   "project_id": "p"}
+
+    def test_an_absent_key_is_not_an_error_but_a_refusal_that_says_opt_in(self):
+        m = self._mod()
+        p = os.path.join(self._dir(), "nothing-here.json")
+        with self.assertRaises(m.SheetsRefused) as got:
+            m.credential(p)
+        self.assertEqual(got.exception.code, m.EXIT_NO_KEY)
+        self.assertIn("OPT-IN", str(got.exception))
+
+    def test_a_key_missing_a_required_field_names_the_field(self):
+        m = self._mod()
+        p = self._key("short.json", {"type": "service_account",
+                                     "client_email": "a@b.c"})
+        with self.assertRaises(m.SheetsRefused) as got:
+            m.credential(p)
+        self.assertEqual(got.exception.code, m.EXIT_BAD_KEY)
+        #  the MESSAGE must name what is missing: "not a service-account key"
+        #  alone sends the reader to re-download a file that is fine.
+        self.assertIn("private_key", str(got.exception))
+        self.assertIn("token_uri", str(got.exception))
+
+    def test_a_json_file_that_is_not_an_object_is_refused_as_a_shape(self):
+        m = self._mod()
+        p = self._key("list.json", "[1, 2, 3]")
+        with self.assertRaises(m.SheetsRefused) as got:
+            m.credential(p)
+        self.assertEqual(got.exception.code, m.EXIT_BAD_KEY)
+
+    def test_another_credential_type_is_refused_and_not_coerced(self):
+        m = self._mod()
+        _k, cred = self._real()
+        cred["type"] = "authorized_user"
+        p = self._key("user.json", cred)
+        with self.assertRaises(m.SheetsRefused) as got:
+            m.credential(p)
+        self.assertEqual(got.exception.code, m.EXIT_BAD_KEY)
+        self.assertIn("service accounts", str(got.exception))
+
+    def test_the_path_order_is_argument_then_environment_then_default(self):
+        m = self._mod()
+        keep = os.environ.get(m.ENV_KEY)
+        try:
+            os.environ[m.ENV_KEY] = "/from/env.json"
+            self.assertEqual(m.key_path("/given.json"), "/given.json")
+            self.assertEqual(m.key_path(None), "/from/env.json")
+            del os.environ[m.ENV_KEY]
+            self.assertEqual(m.key_path(None),
+                             os.path.expanduser(m.DEFAULT_KEY))
+        finally:
+            if keep is None:
+                os.environ.pop(m.ENV_KEY, None)
+            else:
+                os.environ[m.ENV_KEY] = keep
+
+    def test_the_assertion_is_three_segments_and_its_signature_verifies(self):
+        import base64
+        import subprocess
+        m = self._mod()
+        pem_path, cred = self._real()
+        tok = m.assertion(cred, scope="SCOPE/x", now=1700000000, lifetime=60)
+        parts = tok.split(b".")
+        self.assertEqual(len(parts), 3)
+
+        def un(seg):
+            return base64.urlsafe_b64decode(seg + b"=" * (-len(seg) % 4))
+
+        self.assertEqual(json.loads(un(parts[0])),
+                         {"alg": "RS256", "typ": "JWT"})
+        claims = json.loads(un(parts[1]))
+        self.assertEqual(claims["iss"], cred["client_email"])
+        self.assertEqual(claims["aud"], cred["token_uri"])
+        self.assertEqual(claims["scope"], "SCOPE/x")
+        #  the lifetime is a SUM and not a literal: a signed token whose `exp`
+        #  does not follow `iat` is refused by the provider with a clock
+        #  complaint, which is the least useful message of the three.
+        self.assertEqual(claims["exp"] - claims["iat"], 60)
+        self.assertEqual(claims["iat"], 1700000000)
+        #  and the signature must verify over the FIRST TWO segments ONLY,
+        #  checked by openssl because a library here is a dependency.
+        pub = os.path.join(self._dir(), "pub.pem")
+        subprocess.run(["openssl", "pkey", "-in", pem_path, "-pubout",
+                        "-out", pub], stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, check=True)
+        payload = os.path.join(self._dir(), "payload.bin")
+        with open(payload, "wb") as fh:
+            fh.write(parts[0] + b"." + parts[1])
+        sig = os.path.join(self._dir(), "sig.bin")
+        with open(sig, "wb") as fh:
+            fh.write(un(parts[2]))
+        done = subprocess.run(["openssl", "dgst", "-sha256", "-verify", pub,
+                               "-signature", sig, payload],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(done.returncode, 0,
+                         "the signature does not verify over head.body: "
+                         + done.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"Verified OK", done.stdout)
+
+    def test_the_fallback_path_signs_too_and_leaves_no_key_behind(self):
+        """WINDOWS HAS NO FIFOS, and this machine cannot discover it: the CI
+        turned the first version RED on both Windows jobs with `AttributeError:
+        module 'os' has no attribute 'mkfifo'` while Linux and macOS passed.
+
+        So the trait is SIMULATED here rather than left to the CI — a bench can
+        exercise an absent trait even when the runtime cannot. The fallback is
+        the WEAKER path: it puts the key in a 0600 file, so what this asserts is
+        that it still signs AND that nothing is left behind.
+        """
+        import base64
+        import glob
+        import subprocess
+        import tempfile
+        m = self._mod()
+        pem_path, cred = self._real()
+        if not m.shutil.which("openssl"):
+            self.skipTest("openssl is not on PATH; the refusal is covered by "
+                          "its own case")
+        keep = m.os.mkfifo if hasattr(m.os, "mkfifo") else None
+
+        def no_fifos(*_a, **_k):
+            raise AttributeError("module 'os' has no attribute 'mkfifo'")
+
+        m.os.mkfifo = no_fifos
+        try:
+            tok = m.assertion(cred, now=1700000000, lifetime=60)
+        finally:
+            if keep is None:
+                del m.os.mkfifo
+            else:
+                m.os.mkfifo = keep
+        parts = tok.split(b".")
+        self.assertEqual(len(parts), 3)
+
+        def un(seg):
+            return base64.urlsafe_b64decode(seg + b"=" * (-len(seg) % 4))
+
+        #  the SAME verification as the FIFO path: a fallback that signs
+        #  something openssl would not verify is worse than one that refuses.
+        pub = os.path.join(self._dir(), "pub-fb.pem")
+        subprocess.run(["openssl", "pkey", "-in", pem_path, "-pubout",
+                        "-out", pub], stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, check=True)
+        payload = os.path.join(self._dir(), "payload-fb.bin")
+        with open(payload, "wb") as fh:
+            fh.write(parts[0] + b"." + parts[1])
+        sig = os.path.join(self._dir(), "sig-fb.bin")
+        with open(sig, "wb") as fh:
+            fh.write(un(parts[2]))
+        done = subprocess.run(["openssl", "dgst", "-sha256", "-verify", pub,
+                               "-signature", sig, payload],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8",
+                                                                "replace"))
+        #  and the weaker path must not LEAVE the key: the directory it writes
+        #  into is removed in a `finally`, so none may survive the call.
+        left = glob.glob(os.path.join(tempfile.gettempdir(),
+                                      "job-sync-sign-*"))
+        self.assertEqual(left, [], f"a signing directory survived: {left}")
+
+    def test_a_missing_openssl_is_refused_as_its_own_cause(self):
+        """The signer missing is not the key being wrong, and the two would
+        otherwise answer with the same exit code — which sends the reader to
+        re-download a credential that is fine."""
+        m = self._mod()
+        _p, cred = self._real()
+        keep = m.shutil.which
+        m.shutil.which = lambda _name: None
+        try:
+            with self.assertRaises(m.SheetsRefused) as got:
+                m.assertion(cred)
+        finally:
+            m.shutil.which = keep
+        self.assertEqual(got.exception.code, m.EXIT_NO_OPENSSL)
+        self.assertIn("openssl", str(got.exception))
+
+    def test_the_module_imports_nothing_outside_the_standard_library(self):
+        """A dependency-free transport is what `NoDependencies` demands of
+        every module here, and the first version of this one broke it. A new import here is a dependency for
+        every user of the plugin, so it fails loudly."""
+        import ast
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        p = os.path.join(root, "skills", "job-sync", "scripts", "_sheets.py")
+        with io.open(p, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(a.name.split(".")[0] for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module.split(".")[0])
+        allowed = {"base64", "json", "os", "shutil", "subprocess",
+                   "tempfile", "threading", "time", "urllib",
+                   "__future__"}
+        self.assertEqual(names - allowed, set(),
+                         "a NEW third-party import would land on every user")
+
+    def test_the_write_never_clears_which_is_what_makes_the_union_safe(self):
+        """The union cannot delete a row; a CLEAR can. The module must
+        therefore carry no clear call at all — checked on the SOURCE, because
+        the damage would be to a document another agent writes to."""
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        p = os.path.join(root, "skills", "job-sync", "scripts", "_sheets.py")
+        with io.open(p, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertNotIn(":clear", src)
+        self.assertNotIn("batchClear", src)
+        #  positive contingent: the string the write DOES use is present, so a
+        #  pass here is not an artefact of looking at the wrong file.
+        self.assertIn("valueInputOption=RAW", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
