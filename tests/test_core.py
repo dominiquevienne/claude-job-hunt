@@ -62949,5 +62949,105 @@ class TheSheetsTransportRefusesBeforeItReachesTheNetwork(unittest.TestCase):
         self.assertIn("valueInputOption=RAW", src)
 
 
+class TheJobSyncSkillMakesAPromiseTheRepositoryAlreadyPrinted(unittest.TestCase):
+    """#1316 item 1, decided by the owner on 2026-11-15: write the card.
+
+    Two objects of this repository printed `/job-sync` to the END USER while
+    nothing resolved it — `job-report/SKILL.md` and `list_applications.py`. The
+    card closes that, and these cases guard the two ways the closure can rot:
+    the card disappearing, and the README keeping a sentence that this very
+    card makes false.
+    """
+
+    def _root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def test_the_command_the_repository_prints_to_the_user_now_resolves(self):
+        p = os.path.join(self._root(), "skills", "job-sync", "SKILL.md")
+        self.assertTrue(os.path.exists(p), "`/job-sync` is printed to the end "
+                                           "user and must resolve")
+        with io.open(p, encoding="utf-8") as fh:
+            text = fh.read()
+        head = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+        self.assertIsNotNone(head, "no YAML header")
+        for field in ("name:", "description:", "user-invocable:",
+                      "allowed-tools:"):
+            self.assertIn(field, head.group(1), f"header lacks {field}")
+        self.assertIn("name: job-sync", head.group(1))
+        #  positive contingent on the SAME axis: a sibling card is found by the
+        #  same shape, so a pass here is not an artefact of a lenient regex.
+        q = os.path.join(self._root(), "skills", "job-report", "SKILL.md")
+        with io.open(q, encoding="utf-8") as fh:
+            self.assertIsNotNone(re.match(r"^---\n(.*?)\n---\n", fh.read(),
+                                          re.S))
+
+    def test_the_readme_no_longer_says_no_skill_reaches_the_export(self):
+        """**The sentence this card makes false.** Until this card existed the
+        README could say the export was reached by nothing — that was the whole
+        Privacy answer. A skill reaches it now, and a Privacy section that
+        keeps the old sentence describes a protection that is gone."""
+        with io.open(os.path.join(self._root(), "README.md"),
+                     encoding="utf-8") as fh:
+            text = fh.read()
+        flat = re.sub(r"\s+", " ", text)
+        self.assertNotIn("No skill, no command and no run reaches the export",
+                         flat)
+        self.assertNotIn("What keeps this off is not a setting", flat)
+        #  and the replacement must name what DOES hold, or the section says
+        #  nothing where it used to say something
+        self.assertIn("nothing is written without `--apply`", flat)
+
+    def test_the_card_declares_what_its_switch_does_not_protect(self):
+        """A flag described as a protection it does not provide is worse than
+        no flag — the integration contract says so in those terms. The card
+        reads `integrations.events_sheet.enabled`, and the read is in a
+        PROCEDURE: a direct script call does not consult it. The card must say
+        that about itself.
+
+        **TWO CLASSES OF NEEDLE, TWO INSTRUMENTS, and this guard was written
+        wrong twice before the distinction held.** A PROSE needle must survive
+        the repli, because Markdown emphasis lands in the MIDDLE of an
+        expression — this card writes "and **not** by the transport", so a
+        needle assuming two adjacent words renders ZERO. An IDENTIFIER needle
+        must NOT: the repli strips the underscore, and `events_sheet` becomes
+        `eventssheet`, so the same strip that saves the first breaks the
+        second. The underscore is part of the NAME, not typography.
+        """
+        with io.open(os.path.join(self._root(), "skills", "job-sync",
+                                  "SKILL.md"), encoding="utf-8") as fh:
+            raw = fh.read()
+        prose = re.sub(r"\s+", " ", re.sub(r"[*`]", "", raw))
+        #  IDENTIFIERS — on the raw bytes, no strip of any kind
+        self.assertIn("integrations.events_sheet.enabled", raw)
+        self.assertIn("--apply", raw)
+        #  PROSE — through the repli, because the emphasis is mid-expression
+        self.assertIn("not by the transport", prose)
+        self.assertIn("wait for a yes", prose)
+        self.assertIn("Propose, then write", prose)
+        #  and the contingent that makes a zero above ATTRIBUTABLE: the same
+        #  identifier needle must FAIL on the repli, which is the whole reason
+        #  the two classes are read by two instruments.
+        stripped = re.sub(r"[*`_]", "", raw)
+        self.assertNotIn("integrations.events_sheet.enabled", stripped,
+                         "if the identifier survives the underscore strip the "
+                         "distinction this guard rests on is not real")
+
+    def test_the_example_config_carries_the_section_the_card_reads(self):
+        """A card that reads a key the shipped example does not carry sends the
+        user to invent a shape. The example also has to say what leaves."""
+        with io.open(os.path.join(self._root(), "templates",
+                                  "config.example.yml"),
+                     encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn("integrations:", text)
+        self.assertIn("events_sheet:", text)
+        self.assertIn("enabled: false", text,
+                      "the integration ships OFF or the default is the leak")
+        self.assertIn("sheet_id:", text)
+        #  the credential must NOT be here, and the file must say where it is
+        self.assertNotIn("private_key", text)
+        self.assertIn(".job-sync-sa.json", text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
