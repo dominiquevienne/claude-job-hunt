@@ -17,6 +17,17 @@ as `/dev/fd/N` is REFUSED by openssl ("Bad"), a FIFO works, and a temporary
 600 file works — so the FIFO is the only shape that both works and keeps the
 key off the disk.
 
+**AND WINDOWS HAS NO FIFOS**, which this machine cannot discover: `os.mkfifo`
+simply does not exist there, and the CI is the only instrument that sees it —
+it turned the first version RED on both Windows jobs with
+`AttributeError: module 'os' has no attribute 'mkfifo'` while Linux and macOS
+passed. So there are TWO paths and the weaker one is DECLARED rather than
+hidden: where FIFOs exist the key never touches a file, and where they do not
+it goes through a 0600 file inside a 0700 directory removed in a `finally`.
+The fallback is exercised on POSIX too, by a test that makes `os.mkfifo`
+raise — simulating an absent trait is possible for a BANC even when the trait
+is unavailable at runtime.
+
 **Why the write is an UPDATE and never a CLEAR.** `events_sheet.merge` builds
 the UNION of the tab and our rows, so the row count never decreases and no row
 the sheet holds can be dropped. Writing the union over the top is therefore
@@ -136,16 +147,28 @@ def sign(pem, payload, timeout=30):
     os.chmod(box, 0o700)
     node = os.path.join(box, "key")
     try:
-        os.mkfifo(node, 0o600)
-
-        def feed():
+        try:
+            os.mkfifo(node, 0o600)
+            piped = True
+        except (AttributeError, NotImplementedError, OSError):
+            #  No FIFOs here — Windows. The key goes through a 0600 file in a
+            #  0700 directory instead, and this is the WEAKER path: it is
+            #  declared in the module head rather than silently taken.
+            piped = False
+            handle = os.open(node, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             try:
-                with open(node, "wb") as fh:
-                    fh.write(pem)
-            except OSError:
-                pass
+                os.write(handle, pem)
+            finally:
+                os.close(handle)
+        if piped:
+            def feed():
+                try:
+                    with open(node, "wb") as fh:
+                        fh.write(pem)
+                except OSError:
+                    pass
 
-        threading.Thread(target=feed, daemon=True).start()
+            threading.Thread(target=feed, daemon=True).start()
         done = subprocess.run([exe, "dgst", "-sha256", "-sign", node],
                               input=payload, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=timeout)

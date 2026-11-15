@@ -62836,6 +62836,67 @@ class TheSheetsTransportRefusesBeforeItReachesTheNetwork(unittest.TestCase):
                          + done.stderr.decode("utf-8", "replace"))
         self.assertIn(b"Verified OK", done.stdout)
 
+    def test_the_fallback_path_signs_too_and_leaves_no_key_behind(self):
+        """WINDOWS HAS NO FIFOS, and this machine cannot discover it: the CI
+        turned the first version RED on both Windows jobs with `AttributeError:
+        module 'os' has no attribute 'mkfifo'` while Linux and macOS passed.
+
+        So the trait is SIMULATED here rather than left to the CI — a bench can
+        exercise an absent trait even when the runtime cannot. The fallback is
+        the WEAKER path: it puts the key in a 0600 file, so what this asserts is
+        that it still signs AND that nothing is left behind.
+        """
+        import base64
+        import glob
+        import subprocess
+        import tempfile
+        m = self._mod()
+        pem_path, cred = self._real()
+        if not m.shutil.which("openssl"):
+            self.skipTest("openssl is not on PATH; the refusal is covered by "
+                          "its own case")
+        keep = m.os.mkfifo if hasattr(m.os, "mkfifo") else None
+
+        def no_fifos(*_a, **_k):
+            raise AttributeError("module 'os' has no attribute 'mkfifo'")
+
+        m.os.mkfifo = no_fifos
+        try:
+            tok = m.assertion(cred, now=1700000000, lifetime=60)
+        finally:
+            if keep is None:
+                del m.os.mkfifo
+            else:
+                m.os.mkfifo = keep
+        parts = tok.split(b".")
+        self.assertEqual(len(parts), 3)
+
+        def un(seg):
+            return base64.urlsafe_b64decode(seg + b"=" * (-len(seg) % 4))
+
+        #  the SAME verification as the FIFO path: a fallback that signs
+        #  something openssl would not verify is worse than one that refuses.
+        pub = os.path.join(self._dir(), "pub-fb.pem")
+        subprocess.run(["openssl", "pkey", "-in", pem_path, "-pubout",
+                        "-out", pub], stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, check=True)
+        payload = os.path.join(self._dir(), "payload-fb.bin")
+        with open(payload, "wb") as fh:
+            fh.write(parts[0] + b"." + parts[1])
+        sig = os.path.join(self._dir(), "sig-fb.bin")
+        with open(sig, "wb") as fh:
+            fh.write(un(parts[2]))
+        done = subprocess.run(["openssl", "dgst", "-sha256", "-verify", pub,
+                               "-signature", sig, payload],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8",
+                                                                "replace"))
+        #  and the weaker path must not LEAVE the key: the directory it writes
+        #  into is removed in a `finally`, so none may survive the call.
+        left = glob.glob(os.path.join(tempfile.gettempdir(),
+                                      "job-sync-sign-*"))
+        self.assertEqual(left, [], f"a signing directory survived: {left}")
+
     def test_a_missing_openssl_is_refused_as_its_own_cause(self):
         """The signer missing is not the key being wrong, and the two would
         otherwise answer with the same exit code — which sends the reader to
