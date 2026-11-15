@@ -31,24 +31,19 @@ SENT_KINDS = ("applied", "rejected", "postulé", "refusé")
 # "applied 2026-08-04", "rejected 2026-08-04", "no-go 2026-08-04".
 # The date is what we filter on. The older French form ("postulé le 2026-08-04")
 # is still accepted so a ledger that has not been migrated keeps working.
-STATUS_RE = re.compile(
-    r"^(?P<kind>[\w'’-]+(?:\s+[\w'’-]+)*?)(?:\s+le)?\s+(?P<date>\d{4}-\d{2}-\d{2})\s*$"
-)
+# Bound to the ONE object (#1322). It was a third byte-identical copy of this
+# regex, and nothing in this file reads it any more — `annotate` does. The NAME
+# stays so a caller or a test that reaches for it gets the same object the
+# normalisation uses, instead of a copy that could drift away from it.
+STATUS_RE = _ledger_table.STATUS_RE
 
 # Column names are read from the table header, not hardcoded: a column inserted
 # in the middle (Pay, 2026-08-26) used to shift every field silently and made
 # the Status cell read the wrong value. Only these two are required.
-HEADER_ALIASES = {
-    "id": "id",
-    "role": "poste", "poste": "poste",
-    "company": "societe", "société": "societe", "societe": "societe",
-    "location / mode": "lieu", "lieu / mode": "lieu", "lieu": "lieu",
-    "posted": "publiee", "publiée": "publiee", "publiee": "publiee",
-    "match": "match",
-    "pay": "pay",
-    "status": "statut", "statut": "statut",
-    "note": "note",
-}
+# Was a byte-identical copy of the dict in `jobroom_sync.py`; both now read
+# the ONE object in `_ledger_table` (#1322). The two copies AGREED, which is
+# precisely why nothing ever rang.
+HEADER_ALIASES = _ledger_table.HEADER_ALIASES
 
 # An ad id is prefixed by its board ("linkedin:123", "jobup:<uuid>"). A bare
 # numeric id is a pre-migration LinkedIn row.
@@ -255,11 +250,13 @@ def load_rows(path: str) -> tuple[list[dict], dict[str, int]]:
     rows, skipped = _ledger_table.load(path, HEADER_ALIASES)
     out = []
     for row in rows:
-        m = STATUS_RE.match(row["statut"])
-        row["date"] = m.group("date") if m else None
-        row["kind"] = m.group("kind").lower() if m else row["statut"].lower()
+        # `date`, `kind` and the three `jr_*` fields come from the ONE
+        # normalisation (#1322). **This file's `jr_missing` used to be a
+        # substring test and `jobroom_sync`'s a regex** — two readings of one
+        # convention that agreed by luck, and only one of the two was the
+        # reading the declaration depended on.
+        _ledger_table.annotate(row)
         row["url"] = ad_url(row.get("id", ""))
-        row["jr_missing"] = "JR:missing" in row.get("note", "")
         # **`IV:` is the third use of a convention, not a second convention.**
         # `JR:` records a declaration, `FU:` a promised date, `IV:` a meeting
         # that happened — all three live in the Note, none of them touches the

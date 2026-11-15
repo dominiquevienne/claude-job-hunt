@@ -748,19 +748,46 @@ export JOB_HUNT_HOME="$HOME/work/job-search"
 
 ## Privacy
 
-**Nothing is uploaded anywhere by this plugin.** Your profile, your contact
-details and your applications stay in your workspace on your machine. The
-browser automation acts in your own Chrome session; the job board sees you, as
-usual, and no third party is involved.
+**This plugin uploads nothing by itself.** Your profile, your contact details
+and your applications stay in your workspace on your machine. The browser
+automation acts in your own Chrome session; the job board sees you, as usual,
+and no third party is involved.
 
-There is exactly **one** thing that can ever leave your machine, and only if you
-ask for it: a **board request** — a short report saying that some job board has
-no adapter yet and what one would need. It is written to your workspace first,
-shown to you in full, and submitted as a GitHub issue **under your own account**
-only after you say yes. It contains the board's URL, one example ad URL, and
-notes on the site's structure — no part of your profile, name or application.
-The example ad URL is the one detail that says something about you, so the
-plugin offers to strip it before submitting.
+There are **two** things that can leave your machine, and neither moves unless
+you ask.
+
+**1. A board request.** A short report saying that some job board has no
+adapter yet and what one would need. It is written to your workspace first,
+shown to you in full, and submitted as a GitHub issue **under your own
+account** only after you say yes. It contains the board's URL, one example ad
+URL, and notes on the site's structure — no part of your profile, name or
+application. The example ad URL is the one detail that says something about
+you, so the plugin offers to strip it before submitting.
+
+**2. The events sheet, and only if you switch it on.** Some people already run
+an agent that reads their mailbox and records what employers replied. If you
+do, you can give it a spreadsheet **you own** and let the two sides meet there
+— `integrations.events_sheet.enabled`, **off by default**. The sheet id is not
+a credential and stays in your own `config.yml`; **no credential for it lives
+in this repository.**
+
+| | |
+| :-- | :-- |
+| **what goes out** | one row per application: employer, role, the **board where the ad was found**, the send and status dates, and whether it has been declared to your unemployment office. Optionally the employer aliases and sender domains *you yourself wrote* in `employers.md` |
+| **what never goes out** | your CV and your letters, your address, your phone number, your scores, the ad texts, and the reason an employer gave for a refusal |
+| **who moves it** | **you.** `export` prints the rows to your terminal; importing them into your sheet is your own act, in your own browser. The plugin uploads nothing |
+| **how much goes out** | applications still waiting for an answer, whatever their date. **Rejected ones only from a cut-off date you give** — with no cut-off, none of them leaves, and the run tells you how many it held back |
+
+The sheet is also read back, and that direction carries someone else's words:
+the refusal reason your agent lifted from an employer's mail is **untrusted
+third-party text**. It is shown to you unreworded, it is never shortened, and
+it goes into nothing official until you have validated that field yourself.
+
+**And nothing is ever written into your sheet by this plugin.** A spreadsheet
+import *replaces* a tab, so the only safe shape is to export what the tab
+already holds, rebuild the full union of that and your applications, and let
+you import it — which is why `export` only ever prints, and why no row can be
+deleted by a run.
 
 What Claude reads, it reads to write your documents — the same way it reads any
 file you point it at. If that matters for a particular document, keep it out of

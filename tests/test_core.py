@@ -61820,5 +61820,591 @@ class ThePrefillProposesAndSavesNothing(unittest.TestCase):
         self.assertIn("NEVER", r.stdout)
 
 
+class TheExportDerivesAndLeavesNothingGuessed(unittest.TestCase):
+    """#1322 — `events_sheet.py export`, and the workbook reader it needed.
+
+    **Every case DRIVES the code.** A re-derivation of the mapping here would
+    agree with itself, and the defect this class exists for is a `candidatures`
+    tab that reads perfectly whether a send date was known, lost, or invented.
+
+    Three of these cases exist because the shape of the data forced them, and
+    none of the three is visible in a row that looks right:
+
+    * a row the ledger already carries as `rejected` has **no send date in the
+      ledger at all** — `Status` then holds the refusal date, which is the
+      contract's own reason for never rewriting `date_envoi`. It leaves EMPTY
+      and the union keeps whatever the sheet holds;
+    * a `Note` with no `JR:` marker is a FOURTH state the contract's three
+      values do not cover, and folding it onto `non_declare` would claim a
+      declaration state nobody wrote, on the column a declaration reads;
+    * a workbook's tab is resolved by NAME through the rels, never by the
+      index of `xl/worksheets/sheetN.xml`. On the workbook first measured the
+      two coincided, so a reader that assumes the index is GREEN today and
+      reads the wrong tab on the first reordered sheet. **The fixture here
+      deliberately maps tab 1 to `sheet3.xml`**, so the assumption cannot
+      pass.
+    """
+
+    CAND = ("id,entreprise,alias_entreprise,domaines_expediteurs,poste,canal,"
+            "statut_ledger,date_envoi,date_statut,statut_pre")
+    EVT = ("date_evenement,message_id,candidature_id,candidats_possibles,"
+           "entreprise,poste,type,motif_refus,action_requise,echeance,"
+           "thread_url,archive,confiance,traite_le")
+    JOURNAL = ("date_scan,heure,mails_vus,evenements_ajoutes,archives,"
+               "a_verifier,alertes_ignorees,erreurs")
+
+    HEAD = ("# Pipeline\n\n## Ads\n\n"
+            "| ID | Role | Company | Location / Mode | Posted | Match | Pay "
+            "| Status | Note |\n"
+            "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |\n")
+
+    SCRIPT = ("skills", "job-sync", "scripts", "events_sheet.py")
+
+    @classmethod
+    def _root(cls):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(self._root(), *self.SCRIPT)
+        d = os.path.dirname(p)
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location("events_1322", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            if d in sys.path:
+                sys.path.remove(d)
+
+    def _dir(self):
+        import tempfile
+        d = getattr(self, "_tmp", None)
+        if d is None:
+            d = self._tmp = tempfile.mkdtemp(prefix="export-1322-")
+        return d
+
+    def _write(self, name, text):
+        p = os.path.join(self._dir(), name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        return p
+
+    def _ledger(self, *rows):
+        return self._write("job-pipeline.md", self.HEAD + "".join(
+            "| " + " | ".join(r) + " |\n" for r in rows))
+
+    def _rows(self, *rows):
+        """`(rows, counts)` from a ledger, through the REAL readers."""
+        mod = self._mod()
+        lr = self._resolver()
+        lt = lr.ledger()
+        loaded, _skipped = lt.load(self._ledger(*rows), lt.HEADER_ALIASES)
+        return mod.candidatures([lt.annotate(r) for r in loaded], lt.sent)
+
+    def _resolver(self):
+        import importlib.util
+        p = os.path.join(self._root(), "skills", "job-sync", "scripts",
+                         "_ledger_reader.py")
+        spec = importlib.util.spec_from_file_location("ledger_reader_1322", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    # ------------------------------------------------------------ the scope
+
+    def test_an_applied_row_leaves_whatever_its_date(self):
+        rows, counts = self._rows(
+            ("linkedin:1", "Dev", "Alpha SA", "Lausanne", "2019-01-01", "80",
+             "-", "applied 2019-01-02", "JR:missing"))
+        self.assertEqual([r["id"] for r in rows], ["linkedin:1"],
+                         "an `applied` row is waiting for an answer: leaving "
+                         "it out means its refusal is never matched")
+        self.assertEqual(counts["retenues_rejected"], 0)
+
+    def test_with_no_cutoff_no_rejected_row_leaves(self):
+        rows, counts = self._rows(
+            ("jobup:3", "QA", "Beta SA", "Geneve", "2026-09-01", "70", "-",
+             "rejected 2026-10-20", "JR:missing"))
+        self.assertEqual(rows, [], "the least-egress default: with no cut-off "
+                                   "NO rejected row leaves")
+        self.assertEqual(counts["retenues_rejected"], 1,
+                         "and the run SAYS how many it held back")
+
+    def test_the_cutoff_releases_only_from_its_date(self):
+        mod, lr = self._mod(), self._resolver()
+        lt = lr.ledger()
+        loaded, _s = lt.load(self._ledger(
+            ("jobup:3", "QA", "Beta SA", "Geneve", "2026-09-01", "70", "-",
+             "rejected 2026-10-20", "JR:missing"),
+            ("jobup:4", "Ops", "Beta SA", "Geneve", "2026-07-01", "70", "-",
+             "rejected 2026-08-01", "JR:missing")), lt.HEADER_ALIASES)
+        rows = [lt.annotate(r) for r in loaded]
+        out, counts = mod.candidatures(rows, lt.sent,
+                                       rejected_from="2026-10-01")
+        self.assertEqual([r["id"] for r in out], ["jobup:3"])
+        self.assertEqual(counts["retenues_rejected"], 1)
+
+    def test_a_row_that_never_left_is_counted_and_not_emitted(self):
+        rows, counts = self._rows(
+            ("jobup:6", "Nope", "Gamma", "Vaud", "2026-10-01", "50", "-",
+             "todo", ""),
+            ("jobup:7", "Nope", "Gamma", "Vaud", "2026-10-01", "50", "-",
+             "no-go 2026-10-02", ""))
+        self.assertEqual(rows, [])
+        self.assertEqual(counts["jamais_envoyees"], 2,
+                         "`todo` carries no date and `no-go` never left; "
+                         "neither belongs in the sheet")
+
+    def test_the_french_status_form_is_still_read(self):
+        rows, _c = self._rows(
+            ("jobup:7", "Dev", "Zeta", "Vaud", "2026-10-01", "55", "-",
+             "postulé le 2026-10-04", "JR:missing"))
+        self.assertEqual([(r["statut_ledger"], r["date_envoi"]) for r in rows],
+                         [("applied", "2026-10-04")],
+                         "a ledger that has not been migrated keeps working")
+
+    def test_a_sent_kind_the_table_does_not_name_is_NAMED(self):
+        """The default case is the one that fails VISIBLY.
+
+        A kind the ledger counts as sent and this mapping does not carry is
+        reported under its own name. Folding it onto `applied` would send a
+        row to the sheet carrying a status nobody wrote — and the sheet is
+        read by someone else's agent.
+        """
+        mod, lr = self._mod(), self._resolver()
+        lt = lr.ledger()
+        row = {"id": "x:1", "societe": "A", "poste": "P",
+               "statut": "embauché 2026-10-01", "note": ""}
+        lt.annotate(row)
+        out, counts = mod.candidatures(
+            [row], lambda r: True, rejected_from="2000-01-01")
+        self.assertEqual(out, [])
+        self.assertEqual(counts["inconnues"], ["embauché"],
+                         "NAMED, never coerced")
+
+    # ------------------------------------------- the three EMPTY, not guessed
+
+    def test_a_rejected_row_leaves_with_no_send_date(self):
+        """The ledger does not hold it, so nothing may be put there.
+
+        `applied → rejected` overwrites the send date in `Status`; that is the
+        contract's reason for never rewriting `date_envoi`, and it means a row
+        already `rejected` has no send date to give.
+        """
+        rows, counts = self._rows_cut(
+            ("jobup:3", "QA", "Beta SA", "Geneve", "2026-09-01", "70", "-",
+             "rejected 2026-10-20", "JR:missing"))
+        self.assertEqual(rows[0]["date_envoi"], "",
+                         "a date taken from the refusal would be a send date "
+                         "nobody recorded")
+        self.assertEqual(rows[0]["date_statut"], "2026-10-20")
+        self.assertEqual(counts["sans_date_envoi"], 1)
+
+    def _rows_cut(self, *rows):
+        mod, lr = self._mod(), self._resolver()
+        lt = lr.ledger()
+        loaded, _s = lt.load(self._ledger(*rows), lt.HEADER_ALIASES)
+        return mod.candidatures([lt.annotate(r) for r in loaded], lt.sent,
+                                rejected_from="2000-01-01")
+
+    def test_the_union_keeps_the_send_date_the_sheet_already_had(self):
+        """The other half of the same rule, driven through `merge`."""
+        mod = self._mod()
+        current = self._write("current.csv", self.CAND + "\n" +
+                              "jobup:3,Beta SA,,,QA,jobup,applied,"
+                              "2026-09-15,2026-09-15,non_declare\n")
+        new = self._write("new.csv", self.CAND + "\n" +
+                          "jobup:3,Beta SA,,,QA,jobup,rejected,,"
+                          "2026-10-20,non_declare\n")
+        rows, counts = mod.merge(current, new)
+        self.assertEqual(rows[0]["date_envoi"], "2026-09-15",
+                         "a send date is written ONCE")
+        self.assertEqual(rows[0]["date_statut"], "2026-10-20")
+        self.assertEqual(counts["dates_envoi_conservees"], 1)
+        self.assertEqual(counts["supprimees"], 0,
+                         "an import REPLACES a tab, so the union is the only "
+                         "shape that cannot delete a row")
+
+    def test_a_note_with_no_JR_marker_is_a_FOURTH_state(self):
+        rows, counts = self._rows(
+            ("a:1", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", ""),
+            ("a:2", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:missing"),
+            ("a:3", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:2026-10-05"),
+            ("a:4", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:waived 2026-10-06"))
+        self.assertEqual([r["statut_pre"] for r in rows],
+                         ["", "non_declare", "declare", "renonce"],
+                         "nothing recorded is NOT `non_declare`")
+        self.assertEqual(counts["sans_statut_pre"], 1)
+
+    def test_an_id_with_no_board_prefix_leaves_canal_empty(self):
+        rows, counts = self._rows(
+            ("linkedin:1", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:missing"),
+            ("sansprefixe", "Dev", "A", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:missing"))
+        self.assertEqual([r["canal"] for r in rows], ["linkedin", ""],
+                         "the column says where the ad was FOUND: inventing "
+                         "a board would assert a provenance")
+        self.assertEqual(counts["sans_canal"], 1)
+
+    # ---------------------------------------------------------- employers.md
+
+    EMP = ("# Employers\n\n## The two rules\n\n- prose, not an employer\n\n"
+           "---\n\n## Acme SA\n\n"
+           "- **aliases** — `Acme AG` | Acme Group · *read 2026-11-01*\n"
+           "- **domains** — acme.com | acme-recrutement.ch\n\n"
+           "## Beta SA\n\n"
+           "- **Also trades as** — `Beta Labs` on its careers site\n")
+
+    def test_the_two_optional_bullets_are_read_and_nothing_else_is(self):
+        """`Also trades as` is NOT an alias — that would be an interpretation.
+
+        Putting into an egress a value the user never declared for it is the
+        difference between a declaration and a reading of one.
+        """
+        mod, lr = self._mod(), self._resolver()
+        em = lr.employers()
+        facts = mod.employer_facts(self._write("employers.md", self.EMP), em)
+        self.assertEqual(sorted(facts), [em.fold("Acme SA")],
+                         "only the employer that DECLARES one of the two "
+                         "labels appears — and the prose section above the "
+                         "`---` rule is not an employer")
+        self.assertEqual(facts[em.fold("Acme SA")]["aliases"],
+                         ["Acme AG", "Acme Group"])
+        self.assertEqual(facts[em.fold("Acme SA")]["domains"],
+                         ["acme.com", "acme-recrutement.ch"],
+                         "the dated italic note after ` · ` is dropped")
+
+    def test_the_alias_columns_are_filled_from_the_folded_name(self):
+        mod, lr = self._mod(), self._resolver()
+        lt, em = lr.ledger(), lr.employers()
+        facts = mod.employer_facts(self._write("employers.md", self.EMP), em)
+        loaded, _s = lt.load(self._ledger(
+            ("linkedin:1", "Dev", "ACME  sa", "V", "2026-10-01", "80", "-",
+             "applied 2026-10-02", "JR:missing")), lt.HEADER_ALIASES)
+        rows, counts = mod.candidatures([lt.annotate(r) for r in loaded],
+                                        lt.sent, em.fold, facts)
+        self.assertEqual(rows[0]["alias_entreprise"], "Acme AG|Acme Group",
+                         "one employer under three spellings is why the name "
+                         "is folded on both sides")
+        self.assertEqual(counts["alias"], 1)
+
+    def test_facts_without_their_folding_are_refused(self):
+        """A lookup with the wrong folding finds NOTHING and says nothing."""
+        mod = self._mod()
+        with self.assertRaises(mod.SheetRefused):
+            mod.candidatures([], lambda r: True, None, {"acme": {}})
+
+    def test_an_employers_file_that_is_named_and_unreadable_refuses(self):
+        """«This employer declares no alias» is the one thing it must not say.
+
+        An ABSENT file is not an error — `--employers` is optional and both
+        columns may leave empty. A file that is NAMED and cannot be read is a
+        different thing, and reading it as silence would publish an empty
+        alias column as if the user had declined to fill one.
+        """
+        mod, lr = self._mod(), self._resolver()
+        em = lr.employers()
+        missing = os.path.join(self._dir(), "pas-la.md")
+        with self.assertRaises(mod.SheetRefused) as caught:
+            mod.employer_facts(missing, em)
+        self.assertEqual(caught.exception.code, mod.EXIT_UNREADABLE)
+
+    # ------------------------------------------------------------- the xlsx
+
+    def _xlsx(self, name="feuille.xlsx"):
+        """A workbook whose rels DENY the index of the sheet parts.
+
+        Tab 1 lives in `sheet3.xml` and tab 2 in `sheet1.xml`, so a reader
+        that resolves by index cannot pass. The third tab is the producer's
+        own scan journal: we neither write it nor read it, and it is here so
+        the refusal can NAME it.
+        """
+        import zipfile
+        cand = [self.CAND, "linkedin:1,Acme SA,,,Dev,linkedin,applied,"
+                           "2026-09-15,2026-09-15,declare"]
+        evt = [self.EVT, "2026-11-10,<m1@x>,linkedin:1,,Acme SA,Dev,refus,"
+                         "Poste pourvu,,,,,haute,2026-11-10"]
+        jour = [self.JOURNAL, "2026-11-12,06:00,42,2,1,0,0,0"]
+
+        def sheet(lines):
+            out = []
+            for n, line in enumerate(lines, start=1):
+                cells = []
+                for i, cell in enumerate(line.split(",")):
+                    ref = chr(ord("A") + i) + str(n)
+                    cells.append(
+                        '<c r="%s" t="inlineStr"><is><t>%s</t></is></c>'
+                        % (ref, cell.replace("&", "&amp;")
+                                    .replace("<", "&lt;")))
+                out.append('<row r="%d">%s</row>' % (n, "".join(cells)))
+            return ('<?xml version="1.0"?><worksheet xmlns="http://schemas.'
+                    'openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+                    '%s</sheetData></worksheet>' % "".join(out))
+
+        wb = ('<?xml version="1.0"?><workbook xmlns="http://schemas.'
+              'openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://'
+              'schemas.openxmlformats.org/officeDocument/2006/relationships">'
+              '<sheets><sheet name="candidatures" sheetId="1" r:id="rId1"/>'
+              '<sheet name="evenements" sheetId="2" r:id="rId2"/>'
+              '<sheet name="journal_scan" sheetId="3" r:id="rId3"/>'
+              '</sheets></workbook>')
+        rels = ('<?xml version="1.0"?><Relationships xmlns="http://schemas.'
+                'openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="x" '
+                'Target="worksheets/sheet3.xml"/>'
+                '<Relationship Id="rId2" Type="x" '
+                'Target="worksheets/sheet1.xml"/>'
+                '<Relationship Id="rId3" Type="x" '
+                'Target="worksheets/sheet2.xml"/></Relationships>')
+        p = os.path.join(self._dir(), name)
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr("xl/workbook.xml", wb)
+            z.writestr("xl/_rels/workbook.xml.rels", rels)
+            z.writestr("xl/worksheets/sheet1.xml", sheet(evt))
+            z.writestr("xl/worksheets/sheet2.xml", sheet(jour))
+            z.writestr("xl/worksheets/sheet3.xml", sheet(cand))
+        return p
+
+    def test_the_tab_is_resolved_by_NAME_and_not_by_the_part_index(self):
+        mod = self._mod()
+        p = self._xlsx()
+        held = mod.read_tab(p, mod.CANDIDATURES)
+        self.assertEqual([r["id"] for r in held], ["linkedin:1"],
+                         "tab 1 lives in sheet3.xml: an index assumption "
+                         "would have read the events tab here and refused on "
+                         "the header, or worse read a tab that matched")
+        ev = mod.read_tab(p, mod.EVENEMENTS)
+        self.assertEqual([r["message_id"] for r in ev], ["<m1@x>"])
+
+    def test_an_absent_tab_name_refuses_and_NAMES_what_is_there(self):
+        """And that is how a reader learns of the producer's third tab."""
+        mod = self._mod()
+        p = self._xlsx()
+        with self.assertRaises(mod.SheetRefused) as caught:
+            mod.read_tab(p, mod.CANDIDATURES, tab="pas_un_onglet")
+        said = str(caught.exception)
+        for name in ("candidatures", "evenements", "journal_scan"):
+            self.assertIn(name, said)
+        self.assertEqual(caught.exception.code, mod.EXIT_HEADER)
+        # the POSITIVE control, same file and same call with the right name
+        self.assertEqual(
+            len(mod.read_tab(p, mod.CANDIDATURES, tab="candidatures")), 1,
+            "a refusal that fires on everything is no better than one that "
+            "never fires")
+
+    def test_a_container_is_detected_on_its_magic_bytes(self):
+        """An extension is a guess the user can get wrong in both directions.
+
+        A `.csv` that is really a workbook would parse as one enormous
+        single-column row; a `.xlsx` that is really text would be refused as
+        a corrupt archive. Neither failure says what happened.
+        """
+        mod = self._mod()
+        zipped_as_csv = self._xlsx("feuille.csv")
+        self.assertTrue(mod.is_workbook(zipped_as_csv))
+        text_as_xlsx = self._write("texte.xlsx", self.CAND + "\n")
+        self.assertFalse(mod.is_workbook(text_as_xlsx))
+        rows = mod.read_tab(zipped_as_csv, mod.CANDIDATURES)
+        self.assertEqual([r["id"] for r in rows], ["linkedin:1"])
+        self.assertEqual(mod.read_tab(text_as_xlsx, mod.CANDIDATURES), [])
+
+    def test_a_shared_string_cell_is_read_like_an_inline_one(self):
+        """Real exports use the shared table; the fixture above uses inline.
+
+        Both shapes exist in the wild and only one of them was exercised, so
+        a reader that handled inline strings alone would be green here and
+        empty on the user's own export.
+        """
+        import zipfile
+        mod = self._mod()
+        cells = self.CAND.split(",") + ["linkedin:9", "Acme SA", "", "", "Dev",
+                                        "linkedin", "applied", "2026-09-15",
+                                        "2026-09-15", "declare"]
+        si = "".join("<si><t>%s</t></si>" % c for c in cells)
+        rows = []
+        for n in (1, 2):
+            cs = "".join(
+                '<c r="%s%d" t="s"><v>%d</v></c>'
+                % (chr(ord("A") + i), n, (n - 1) * 10 + i) for i in range(10))
+            rows.append('<row r="%d">%s</row>' % (n, cs))
+        p = os.path.join(self._dir(), "partagees.xlsx")
+        with zipfile.ZipFile(p, "w") as z:
+            z.writestr("xl/workbook.xml",
+                       '<?xml version="1.0"?><workbook xmlns="http://schemas.'
+                       'openxmlformats.org/spreadsheetml/2006/main" xmlns:r='
+                       '"http://schemas.openxmlformats.org/officeDocument/'
+                       '2006/relationships"><sheets><sheet name="candidatures"'
+                       ' sheetId="1" r:id="rId1"/></sheets></workbook>')
+            z.writestr("xl/_rels/workbook.xml.rels",
+                       '<?xml version="1.0"?><Relationships xmlns="http://'
+                       'schemas.openxmlformats.org/package/2006/relationships">'
+                       '<Relationship Id="rId1" Type="x" Target="worksheets/'
+                       'sheet1.xml"/></Relationships>')
+            z.writestr("xl/sharedStrings.xml",
+                       '<?xml version="1.0"?><sst xmlns="http://schemas.'
+                       'openxmlformats.org/spreadsheetml/2006/main">%s</sst>'
+                       % si)
+            z.writestr("xl/worksheets/sheet1.xml",
+                       '<?xml version="1.0"?><worksheet xmlns="http://schemas.'
+                       'openxmlformats.org/spreadsheetml/2006/main">'
+                       '<sheetData>%s</sheetData></worksheet>' % "".join(rows))
+        got = mod.read_tab(p, mod.CANDIDATURES)
+        self.assertEqual([r["id"] for r in got], ["linkedin:9"])
+        self.assertEqual(got[0]["statut_pre"], "declare")
+
+    # ------------------------------------------------ the single point, USED
+
+    def test_the_header_contract_lives_in_ONE_place_and_is_TRAVERSED(self):
+        """Guarded on the USAGE and never on the PRESENCE.
+
+        A shared import and a private derivation coexist without
+        contradicting each other, so an identity assertion on the attribute
+        stays GREEN when a consumer derives an answer of its own. What is
+        observed here is the normalisation being CALLED — and the source
+        check beside it is read against a positive control, so a motif that
+        matched nothing could not pass for a clean file.
+        """
+        import importlib.util
+        root = self._root()
+        d = os.path.join(root, "skills", "job-report", "scripts")
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "jobroom_1322", os.path.join(d, "jobroom_sync.py"))
+            js = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(js)
+            lt, calls = js._ledger_table, []
+            real = lt.annotate
+            lt.annotate = lambda row: (calls.append(row.get("id")),
+                                       real(row))[1]
+            try:
+                rows, _s = js.load_rows(self._ledger(
+                    ("linkedin:1", "Dev", "A", "V", "2026-10-01", "80", "-",
+                     "applied 2026-10-02", "JR:missing")))
+            finally:
+                lt.annotate = real
+        finally:
+            if d in sys.path:
+                sys.path.remove(d)
+        self.assertEqual(calls, ["linkedin:1"],
+                         "a second normalisation would not come through here")
+        self.assertEqual(rows[0]["jr_missing"], True)
+
+        srcs = {}
+        for rel in (("skills", "job-report", "scripts", "jobroom_sync.py"),
+                    ("skills", "job-report", "scripts",
+                     "list_applications.py")):
+            with io.open(os.path.join(root, *rel), encoding="utf-8") as fh:
+                srcs[rel[-1]] = fh.read()
+        with io.open(os.path.join(d, "_ledger_table.py"),
+                     encoding="utf-8") as fh:
+            srcs["_ledger_table.py"] = fh.read()
+        motif = '"status": "statut", "statut": "statut",'
+        self.assertEqual(srcs["_ledger_table.py"].count(motif), 1,
+                         "the positive control: the ONE place must carry it")
+        for name in ("jobroom_sync.py", "list_applications.py"):
+            self.assertEqual(srcs[name].count(motif), 0, name)
+        self.assertEqual(srcs["_ledger_table.py"].count("JR:waived"), 1)
+        for name in ("jobroom_sync.py", "list_applications.py"):
+            self.assertEqual(srcs[name].count('re.compile(r"JR:'), 0, name)
+
+    def _fresh(self, code):
+        """Run `code` in a FRESH interpreter from the repository root.
+
+        **This suite supplies the very search path the module must not
+        assume**: `tests/test_core.py` inserts `skills/job-scan/scripts` at
+        import time, and `_console` is in `sys.modules` before any case runs.
+        Measured, not supposed — and it makes both cases below EQUIVALENT in
+        this process: the mutation that removes the borrow and the one that
+        removes the give-back are green here and red in a clean process. A
+        green that cannot create the defect is not a guard, so the entry is
+        changed rather than the assertion.
+        """
+        import subprocess
+        return subprocess.run([sys.executable, "-B", "-c", code],
+                              capture_output=True, text=True,
+                              cwd=self._root())
+
+    def test_the_resolver_gives_back_the_search_path_it_borrows(self):
+        """That directory holds dozens of modules, among them `ledger.py`.
+
+        Leaving it on the path would let a LATER import anywhere in the
+        process resolve to a third skill's file instead of failing — so the
+        borrow is bounded to the exec and given back.
+        """
+        r = self._fresh(
+            "import importlib.util, sys\n"
+            "s = importlib.util.spec_from_file_location("
+            "'lr', 'skills/job-sync/scripts/_ledger_reader.py')\n"
+            "m = importlib.util.module_from_spec(s); s.loader.exec_module(m)\n"
+            "before = list(sys.path)\n"
+            "m.ledger(); m.employers()\n"
+            "print('RENDU' if sys.path == before else 'GARDE: %r'\n"
+            "      % [p for p in sys.path if p not in before])\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "RENDU",
+                         "a borrowed search path is given back")
+
+    def test_the_sibling_import_of_the_employers_reader_is_covered(self):
+        """`employers.py` does `import _console`; `_ledger_table.py` imports
+        nothing of ours — and that difference is MEASURED.
+
+        A bare spec on the first raises `ModuleNotFoundError`, which reads
+        like a missing PACKAGE when it is a missing SEARCH PATH. In this
+        suite the path happens to be there, which is why this runs in a clean
+        process: it is the only entry where the defect exists.
+        """
+        r = self._fresh(
+            "import importlib.util, sys\n"
+            "s = importlib.util.spec_from_file_location("
+            "'lr', 'skills/job-sync/scripts/_ledger_reader.py')\n"
+            "m = importlib.util.module_from_spec(s); s.loader.exec_module(m)\n"
+            "print('_console deja la' if '_console' in sys.modules else 'propre')\n"
+            "print('FOLD', m.employers().fold('Acme  SA'))\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[0], "propre",
+                         "the positive control: without it this case would "
+                         "pass for the reason the suite supplies")
+        self.assertEqual(r.stdout.splitlines()[1], "FOLD acme sa")
+
+    def test_export_prints_and_writes_nothing_else(self):
+        """The user's own import is the only thing that changes the sheet."""
+        import subprocess
+        d = self._dir()
+        led = self._ledger(("linkedin:1", "Dev", "A", "V", "2026-10-01", "80",
+                            "-", "applied 2026-10-02", "JR:missing"))
+        before = sorted(os.listdir(d))
+        r = subprocess.run(
+            [sys.executable, os.path.join(self._root(), *self.SCRIPT),
+             "export", "--pipeline", led],
+            capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[0], self.CAND,
+                         "the contract's columns, in the contract's order")
+        self.assertEqual(sorted(os.listdir(d)), before,
+                         "export PRINTS; it creates nothing")
+        self.assertIn("no --employers given", r.stderr)
+
+    def test_an_unparsable_cutoff_refuses_rather_than_choosing_a_side(self):
+        """Releasing everything and holding everything are opposite errors."""
+        import subprocess
+        led = self._ledger(("jobup:3", "QA", "B", "V", "2026-09-01", "70",
+                            "-", "rejected 2026-10-20", "JR:missing"))
+        r = subprocess.run(
+            [sys.executable, os.path.join(self._root(), *self.SCRIPT),
+             "export", "--pipeline", led, "--rejected-from", "01.10.2026"],
+            capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("not an ISO date", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

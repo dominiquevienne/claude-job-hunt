@@ -35,34 +35,17 @@ JOB_HUNT_HOME = os.environ.get(
 DEFAULT_PIPELINE = os.path.join(JOB_HUNT_HOME, "job-pipeline.md")
 DEFAULT_STATE = os.path.join(JOB_HUNT_HOME, ".jobroom-sync.json")
 
-# Statuses that mean an application actually left. `no-go` never did, and
-# `todo`/`discarded` carry no date — none of them belong in a declaration.
-SENT_KINDS = {"applied", "rejected", "postulé", "postule", "refusé", "refuse"}
-
-STATUS_RE = re.compile(
-    r"^(?P<kind>[\w'’-]+(?:\s+[\w'’-]+)*?)(?:\s+le)?\s+(?P<date>\d{4}-\d{2}-\d{2})\s*$"
-)
-JR_DECLARED_RE = re.compile(r"JR:(\d{4}-\d{2}-\d{2})")
-JR_MISSING_RE = re.compile(r"JR:missing")
-# A third state the vocabulary needed. `JR:missing` means "not declared yet" and
-# `JR:<date>` means "declared"; neither covers an application the candidate has
-# decided, deliberately, never to declare — typically because a field the form
-# demands cannot be recovered. Without it such a row is re-proposed at every
-# session forever, and the only way to silence it is to delete evidence of a
-# real application.
-JR_WAIVED_RE = re.compile(r"JR:waived(?:\s+(\d{4}-\d{2}-\d{2}))?")
-
-HEADER_ALIASES = {
-    "id": "id",
-    "role": "poste", "poste": "poste",
-    "company": "societe", "société": "societe", "societe": "societe",
-    "location / mode": "lieu", "lieu / mode": "lieu", "lieu": "lieu",
-    "posted": "publiee", "publiée": "publiee", "publiee": "publiee",
-    "match": "match",
-    "pay": "pay",
-    "status": "statut", "statut": "statut",
-    "note": "note",
-}
+# The header contract and the `Status`/`Note` normalisation live in
+# `_ledger_table` since #1322: they were byte-identical here and in
+# `list_applications.py`, and `events_sheet.py export` would have made a third
+# copy. **The names stay bound here** — a caller that reads
+# `jobroom_sync.STATUS_RE` keeps working, and it now reads the ONE object.
+SENT_KINDS = _ledger_table.SENT_KINDS
+STATUS_RE = _ledger_table.STATUS_RE
+JR_DECLARED_RE = _ledger_table.JR_DECLARED_RE
+JR_MISSING_RE = _ledger_table.JR_MISSING_RE
+JR_WAIVED_RE = _ledger_table.JR_WAIVED_RE
+HEADER_ALIASES = _ledger_table.HEADER_ALIASES
 
 
 # --------------------------------------------------------------------------
@@ -80,24 +63,13 @@ def load_rows(path: str) -> tuple[list[dict], dict[str, int]]:
     near-identical copy, and the two agreed with `ledger.py` by coincidence.
     """
     rows, skipped = _ledger_table.load(path, HEADER_ALIASES)
-    out = []
-    for row in rows:
-        m = STATUS_RE.match(row["statut"])
-        row["date"] = m.group("date") if m else None
-        row["kind"] = m.group("kind").lower() if m else row["statut"].lower()
-        note = row.get("note", "")
-        row["jr_missing"] = bool(JR_MISSING_RE.search(note))
-        jr = JR_DECLARED_RE.search(note)
-        row["jr_declared"] = jr.group(1) if jr else None
-        w = JR_WAIVED_RE.search(note)
-        row["jr_waived"] = (w.group(1) or True) if w else None
-        out.append(row)
-    return out, skipped
+    return [_ledger_table.annotate(row) for row in rows], skipped
 
 
 
 def sent(row: dict) -> bool:
-    return bool(row["date"]) and row["kind"] in SENT_KINDS
+    """Delegates to `_ledger_table.sent` — same reason as `load_rows`."""
+    return _ledger_table.sent(row)
 
 
 # --------------------------------------------------------------------------
