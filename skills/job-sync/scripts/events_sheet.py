@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
-"""events_sheet — the CSV half of the two-tab events sheet. #1307, tranche 1.
+"""events_sheet — the two-tab events sheet: read, rebuilt, and derived. #1322.
 
-**THIS SHIPS THE TABS WE *READ* AND *REBUILD*, AND NOT THE ONE WE DERIVE FROM
-THE LEDGER.** `export` is deliberately absent: its premise is the ledger's own
-shape plus the two optional bullets of `employers.md`, and neither was measured
-when this was written. *A chain left open on a DECLARED dependency is a debt,
-not an error — what would be false is reading «tranche 1 shipped» as «the sheet
-round-trips».* Nothing imports this module yet, and no skill calls it: there is
-no egress here, so the README's Privacy section stays true until the shipping
-tranche rewrites it in its own PR.
+**THE PARAGRAPH BELOW IS THE STATE OF TRANCHE 1 AND IT IS CITED, NOT REWRITTEN
+(§4): `export` IS SHIPPED AS OF #1322, so do not read its "deliberately
+absent" as current.** What it got right does not move — the premise WAS the
+ledger's shape plus the two optional bullets, and it has now been measured:
+
+    the ledger      read through the ONE reader, `_ledger_table` (#1182),
+                    resolved from here by `_ledger_reader`
+    the bullets     BOTH optional, and absent from the shipped template —
+                    so the two alias columns leave EMPTY, which the contract
+                    already allows, and `--employers` is what fills them
+
+> *the paragraph of tranche 1, kept for what it measured:* **THIS SHIPS THE
+> TABS WE READ AND REBUILD, AND NOT THE ONE WE DERIVE FROM THE LEDGER.**
+> `export` is deliberately absent: its premise is the ledger's own shape plus
+> the two optional bullets of `employers.md`, and neither was measured when
+> this was written. *A chain left open on a DECLARED dependency is a debt, not
+> an error — what would be false is reading «tranche 1 shipped» as «the sheet
+> round-trips».*
+
+**AND THE EGRESS EXISTS NOW, which is why the README's Privacy section is
+rewritten in the SAME pull request as this.** `export` prints to STDOUT and
+writes nothing else: a CSV import REPLACES a tab, so the user's own act is the
+only thing that can change the sheet, and the order is export → union →
+import because the union is the only shape that cannot delete a row.
 
 **WHY CSV AT ALL, measured twice by two sessions on 2026-11-12 and recorded in
 the issue's thread.** No Google Sheets connector exists in a Claude Code session
@@ -21,13 +37,29 @@ not a search failure.
 > *replaces* a tab, so rebuilding the FULL union with the tab's current content
 > is not an optimisation: it is the only shape that cannot delete a row.
 
-**AND THE EXPORT IS ASYMMETRIC IN THE WORST DIRECTION.**
-`download_file_content` with `text/csv` works and returns **one** tab — the one
-we WRITE — and its schema carries no tab selector, so that is not a parameter
-anybody failed to pass. The tab we READ is the one it cannot reach. *Whether
-the export follows tab ORDER or the ACTIVE tab is still open, needs a human,
-and belongs to the owner; it decides a recommendation about tab order and it
-does not decide anything here.*
+**THE ASYMMETRY WAS A PROPERTY OF `text/csv`, NEVER OF THE TRANSPORT — and
+the paragraph that follows is cited and bounded, not rewritten.** Measured:
+`exportMimeType: text/csv` returns ONE tab, the one we WRITE; the xlsx mime
+type returns **ALL** of them in one file, and this reader resolves the wanted
+one by its **NAME** through `xl/_rels/workbook.xml.rels`. *So the question
+«does the export follow tab ORDER or the ACTIVE tab?», which needed a human
+minute and belonged to the owner, is SANS OBJET: it was asked only because the
+CSV rendered one tab.*
+
+> *cited:* **AND THE EXPORT IS ASYMMETRIC IN THE WORST DIRECTION.**
+> `download_file_content` with `text/csv` works and returns **one** tab — the
+> one we WRITE — and its schema carries no tab selector, so that is not a
+> parameter anybody failed to pass. The tab we READ is the one it cannot
+> reach.
+
+**AND THE TAB IS RESOLVED BY NAME AND NEVER BY THE INDEX OF
+`xl/worksheets/sheetN.xml`.** On the workbook this was measured against the two
+COINCIDED — which is exactly why a reader that assumes the index returns green
+today and reads the WRONG TAB on the first workbook whose author reordered or
+deleted a sheet. *A workbook may also carry a THIRD tab that belongs to the
+producer — a scan journal. We neither write it nor read it, and the refusal for
+an absent tab NAMES the tabs the workbook does carry, which is how a reader
+learns of it without reading it.*
 
 **THE EXPORTED CSV HAS NO TRAILING NEWLINE** — 111 bytes, `wc -l` returns 0. A
 `while read` loop drops the last line of such a file in silence, and here that
@@ -50,7 +82,9 @@ has a default case, the default is the one that fails VISIBLY: mapping an
 unknown type onto `autre` would make a producer's new event kind look like a
 deliberate «other», and nothing in the output would say otherwise.
 
-    events_sheet.py events --csv evenements.csv
+    events_sheet.py events --csv evenements.csv        # or the .xlsx
+    events_sheet.py export --pipeline job-pipeline.md [--employers e.md] \
+                           [--rejected-from YYYY-MM-DD]  > rows.csv
     events_sheet.py merge  --current candidatures.csv --new rows.csv
 
 *The contract itself lives in `shared/integrations/events-sheet.md`; each tab
@@ -64,8 +98,12 @@ import json
 import os
 import re
 import sys
+import zipfile
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import _ledger_reader  # noqa: E402  (after the path insert, by design)
 
 EXIT_BROKEN = 2
 EXIT_UNREADABLE = 4      # the file is not there, or not readable text
@@ -134,20 +172,202 @@ def declared(value):
     return value, "declared"
 
 
-def read_tab(path, header):
+# ---------------------------------------------------------------- xlsx
+
+#  **A zip is detected on its MAGIC BYTES and never on its extension.** An
+#  extension is a guess a user can get wrong in either direction, and both
+#  directions cost: a `.csv` that is really a workbook would be parsed as one
+#  enormous single-column row, and a `.xlsx` that is really text would be
+#  refused as a corrupt archive.
+_ZIP_MAGIC = b"PK\x03\x04"
+
+_NS_REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+
+
+def is_workbook(path):
+    """Whether this file is a zip container, read on its first four bytes."""
+    try:
+        with io.open(path, "rb") as fh:
+            return fh.read(4) == _ZIP_MAGIC
+    except OSError as e:
+        raise SheetRefused(f"{path}: {type(e).__name__}: {e}", EXIT_UNREADABLE)
+
+
+def _local(tag):
+    """The local name of an XML tag, namespace dropped."""
+    return tag.rsplit("}", 1)[-1]
+
+
+def _col(ref):
+    """`A1` -> 0, `AB7` -> 27. The letters only; the row number is ignored."""
+    n = 0
+    for ch in ref:
+        if not ch.isalpha():
+            break
+        n = n * 26 + (ord(ch.upper()) - 64)
+    return n - 1 if n else 0
+
+
+def _shared_strings(zf):
+    """`xl/sharedStrings.xml` as a list, or an empty one when absent.
+
+    Absent is normal: a workbook whose cells are all numbers carries no such
+    part. A cell of type `s` indexes into this list, so an absent part and an
+    out-of-range index are different failures and the second one refuses.
+    """
+    try:
+        raw = zf.read("xl/sharedStrings.xml")
+    except KeyError:
+        return []
+    out = []
+    for si in ET.fromstring(raw):
+        #  The runs matter: a cell the user has part-bolded is split into
+        #  several `<r><t>` and joining them is the only way to read the
+        #  value the sheet SHOWS.
+        out.append("".join(t.text or "" for t in si.iter()
+                           if _local(t.tag) == "t"))
+    return out
+
+
+def workbook_tabs(zf, path):
+    """`[(name, part)]` in workbook order — the tab resolved by its NAME.
+
+    **The part is reached through `xl/_rels/workbook.xml.rels`, never through
+    the index of `xl/worksheets/sheetN.xml`.** On the workbook this was
+    measured against the two coincided, and that is exactly why a reader that
+    assumes the index returns green today and reads the WRONG TAB on the first
+    workbook whose author has reordered or deleted a sheet.
+    """
+    try:
+        wb = ET.fromstring(zf.read("xl/workbook.xml"))
+        rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+    except KeyError as e:
+        raise SheetRefused(
+            f"{path}: a zip container without {e}. It is not a workbook this "
+            f"reader can resolve by tab name", EXIT_UNREADABLE)
+    target = {}
+    for r in rels:
+        rid = r.get("Id")
+        tgt = r.get("Target") or ""
+        if rid:
+            target[rid] = tgt.lstrip("/")
+    out = []
+    for sheet in wb.iter():
+        if _local(sheet.tag) != "sheet":
+            continue
+        rid = sheet.get(_NS_REL + "id") or sheet.get("id")
+        name = sheet.get("name")
+        part = target.get(rid)
+        if name is None or part is None:
+            continue
+        out.append((name, part if part.startswith("xl/") else "xl/" + part))
+    return out
+
+
+def read_workbook_tab(path, tab):
+    """The rows of ONE named tab of a workbook, as lists of strings.
+
+    The refusal when the name is absent NAMES the tabs the workbook does
+    carry — which is also how a reader learns, without reading it, that a
+    producer keeps a third tab of its own.
+    """
+    try:
+        zf = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile) as e:
+        raise SheetRefused(f"{path}: {type(e).__name__}: {e}", EXIT_UNREADABLE)
+    with zf:
+        tabs = workbook_tabs(zf, path)
+        part = None
+        for name, p in tabs:
+            if name == tab:
+                part = p
+                break
+        if part is None:
+            raise SheetRefused(
+                f"{path}: this workbook carries no tab named `{tab}` — it "
+                f"carries {', '.join('`%s`' % n for n, _ in tabs) or 'none'}. "
+                f"Refused rather than reading whichever tab came first")
+        try:
+            raw = zf.read(part)
+        except KeyError:
+            raise SheetRefused(
+                f"{path}: tab `{tab}` points at {part}, which the container "
+                f"does not hold", EXIT_UNREADABLE)
+        strings = _shared_strings(zf)
+    try:
+        sheet = ET.fromstring(raw)
+    except ET.ParseError as e:
+        raise SheetRefused(f"{path}: tab `{tab}` is not readable XML: {e}",
+                           EXIT_UNREADABLE)
+    rows = []
+    for row in sheet.iter():
+        if _local(row.tag) != "row":
+            continue
+        cells = {}
+        for c in row:
+            if _local(c.tag) != "c":
+                continue
+            i = _col(c.get("r") or "A")
+            kind = c.get("t")
+            text = ""
+            if kind == "s":
+                v = next((e.text for e in c if _local(e.tag) == "v"), None)
+                if v is not None:
+                    try:
+                        text = strings[int(v)]
+                    except (ValueError, IndexError):
+                        raise SheetRefused(
+                            f"{path}: tab `{tab}` cell {c.get('r')} indexes "
+                            f"shared string {v}, which is not there")
+            elif kind == "inlineStr":
+                text = "".join(t.text or "" for t in c.iter()
+                               if _local(t.tag) == "t")
+            else:
+                v = next((e.text for e in c if _local(e.tag) == "v"), None)
+                text = v if v is not None else ""
+            cells[i] = text or ""
+        rows.append([cells.get(i, "") for i in range(max(cells) + 1)]
+                    if cells else [])
+    return rows
+
+
+#  The tab each contract lives on, by NAME. The names are the sheet's, not
+#  ours, and they are what a workbook is resolved by.
+TAB_OF = {CANDIDATURES: "candidatures", EVENEMENTS: "evenements"}
+
+
+def read_tab(path, header, tab=None):
     """Rows of one tab, in SHEET ORDER, or a refusal with its own exit code.
 
     The header is compared to the contract and the complaint NAMES what it got:
     «not this tab» and «this tab with a column renamed» are different repairs.
+
+    **A CSV export carries ONE tab and an xlsx export carries them ALL**, so
+    the same call reads either: a zip container is resolved by the tab's NAME,
+    a text file is read as the single tab it is. *That is the fact that
+    retires an impossibility the contract recorded — `text/csv` cannot reach
+    the tab we READ, and the workbook export can, so the open question about
+    tab ORDER was a property of the CSV and never of the transport.*
     """
-    try:
-        with io.open(path, encoding="utf-8-sig", newline="") as fh:
-            rows = list(csv.reader(fh))
-    except OSError as e:
-        raise SheetRefused(f"{path}: {type(e).__name__}: {e}", EXIT_UNREADABLE)
-    except UnicodeDecodeError as e:
-        raise SheetRefused(f"{path}: not readable as UTF-8 text: {e}",
-                           EXIT_UNREADABLE)
+    if tab is None:
+        tab = TAB_OF.get(tuple(header))
+    if is_workbook(path):
+        if not tab:
+            raise SheetRefused(
+                f"{path}: a workbook carries several tabs, so it cannot be "
+                f"read without the NAME of the one wanted. Refused rather "
+                f"than reading whichever tab came first")
+        rows = read_workbook_tab(path, tab)
+    else:
+        try:
+            with io.open(path, encoding="utf-8-sig", newline="") as fh:
+                rows = list(csv.reader(fh))
+        except OSError as e:
+            raise SheetRefused(f"{path}: {type(e).__name__}: {e}",
+                               EXIT_UNREADABLE)
+        except UnicodeDecodeError as e:
+            raise SheetRefused(f"{path}: not readable as UTF-8 text: {e}",
+                               EXIT_UNREADABLE)
     if not rows:
         raise SheetRefused(
             f"{path}: zero lines. An empty FILE is not an empty TAB — a tab "
@@ -300,6 +520,168 @@ def merge(current, new):
              "supprimees": 0})
 
 
+# ---------------------------------------------------------------- export
+
+#  The ledger's vocabulary mapped onto the contract's two values. **The French
+#  forms are here because the ledger still accepts them**, and a sort with a
+#  default case gets the one that fails VISIBLY: a kind the ledger counts as
+#  SENT and this table does not name is reported under its own name and never
+#  folded onto `applied`, because a row we cannot classify would leave for the
+#  sheet carrying a status nobody wrote.
+LEDGER_TO_SHEET = {
+    "applied": "applied", "postulé": "applied", "postule": "applied",
+    "rejected": "rejected", "refusé": "rejected", "refuse": "rejected",
+}
+
+#  `- **aliases** — Acme AG | Acme Group`. The LABELS the contract names, and
+#  nothing else: `employers.md`'s own template carries «Also trades as», and
+#  reading that as an alias would put into an egress a value the user never
+#  declared for it. A declaration is not an interpretation.
+_BULLET = re.compile(
+    r"^\**(?P<label>aliases|domains)\**\s*[—:-]\s*(?P<rest>.*)$", re.I)
+
+
+def board_of(rid):
+    """The board prefix of a ledger `ID` — `linkedin:448…` -> `linkedin`.
+
+    Empty when the id carries no prefix, and the caller COUNTS that: the
+    column says **where the ad was FOUND**, so inventing a board for a row
+    whose id does not name one would assert a provenance.
+    """
+    value, _state = declared(rid)
+    if value is None or ":" not in value:
+        return ""
+    return value.split(":", 1)[0].strip()
+
+
+def employer_facts(path, mod):
+    """`{folded name: {"aliases": [...], "domains": [...]}}`, both optional.
+
+    The reading is the employers reader's own — sections bounded by the first
+    `---` rule, bullets joined across their wrapped lines — because this file
+    must not acquire a second one. The value is what follows the dash, with
+    the dated italic note after ` · ` dropped and the `|` separators split.
+    """
+    try:
+        with io.open(path, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError as e:
+        raise SheetRefused(
+            f"{path}: {type(e).__name__}: {e}. An employers file that is NAMED "
+            f"and cannot be read leaves by a refusal — reading it as «this "
+            f"employer declares no alias» is the one thing it must not do",
+            EXIT_UNREADABLE)
+    out = {}
+    for name, body in mod.sections(text):
+        facts = {}
+        for bullet in mod.bullets(body):
+            m = _BULLET.match(bullet)
+            if not m:
+                continue
+            rest = m.group("rest").split(" · ")[0]
+            vals = [v.strip().strip("`").strip() for v in rest.split("|")]
+            vals = [v for v in vals if declared(v)[0] is not None]
+            if vals:
+                facts[m.group("label").lower()] = vals
+        if facts:
+            out[mod.fold(name)] = facts
+    return out
+
+
+def candidatures(rows, sent, fold=None, facts=None, rejected_from=None):
+    """The `candidatures` rows derived from the ledger, plus what was NOT.
+
+    `sent` and `fold` are passed IN rather than resolved here: they belong to
+    the two readers this file does not own, and taking them as arguments is
+    what makes this function exercisable on a row nobody had to write a
+    ledger for.
+
+    Three things leave EMPTY rather than guessed, and each is counted so the
+    output can say so:
+
+    **`date_envoi` on a `rejected` row.** The contract's own reason for never
+    rewriting that column is that `applied → rejected` OVERWRITES the send
+    date in `Status` — so for a row the ledger already carries as `rejected`,
+    **the send date is not in the ledger at all**. It leaves empty and `merge`
+    then keeps whatever the sheet already holds. *A date taken from the
+    rejection would be a send date nobody recorded.*
+
+    **`statut_pre` with no `JR:` marker in the Note.** The contract lists
+    three values and the ledger has a fourth state — nothing recorded at all.
+    Folding it onto `non_declare` would claim a declaration state nobody
+    wrote, on the column an unemployment-office declaration reads.
+
+    **`canal` on an id with no board prefix** — see `board_of`.
+
+    Scope is the contract's: every `applied` row whatever its date, because an
+    `applied` row is waiting for an answer and leaving it out means its
+    refusal is never matched; `rejected` rows only from `rejected_from`.
+    **With no cut-off given, NO `rejected` row leaves** — the least-egress
+    default, and the count says how many were held and what releases them.
+    """
+    facts = facts or {}
+    if facts and fold is None:
+        raise SheetRefused(
+            "employer facts were given without the folding that keyed them. "
+            "A lookup with the wrong folding finds NOTHING and says nothing, "
+            "so this refuses instead of emitting empty alias columns")
+    out = []
+    counts = {"lues": len(rows), "jamais_envoyees": 0, "inconnues": [],
+              "retenues_rejected": 0, "sans_date_envoi": 0,
+              "sans_statut_pre": 0, "sans_canal": 0, "alias": 0,
+              "domaines": 0}
+    for row in rows:
+        if not sent(row):
+            counts["jamais_envoyees"] += 1
+            continue
+        kind = row.get("kind")
+        if kind not in LEDGER_TO_SHEET:
+            #  The ledger counts it as sent and this table does not name it.
+            #  NAMED, never coerced: see the comment on `LEDGER_TO_SHEET`.
+            counts["inconnues"].append(kind)
+            continue
+        statut = LEDGER_TO_SHEET[kind]
+        date_statut = row["date"]
+        if statut == "rejected":
+            if not rejected_from or date_statut < rejected_from:
+                counts["retenues_rejected"] += 1
+                continue
+            date_envoi = ""
+            counts["sans_date_envoi"] += 1
+        else:
+            date_envoi = date_statut
+        if row.get("jr_waived"):
+            pre = "renonce"
+        elif row.get("jr_declared"):
+            pre = "declare"
+        elif row.get("jr_missing"):
+            pre = "non_declare"
+        else:
+            pre = ""
+            counts["sans_statut_pre"] += 1
+        canal = board_of(row.get("id"))
+        if not canal:
+            counts["sans_canal"] += 1
+        f = facts.get(fold(row.get("societe", "")), {}) if facts else {}
+        if f.get("aliases"):
+            counts["alias"] += 1
+        if f.get("domains"):
+            counts["domaines"] += 1
+        out.append({
+            "id": (declared(row.get("id"))[0] or ""),
+            "entreprise": (declared(row.get("societe"))[0] or ""),
+            "alias_entreprise": "|".join(f.get("aliases", [])),
+            "domaines_expediteurs": "|".join(f.get("domains", [])),
+            "poste": (declared(row.get("poste"))[0] or ""),
+            "canal": canal,
+            "statut_ledger": statut,
+            "date_envoi": date_envoi,
+            "date_statut": date_statut,
+            "statut_pre": pre,
+        })
+    return out, counts
+
+
 # ---------------------------------------------------------------- commands
 
 def cmd_events(a):
@@ -335,6 +717,63 @@ def cmd_merge(a):
              f"sheet already had it — a send date is written once")
 
 
+def cmd_export(a):
+    """Write the `candidatures` rows to STDOUT. **Nothing else is written.**
+
+    An import REPLACES a tab, so the user's own act is the only thing that
+    can change the sheet: this prints, `merge` unions, and the order is
+    export → union → import because the union is the only shape that cannot
+    delete a row.
+    """
+    if a.rejected_from and not DATE_RE.match(a.rejected_from):
+        die(f"--rejected-from {a.rejected_from!r} is not an ISO date. A "
+            f"cut-off nobody can parse would either release every rejected "
+            f"row or hold them all, and the two are opposite mistakes",
+            EXIT_BROKEN)
+    lt = _ledger_reader.ledger("--pipeline")
+    rows, skipped = lt.load(a.pipeline, lt.HEADER_ALIASES)
+    rows = [lt.annotate(r) for r in rows]
+    facts, fold = {}, None
+    if a.employers:
+        em = _ledger_reader.employers("--employers")
+        facts, fold = employer_facts(a.employers, em), em.fold
+    out, counts = candidatures(rows, lt.sent, fold, facts, a.rejected_from)
+    w = csv.writer(sys.stdout, lineterminator="\n")
+    w.writerow(CANDIDATURES)
+    for row in out:
+        w.writerow([row.get(c, "") for c in CANDIDATURES])
+    for line in lt.skipped_lines(skipped):
+        print(line.replace("  !", "[events_sheet] !", 1), file=sys.stderr)
+    note(f"{counts['lues']} ledger row(s) read -> {len(out)} row(s) for "
+         f"`candidatures`; {counts['jamais_envoyees']} never left")
+    if counts["retenues_rejected"]:
+        note(f"{counts['retenues_rejected']} `rejected` row(s) HELD BACK: "
+             f"{'no cut-off given' if not a.rejected_from else 'older than ' + a.rejected_from}"
+             f" — `--rejected-from <YYYY-MM-DD>` is what releases them")
+    if counts["sans_date_envoi"]:
+        note(f"{counts['sans_date_envoi']} row(s) leave with an EMPTY "
+             f"`date_envoi`: they are already `rejected`, and the ledger's "
+             f"`Status` then carries the REFUSAL date, not the send date. "
+             f"`merge` keeps whatever the sheet already holds")
+    if counts["sans_statut_pre"]:
+        note(f"{counts['sans_statut_pre']} row(s) carry NO `JR:` marker, so "
+             f"`statut_pre` is empty — nothing recorded is not `non_declare`")
+    if counts["sans_canal"]:
+        note(f"{counts['sans_canal']} id(s) carry no board prefix, so `canal` "
+             f"is empty rather than guessed")
+    if counts["inconnues"]:
+        note(f"{len(counts['inconnues'])} row(s) the ledger counts as SENT "
+             f"under a kind this table does not name — NAMED and never folded "
+             f"onto `applied`: {', '.join(sorted(set(counts['inconnues'])))}")
+    if a.employers:
+        note(f"employers.md: {counts['alias']} row(s) carry an alias, "
+             f"{counts['domaines']} carry sender domains — both optional, and "
+             f"an absent bullet is empty and not an error")
+    else:
+        note("no --employers given: `alias_entreprise` and "
+             "`domaines_expediteurs` leave EMPTY, which the contract allows")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     s = p.add_subparsers(dest="cmd", required=True)
@@ -347,6 +786,19 @@ def main():
     pm.add_argument("--current", required=True)
     pm.add_argument("--new", required=True)
     pm.set_defaults(fn=cmd_merge)
+
+    px = s.add_parser("export", help="derive `candidatures` from the ledger")
+    px.add_argument("--pipeline", required=True,
+                    help="job-pipeline.md — NAMED and never defaulted: this "
+                         "is the egress, and what leaves is said out loud")
+    px.add_argument("--employers", default=None,
+                    help="employers.md, optional; without it the two alias "
+                         "columns leave empty, which the contract allows")
+    px.add_argument("--rejected-from", default=None, dest="rejected_from",
+                    help="ISO date. `applied` rows leave whatever their date; "
+                         "`rejected` rows leave only from this one, and with "
+                         "no cut-off NONE of them leaves")
+    px.set_defaults(fn=cmd_export)
 
     a = p.parse_args()
     try:

@@ -43,6 +43,27 @@ is a count sent to an authority.
 would need a cross-skill import, a pattern this repository has nowhere — all
 26 `_*.py` helpers are imported from their own directory — so that is an
 architecture decision and not a fix.
+
+**AND THAT RESIDUE IS PERIMED ON ITS SECOND CLAUSE — the pattern it calls
+absent EXISTS, twice, and one of the two predates this file.** Measured on the
+tracked tree, 2026-11-15: `_secrets.py` resolves `bin/workspace-path.py`, and
+`_events_reader.py` resolves `job-sync`'s events reader (#1307 tranche 1). The
+paragraph above is CITED and not rewritten: do not read its "a pattern this
+repository has nowhere" as true, and do not conclude from "26 helpers" that the
+count is still 26 — it is 29, and a count written inside the object it counts
+perishes at the next write.
+
+*What the residue got RIGHT does not move: `ledger.py` is still a separate
+copy, and unifying it is still an architecture decision. What changes is that
+the ARGUMENT against it was the pattern's absence, and the pattern is here.*
+
+**SO THIS MODULE IS NOW THE SINGLE POINT FOR TWO CONSUMERS AND ONE MORE
+DIRECTION.** Alongside the reading, it carries the ledger's HEADER CONTRACT and
+the normalisation of a row's `Status` and `Note` cells, because those were
+**byte-identical copies in two files** — `HEADER_ALIASES` in `jobroom_sync.py`
+and in `list_applications.py`, the same twelve keys in the same order — and
+four copies of one rule are lost one at a time. `job-sync` reaches them through
+its own single resolver, for `export` (#1322).
 """
 
 from __future__ import annotations
@@ -135,6 +156,75 @@ def load(path: str, header_aliases: dict[str, str]) -> tuple[list[dict],
             continue
         rows.append(dict(zip(columns, cells)))
     return rows, skipped
+
+
+# ---------------------------------------------------------------------------
+# The ledger's HEADER CONTRACT, and the normalisation of one row
+# ---------------------------------------------------------------------------
+#  These were written out twice, identically, in `jobroom_sync.py` and
+#  `list_applications.py`, and a third consumer — `events_sheet.py export`,
+#  #1322 — would have made three. The copies AGREED, which is exactly why
+#  nothing ever rang: a divergence is what a copy announces, and an agreement
+#  is what it hides until one hand edits one of them.
+
+HEADER_ALIASES = {
+    "id": "id",
+    "role": "poste", "poste": "poste",
+    "company": "societe", "société": "societe", "societe": "societe",
+    "location / mode": "lieu", "lieu / mode": "lieu", "lieu": "lieu",
+    "posted": "publiee", "publiée": "publiee", "publiee": "publiee",
+    "match": "match",
+    "pay": "pay",
+    "status": "statut", "statut": "statut",
+    "note": "note",
+}
+
+#  Statuses that mean an application actually LEFT. `no-go` never did, and
+#  `todo`/`discarded` carry no date — none of them belong in a declaration,
+#  and none of them belong in the sheet either.
+SENT_KINDS = {"applied", "rejected", "postulé", "postule", "refusé", "refuse"}
+
+STATUS_RE = re.compile(
+    r"^(?P<kind>[\w'’-]+(?:\s+[\w'’-]+)*?)(?:\s+le)?\s+"
+    r"(?P<date>\d{4}-\d{2}-\d{2})\s*$"
+)
+JR_DECLARED_RE = re.compile(r"JR:(\d{4}-\d{2}-\d{2})")
+JR_MISSING_RE = re.compile(r"JR:missing")
+#  A third state the vocabulary needed: `JR:missing` is "not declared yet" and
+#  `JR:<date>` is "declared"; neither covers an application the candidate has
+#  decided, deliberately, never to declare.
+JR_WAIVED_RE = re.compile(r"JR:waived(?:\s+(\d{4}-\d{2}-\d{2}))?")
+
+
+def annotate(row: dict) -> dict:
+    """Add `date`, `kind` and the three `jr_*` fields to a loaded row.
+
+    **The row is annotated IN PLACE and returned**, so a caller that keeps its
+    own list keeps the same dicts. `kind` falls back to the whole cell folded
+    to lower case when no date can be read, which is what makes `sent()` false
+    for it rather than raising: a status nobody can parse is not an
+    application that left, and it is not an error either.
+    """
+    m = STATUS_RE.match(row.get("statut") or "")
+    row["date"] = m.group("date") if m else None
+    row["kind"] = (m.group("kind").lower() if m
+                   else (row.get("statut") or "").lower())
+    note = row.get("note", "")
+    row["jr_missing"] = bool(JR_MISSING_RE.search(note))
+    jr = JR_DECLARED_RE.search(note)
+    row["jr_declared"] = jr.group(1) if jr else None
+    w = JR_WAIVED_RE.search(note)
+    row["jr_waived"] = (w.group(1) or True) if w else None
+    return row
+
+
+def sent(row: dict) -> bool:
+    """Whether this row is an application that LEFT — date AND a sent kind.
+
+    Both terms are needed and the AND is the point: a `rejected` with no date
+    is a cell nobody can read, and a dated `todo` never left.
+    """
+    return bool(row.get("date")) and row.get("kind") in SENT_KINDS
 
 
 def skipped_lines(skipped: dict[str, int]) -> list[str]:
