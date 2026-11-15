@@ -31,6 +31,15 @@ and on the **200** `acbar` records held with their provenance, the declaration i
 `True` with an **empty** witness on **200 of 200**. That is the population, and it
 is exact rather than a bound: `withheld_fields` is emitted on every one of them.
 
+A LOCUS PREFIX IS NOT A CLASS
+
+Five adapters namespace their witness — `description:e-mail`, `body:telephone`,
+`company.phone`, `description.email`, `advertiser:phone`. The prefix records WHERE the
+value sat in the document and the suffix records WHAT it was, so `classe()` judges the
+suffix when the whole name is unknown. **Listing the prefixed spellings instead would
+grow this vocabulary by one entry per adapter per field, forever**, and each entry
+would have to be kept in step with a file nobody opens while editing this one.
+
 THE DEFAULT CASE FAILS VISIBLY, ON PURPOSE
 
 A name this module does not classify raises. The other two designs both lie: an
@@ -64,6 +73,19 @@ CONTACT = frozenset({
     "mailto",
     "contact_email",
     "contact_phone",
+    # **A LOCUS PREFIX SAYS *WHERE* THE DATUM SAT; THE SUFFIX SAYS *WHAT* IT IS.** Five
+    # adapters spell their witness `description:e-mail`, `body:telephone`,
+    # `company.phone`, `description.email`, `advertiser:phone` — the same classes under
+    # a namespace. `classe()` below strips the locus and judges the SUFFIX, which is the
+    # line this file already takes for `mailto` against `contact_email`: the FORM
+    # differs, the class does not. These five entries are the suffixes those spellings
+    # leave behind; the prefixed spellings themselves are deliberately NOT listed, or
+    # the vocabulary would grow by one entry per adapter per field forever.
+    "e-mail",
+    "messaging",
+    "street",
+    "address",
+    "contactPhones",
 })
 
 # withheld for a reason that is NOT a contact
@@ -80,16 +102,60 @@ OTHER = frozenset({
     # so through `reached_a_person`, because this one name covers three causes and
     # only two of them are contacts.
     "application_link",
+    # Suffixes left by a locus prefix, same rule as above. **A NAME IS NOT A CHANNEL**:
+    # `advertiser:name` identifies, it does not reach, so it sits here beside `gender` —
+    # withheld, and not a contact. `image` and `lastOnline` are a hiring manager's photo
+    # and presence; `ghash`, `itemId` and `display` are the vacancy's own geohash and its
+    # rendered address block, which is `coordinates` one notch further. **`display` was
+    # first written `fullName` here, from a COMMENT that names the leaf rather than the
+    # path `jobtoday.DROP` actually declares — `("addressInfo", "display")`. The raise
+    # said so on the first run: a vocabulary read off prose instead of off the emitting
+    # code is the `_travel` defect of #1316, one file further along.**
+    "name",
+    "display",
+    "image",
+    "lastOnline",
+    "ghash",
+    "itemId",
 })
+
+
+def classe(nom):
+    """`"contact"`, `"other"` or `None` — the class of ONE name.
+
+    The literal is tried first, so an adapter that spells a field exactly as this
+    vocabulary does is judged on it. Only then is a LOCUS prefix stripped — the part
+    before the last `.` or `:` — and the suffix judged instead.
+
+    **Stripping can only ever REACH a verdict, never change one**: a name already in
+    either set returns before the strip, so adding a prefixed spelling to the
+    vocabulary tomorrow still wins over its suffix. And a suffix nobody classifies
+    returns `None`, which `kinds` turns into the raise: the default case stays the one
+    that fails visibly.
+    """
+    if nom in CONTACT:
+        return "contact"
+    if nom in OTHER:
+        return "other"
+    court = nom
+    for sep in (".", ":"):
+        court = court.rsplit(sep, 1)[-1]
+    if court != nom:
+        if court in CONTACT:
+            return "contact"
+        if court in OTHER:
+            return "other"
+    return None
 
 
 def kinds(names):
     """`(contacts, others, unknown)`, each sorted and deduplicated."""
     seen = sorted(set(names or ()))
+    par = {n: classe(n) for n in seen}
     return (
-        tuple(n for n in seen if n in CONTACT),
-        tuple(n for n in seen if n in OTHER),
-        tuple(n for n in seen if n not in CONTACT and n not in OTHER),
+        tuple(n for n in seen if par[n] == "contact"),
+        tuple(n for n in seen if par[n] == "other"),
+        tuple(n for n in seen if par[n] is None),
     )
 
 

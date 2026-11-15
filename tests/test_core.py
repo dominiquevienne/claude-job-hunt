@@ -35398,7 +35398,15 @@ class APublicServiceWhoseVacanciesAreInThePagesOwnLivewireDataUnderThreeGrouping
         self.assertEqual(sorted(r["id"] for r in rows), ["4211729", "4213813", "4214988"])
         r = [x for x in rows if x["id"] == "4213813"][0]
         self.assertEqual((r["source"], r["country"], r["ledger_id"], r["title"], r["employer"], r["place"], r["dzongkhag"], r["salary_month_nu"], r["posts"], r["employment_type"], r["closes"], r["posted"], r["withheld_fields"], r["contacts_withheld"]),
-                         ("blmis", "BT", "blmis:4213813", "Cook", "The Hive", "Sarpang · Gelephu · Gelephu town", "Sarpang", "15000.00", 2, "Regular", "2026-09-30", "2026-06-16", None, True))
+                         ("blmis", "BT", "blmis:4213813", "Cook", "The Hive", "Sarpang · Gelephu · Gelephu town", "Sarpang", "15000.00", 2, "Regular", "2026-09-30", "2026-06-16",
+                          ["description:e-mail", "description:telephone"], True))
+        # **CETTE FIXTURE PORTAIT LA CONTRADICTION DEUX LIGNES PLUS BAS — #1321.** Elle
+        # assertait `remarks` == «Write to [e-mail withheld] or call [telephone
+        # withheld].» pendant que `withheld_fields` valait `None` et que
+        # `contacts_withheld` etait une CONSTANTE `True`. Donc un contact quittait le
+        # record sans etre nomme, ET la declaration etait vraie ici par accident et
+        # fausse sur les 448 des 471 vacances dont la prose ne porte rien : les deux
+        # directions du mensonge de #1007 dans un seul enregistrement.
         self.assertEqual(r["remarks"], "Write to [e-mail withheld] or call [telephone withheld].")
         for secret in ("created_by", "updated_by", "action_remarks", "checked by desk", "is_deleted", "86233", "hr@hive.bt", "17123456"):
             self.assertNotIn(secret, raw, secret)
@@ -35413,9 +35421,20 @@ class APublicServiceWhoseVacanciesAreInThePagesOwnLivewireDataUnderThreeGrouping
         mod = self._mod()
         g = self._vac("4215124", "Manager", "Hotel Zhingkham", gender="Female")
         rows, err, asked, raw = self._run(mod, [(200, self._page([g], [], []))])
-        self.assertEqual(rows[0]["withheld_fields"], ["gender"])
+        self.assertEqual(rows[0]["withheld_fields"],
+                         ["description:e-mail", "description:telephone", "gender"])
         self.assertNotIn("Female", raw)
         self.assertIn("gender withheld where a vacancy carried it (#183)", err)
+
+        # **LE CONTINGENT POSITIF, ET IL EST CE QUI PROUVE QUE LA CONSTANTE EST PARTIE**
+        # — une vacance dont la prose ne porte AUCUN contact ne declare plus rien, et son
+        # temoin ne nomme que le critere. Sous la constante `True`, ce record annoncait un
+        # contact retenu que personne n'avait depose.
+        c = self._vac("4215125", "Clerk", "Hotel Zhingkham",
+                      desc="Filing", remarks="Apply at the counter.")
+        rows, _err, _asked, _raw = self._run(mod, [(200, self._page([c], [], []))])
+        self.assertIsNone(rows[0]["withheld_fields"])
+        self.assertNotIn("contacts_withheld", rows[0])
 
     def test_a_page_without_the_lists_is_a_changed_page_and_another_host_is_refused(self):
         import contextlib
@@ -35784,10 +35803,25 @@ class APublicEmploymentServiceWhoseSearchPostReturnsTheWholeBoardUnfolded(unitte
                           "Private Household", "SAVANNE", "Mauritius", "2026-09-21",
                           "16501 - 18000 (Mauritian Rupees)", True, True))
         self.assertEqual(a["summary"], "Write to [e-mail withheld] or call [telephone withheld].")
-        self.assertEqual(a["withheld_fields"], ["age_range"])     # NAMED, #183
-        self.assertNotIn("18 - 39", raw)                          # and the VALUE is nowhere in the output
+        # **CETTE FIXTURE PORTAIT LA CONTRADICTION DANS LE MEME TEST — #1321.** Elle
+        # assertait `summary` == «Write to [e-mail withheld] or call [telephone
+        # withheld].» UNE LIGNE AU-DESSUS d'un temoin qui ne nommait qu'`age_range`,
+        # c'est-a-dire un critere de #183 : un contact quittait le record sans etre
+        # nomme, et `contacts_withheld` etait une CONSTANTE `True` posee a cote. Donc la
+        # declaration etait vraie ici par accident et FAUSSE sur l'annonce `b`, dont la
+        # prose ne porte rien. C'est la quatrieme fixture de cette suite a porter un
+        # retrait muet, apres les trois que #1238 a reparees.
+        self.assertEqual(a["withheld_fields"],
+                         ["age_range", "description:e-mail", "description:telephone"])
+        self.assertTrue(a["contacts_withheld"])                   # et c'est DERIVE, pas pose
+        self.assertNotIn("18 - 39", raw)                          # et la VALEUR n'est nulle part
         self.assertNotIn("rh@example.mu", raw)
+        self.assertNotIn("5 123 4567", raw)
         self.assertEqual(b["withheld_fields"], [])                # an advert without one declares nothing
+        # **LA PREUVE QUE LA CONSTANTE EST PARTIE** : `b` n'a RIEN perdu, donc elle ne
+        # declare rien. Sous la constante elle annoncait un contact retenu que personne
+        # n'avait depose — le mensonge de #1007, sur le record d'a cote.
+        self.assertNotIn("contacts_withheld", b)
         self.assertEqual((b["country"], b["state_province"], b["employer"], b["summary"]),
                          ("Madagascar", "Antananarivo", "IOM", "Field work."))   # labels read in any order
         self.assertIsNone(b["district"])
@@ -53933,6 +53967,25 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         jamais par le strict, et un `scrub` qui rend sa liste sous un AUTRE nom doit
         rester ramassé par les deux — sinon le rétrécissement aurait coûté une
         couverture au lieu d'un faux rouge.
+
+        **SECOND RÉTRÉCISSEMENT, 2026-11-15 (#1321) : UN NOM DE CHAMP NE PORTE PAS
+        D'ESPACE, donc un littéral qui en porte est une PHRASE et jamais un témoin.**
+        Le défaut annoncé LATENT ci-dessus a tiré dès qu'un onzième porteur est entré
+        en portée : `business_tm.listing` rend `(rows, dropped)` où `dropped` est un
+        journal de rejets EN PROSE — « an <article> carrying no /work/<id> anchor » —
+        qui n'entre dans aucun `withheld_fields` et n'atteint donc JAMAIS le
+        classifieur. L'exclusion par le FLUX a été mesurée d'abord et REFUSÉE : exiger
+        que le 2e membre du couple soit REÇU dans un témoin vide le vocabulaire de
+        cinq porteurs et perd `email`, `telephone` et les six noms de `subito` — elle
+        échangeait un faux rouge contre la perte d'un contrôle qui marche. L'exclusion
+        par l'ESPACE ne perd AUCUN nom : les six perdus par l'autre voie en sont tous
+        exempts, et le seul littéral écarté est la prose elle-même.
+
+        **ET L'ALARME NE DISPARAÎT PAS AVEC ELLE** : `large` continue de ramasser la
+        prose, donc le test ci-dessous l'exige toujours sur un porteur RÉEL et NOMME
+        celui qui la porte. Ce qui serait vain est d'asserter en plus que le strict
+        n'en ramasse pas — c'est désormais vrai par construction, et un avertissement
+        qui ne peut plus tirer ne vaut pas mieux que celui qui tire toujours.
         """
         import ast
         arbre = ast.parse(src, chemin)
@@ -53959,7 +54012,8 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
                         and n.func.attr == "append" \
                         and getattr(n.func.value, "id", None) in locaux:
                     for a in n.args:
-                        if isinstance(a, ast.Constant) and isinstance(a.value, str):
+                        if isinstance(a, ast.Constant) and isinstance(a.value, str) \
+                                and (large or " " not in a.value):
                             noms.add(a.value)
                 if isinstance(n, (ast.Assign, ast.AugAssign)):
                     cibles = n.targets if isinstance(n, ast.Assign) else [n.target]
@@ -54045,14 +54099,42 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         **Portée déclarée** : des littéraux. Ce qui arrive par une variable est hors de
         portée de ce contrôle, et le `raise` du classifieur est ce qui le couvre.
         """
-        from _withheld import CONTACT, OTHER
+        from _withheld import CONTACT, OTHER, classe
         self.assertEqual(sorted(CONTACT & OTHER), [],
                          "un nom classe DEUX fois : le tri ne tranche plus")
+        # **LA QUESTION EST POSEE AU POINT UNIQUE, JAMAIS A SES DEUX ENSEMBLES.** Ce
+        # controle epelait `n not in CONTACT and n not in OTHER`, donc il declarait
+        # INCONNUS les noms que `classe()` classe par leur suffixe -- `body:telephone`,
+        # `company.phone`, `description:e-mail`. Interroger les ensembles plutot que la
+        # fonction est la forme meme que `_withheld` existe pour empecher : un second
+        # jugement, ecrit a cote du premier, qui en diverge des que le premier apprend.
+        self.assertEqual(classe("body:telephone"), "contact",
+                         "le prefixe de locus n'est plus lu : le controle ci-dessous "
+                         "redeviendrait un test d'appartenance litterale")
+        self.assertIsNone(classe("un_nom_que_personne_ne_classe"),
+                          "`classe` ne rend plus None sur un inconnu : le cas par "
+                          "defaut a cesse d'echouer visiblement")
         vus = set()
         for nom, src, _sites in self._en_portee():
             noms = self._vocabulaire(src, nom)
-            self.assertTrue(noms, "%s : aucun nom collecte, le controle est inerte" % nom)
-            inconnus = sorted(n for n in noms if n not in CONTACT and n not in OTHER)
+            # **LE PLANCHER EST PASSE DU *PAR FICHIER* AU *SANS PERTE*, 2026-11-15
+            # (#1321).** « Tout fichier en portee rend au moins un litteral » suppose
+            # que les noms arrivent dans une forme que ce collecteur LIT, et la portee
+            # derivee en a admis trois qui n'en portent aucune : `business_tm` compose
+            # son temoin dans une comprehension sur un tuple de couples, `naydizdes`
+            # assigne une liste litterale a `out["withheld_fields"]` et non a un nom
+            # local, `jobtoday` tient les siens dans `DROP` au niveau module. Les trois
+            # sont CORRECTS et leur vocabulaire est vide, donc l'ancien plancher
+            # rougissait sur du correct. Ce qui tire encore, et sans supposer aucune
+            # forme : AUCUN nom sans espace ne doit se perdre entre le large et le
+            # strict -- c'est exactement ce que le second retrecissement promet, et
+            # c'est faux des qu'il ecarte autre chose qu'une phrase.
+            perdus = sorted(n for n in self._vocabulaire(src, nom, large=True)
+                            if " " not in n and n not in noms)
+            self.assertEqual(perdus, [],
+                             "%s : le retrecissement par l'ESPACE a ecarte des noms de "
+                             "champ : %r" % (nom, perdus))
+            inconnus = sorted(n for n in noms if classe(n) is None)
             self.assertEqual(inconnus, [],
                              "%s met dans un temoin des noms que `_withheld` ne classe "
                              "pas : %s" % (nom, ", ".join(inconnus)))
@@ -54086,10 +54168,11 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         for nom, src, _s in portee:
             strict = self._vocabulaire(src, nom)
             large = self._vocabulaire(src, nom, large=True)
-            phrases = sorted(n for n in strict if " " in n)
-            self.assertEqual(phrases, [],
-                             "%s : un nom de champ ne porte pas d'espace, donc ceci "
-                             "est une PHRASE lue comme un temoin : %r" % (nom, phrases))
+            # L'assertion « le strict ne porte aucune phrase » est RETIREE : depuis le
+            # second retrecissement elle est vraie PAR CONSTRUCTION, donc elle ne peut
+            # plus tirer, et un avertissement qui ne tire jamais ne vaut pas mieux que
+            # celui qui tire toujours. Ce qui la remplace est le contraste nomme plus
+            # bas, qui exige que le LARGE ramasse encore de la prose sur un porteur reel.
             self.assertTrue(strict <= large,
                             "%s : le strict n'est pas inclus dans le large, donc les "
                             "deux ne mesurent plus la meme chose" % nom)
@@ -54156,6 +54239,202 @@ class ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook(unittest.TestCas
         # `mailto:` sous le MEME nom si — donc la cause voyage a cote
         self.assertFalse(withheld_a_contact(["application_link"]))
         self.assertTrue(withheld_a_contact(["application_link"], reached_a_person=True))
+
+
+class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
+    """**#1321, 2026-11-15 — la question que la garde precedente NE PEUT PAS poser.**
+
+    Celle du dessus demande «&nbsp;la declaration SUIT-elle le temoin&nbsp;?&nbsp;» et sa
+    portee derivee commence par `"contacts_withheld" in src` : **un adaptateur qui retire
+    un contact et ne declare RIEN n'est pas un contre-exemple pour elle — il est
+    invisible.** Mesure du 2026-11-15, avant la tranche : des **313** scripts qu'une
+    fiche declare, **39** emettent un temoin par annonce et **DOUZE** d'entre eux ne
+    nommaient `contacts_withheld` nulle part. Les onze premiers ont adopte le point
+    unique dans ce meme commit ; cette garde est ce qui empeche le douzieme.
+
+    **ET LES DEUX DIRECTIONS NE COUTENT PAS LA MEME CHOSE.** Sur-declarer est le mensonge
+    de #1007 et il se voit : la sortie affirme un retrait que rien ne porte. Se TAIRE ne
+    se voit pas — un board pauvre et un board censure rendent le meme enregistrement — et
+    c'est la direction que cette garde couvre. *Deux des douze declaraient meme
+    `contacts_withheld: True` en **CONSTANTE** a cote d'un temoin qui ne nommait qu'un
+    critere de #183 : vrai sur les records dont la prose portait un contact, faux sur tous
+    les autres, et leur temoin ne pouvait pas les contredire.*
+
+    **CE QUE CETTE GARDE NE VOIT PAS, et le dire est la seule facon de ne pas le faire
+    oublier.** Trois residus, chacun pour une raison DIFFERENTE, et chacun eprouve
+    mecaniquement ci-dessous plutot que liste :
+
+    * un temoin **CONSTANT** a chaque emission — `guyanacareers` emet `[]` litteral sur
+      ses deux sites, et sa propre docstring le mesure (`_job_apply_email` rempli sur
+      **0 de 46**). Appeler le point y serait du bruit : la reponse est connue d'avance.
+    * une declaration sous une **AUTRE CLEF** — `contacts_exposed`, derive par
+      `bool(<la liste entiere>)` sur trois adaptateurs. **C'est exactement la derivation
+      que `_withheld` existe pour empecher**, et son specimen y est nomme : `govtlc` met
+      `coordinates` dans CHAQUE record, donc un test de verite sur la liste est vrai pour
+      tous les records pour toujours. Leurs listes melangent les classes — un site de
+      societe n'atteint personne, une adresse de candidature si — donc le `bool()`
+      sur-declare des que le membre rempli n'est pas un contact. *`ntchito` le raconte
+      lui-meme : le tri-etat a rapporte `contacts_exposed: True` sur un vrai record pour
+      un `_job_location` qui portait un nom de ville.* **Non corrige ici, et declare :
+      classer `_application`, `_company_name`, `_company_twitter` et `_company_website`
+      sur la foi de leur orthographe est le devinage que ce point refuse, et les corps
+      qui trancheraient ne sont pas detenus.**
+    * les **noms qui arrivent par une VARIABLE** restent hors du controle de vocabulaire
+      de la classe precedente, et c'est le `raise` du point qui les couvre.
+
+    **LA MUTATION CREE LE DEFAUT, elle ne le simule pas (#1321, item 3).** On RETIRE
+    l'appel au point chez chaque adoptant en portee et cette garde doit rougir pour
+    chacun ; `mut != src` est asserte, la mutation se fait COMPILER, et surtout le
+    predicat est evalue AVANT et APRES — un mutant qui rend le meme verdict sur l'entree
+    fournie n'est pas un essai, c'est un troisieme vert a ecarter.
+    """
+
+    RETRAIT = re.compile(
+        r'(?m)^(\s*)if withheld_a_contact\((?:.|\n)*?\):\n\s+[A-Za-z_]\w*'
+        r'\["contacts_withheld"\] = True\n')
+
+    @staticmethod
+    def _batisseurs(arbre):
+        import ast
+        return [fn for fn in ast.walk(arbre)
+                if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and ADeclarationOfContactsFollowsWhatTheRedactionActuallyTook._emet_temoin(fn)]
+
+    @staticmethod
+    def _temoin_constant(fn):
+        """Toute emission du temoin dans cette fonction est-elle un LITTERAL ?
+
+        Une liste litterale n'est pas un `ast.Constant`, donc `_emet_temoin` la compte ;
+        ce qui decide ici est qu'aucune emission ne derive d'une valeur calculee.
+        """
+        import ast
+        vus = []
+        for d in ast.walk(fn):
+            if isinstance(d, ast.Dict):
+                for k, v in zip(d.keys, d.values):
+                    if isinstance(k, ast.Constant) and k.value == "withheld_fields":
+                        vus.append(v)
+            if isinstance(d, ast.Assign):
+                for t in d.targets:
+                    if isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) \
+                            and t.slice.value == "withheld_fields":
+                        vus.append(d.value)
+        if not vus:
+            return False
+        return all(isinstance(v, (ast.Constant, ast.List, ast.Tuple))
+                   and all(isinstance(e, ast.Constant) for e in getattr(v, "elts", ()))
+                   for v in vus)
+
+    @classmethod
+    def _etat(cls, src, chemin):
+        """`(a_un_temoin, appelle_le_point, temoin_constant, autre_clef)`."""
+        import ast
+        arbre = ast.parse(src, chemin)
+        bat = cls._batisseurs(arbre)
+        if not bat:
+            return (False, False, False, False)
+        appelle = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                      and c.func.id == "withheld_a_contact"
+                      for fn in bat for c in ast.walk(fn))
+        return (True, appelle, all(cls._temoin_constant(fn) for fn in bat),
+                "contacts_exposed" in src)
+
+    @classmethod
+    def _tous(cls):
+        import glob
+        out = []
+        for p in sorted(glob.glob(os.path.join(SCRIPTS, "*.py"))):
+            nom = os.path.basename(p)
+            with io.open(p, encoding="utf-8") as fh:
+                src = fh.read()
+            try:
+                etat = cls._etat(src, nom)
+            except SyntaxError:
+                continue
+            if etat[0]:
+                out.append((nom, src, etat))
+        return out
+
+    def test_there_is_a_corpus_of_builders_and_of_adopters(self):
+        """**Le plancher POSITIF** : la portee se derive, donc elle peut se vider en
+        silence le jour ou `_emet_temoin` cesse de reconnaitre une forme — et un balayage
+        qui ne trouve plus rien rendrait vert en disant «&nbsp;je n'ai pas regarde
+        la&nbsp;». Les deux planchers sont poses LOIN sous le compte du jour, parce qu'un
+        plancher serre sur un compte courant est une assertion sur un litteral DATE.
+        """
+        tous = self._tous()
+        self.assertGreaterEqual(len(tous), 25,
+                                "trop peu de batisseurs d'un temoin : le balayage ne "
+                                "mesure plus rien")
+        adoptants = [n for n, _s, e in tous if e[1]]
+        self.assertGreaterEqual(len(adoptants), 15,
+                                "trop peu d'adoptants du point unique : la garde "
+                                "ci-dessous n'a plus rien a eprouver")
+
+    def test_no_builder_leaves_its_witness_unanswered(self):
+        """Un temoin par annonce qui peut nommer un contact recoit une REPONSE.
+
+        Les seules dispenses sont celles que la docstring declare, et elles sont
+        EPROUVEES ici plutot que listees : un temoin constant, ou une declaration sous
+        une autre clef. *Un fichier qui n'est ni l'un ni l'autre et qui se tait est le
+        douzieme cas que cette garde existe pour arreter.*
+        """
+        muets = []
+        for nom, _src, (_t, appelle, constant, autre) in self._tous():
+            if appelle or constant or autre:
+                continue
+            muets.append(nom)
+        self.assertEqual(muets, [],
+                         "ces batisseurs emettent un temoin par annonce et ne disent "
+                         "RIEN de ce qu'il contient : un board pauvre et un board "
+                         "censure rendent alors le meme enregistrement — " +
+                         ", ".join(muets))
+
+    def test_each_declared_residue_is_exercised_by_a_real_file(self):
+        """**Une dispense qu'aucun fichier n'exerce est une dispense qui ne protege
+        rien**, et elle se lit demain comme une precaution mesuree. Les deux se comptent
+        ici, et leurs comptes se REFONT : ils bougent a chaque adaptateur livre.
+        """
+        tous = self._tous()
+        constants = [n for n, _s, e in tous if not e[1] and e[2]]
+        autres = [n for n, _s, e in tous if not e[1] and not e[2] and e[3]]
+        self.assertTrue(constants,
+                        "aucun fichier n'exerce la dispense du temoin CONSTANT : elle "
+                        "ne protege rien et son vert ne dit plus rien")
+        self.assertTrue(autres,
+                        "aucun fichier ne declare sous une autre clef : la dispense de "
+                        "`contacts_exposed` est devenue sans objet et doit etre RETIREE")
+        for nom in autres:
+            with io.open(os.path.join(SCRIPTS, nom), encoding="utf-8") as fh:
+                self.assertIn("contacts_exposed", fh.read(), nom)
+
+    def test_removing_the_call_creates_the_defect_this_guard_names(self):
+        """**La mutation CREE le defaut sur l'entree fournie, et c'est ce qui la
+        distingue d'un mutant equivalent.** Elle retire l'appel au point ; le verdict de
+        la garde doit passer de «&nbsp;repondu&nbsp;» a «&nbsp;muet&nbsp;» pour le fichier
+        mute, et le fichier doit encore COMPILER.
+        """
+        adoptants = [(n, s, e) for n, s, e in self._tous()
+                     if e[1] and not e[2] and not e[3]]
+        self.assertTrue(adoptants, "aucun adoptant a muter : le banc est desarme")
+        atteints = 0
+        for nom, src, _e in adoptants:
+            mut, combien = self.RETRAIT.subn("", src)
+            if not combien:
+                continue                      # la forme de l'appel n'est pas celle-ci
+            atteints += 1
+            self.assertNotEqual(mut, src, "%s : la mutation n'a MUTE personne" % nom)
+            compile(mut, nom, "exec")
+            self.assertTrue(self._etat(src, nom)[1],
+                            "%s ne repondait pas AVANT : le banc mesure autre chose" % nom)
+            _t, appelle, constant, autre = self._etat(mut, nom)
+            self.assertFalse(appelle or constant or autre,
+                             "%s repond encore apres le RETRAIT de l'appel : le mutant "
+                             "est EQUIVALENT et son vert ne dit rien" % nom)
+        self.assertGreaterEqual(atteints, 8,
+                                "la mutation n'a atteint que %d adoptant(s) : son motif "
+                                "est trop etroit et son vert ne couvre presque rien"
+                                % atteints)
 
 
 class ACardThatReturnsADescriptionFromPageJsNamesTheOutputCeiling(unittest.TestCase):

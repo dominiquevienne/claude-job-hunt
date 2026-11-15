@@ -101,6 +101,7 @@ from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _sitemap import count as sitemap_count, locs as sitemap_locs
 from _ua import UA
+from _withheld import withheld_a_contact
 from _zero import empty_first_page
 
 HOST = "yora.tj"
@@ -270,6 +271,10 @@ def record(url, ident, posting):
     }
     if withheld:
         out["withheld_fields"] = sorted(set(withheld))
+        # **La classe ne se lit pas dans le NOM** : la declaration passe par le
+        # point unique, qui separe ce qui atteint une personne du reste.
+        if withheld_a_contact(out["withheld_fields"]):
+            out["contacts_withheld"] = True
     return out
 
 

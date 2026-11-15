@@ -62,6 +62,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import withheld_a_contact
 
 HOST = "mauritiusjobs.govmu.org"
 SEARCH = f"https://{HOST}/index.php/jobsearch"
@@ -194,9 +195,22 @@ def rows_of(markup):
     return out, None
 
 
+# **CE QUE L'ENREGISTREMENT PORTE, LU SUR L'ENREGISTREMENT.** `scrub` substitue ses
+# marqueurs sur sept champs et ne rend pas ce qu'il a pris ; les relire SUR le record
+# emis est la seule forme qui ne puisse pas diverger de lui.
+MARQUEURS = (("description:e-mail", "[e-mail withheld]"),
+             ("description:telephone", "[telephone withheld]"))
+
+
+def pris(record):
+    """Les noms des contacts que `scrub` a reellement retires de ce record."""
+    return [nom for nom, marque in MARQUEURS
+            if any(isinstance(v, str) and marque in v for v in record.values())]
+
+
 def record(job_id, row, detail, stamp):
     d = dict(detail or {})
-    withheld = ["age_range"] if d.pop("_age", False) else []
+    criteres = ["age_range"] if d.pop("_age", False) else []
     r = {
         "source": "mauritiusjobs", "country_stamp": stamp,
         "ledger_id": f"mauritiusjobs:{job_id}", "id": job_id,
@@ -211,9 +225,16 @@ def record(job_id, row, detail, stamp):
         "experience": scrub(d.get("experience")), "salary_proposed": d.get("salary_proposed"),
         "link": scrub(d.get("link")),
         "advert_read": bool(detail),
-        "withheld_fields": withheld,          # #183: what was dropped is NAMED, even when today it is empty
-        "contacts_withheld": True,
+        "withheld_fields": [],                # #183: what was dropped is NAMED, even when today it is empty
     }
+    # **`contacts_withheld` ETAIT UNE CONSTANTE `True`**, posee a cote d'un temoin qui ne
+    # nommait qu'`age_range` — un critere de #183, donc precisement ce qui N'ATTEINT
+    # PERSONNE. La declaration etait donc VRAIE la ou la prose portait un contact et
+    # FAUSSE partout ailleurs, et son temoin ne pouvait pas la contredire : c'est le
+    # mensonge de #1007 pose sur la classe que `_withheld` existe pour separer.
+    r["withheld_fields"] = sorted(set(criteres + pris(r)))
+    if withheld_a_contact(r["withheld_fields"]):
+        r["contacts_withheld"] = True
     return r
 
 

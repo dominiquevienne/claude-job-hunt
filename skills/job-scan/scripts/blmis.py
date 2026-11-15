@@ -61,6 +61,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import kinds, withheld_a_contact
 
 HOST = "www.blmis.gov.bt"
 PATH = "/jobseeker_page/mispage"
@@ -155,10 +156,24 @@ def vacancies_of(markup):
     return out, sizes
 
 
+# **CE QUE L'ENREGISTREMENT PORTE, LU SUR L'ENREGISTREMENT.** `scrub` substitue ses
+# marqueurs et ne rend pas ce qu'il a pris ; les relire SUR le record emis est la seule
+# forme qui ne puisse pas diverger de lui — un second detecteur serait un second
+# jugement, et les deux se perdraient un jour.
+MARQUEURS = (("description:e-mail", "[e-mail withheld]"),
+             ("description:telephone", "[telephone withheld]"))
+
+
+def pris(record):
+    """Les noms des contacts que `scrub` a reellement retires de ce record."""
+    return [nom for nom, marque in MARQUEURS
+            if any(isinstance(v, str) and marque in v for v in record.values())]
+
+
 def record(v, stamp):
-    withheld = [k for k in CRITERIA if v.get(k) not in (None, "", [])]
+    criteres = [k for k in CRITERIA if v.get(k) not in (None, "", [])]
     place = " · ".join(x for x in (v.get("dzongkhag_name"), v.get("gewog_name"), v.get("placement")) if x)
-    return {
+    out = {
         "source": "blmis", "country": stamp,
         "ledger_id": f"blmis:{v.get('application_no')}", "id": str(v.get("application_no")),
         "url": f"https://{HOST}{PATH}",                     # the board has no per-vacancy address: the list is the page
@@ -172,9 +187,17 @@ def record(v, stamp):
         "posted": when((v.get("created_at") or "")[:10]),
         "description": scrub(text(v.get("job_description"))),
         "remarks": scrub(text(v.get("remarks"))),
-        "withheld_fields": withheld or None,
-        "contacts_withheld": True,
+        "withheld_fields": None,
     }
+    # **`contacts_withheld` ETAIT UNE CONSTANTE `True`**, posee a cote d'un temoin qui ne
+    # nommait que le critere de #183 — `gender`, nul sur les 471 du corpus. Donc la
+    # declaration etait VRAIE sur les 23 records dont la prose portait un contact et
+    # FAUSSE sur les 448 autres, et aucune relecture ne les separait : c'est le mensonge
+    # de #1007, et le temoin ne pouvait pas le contredire puisqu'il ne nommait rien.
+    out["withheld_fields"] = sorted(set(criteres + pris(out))) or None
+    if withheld_a_contact(out["withheld_fields"] or ()):
+        out["contacts_withheld"] = True
+    return out
 
 
 def cmd_jobs(a):
@@ -205,7 +228,17 @@ def cmd_jobs(a):
         note(f"--dzongkhag {a.dzongkhag}: kept {th(len(rows))} of {th(total)}.")
     if stamp:
         note(f"country {stamp} is the user's stamp — the board is Bhutan's and states no country.")
-    note("the ministry's audit fields never emitted" + (f"; {', '.join(withheld)} withheld where a vacancy carried it (#183)" if withheld else "; no personal criterion on any vacancy today") + "; contacts scrubbed.")
+    # **LA NOTE SEPARE LES DEUX CLASSES, PAR LE POINT UNIQUE.** Elle disait «X withheld
+    # where a vacancy carried it (#183)» de TOUT nom du temoin, et #183 ne parle que des
+    # criteres personnels : des que le temoin a nomme les contacts que `scrub` prenait,
+    # la note les attribuait a une decision qui ne les concerne pas. Un nom ne porte pas
+    # sa classe, et une phrase composee sur une liste melangee n'en porte pas davantage.
+    contacts, criteres, _inconnus = kinds(withheld)
+    note("the ministry's audit fields never emitted"
+         + (f"; {', '.join(criteres)} withheld where a vacancy carried it (#183)" if criteres
+            else "; no personal criterion on any vacancy today")
+         + (f"; contacts scrubbed and NAMED ({', '.join(contacts)})" if contacts
+            else "; contacts scrubbed"))
 
 
 def main(argv=None):
