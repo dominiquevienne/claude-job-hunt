@@ -770,13 +770,25 @@ you do, you can give it a spreadsheet **you own** and let the two sides meet
 there. The sheet id is not a credential and stays in your own `config.yml`;
 **no credential for it lives in this repository.**
 
-**What keeps this off is not a setting — it is that nothing calls it.** No
-skill, no command and no run reaches the export: you type it yourself, or it
-does not happen. *The contract for this integration declares a future switch,
-`integrations.events_sheet.enabled`, and **no code reads that key today** — so
-if you ever see it described as the thing protecting you, that description is
-ahead of the code. Running the command by hand is a stronger gate than a flag
-would be, and it is the one that is actually there.*
+**A skill reaches it now, and that changes what protects you — so here is
+what does.** Until 2026-11-15 nothing in this plugin called the export: typing
+the command yourself was the whole gate. `/job-sync` exists since, so that
+sentence is no longer true and is not repeated here.
+
+**Three things keep it off, and only the second is a mechanism.** *(1)* you
+invoke it — no scan, no report and no scheduled run reaches the sheet; *(2)*
+**nothing is written without `--apply`**, so the command shows you the rows it
+would write and stops, and that refusal lives in the code rather than in a
+procedure; *(3)* the credential is yours and lives outside this repository — an
+absent credential is not an error, it is what "not set up" looks like, and the
+integration simply does not run.
+
+*And `integrations.events_sheet.enabled` is now READ — but read by the SKILL
+and not by the transport, so a direct `events_sheet.py push --apply` does not
+consult it. It gates the command, not the script. We say so rather than let you
+read it as the thing protecting you: the gate that actually holds is `--apply`,
+and moving the switch into the transport needs a second reader of your
+`config.yml`, which this repository keeps to exactly one door.*
 
 | | |
 | :-- | :-- |

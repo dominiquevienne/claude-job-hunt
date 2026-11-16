@@ -314,6 +314,31 @@ documents:
   # absent, the letter simply leaves blank space to sign by hand.
   signature_height_cm: 2.2
 
+# --------------------------------------------------------------------------
+# integrations — off by default, and each one says what leaves the machine.
+# --------------------------------------------------------------------------
+integrations:
+
+  # The spreadsheet YOU own, shared with an assistant that reads your mailbox
+  # so the two sides can meet. `/job-sync` writes the `candidatures` tab from
+  # the ledger and reads back the `evenements` tab that assistant fills.
+  #
+  # WHAT LEAVES, when this is on: employer, role, board, dates and declaration
+  # status. Nothing else, and nothing at all while `enabled` is false.
+  #
+  # The sheet id is NOT a credential and belongs here. The credential is a
+  # Google service-account key that lives OUTSIDE this repository, at
+  # ~/.job-sync-sa.json (or $JOB_SYNC_SA_KEY), mode 600. Share the sheet with
+  # the address inside that key, as Editor.
+  #
+  # AND READ THIS ONE HONESTLY: `enabled` is read by the /job-sync skill and
+  # NOT by the transport, so running the script by hand does not consult it.
+  # What stops a write in the code is that nothing is written without
+  # `--apply`.
+  events_sheet:
+    enabled: false
+    sheet_id: ""
+
 modules:
   # Optional country-specific add-ons. See shared/modules/ in the plugin.
   #   none         — no unemployment-office paperwork
