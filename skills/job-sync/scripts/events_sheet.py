@@ -117,6 +117,17 @@ EXIT_HEADER = 5          # the file is readable and is NOT this tab
 CANDIDATURES = ("id", "entreprise", "alias_entreprise", "domaines_expediteurs",
                 "poste", "canal", "statut_ledger", "date_envoi", "date_statut",
                 "statut_pre")
+#  The two columns the SHEET owns and the ledger does not. `employers.md`
+#  carries `aliases` / `domains` for SOME employers only, so the ledger side
+#  of the union offers an EMPTY cell for every other one — and a blank written
+#  over a value is not a deletion any row count can see. Measured on the real
+#  tab on 2026-11-16: 123 of its 212 rows carried one of the two, and the
+#  union proposed 0 of 215, with `0 deleted` in the output (#1329).
+#
+#  They are a CONSTANT and not an inline pair because the test imports them:
+#  four copies of one rule are lost one at a time.
+SHEET_OWNED = ("alias_entreprise", "domaines_expediteurs")
+
 EVENEMENTS = ("date_evenement", "message_id", "candidature_id",
               "candidats_possibles", "entreprise", "poste", "type",
               "motif_refus", "action_requise", "echeance", "thread_url",
@@ -484,6 +495,13 @@ def merge(current, new):
     untouched. **And `date_envoi` is never rewritten**: the owner's decision 1
     says a send date must survive `applied → rejected`, which is exactly the
     update that would overwrite it.
+
+    **Nor are the two `SHEET_OWNED` columns**, and for a different reason: the
+    date is written once, while those two may have been CORRECTED BY HAND —
+    `SKILL.md` rule 2, *« Never change the alias or domain of a row that
+    already carries them without asking the owner »*, because this command
+    cannot tell a correction from an older guess. So the sheet wins on both,
+    an empty ledger cell is COUNTED, and a value that DIFFERS is NAMED.
     """
     held = read_tab(current, CANDIDATURES)
     mine = read_tab(new, CANDIDATURES)
@@ -497,7 +515,8 @@ def merge(current, new):
         if rid not in rows:
             order.append(rid)
         rows[rid] = dict(row)
-    kept_dates, added, updated = 0, 0, 0
+    kept_dates, kept_cells, added, updated = 0, 0, 0, 0
+    diverging = []
     for row in mine:
         rid, _s = declared(row.get("id"))
         if rid is None:
@@ -514,12 +533,66 @@ def merge(current, new):
             merged["date_envoi"] = before["date_envoi"]
             if declared(row.get("date_envoi"))[0] != envoi:
                 kept_dates += 1
+        for col in SHEET_OWNED:
+            theirs, _s = declared(before.get(col))
+            if theirs is None:
+                continue
+            merged[col] = before[col]
+            ours, _s = declared(row.get(col))
+            if ours is None:
+                kept_cells += 1
+            elif ours != theirs:
+                #  NAMED and never silently resolved: the two differ, the
+                #  sheet wins by rule 2, and the owner is the one who decides
+                #  which is right. A count alone would say «something diverged»
+                #  without saying WHERE, and this column is a white list.
+                diverging.append(f"{rid} {col}: sheet {theirs!r} kept, "
+                                 f"ledger offered {ours!r}")
         rows[rid] = merged
         updated += 1
     return ([rows[r] for r in order],
             {"tenues": len(held), "miennes": len(mine), "ajoutees": added,
              "mises_a_jour": updated, "dates_envoi_conservees": kept_dates,
+             "cellules_conservees": kept_cells, "divergences": diverging,
              "supprimees": 0})
+
+
+def control_line(rows):
+    """The fiche's control line, computed on the rows that LEAVE.
+
+    `SKILL.md` prints it «even when nothing was inserted, because a sync that
+    inserted nothing and a sync that forgot the columns read the same
+    otherwise» — and the same argument carries one step further: counted on
+    the INSERTED rows only, it reads identically whether the 123 rows the tab
+    already carried kept their two cells or had them blanked (#1329). So it
+    counts the UNION, which is the state that reaches the sheet.
+
+    It lives in the CODE and not only in the fiche's prose because a line a
+    tool prints is one an agent cannot forget to compute.
+    """
+    alias = sum(1 for r in rows if declared(r.get("alias_entreprise"))[0])
+    dom = sum(1 for r in rows if declared(r.get("domaines_expediteurs"))[0])
+    return (f"CONTROLE : {len(rows)} ligne(s) apres union | {alias} avec "
+            f"alias | {dom} avec domaine | {len(rows) - dom} sans domaine")
+
+
+def say_kept(counts):
+    """The two «the sheet already had it» notes, for `merge` and for `push`."""
+    if counts["dates_envoi_conservees"]:
+        note(f"{counts['dates_envoi_conservees']} `date_envoi` kept as the "
+             f"sheet already had it — a send date is written once")
+    if counts["cellules_conservees"]:
+        note(f"{counts['cellules_conservees']} alias/domain cell(s) KEPT from "
+             f"the sheet where the ledger offered none — `employers.md` "
+             f"carries those bullets for some employers only, and a blank "
+             f"written over a value is a loss no row count can see")
+    for line in counts["divergences"]:
+        note(f"DIVERGENCE — {line}")
+    if counts["divergences"]:
+        note(f"{len(counts['divergences'])} cell(s) differ: the SHEET was "
+             f"kept on all of them (SKILL.md rule 2 — this command cannot "
+             f"tell a hand correction from an older guess). Changing one is "
+             f"the owner's call")
 
 
 # ---------------------------------------------------------------- export
@@ -714,9 +787,8 @@ def cmd_merge(a):
     note(f"{counts['tenues']} held + {counts['miennes']} mine -> {len(rows)} "
          f"row(s): {counts['ajoutees']} added, {counts['mises_a_jour']} "
          f"updated, {counts['supprimees']} deleted")
-    if counts["dates_envoi_conservees"]:
-        note(f"{counts['dates_envoi_conservees']} `date_envoi` kept as the "
-             f"sheet already had it — a send date is written once")
+    say_kept(counts)
+    note(control_line(rows))
 
 
 def cmd_export(a):
@@ -843,9 +915,8 @@ def cmd_push(a):
     note(f"{mc['ajoutees']} would be added, {mc['mises_a_jour']} updated, "
          f"{mc['supprimees']} deleted — and a union cannot delete, so a "
          f"non-zero deletion count is a defect and not a plan")
-    if mc["dates_envoi_conservees"]:
-        note(f"{mc['dates_envoi_conservees']} `date_envoi` kept as the sheet "
-             f"already had it — a send date is written once")
+    say_kept(mc)
+    note(control_line(union))
     if counts["retenues_rejected"]:
         note(f"{counts['retenues_rejected']} `rejected` row(s) HELD BACK: "
              f"`--rejected-from <YYYY-MM-DD>` is what releases them")

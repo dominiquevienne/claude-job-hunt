@@ -63049,5 +63049,245 @@ class TheJobSyncSkillMakesAPromiseTheRepositoryAlreadyPrinted(unittest.TestCase)
         self.assertIn(".job-sync-sa.json", text)
 
 
+class TheUnionNeverBlanksACellTheSheetOwns(unittest.TestCase):
+    """#1329 — `merge()` wrote an EMPTY alias/domain over the sheet's value.
+
+    Measured on the real tab on 2026-11-16, dry run, nothing written: the tab
+    carried **212** rows of which **123** held an alias or a sender domain,
+    and the union the dry run proposed held **0 of 215** with either. The
+    output said `0 deleted` and it was TRUE — no row was dropped, cells were
+    emptied, and a row count cannot see that. Those two columns are the white
+    list the mail agent matches a recruiter against.
+
+    **The cause was READ in the source and is EXERCISED here**: the fix is
+    `SHEET_OWNED`, and the mutation back to a naked `merged = dict(row)` must
+    redden `test_a_cell_the_ledger_does_not_supply_is_KEPT`.
+
+    Why the SHEET wins and not the ledger, even when both carry a value:
+    `SKILL.md` rule 2, *« Never change the alias or domain of a row that
+    already carries them without asking the owner »* — they may have been
+    corrected by hand, and this command cannot tell a correction from an
+    older guess. So a difference is NAMED, never resolved.
+    """
+
+    CAND = ("id,entreprise,alias_entreprise,domaines_expediteurs,poste,canal,"
+            "statut_ledger,date_envoi,date_statut,statut_pre")
+
+    @classmethod
+    def _root(cls):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(self._root(), "skills", "job-sync", "scripts",
+                         "events_sheet.py")
+        d = os.path.dirname(p)
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location("events_1329", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            if d in sys.path:
+                sys.path.remove(d)
+
+    def _dir(self):
+        import tempfile
+        d = getattr(self, "_tmp", None)
+        if d is None:
+            d = self._tmp = tempfile.mkdtemp(prefix="union-1329-")
+        return d
+
+    def _write(self, name, *rows):
+        p = os.path.join(self._dir(), name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(self.CAND + "\n" + "".join(r + "\n" for r in rows))
+        return p
+
+    # ------------------------------------------------------- the defect
+
+    def test_a_cell_the_ledger_does_not_supply_is_KEPT(self):
+        """The case the dry run met on 123 rows, and the one the mutation
+        back to `merged = dict(row)` has to redden."""
+        mod = self._mod()
+        held = self._write(
+            "held.csv",
+            "linkedin:1,Sword,Sword|Sword Group,sword-group.com,PM,linkedin,"
+            "applied,2026-10-01,2026-10-01,non_declare",
+            "linkedin:2,TCS,TCS|Touring Club Suisse,tcs.ch,BA,linkedin,"
+            "applied,2026-10-02,2026-10-02,non_declare")
+        #  `employers.md` carries the two bullets for SOME employers only, so
+        #  this is what the ledger side offers for every other one.
+        mine = self._write(
+            "mine.csv",
+            "linkedin:1,Sword,,,PM,linkedin,rejected,,2026-11-10,applied",
+            "linkedin:2,TCS,,,BA,linkedin,applied,2026-10-02,2026-10-02,"
+            "non_declare")
+        rows, counts = mod.merge(held, mine)
+        self.assertEqual([r["alias_entreprise"] for r in rows],
+                         ["Sword|Sword Group", "TCS|Touring Club Suisse"])
+        self.assertEqual([r["domaines_expediteurs"] for r in rows],
+                         ["sword-group.com", "tcs.ch"])
+        self.assertEqual(counts["cellules_conservees"], 4,
+                         "the COUNT is what the output owes the owner: a "
+                         "blank written over a value is a loss no row count "
+                         "can see")
+        self.assertEqual(counts["divergences"], [],
+                         "nothing diverged — the ledger offered nothing")
+        self.assertEqual(rows[0]["statut_ledger"], "rejected",
+                         "everything the ledger DOES own still moves")
+
+    def test_the_two_columns_are_a_named_constant_and_not_an_inline_pair(self):
+        """The test and the code read the same list, or they are two lists."""
+        mod = self._mod()
+        self.assertEqual(mod.SHEET_OWNED,
+                         ("alias_entreprise", "domaines_expediteurs"))
+        for col in mod.SHEET_OWNED:
+            self.assertIn(col, mod.CANDIDATURES)
+
+    def test_a_difference_is_NAMED_and_the_sheet_wins(self):
+        """Rule 2: a hand correction and an older guess read the same from
+        here, so the sheet is kept and the owner is told WHERE."""
+        mod = self._mod()
+        held = self._write(
+            "h2.csv",
+            "x:1,Sword,Sword|Sword Group,sword-group.com,PM,linkedin,applied,"
+            "2026-10-01,2026-10-01,non_declare")
+        mine = self._write(
+            "m2.csv",
+            "x:1,Sword,Sword,sword.com,PM,linkedin,applied,2026-10-01,"
+            "2026-10-01,non_declare")
+        rows, counts = mod.merge(held, mine)
+        self.assertEqual(rows[0]["alias_entreprise"], "Sword|Sword Group")
+        self.assertEqual(rows[0]["domaines_expediteurs"], "sword-group.com")
+        self.assertEqual(counts["cellules_conservees"], 0,
+                         "a difference is not a KEPT blank: two counters, "
+                         "two facts, and folding them would hide the one "
+                         "that needs a decision")
+        self.assertEqual(len(counts["divergences"]), 2)
+        joined = " ".join(counts["divergences"])
+        for piece in ("x:1", "alias_entreprise", "domaines_expediteurs",
+                      "sword-group.com", "sword.com"):
+            self.assertIn(piece, joined,
+                          "it NAMES the cell: a count alone says something "
+                          "diverged without saying where")
+
+    def test_an_identical_value_is_counted_in_neither(self):
+        """Otherwise every synced row would report a kept cell, and a counter
+        that fires ALWAYS is no better than one that never fires."""
+        mod = self._mod()
+        held = self._write("h3.csv", "x:1,A,A SA,a.example,D,linkedin,applied,"
+                                     "2026-10-01,2026-10-01,non_declare")
+        mine = self._write("m3.csv", "x:1,A,A SA,a.example,D,linkedin,applied,"
+                                     "2026-10-01,2026-10-01,non_declare")
+        _rows, counts = mod.merge(held, mine)
+        self.assertEqual(counts["cellules_conservees"], 0)
+        self.assertEqual(counts["divergences"], [])
+
+    def test_an_empty_sheet_cell_takes_what_the_ledger_offers(self):
+        """The fix must not be a one-way valve: `employers.md` is HOW a new
+        alias reaches the sheet, and a rule that never writes those two
+        columns would make the bullets inert."""
+        mod = self._mod()
+        held = self._write("h4.csv", "x:1,A,,,D,linkedin,applied,2026-10-01,"
+                                     "2026-10-01,non_declare")
+        mine = self._write("m4.csv", "x:1,A,A SA|Alpha,a.example,D,linkedin,"
+                                     "applied,2026-10-01,2026-10-01,"
+                                     "non_declare")
+        rows, counts = mod.merge(held, mine)
+        self.assertEqual(rows[0]["alias_entreprise"], "A SA|Alpha")
+        self.assertEqual(rows[0]["domaines_expediteurs"], "a.example")
+        self.assertEqual(counts["cellules_conservees"], 0)
+        self.assertEqual(counts["divergences"], [])
+
+    def test_a_sentinel_in_the_sheet_is_not_a_value_to_keep(self):
+        """The floor stays POSITIVE here too: a cell holding « Pas de donnée »
+        has deposited nothing, and keeping it would carry a sentinel forward
+        as if the owner had written it."""
+        mod = self._mod()
+        held = self._write("h5.csv", "x:1,A,Pas de donnée,-,D,linkedin,"
+                                     "applied,2026-10-01,2026-10-01,"
+                                     "non_declare")
+        mine = self._write("m5.csv", "x:1,A,A SA,a.example,D,linkedin,applied,"
+                                     "2026-10-01,2026-10-01,non_declare")
+        rows, _counts = mod.merge(held, mine)
+        self.assertEqual(rows[0]["alias_entreprise"], "A SA")
+        self.assertEqual(rows[0]["domaines_expediteurs"], "a.example")
+
+    # ------------------------------------------------- the control line
+
+    def test_the_control_line_counts_the_UNION_and_not_the_insertions(self):
+        """Counted on the inserted rows only it reads IDENTICALLY whether the
+        rows already there kept their cells or had them blanked — which is the
+        defect it exists to catch."""
+        mod = self._mod()
+        held = self._write(
+            "h6.csv",
+            "x:1,A,A SA,a.example,D,linkedin,applied,2026-10-01,2026-10-01,"
+            "non_declare",
+            "x:2,B,,,D,linkedin,applied,2026-10-02,2026-10-02,non_declare")
+        mine = self._write(
+            "m6.csv",
+            "x:1,A,,,D,linkedin,rejected,,2026-11-01,applied")
+        rows, _counts = mod.merge(held, mine)
+        line = mod.control_line(rows)
+        self.assertIn("2 ligne(s) apres union", line)
+        self.assertIn("1 avec alias", line)
+        self.assertIn("1 avec domaine", line)
+        self.assertIn("1 sans domaine", line,
+                      "the blanks are named OUT LOUD: empty by DECISION and "
+                      "empty by OMISSION look identical in the sheet")
+        self.assertEqual(mod.control_line([]),
+                         "CONTROLE : 0 ligne(s) apres union | 0 avec alias | "
+                         "0 avec domaine | 0 sans domaine",
+                         "printed even when nothing moved")
+
+    def test_the_fiche_says_the_line_counts_the_union(self):
+        """The line lives in two places, so it is two lines unless something
+        ties them: the fiche's template carries the FIELDS the code prints."""
+        mod = self._mod()
+        with io.open(os.path.join(self._root(), "skills", "job-sync",
+                                  "SKILL.md"), encoding="utf-8") as fh:
+            card = fh.read()
+        for field in ("ligne(s) apres union", "avec alias", "avec domaine",
+                      "sans domaine"):
+            self.assertIn(field, card,
+                          "the fiche's template and the printed line must "
+                          "agree on the FIELDS and their order")
+            self.assertIn(field, mod.control_line([]))
+        self.assertIn("SHEET_OWNED", card,
+                      "the fiche must name what ENFORCES its rule 2 (#1329), "
+                      "or the rule stays prose and prose gets broken")
+
+    def test_both_commands_report_the_kept_cells_through_one_function(self):
+        """`merge` and `push` say it, and they say it with the SAME words: a
+        second wording is a second rule, and only one of them gets fixed."""
+        with io.open(os.path.join(self._root(), "skills", "job-sync",
+                                  "scripts", "events_sheet.py"),
+                     encoding="utf-8") as fh:
+            src = fh.read()
+        #  USAGE and not presence: the point of one function is that both
+        #  callers go THROUGH it.
+        self.assertEqual(src.count("def say_kept("), 1)
+        self.assertEqual(src.count("say_kept("), 3, "defined once, called by "
+                                                    "`merge` and by `push`")
+        self.assertEqual(src.count("control_line("), 3)
+
+    def test_the_counters_are_in_the_dict_both_commands_read(self):
+        """A note that reads a key the union does not return would raise on
+        the chemin it was written for — and only on the day it matters. So the
+        reporter is RUN here, not read."""
+        mod = self._mod()
+        held = self._write("h7.csv", "x:1,A,,,D,linkedin,applied,2026-10-01,"
+                                     "2026-10-01,non_declare")
+        _rows, counts = mod.merge(held, held)
+        for key in ("tenues", "miennes", "ajoutees", "mises_a_jour",
+                    "dates_envoi_conservees", "cellules_conservees",
+                    "divergences", "supprimees"):
+            self.assertIn(key, counts)
+        mod.say_kept(counts)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -148,17 +148,30 @@ Lower case, no `@`, no needless subdomain.
 2. **Never change the alias or domain of a row that already carries them**
    without asking the owner. They may have been corrected by hand, and this
    command cannot tell a correction from an older guess.
+   **`merge` and `push` ENFORCE this** since #1329: those two columns are
+   `SHEET_OWNED`, the sheet wins on both, an empty ledger cell is COUNTED
+   («N alias/domain cell(s) KEPT») and a value that DIFFERS is NAMED on
+   stderr, one line per cell, for the owner to arbitrate. Before the fix the
+   union wrote a blank over 123 of the tab's 212 rows and reported
+   `0 deleted`: a cell emptied is not a row deleted, and no row count sees it.
 3. A company that appears twice — the tab has such pairs — gets the SAME alias
    and domains on both rows.
 
 ### The control line, at the end of every sync
 
-Print it even when nothing was inserted, because a sync that inserted nothing
-and a sync that forgot the columns read the same otherwise:
+**`merge` and `push` print it themselves** — `control_line()` — so an agent
+cannot forget to compute it. It is printed even when nothing was inserted,
+because a sync that inserted nothing and a sync that forgot the columns read
+the same otherwise:
 
 ```
-CONTROLE : N ligne(s) inseree(s) | A avec alias | D avec domaine | N-D sans domaine
+CONTROLE : N ligne(s) apres union | A avec alias | D avec domaine | N-D sans domaine
 ```
+
+**And it counts the UNION, not the rows inserted** (#1329). Counted on the
+inserted rows only, it reads identically whether the rows the tab already
+carried kept their two cells or had them blanked — which is the exact defect
+it would have had to catch.
 
 **And name the blanks out loud** — « N lignes sans domaine » — rather than
 leaving the owner to find them in the sheet. A column that is empty by DECISION
