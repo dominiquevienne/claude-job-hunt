@@ -6259,9 +6259,17 @@ class TravelIsADegreeNotAFact(unittest.TestCase):
         both at once: `python3 _travel.py --file <ad>` appeared in two
         `SKILL.md` files while the module had no `__main__`.
 
-        The invocation guard reads `shared/boards/`, so a command documented
-        in a *skill* is checked by nothing. This is the narrow version of that
-        gap — the module the skills name must at least run the way they say.
+        The invocation guard reads `shared/boards/`, so a command
+        documented in a *skill* is checked by nothing HERE, and this
+        case asks only whether the module the skills name runs the way
+        they say. **The CLASS is now covered by
+        `EveryCommandTheRepositoryPromisesResolves`** (#1316 item 2),
+        which confronts every command promised to the end user — in the
+        prose of a `SKILL.md` and in what a script PRINTS — against what
+        resolves as `commands/<name>.md` or `skills/<name>/SKILL.md`.
+        That class was found by THIS gap's second member: the border
+        declared narrow here was a written invitation, and `/job-sync`
+        accepted it eight weeks later.
         """
         import subprocess
         import sys as _sys
@@ -6630,6 +6638,153 @@ class CommandsDocumentedInSkillsAreReal(unittest.TestCase):
                     f"{expected} does not resolve — the hyphen or the "
                     f"directory list is wrong, which is how the measurement "
                     f"behind this class invented three defects")
+
+
+class EveryCommandTheRepositoryPromisesResolves(unittest.TestCase):
+    """#1316 item 2. **A slash command printed to the END USER is checked by
+    nothing**, and this class was found by its second member, not its first.
+
+    `test_the_invocation_both_skills_document_actually_runs` named the gap in
+    September and declared its own remedy *narrow*: it asks whether a
+    documented `.py` runs, which says nothing about a `/command` the user is
+    told to type. `/job-sync` fell into it eight weeks later — two objects
+    printed it to the user while nothing resolved it (#1316 item 1). A border
+    declared narrow is a written invitation to the next occurrence.
+
+    **The discriminant is POSITIVE, so the guard is absolute.** A command
+    token is neither a PATH nor a FILE NAME, so what FOLLOWS it discriminates:
+    it never contains a `/`, and it is never followed by an extension. That
+    buys what neither a named residue nor a fenced-block exclusion can — a
+    guard with a declared exception receives a second one, and excluding
+    fenced blocks would stop seeing a command promised INSIDE an example.
+
+    **Two corpora, because the specimen that opened #1316 was a script that
+    PRINTS.** What the user READS is `skills/*/SKILL.md` and `commands/*.md`;
+    what a script PRINTS is the `print(` lines of `skills/*/scripts/*.py` and
+    `bin/*.py`. Measured and discarded: the same motif over the WHOLE script
+    corpus yields 212 unresolved, every one a fragment of an adapter URL path;
+    the `print(` bound brings it back to two. Without the second half the
+    guard misses its own cause.
+
+    **A negated class demands a character, so `[^x]` in tail position is
+    blind to END OF STRING.** The first form of this motif returned ZERO on
+    `/job-sync.` ending a sentence: `\\.[^a-z0-9]` requires a character after
+    the period, and a period at end of line has none. Only the probe said so
+    — no rereading of the motif showed it. Hence the `|$` alternatives, and
+    hence `test_the_motif_sees_a_promise_at_the_end_of_a_line` below.
+    """
+
+    MOTIF = '(^|[ `"(])/[a-z][a-z0-9-]+(\\.([^a-z0-9]|$)|[^a-z0-9/.-]|$)'
+
+    def _root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _token(self, match):
+        """The token alone, stripped of whatever head character admitted it."""
+        return re.match(r"/[a-z][a-z0-9-]+",
+                        match.group(0).lstrip(' `"(')).group(0)
+
+    def _promised(self, root):
+        """What the repository promises the END USER, **by corpus**.
+
+        The two halves are returned APART, and the bench is why: emptying
+        the prose corpus left this class GREEN, because `/job-sync` is
+        promised by BOTH and a contingent taken on the union is satisfied by
+        either term.
+
+        **That green is a THIRD species, and I first named the wrong one.**
+        It is not the equivalent mutant: the mutation destroys four fifths
+        of the output — 5 tokens become 1, losing `/cover-letter`,
+        `/job-report`, `/job-scan`, `/job-setup` — so `f_mut != f_src` holds
+        and the equivalence control declares it a LEGITIMATE trial. Nor is
+        it harness contamination. The defect is REAL, the control SEES it,
+        and the ASSERTION is blind to it, because `assertIn` reads only a
+        PROJECTION of the output and that projection survives.
+
+        **So the equivalence control would have confirmed the error rather
+        than caught it.** What refuses this is not a sharper assertion on
+        the union — no assertion on a disjunction can see one term die — it
+        is a contingent PER TERM. Measured, and the species named by the
+        pilot on his own bench.
+        """
+        import glob
+        rx = re.compile(self.MOTIF)
+
+        def scan(paths, only_print=False):
+            found = set()
+            for path in paths:
+                with io.open(path, encoding="utf-8") as fh:
+                    for line in fh:
+                        if only_print and "print(" not in line:
+                            continue
+                        for m in rx.finditer(line.rstrip("\n")):
+                            found.add(self._token(m))
+            return found
+
+        prose = scan(sorted(glob.glob(os.path.join(root, "skills", "*",
+                                                   "SKILL.md")))
+                     + sorted(glob.glob(os.path.join(root, "commands",
+                                                     "*.md"))))
+        printed = scan(sorted(glob.glob(os.path.join(root, "skills", "*",
+                                                     "scripts", "*.py")))
+                       + sorted(glob.glob(os.path.join(root, "bin", "*.py"))),
+                       only_print=True)
+        return prose, printed
+
+    def _resolved(self, root):
+        """What exists as a command the user can actually type."""
+        import glob
+        out = set()
+        for path in glob.glob(os.path.join(root, "commands", "*.md")):
+            out.add("/" + os.path.basename(path)[:-3])
+        for path in glob.glob(os.path.join(root, "skills", "*", "SKILL.md")):
+            out.add("/" + os.path.basename(os.path.dirname(path)))
+        return out
+
+    def test_every_command_promised_to_the_user_resolves(self):
+        root = self._root()
+        prose, printed = self._promised(root)
+        promised = prose | printed
+        resolved = self._resolved(root)
+        #  POSITIVE CONTINGENT, ONE PER HALF: an empty sweep would pass this
+        #  class in silence, and a green that says "I did not look there"
+        #  reads exactly like a green that says "nothing to find". Taken on
+        #  the UNION it is satisfied by either half, so a dead half passes —
+        #  measured on the bench, not supposed.
+        self.assertIn("/job-sync", prose,
+                      "the PROSE corpus found nothing it is known to "
+                      "contain — the corpus is wrong, not the repository")
+        self.assertIn("/job-sync", printed,
+                      "the PRINTED corpus found nothing it is known to "
+                      "contain; without this half the guard misses the very "
+                      "specimen that opened #1316")
+        self.assertIn("/job-sync", resolved)
+        missing = sorted(promised - resolved)
+        self.assertEqual(missing, [],
+                         "promised to the end user and resolving to nothing: "
+                         + ", ".join(missing))
+
+    def test_the_motif_sees_a_promise_at_the_end_of_a_line(self):
+        """The three forms a promise takes, and the three a path takes.
+
+        The shape this guards against is ABSENT from the corpus, so there is
+        nothing to extract and the probes are synthetic — declared, because a
+        synthetic probe carries the author's model of the defect and not the
+        world. What it does establish is that the motif is not blind to the
+        end of a line, which is how an ordinary sentence ends.
+        """
+        rx = re.compile(self.MOTIF)
+        for line in ("Read the ledger, then run /job-sync.",
+                     "run `/job-sync` and say yes",
+                     "Nothing is applied until you type /job-sync"):
+            with self.subTest(positive=line):
+                self.assertTrue(rx.search(line), "a promise is missed")
+        for line in ("  print(\"see /robots.txt for the rules\")",
+                     'reads "$JOB_HUNT_HOME/profile" for the documents',
+                     '--prefer "/the/folder/they/named"'):
+            with self.subTest(negative=line):
+                self.assertFalse(rx.search(line), "a path is read as a "
+                                                  "command")
 
 
 class ARefusalInProseIsStillARefusal(unittest.TestCase):
