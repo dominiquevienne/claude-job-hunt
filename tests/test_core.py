@@ -14355,6 +14355,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
+        "motravay": ("get", "https://h.example/x?p=1"),
         "careersmu": ("get", "https://h.example/x?p=1"),
         "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
@@ -63721,6 +63722,83 @@ class CareersMuReadsOnePageStatesItsCountAndNeverAsksForAPerson(unittest.TestCas
         self.assertNotIn("jobs@example.mu", out)
         _, taken = self.m.scrub("Salary Rs 25000 per month")
         self.assertEqual(taken, [])
+
+
+class MotravaysListIsServedWithItsCountAndItsFieldsAreNamedByTheirIcons(unittest.TestCase):
+    """#700 — `motravay.py`. `/jobs` is server-rendered with its cards and its
+    «N results»; each card field is read by its ICON, never by its position;
+    the employer is only in the ad's JobPosting. Fixtures are EXTRACTED from
+    the bytes served on 2026-11-26."""
+
+    SALARY_CARD = '<a data-testid="job-card-63b6e2b4-7d51-4a45-ad54-42a4496b2777" class="block group" href="/jobs/MAD/01-aide-comptable" data-discover="true"><div class="rounded-xl border text-card-foreground shadow p-5 hover:border-[#1A8FE3] hover:shadow-md transition-all duration-200 bg-white border-slate-200"><div class="flex items-start gap-3"><div class="h-12 w-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center"></div><div class="flex-1 min-w-0"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-display text-lg font-semibold text-slate-900 group-hover:text-[#1A8FE3] transition-colors line-clamp-2">ACCOUNTS CLERK</h3><button type="button" data-testid="job-card-company-63b6e2b4-7d51-4a45-ad54-42a4496b2777" class="text-sm text-slate-500 mt-0.5 hover:text-[#1A8FE3] hover:underline text-left">MADO Parfums &amp; Co.ltd</button></div><span class="shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">Full-time</span></div><div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600"><span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin h-3.5 w-3.5 text-slate-400" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Riche Terre</span><span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-briefcase h-3.5 w-3.5 text-slate-400" aria-hidden="true"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path><rect width="20" height="14" x="2" y="6" rx="2"></rect></svg>FINANCE &amp; ADMINISTRATION</span><span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-banknote h-3.5 w-3.5 text-slate-400" aria-hidden="true"><rect width="20" height="12" x="2" y="6" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>Rs 25,000 - 30,000</span></div></div></div><div class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-500"><span class="ml-auto">10/2/2026</span></div></div></a>'
+    PLAIN_CARD = '<a data-testid="job-card-8677d48d-2747-4117-be4c-120bb77e79ef" class="block group" href="/jobs/MOT/34-assistant-supply-chain" data-discover="true"><div class="rounded-xl border text-card-foreground shadow p-5 hover:border-[#1A8FE3] hover:shadow-md transition-all duration-200 bg-white border-slate-200"><div class="flex items-start gap-3"><div class="h-12 w-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center"></div><div class="flex-1 min-w-0"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-display text-lg font-semibold text-slate-900 group-hover:text-[#1A8FE3] transition-colors line-clamp-2">Assistant Supply Chain</h3><button type="button" data-testid="job-card-company-8677d48d-2747-4117-be4c-120bb77e79ef" class="text-sm text-slate-500 mt-0.5 hover:text-[#1A8FE3] hover:underline text-left">Motravay.mu</button></div><span class="shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 border border-sky-100">Full-time</span></div><div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600"><span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin h-3.5 w-3.5 text-slate-400" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Pailles</span><span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-briefcase h-3.5 w-3.5 text-slate-400" aria-hidden="true"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path><rect width="20" height="14" x="2" y="6" rx="2"></rect></svg>Other</span></div></div></div><div class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-500"><span class="ml-auto">11/6/2026</span></div></div></a>'
+    COUNT = '>8 results</di'
+    LD = '<script type="application/ld+json" data-mv="motravay-route-jsonld">{"@context":"https://schema.org","@type":"JobPosting","title":"Assistant Supply Chain","description":"Job Purpose\\n\\nTo provide administrative and operational support in daily supply chain activities, ensuring the smooth coordination of orders, shipments, import/export procedures and related documentation.\\n\\nKey Responsibilities\\n\\n- Coordinate and process purchase orders.\\n- Monitor and follow up on shipments and deliveries.\\n- Assist with customs clearance procedures.\\n- Process and follow up on import and export permits.\\n- Maintain accurate records and supply chain documentation.\\n- Handle email correspondence with suppliers and relevant stakeholders.\\n- Provide general administrative support to the supply chain department.","hiringOrganization":{"@type":"Organization","name":"Motravay.mu"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"Pailles","addressCountry":"MU"}},"employmentType":"Full-time","datePosted":"2026-11-06T07:16:37.456199+00:00","validThrough":"2026-12-06T07:16:37.453456+00:00"}</script>'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import motravay
+        self.m = motravay
+
+    def test_a_card_with_a_salary_reads_each_field_by_its_icon(self):
+        rows = self.m.cards(self.SALARY_CARD)
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        self.assertEqual(r["title"], "ACCOUNTS CLERK")
+        self.assertEqual(r["location_text"], "Riche Terre")
+        self.assertEqual(r["category"], "FINANCE & ADMINISTRATION")
+        self.assertEqual(r["salary_text"], "Rs 25,000 - 30,000")
+        self.assertTrue(r["salary_stated"])
+        self.assertEqual(r["type"], "Full-time")
+        self.assertEqual(r["posted"], "2026-10-02")
+
+    def test_a_card_without_a_salary_does_not_take_the_category_for_it(self):
+        r = self.m.cards(self.PLAIN_CARD)[0]
+        self.assertIsNone(r["salary_text"])
+        self.assertFalse(r["salary_stated"])
+        self.assertEqual(r["category"], "Other")
+        self.assertEqual(r["location_text"], "Pailles")
+        self.assertEqual(r["posted"], "2026-11-06")
+
+    def test_a_card_seen_twice_is_emitted_once(self):
+        self.assertEqual(len(self.m.cards(self.PLAIN_CARD + self.PLAIN_CARD)), 1)
+
+    def test_the_icon_and_not_the_order_names_each_field(self):
+        """DERIVED from the real salary card, declared as such: its location and
+        salary spans are SWAPPED. On the real cards the order never varies, so
+        this is the only case where a positional read and an icon read differ."""
+        import re as _re
+        spans = _re.findall(r'<span class="inline-flex items-center gap-1\.5">.*?</span>',
+                            self.SALARY_CARD, _re.S)
+        self.assertEqual(len(spans), 3)
+        swapped = self.SALARY_CARD.replace(spans[0], "\0").replace(spans[2], spans[0]).replace("\0", spans[2])
+        self.assertNotEqual(swapped, self.SALARY_CARD)
+        r = self.m.cards(swapped)[0]
+        self.assertEqual(r["location_text"], "Riche Terre")
+        self.assertEqual(r["salary_text"], "Rs 25,000 - 30,000")
+
+    def test_the_page_states_its_count(self):
+        self.assertEqual(self.m.stated_count(self.COUNT), 8)
+        self.assertIsNone(self.m.stated_count("<p>nothing</p>"))
+
+    def test_the_employer_is_the_jobposting_organisation(self):
+        jp = self.m.posting(self.LD)
+        self.assertEqual(jp["hiringOrganization"]["name"], "Motravay.mu")
+
+    def test_a_path_outside_the_two_shapes_is_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://motravay.mu/api/sitemap.xml",
+                    "https://motravay.mu/jobs/category/it",
+                    "https://evil.example/jobs"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
