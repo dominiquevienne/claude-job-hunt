@@ -79,6 +79,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, HOST, COUNTRY = "mellikar", "mellikar.com", "IR"
 BASE = f"https://{HOST}"
@@ -219,14 +220,19 @@ def items(body):
 
 def row(c, slug):
     behind = bool(c["salary_raw"] and LOGIN_SALARY in c["salary_raw"])
-    return {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['id']}", "id": c["id"],
+    _emis = {"source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{c['id']}", "id": c["id"],
             "url": f"{BASE}/jobs/category/{slug}", "category": slug,
             "title": scrub(c["title"]), "place": scrub(c["place"]),
             "family_as_written": c["family"], "contract_as_written": c["contract_as_written"],
             # *a field a site hides is not a field the site does not have* — said, not left absent
             "salary_behind_login": behind,
-            "salary_as_written": None if behind else scrub(c["salary_raw"]),
-            "contacts_withheld": True}
+            "salary_as_written": None if behind else scrub(c["salary_raw"])}
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_categories(a):

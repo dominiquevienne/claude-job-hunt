@@ -32,7 +32,7 @@ separates nothing*, and a field that never varies reads like information while c
 run counts it and says so; the record does not hold it.
 
 **WITHHELD:** e-mail addresses and telephone numbers in a title, an employer name or an excerpt;
-`contacts_withheld` on every record. `--country-code` STAMPS (the list states no country — every
+`contacts_withheld` only when a marker says a contact was withheld (#1321). `--country-code` STAMPS (the list states no country — every
 advert is Myanmar's by the board's own scope, and a stamp is still the user's) and the run says so.
 
 Measured 2026-09-22 12:5x UTC by the declared client, the guard on the exact path: `/jobs` 200
@@ -54,6 +54,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.jobnet.com.mm"
 LIST = f"https://{HOST}/jobs-in-myanmar"
@@ -173,7 +174,7 @@ def cards_of(markup):
 
 
 def record(ident, f, stamp):
-    return {
+    _emis = {
         "source": "jobnetmm", "country": stamp,
         "ledger_id": f"jobnetmm:{ident}", "id": ident,
         "title": scrub(f.get("title")), "title_second": scrub(f.get("title_second")),
@@ -182,8 +183,13 @@ def record(ident, f, stamp):
         "benefits": scrub(f.get("benefits")), "highlights": scrub(f.get("highlights")),
         "url": f.get("url"),
         "salary_behind_login": True,   # «Login to view Salary» on every card; no account is ever created
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

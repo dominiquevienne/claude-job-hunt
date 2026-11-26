@@ -37,7 +37,7 @@ THE NOTICE. A post's body is not text: it is the **advertisement itself**, embed
 names that address and the post's date; **no document is ever downloaded**.
 
 **WITHHELD:** e-mail addresses and telephone numbers anywhere in a title (the agencies put theirs in
-the document, which we do not read), `contacts_withheld` on every record. `--country-code` STAMPS
+the document, which we do not read), `contacts_withheld` only when a marker says a contact was withheld (#1321). `--country-code` STAMPS
 (the category states no country — every notice is Guyana's by the Department's own scope, and a
 stamp is still the user's) and the run says so.
 
@@ -62,6 +62,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "dpi.gov.gy"
 CATEGORY = "/category/government-adverts/vacancies/"
@@ -171,13 +172,18 @@ def entries_of(markup):
 
 def record(url, title, date, stamp):
     key = slug_of(url)
-    return {
+    _emis = {
         "source": "dpigovgy", "country": stamp,
         "ledger_id": f"dpigovgy:{key}", "id": key,
         "title": scrub(title), "url": url, "published": when(date),
         "document_downloaded": False,    # the notice IS a document; `ad` names its address, nothing fetches it
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def page_url(page):

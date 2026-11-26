@@ -67,6 +67,7 @@ BOARDS = {
 BOARD = dict(BOARDS["fr"], code="fr")   # rewired by --host before any request
 SITEMAP = BASE + "/" + BOARD["file"]
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 # French 06 12 34 56 78 / +33 …, Norwegian 991 29 992 / +47 …, Finnish 040 123 4567 / +358 …
 # **Italian mobiles are matched only with a PREFIX or after a cue word, and
@@ -289,7 +290,7 @@ def card(url, lastmod):
                 "json_ld": False}
     addr = one(jp.get("jobLocation")).get("address") or {}
     sal = one(jp.get("baseSalary")).get("value") or {}
-    return {
+    _emis = {
         "id": ident,
         "ledger_id": f"{BOARD['key']}:{ident}",
         "source": BOARD["key"],
@@ -330,9 +331,14 @@ def card(url, lastmod):
         "valid_through": clean(jp.get("validThrough")),
         "lastmod": lastmod,
         "description": scrub(description_text(jp.get("description"))),
-        "contacts_withheld": True,
         "json_ld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_discover(a):

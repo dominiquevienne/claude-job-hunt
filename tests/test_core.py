@@ -35801,9 +35801,9 @@ class APublicPlatformWhoseTableHeaderNamesItsCellsAndWhoseOwnRowLinkIsGone(unitt
         self.assertEqual([r["id"] for r in rows], ["emprego:176/2024", "estagio:20/2026", "estagio:15/2025"])
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["kind"], a["title"], a["employer"],
-                          a["deadline"], a["openings"], a["reference"], a["contacts_withheld"]),
+                          a["deadline"], a["openings"], a["reference"], a.get("contacts_withheld")),
                          ("pepeiefp", "CV", "pepeiefp:emprego:176/2024", "emprego", "khym negoce lda",
-                          "khym Negoce Lda", "2027-06-02", 1, "176/2024", True))
+                          "khym Negoce Lda", "2027-06-02", 1, "176/2024", None))
         self.assertEqual(a["url"], "https://pepe.iefp.cv/frontend/web/pt/oportunidades/oferta-emprego?value=khym+negoce+lda")
         self.assertEqual(a["url_answered_404"], "2026-09-21")
         self.assertEqual(rows[1]["employer"], "CONTACOF, [e-mail withheld]")     # the quoted href reads too
@@ -36509,9 +36509,9 @@ class ANationalPortalWhosePortletStatesItsTotalAndPagesByAnUnderscoredToken(unit
         self.assertEqual(len(rows), 4)
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["agency"], a["closing_date"], a["url"],
-                          a["document_downloaded"], a["key_is_ours"], a["contacts_withheld"]),
+                          a["document_downloaded"], a["key_is_ours"], a.get("contacts_withheld")),
                          ("myanmargov", "MM", "Ministry of Finance and Revenue", "2026-10-19",
-                          "/documents/20143/0/a.pdf", False, True, True))
+                          "/documents/20143/0/a.pdf", False, True, None))
         self.assertEqual(a["title"], burmese)
         # one address, two notices, two keys — a Burmese title slugged in ASCII would be empty
         self.assertEqual(rows[0]["url"], rows[1]["url"])
@@ -36828,9 +36828,9 @@ class AGovernmentCategoryWithNoPagerWhoseEndIsA404AndWhoseRestIsClosed(unittest.
         self.assertNotIn("president-opens-bridge", raw)
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["published"],
-                          a["document_downloaded"], a["contacts_withheld"]),
+                          a["document_downloaded"], a.get("contacts_withheld")),
                          ("dpigovgy", "GY", "dpigovgy:gmc-vacancy-porter",
-                          "Guyana Marketing Corporation – Vacancy – Porter", "2026-09-18", False, True))
+                          "Guyana Marketing Corporation – Vacancy – Porter", "2026-09-18", False, None))
         self.assertIn("3 entries emitted over 2 page(s)", err)          # the 404 page is not a page walked
         self.assertIn("page 3 answered 404 — the end of the category", err)
         self.assertIn("**Nothing states a count**", err)
@@ -36973,11 +36973,11 @@ class APublicServiceRecruiterWhoseMinistryIsAHeadingAndNotAField(unittest.TestCa
         self.assertEqual(rows[3]["ministry"], rows[2]["ministry"])   # carried forward within the block
         a = rows[1]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["deadline"],
-                          a["document_url"], a["document_downloaded"], a["contacts_withheld"]),
+                          a["document_url"], a["document_downloaded"], a.get("contacts_withheld")),
                          ("pscgovvc", "VC", "pscgovvc:423-procurement-officer-i-urban-pdf",
                           "Post of Procurement Officer I", "2026-09-28",
                           "https://psc.gov.vc/psc/images/PDF/Vacancies/423_-_Procurement_Officer_I_-_Urban.pdf",
-                          False, True))
+                          False, None))
         self.assertEqual(rows[2]["title"], "Post of Information Officer (write to [e-mail withheld])")
         self.assertIsNone(rows[3]["deadline"])
         # the footer's street and telephone are nowhere in the output, because it is never read
@@ -37993,11 +37993,11 @@ class AGovernmentPageWhoseMarkupIsItsOwnAndWhoseClosedPostsStay(unittest.TestCas
                           "tor-consultant-pdf"])
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["employer"], a["title"],
-                          a["deadline"], a["document_url"], a["document_downloaded"], a["contacts_withheld"]),
+                          a["deadline"], a["document_url"], a["document_downloaded"], a.get("contacts_withheld")),
                          ("abgovag", "AG", "abgovag:ad-2026-meteorological-officer-iii-pdf",
                           "Antigua and Barbuda Meteorological Service (ABMS)", "Meteorological Officer III",
                           "2026-10-03", "https://ab.gov.ag/media/pdf/vacancies/AD_2026_Meteorological_Officer_III.pdf",
-                          False, True))
+                          False, None))
         # the dash INSIDE a title is not a separator: only the <strong> divides them
         self.assertEqual(rows[1]["title"], "Deputy Accountant General - Accounting and Financial Reporting")
         self.assertIsNone(rows[2]["deadline"])                       # «when filled» is not a date
@@ -38673,10 +38673,10 @@ class ABoardWhoseBadgeIsOnEveryCardAndWhoseSalaryIsBehindALogin(unittest.TestCas
         a = rows[0]
         self.assertEqual((a["source"], a["country"], a["ledger_id"], a["title"], a["title_second"],
                           a["employer"], a["location"], a["openings"], a["benefits"], a["highlights"],
-                          a["salary_behind_login"], a["contacts_withheld"]),
+                          a["salary_behind_login"], a.get("contacts_withheld")),
                          ("jobnetmm", "MM", "jobnetmm:137646", "Senior Sales Manager",
                           "(Credit Loan Officer (Sales))", "business leading company ltd",
-                          "International", "1", "Quarterly Bonus", "Leading Bank in Myanmar", True, True))
+                          "International", "1", "Quarterly Bonus", "Leading Bank in Myanmar", True, None))
         # the «N Post» count and the place share a class: the place is not «1 Post»
         self.assertEqual(rows[1]["openings"], "3")
         self.assertEqual(rows[1]["location"], "Yangon")
@@ -39638,7 +39638,9 @@ class AListThatResetsItselfAndThreeMeaningsOfABarrenRound(unittest.TestCase):
         self.assertEqual(r["contract_as_written"], "تمام وقت")   # from lblEnteshar, which means «publication»
         self.assertIs(r["salary_behind_login"], True)
         self.assertIsNone(r["salary_as_written"])
-        self.assertIs(r["contacts_withheld"], True)
+        # #1321: no marker in this record, so nothing is declared — read, not assumed
+        self.assertNotIn("withheld]", json.dumps(r, ensure_ascii=False))
+        self.assertIsNone(r.get("contacts_withheld"))
         # a salary the site DOES print is emitted as written, and the flag falls
         def answers2(url, form=None):
             if url.endswith("/"):
@@ -39803,8 +39805,10 @@ class AWindowCheckedAtEveryPageAndAPlaceNamedByTheSiteItself(unittest.TestCase):
         # and an employer whose own name ends in a place word keeps it
         self.assertEqual((recs[2]["employer"], recs[2]["place"]), ("Beirut Consulting", "Lebanon"))
         self.assertEqual((recs[0]["published"], recs[2]["published"]), ("2026-09-22", "2026-10-01"))
-        self.assertTrue(all(r["country"] == "LB" and r["contacts_withheld"] and not r["detail_read"]
-                            for r in recs))
+        self.assertTrue(all(r["country"] == "LB" and not r["detail_read"] for r in recs))
+        # #1321: the declaration follows the markers each record CARRIES
+        self.assertEqual([bool(r.get("contacts_withheld")) for r in recs],
+                         [("withheld]" in json.dumps(r, ensure_ascii=False)) for r in recs])
         blob = json.dumps(recs, ensure_ascii=False)
         self.assertNotIn("hr@example.com", blob)
         self.assertNotIn("03 123 456 789", blob)
@@ -40934,7 +40938,9 @@ class AFeedThatCountsForUsAndTwoPathsForOneAdvert(unittest.TestCase):
                          "the salary must not swallow the row that follows it")
         self.assertEqual(r["id"], "4628")
         self.assertEqual(r["criteria_withheld"], ["gender"])
-        self.assertTrue(r["contacts_withheld"])
+        # #1321: no marker in this record, so nothing is declared — read, not assumed
+        self.assertNotIn("withheld]", json.dumps(r, ensure_ascii=False))
+        self.assertIsNone(r.get("contacts_withheld"))
         self.assertIn("3 emitted" if False else "1 emitted", err)
 
     def test_a_six_figure_kyat_salary_is_not_read_as_a_telephone_number(self):
@@ -43221,7 +43227,13 @@ class AFeedThatCONTAINSThePagerAndAWithholdingThatMustNotEatAStandard(unittest.T
         # et la norme ET la surface ont survecu a l'expurgation
         self.assertIn("9001-2015", blob)
         self.assertIn("14.000m2", blob)
-        self.assertTrue(all(r["contacts_withheld"] for r in lignes))
+        # #1321: the declaration follows the markers each row CARRIES, in both
+        # directions, and the fixture must hold at least one of each
+        porte = [("[e-mail withheld]" in json.dumps(r, ensure_ascii=False)
+                  or "[telephone withheld]" in json.dumps(r, ensure_ascii=False))
+                 for r in lignes]
+        self.assertTrue(any(porte), "no row carries a marker: this proves nothing")
+        self.assertEqual([bool(r.get("contacts_withheld")) for r in lignes], porte)
 
     # --- l'employeur : la convention, et RIEN hors d'elle ------------------
     def test_the_employer_comes_from_the_boards_own_title_convention(self):
@@ -53904,8 +53916,29 @@ class ADeclarationOfWithholdingIsBackedByAnActualRedaction(unittest.TestCase):
         # une assertion sur un littéral DATÉ, et le dépôt en a déjà payé une
         # (§4 bis, la release refusée sur un compte qui change à minuit). Ce
         # qu'ils doivent attraper est un balayage devenu INERTE, pas une dérive.
-        self.assertGreater(len(sites), 110,
-                           "trop peu de sites d'emission : le balayage est inerte")
+        # **#1321 : un site qui DERIVE sa declaration est toujours un site du corpus.**
+        # `_sites` ne lit que les dicts litteraux, donc chaque migration correcte d'une
+        # constante vers `if withheld_a_contact(...): r["contacts_withheld"] = True`
+        # faisait baisser ce compte sans que le corpus maigrisse — un plancher qui tire
+        # sur une migration saine invite a la defaire. Les sites DERIVES se comptent a
+        # part et s'ajoutent ; `_sites` seul devenu inerte rend encore trop peu.
+        import ast
+        derives = 0
+        for nom, src in porteurs:
+            for n in ast.walk(ast.parse(src, nom)):
+                if isinstance(n, ast.If) and any(
+                        isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                        and c.func.id == "withheld_a_contact" for c in ast.walk(n.test)):
+                    derives += sum(
+                        1 for t in ast.walk(n) if isinstance(t, ast.Subscript)
+                        and isinstance(t.slice, ast.Constant)
+                        and t.slice.value == "contacts_withheld"
+                        and isinstance(t.ctx, ast.Store))
+        self.assertGreater(len(sites) + derives, 110,
+                           "trop peu de sites d'emission : le balayage est inerte "
+                           "(%d litteraux + %d derives)" % (len(sites), derives))
+        self.assertGreater(len(sites), 0,
+                           "`_sites` ne voit plus aucun dict litteral : il est inerte")
 
     def test_no_record_declares_a_withholding_nothing_in_it_went_through(self):
         """La déclaration suit ce qui a RÉELLEMENT traversé l'expurgation.

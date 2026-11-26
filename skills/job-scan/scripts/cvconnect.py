@@ -76,6 +76,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "cvconnect.la"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -186,7 +187,7 @@ def cards_of(body):
 
 
 def record(c, stamp):
-    return {
+    _emis = {
         "source": "cvconnect", "country": stamp,
         "ledger_id": f"cvconnect:{c['id']}", "id": c["id"],
         "url": f"https://{HOST}/jobs/{c['id']}/",
@@ -194,8 +195,13 @@ def record(c, stamp):
         # combien des deux marques independantes confirment l'employeur (0, 1 ou 2)
         "employer_corroborated": c["employer_corroborated"],
         "place": scrub(c["place"]), "posted_age": c["age"], "dates": c["dates"],
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

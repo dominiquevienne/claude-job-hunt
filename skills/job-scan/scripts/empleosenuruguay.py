@@ -21,8 +21,8 @@ POST. `ad --url` asks the feed for the one post by `path=` (`/feeds/posts/defaul
 /<yyyy>/<mm>/<slug>.html`) — one request, the same entry shape, no page markup. **What the entry
 carries is what the blog rewrote: no structured employer (some posts embed a JobPosting JSON-LD naming «Empresa empleadora» — its validThrough, employmentType, locality, region and industry are read, its text is kept out of the prose); «N Vacantes» and «$ 60.610» / «Sueldo
 $41.969» when the title says them, read from the title; the body flattened, the AdSense stubs
-dropped, e-mail addresses and Uruguayan telephone numbers withheld; `contacts_withheld` on every
-record; the blog's «Postularse» link is the employer's own form or portal, never followed.**
+dropped, e-mail addresses and Uruguayan telephone numbers withheld; `contacts_withheld` only when a
+marker says a contact was withheld (#1321); the blog's «Postularse» link is the employer's own form or portal, never followed.**
 
 Measured 2026-09-16 12:05 UTC by the declared client, the guard on the exact path: robots 200
 (86 B); the feed 617 056 B, 3 777 stated, 50 entries; `start-index=3751` 27 entries; `path=` one
@@ -44,6 +44,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.empleosenuruguay.com"
 FEED = f"https://{HOST}/feeds/posts/default"
@@ -149,7 +150,7 @@ def record(e):
     content = val(e.get("content")) or ""
     jp = (postings(content) or [None])[-1] or {}
     addr = one(one(jp.get("jobLocation")).get("address"))
-    return {
+    _emis = {
         "source": "empleosenuruguay", "country": "UY", "ledger_id": f"empleosenuruguay:{pid}", "id": pid, "url": url,
         "title": title, "labels": labels or None,
         "openings": int(om.group(1)) if om else None, "salary_uyu": int(sm.group(1).replace(".", "")) if sm else None,
@@ -158,8 +159,14 @@ def record(e):
         "place": addr.get("addressLocality") or None, "region": addr.get("addressRegion") or None, "industry": jp.get("industry") or None,
         "jobposting": bool(jp),
         "text": scrub(text(content)),
-        "contacts_withheld": True, "language": "es",
+        "language": "es",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_list(a):

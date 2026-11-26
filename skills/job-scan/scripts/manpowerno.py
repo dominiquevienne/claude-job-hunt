@@ -27,7 +27,7 @@ with the county and the town **in the fields the site chose (`addressLocality` V
 «Søknadsfrist», «Antall stillinger», «Heltid/deltid») and the body in `details-rich-text`.
 **`hiringOrganization` is Manpower on every ad — an agency board, the client employer never
 named; the body is scrubbed of e-mail addresses and Norwegian telephone numbers;
-`contacts_withheld` on every record; «SØK PÅ STILLINGEN» is a form, never touched.**
+`contacts_withheld` only when a marker says a contact was withheld (#1321); «SØK PÅ STILLINGEN» is a form, never touched.**
 
 Measured 2026-09-14 03:2x UTC by the declared client, the guard on the exact path: the sitemap
 235 496 B / 96 job rows; `/nb/sok` 116 023 B without a card; `/sok/ledig-stilling-bergen` 7
@@ -49,6 +49,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.manpower.no"
 SITEMAP = f"https://{HOST}/sitemap.xml"
@@ -189,7 +190,7 @@ def record(body, jid, url):
     body_text = text(bd.group(1)) if bd else ""
     place = re.search(r"Arbeidssted:\s*([^\n]+)", body_text)
     positions = dl.get("Antall stillinger")
-    return {
+    _emis = {
         "source": "manpower-no", "country": "NO", "ledger_id": f"manpower-no:{jid}", "id": jid, "url": url,
         "reference": one(jp.get("identifier")).get("value") or dl.get("Referansenummer") or jid,
         "title": htmlmod.unescape(jp.get("title") or "").strip() or None,
@@ -207,8 +208,14 @@ def record(body, jid, url):
         "posted_on_page": nb_date(dl.get("Publisert")),
         "valid_through": compact_date(jp.get("validThrough")), "deadline_on_page": nb_date(dl.get("Søknadsfrist")),
         "description": scrub(body_text) or None,
-        "contacts_withheld": True, "language": "nb",
+        "language": "nb",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_list(a):

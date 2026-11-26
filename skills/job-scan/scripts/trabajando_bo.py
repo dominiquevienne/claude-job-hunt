@@ -22,8 +22,8 @@ when a page 200 carries no card at all or repeats page 0. THE AD. `/trabajo/<cit
 datePosted, validThrough, identifier (Trabajando.com.bo, the nid), hiringOrganization (name,
 sameAs, logo), jobLocation (locality, region, BO), description (HTML), industry — beside a
 BreadcrumbList. **The description is scrubbed of e-mail addresses and Bolivian telephone numbers —
-the ad read on the day carried «Enviar CV … al 76469326» in its own text; `contacts_withheld` on
-every record; the application (a candidate account) never touched.**
+the ad read on the day carried «Enviar CV … al 76469326» in its own text; `contacts_withheld` only
+when a marker says a contact was withheld (#1321); the application (a candidate account) never touched.**
 
 Measured 2026-09-16 06:08–06:09 UTC by the declared client, the guard on the exact path: robots 200
 (4 115 B); `/` 124 767 B, «344 ofertas»; `/trabajo` 167 881 B, 18 cards; `?page=1` 15; `?page=22` 14;
@@ -45,6 +45,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "trabajando.com.bo"
 LIST = f"https://{HOST}/trabajo"
@@ -201,7 +202,7 @@ def record(body, nid, url):
     addr = one(one(jp.get("jobLocation")).get("address"))
     ident = jp.get("identifier") if isinstance(jp.get("identifier"), str) else one(jp.get("identifier")).get("value")
     m = AD_RE.match(urllib.parse.urlsplit(url).path)
-    return {
+    _emis = {
         "source": "trabajando_bo", "country": "BO", "ledger_id": f"trabajando_bo:{nid}", "id": nid, "url": url, "nid": ident or None,
         "title": htmlmod.unescape(jp.get("title") or "").strip() or None,
         "company": (org.get("name") or "").strip() or None, "company_site": org.get("sameAs") if org.get("sameAs") and org.get("sameAs").rstrip("/") != f"https://{HOST}" else None,
@@ -210,8 +211,14 @@ def record(body, nid, url):
         "place": addr.get("addressLocality") or None, "region": addr.get("addressRegion") or None, "address_country": addr.get("addressCountry") or None,
         "posted": (jp.get("datePosted") or "")[:10] or None, "valid_through": (jp.get("validThrough") or "")[:10] or None,
         "description": scrub(text(jp.get("description"))),
-        "contacts_withheld": True, "language": "es",
+        "language": "es",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):

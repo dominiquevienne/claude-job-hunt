@@ -64,6 +64,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.myworld.com.mm"
 SITEMAP = "/sitemap.xml"
@@ -174,7 +175,7 @@ def posting_of(markup):
 def record(url, lastmod, meta, ld, stamp):
     ref = (REF_RE.search(url) or [None, meta.get("Reference")])[1] if REF_RE.search(url) else meta.get("Reference")
     agency = (ld.get("hiringOrganization") or {}).get("name")
-    return {
+    _emis = {
         "source": "myworldmm", "country": stamp,
         "ledger_id": f"myworldmm:{ref}", "id": ref, "url": url,
         "title": scrub(ld.get("title")) or scrub(text(meta.get("Title"))),
@@ -189,8 +190,13 @@ def record(url, lastmod, meta, ld, stamp):
         "posted": ld.get("datePosted"), "valid_through": ld.get("validThrough"),
         "lastmod": lastmod,
         "description": scrub(text(ld.get("description"))),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

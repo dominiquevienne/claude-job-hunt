@@ -24,7 +24,7 @@ carries a JobPosting JSON-LD — title, description, identifier (name = the empl
 CODE), employmentType, hiringOrganization (name, sameAs, logo), jobLocation (locality, region,
 country), datePosted, validThrough — beside a FAQPage. **The description is scrubbed of e-mail
 addresses and Bolivian telephone numbers (a mobile travelled in the page's flight data on the ad
-read); `contacts_withheld` on every record; the application (a candidate account) never touched.**
+read); `contacts_withheld` only when a marker says a contact was withheld (#1321); the application (a candidate account) never touched.**
 
 Measured 2026-09-16 06:00–06:01 UTC by the declared client, the guard on the exact path: robots
 200 (993 B); `/` 106 641 B; `/trabajo` 123 787 B, no ad link; `sitemap.xml` 147 005 B, 967 rows /
@@ -46,6 +46,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.trabajito.com.bo"
 APEX = "trabajito.com.bo"
@@ -157,7 +158,7 @@ def record(body, jid, url, dept):
     org = one(jp.get("hiringOrganization"))
     addr = one(one(jp.get("jobLocation")).get("address"))
     ident = jp.get("identifier") if isinstance(jp.get("identifier"), str) else one(jp.get("identifier")).get("value")
-    return {
+    _emis = {
         "source": "trabajito", "country": "BO", "ledger_id": f"trabajito:{jid}", "id": jid, "url": url, "code": ident or None,
         "title": htmlmod.unescape(jp.get("title") or "").strip() or None,
         "company": (org.get("name") or "").strip() or None, "company_site": org.get("sameAs") or None,
@@ -165,8 +166,14 @@ def record(body, jid, url, dept):
         "department": dept, "place": addr.get("addressLocality") or None, "region": addr.get("addressRegion") or None, "address_country": addr.get("addressCountry") or None,
         "posted": (jp.get("datePosted") or "")[:10] or None, "valid_through": (jp.get("validThrough") or "")[:10] or None,
         "description": scrub(jp.get("description")),
-        "contacts_withheld": True, "language": "es",
+        "language": "es",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_list(a):

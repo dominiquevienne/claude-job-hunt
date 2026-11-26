@@ -58,6 +58,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "psc.gov.vc"
 PAGE = f"https://{HOST}/psc/index.php/vacancies"
@@ -170,15 +171,20 @@ def record(ministry, title, doc, deadline, stamp):
     doc_url = urllib.parse.urljoin(PAGE, doc) if doc else None
     name = urllib.parse.unquote((urllib.parse.urlsplit(doc_url or "").path or "").rsplit("/", 1)[-1])
     key = slug(name) or f"{slug(ministry)}-{slug(title)}"
-    return {
+    _emis = {
         "source": "pscgovvc", "country": stamp,
         "ledger_id": f"pscgovvc:{key}", "id": key,
         "title": scrub(title), "ministry": scrub(ministry),
         "deadline": deadline,
         "document_url": doc_url, "document_downloaded": False,
         "employer": "Service Commissions Department (public service)",
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

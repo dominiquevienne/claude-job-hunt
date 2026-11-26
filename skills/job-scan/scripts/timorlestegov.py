@@ -28,8 +28,8 @@ not second-guess the ministry's filing — it emits the entries and says the cat
 board's own.
 
 **WITHHELD:** e-mail addresses and telephone numbers in the summaries («[e-mail withheld]» /
-«[telephone withheld]»), the editor's file-size string kept as read; `contacts_withheld` on every
-record. The documents themselves are never downloaded — the record points at the address the
+«[telephone withheld]»), the editor's file-size string kept as read; `contacts_withheld` only when a
+marker says a contact was withheld (#1321). The documents themselves are never downloaded — the record points at the address the
 category publishes.
 
 `--lang` picks the portal's language (`en`, `pt`, `tt` — the entries are often Portuguese whatever
@@ -57,6 +57,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "timor-leste.gov.tl"
 CAT = "44"
@@ -166,15 +167,20 @@ def entries_of(markup):
 
 
 def record(key, f, stamp):
-    return {
+    _emis = {
         "source": "timorlestegov", "country": stamp,
         "ledger_id": f"timorlestegov:{key}", "id": key,
         "url": f.get("url"), "title": scrub(f.get("title")),
         "published": when(f.get("date")),
         "document_size": f.get("file_size"),
         "summary": scrub(f.get("summary")),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

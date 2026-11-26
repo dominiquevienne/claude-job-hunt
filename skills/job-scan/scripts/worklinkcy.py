@@ -77,6 +77,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.worklinkcy.com"
 LISTE = "/tr/jobs"
@@ -210,7 +211,7 @@ def lieu_de(ld):
 def record(slug, ld, flux_date, origine, stamp):
     org = ld.get("hiringOrganization") if isinstance(ld.get("hiringOrganization"), dict) else {}
     sal, gabarit = salaire_de(ld)
-    return {
+    _emis = {
         "source": "worklinkcy", "country": stamp,
         "ledger_id": f"worklinkcy:{slug}", "id": slug,
         "url": ld.get("url") or f"https://{HOST}{LISTE}/{slug}",
@@ -229,8 +230,13 @@ def record(slug, ld, flux_date, origine, stamp):
         "salary_currency_without_amount": gabarit,
         "enumerated_by": origine,
         "description": scrub(text(ld.get("description"))),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def du_pager(a):

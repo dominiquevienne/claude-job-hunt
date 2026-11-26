@@ -68,6 +68,7 @@ BOARD = dict(BOARDS["fr"])   # rewired by --host before any request
 BASE = "https://www.randstad.fr"
 INDEX = BASE + "/sitemaps/sitemap.xml"
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 MAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 # French 06 12 34 56 78 / +33 6 …, Czech +420 778 532 370 / 778 532 370, Hungarian +36 70 654 6330 / 06 30 …
 PHONE_RE = re.compile(r"(?<![\d+])(?:\+33[\s ]?\(?0?\)?[\s ]?\d(?:[\s .-]?\d{2}){4}|0\d(?:[\s .-]?\d{2}){4}|(?:\+420[\s ]?|00420[\s ]?)?\d{3}[\s ]?\d{3}[\s ]?\d{3}|(?:\+36|06)[\s /-]?\(?\d{1,2}\)?[\s /-]?\d{3}[\s /-]?\d{3,4})(?!\d)")
@@ -308,7 +309,7 @@ def card(url, lastmod, internal=False):
                 "json_ld": False}
     addr = one(jp.get("jobLocation")).get("address") or {}
     sal = one(jp.get("baseSalary")).get("value") or {}
-    return {
+    _emis = {
         "id": ident,
         "ledger_id": f"{key}:{ident}",
         "source": key,
@@ -338,9 +339,14 @@ def card(url, lastmod, internal=False):
         "valid_through": jp.get("validThrough"),
         "lastmod": lastmod,
         "description": scrub(text_of(jp.get("description"))),
-        "contacts_withheld": True,
         "json_ld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def narrow(rows, a):

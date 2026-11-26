@@ -36,7 +36,7 @@ the day it was tried) and the adapter never follows it; a detail page that comes
 their side, not on ours.
 
 **WITHHELD:** e-mail addresses and telephone numbers anywhere in a cell («[e-mail withheld]» /
-«[telephone withheld]», a date never mistaken for a number); `contacts_withheld` on every record.
+«[telephone withheld]», a date never mistaken for a number); `contacts_withheld` only when a marker says a contact was withheld (#1321).
 The platform states no place beyond the employer's name, so none is invented.
 
 `--kind` picks a list (`emprego`, `estagio`, `both` — default both). `--lang` picks the interface
@@ -66,6 +66,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "pepe.iefp.cv"
 KINDS = ("emprego", "estagio")
@@ -191,7 +192,7 @@ def rows_of(markup, kind, url):
 
 
 def record(key, f, stamp):
-    return {
+    _emis = {
         "source": "pepeiefp", "country": stamp,
         "ledger_id": f"pepeiefp:{key}", "id": key,
         "kind": f["kind"],
@@ -203,8 +204,13 @@ def record(key, f, stamp):
         "url": f.get("url"),
         "url_answered_404": "2026-09-21",     # the address the list publishes, tried and consigned — never followed by the run
         "list_url": f.get("list_url"),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):
