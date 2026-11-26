@@ -14355,6 +14355,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
+        "careersmu": ("get", "https://h.example/x?p=1"),
         "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
         "ats": ("gate", "https://h.example/x?p=1"),
@@ -63641,6 +63642,85 @@ class ThePlanStopsReproposingWhatJobRoomAlreadyHas(unittest.TestCase):
             {"statut": "rejected 2026-11-05", "note": "JR:result 2026-11-07"})
         self.assertIsNone(row["jr_declared"])
         self.assertEqual(row["jr_result"], "2026-11-07")
+
+
+class CareersMuReadsOnePageStatesItsCountAndNeverAsksForAPerson(unittest.TestCase):
+    """#699 — `careersmu.py`. The list is one page (`jobs_ppp=-1`) that STATES
+    its count; the employer is only in each ad's JobPosting; the host declares
+    every listed ad's deadline closed and this tool emits that as stated; and
+    the host publishes candidates, so every other path is refused before a byte
+    is sent. Fixtures are EXTRACTED from the bytes served on 2026-11-26."""
+
+    CARD = '<article id="post-26955" class="map-item layout-job job-list default post-26955 job_listing type-job_listing status-publish hentry job_listing_type-full-time job_listing_category-sales job_listing_location-phoenix is-featured is-urgent" data-latitude="-20.2817857" data-longitude="57.5025288" data-img="https://i0.wp.com/careers.mu/wp-content/uploads/wp-job-board-pro-uploads/_employer_featured_image/2025/02/vitae_logo.png?resize=150%2C150&#038;ssl=1"> <div class="clearfix"> <a href="javascript:void(0);" class="btn-follow btn-action-job btn-add-job-shortlist" data-job_id="26955" data-nonce="320a45e97a"><i class="flaticon-bookmark"></i></a> <div class="employer-logo"> <a href="https://careers.mu/job/sales-assistant/"> </a> </div> <div class="job-list-content"> <div class="title-wrapper flex-middle-sm"> <h2 class="job-title"><a href="https://careers.mu/job/sales-assistant/" rel="bookmark">Sales Assistant</a></h2> <span class="featured-text">Featured</span> </div> <div class="job-metas"> <div class="category-job"> <div class="job-category with-icon"> <i class="flaticon-briefcase-1"></i> <a href="https://careers.mu/job-category/sales/" style="">Sales</a> </div> </div> <div class="job-location"> <i class="flaticon-location"></i> <a href="https://careers.mu/job-location/phoenix/">Phoenix</a> </div> </div> <div class="job-metas-bottom"> <div class="job-type with-title"> <a class="type-job" href="https://careers.mu/job-type/full-time/" style="">Full Time</a> </div> <span class="urgent">Urgent</span> </div> </div> </div> </article>'
+    COUNT = '<div class="results-count"> Showing all 31 results</div><div class="job'
+    LD = '<script type="application/ld+json">{"@context":"http:\\/\\/schema.org\\/","@type":"JobPosting","datePosted":"2026-11-07T09:51:21+04:00","title":"Sales Assistant","description":"A retail business is looking for a customer-oriented and motivated Sales Assistant to join its team.\\nKey Responsibilities:\\n&amp;#8211; Welcome customers and provide assistance with their purchases.\\n&amp;#8211; Present products and make recommendations based on customer preferences.\\n&amp;#8211; Handle sales transactions and maintain the shop&amp;#8217;s presentation.\\n&amp;#8211; Assist with stock management, merchandising and replenishment.\\n&amp;#8211; Ensure a pleasant shopping experience for customers.\\nProfile:\\n&amp;#8211; Previous experience in retail sales would be an advantage.\\n&amp;#8211; Good communication and interpersonal skills.\\n&amp;#8211; Well-presented, proactive and customer-focused.\\n&amp;#8211; Ability to work independently and as part of a team.\\nLocation: Mauritius\\nInterested candidates are invited to submit their applications with an updated CV.","hiringOrganization":{"@type":"Organization","name":"Vitae Holdings Ltd","sameAs":"https:\\/\\/vitae.mu\\/","url":"https:\\/\\/vitae.mu\\/","logo":"https:\\/\\/i0.wp.com\\/careers.mu\\/wp-content\\/uploads\\/wp-job-board-pro-uploads\\/_employer_featured_image\\/2025\\/02\\/vitae_logo.png?fit=500%2C500&amp;ssl=1"},"identifier":{"@type":"PropertyValue","name":"Vitae Holdings Ltd","value":"https:\\/\\/careers.mu\\/?post_type=job_listing&amp;#038;p=26955"},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressRegion":"Plaines Wilhems","postalCode":"73411","addressCountry":"mu"}},"baseSalary":{"@type":"MonetaryAmount","currency":"Rs.","value":{"@type":"QuantitativeValue","minValue":"","maxValue":"","value":"","unitText":"MONTH"}},"validThrough":"2027-11-07"}</script>'
+    DEADLINE = '<div class="job-deadline with-icon"><i class="flaticon-wall-clock"></i> November 7, 2026</div>'
+    CLOSED = '<div class="deadline-closed">Application deadline closed.</div>'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import careersmu
+        self.m = careersmu
+
+    def test_a_real_card_gives_title_category_place_and_type_but_no_employer(self):
+        rows, bad = self.m.cards(self.CARD)
+        self.assertEqual((len(rows), bad), (1, 0))
+        r = rows[0]
+        self.assertEqual(r["id"], "26955")
+        self.assertEqual(r["ledger_id"], "careersmu:26955")
+        self.assertEqual(r["title"], "Sales Assistant")
+        self.assertEqual(r["category"], "Sales")
+        self.assertEqual(r["location_text"], "Phoenix")
+        self.assertEqual(r["type"], "Full Time")
+        self.assertIsNone(r["company"])
+
+    def test_the_page_states_its_count_in_both_forms(self):
+        self.assertEqual(self.m.stated_count(self.COUNT), 31)
+        self.assertEqual(self.m.stated_count(
+            '<div class="results-count"> Showing <span class="first">1</span> '
+            '&ndash; <span class="last">14</span> of 31 results</div>'), 31)
+        self.assertIsNone(self.m.stated_count("<p>nothing here</p>"))
+
+    def test_a_card_seen_twice_is_emitted_once(self):
+        rows, _ = self.m.cards(self.CARD + self.CARD)
+        self.assertEqual(len(rows), 1)
+
+    def test_the_employer_and_region_come_from_the_jobposting(self):
+        jp = self.m.posting(self.LD)
+        self.assertIsNotNone(jp)
+        d = self.m.details(jp)
+        self.assertEqual(d["company"], "Vitae Holdings Ltd")
+        self.assertEqual(d["region_stated"], "Plaines Wilhems")
+        self.assertIsNone(self.m.posting("<script>no ld</script>"))
+
+    def test_the_closed_deadline_is_read_from_its_block_not_from_a_substring(self):
+        self.assertTrue(self.m.CLOSED_RE.search(self.CLOSED))
+        self.assertFalse(self.m.CLOSED_RE.search('"job_filled":"Application deadline closed."'))
+        self.assertEqual(self.m.text(self.m.DEADLINE_RE.search(self.DEADLINE).group(1)),
+                         "November 7, 2026")
+
+    def test_a_path_that_could_reach_a_person_is_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://careers.mu/candidate/someone/",
+                    "https://careers.mu/wp-json/wp/v2/candidate",
+                    "https://careers.mu/wp-json/wp/v2/job_applicant?per_page=1",
+                    "https://evil.example/browse-jobs/"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
+
+    def test_the_withheld_fields_name_only_what_was_taken(self):
+        out, taken = self.m.scrub("Send your CV to jobs@example.mu")
+        self.assertEqual(taken, ["email"])
+        self.assertNotIn("jobs@example.mu", out)
+        _, taken = self.m.scrub("Salary Rs 25000 per month")
+        self.assertEqual(taken, [])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
