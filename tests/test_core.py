@@ -63554,12 +63554,15 @@ class ThePlanStopsReproposingWhatJobRoomAlreadyHas(unittest.TestCase):
         led = self._write("job-pipeline.md", self.LEDGER)
         st = os.path.join(self._tmp, "state.json")
         base = [sys.executable, p, "--file", led, "--state", st, "plan"]
-        r = subprocess.run(base, capture_output=True, text=True)
+        # A strict cp1252 stdout on EVERY platform: the first version printed
+        # U+2192 in this list and died on windows-latest only.
+        env = dict(os.environ, PYTHONIOENCODING="cp1252:strict")
+        r = subprocess.run(base, capture_output=True, encoding="cp1252", env=env)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("gate NOT consulted", r.stdout)
         ok = subprocess.run(base + ["--jobroom-text",
                                     self._write("per.txt", self.PERIODS)],
-                            capture_output=True, text=True)
+                            capture_output=True, encoding="cp1252", env=env)
         self.assertEqual(ok.returncode, 0, ok.stderr)
         self.assertIn("TRANSMITTED period (1)", ok.stdout)
         self.assertNotIn("gate NOT consulted", ok.stdout)

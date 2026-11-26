@@ -461,7 +461,10 @@ def print_plan(plan: dict) -> None:
     print()
     print(f"result changed since declaration ({len(plan['to_update'])}):")
     for i in plan["to_update"] or []:
-        print(f"  · declared {i['declared']} → {i['status']} {i['status_date']}")
+        # `->`, not U+2192: a Windows pipe is cp1252 and has no arrow, so the
+        # first refusal in this list ended `plan` in `UnicodeEncodeError`
+        # (#1332, red on windows-latest only — the class of #232).
+        print(f"  · declared {i['declared']} -> {i['status']} {i['status_date']}")
         print(f"      {i['company'][:44]:44}  {i['role'][:46]}")
         print(f"      job-room should read: {i['expected_result']}")
         if i.get("result_recorded_on"):
@@ -482,7 +485,7 @@ def print_plan(plan: dict) -> None:
         print(f"refused in a TRANSMITTED period ({len(plan['frozen'])}) — "
               "cannot be edited, by anyone:")
         for i in plan["frozen"]:
-            print(f"  · declared {i['declared']} ({i.get('periode')}) → "
+            print(f"  · declared {i['declared']} ({i.get('periode')}) -> "
                   f"{i['status']} {i['status_date']}  {i['company'][:36]}")
     if plan.get("result_recorded"):
         print()
