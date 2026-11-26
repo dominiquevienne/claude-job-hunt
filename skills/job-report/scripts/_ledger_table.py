@@ -194,10 +194,16 @@ JR_MISSING_RE = re.compile(r"JR:missing")
 #  `JR:<date>` is "declared"; neither covers an application the candidate has
 #  decided, deliberately, never to declare.
 JR_WAIVED_RE = re.compile(r"JR:waived(?:\s+(\d{4}-\d{2}-\d{2}))?")
+#  A fourth state, issue #1332: `JR:<date>` dates the DECLARATION, and nothing
+#  said that the RESULT was later corrected in job-room. A refusal entered
+#  there satisfied «refused after declared» forever, so `plan` re-proposed it
+#  at every session. `JR:result <date>` is the day the negative answer was
+#  entered; the date is REQUIRED, because the test compares it to the refusal.
+JR_RESULT_RE = re.compile(r"JR:result\s+(\d{4}-\d{2}-\d{2})")
 
 
 def annotate(row: dict) -> dict:
-    """Add `date`, `kind` and the three `jr_*` fields to a loaded row.
+    """Add `date`, `kind` and the four `jr_*` fields to a loaded row.
 
     **The row is annotated IN PLACE and returned**, so a caller that keeps its
     own list keeps the same dicts. `kind` falls back to the whole cell folded
@@ -215,6 +221,8 @@ def annotate(row: dict) -> dict:
     row["jr_declared"] = jr.group(1) if jr else None
     w = JR_WAIVED_RE.search(note)
     row["jr_waived"] = (w.group(1) or True) if w else None
+    r = JR_RESULT_RE.search(note)
+    row["jr_result"] = r.group(1) if r else None
     return row
 
 
