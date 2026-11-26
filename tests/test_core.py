@@ -14355,6 +14355,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
+        "skilledguyanese": ("get", "https://h.example/x?p=1"),
         "motravay": ("get", "https://h.example/x?p=1"),
         "careersmu": ("get", "https://h.example/x?p=1"),
         "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
@@ -63790,6 +63791,68 @@ class MotravaysListIsServedWithItsCountAndItsFieldsAreNamedByTheirIcons(unittest
         for url in ("https://motravay.mu/api/sitemap.xml",
                     "https://motravay.mu/jobs/category/it",
                     "https://evil.example/jobs"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
+
+
+class SkilledGuyaneseWalksItsPagesToTheCountItsHeaderStates(unittest.TestCase):
+    """#704 — `skilledguyanese.py`. Fifty server-rendered cards a page, the
+    header STATES the count, and the walk ends on the first page that adds no
+    new ad. The card and the count line are EXTRACTED from the page served on
+    2026-11-26."""
+
+    CARD = '<div class="job-list__item p-3 sm:p-4"><small class="job-list__item--featured__label" style="display:none;"><span></span></small><div class="flex justify-between"><div class="flex-1"><div class="flex justify-between"><a href="/job/ahRrcmF0b3NhcHAxMDMtZmFzdGFwaXIQCxIDSm9iGICAgJ6Nu5QJDA" class="text-lg font-bold hover:text-blue-400 mr-1">Medical Recruiter &amp; Biller (Earn 180k/Month) <span></span></a><span></span></div><div class="mb-1 text-sm"><a href="/company/ahRrcmF0b3NhcHAxMDMtZmFzdGFwaXIUCxIHQWNjb3VudBiAgIC48YL4CQw" class=""><small class="font-semibold" style="color:#556d7d;">Xenon Billing Solutions (Guyana) Inc.</small></a><small class="italic text-gray-400"> - Georgetown, Guyana</small></div><div class="flex justify-between"><div class="flex items-center uppercase" style="font-size:10px;"><div class="bg-orange-300 rounded-sm p-1 text-white">fulltime</div><div class="rounded-sm p-1 mx-1 bg-gray-100 text-gray-400"><!----> Expire 17 Dec, 2026</div></div><a href="/job/ahRrcmF0b3NhcHAxMDMtZmFzdGFwaXIQCxIDSm9iGICAgJ6Nu5QJDA" class="btn btn-secondary btn-small"> Apply <!----></a></div></div></div></div>'
+    COUNT = '<div class="text-gray-900">206 <strong class="inline"></strong> Jobs</div>'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import skilledguyanese
+        self.m = skilledguyanese
+
+    def test_a_real_card_gives_every_field(self):
+        rows, bad = self.m.cards(self.CARD)
+        self.assertEqual((len(rows), bad), (1, 0))
+        r = rows[0]
+        self.assertEqual(r["title"], "Medical Recruiter & Biller (Earn 180k/Month)")
+        self.assertEqual(r["company"], "Xenon Billing Solutions (Guyana) Inc.")
+        self.assertEqual(r["location_text"], "Georgetown, Guyana")
+        self.assertEqual(r["type"], "fulltime")
+        self.assertEqual(r["expires_stated"], "2026-12-17")
+        self.assertTrue(r["ledger_id"].startswith("skilledguyanese:"))
+
+    def test_the_header_states_the_count(self):
+        self.assertEqual(self.m.stated_count(self.COUNT), 206)
+        self.assertIsNone(self.m.stated_count("<div>nothing</div>"))
+
+    def test_the_walk_stops_on_a_page_that_adds_nothing_new(self):
+        from unittest import mock
+        pages = {1: self.COUNT + self.CARD, 2: self.CARD}   # page 2 repeats page 1
+        calls = []
+        def fake_get(url):
+            n = int(url.rsplit("=", 1)[1]); calls.append(n)
+            return 200, pages.get(n, "")
+        out = io.StringIO()
+        with mock.patch.object(self.m, "get", fake_get), \
+                mock.patch.object(self.m, "robots_verdict", return_value={"sweep": True}), \
+                mock.patch("sys.stdout", out), mock.patch("sys.stderr", io.StringIO()), \
+                self.assertRaises(SystemExit) as cm:
+            self.m.cmd_jobs(argparse.Namespace(limit=None, max_pages=12))
+        self.assertEqual(calls, [1, 2])
+        self.assertEqual(len(out.getvalue().splitlines()), 1)
+        self.assertEqual(cm.exception.code, self.m.EXIT_PARTIAL)   # 1 emitted, 206 stated
+
+    def test_a_path_outside_the_two_shapes_is_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://skilledguyanese.com/company/x",
+                    "https://skilledguyanese.com/sitemap.xml",
+                    "https://evil.example/"):
             sent = []
             with self.assertRaises(SystemExit) as cm, \
                     mock.patch.object(self.m, "robots_allowed",
