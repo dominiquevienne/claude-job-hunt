@@ -14354,6 +14354,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
     ENTRIES = {
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
+        "careersmw": ("get", "https://h.example/x?p=1"),
         "stluciabusinessonline": ("get", "https://h.example/x?p=1"),
         "applifly": ("gate_path", "https://h.example/x?p=1"),
         "ats": ("gate", "https://h.example/x?p=1"),
@@ -63443,6 +63444,67 @@ class TheUnionNeverBlanksACellTheSheetOwns(unittest.TestCase):
             self.assertIn(key, counts)
         mod.say_kept(counts)
 
+
+
+class CareersMalawiReadsItsWholeListFromOnePageAndItsCountFromTheRest(unittest.TestCase):
+    """#677 — `careersmw.py`. The list is ONE server-rendered page
+    (`/?job_all=1`); the employer and the place exist only on its cards; the
+    count beside ours is the REST `X-WP-Total`, which our extraction does not
+    make. The two cards below are EXTRACTED from the page served on
+    2026-11-26 20:03 UTC (images removed), not composed."""
+
+    REAL = '<article class="cmw-cjm-job-card is-featured"> <a class="cmw-cjm-job-logo" href="https://careersmw.com/job/218844/" aria-label="Cessna Caravan Captain / Safety Officer"> </a><div class="cmw-cjm-job-summary"><h3><a href="https://careersmw.com/job/218844/">Cessna Caravan Captain / Safety Officer</a></h3><p class="cmw-cjm-meta">Illovo Sugar (Malawi) plc · Blantyre, Malawi</p></div><div class="cmw-cjm-card-side"> <span class="cmw-cjm-job-type">Permanent</span> <small><time class="cmw-cjm-posted" data-prefix="Posted " datetime="2026-11-23T13:34:24+02:00">Posted November 23, 2026</time></small> <small>Expires December 4, 2026</small></div></article>'
+    OTHER = '<article class="cmw-cjm-job-card is-featured"> <a class="cmw-cjm-job-logo" href="https://careersmw.com/job/219001/" aria-label="Prequalification of Suppliers for 2027 &#8211; 2029"> </a><div class="cmw-cjm-job-summary"><h3><a href="https://careersmw.com/job/219001/">Prequalification of Suppliers for 2027 &#8211; 2029</a></h3><p class="cmw-cjm-meta">GardaWorld Malawi · Malawi</p></div><div class="cmw-cjm-card-side"> <span class="cmw-cjm-job-type">Other</span> <small><time class="cmw-cjm-posted" data-prefix="Posted " datetime="2026-11-26T10:05:59+02:00">Posted November 26, 2026</time></small> <small>Expires December 10, 2026</small></div></article>'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import careersmw
+        self.m = careersmw
+
+    def test_a_real_card_gives_employer_place_type_and_dates(self):
+        rows, bad = self.m.cards(self.REAL)
+        self.assertEqual(bad, 0)
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        self.assertEqual(r["id"], "218844")
+        self.assertEqual(r["ledger_id"], "careersmw:218844")
+        self.assertEqual(r["company"], "Illovo Sugar (Malawi) plc")
+        self.assertEqual(r["location_text"], "Blantyre, Malawi")
+        self.assertEqual(r["type"], "Permanent")
+        self.assertEqual(r["posted"], "2026-11-23T13:34:24+02:00")
+        self.assertEqual(r["expires_stated"], "December 4, 2026")
+        self.assertFalse(r["not_a_job_by_type"])
+
+    def test_a_card_typed_other_is_flagged_and_never_dropped(self):
+        rows, _ = self.m.cards(self.REAL + self.OTHER)
+        self.assertEqual(len(rows), 2)
+        flagged = [r["id"] for r in rows if r["not_a_job_by_type"]]
+        self.assertEqual(flagged, ["219001"])
+
+    def test_a_card_seen_twice_is_emitted_once(self):
+        rows, _ = self.m.cards(self.REAL + self.REAL)
+        self.assertEqual(len(rows), 1)
+
+    def test_a_card_without_its_title_link_is_counted_not_emitted(self):
+        broken = self.REAL.replace("<h3>", "<h4>").replace("</h3>", "</h4>")
+        rows, bad = self.m.cards(broken + self.OTHER)
+        self.assertEqual(bad, 1)
+        self.assertEqual([r["id"] for r in rows], ["219001"])
+
+    def test_a_meta_without_its_separator_is_the_employer_and_no_place(self):
+        self.assertEqual(self.m.split_meta("Palladium"), ("Palladium", None))
+        self.assertEqual(self.m.split_meta(""), (None, None))
+
+    def test_the_withheld_fields_name_only_what_was_taken(self):
+        out, taken = self.m.scrub("Apply to hr@example.mw before Friday")
+        self.assertEqual(taken, ["email"])
+        self.assertNotIn("hr@example.mw", out)
+        out, taken = self.m.scrub("No contact in this text, salary 350000 MWK")
+        self.assertEqual(taken, [])
+        self.assertIn("350000", out)
+        out, taken = self.m.scrub("Call +265 999 123 456 or 0999 123 456")
+        self.assertEqual(taken, ["telephone"])
+        self.assertNotIn("999 123 456", out)
 
 
 class ThePlanStopsReproposingWhatJobRoomAlreadyHas(unittest.TestCase):
