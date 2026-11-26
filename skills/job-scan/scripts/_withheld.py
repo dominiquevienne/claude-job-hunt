@@ -86,6 +86,11 @@ CONTACT = frozenset({
     "street",
     "address",
     "contactPhones",
+    # **`ntchito`'s company handle, #1337.** A handle is a channel one can WRITE to,
+    # which is `messaging` under its WP Job Manager name. Measured EMPTY on 100 of 100
+    # records on 2026-11-26, so this classification is a JUDGEMENT on the field's form
+    # and not a measurement of its content — declared as such, and inert today.
+    "_company_twitter",
 })
 
 # withheld for a reason that is NOT a contact
@@ -117,6 +122,17 @@ OTHER = frozenset({
     "lastOnline",
     "ghash",
     "itemId",
+    # **WP Job Manager's meta keys as `ntchito` names them, #1337 — MEASURED on 100
+    # records of `/wp-json/wp/v2/job-listings` on 2026-11-26, never classed on their
+    # spelling.** `_company_website` was filled on 22 of 100 and all 22 were a company
+    # URL: a site reaches no person. `_application` was filled on 46: **39 a URL and 7
+    # an e-mail address** — ONE name, two causes, exactly `application_link`'s shape, so
+    # it sits here and the adapter says through `reached_a_person` when the value it
+    # withheld was an address. `_company_name` was EMPTY on 100 of 100: it is classed by
+    # this file's own rule that A NAME IS NOT A CHANNEL, a judgement on its form.
+    "_application",
+    "_company_website",
+    "_company_name",
 })
 
 

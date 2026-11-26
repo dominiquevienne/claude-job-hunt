@@ -73,7 +73,7 @@ falls on the candidate, who spends an application on it.*
 0 e-mail addresses in the whole 124 123-byte payload, and the record has no
 `meta` dictionary in which a `_application` or `_company_name` could hide.
 **And because an empty withheld list is exactly what a board that ships a person
-would produce if we were careless, `contacts_exposed` is DERIVED from the
+would produce if we were careless, `contacts_withheld` is DERIVED from the
 record's own values at runtime** — the fields scanned are the record's, not a
 list borrowed from another board. *Naming `meta._application` here would be
 composing this board's shape out of `ntchito`'s, which is the error this file
@@ -111,6 +111,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots                                                  # noqa: E402
+from _withheld import withheld_a_contact                        # noqa: E402
 
 EXIT_BROKEN = 2
 EXIT_REFUSED = 7
@@ -270,7 +271,7 @@ def row(rec, by_id):
         t.get("rendered") if isinstance(t, dict) else t or "")).strip()
     noms = [by_id.get(i, {}).get("name") for i in (rec.get("job-category") or [])]
     tp = contacts_of(rec)
-    return {
+    r = {
         "source": "onlinejobmw",
         "country": "MW",
         "ledger_id": f"onlinejobmw:{ident}",
@@ -285,10 +286,16 @@ def row(rec, by_id):
         # advertisement's own page and this says so rather than emitting an
         # empty string that would read as «the advert has no description».
         "body_source": "page",
-        "contacts_exposed": bool(tp["third_party_withheld"]),
-        "withheld_fields": tp["third_party_withheld"],
+        # **The witness names WHERE and WHAT, `<key>:email`, #1337.** A key is
+        # withheld here only because `ADDRESS` matched its value, so every member
+        # IS an address — and the locus-prefix rule of `_withheld` reads exactly
+        # that. A bare key («content») carried no class and answered nothing.
+        "withheld_fields": [f"{k}:email" for k in tp["third_party_withheld"]],
         **tp,
     }
+    if withheld_a_contact(r["withheld_fields"]):
+        r["contacts_withheld"] = True
+    return r
 
 
 def cmd_terms(a):

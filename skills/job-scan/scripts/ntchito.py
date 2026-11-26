@@ -27,14 +27,14 @@ a PAGE, and its listing sits behind a JavaScript chooser. *Counting a keyword
 there measured the INTERFACE: five «Showing/results» were menu toggles, a
 select's `data-no_results_text`, and a noscript notice.*
 
-**NO CONTACT IS EXPOSED ON THIS ROUTE, AND THAT IS MEASURED RATHER THAN
-ASSUMED:** `_application`, `_company_name` and `_job_location` were empty on
-5 of 5 and the payload held no e-mail address at all. **So `withheld_fields`
-is legitimately EMPTY here — and because an empty list is exactly what a
-board that ships a person would also produce if we were careless, each row
-carries `contacts_exposed` as a POSITIVE statement about the route.** *That is
-the JobToday lesson (#1005) taken from the other end: there the silence was
-the lie; here the silence is true and says so.*
+**THE ROUTE DOES CARRY A CONTACT, AND THE FIRST MEASUREMENT SAID IT DID NOT.**
+On 2026-10-06 `_application`, `_company_name` and `_job_location` were empty on
+5 of 5 — five GRANTS, which carry no workplace and no application address.
+Remeasured on 100 records on 2026-11-26 (#1337): **`_application` filled on
+46, seven of them an e-mail address**, and `_company_website` on 22. None of
+these values is emitted: they travel as NAMES in `withheld_fields`, and the row
+declares `contacts_withheld` through `_withheld` — only when what was taken
+reaches a person, never for a company URL alone.
 
 **THE AVAILABILITY SURFACE IS THE LISTING** — `_filled`, a per-record flag on
 the API itself, which is the `closure: listing` shape of #1003. A record
@@ -63,6 +63,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots                                                  # noqa: E402
 import _provenance                                              # noqa: E402
+from _withheld import withheld_a_contact                        # noqa: E402
 
 EXIT_BROKEN = 2
 EXIT_REFUSED = 7
@@ -100,6 +101,22 @@ JOB_TERMS = ("job vacancy in malawi", "internationally recruited",
 # by date measured the kind of record, not the field.
 INSPECT = ("meta._application", "meta._company_name",
            "meta._company_website", "meta._company_twitter")
+
+# **AND «THE PAYLOAD HELD NO ADDRESS» IS NO LONGER TRUE — remeasured 2026-11-26 on
+# 100 records (#1337): `_application` was filled on 46, of which 7 were an e-mail
+# address and 39 an application URL; `_company_website` on 22, all company URLs.**
+# None of these values is ever emitted. What changed is the DECLARATION: it used to
+# be `bool(<the whole withheld list>)`, so a company URL alone declared a contact
+# withheld. It now goes through `_withheld`, and the one name that covers two causes
+# carries its cause beside it.
+ADDRESS = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+
+
+def application_reaches_a_person(rec):
+    """Was the withheld `_application` an ADDRESS rather than a form's URL?"""
+    v = str(((rec.get("meta") or {}).get("_application")) or "").strip()
+    return bool(v) and (v.lower().startswith("mailto:") or
+                        (not re.match(r"https?://", v, re.I) and bool(ADDRESS.search(v))))
 
 
 def die(msg, code=EXIT_BROKEN):
@@ -207,7 +224,7 @@ def row(rec, ts_by_id):
     noms = [ts_by_id.get(i, {}).get("name") for i in (rec.get("job-types") or [])]
     sal = (meta.get("_job_salary") or "").strip() or None
     tp = _provenance.third_party(rec, INSPECT)
-    return {
+    r = {
         "source": "ntchito",
         "country": "MW",
         "ledger_id": f"ntchito:{ident}",
@@ -225,14 +242,18 @@ def row(rec, ts_by_id):
         "amount_text": sal,
         # the TOWN, which the doctrine keeps — measured filled on 17 of 20
         "location_text": (meta.get("_job_location") or "").strip() or None,
-        # **A POSITIVE statement about the route, DERIVED and not asserted.**
-        # It used to be a hardcoded `False` — true on this board and a claim
-        # nothing checked. Now it follows the tri-state of #1007, so the day
-        # this host starts filling `_application` the row says so by itself.
-        "contacts_exposed": bool(tp["third_party_withheld"]),
         "withheld_fields": tp["third_party_withheld"],
         **tp,
     }
+    # **The declaration follows what was taken, through the ONE point — #1337.** It
+    # was `contacts_exposed: bool(<the list>)`, which declared a contact for a company
+    # URL alone; and before that a hardcoded `False`.
+    if withheld_a_contact(
+            r["withheld_fields"],
+            reached_a_person=("meta._application" in r["withheld_fields"]
+                              and application_reaches_a_person(rec))):
+        r["contacts_withheld"] = True
+    return r
 
 
 def cmd_types(a):

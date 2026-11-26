@@ -101,6 +101,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import _robots  # noqa: E402
+from _withheld import withheld_a_contact  # noqa: E402
 import _console  # noqa: F401,E402  (patches argparse's writer -- see #1166)
 
 EXIT_BROKEN = 2
@@ -355,6 +356,10 @@ def cmd_ad(a):
     text = plain(body)
 
     inspected, withheld, dropped, vals = [], [], [], {}
+    # The same labels, each with the CLASS of what was taken — `<label>:<what>`,
+    # the locus-prefix form `_withheld` reads. `page_withheld` keeps the labels
+    # alone for its readers; this is what the declaration is derived from (#1337).
+    witness = []
     for lab in sorted(got):
         inspected.append(lab.rstrip(":"))
         # **A contact label is withheld WHATEVER its value**, and before any
@@ -363,15 +368,20 @@ def cmd_ad(a):
         # would publish it.
         if lab in CONTACT_LABELS:
             withheld.append(lab.rstrip(":"))
+            # a contact person's NAME identifies and does not reach: the
+            # vocabulary's own rule, A NAME IS NOT A CHANNEL
+            witness.append(lab.rstrip(":") + (":email" if "Email" in lab else ":name"))
             continue
         if lab in DROPPED:
             dropped.append(lab.rstrip(":"))
             continue
         if ADDRESS.search(got[lab]):
             withheld.append(lab.rstrip(":"))
+            witness.append(lab.rstrip(":") + ":email")
             continue
         if lab not in SENSE_KNOWN and PHONE.search(got[lab]):
             withheld.append(lab.rstrip(":"))
+            witness.append(lab.rstrip(":") + ":telephone")
             continue
         vals[lab] = got[lab]
 
@@ -405,11 +415,16 @@ def cmd_ad(a):
         # expect one we can.
         "posted_relative": vals.get("Posted:") or None,
         "body_source": "page",
-        "contacts_exposed": bool(withheld),
+        # **In a guard's scope by the standard witness, #1337** — `page_withheld`
+        # alone escaped `withheld_fields`-keyed guards by its SPELLING, and its
+        # `contacts_exposed: bool(withheld)` declared a contact for a name alone.
+        "withheld_fields": sorted(witness),
         "page_inspected": sorted(inspected),
         "page_withheld": sorted(withheld),
         "page_dropped_criteria": sorted(dropped),
     }
+    if withheld_a_contact(row["withheld_fields"]):
+        row["contacts_withheld"] = True
     unparsed = ["DEADLINE"] if "DEADLINE:" in vals and expiry is None else []
     for key, value in (("page_unparsed", unparsed),
                        ("page_labels_absent", absent),
