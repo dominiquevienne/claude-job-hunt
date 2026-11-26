@@ -45,6 +45,7 @@ STATUS_RE = _ledger_table.STATUS_RE
 JR_DECLARED_RE = _ledger_table.JR_DECLARED_RE
 JR_MISSING_RE = _ledger_table.JR_MISSING_RE
 JR_WAIVED_RE = _ledger_table.JR_WAIVED_RE
+JR_RESULT_RE = _ledger_table.JR_RESULT_RE
 HEADER_ALIASES = _ledger_table.HEADER_ALIASES
 
 
@@ -123,7 +124,8 @@ def write_state(path: str, data: dict) -> None:
 # --------------------------------------------------------------------------
 
 def build_plan(rows: list[dict], state: dict,
-               skipped: dict[str, int] | None = None) -> dict:
+               skipped: dict[str, int] | None = None,
+               periods=None, today: str | None = None) -> dict:
     """Split the ledger into what job-room is missing and what it has wrong.
 
     `to_enter`  — sent, and never declared.
@@ -135,8 +137,27 @@ def build_plan(rows: list[dict], state: dict,
     recorded next to it. It needs no new field — the ledger already dates both
     the status (`rejected 2026-08-20`) and the declaration (`JR:2026-08-18`),
     and the comparison between the two is the whole test.
+
+    **Two refusals leave `to_update`, and neither is hidden** (issue #1332).
+    On a real ledger the list held 56 rows and 0 of them were actionable:
+
+    `result_recorded` — the note carries `JR:result <date>` on or after the
+                  refusal: the answer is already entered in job-room. Without
+                  this marker a corrected row satisfied «refused after
+                  declared» forever, and the list only ever grew.
+    `frozen`      — the row is declared in a period job-room has already
+                  TRANSMITTED, read from `periods` exactly as `prefill` reads
+                  it. A transmitted period cannot be edited by anyone, so the
+                  row is SAID and not proposed.
+
+    `periods` is `None` when no listing was supplied. That is NOT «no period is
+    transmitted»: `plan["periodes"]["consulte"]` says the gate was not
+    consulted, and every `to_update` row carries `periode_transmise: None`.
     """
+    today = today or dt.date.today().isoformat()
+    gate = periods_gate(periods, today)
     to_enter, to_update, waived = [], [], []
+    result_recorded, frozen = [], []
     for r in rows:
         if not sent(r):
             continue
@@ -170,14 +191,32 @@ def build_plan(rows: list[dict], state: dict,
             to_enter.append(item)
         elif r["kind"] in ("rejected", "refusé", "refuse") and r["date"] > r["jr_declared"]:
             item["expected_result"] = "Réponse négative"
-            to_update.append(item)
+            res = r.get("jr_result")
+            if res and res >= r["date"]:
+                item["result_recorded_on"] = res
+                result_recorded.append(item)
+                continue
+            if res:
+                # Entered BEFORE the refusal it would have to describe: that
+                # entry cannot be this answer, so the row stays to do — and
+                # says why, rather than reading as a marker nobody wrote.
+                item["result_recorded_on"] = res
+            verdict, periode = period_of(gate, r["jr_declared"])
+            item["periode_transmise"] = verdict
+            item["periode"] = periode["label"] if periode else None
+            (frozen if verdict else to_update).append(item)
     return {
         "last_sync": state.get("last_sync"),
         "to_enter": to_enter,
         "to_update": to_update,
         "waived": waived,
+        "result_recorded": result_recorded,
+        "frozen": frozen,
+        "periodes": gate,
         "counts": {"to_enter": len(to_enter), "to_update": len(to_update),
-                   "waived": len(waived)},
+                   "waived": len(waived),
+                   "result_recorded": len(result_recorded),
+                   "frozen": len(frozen)},
         # Rows of `## Ads` the reading refused, by direction. A PRE is an
         # official declaration: «Both errors are invisible in a row count, so
         # neither is left to judgement here» — and a row dropped in silence
@@ -422,11 +461,39 @@ def print_plan(plan: dict) -> None:
     print()
     print(f"result changed since declaration ({len(plan['to_update'])}):")
     for i in plan["to_update"] or []:
-        print(f"  · declared {i['declared']} → {i['status']} {i['status_date']}")
+        # `->`, not U+2192: a Windows pipe is cp1252 and has no arrow, so the
+        # first refusal in this list ended `plan` in `UnicodeEncodeError`
+        # (#1332, red on windows-latest only — the class of #232).
+        print(f"  · declared {i['declared']} -> {i['status']} {i['status_date']}")
         print(f"      {i['company'][:44]:44}  {i['role'][:46]}")
         print(f"      job-room should read: {i['expected_result']}")
+        if i.get("result_recorded_on"):
+            print(f"      (`JR:result {i['result_recorded_on']}` predates this "
+                  f"refusal — it cannot be this answer)")
     if not plan["to_update"]:
         print("  (none)")
+    gate = plan.get("periodes") or {}
+    if plan["to_update"] and not gate.get("consulte"):
+        print("  ** transmitted-period gate NOT consulted — pass --jobroom-text "
+              "<period listing>.")
+        print("     A row declared in a transmitted period cannot be edited; "
+              "without the")
+        print("     listing this list cannot tell those apart, and does not "
+              "pretend to. **")
+    if plan.get("frozen"):
+        print()
+        print(f"refused in a TRANSMITTED period ({len(plan['frozen'])}) — "
+              "cannot be edited, by anyone:")
+        for i in plan["frozen"]:
+            print(f"  · declared {i['declared']} ({i.get('periode')}) -> "
+                  f"{i['status']} {i['status_date']}  {i['company'][:36]}")
+    if plan.get("result_recorded"):
+        print()
+        print(f"result already entered in job-room ({len(plan['result_recorded'])})"
+              " — `JR:result <date>`:")
+        for i in plan["result_recorded"]:
+            print(f"  · {i['status']} {i['status_date']}, entered "
+                  f"{i['result_recorded_on']}  {i['company'][:36]}")
     if plan.get("waived"):
         print()
         print(f"deliberately not declared ({len(plan['waived'])}) — still counted "
@@ -864,7 +931,13 @@ def main() -> int:
     ap.add_argument("--format", choices=("table", "json"), default="table")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("plan", help="what to declare, and what to correct")
+    pl = sub.add_parser("plan", help="what to declare, and what to correct")
+    pl.add_argument("--jobroom-text", default=None,
+                    help="file holding the job-room period listing "
+                         "(get_page_text output; use '-' for stdin). With it, "
+                         "refusals declared in a TRANSMITTED period leave "
+                         "`to_update` for `frozen`; without it the gate is NOT "
+                         "consulted, and the output says so")
 
     c = sub.add_parser("check", help="refuse anything already in job-room")
     c.add_argument("--jobroom-text", required=True,
@@ -897,7 +970,17 @@ def main() -> int:
 
     if args.cmd == "plan":
         rows, skipped = load_rows(args.file)
-        plan = build_plan(rows, state, skipped)
+        periods = None
+        if args.jobroom_text:
+            periods = parse_periods(_read_text(args.jobroom_text))
+            if not periods:
+                # The same refusal `periods` and `prefill` make: no period
+                # read is a page this script could not read, not an open board.
+                print("error: --jobroom-text carried no readable control "
+                      "period. That is a page this script could not read, "
+                      "not a board with nothing on it", file=sys.stderr)
+                return 2
+        plan = build_plan(rows, state, skipped, periods)
         print(json.dumps(plan, indent=2, ensure_ascii=False)) if args.format == "json" else print_plan(plan)
         return 0
 
