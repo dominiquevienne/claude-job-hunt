@@ -14355,6 +14355,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
+        "careersgy": ("get", "https://h.example/x?p=1"),
         "guyanaindex": ("get", "https://h.example/x?p=1"),
         "skilledguyanese": ("get", "https://h.example/x?p=1"),
         "motravay": ("get", "https://h.example/x?p=1"),
@@ -45398,7 +45399,12 @@ class ALabelFromProseAssertsARouteNobodyDeclared(unittest.TestCase):
     #  que les deux ci-dessous ne peuvent pas fabriquer. Son nom reste dans
     #  `LABELLED` : une correction CITE ce qu'elle corrige, et il a bien ete
     #  etiquete depuis sa prose le 2026-10-05.
-    DECLARED = ("jwennjob",)
+    #  **ET `careers-gy` EN SORT AUSSI, pour la meme raison et le meme jour que
+    #  son adaptateur : #706 a livre `careersgy.py` le 2026-11-26, et sa fiche
+    #  DECLARE `script: careersgy.py`. Son etiquette vient donc d'un CHAMP et
+    #  plus de sa prose, ce que cette classe exige. Son nom reste dans
+    #  `LABELLED`, une correction citant ce qu'elle corrige.**
+    DECLARED = ("jwennjob", "careers-gy")
 
     def _cb(self):
         import importlib.util
@@ -63910,6 +63916,80 @@ class GuyanaIndexIsPagedByPathAndRefusesTheQueryItIgnores(unittest.TestCase):
         for url in ("https://www.guyanaindex.com/jobs/all?page=2",
                     "https://www.guyanaindex.com/company/1925/eve-anderson-recruitment",
                     "https://evil.example/jobs/all"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
+
+
+class CareersGyReadsThePublicCollectionOnTheApiHostAndCountsWhatItsOwnDateCloses(unittest.TestCase):
+    """#706 — `careersgy.py`. The list is the public Laravel collection on
+    `api.careers.gy`; no credential is ever sent; a record past its OWN
+    `expires_at` is counted and not emitted by default. The two records are
+    EXTRACTED from the collection served on 2026-11-26 (a live one, the last
+    and oldest one)."""
+
+    RECS = [{'id': 1529, 'hash_id': '7DMD', 'title': 'Security Officer', 'company_name': 'NSBOMEGA GUYANA INC.', 'country_id': 1, 'employment_type': 'Full-time', 'is_remote_position': 'No', 'no_of_vacancies': 1, 'created_at': '2026-11-24T13:07:44.000000Z', 'expires_at': '2027-02-24T13:07:44.000000Z', 'salary_from': 0, 'salary_to': 0, 'description': '<p><strong>Responsibilities:</strong></p><ul><li><p>Conduct regular patrols of the office compound during the day to prevent unauthorized access, theft, vandalism, or suspicious activity.</p></li><li><p>Serve as night watch on the dredge, ensuring continuous surveillance, monitoring of lights, mooring lines, and security of onboard equipment and personnel.</p></li><li><p>Control entry and exit of visitors, staff, and vehicles at both the office and dredge as per company access protocols.</p></li><li><p>Conduct alcohol testing, incident investigations, bag checks, metal detector screening, and monitor PPE compliance.</p></li><li><p>Liaise with the HSE department, enforce safety protocols, perform housekeeping checks, and ensure site security by detecting illegal items.</p></li><li><p>Work rotating shifts and be available to move between locations as needed to support operations and maintain consistent safety and compliance standards.</p></li><li><p>Maintain accurate records of visitors, incidents, and occurrences in the security logbook.</p></li><li><p>Respond swiftly and appropriately to alarms, emergencies, or suspicious situations.</p></li><li><p>Conduct security inspections of doors, windows, locks, and perimeters at the start and end of each shift.</p></li><li><p>Monitor CCTV systems (if applicable), radios, and alarms to detect and report any anomalies.</p></li><li><p>Ensure that fire extinguishers, emergency lights, and safety equipment are functional.</p></li><li><p>File incident reports and communicate critical updates to the Security Supervisor and Operations team.</p></li><li><p>Assist in implementing and enforcing safety protocols for dredge operations after hours.</p></li><li><p>Perform any other duties assigned related to site safety and security.</p></li></ul><p><strong>Requirements:</strong></p><ul><li><p><span style="color: black;">Secondary School Education (CXC passes preferred).</span></p></li><li><p><span style="color: black;">Basic Security Officer Training Certificate.</span></p></li><li><p><span style="color: black;">First Aid &amp; Fire Safety Training (preferred).</span></p></li><li><p><span style="color: black;">At least 2 years’ experience in an industrial, marine, or corporate security environment.</span></p></li><li><p><span style="color: black;">Good written and verbal communication skills.</span></p></li><li><p><span style="color: black;">Physically fit with the ability to work extended hours and night shifts.</span></p></li><li><p><span style="color: black;">Strong observation and situational awareness skills.</span></p></li><li><p><span style="color: black;">Ability to respond calmly and responsibly in emergencies.</span></p></li><li><p><span style="color: black;">Comfortable working alone at night and onboard a vessel.</span></p></li><li><p><span style="color: black;">Familiarity with maritime or dredging environments is an asset.</span></p></li></ul>'}, {'id': 12, 'hash_id': 'KOSK', 'title': 'Marketing Coordinator', 'company_name': 'Express International', 'country_id': 1, 'employment_type': 'Full-time', 'is_remote_position': 'Temporary Due to COVID', 'no_of_vacancies': 1, 'created_at': '2021-08-03T23:05:28.000000Z', 'expires_at': '2021-11-03T23:05:28.000000Z', 'salary_from': None, 'salary_to': None, 'description': '<p><strong><span style="color:rgba(0, 0, 0, 0.9);">JOB DESCRIPTION</span></strong></p><p style="text-align:start"></p><p style="text-align:start"><strong><span style="color:rgba(0, 0, 0, 0.9);">\ufeff</span></strong><span style="color:rgba(0, 0, 0, 0.9);">The marketing Coordinator develops and implements the Company’s advertising, marketing, and communications programs regarding its different operating opportunities, to build brand awareness, increase sales and ensure clear communications regarding a variety of matters. Additionally, the Marketing Coordinator supports all internal communication initiatives and events.</span></p><p style="text-align:start"></p><p style="text-align:start"><strong><span style="color:rgba(0, 0, 0, 0.9);">DESCRIPTION OF DUTIES:</span></strong><span style="color:rgba(0, 0, 0, 0.9);"><br></span></p><ul><li><p><span style="color:var(--color-text);">Assist in the development and implementation of the company’s brand strategy.</span></p></li><li><p><span style="color:var(--color-text);">Ensure all marketing efforts serve to achieve immediate and long-term business goals, identifying and executing improvements for processes, content, and lead generation.</span></p></li><li><p><span style="color:var(--color-text);">Prepare marketing activity reports and metrics for measuring program success.</span></p></li><li><p><span style="color:var(--color-text);">Provide market research, forecasts, competitive analyses, campaign results, and consumer trends</span></p></li><li><p><span style="color:var(--color-text);">Support the maintenance and development of internal tools, including a credentials database, tracking capability, global contact directory, and intranet sites.</span></p></li><li><p><span style="color:var(--color-text);">Further knowledge and education regularly through workshops, research, and seminars, and share best practices, and local marketing ideas and tactics with the team.</span></p></li><li><p><span style="color:var(--color-text);">Support the Marketing Director in evaluating and establishing the marketing plan and strategy by assembling and analyzing forecasts, setting objectives, and delivering results.</span></p></li><li><p><span style="color:var(--color-text);">Communicate campaign objectives, timelines, and deliverables to recruiting team, and providing instructions for use and reporting.</span></p></li><li><p><span style="color:var(--color-text);">Maintain a directory and inventory of marketing materials, ensuring all resources are current and accurate and coordinate the creation of new materials as needed.</span></p></li><li><p><span style="color:var(--color-text);">Continually seek and research new sources of prospective customer data, and provide recommendations to sales and marketing leadership.</span></p><p></p></li></ul><p style="text-align:start"><strong><span style="color:rgba(0, 0, 0, 0.9);">MINIMUM QUALIFICATION REQUIREMENTS:</span></strong><span style="color:rgba(0, 0, 0, 0.9);"><br></span></p><ul><li><p><span style="color:var(--color-text);">Degree/diploma in marketing or major in relevant field.</span></p></li><li><p><span style="color:var(--color-text);">Proven work experience as a Marketing Coordinator- 6+ months, Marketing Officer or similar role (pref.)</span></p></li><li><p><span style="color:var(--color-text);">Knowledge of traditional and digital marketing tools.</span></p></li><li><p><span style="color:var(--color-text);">Experience with research methods using data analytics software.</span></p></li><li><p><span style="color:var(--color-text);">Expertise with SEO/SEM campaigns.</span></p></li><li><p><span style="color:var(--color-text);">Solid computer skills, including MS Office, web analytics, and Google Adwords.</span></p></li><li><p><span style="color:var(--color-text);">Familiarity with Customer Relationship Management and Content Management System software.</span></p></li><li><p><span style="color:var(--color-text);">Excellent communication and presentation skills protect company and customer information in accordance with company policies and procedures.</span></p></li></ul>'}]
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import careersgy
+        self.m = careersgy
+
+    def test_a_live_record_maps_to_its_fields_and_its_public_url(self):
+        r = self.m.record(self.RECS[0], "2026-11-26")
+        self.assertEqual(r["url"], "https://careers.gy/job-post/" + self.RECS[0]["hash_id"])
+        self.assertEqual(r["company"], self.RECS[0]["company_name"])
+        self.assertEqual(r["country"], "GY")
+        self.assertFalse(r["expired_by_stated_date"])
+
+    def test_the_oldest_record_is_closed_by_its_own_date(self):
+        r = self.m.record(self.RECS[1], "2026-11-26")
+        self.assertTrue(r["expired_by_stated_date"])
+
+    def test_an_absent_date_is_neither_open_nor_closed(self):
+        rec = dict(self.RECS[0], expires_at=None)
+        self.assertIsNone(self.m.expired(rec, "2026-11-26"))
+
+    def test_the_walk_counts_the_closed_and_emits_only_the_open(self):
+        from unittest import mock
+        page = json.dumps({"total": 2, "last_page": 1, "data": self.RECS})
+        out = io.StringIO()
+        with mock.patch.object(self.m, "get", return_value=(200, page)), \
+                mock.patch.object(self.m, "robots_verdict", return_value={"sweep": True}), \
+                mock.patch("sys.stdout", out), mock.patch("sys.stderr", io.StringIO()):
+            self.m.cmd_jobs(argparse.Namespace(limit=None, max_pages=5, include_expired=False))
+        self.assertEqual([json.loads(l)["id"] for l in out.getvalue().splitlines()],
+                         [str(self.RECS[0]["id"])])
+
+    def test_no_request_ever_carries_a_credential(self):
+        from unittest import mock
+        seen = []
+        class R:
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def read(s): return b"{}"
+            def getcode(s): return 200
+            headers = {}
+        def fake(req, timeout=None):
+            seen.append({k.lower() for k in req.headers}); return R()
+        with mock.patch.object(self.m, "robots_allowed", return_value={"allowed": True, "reason": "open"}), \
+                mock.patch.object(self.m, "decode_body", return_value=("{}", None)), \
+                mock.patch.object(self.m.urllib.request, "urlopen", side_effect=fake):
+            self.m.get(self.m.LIST + "?page=1")
+        self.assertEqual(len(seen), 1)
+        self.assertNotIn("authorization", seen[0])
+
+    def test_the_front_host_and_any_other_path_are_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://careers.gy/public/api/jobs",
+                    "https://api.careers.gy/public/api/users",
+                    "https://api.careers.gy/public/api/apply-for-job/x"):
             sent = []
             with self.assertRaises(SystemExit) as cm, \
                     mock.patch.object(self.m, "robots_allowed",
