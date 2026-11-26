@@ -14355,6 +14355,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "aboutsvg": ("get", "https://h.example/x?p=1"),
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
+        "guyanaindex": ("get", "https://h.example/x?p=1"),
         "skilledguyanese": ("get", "https://h.example/x?p=1"),
         "motravay": ("get", "https://h.example/x?p=1"),
         "careersmu": ("get", "https://h.example/x?p=1"),
@@ -63853,6 +63854,62 @@ class SkilledGuyaneseWalksItsPagesToTheCountItsHeaderStates(unittest.TestCase):
         for url in ("https://skilledguyanese.com/company/x",
                     "https://skilledguyanese.com/sitemap.xml",
                     "https://evil.example/"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
+
+
+class GuyanaIndexIsPagedByPathAndRefusesTheQueryItIgnores(unittest.TestCase):
+    """#708 — `guyanaindex.py`. The pager is `/jobs/all/<n>`; `?page=N` returns
+    page one again, so the tool REFUSES any query rather than loop on it. The
+    card and the count line are EXTRACTED from the page served on 2026-11-26."""
+
+    CARD = '<div class="company"><div class="company_header"><div class="company_kicker"><span class="company_number">01</span></div><h3><a href="/job/34358/chief-executive-officer">Chief Executive Officer</a></h3><div class="address"><span class="v v4 jobs_employer_badge"><b>JOB BY</b></span> <strong><a href="/company/1925/eve-anderson-recruitment">Eve Anderson Recruitment</a></strong></div></div><div class="cont desc"> Job Summary The CEO leads the day-to-day management of the Company, ensuring that the policies, directives and decisions of the Board are carried out promptly and efficiently within the...</div><div class="cont listing_stats"><div class="listing_stats_scroll scroller"><div class="s"><i class="listing_icon fa-calendar" aria-hidden="true"></i><span>1 day ago</span></div><div class="s"><i class="fa fa-suitcase" aria-hidden="true"></i><span>Employee</span></div><div class="s"><i class="fa fa-clock-o" aria-hidden="true"></i><span>Full Time</span></div><div class="clear"></div></div></div><div class="clear"></div><div class="company_btns'
+    COUNT = 'We found <b>48</b> job offers'
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import guyanaindex
+        self.m = guyanaindex
+
+    def test_a_real_card_gives_its_fields_by_their_icons(self):
+        rows, bad = self.m.cards(self.CARD)
+        self.assertEqual((len(rows), bad), (1, 0))
+        r = rows[0]
+        self.assertEqual(r["id"], "34358")
+        self.assertEqual(r["title"], "Chief Executive Officer")
+        self.assertEqual(r["company"], "Eve Anderson Recruitment")
+        self.assertEqual(r["kind"], "Employee")
+        self.assertEqual(r["type"], "Full Time")
+        self.assertEqual(r["posted_relative_stated"], "1 day ago")
+        self.assertIsNone(r["withheld_fields"])
+
+    def test_the_list_states_its_count(self):
+        self.assertEqual(self.m.stated_count(self.COUNT), 48)
+        self.assertIsNone(self.m.stated_count("<div>nothing</div>"))
+
+    def test_the_pager_is_the_path_form(self):
+        self.assertEqual(self.m.page_url(1), "https://www.guyanaindex.com/jobs/all")
+        self.assertEqual(self.m.page_url(3), "https://www.guyanaindex.com/jobs/all/3")
+
+    def test_an_excerpt_with_a_contact_names_what_was_taken(self):
+        card = self.CARD.replace("Job Summary", "Write to hr@example.gy. Job Summary")
+        self.assertNotEqual(card, self.CARD)
+        r = self.m.cards(card)[0][0]
+        self.assertEqual(r["withheld_fields"], ["email"])
+        self.assertNotIn("hr@example.gy", r["excerpt"])
+
+    def test_the_ignored_query_and_any_other_path_are_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://www.guyanaindex.com/jobs/all?page=2",
+                    "https://www.guyanaindex.com/company/1925/eve-anderson-recruitment",
+                    "https://evil.example/jobs/all"):
             sent = []
             with self.assertRaises(SystemExit) as cm, \
                     mock.patch.object(self.m, "robots_allowed",
