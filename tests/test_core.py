@@ -29558,7 +29558,7 @@ class TheMalawiFilterIsAConditionOfCorrectnessAndNotAnOptimisation(unittest.Test
         holding an address the row must say so BY ITSELF."""
         mod = self._mod()
         plain = mod.row(self._rec(1), {1: {"name": "Job Vacancies"}})
-        self.assertFalse(plain["contacts_exposed"])
+        self.assertNotIn("contacts_withheld", plain)
         self.assertEqual(plain["withheld_fields"], [])
         self.assertIn("title", plain["third_party_inspected"],
                       "the inspected list must name what was looked at, or an "
@@ -29566,10 +29566,11 @@ class TheMalawiFilterIsAConditionOfCorrectnessAndNotAnOptimisation(unittest.Test
         loaded = mod.row(
             self._rec(2, extra={"content": {"rendered": "write to hr@x.mw"}}),
             {1: {"name": "Job Vacancies"}})
-        self.assertTrue(loaded["contacts_exposed"],
-                        "an address served in a field the host added later is "
-                        "not withheld — the statement is asserted, not derived")
-        self.assertIn("content", loaded["withheld_fields"])
+        self.assertIs(loaded.get("contacts_withheld"), True,
+                      "an address served in a field the host added later is "
+                      "not withheld — the statement is asserted, not derived")
+        # #1337: the witness names WHERE and WHAT, so `_withheld` can class it
+        self.assertIn("content:email", loaded["withheld_fields"])
 
     def test_the_sum_of_the_term_counts_is_never_published_as_the_boards_size(self):
         """967 + 279 + 13 + 13 = 1 272 double-counts any record carrying
@@ -48208,12 +48209,37 @@ class MostOfAnAggregatorIsNotJobsAndTheHostSaysWhich(unittest.TestCase):
                      "link": "https://ntchito.com/job/x/", "date": "2026-10-06",
                      "job-types": [60], "meta": {}},
                     {60: {"name": "Internationally Recruited"}})
-        self.assertIn("contacts_exposed", r)
-        self.assertIs(r["contacts_exposed"], False)
+        self.assertNotIn("contacts_withheld", r)
         self.assertEqual(r["withheld_fields"], [])
+        self.assertIn("meta._application", r["third_party_inspected"],
+                      "an empty witness says nothing unless the row names what "
+                      "was looked at")
         self.assertEqual(r["title"], "Driver & Guard",
                          "the title is emitted still escaped")
         self.assertEqual(r["kinds"], ["Internationally Recruited"])
+
+    def test_a_company_url_alone_never_declares_a_contact_but_an_address_does(self):
+        """**#1337 — the declaration was `bool(<the whole list>)`.** Measured on 100
+        records on 2026-11-26: `_company_website` filled on 22, all company URLs, and
+        `_application` on 46 — 39 a form's URL, 7 an e-mail address. A URL reaches
+        nobody; an address does, and ONE name carries both causes, so the cause
+        travels beside it. Values never reach the row."""
+        mod, _ = self._mod()
+        def rec(**meta):
+            return {"id": 1, "title": {"rendered": "x"}, "link": "https://ntchito.com/job/x/",
+                    "date": "2026-11-26", "job-types": [60], "meta": meta}
+        ts = {60: {"name": "Internationally Recruited"}}
+        site = mod.row(rec(_company_website="https://acme.example/"), ts)
+        self.assertEqual(site["withheld_fields"], ["meta._company_website"],
+                         "the fixture must put a member in the witness, or this proves nothing")
+        self.assertNotIn("contacts_withheld", site)
+        form = mod.row(rec(_application="https://acme.example/apply"), ts)
+        self.assertEqual(form["withheld_fields"], ["meta._application"])
+        self.assertNotIn("contacts_withheld", form)
+        mail = mod.row(rec(_application="hr@acme.example"), ts)
+        self.assertIs(mail.get("contacts_withheld"), True)
+        self.assertNotIn("hr@acme.example", json.dumps(mail),
+                         "no contact VALUE may reach the row")
 
     def test_a_filled_advert_is_EMITTED_and_flagged_not_dropped(self):
         """`_filled` is the LISTING's availability flag — the `closure:
@@ -53031,7 +53057,9 @@ class TheDom767AdIsReadInsideItsContainerAndAContactLabelIsWithheldAlways(
                          ["Contact Person Email", "Contact Person Name"])
         self.assertFalse(mod.ADDRESS.search("Unspecified"))
         self.assertFalse(mod.PHONE.search("Unspecified"))
-        self.assertTrue(row["contacts_exposed"])
+        self.assertEqual(row["withheld_fields"],
+                         ["Contact Person Email:email", "Contact Person Name:name"])
+        self.assertIs(row.get("contacts_withheld"), True)
         blob = json.dumps(row, ensure_ascii=False)
         self.assertNotIn("example.invalid", blob,
                          "no contact VALUE may reach the row")
@@ -54427,24 +54455,22 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
     les autres, et leur temoin ne pouvait pas les contredire.*
 
     **CE QUE CETTE GARDE NE VOIT PAS, et le dire est la seule facon de ne pas le faire
-    oublier.** Trois residus, chacun pour une raison DIFFERENTE, et chacun eprouve
-    mecaniquement ci-dessous plutot que liste :
+    oublier.** Deux residus, chacun pour une raison DIFFERENTE, et chacun eprouve
+    mecaniquement ci-dessous plutot que liste — un troisieme, la declaration sous une
+    AUTRE CLEF, a ete RETIRE par #1337 :
 
     * un temoin **CONSTANT** a chaque emission — `guyanacareers` emet `[]` litteral sur
       ses deux sites, et sa propre docstring le mesure (`_job_apply_email` rempli sur
       **0 de 46**). Appeler le point y serait du bruit : la reponse est connue d'avance.
-    * une declaration sous une **AUTRE CLEF** — `contacts_exposed`, derive par
-      `bool(<la liste entiere>)` sur trois adaptateurs. **C'est exactement la derivation
-      que `_withheld` existe pour empecher**, et son specimen y est nomme : `govtlc` met
-      `coordinates` dans CHAQUE record, donc un test de verite sur la liste est vrai pour
-      tous les records pour toujours. Leurs listes melangent les classes — un site de
-      societe n'atteint personne, une adresse de candidature si — donc le `bool()`
-      sur-declare des que le membre rempli n'est pas un contact. *`ntchito` le raconte
-      lui-meme : le tri-etat a rapporte `contacts_exposed: True` sur un vrai record pour
-      un `_job_location` qui portait un nom de ville.* **Non corrige ici, et declare :
-      classer `_application`, `_company_name`, `_company_twitter` et `_company_website`
-      sur la foi de leur orthographe est le devinage que ce point refuse, et les corps
-      qui trancheraient ne sont pas detenus.**
+    * ~~une declaration sous une AUTRE CLEF~~ — **RETIREE le 2026-11-26 (#1337).**
+      `ntchito`, `onlinejobmw` et `dom767` declaraient `contacts_exposed` par
+      `bool(<la liste entiere>)`, la derivation que `_withheld` existe pour empecher ;
+      `dom767` echappait en plus a toute garde par l'ORTHOGRAPHE de son temoin,
+      `page_withheld`. Les trois passent desormais par le point unique sous la clef
+      standard, et les quatre champs de `ntchito` ont ete classes sur 100 records
+      MESURES et non sur leur orthographe — voir `_withheld`. **Une dispense qu'aucun
+      fichier n'exerce ne protege rien** : elle sort donc du code dans le meme commit,
+      et `test_no_builder_leaves_its_witness_unanswered` ne l'accorde plus.
     * les **noms qui arrivent par une VARIABLE** restent hors du controle de vocabulaire
       de la classe precedente, et c'est le `raise` du point qui les couvre.
 
@@ -54493,17 +54519,21 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
 
     @classmethod
     def _etat(cls, src, chemin):
-        """`(a_un_temoin, appelle_le_point, temoin_constant, autre_clef)`."""
+        """`(a_un_temoin, appelle_le_point, temoin_constant)`.
+
+        Le quatrieme terme, `autre_clef`, est RETIRE avec sa dispense (#1337) : il
+        testait `"contacts_exposed" in src`, une sous-chaine qu'un COMMENTAIRE
+        satisfait, donc il aurait dispense un fichier qui se contente d'en parler.
+        """
         import ast
         arbre = ast.parse(src, chemin)
         bat = cls._batisseurs(arbre)
         if not bat:
-            return (False, False, False, False)
+            return (False, False, False)
         appelle = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
                       and c.func.id == "withheld_a_contact"
                       for fn in bat for c in ast.walk(fn))
-        return (True, appelle, all(cls._temoin_constant(fn) for fn in bat),
-                "contacts_exposed" in src)
+        return (True, appelle, all(cls._temoin_constant(fn) for fn in bat))
 
     @classmethod
     def _tous(cls):
@@ -54540,14 +54570,14 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
     def test_no_builder_leaves_its_witness_unanswered(self):
         """Un temoin par annonce qui peut nommer un contact recoit une REPONSE.
 
-        Les seules dispenses sont celles que la docstring declare, et elles sont
-        EPROUVEES ici plutot que listees : un temoin constant, ou une declaration sous
-        une autre clef. *Un fichier qui n'est ni l'un ni l'autre et qui se tait est le
+        La seule dispense est celle que la docstring declare, et elle est EPROUVEE ici
+        plutot que listee : un temoin constant. *Celle d'une declaration sous une autre
+        clef est retiree par #1337.* *Un fichier qui n'est ni l'un ni l'autre et qui se tait est le
         douzieme cas que cette garde existe pour arreter.*
         """
         muets = []
-        for nom, _src, (_t, appelle, constant, autre) in self._tous():
-            if appelle or constant or autre:
+        for nom, _src, (_t, appelle, constant) in self._tous():
+            if appelle or constant:
                 continue
             muets.append(nom)
         self.assertEqual(muets, [],
@@ -54563,16 +54593,21 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
         """
         tous = self._tous()
         constants = [n for n, _s, e in tous if not e[1] and e[2]]
-        autres = [n for n, _s, e in tous if not e[1] and not e[2] and e[3]]
         self.assertTrue(constants,
                         "aucun fichier n'exerce la dispense du temoin CONSTANT : elle "
                         "ne protege rien et son vert ne dit plus rien")
-        self.assertTrue(autres,
-                        "aucun fichier ne declare sous une autre clef : la dispense de "
-                        "`contacts_exposed` est devenue sans objet et doit etre RETIREE")
-        for nom in autres:
-            with io.open(os.path.join(SCRIPTS, nom), encoding="utf-8") as fh:
-                self.assertIn("contacts_exposed", fh.read(), nom)
+        # #1337 : la dispense par AUTRE CLEF est retiree, et ce qui la remplace est
+        # qu'AUCUN batisseur ne derive plus une declaration par `bool()` sous cette
+        # clef. Le contingent positif est le corpus lui-meme : les trois anciens
+        # porteurs sont des ADOPTANTS, donc le balayage les voit.
+        adoptants = {n for n, _s, e in tous if e[1]}
+        for nom in ("ntchito.py", "onlinejobmw.py", "dom767.py"):
+            self.assertIn(nom, adoptants,
+                          "%s ne passe pas par le point unique : la dispense retiree "
+                          "le laisse muet" % nom)
+        for nom, src, _e in tous:
+            self.assertNotRegex(src, r'"contacts_exposed"\s*:',
+                                "%s emet encore `contacts_exposed`" % nom)
 
     def test_removing_the_call_creates_the_defect_this_guard_names(self):
         """**La mutation CREE le defaut sur l'entree fournie, et c'est ce qui la
@@ -54581,7 +54616,7 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
         mute, et le fichier doit encore COMPILER.
         """
         adoptants = [(n, s, e) for n, s, e in self._tous()
-                     if e[1] and not e[2] and not e[3]]
+                     if e[1] and not e[2]]
         self.assertTrue(adoptants, "aucun adoptant a muter : le banc est desarme")
         atteints = 0
         for nom, src, _e in adoptants:
@@ -54593,8 +54628,8 @@ class AWitnessThatCanNameAContactIsNeverLeftUnanswered(unittest.TestCase):
             compile(mut, nom, "exec")
             self.assertTrue(self._etat(src, nom)[1],
                             "%s ne repondait pas AVANT : le banc mesure autre chose" % nom)
-            _t, appelle, constant, autre = self._etat(mut, nom)
-            self.assertFalse(appelle or constant or autre,
+            _t, appelle, constant = self._etat(mut, nom)
+            self.assertFalse(appelle or constant,
                              "%s repond encore apres le RETRAIT de l'appel : le mutant "
                              "est EQUIVALENT et son vert ne dit rien" % nom)
         self.assertGreaterEqual(atteints, 8,
