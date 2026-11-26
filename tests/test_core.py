@@ -63444,5 +63444,138 @@ class TheUnionNeverBlanksACellTheSheetOwns(unittest.TestCase):
         mod.say_kept(counts)
 
 
+
+class ThePlanStopsReproposingWhatJobRoomAlreadyHas(unittest.TestCase):
+    """#1332 — `jobroom_sync.py plan`, branch `to_update`.
+
+    On a real ledger the list held **56** rows and **0** were actionable: 5
+    were already entered as *Réponse négative*, 51 sat in transmitted periods.
+    The predicate «refused after declared» had no way to learn either fact, so
+    the list only grew. Each case DRIVES the script — `build_plan` or the
+    process — and each exclusion is read against a POSITIVE contingent on the
+    same output, so an empty list cannot pass for a filter that worked.
+    """
+
+    LEDGER = (
+        "# Pipeline\n\n## Ads\n\n"
+        "| ID | Role | Company | Location / Mode | Posted | Match | Pay "
+        "| Status | Note |\n"
+        "| :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |\n"
+        "| a:1 | Dev | Alpha SA | L | 2026-11-01 | 80 | - "
+        "| rejected 2026-11-05 | JR:2026-11-03 |\n"
+        "| a:2 | Dev | Beta SA | L | 2026-11-01 | 80 | - "
+        "| rejected 2026-11-05 | JR:2026-11-03 JR:result 2026-11-07 |\n"
+        "| a:3 | Dev | Gamma SA | L | 2026-10-01 | 80 | - "
+        "| rejected 2026-10-20 | JR:2026-10-18 |\n"
+        "| a:4 | Dev | Delta SA | L | 2026-11-01 | 80 | - "
+        "| rejected 2026-11-09 | JR:2026-11-03 JR:result 2026-11-04 |\n")
+    PERIODS = ("Octobre 2026\nNombre saisi: 12\n"
+               "Transmission automatique le 06.11.2026 a 00 h 00\n"
+               "Novembre 2026\nNombre saisi: 4\n"
+               "Transmission automatique le 06.12.2026 a 00 h 00\n")
+    SCRIPT = ("skills", "job-report", "scripts", "jobroom_sync.py")
+
+    @classmethod
+    def _root(cls):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _mod(self):
+        import importlib.util
+        p = os.path.join(self._root(), *self.SCRIPT)
+        d = os.path.dirname(p)
+        sys.path.insert(0, d)
+        try:
+            spec = importlib.util.spec_from_file_location("jobroom_1332", p)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+        finally:
+            sys.path.remove(d)
+
+    def _write(self, name, text):
+        import tempfile
+        d = getattr(self, "_tmp", None) or tempfile.mkdtemp(prefix="plan-1332-")
+        self._tmp = d
+        p = os.path.join(d, name)
+        with io.open(p, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        return p
+
+    def _plan(self, periods=True, today="2026-11-15"):
+        mod = self._mod()
+        rows, skipped = mod.load_rows(self._write("job-pipeline.md",
+                                                  self.LEDGER))
+        per = mod.parse_periods(self.PERIODS) if periods else None
+        return mod.build_plan(rows, {}, skipped, per, today)
+
+    @staticmethod
+    def _ids(plan, bucket):
+        return sorted(i["id"] for i in plan[bucket])
+
+    def test_a_result_already_entered_leaves_to_update_and_is_listed(self):
+        plan = self._plan(periods=False)
+        self.assertEqual(self._ids(plan, "result_recorded"), ["a:2"])
+        self.assertNotIn("a:2", self._ids(plan, "to_update"))
+        # Positive contingent: the plain refusal on the same output stays due.
+        self.assertIn("a:1", self._ids(plan, "to_update"))
+        self.assertEqual(plan["counts"]["result_recorded"], 1)
+
+    def test_a_result_entered_BEFORE_the_refusal_is_not_this_answer(self):
+        """`JR:result` predating the refusal cannot describe it: the row stays
+        to do, and carries the date that did not count."""
+        plan = self._plan(periods=False)
+        due = {i["id"]: i for i in plan["to_update"]}
+        self.assertIn("a:4", due)
+        self.assertEqual(due["a:4"].get("result_recorded_on"), "2026-11-04")
+
+    def test_a_refusal_in_a_transmitted_period_is_frozen_not_proposed(self):
+        plan = self._plan()
+        self.assertEqual(self._ids(plan, "frozen"), ["a:3"])
+        self.assertEqual(plan["frozen"][0]["periode"], "Octobre 2026")
+        self.assertNotIn("a:3", self._ids(plan, "to_update"))
+        # Positive contingent: November is still open, so its refusal is due.
+        due = {i["id"]: i for i in plan["to_update"]}
+        self.assertIn("a:1", due)
+        self.assertIs(due["a:1"]["periode_transmise"], False)
+
+    def test_without_the_listing_the_gate_says_it_was_NOT_consulted(self):
+        """An absent verdict is not a pass: the October row stays in
+        `to_update`, but tagged «not established», never «editable»."""
+        plan = self._plan(periods=False)
+        self.assertFalse(plan["periodes"]["consulte"])
+        self.assertEqual(plan["frozen"], [])
+        due = {i["id"]: i for i in plan["to_update"]}
+        self.assertIn("a:3", due)
+        self.assertIsNone(due["a:3"]["periode_transmise"])
+
+    def test_the_command_says_the_gate_was_skipped_and_refuses_a_bad_listing(self):
+        import subprocess
+        p = os.path.join(self._root(), *self.SCRIPT)
+        led = self._write("job-pipeline.md", self.LEDGER)
+        st = os.path.join(self._tmp, "state.json")
+        base = [sys.executable, p, "--file", led, "--state", st, "plan"]
+        r = subprocess.run(base, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("gate NOT consulted", r.stdout)
+        ok = subprocess.run(base + ["--jobroom-text",
+                                    self._write("per.txt", self.PERIODS)],
+                            capture_output=True, text=True)
+        self.assertEqual(ok.returncode, 0, ok.stderr)
+        self.assertIn("TRANSMITTED period (1)", ok.stdout)
+        self.assertNotIn("gate NOT consulted", ok.stdout)
+        bad = subprocess.run(base + ["--jobroom-text",
+                                     self._write("bad.txt", "junk\n")],
+                             capture_output=True, text=True)
+        self.assertEqual(bad.returncode, 2)
+
+    def test_the_result_marker_does_not_read_as_a_declaration(self):
+        """`JR:result <date>` alone must not make a row «declared»: the
+        declaration regex needs a digit right after the colon."""
+        mod = self._mod()
+        row = mod._ledger_table.annotate(
+            {"statut": "rejected 2026-11-05", "note": "JR:result 2026-11-07"})
+        self.assertIsNone(row["jr_declared"])
+        self.assertEqual(row["jr_result"], "2026-11-07")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

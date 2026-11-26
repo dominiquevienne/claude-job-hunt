@@ -168,6 +168,27 @@ the declaration (`JR:2026-08-18`), and comparing the two *is* the test. A row
 whose refusal is later than its declaration still reads *En suspens* in
 job-room.
 
+**Two refusals leave that list, and both are listed, never hidden** (issue
+#1332 — on a real ledger it held 56 rows and none of them was actionable):
+
+- **`result already entered`** — the note carries
+  `` `JR:result YYYY-MM-DD` ``, the day the *Réponse négative* was entered in
+  job-room. Write it in the same note as `JR:<date>` **when you enter the
+  answer**; without it a corrected row satisfies «refused after declared»
+  forever and the list only grows. A `JR:result` dated *before* the refusal
+  cannot be that answer, so the row stays to do and says so.
+- **`refused in a TRANSMITTED period`** — the row is declared in a period
+  job-room has already transmitted, which nobody can edit. This needs the
+  period listing, read exactly as `prefill` reads it:
+
+```bash
+python3 "<…>/jobroom_sync.py" plan --jobroom-text listing.txt
+```
+
+**Without `--jobroom-text` the gate is not consulted, and the output says so**
+— it does not read as «no period is transmitted». A listing that carries no
+readable period is refused with exit `2`, as in `periods` and `prefill`.
+
 `mark-synced` records when the period was last brought up to date:
 
 ```bash
