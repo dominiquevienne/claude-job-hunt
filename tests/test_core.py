@@ -63710,7 +63710,7 @@ class CareersMuReadsOnePageStatesItsCountAndNeverAsksForAPerson(unittest.TestCas
                     mock.patch.object(self.m, "robots_allowed",
                                       return_value={"allowed": True, "reason": "open"}), \
                     mock.patch.object(self.m.urllib.request, "urlopen",
-                                      side_effect=lambda *a, **k: sent.append(a)):
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
                 self.m.get(url)
             self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
             self.assertEqual(sent, [], url)
