@@ -30,8 +30,8 @@ description («Snarest, etter avtale»), `locations[]` (city, country, coordinat
 workTasks, requirements, clientInformation} whose long texts are `$<id>` references to `T`
 chunks of the same flight (Markdown). No JSON-LD, no salary field. **`owningCm` {employeeRef,
 name, email} is on every advert — the consultant manager — and is never emitted; the texts are
-scrubbed of e-mail addresses and Norwegian telephone numbers; `contacts_withheld` on every
-record; the application form (`/auth/`, refused in writing anyway) is never touched.**
+scrubbed of e-mail addresses and Norwegian telephone numbers; `contacts_withheld` (with its witness
+`withheld_fields`) when a contact actually left the record; the application form (`/auth/`, refused in writing anyway) is never touched.**
 
 Other Academic Work fronts (`.se`, `.fi`, `.dk`, `.de`, `.ch`) are the same stack under another
 tenant; `BOARDS` is the shape, each with its own `adapter` issue first — only `no` is measured.
@@ -55,6 +55,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARDS = {
     "no": {"host": "www.academicwork.no", "list": "/ledige-stillinger", "prefix": "/ledige-stillinger/j/", "key": "academicwork-no", "country": "NO", "lang": "nb"},
@@ -229,7 +230,7 @@ def record(ad, b, url=None):
     oid = ad.get("shortAdvertId")
     locs = [l for l in (ad.get("locations") or []) if isinstance(l, dict)]
     jt = ad.get("jobType") or {}
-    return {
+    _emis = {
         "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{oid}", "id": oid, "advert_id": ad.get("advertId"),
         "url": ad.get("absoluteUrl") or url or (f"https://{b['host']}{ad['url']}" if ad.get("url") else None),
         "title": (ad.get("advertTitle") or "").strip() or None,
@@ -250,8 +251,11 @@ def record(ad, b, url=None):
         "external_application_url": ad.get("externalApplicationUrl") or None,   # the client's own posting, when the site names it — never followed
         "about_the_job": sec("yourNewWorkplace"), "tasks": sec("workTasks"), "requirements": sec("requirements"), "about_the_company": sec("clientInformation"),
         # `owningCm` — the consultant manager's employee reference, name and e-mail — is on every advert and is never emitted
-        "contacts_withheld": True,
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(ad, {"consultant:email": [("owningCm", "email")], "consultant:name": [("owningCm", "name")]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def sitemap_rows(b):

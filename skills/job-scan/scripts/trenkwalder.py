@@ -28,7 +28,7 @@ postings are common, «Rakúsko»), `jobInfo` (`hoursPerWeek`, `workSchedule`, `
 (company information, description, requirements, benefits — HTML, scrubbed). **`recruiter`
 — name, e-mail, mobile, photo, quote — is never emitted; the `applicationUrl` is a form,
 never touched; the client employer is described and never named (`account.logoShow` false,
-«No permission for account logo publishing»); `contacts_withheld` on every record.**
+«No permission for account logo publishing»); `contacts_withheld` (with its witness `withheld_fields`) when a contact actually left the record.**
 
 Measured 2026-09-14 03:3x UTC by the declared client, the guard on the exact path, ten seconds
 apart: `/jobs` 620 647 B, 30 hits, `nbHits` 32; `/sitemap-jobs` 6 694 B, 32 rows with lastmod
@@ -49,6 +49,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARDS = {"sk": {"host": "sk.trenkwalder.com", "country": "SK", "lang": "sk", "key": "trenkwalder-sk"}}
 DEFAULT = "sk"
@@ -167,7 +168,7 @@ def record(h, b):
     smin = ji.get("salaryMin") if publish else None
     smax = ji.get("salaryMax") if publish else None
     unit = nat(ji.get("salaryPeriod")) if publish else None
-    return {
+    _emis = {
         "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{oid}", "id": oid,
         "url": web.get("jobUrl") or f"https://{b['host']}/jobs/{oid}",
         "title": (jo.get("title") or "").strip() or None, "subtitle": (jo.get("subtitle") or "").strip() or None,
@@ -189,8 +190,11 @@ def record(h, b):
         "requirements": scrub(text(jc.get("jobRequirements") or "")),
         "benefits": scrub(text(jc.get("compensationBenefits") or "")),
         # `recruiter` — name, e-mail, mobile, photo, quote — is on every record and is never emitted; `applicationUrl` is a form, never touched
-        "contacts_withheld": True,
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(h, {"consultant:email": [("recruiter", "email")], "consultant:phone": [("recruiter", "phone"), ("recruiter", "mobilePhone")], "consultant:name": [("recruiter", "firstName"), ("recruiter", "lastName"), ("recruiter", "name")]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def hits_of(body):

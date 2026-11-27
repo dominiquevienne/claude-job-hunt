@@ -208,6 +208,55 @@ def taken(record, markers=MARKERS):
     return sorted(found)
 
 
+# **WHAT A `scrub` CANNOT MARK, READ ON THE SOURCE — #1321.** Eight adapters drop a
+# STRUCTURED contact — a consultant object, a `ContactPoint`, an application address in its
+# own field — that never reaches a text, so `taken()` cannot see it. For them the constant
+# `contacts_withheld: True` was TRUE on most records; reading the markers alone would have
+# silenced it, which is the silent direction. `present()` names the field when the SOURCE
+# filled it, and stays silent when it did not, so the declaration follows the document.
+_SENTINELS = frozenset({"undefined", "null", "none", "nan"})
+
+
+def filled(v):
+    """A POSITIVE floor: a value is filled only if it passes, never because it misses a list.
+
+    A string needs a letter or a digit, and is refused when it is a flight-data reference
+    (`$undefined`, `$3e`) or a literal sentinel; a number or a `True` counts; a container
+    counts when one of its members does.
+    """
+    if v is None or v is False:
+        return False
+    if isinstance(v, str):
+        t = v.strip()
+        return (any(c.isalnum() for c in t) and not t.startswith("$")
+                and t.lower() not in _SENTINELS)
+    if isinstance(v, (int, float)):
+        return True
+    if isinstance(v, dict):
+        return any(filled(x) for x in v.values())
+    if isinstance(v, (list, tuple)):
+        return any(filled(x) for x in v)
+    return False
+
+
+def present(source, spec):
+    """The names of `spec` — `{witness name: [path, ...]}` — whose value `source` filled.
+
+    A path is a tuple of keys; a list met on the way is walked member by member, so
+    `("Locations", "Address", "Line1")` reaches every location. Returns a sorted list.
+    """
+    def reach(v, path):
+        if not path:
+            return filled(v)
+        if isinstance(v, (list, tuple)):
+            return any(reach(x, path) for x in v)
+        if isinstance(v, dict):
+            return reach(v.get(path[0]), path[1:])
+        return False
+
+    return sorted(n for n, paths in spec.items() if any(reach(source, tuple(p)) for p in paths))
+
+
 def withheld_a_contact(names, reached_a_person=False):
     """Did something that reaches a person leave this record?
 

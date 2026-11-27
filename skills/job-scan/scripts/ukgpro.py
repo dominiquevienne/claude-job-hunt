@@ -37,7 +37,7 @@ list; the request body and the answer's shape (`opportunities`, `locations`,
 WITHHELD: `SupervisorName` (the hiring manager, a person); the premises'
 street (`Address.Line1/Line2`), postal code and coordinates; the description
 scrubbed of e-mail addresses and telephone numbers; the application
-(`QuickApply`, an account) never touched; `contacts_withheld` on every record.
+(`QuickApply`, an account) never touched; `contacts_withheld` (with its witness `withheld_fields`) when a contact actually left the record.
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -56,6 +56,7 @@ from _iso3 import alpha2
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD = "ukgpro"
 HOSTS = ("recruiting.ultipro.com", "recruiting2.ultipro.com")
@@ -184,11 +185,24 @@ def place_of(loc):
             "region": st.get("Name") or st.get("Code"), "country": code, "country_name": co.get("Name")}
 
 
+HELD = {"supervisor:name": [("SupervisorName",)], "premises:street": [("Locations", "Address", "Line1"), ("Locations", "Address", "Line2")], "premises:coordinates": [("Locations", "Coordinates")]}   # what the source carries that no `scrub` marks — never emitted, named when filled (#1321)
+
+
+def _declare(rec, source):
+    """The ONE site that declares what left `rec`: the markers its `scrub` wrote, and the
+    structured fields `source` filled and this adapter never emits (#1321)."""
+    rec.pop("contacts_withheld", None)
+    rec["withheld_fields"] = sorted(set(taken(rec)) | set(present(source, HELD))) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
+    return rec
+
+
 def row(o, host, code, guid):
     locs = [place_of(l) for l in (o.get("Locations") or []) if isinstance(l, dict)]
     first = locs[0] if locs else {}
     oid = o.get("Id")
-    return {
+    _emis = {
         "source": BOARD, "tenant": f"{code}/{guid}", "ledger_id": f"{BOARD}:{code}:{oid}", "id": oid,
         "url": f"https://{host}/{code}/JobBoard/{guid}/OpportunityDetail?opportunityId={oid}",
         "title": o.get("Title"), "requisition": o.get("RequisitionNumber"), "category": o.get("JobCategoryName"),
@@ -196,8 +210,8 @@ def row(o, host, code, guid):
         "place": first.get("city"), "region": first.get("region"), "country": first.get("country"),
         "locations": locs, "posted": o.get("PostedDate"),
         "summary": scrub(text(o.get("BriefDescription"))),
-        "contacts_withheld": True,
     }
+    return _declare(_emis, o)
 
 
 def board_page(host, code, guid):
@@ -321,6 +335,7 @@ def cmd_ad(a):
         # SupervisorName — the hiring manager, a person — is never emitted, nor the street, the postal code or the coordinates
         "equal_opportunity": scrub(text(o.get("EqualOpportunityEmployerDescription"))),
     })
+    r = _declare(r, o)   # the detail adds scrubbed text AFTER row() judged: judged again, at the one site
     print(json.dumps(r, ensure_ascii=False))
 
 

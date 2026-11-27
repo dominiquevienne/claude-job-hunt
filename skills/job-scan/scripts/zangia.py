@@ -91,6 +91,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD, COUNTRY = "zangia", "MN"
 HOST = "www.zangia.mn"
@@ -272,10 +273,23 @@ def criteria(rec):
     return held, unknown
 
 
+HELD = {"recruiter:phone": [("contact",)], "coordinates": [("lat",), ("lng",)]}   # what the source carries that no `scrub` marks — never emitted, named when filled (#1321)
+
+
+def _declare(rec, source):
+    """The ONE site that declares what left `rec`: the markers its `scrub` wrote, and the
+    structured fields `source` filled and this adapter never emits (#1321)."""
+    rec.pop("contacts_withheld", None)
+    rec["withheld_fields"] = sorted(set(taken(rec)) | set(present(source, HELD))) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
+    return rec
+
+
 def row(rec):
     code = rec.get("code")
     held, unknown = criteria(rec)
-    return {
+    _emis = {
         "source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{code}", "id": code,
         "url": f"{SITE}/job/_{code}",
         "title": scrub(rec.get("title")), "company": scrub(rec.get("company_name")),
@@ -294,8 +308,8 @@ def row(rec):
         "criteria_withheld": held, "criteria_unknown": unknown,
         # The recruiter's telephone is in `contact` on 84 rows of 90, and the coordinates are in `lat`/`lng`
         # on all of them. Neither is scrubbed into a placeholder: neither is read at all.
-        "contacts_withheld": True,
     }
+    return _declare(_emis, rec)
 
 
 def envelope(body, url):
@@ -424,6 +438,7 @@ def cmd_ad(a):
     rec["archived"] = bool(d.get("isArchive"))
     parts = [text(d.get(k)) for k in ("description", "requirements", "additional")]
     rec["description"] = (scrub("\n\n".join(p for p in parts if p)) or "")[:20000] or None
+    rec = _declare(rec, d)   # the detail adds scrubbed text AFTER row() judged: judged again, at the one site
     print(json.dumps(rec, ensure_ascii=False))
 
 
