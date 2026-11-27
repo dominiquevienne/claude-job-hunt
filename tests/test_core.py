@@ -64068,5 +64068,98 @@ class CareersGyReadsThePublicCollectionOnTheApiHostAndCountsWhatItsOwnDateCloses
             self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
             self.assertEqual(sent, [], url)
 
+
+class AStructuredContactNoScrubMarksIsNamedWhenTheSourceFilledIt(unittest.TestCase):
+    """**#1321, la tranche des huit.** Ces adaptateurs retirent un contact STRUCTURÉ — un
+    objet consultant, un `ContactPoint`, une adresse de candidature dans son propre champ —
+    qui n'atteint jamais un texte, donc `taken()` ne peut pas le voir. Leur constante
+    `contacts_withheld: True` était VRAIE sur la plupart des records : la lire sur les seuls
+    marqueurs l'aurait fait taire, la direction silencieuse.
+
+    **Chaque cas se joue dans les DEUX sens** : la source porte le champ → déclaré et nommé ;
+    elle ne le porte pas, et aucun texte n'est marqué → ni témoin ni déclaration. Sans le
+    second sens, une constante revenue passerait. Avant cette classe, `present()` vidé ne
+    rougissait que trois tests, par `KeyError`, sur trois des huit fichiers.
+    """
+
+    @staticmethod
+    def _mod(nom):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("_t1321_" + nom, os.path.join(SCRIPTS, nom + ".py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def _both(self, avec, sans, nom_attendu):
+        self.assertIn("withheld_fields", avec)
+        self.assertIn(nom_attendu, avec["withheld_fields"] or [])
+        self.assertIs(avec.get("contacts_withheld"), True)
+        self.assertIsNone(sans.get("withheld_fields"))
+        self.assertNotIn("contacts_withheld", sans)
+
+    def test_the_floor_is_positive(self):
+        from _withheld import filled, present
+        for v in ("$undefined", "$3e", "null", "None", "  ", "", None, False, [], {}, ["", None]):
+            self.assertFalse(filled(v), repr(v))
+        for v in ("a@b.example", "99112233", 0, 38.17, True, [None, "x"], {"k": "v"}):
+            self.assertTrue(filled(v), repr(v))
+        src = {"L": [{"A": {"x": None}}, {"A": {"x": "16365 Hwy"}}]}
+        self.assertEqual(present(src, {"s": [("L", "A", "x")], "t": [("L", "B")]}), ["s"])
+
+    def test_academicwork(self):
+        m = self._mod("academicwork")
+        b = {"key": "academicwork-no", "country": "NO", "host": "www.academicwork.no", "lang": "no"}
+        ad = {"shortAdvertId": "X1", "advertTitle": "T", "advertText": {}, "summary": {}}
+        avec = m.record(dict(ad, owningCm={"employeeRef": 1, "name": "Kari", "email": "kari@x.example"}), b)
+        self._both(avec, m.record(dict(ad), b), "consultant:email")
+
+    def test_empleos_hn(self):
+        m = self._mod("empleos_hn")
+        f = lambda l, i: '<div class="field__label">%s</div> <div class="field__item">%s</div> </div>' % (l, i)
+        desc = f("Descripción", "<p>Requisitos.</p>")
+        avec = m.record("<html>" + desc + f("Correo para aplicar:", '<a class="__cf_email__">[email&#160;protected]</a>') + "</html>", "s", "u")
+        self._both(avec, m.record("<html>" + desc + "</html>", "s", "u"), "application_email")
+
+    def test_sparkhire(self):
+        m = self._mod("sparkhire")
+        p = {"uid": "1", "name": "T", "location": {}}
+        avec = m.record(dict(p, email="q.1@applynow.example", email_alias=None), "s", "u")
+        self._both(avec, m.record(dict(p, email=None, email_alias=None), "s", "u"), "application:email")
+
+    def test_staffpoint(self):
+        m = self._mod("staffpoint")
+        jp = {"@context": "https://schema.org/", "@type": "JobPosting", "title": "T", "description": "Hyvä työ."}
+        page = lambda o: '<html><script type="application/ld+json">' + json.dumps(o) + '</script></html>'
+        avec = m.record(page(dict(jp, applicationContact={"@type": "ContactPoint", "email": "m@x.example"})), "t", "u")
+        self._both(avec, m.record(page(jp), "t", "u"), "consultant:email")
+
+    def test_trenkwalder(self):
+        m = self._mod("trenkwalder")
+        b = {"key": "trenkwalder-sk", "country": "SK", "host": "sk.trenkwalder.com", "lang": "sk"}
+        h = {"objectID": "o1", "jobObject": {"title": "T"}}
+        avec = m.record(dict(h, recruiter={"email": "", "firstName": "", "mobilePhone": "+421902942408"}), b)
+        self._both(avec, m.record(dict(h, recruiter={"email": "", "phone": None}), b), "consultant:phone")
+
+    def test_ukgpro(self):
+        m = self._mod("ukgpro")
+        o = {"Id": "i1", "Title": "T", "Locations": [{"Address": {"Line1": None, "City": "X"}}]}
+        avec = m.row(dict(o, SupervisorName="Jane"), "recruiting.ultipro.com", "C", "g")
+        self.assertEqual(avec["withheld_fields"], ["supervisor:name"])   # a NAME is not a channel
+        self.assertNotIn("contacts_withheld", avec)
+        avec = m.row(dict(o, Locations=[{"Address": {"Line1": "16365 Hwy"}}]), "recruiting.ultipro.com", "C", "g")
+        self._both(avec, m.row(dict(o), "recruiting.ultipro.com", "C", "g"), "premises:street")
+
+    def test_zangia(self):
+        m = self._mod("zangia")
+        rec = {"code": "c1", "title": "T"}
+        self._both(m.row(dict(rec, contact="99112233")), m.row(dict(rec, contact="")), "recruiter:phone")
+
+    def test_talentlyft(self):
+        m = self._mod("talentlyft")
+        p = lambda street: {"title": "T", "jobLocation": {"address": {"streetAddress": street, "addressCountry": "HR"}}}
+        avec = m.posting_row(p("Ilica 1"), "h.talentlyft.com", "s", "u", None, None)
+        sans = m.posting_row(p("(Remote)"), "h.talentlyft.com", "s", "u", None, None)
+        self._both(avec, sans, "address:street")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
