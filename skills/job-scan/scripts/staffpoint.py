@@ -57,6 +57,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 HOST = "www.staffpoint.fi"
 LIST = f"https://{HOST}/tyopaikat"
@@ -231,7 +232,7 @@ def record(body, tail, url):
     org = one(jp.get("hiringOrganization")).get("name") or None
     ident = jp.get("identifier") if isinstance(jp.get("identifier"), str) else one(jp.get("identifier")).get("value")
     sid = ident or tail   # the site's id (the list's `id`) — the address tail is another code, kept beside it
-    return {
+    _emis = {
         "source": "staffpoint", "country": "FI", "ledger_id": f"staffpoint:{sid}", "id": sid, "url": url, "url_id": tail,
         "title": htmlmod.unescape(jp.get("title") or jp.get("name") or "").strip() or None,
         "company": org, "employer_is_the_agency": org in (None, "StaffPoint Oy", "StaffPoint"), "agency": "StaffPoint",
@@ -243,8 +244,12 @@ def record(body, tail, url):
         "posted": (jp.get("datePosted") or "")[:10] or None, "valid_through": (jp.get("validThrough") or "")[:10] or None,
         "description": scrub(htmlmod.unescape(jp.get("description") or "").strip()),
         # `applicationContact.email` — a named consultant on most ads — is never emitted
-        "contacts_withheld": True, "language": "fi",
+        "language": "fi",
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(jp, {"consultant:email": [("applicationContact", "email")], "consultant:telephone": [("applicationContact", "telephone")]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):

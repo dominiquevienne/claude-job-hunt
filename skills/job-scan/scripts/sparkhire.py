@@ -31,7 +31,7 @@ anywhere: the API's list is the board, and `jobs` prints its length as the count
 
 **WITHHELD:** `email` and `email_alias` (the application address) never emitted; the details are
 scrubbed of e-mail addresses and telephone numbers; the referral reward and the LinkedIn posting
-id not emitted; `contacts_withheld` on every record; the application (a form on the hosted page)
+id not emitted; `contacts_withheld` (with its witness `withheld_fields`) when a contact actually left the record; the application (a form on the hosted page)
 never touched.
 
 Measured 2026-09-16 22:26–22:28 UTC by the declared client, the guard on the exact path: both
@@ -55,6 +55,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 PAGE_HOST = "www.comeet.com"
 API_HOST = "www.comeet.co"
@@ -173,7 +174,7 @@ def record(p, slug, uid):
     for d in p.get("details") or []:
         if d.get("name") and d.get("value"):
             details[d["name"]] = scrub(text(d["value"]))
-    return {
+    _emis = {
         "source": "sparkhire", "tenant": f"{slug}/{uid}", "country": loc.get("country") or None,
         "ledger_id": f"sparkhire:{uid}:{p.get('uid')}", "id": p.get("uid"),
         "url": p.get("url_comeet_hosted_page") or p.get("url_active_page") or None, "employer_url": p.get("url_active_page") or None,   # the hosted page is per position; the employer's page may be one careers URL for all (CommIT)
@@ -182,8 +183,11 @@ def record(p, slug, uid):
         "employment_type": p.get("employment_type") or None, "experience_level": p.get("experience_level") or None, "workplace_type": p.get("workplace_type") or None,
         "updated": (p.get("time_updated") or "")[:10] or None,
         "details": details or None,
-        "contacts_withheld": True,
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(p, {"application:email": [("email",), ("email_alias",)]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

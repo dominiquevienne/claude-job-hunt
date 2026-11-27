@@ -28,7 +28,7 @@ addressRegion, postalCode, addressCountry, description as escaped HTML).
 
 WITHHELD: the postal code and the street line of the address (the
 locality, region and country kept); e-mail addresses and telephone
-numbers in the description; `contacts_withheld` on every record.
+numbers in the description; `contacts_withheld` (with its witness `withheld_fields`) when a contact actually left the record.
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -46,6 +46,7 @@ from _ldjson import postings as ld_postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD = "talentlyft"
 DOMAIN = "talentlyft.com"
@@ -148,7 +149,8 @@ def posting_row(p, host, slug, url, lastmod, stamp):
     cc = addr.get("addressCountry")
     country = (cc.strip().upper() if isinstance(cc, str) and len(cc.strip()) == 2 else None) or stamp
     street = addr.get("streetAddress") or ""
-    return {
+    _street = re.sub(r"(?i)\(?\s*remote\s*\)?", "", street).strip()   # «(Remote)» alone is no address to reach
+    _emis = {
         "source": BOARD, "tenant": host, "ledger_id": f"{BOARD}:{host}:{slug}", "id": slug, "url": url,
         "title": p.get("title"), "company": org.get("name"),
         "place": addr.get("addressLocality") or None, "region": addr.get("addressRegion") or None, "country": country,
@@ -156,8 +158,11 @@ def posting_row(p, host, slug, url, lastmod, stamp):
         "employment_type": p.get("employmentType"), "posted": p.get("datePosted"), "closes": p.get("validThrough"), "updated": lastmod,
         "description": (scrub(text(p.get("description"))) or "")[:20000] or None,
         # streetAddress and postalCode are not emitted
-        "contacts_withheld": True,
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present({"streetAddress": _street}, {"address:street": [("streetAddress",)]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def read_job(host, slug, url, lastmod, stamp):

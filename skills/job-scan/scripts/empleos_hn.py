@@ -23,7 +23,7 @@ experiencia», «Número de Vacantes», «Modalidad», «Género», «Vehículo 
 «Departamento», «Tipo de Contrato», «Fecha max. de Postulación», «Descripción» (HTML), and
 «Correo para aplicar:» — the employer's application address, Cloudflare-obfuscated on the page.
 **The application address is never emitted, not even obfuscated; the description is scrubbed of
-e-mail addresses and Honduran telephone numbers; `contacts_withheld` on every record.**
+e-mail addresses and Honduran telephone numbers; `contacts_withheld` (with its witness `withheld_fields`) when a contact actually left the record.**
 
 Measured 2026-09-16 06:25–06:27 UTC by the declared client, the guard on the exact path: robots 200
 (2 027 B); `/` 83 125 B, 6 cards; `/busqueda-avanzada` 65 830 B, 16 cards, pager to 19; `?page=3`
@@ -45,6 +45,7 @@ from _ldjson import one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 HOST = "empleos.hn"
 LIST = f"https://{HOST}/busqueda-avanzada"
@@ -205,7 +206,7 @@ def record(body, slug, url):
     sal = one(jp.get("baseSalary"))
     val = one(sal.get("value")) if sal else {}
     cat = text(fields.get("Categoría", ""))
-    return {
+    _emis = {
         "source": "empleos_hn", "country": "HN", "ledger_id": f"empleos_hn:{slug}", "id": slug, "url": url,
         "title": htmlmod.unescape(jp.get("title") or "").strip() or None,
         "company": (org.get("name") or "").strip() or None, "company_id": org.get("@id") or None,
@@ -216,8 +217,12 @@ def record(body, slug, url):
         "experience": text(fields.get("Nivel de experiencia", "")), "openings": text(fields.get("Número de Vacantes", "")), "modality": text(fields.get("Modalidad", "")),
         "gender": text(fields.get("Género", "")), "vehicle": text(fields.get("Vehículo o Licencia", "")), "category": cat,
         "description": scrub(text(fields.get("Descripción", ""))),
-        "contacts_withheld": True, "language": "es",
+        "language": "es",
     }
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(fields, {"application_email": [("Correo para aplicar:",), ("Correo para aplicar",)]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):
