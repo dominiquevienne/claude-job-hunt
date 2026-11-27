@@ -48,7 +48,7 @@ postback into an account — never touched. The tenant's name is the page's
 `<title>` («… - EROSKI - ePreselec») when the page carries one.
 
 WITHHELD: the sections scrubbed of e-mail addresses and telephone
-numbers; `contacts_withheld` on every record; the site states no country
+numbers; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321); the site states no country
 — the family is Spanish, `--country-code` stamps what the user names.
 """
 
@@ -66,6 +66,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA, browser_fallback
+from _withheld import taken, withheld_a_contact
 
 BOARD, DOMAIN = "epreselec", "epreselec.com"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -275,8 +276,12 @@ def cmd_ad(a):
         "vacancies": int(fields["lNumVacantes"]) if fields.get("lNumVacantes", "").isdigit() else fields.get("lNumVacantes"),
         "description": (sections.get("Funciones") or sections.get("Descripción") or "")[:20000] or None,
         "sections": {k: (v or "")[:8000] for k, v in sections.items() if v} or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 

@@ -37,7 +37,7 @@ Measured 2026-09-19 14:1x–14:3x UTC: Hogsalt (`HHospitality`, GP-1, 29 locatio
 `Harri-Restaurant`, `The-Restaurant-Group`, `crg-jobs`, `radissoncareersuk`, `careers_uk` — 0 / 0.
 
 **WITHHELD:** the descriptions scrubbed of e-mail addresses and telephone numbers; brand media and
-image ids not emitted; `contacts_withheld` on every record; the application (Harri's own form and
+image ids not emitted; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321); the application (Harri's own form and
 «Multiple apply») never touched.
 """
 
@@ -56,6 +56,7 @@ from _ldjson import one as ld_one, postings as ld_postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 PAGE_HOST = "harri.com"
 API_HOST = "gateway.harri.com"
@@ -257,8 +258,12 @@ def cmd_ad(a):
         "posted": (p.get("datePosted") or "") or None, "employment_type": p.get("employmentType") or None,
         "salary": {"currency": sal.get("currency"), "min": val.get("minValue"), "max": val.get("maxValue"), "unit": val.get("unitText")} if sal else None,
         "description": scrub(text(p.get("description"))),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    out["withheld_fields"] = taken(out) or None
+    if withheld_a_contact(out["withheld_fields"] or ()):
+        out["contacts_withheld"] = True
     print(json.dumps(out, ensure_ascii=False))
 
 

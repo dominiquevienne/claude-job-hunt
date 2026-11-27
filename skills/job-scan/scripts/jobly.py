@@ -43,7 +43,7 @@ term, «Julkaistu 13.09.2026»). **The body carries an AI summary («Tämä tiiv
 tekoälyn avulla») that names the recruitment consultant with telephone and e-mail, and a
 «Lisätietoja työpaikasta» block that does the same: the text is emitted scrubbed of e-mail
 addresses (including Cloudflare's «[email protected]» placeholder) and Finnish telephone
-numbers; `contacts_withheld` on every record.** Observed on the day: one node whose slug and
+numbers; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).** Observed on the day: one node whose slug and
 AI summary describe a waiter's post and whose body describes a ski-shop post — the node is
 the site's, the record carries its title and its body as served.
 
@@ -64,6 +64,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARDS = {
     "jobly": {"host": "www.jobly.fi", "country": "FI", "lang": "fi", "list": "/tyopaikat", "sitemap": "/sitemap.xml",
@@ -341,7 +342,7 @@ def cmd_ad(a):
     unit = (sal.get("unitText") or "").strip().lower() or None
     pub = b["published"].search(text(body))
     et = ld.get("employmentType")
-    print(json.dumps({
+    _emis = {
         "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": url,
         "title": htmlmod.unescape(ld.get("title") or "").strip() or None,
         "employer": htmlmod.unescape(((ld.get("hiringOrganization") or {}).get("name")) or "").strip() or None,
@@ -357,8 +358,14 @@ def cmd_ad(a):
         "direct_apply": ld.get("directApply"),
         "description": scrub(text(bd.group(1))) if bd else scrub(text(htmlmod.unescape(ld.get("description") or ""))),
         # the «Hae paikkaa» link is /node/<id>/apply-external — refused in writing, never followed; the recruiters' addresses and numbers in the text are scrubbed
-        "contacts_withheld": True, "language": b["lang"],
-    }, ensure_ascii=False))
+        "language": b["lang"],
+    }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    print(json.dumps(_emis, ensure_ascii=False))
     note(f"{url}: read; the text is scrubbed of e-mail addresses and telephone numbers; the apply link is never followed.")
 
 

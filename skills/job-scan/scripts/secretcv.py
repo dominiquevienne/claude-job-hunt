@@ -39,7 +39,7 @@ only with one) — and the page's labelled table («İlan Tarihi» 10-09-2026, �
 «Sektör», «Eğitim Seviyesi», «Şehirler», «Yabancı Uyruklu Çalışabilir»); the description in
 the `content-job` card («İş Açıklaması»), ended before the site's own «İlana başvuru
 yapabilmeniz için…» boilerplate; **scrubbed of Turkish telephone numbers and e-mail
-addresses; `contacts_withheld` on every record; the application is a login and is never
+addresses; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321); the application is a login and is never
 touched.**
 
 Measured 2026-09-14 02:36–02:38 UTC by the declared client, the guard on the exact path:
@@ -61,6 +61,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.secretcv.com"
 LIST = f"https://{HOST}/is-ilanlari"
@@ -276,7 +277,7 @@ def cmd_ad(a):
     value = num(str(sal.get("value"))) if re.fullmatch(r"[\d.  ]+", str(sal.get("value") or "").strip()) else None
     unit = (sal.get("unitText") or "").strip().lower() or None
     posted_tb = tb.get("İlan Tarihi")
-    print(json.dumps({
+    _emis = {
         "source": "secretcv", "country": "TR", "ledger_id": f"secretcv:{m.group(1)}", "id": m.group(1), "url": url,
         "title": htmlmod.unescape(ld.get("title") or ld.get("name") or "").strip() or None,
         "employer": htmlmod.unescape(org.get("name") or "").strip() or None, "employer_url": org.get("url") or None,
@@ -291,8 +292,14 @@ def cmd_ad(a):
         "qualifications": scrub(htmlmod.unescape(ld.get("qualifications") or "")) or None,
         "description": scrub(text(desc.group(1))) if desc else scrub(htmlmod.unescape(ld.get("description") or "")),
         # the «İşe Başvur» button is /giris-yap?redirect=1&ilanId=<id> — a login, never touched
-        "contacts_withheld": True, "language": "tr",
-    }, ensure_ascii=False))
+        "language": "tr",
+    }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    print(json.dumps(_emis, ensure_ascii=False))
     note(f"{url}: read; the text is scrubbed; the application is a login and is never touched.")
 
 

@@ -54,7 +54,7 @@ WITHHELD: the description is scrubbed of e-mail addresses and telephone
 numbers (the adverts end with «Applications … should be sent via e-mail to
 …» — the sentence stays, the address does not); the apply link the site
 adds («CLICK HERE TO APPLY», an external form or the site's own link) is
-never emitted; `job_tag` dropped; `contacts_withheld` on every record.
+never emitted; `job_tag` dropped; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -72,6 +72,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA, browser_fallback
+from _withheld import taken, withheld_a_contact
 
 BOARD, HOST, COUNTRY = "mabumbe", "mabumbe.com", "TZ"
 BASE = f"https://{HOST}"
@@ -204,8 +205,12 @@ def record(item, with_description=True):
         "job_type": terms(item, "job_type") if embedded else None,
         "term_ids": None if embedded else {k: item.get(k) for k in ("job_location", "job_category", "job_type") if item.get(k)},
         "description": (scrub(plain) or "")[:20000] or None if with_description else None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     return r
 
 

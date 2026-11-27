@@ -43,7 +43,7 @@ did not (#885). *The first draft of this adapter asserted that the card printed 
 half of them, and the claim was made from the two cards I had looked at.*
 
 **WITHHELD:** e-mail addresses everywhere, telephone numbers in free text at nine digits,
-`contacts_withheld` on every record. `--details` reads each advert (one request each); it is not the
+`contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321). `--details` reads each advert (one request each); it is not the
 default — 272 adverts is nine minutes at our own pace, and that is a choice.
 
 Measured 2026-09-23 17:0x–17:2x UTC by the declared client, the guard on the exact path, two reads of
@@ -67,6 +67,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.wazifaha.org"
 PAGE_SIZE = 18
@@ -262,7 +263,6 @@ def record(c, stamp, detail=None, criteria=None):
         "criteria_withheld": ["gender"] if c.get("gender_on_card") else [],
         "posted_as_written": c["age"], "posted_days_ago": days_of(c["age"]),
         "detail_read": bool(detail is not None),
-        "contacts_withheld": True,
     }
     if detail is not None:
         for key, label in (("employment_type", "contract type"), ("salary", "salary"),
@@ -271,6 +271,11 @@ def record(c, stamp, detail=None, criteria=None):
                 rec[key] = labelled(detail[label])
         # **#885: declared only when the page READ carried one** — `[]` is «read, and none».
         rec["criteria_withheld"] = sorted(set((criteria or []) + rec["criteria_withheld"]))
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    rec["withheld_fields"] = taken(rec) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     return rec
 
 

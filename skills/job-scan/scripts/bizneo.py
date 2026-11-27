@@ -49,7 +49,7 @@ prefix («ICP | Desarrollador Junior .NET»). Applying is «¡Aplica ahora!» /
 
 WITHHELD: the description scrubbed of e-mail addresses and telephone
 numbers; the logo (a signed S3 URL, 5 minutes) never emitted; the share
-links dropped; `contacts_withheld` on every record. The site states no
+links dropped; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321). The site states no
 country: the family is Spanish and the tenants' places are the only
 geography; `--country-code` stamps the rows with what the user names.
 """
@@ -68,6 +68,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, DOMAIN = "bizneo", "bizneo.com"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -272,8 +273,12 @@ def cmd_ad(a):
         "fields": {k2: v for k2, v in rows.items() if v},                 # the tenant's own labels, all of them
         "description": (scrub(text(contents[0])) if contents else None) and (scrub(text(contents[0])) or "")[:20000] or None,
         "sections": {k2: (scrub(v) or "")[:8000] for k2, v in sections.items() if v} or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 
