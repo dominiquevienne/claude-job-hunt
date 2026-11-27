@@ -29941,6 +29941,9 @@ class AHospitalityATSWhosePortalAsksTheGatewayForItsBrandThenItsJobsAndStatesThe
         self.assertEqual((r["id"], r["title"], r["company"], r["place"], r["region"], r["country"], r["employment_type"]), (2757301, "Server Assistant", "Trivoli Tavern", "Chicago", "IL", "US", ["FULL_TIME"]))
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         self.assertNotIn("hogsalt.com", r["description"])
         self.assertEqual(sent[0][0], "https://harri.com/HHILTT/job/2757301-server-assistant")
 
@@ -30927,6 +30930,9 @@ class AnATSWhoseTenantSubdomainServesAServerRenderedTableWithItsCountAndWhoseNon
         self.assertTrue(r["description"].startswith("We are inviting applications."))
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         dump = json.dumps(r)
         for hidden in ("pia.hautamaki@", "040 123 4567", "rspvt", "o=A_A"):
             self.assertNotIn(hidden, dump, hidden)
@@ -32377,6 +32383,9 @@ class ABoardWhoseListingIsWalkedToItsEmptyPageAndCheckedAgainstItsJobSitemapAndW
         self.assertTrue(r["description"].startswith("Otomotiv sektörünün en dinamik ekibi."))
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         dump = json.dumps(r)
         for hidden in ("ik@toyota", "0212 555 12 34", "logo.jpg"):
             self.assertNotIn(hidden, dump, hidden)
@@ -32778,6 +32787,9 @@ class AnATSWhoseTenantCareerSiteListsFiveCardsAPageToAnEmptyPageAndWhoseAdvertCa
         self.assertTrue(r["description"].startswith("¿Te gustaría formarte"))
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         self.assertEqual(r["sections"], {"Requisitos mínimos": "Estudios mínimos: FP Grado Superior"})
         dump = json.dumps(r)
         for hidden in ("rrhh@icp", "91 555 12 34", "twitter.com"):
@@ -32893,6 +32905,9 @@ class AnATSWhoseTenantListStatesItsCountOnOnePageAndWhoseHostServesARateChalleng
         self.assertEqual(sorted(r["sections"]), ["Descripción", "Funciones", "Requisitos", "Se ofrece"])
         self.assertIn("[e-mail withheld]", r["sections"]["Descripción"])
         self.assertIn("[telephone withheld]", r["sections"]["Descripción"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         dump = json.dumps(r)
         for hidden in ("rrhh@eroski", "943 12 34 56", "btnNext"):
             self.assertNotIn(hidden, dump, hidden)
@@ -33203,6 +33218,9 @@ class AnATSWhoseTenantPortalFillsItsListByAPostItsOwnScriptMakesTwentyAPageToAnE
         self.assertTrue(r["description"].startswith("Responsable de pipelines"))
         self.assertIn("[e-mail withheld]", r["description"])
         self.assertIn("[telephone withheld]", r["description"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["e-mail", "telephone"])
         dump = json.dumps(r)
         for hidden in ("datos@kpmg", "4316-5700", "candidates/new", "Postularse"):
             self.assertNotIn(hidden, dump, hidden)
@@ -39399,6 +39417,9 @@ class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
         self.assertNotIn("0712345678", blob)
         self.assertIn("[e-mail withheld]", recs[0]["how_to_apply"])
         self.assertIn("[telephone withheld]", recs[1]["how_to_apply"])
+        # #1321 : the declaration is READ off these marks, no longer a constant
+        self.assertTrue(recs[0]["contacts_withheld"] and "e-mail" in recs[0]["withheld_fields"])
+        self.assertTrue(recs[1]["contacts_withheld"] and "telephone" in recs[1]["withheld_fields"])
 
     def test_the_hosts_own_crawl_delay_is_what_paces_the_run(self):
         import contextlib
@@ -64160,6 +64181,47 @@ class AStructuredContactNoScrubMarksIsNamedWhenTheSourceFilledIt(unittest.TestCa
         avec = m.posting_row(p("Ilica 1"), "h.talentlyft.com", "s", "u", None, None)
         sans = m.posting_row(p("(Remote)"), "h.talentlyft.com", "s", "u", None, None)
         self._both(avec, sans, "address:street")
+
+class AConstantDeclarationNowReadOffTheScrubMarksOnACardRecord(unittest.TestCase):
+    """**#1321, the tranche of 16.** `myjobsmm` and `wazifaha` posed `contacts_withheld: True` as
+    a CONSTANT on every card record. Their `record()` scrubs the title and the employer, so the
+    declaration is now READ off the marks that scrub wrote. No fixture of either class carried a
+    contact in a card, so removing the declaration reddened only the STRUCTURAL guard; this class
+    plays each in BOTH directions on the function that emits."""
+
+    @staticmethod
+    def load(name):
+        spec = importlib.util.spec_from_file_location("_" + name + "_1321", os.path.join(SCRIPTS, name + ".py"))
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def test_myjobsmm_declares_only_what_its_scrub_took(self):
+        m = self.load("myjobsmm")
+        card = {"path": "/job/accountant-123", "title": "Accountant", "employer": "Acme Ltd",
+                "company_path": None, "place": "Yangon", "category": "Finance",
+                "employment_type": "Full-time", "age": "1 day ago", "salary": None}
+        clean = m.record(card, "MM")
+        self.assertNotIn("contacts_withheld", clean)
+        self.assertIsNone(clean["withheld_fields"])
+        dirty = m.record(dict(card, employer="Acme Ltd hr@acme.example"), "MM")
+        self.assertIn("[e-mail withheld]", dirty["employer"])
+        self.assertTrue(dirty["contacts_withheld"])
+        self.assertEqual(dirty["withheld_fields"], ["e-mail"])
+
+    def test_wazifaha_declares_only_what_its_scrub_took(self):
+        m = self.load("wazifaha")
+        card = {"id": "9", "path": "/job/9", "title": "Driver", "employer": "Acme Ltd",
+                "company_path": None, "place": "Kabul", "vacancies": 1,
+                "gender_on_card": False, "age": "1 day ago"}
+        clean = m.record(card, "AF")
+        self.assertNotIn("contacts_withheld", clean)
+        self.assertIsNone(clean["withheld_fields"])
+        dirty = m.record(dict(card, title="Driver, write to jobs@acme.example"), "AF")
+        self.assertIn("[e-mail withheld]", dirty["title"])
+        self.assertTrue(dirty["contacts_withheld"])
+        self.assertEqual(dirty["withheld_fields"], ["e-mail"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
