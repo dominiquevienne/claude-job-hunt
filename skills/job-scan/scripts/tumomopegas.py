@@ -21,7 +21,7 @@ Ciudad, Rango Salarial («Salario Negociable» or a range), Vistas, Tipo de cont
 Categorías (bold family: speciality, one per line), Descripción del puesto (HTML) — no JSON-LD
 JobPosting (only MonetaryAmount fragments). **The description is scrubbed of e-mail addresses and
 Bolivian telephone numbers; «Vistas» (the site's own counter) is not emitted; `contacts_withheld`
-on every record; the application («Postular a Empleo», a candidate account) never touched.**
+only when a marker says a contact was withheld (#1321); the application («Postular a Empleo», a candidate account) never touched.**
 
 Measured 2026-09-16 06:15–06:17 UTC by the declared client, the guard on the exact path: robots 200
 (1 048 B); `/` 156 546 B; `/todos-los-empleos/` 83 142 B, «37 Empleos», 10 cards; `?page=2` 10 more;
@@ -42,6 +42,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "tumomopegas.com"
 LIST = f"https://{HOST}/todos-los-empleos/"
@@ -192,15 +193,21 @@ def record(body, jid, url):
     dt = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", fields.get("Publicado", "") or "")
     cats = [" ".join(l.split()) for l in (text(fields.get("Categorías", "")) or "").splitlines() if l.strip()]
     salary = text(fields.get("Rango Salarial", ""))
-    return {
+    _emis = {
         "source": "tumomopegas", "country": "BO", "ledger_id": f"tumomopegas:{jid}", "id": jid, "url": url,
         "title": text(h1.group(1)), "company": text(comp.group(2)) if comp else None, "company_id": comp.group(1) if comp else None,
         "place": text(fields.get("Ciudad", "")), "salary": None if not salary or salary.lower().startswith("salario negociable") else salary, "salary_negotiable": bool(salary and salary.lower().startswith("salario negociable")),
         "contract": text(fields.get("Tipo de contrato", "")), "posted": iso(*dt.groups()) if dt else None,
         "categories": cats or None,
         "description": scrub(text(fields.get("Descripción del puesto", ""))),
-        "contacts_withheld": True, "language": "es",
+        "language": "es",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):

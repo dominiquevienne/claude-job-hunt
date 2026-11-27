@@ -39,7 +39,7 @@ reading of 2026-09-18 found two, both closed, and this issue was opened on that 
 their date and counted, never dropped in silence.
 
 **The advertisement is the PDF**: it is NAMED, never downloaded. **WITHHELD:** e-mail addresses and
-telephone numbers in a title or a department name; `contacts_withheld` on every record.
+telephone numbers in a title or a department name; `contacts_withheld` only when a marker says a contact was withheld (#1321).
 `--country-code` STAMPS and the run says so.
 
 Measured 2026-09-22 08:5x UTC by the declared client, the guard on the exact path:
@@ -61,6 +61,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "ab.gov.ag"
 PAGE = f"https://{HOST}/detail_template.php?page=media/vacancies"
@@ -185,14 +186,19 @@ def record(employer, title, doc, deadline, stamp):
     doc_url = urllib.parse.urljoin(PAGE, doc) if doc else None
     name = urllib.parse.unquote((urllib.parse.urlsplit(doc_url or "").path or "").rsplit("/", 1)[-1])
     key = slug(name) or slug(f"{employer}-{title}")
-    return {
+    _emis = {
         "source": "abgovag", "country": stamp,
         "ledger_id": f"abgovag:{key}", "id": key,
         "title": scrub(title), "employer": scrub(employer),
         "deadline": deadline,
         "document_url": doc_url, "document_downloaded": False,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

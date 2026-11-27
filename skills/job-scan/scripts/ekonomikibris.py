@@ -84,6 +84,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.ekonomikibris.com"
 LISTE = "/is-ilanlari/"
@@ -234,7 +235,7 @@ def employeur_de(titre):
 
 
 def record(ident, slug, titre, poste, corps, origine, stamp, url=None):
-    return {
+    _emis = {
         "source": "ekonomikibris", "country": stamp,
         "ledger_id": "ekonomikibris:%s" % ident, "id": ident, "slug": slug,
         "url": url or "https://%s/%s/%s/" % (HOST, slug, ident),
@@ -249,8 +250,13 @@ def record(ident, slug, titre, poste, corps, origine, stamp, url=None):
         "structured_posting": False,
         "enumerated_by": origine,
         "description": scrub(text(corps)),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def du_flux():

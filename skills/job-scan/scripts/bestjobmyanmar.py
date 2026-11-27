@@ -68,6 +68,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.bestjobmyanmar.com"
 FEED = "/find-jobs-in-myanmar?format=feed&type=rss"
@@ -199,7 +200,7 @@ def fields_of(markup):
 def record(item, f, has_gender, stamp):
     ident = id_of(item["link"])
     withheld = ["gender"] if has_gender else []
-    return {
+    _emis = {
         "source": "bestjobmyanmar", "country": stamp,
         "ledger_id": f"bestjobmyanmar:{ident}", "id": ident,
         "url": item["link"], "title": scrub(item.get("title")),
@@ -212,10 +213,15 @@ def record(item, f, has_gender, stamp):
         "posted": f.get("Date Posted"), "updated": f.get("Updated"),
         "published": item.get("pubDate"),
         "description": scrub(item.get("description")),
-        "contacts_withheld": True,
         # **Ce que l'ANNONCE portait, jamais ce que le board porte en general.**
         "criteria_withheld": withheld,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

@@ -71,6 +71,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "laos.myworld-careers.com"
 SITEMAP = "/sitemap.xml"
@@ -206,7 +207,7 @@ def record(url, lastmod, ld, stamp):
     etype = ld.get("employmentType")
     if isinstance(etype, str) and etype.strip().lower() in ("undefined", "null", ""):
         etype = None                       # « undefined » est pire qu'absent : `if x` le garde
-    return {
+    _emis = {
         "source": "myworldla", "country": stamp,
         "ledger_id": f"myworldla:{ident}", "id": ident, "url": url,
         "reference": ref,
@@ -218,8 +219,13 @@ def record(url, lastmod, ld, stamp):
         "posted": ld.get("datePosted"), "valid_through": ld.get("validThrough"),
         "lastmod": lastmod,
         "description": scrub(text(ld.get("description"))),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

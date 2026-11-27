@@ -27,7 +27,7 @@ a period, so `salary_unit_stated` is true —, currency), `locations` (place, re
 `promotionSince`, `status`, `externalLink` (the employer's own application page — emitted,
 never fetched), `description` (HTML → text) and `descriptionShort`. **The object carries no
 contact field; the text is scrubbed of e-mail addresses and Czech telephone numbers all the
-same; `contacts_withheld` on every record.**
+same; `contacts_withheld` only when a marker says a contact was withheld (#1321).**
 
 Measured 2026-09-14 02:4x UTC by the declared client, the guard on the exact path: the index
 601 B, `offers.xml` 48 488 B / 392 rows; `/nabidky` 150 886 B with no offer; the offer page
@@ -48,6 +48,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.startupjobs.cz"
 INDEX = f"https://{HOST}/sitemap_index.xml"
@@ -189,7 +190,7 @@ def record(o, oid, url):
     comp = o.get("company") or {}
     sal = o.get("salary") or {}
     locs = o.get("locations") or []
-    return {
+    _emis = {
         "source": "startupjobs", "country": "CZ", "ledger_id": f"startupjobs:{oid}", "id": str(oid), "url": url,
         "title": cs(o.get("name")),
         "employer": (comp.get("name") or "").strip() or None, "employer_slug": comp.get("slug") or None, "employer_type": comp.get("type") or None,
@@ -207,8 +208,14 @@ def record(o, oid, url):
         "external_link": o.get("externalLink") or None,   # the employer's own application page — never fetched
         "summary": scrub(cs(o.get("descriptionShort"))),
         "description": scrub(text(cs(o.get("description")))),
-        "contacts_withheld": True, "language": "cs",
+        "language": "cs",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def sitemap_rows():

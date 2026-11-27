@@ -74,6 +74,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "iscikler.com"
 API = "/api/jobs"
@@ -213,7 +214,7 @@ def record(ld, stamp):
     sal = salaire_de(ld)
     monnaie, par_defaut = monnaie_de(ld)
     echeance, sentinelle = echeance_de(ld)
-    return {
+    _emis = {
         "source": "iscikler", "country": stamp,
         "ledger_id": "iscikler:%s" % ident, "id": str(ident),
         "slug": ld.get("slug"),
@@ -239,8 +240,13 @@ def record(ld, stamp):
         "description": scrub(text(ld.get("description"))),
         "requirements": scrub(text(ld.get("requirements"))),
         "enumerated_by": "api",
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def page(n):

@@ -39,7 +39,7 @@ ministry's own site, or a `myanmarjob.gov.mm/job/view/<id>` page. **No document 
 — the record carries the address as the portal publishes it.
 
 **WITHHELD:** e-mail addresses and telephone numbers anywhere in a title or an agency name
-(«[e-mail withheld]» / «[telephone withheld]»), `contacts_withheld` on every record. The titles are
+(«[e-mail withheld]» / «[telephone withheld]»), `contacts_withheld` only when a marker says a contact was withheld (#1321). The titles are
 Burmese and the run does not translate them.
 
 `--lang` picks the portal's language (`en` → `/vacancies`, `my` → `/my/vacancies`).
@@ -67,6 +67,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "myanmar.gov.mm"
 PORTLET = "com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet"
@@ -188,7 +189,7 @@ def record(url, f, stamp):
     # folded by its digest, which is as distinct as the title itself, whatever the script.
     title = f.get("title") or ""
     key = f"{url}#{hashlib.sha1(title.encode('utf-8')).hexdigest()[:10]}" if title else url
-    return {
+    _emis = {
         "source": "myanmargov", "country": stamp,
         "ledger_id": f"myanmargov:{key}", "id": key,
         "title": scrub(f.get("title")),
@@ -197,8 +198,13 @@ def record(url, f, stamp):
         "url": url,
         "key_is_ours": True,
         "document_downloaded": False,     # the portal links PDFs and other sites; we name them, we do not fetch them
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def page_url(lang, instance, delta, cur):

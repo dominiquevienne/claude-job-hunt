@@ -77,6 +77,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "kktcportal.net"
 LISTE = "/is-ilanlari"
@@ -187,7 +188,7 @@ def lieu_de(ld):
 def record(slug, ld, stamp):
     org = ld.get("hiringOrganization") if isinstance(ld.get("hiringOrganization"), dict) else {}
     ident = slug.rsplit("-", 1)[-1]
-    return {
+    _emis = {
         "source": "kktcportal", "country": stamp,
         "ledger_id": f"kktcportal:{ident}", "id": ident,
         "url": ld.get("url") or f"https://{HOST}{LISTE}/{slug}",
@@ -201,8 +202,13 @@ def record(slug, ld, stamp):
         # les jeter remplacerait sa declaration par la notre.
         "valid_through": ld.get("validThrough"),
         "description": scrub(text(ld.get("description"))),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def enumerer(a):

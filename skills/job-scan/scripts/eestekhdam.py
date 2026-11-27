@@ -83,6 +83,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, COUNTRY = "eestekhdam", "IR"
 HOST = "www.e-estekhdam.com"
@@ -253,7 +254,7 @@ def body_of(a):
 def row(rec):
     rid = rec.get("id")
     url = rec.get("url") or ""
-    return {
+    _emis = {
         "source": BOARD, "country": COUNTRY, "ledger_id": f"{BOARD}:{rid}", "id": str(rid),
         "url": urllib.parse.urljoin(SITE, url) if url else None,
         "title": scrub(text(rec.get("title"))), "short_title": scrub(text(rec.get("short_title"))),
@@ -269,8 +270,13 @@ def row(rec):
         # The board prints a gender beside every advert; it is never carried (#183). The claim is made once
         # per row because the field IS on every row — unlike Karboom, where it lives on the advert page only.
         "criteria_withheld": ["gender"] if "gender" in rec else [],
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

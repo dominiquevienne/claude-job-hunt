@@ -56,8 +56,8 @@ the adverts turned out to name a field worth carrying*: `featured` is emitted on
 run prints how many there were (33 of 3 232 on 2026-09-23).
 
 **WITHHELD:** e-mail addresses and telephone numbers in anything emitted, at a threshold of nine
-digits (a date is spared, and the run says how many shorter runs it left). `contacts_withheld` on
-every record. **The advert page is never fetched** — the panel carries the excerpt the board itself
+digits (a date is spared, and the run says how many shorter runs it left). `contacts_withheld` only
+when a marker says a contact was withheld (#1321). **The advert page is never fetched** — the panel carries the excerpt the board itself
 shows, `detail_read: false` — and `/jseeker/login.aspx` is refused before the gate: no account is
 ever created.
 
@@ -87,6 +87,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.hirelebanese.com"
 BROWSE = "/jseeker/findjobhome.aspx"
@@ -288,15 +289,21 @@ def stated(markup):
 
 
 def record(r, stamp):
-    return {
+    _emis = {
         "source": "hirelebanese", "country": stamp,
         "ledger_id": f"hirelebanese:{r['id']}", "id": r["id"],
         "url": f"https://{HOST}/jobdetails.aspx?id={r['id']}",
         "title": scrub(r["title"]), "employer": scrub(r["employer"]),
         "place": r["place"], "published": r["posted"],
         "excerpt": scrub(r["excerpt"]),
-        "detail_read": False, "contacts_withheld": True,
+        "detail_read": False, 
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def with_badge(rec, r):

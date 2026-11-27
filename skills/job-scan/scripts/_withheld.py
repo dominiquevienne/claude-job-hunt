@@ -175,6 +175,39 @@ def kinds(names):
     )
 
 
+# **WHAT A `scrub` WROTE, READ BACK ON THE RECORD IT EMITTED — #1321.** The dominant
+# `scrub` of this directory substitutes these markers and returns the text ALONE, so it
+# cannot say what it took. Reading the markers on the emitted record is the one form that
+# cannot diverge from it: a second detector would be a second judgement, and the two would
+# drift. The names are suffixes `CONTACT` already holds.
+MARKERS = (("e-mail", "[e-mail withheld]"),
+           ("telephone", "[telephone withheld]"))
+
+
+def taken(record, markers=MARKERS):
+    """The contact names whose marker sits in any string of `record`, nested included.
+
+    Returns a sorted list, empty when nothing was taken — an empty list, not `None`, so
+    the caller decides how to emit the witness.
+    """
+    found = set()
+
+    def walk(v):
+        if isinstance(v, str):
+            for nom, marque in markers:
+                if marque in v:
+                    found.add(nom)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                walk(x)
+
+    walk(record)
+    return sorted(found)
+
+
 def withheld_a_contact(names, reached_a_person=False):
     """Did something that reaches a person leave this record?
 

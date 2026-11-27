@@ -34,7 +34,7 @@ zamestnávateľovi» — Obchodné meno, IČO, Adresa, Internetová stránka, Ch
 spoločnosti (the employer's public register record); **and «Kontaktná osoba» — a name and a
 telephone — where the page is cut before reading; every text scrubbed of e-mail addresses
 and Slovak telephone numbers (the selection-process text on the ad read carried the
-employer's own e-mail); `contacts_withheld` on every record; the CV form (`poslat-zivotopis`,
+employer's own e-mail); `contacts_withheld` only when a marker says a contact was withheld (#1321); the CV form (`poslat-zivotopis`,
 refused in writing) never touched.**
 
 Measured 2026-09-14 04:2x UTC by the declared client, the guard on the exact path: the root
@@ -56,6 +56,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.worki.sk"
 LIST = f"https://{HOST}/ponuka-prace"
@@ -308,7 +309,7 @@ def record(body, jid, url):
     iso = lambda m: f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}" if m else None
     positions = facts.get("Počet voľných pracovných miest")
     place_lines = (facts.get("Miesto výkonu práce") or "").split("\n")
-    return {
+    _emis = {
         "source": "worki", "country": "SK", "ledger_id": f"worki:{jid}", "id": jid, "url": url,
         "title": text(h1.group(1)) if h1 else None,
         "company": text(emp.group(2)) if emp else sections.get("Obchodné meno"), "company_id": emp.group(1) if emp else None,
@@ -323,8 +324,14 @@ def record(body, jid, url):
         "education": sections.get("Požadované vzdelanie"), "experience": sections.get("Dĺžka praxe"), "digital_skills": sections.get("Digitálne zručnosti"), "driving_licence": sections.get("Vodičské oprávnenie"),
         "competences": sections.get("Všeobecné spôsobilosti a predpoklady"), "other_requirements": sections.get("Ďalšie požiadavky"),
         # «Kontaktná osoba» — a name and a telephone — is cut before reading; the CV form is never touched
-        "language": "sk", "contacts_withheld": True,
+        "language": "sk", 
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):

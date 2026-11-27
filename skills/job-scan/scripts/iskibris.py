@@ -95,6 +95,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.iskibris.com"
 SITEMAP = "/sitemap.txt"
@@ -205,7 +206,7 @@ def slugs_de_l_accueil(pp):
 def record(a, slug, stamp):
     jt = a.get("job_title") if isinstance(a.get("job_title"), dict) else {}
     ident = a.get("id")
-    return {
+    _emis = {
         "source": "iskibris", "country": stamp,
         "ledger_id": f"iskibris:{ident}", "id": str(ident) if ident is not None else None,
         "url": f"https://{HOST}/jobs/{ident}" if ident is not None else None,
@@ -222,8 +223,13 @@ def record(a, slug, stamp):
         "facet": slug,                      # la facette par laquelle on l'a RENCONTREE
         # **Aucun champ de contact dans la charge** : ni courriel ni telephone. Le drapeau
         # dit ce que NOUS aurions retenu, il ne pretend pas qu'on ait retenu quelque chose.
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

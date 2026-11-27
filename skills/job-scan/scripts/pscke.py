@@ -45,8 +45,8 @@ named candidates is personal data about people who did not publish it for us*; t
 open that page. **Applying needs an account on the system (an ID or passport number); the plugin
 never creates one.**
 
-**WITHHELD:** e-mail addresses and telephone numbers in any cell; `contacts_withheld` on every
-record. `--country-code` STAMPS (the tables state no country) and the run says so.
+**WITHHELD:** e-mail addresses and telephone numbers in any cell; `contacts_withheld` only when a
+marker says a contact was withheld (#1321). `--country-code` STAMPS (the tables state no country) and the run says so.
 
 Measured 2026-09-22 09:5x UTC by the declared client, the guard on the exact path, two reads of the
 adverts table: `ActiveJobsAdverts.aspx` 200 ×2, 14 232 B, **md5 24732dc66ffc both times** — **1
@@ -71,6 +71,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "pscims.publicservice.go.ke"
 PAGES = {"jobs": f"https://{HOST}/jobs/ActiveJobsAdverts.aspx",
@@ -184,7 +185,7 @@ def record(header, values, kind, stamp):
     number = got.get("advert_number") or ""
     position = got.get("position") or ""
     key = re.sub(r"[^a-z0-9]+", "-", f"{kind}-{number}-{position}".lower()).strip("-")
-    return {
+    _emis = {
         "source": "pscke", "country": stamp, "kind": kind,
         "ledger_id": f"pscke:{key}", "id": key,
         "advert_number": got.get("advert_number"), "title": got.get("position"),
@@ -194,8 +195,13 @@ def record(header, values, kind, stamp):
         "advert_date": when(got.get("advert_date")), "close_date": when(got.get("close_date")),
         "url": PAGES[kind],
         "detail_read": False,     # the detail is an ASP.NET __doPostBack; it is not replayed
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):

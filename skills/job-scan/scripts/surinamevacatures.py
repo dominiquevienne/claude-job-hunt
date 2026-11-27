@@ -20,8 +20,8 @@ employer), `plaatsnaam` twice (the place, then the level — the site reuses the
 sections under `acf:text="*_titel"` headings — «Bedrijfsprofiel», «Wie ben jij?», «Wat ga je
 doen?», «Wat bieden wij?» — and a closing «Geïnteresseerd in deze functie?» that names the site's
 own address. No JobPosting, no dates. **The sections are scrubbed of e-mail addresses and
-Surinamese telephone numbers (the site's own `info@` included); `contacts_withheld` on every
-record; «Solliciteren» (a form on the site) never touched.**
+Surinamese telephone numbers (the site's own `info@` included); `contacts_withheld` only when a
+marker says a contact was withheld (#1321); «Solliciteren» (a form on the site) never touched.**
 
 Measured 2026-09-16 21:42–21:43 UTC by the declared client, the guard on the exact path: robots
 200 (122 B); `/` 60 894 B (identical to 2026-09-13); the two lists 13 and 16 cards; the ad 35 311 B.
@@ -41,6 +41,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "surinamevacatures.com"
 LISTS = {"vacatures": f"https://{HOST}/vacatures-suriname", "stages": f"https://{HOST}/stageplekken-suriname"}
@@ -172,14 +173,20 @@ def record(body, slug, url):
     sections = {}
     for key, heading, rich in SECTION_RE.findall(body):
         sections[text(heading) or key] = scrub(text(rich))
-    return {
+    _emis = {
         "source": "surinamevacatures", "country": "SR", "ledger_id": f"surinamevacatures:{slug}", "id": slug, "url": url,
         "title": text(t.group(1)), "company": f["bedrijfsnaam"][0],
         "place": pl[0] if pl else None, "level": pl[1] if len(pl) > 1 else None, "hours": (f.get("uren") or [None])[0], "pay": (f.get("loon") or [None])[0],
         "period": text(per.group(1)) if per else None,
         "sections": sections or None,
-        "contacts_withheld": True, "language": "nl",
+        "language": "nl",
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_ad(a):

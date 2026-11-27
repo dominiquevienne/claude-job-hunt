@@ -51,6 +51,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.myanmarjoblink.com"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -171,7 +172,7 @@ def items_of(markup):
 
 
 def record(it, stamp):
-    return {
+    _emis = {
         "source": "myanmarjoblink", "country": stamp,
         "ledger_id": f"myanmarjoblink:{it['id']}", "id": it["id"],
         "url": f"https://{HOST}/find-jobs/detail/{it['id']}",
@@ -180,8 +181,13 @@ def record(it, stamp):
         "salary": money(it["salary"]),
         "place": it["place"], "posted": it["posted"],
         "excerpt": scrub(it["excerpt"]),
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    _emis["withheld_fields"] = taken(_emis) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    return _emis
 
 
 def cmd_jobs(a):
