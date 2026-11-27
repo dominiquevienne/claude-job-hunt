@@ -14356,6 +14356,7 @@ class ASweepVerdictIsNotAPathVerdict(unittest.TestCase):
         "caglobal": ("get", "https://h.example/x?p=1"),
         "careersmw": ("get", "https://h.example/x?p=1"),
         "careersgy": ("get", "https://h.example/x?p=1"),
+        "gcci": ("get", "https://h.example/x?p=1"),
         "guyanaindex": ("get", "https://h.example/x?p=1"),
         "skilledguyanese": ("get", "https://h.example/x?p=1"),
         "motravay": ("get", "https://h.example/x?p=1"),
@@ -64079,6 +64080,82 @@ class CareersGyReadsThePublicCollectionOnTheApiHostAndCountsWhatItsOwnDateCloses
         for url in ("https://careers.gy/public/api/jobs",
                     "https://api.careers.gy/public/api/users",
                     "https://api.careers.gy/public/api/apply-for-job/x"):
+            sent = []
+            with self.assertRaises(SystemExit) as cm, \
+                    mock.patch.object(self.m, "robots_allowed",
+                                      return_value={"allowed": True, "reason": "open"}), \
+                    mock.patch.object(self.m.urllib.request, "urlopen",
+                                      side_effect=lambda *a, **k: sent.append(a) or (_ for _ in ()).throw(OSError("sent"))):
+                self.m.get(url)
+            self.assertEqual(cm.exception.code, self.m.EXIT_REFUSED, url)
+            self.assertEqual(sent, [], url)
+
+
+class GcciReadsTheCategoryCollectionAndCountsAgainstTheCategorysOwnCount(unittest.TestCase):
+    """#709 — `gcci.py`. The list is the REST collection of the category
+    resolved by its slug; the witness is the category's own `count`; the
+    body's contacts are taken out and named; a flyer-only notice says so.
+    The posts are EXTRACTED from the collection served on 2026-11-27."""
+
+    LIST = [{'id': 434934, 'link': 'https://gcci.gy/customer-support-associate-bilingual/', 'date_gmt': '2025-11-21T16:53:14', 'title': {'rendered': 'Customer Support Associate &#8211; Bilingual'}}, {'id': 434357, 'link': 'https://gcci.gy/accounts-clerk-gk-inc/', 'date_gmt': '2025-08-25T17:13:14', 'title': {'rendered': 'Accounts Clerk &#8211; GK Inc.'}}]
+    TLC = {'id': 418672, 'date_gmt': '2022-11-03T17:57:40', 'link': 'https://gcci.gy/vacancy-tlc-guyana-inc/', 'title': {'rendered': 'Vacancy: TLC (GUYANA) INC.'}, 'content': {'rendered': '<p><a href="https://gcci.gy/vacancy-tlc-guyana-inc/whatsapp-image-2022-11-03-at-12-44-15-pm/" rel="attachment wp-att-418674"><img data-recalc-dims="1" loading="lazy" decoding="async" data-attachment-id="418674" data-permalink="https://gcci.gy/vacancy-tlc-guyana-inc/whatsapp-image-2022-11-03-at-12-44-15-pm/" data-orig-file="https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?fit=1200%2C1200&amp;ssl=1" data-orig-size="1200,1200" data-comments-opened="0" data-image-title="WhatsApp Image 2022-11-03 at 12.44.15 PM" data-image-description="" data-image-caption="" data-large-file="https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?fit=640%2C640&amp;ssl=1" class="alignnone size-medium wp-image-418674" src="https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=300%2C300&#038;ssl=1" alt="" width="300" height="300" srcset="https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=300%2C300&amp;ssl=1 300w, https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=1024%2C1024&amp;ssl=1 1024w, https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=150%2C150&amp;ssl=1 150w, https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=768%2C768&amp;ssl=1 768w, https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?resize=100%2C100&amp;ssl=1 100w, https://i0.wp.com/gcci.gy/wp-content/uploads/2022/11/WhatsApp-Image-2022-11-03-at-12.44.15-PM.jpeg?w=1200&amp;ssl=1 1200w" sizes="auto, (max-width: 300px) 100vw, 300px" /></a></p>\n<p style="text-align: left;"><strong>Send your Resume to:</strong></p>\n<p style="text-align: left;"><strong>Email:</strong> management.gy@tlc-com.ch</p>\n<p style="text-align: left;"><strong>Contact:</strong> +592 620-2392</p>\n', 'protected': False}}
+    IMG = {'id': 434357, 'date_gmt': '2025-08-25T17:13:14', 'link': 'https://gcci.gy/accounts-clerk-gk-inc/', 'title': {'rendered': 'Accounts Clerk &#8211; GK Inc.'}, 'content': {'rendered': '<p><a href="https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?ssl=1"><img data-recalc-dims="1" loading="lazy" decoding="async" data-attachment-id="434358" data-permalink="https://gcci.gy/accounts-clerk-gk-inc/accounts-clerk/" data-orig-file="https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?fit=519%2C859&amp;ssl=1" data-orig-size="519,859" data-comments-opened="0" data-image-title="Accounts Clerk" data-image-description="" data-image-caption="" data-large-file="https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?fit=519%2C859&amp;ssl=1" class="alignnone wp-image-434358" src="https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?resize=640%2C1059&#038;ssl=1" alt="" width="640" height="1059" srcset="https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?w=519&amp;ssl=1 519w, https://i0.wp.com/gcci.gy/wp-content/uploads/2025/08/Accounts-Clerk.png?resize=181%2C300&amp;ssl=1 181w" sizes="auto, (max-width: 640px) 100vw, 640px" /></a></p>\n', 'protected': False}}
+
+    def setUp(self):
+        sys.path.insert(0, SCRIPTS)
+        import gcci
+        self.m = gcci
+
+    def _walk(self, stated):
+        from unittest import mock
+        from email.message import Message
+        hd = Message(); hd["X-WP-TotalPages"] = "1"
+        cat = json.dumps([{"id": 22, "count": stated, "slug": "career-opportunities"}])
+        def fake(url):
+            return (200, cat, Message()) if "/categories" in url else (200, json.dumps(self.LIST), hd)
+        out = io.StringIO()
+        with mock.patch.object(self.m, "get", side_effect=fake), \
+                mock.patch.object(self.m, "robots_verdict", return_value={"sweep": True}), \
+                mock.patch("sys.stdout", out), mock.patch("sys.stderr", io.StringIO()):
+            self.m.cmd_jobs(argparse.Namespace(limit=None, max_pages=10))
+        return [json.loads(l) for l in out.getvalue().splitlines()]
+
+    def test_a_post_maps_to_its_fields(self):
+        r = self.m.record(self.LIST[0])
+        self.assertEqual(r["ledger_id"], "gcci:434934")
+        self.assertEqual(r["url"], self.LIST[0]["link"])
+        self.assertEqual(r["title"], "Customer Support Associate \u2013 Bilingual")
+        self.assertEqual(r["posted"], "2025-11-21T16:53:14Z")
+        self.assertEqual(r["country"], "GY")
+
+    def test_the_walk_emits_every_post_when_the_category_count_agrees(self):
+        self.assertEqual([r["id"] for r in self._walk(2)], ["434934", "434357"])
+
+    def test_a_walk_short_of_the_stated_count_exits_partial(self):
+        with self.assertRaises(SystemExit) as cm:
+            self._walk(3)
+        self.assertEqual(cm.exception.code, self.m.EXIT_PARTIAL)
+
+    def test_the_body_contacts_are_taken_out_and_named(self):
+        r = self.m.ad_record(self.TLC)
+        self.assertNotIn("@", r["description"])
+        self.assertNotIn("620-2392", r["description"])
+        self.assertEqual(r["withheld_fields"], ["email", "telephone"])
+        self.assertIs(r["contacts_withheld"], True)
+
+    def test_a_flyer_only_notice_says_so_and_declares_nothing_withheld(self):
+        r = self.m.ad_record(self.IMG)
+        self.assertTrue(r["notice_is_an_image"])
+        self.assertEqual(r["description_chars"], 0)
+        self.assertTrue(r["image_urls"])
+        self.assertIsNone(r["withheld_fields"])
+        self.assertNotIn("contacts_withheld", r)
+
+    def test_any_other_path_or_host_is_refused_before_sending(self):
+        from unittest import mock
+        for url in ("https://gcci.gy/wp-json/wp/v2/users",
+                    "https://gcci.gy/category/career-opportunities/",
+                    "https://example.org/wp-json/wp/v2/posts"):
             sent = []
             with self.assertRaises(SystemExit) as cm, \
                     mock.patch.object(self.m, "robots_allowed",
