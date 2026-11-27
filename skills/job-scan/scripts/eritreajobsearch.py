@@ -35,7 +35,7 @@ salary line «SSP 1,500,000 – SSP 2,500,000 per annum» sits in the attorney's
 and the network engineer's adverts alike.
 
 WITHHELD: the network's e-mail addresses and telephones (scrubbed wherever
-they appear), the registration link; `contacts_withheld` on every record.
+they appear), the registration link; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).
 Country ER on every row.
 """
 
@@ -54,6 +54,7 @@ from _ldjson import label, one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, HOST, COUNTRY = "eritreajobsearch", "eritreajobsearch.com", "ER"
 BASE = f"https://{HOST}"
@@ -239,7 +240,12 @@ def cmd_ad(a):
            "salary_currency_ldjson": label(sal.get("currency")), "salary_min_ldjson": label(val.get("minValue")), "salary_max_ldjson": label(val.get("maxValue")),
            "salary_as_written": (re.search(r"Salary:\s*([^\n]+)", desc or "") or [None, None])[1] if desc else None,
            "description": (desc or "")[:20000] or None,
-           "source_signals": list(SIGNALS), "contacts_withheld": True}
+           "source_signals": list(SIGNALS)}
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    rec["withheld_fields"] = taken(rec) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     print(json.dumps(rec, ensure_ascii=False))
 
 

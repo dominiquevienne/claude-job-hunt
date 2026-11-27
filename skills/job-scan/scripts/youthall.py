@@ -46,8 +46,7 @@ with 6 when the page has none (a company page, a programme page).
 
 WITHHELD: the description scrubbed of e-mail addresses and telephone
 numbers; the employer's logo and cover images not emitted; the application
-(`directApply` on the site, an account) never touched; `contacts_withheld`
-on every record.
+(`directApply` on the site, an account) never touched; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -65,6 +64,7 @@ from _ldjson import label, one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, HOST, COUNTRY = "youthall", "www.youthall.com", "TR"
 BASE = f"https://{HOST}"
@@ -246,8 +246,12 @@ def cmd_ad(a):
         "employment_type": label(p.get("employmentType")),
         "place": label(addr, "addressLocality") if addr else None, "region": label(addr, "addressRegion") if addr else None,
         "description": (scrub(text(label(p.get("description")))) or "")[:20000] or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 

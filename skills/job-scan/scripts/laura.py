@@ -32,7 +32,7 @@ name from its logo, the language switch (`lang=`). No JobPosting.
 WITHHELD: the description scrubbed of e-mail addresses and telephone
 numbers (the «Lisätietoja» paragraph names the contact — the address is
 scrubbed, the paragraph stays as the tenant wrote it); the application
-(`o=A_A`, an account) never touched; `contacts_withheld` on every record.
+(`o=A_A`, an account) never touched; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).
 The list states no country; the family is Finnish and `--country-code`
 stamps the rows with what the user names, saying so.
 """
@@ -51,6 +51,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD = "laura"
 DOMAIN = "rekrytointi.com"
@@ -237,8 +238,12 @@ def cmd_ad(a):
         "title": text(h1.group(1)), "company": htmlmod.unescape(logo.group(1)) if logo and logo.group(1) else None,
         "posted": starts, "closes": ends, "language": lang,
         "description": (scrub(text(dm.group(1))) or "")[:20000] or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 

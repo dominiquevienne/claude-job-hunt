@@ -33,7 +33,7 @@ some vacancies; the plugin serves the advert and **does not propagate the criter
 2026-09-04 decision, #183: a law that forbids what a board publishes does not stop us serving the
 ad — it stops us carrying the criterion). Also withheld: e-mail addresses and telephone numbers
 in the texts (the portal prints its own hotline on every page), the employer's logo, the
-jobseeker area (a login, never touched). `contacts_withheld` on every record.
+jobseeker area (a login, never touched). `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321).
 
 `--country-code` filters on the STAMP: the board is Brunei's and states no country, so the code
 is written on every record and the run says it is the user's.
@@ -61,6 +61,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.jobcentrebrunei.gov.bn"
 PAGE_SIZE = 75            # the site's own maximum, from its «entries per page» control
@@ -290,8 +291,12 @@ def cmd_ad(a):
         "posted": when(overview.get("date_posted")), "closes": when(overview.get("last_date_to_apply")),
         "description": desc,
         "withheld_rows": withheld or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    row["withheld_fields"] = taken(row) or None
+    if withheld_a_contact(row["withheld_fields"] or ()):
+        row["contacts_withheld"] = True
     print(json.dumps(row, ensure_ascii=False))
     note(f"{url}: read from the page's job-viewer; " + (f"the advert's {', '.join(withheld)} row(s) never emitted (#183); " if withheld else "no age row on this advert; ") + "contacts scrubbed.")
 

@@ -48,7 +48,7 @@ guard caught it before delivery, with a real Myanmar figure in its fixture.
 
 **WITHHELD:** e-mail addresses everywhere, and telephone numbers in FREE TEXT at a threshold of nine
 digits;
-`contacts_withheld` on every record. **Nothing is de-obfuscated**: the pages carry Cloudflare
+`contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321). **Nothing is de-obfuscated**: the pages carry Cloudflare
 `/cdn-cgi/l/email-protection#<hex>` addresses, that path is never requested, and the hex is never
 decoded. The advert page is not fetched — the card carries what the board shows — `detail_read:
 false`.
@@ -90,6 +90,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "myjobs.com.mm"
 PAGE_SIZE = 12
@@ -271,7 +272,7 @@ def record(c, stamp):
         "company_url": f"https://{HOST}{c['company_path']}" if c["company_path"] else None,
         "place": c["place"], "category": c["category"], "employment_type": c["employment_type"],
         "posted_as_written": c["age"], "posted_days_ago": days_of(c["age"]),
-        "detail_read": False, "contacts_withheld": True,
+        "detail_read": False, 
     }
     # **A salary the board HIDES is declared, not dropped** — «Hidden» and «Negotiable» are two
     # different statements, and neither is «no salary field».
@@ -281,6 +282,11 @@ def record(c, stamp):
         rec["salary_negotiable"] = True
     elif c["salary"]:
         rec["salary_as_written"] = money(c["salary"])
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    rec["withheld_fields"] = taken(rec) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     return rec
 
 

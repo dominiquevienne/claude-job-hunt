@@ -68,7 +68,7 @@ nothing, so it is **counted and dropped**; an advert whose notes are its own kee
 the day one differs, that difference is the information.
 
 **WITHHELD:** e-mail addresses and telephone numbers in anything emitted («[e-mail withheld]» /
-«[telephone withheld]»), `contacts_withheld` on every record. A run of **nine digits or more** is a
+«[telephone withheld]»), `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321). A run of **nine digits or more** is a
 number (Yemeni mobiles are `7xxxxxxxx`, nine, and `+967` forms longer); a date is spared, and the
 run says how many shorter runs it left. The account actions are never touched and no account is ever
 created.
@@ -109,6 +109,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "yemenhr.com"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -313,11 +314,15 @@ def record(kind, r, stamp, detail):
         "published": r["posted"], "deadline": r["deadline"],
         "newly_posted": r["is_new"],
         "detail_read": bool(detail),
-        "contacts_withheld": True,
     }
     for key, _label in SECTIONS:
         if detail and detail.get(key):
             rec[key] = detail[key]
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    rec["withheld_fields"] = taken(rec) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     return rec
 
 

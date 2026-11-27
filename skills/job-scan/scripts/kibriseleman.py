@@ -70,6 +70,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "www.kibriseleman.com"
 LISTE = "/is-ilanlari"
@@ -249,8 +250,12 @@ def record(ident, slug, propre, stamp, origine, lastmod=None, archive=False):
         "salary_currency_without_amount": monnaie_nue,
         "criteria_not_propagated": retenus or None,
         "enumerated_by": origine,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    ligne["withheld_fields"] = taken(ligne) or None
+    if withheld_a_contact(ligne["withheld_fields"] or ()):
+        ligne["contacts_withheld"] = True
     return ligne
 
 

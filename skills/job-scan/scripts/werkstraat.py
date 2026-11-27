@@ -21,7 +21,7 @@ Media»), `job-type` («Freelance», «Full-time»), a `<time datetime>`; the pa
 what the site lists and does not judge it — the categories, the type and the locations are the
 site's own labels, a reader filters on them; **the employer's name is scrubbed like a text (an
 e-mail address as a name becomes «[e-mail withheld]»), the body is scrubbed of e-mail addresses and
-Surinamese telephone numbers; `contacts_withheld` on every record; the application («Solliciteer»,
+Surinamese telephone numbers; `contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321); the application («Solliciteer»,
 a member account) never touched.**
 
 Measured 2026-09-16 12:10–12:12 UTC by the declared client, the guard on the exact path: robots 200
@@ -43,6 +43,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 HOST = "werkstraat.com"
 LIST = f"https://{HOST}/jobs/"
@@ -226,7 +227,12 @@ def record(body, slug, url):
         return None
     rec = {"source": "werkstraat", "country": "SR", "ledger_id": f"werkstraat:{slug}", "id": slug, "url": url, "title": text(h1.group(1))}
     rec.update(meta(body))
-    rec.update({"description": scrub(text(re.sub(r"<h2>\s*Functieomschrijving\s*</h2>", "", d.group(1)))), "contacts_withheld": True, "language": "nl"})
+    rec.update({"description": scrub(text(re.sub(r"<h2>\s*Functieomschrijving\s*</h2>", "", d.group(1)))), "language": "nl"})
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    rec["withheld_fields"] = taken(rec) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     return rec
 
 

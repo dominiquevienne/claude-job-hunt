@@ -39316,7 +39316,7 @@ class TwoTablesOfOneSystemAndACountThatSeesWhatATotalCannot(unittest.TestCase):
         # **a cell that names two places is two places** — and that is what the site counts
         self.assertEqual(recs[1]["locations"], ["Lahij", "Al-Kokhah"])
         self.assertEqual(recs[1]["location"], "Lahij, Al-Kokhah")
-        self.assertTrue(all(r["country"] == "YE" and r["contacts_withheld"] and not r["detail_read"]
+        self.assertTrue(all(r["country"] == "YE" and "contacts_withheld" not in r and r["withheld_fields"] is None and not r["detail_read"]
                             for r in recs))
         self.assertNotIn("description", recs[0])
         self.assertIn("3 job(s) emitted over 1 page(s)", err)
@@ -40092,7 +40092,7 @@ class ThreeFiguresThatPredictOneAnotherAndAFieldReadByWhatItIs(unittest.TestCase
         self.assertIn("3 emitted over 1 page(s) of 12", err)
         self.assertIn("2 categories sum to 3", err.replace("the home page's ", ""))
         self.assertIn("bounds the walk", err)
-        self.assertTrue(all(r["country"] == "MM" and r["contacts_withheld"] and not r["detail_read"]
+        self.assertTrue(all(r["country"] == "MM" and "contacts_withheld" not in r and r["withheld_fields"] is None and not r["detail_read"]
                             for r in recs))
 
     def test_the_bound_comes_from_page_one_and_not_from_the_sliding_window(self):
@@ -40541,7 +40541,7 @@ class ABoardThatClampsPastItsLastPageAndPrintsItsEmployerTwice(unittest.TestCase
         # **the criterion follows the object read**: one card prints a gender, the other none
         self.assertEqual(recs[1]["criteria_withheld"], ["gender"])
         self.assertEqual(recs[0]["criteria_withheld"], [])
-        self.assertTrue(all(r["country"] == "AF" and r["contacts_withheld"] and not r["detail_read"]
+        self.assertTrue(all(r["country"] == "AF" and "contacts_withheld" not in r and r["withheld_fields"] is None and not r["detail_read"]
                             for r in recs))
         self.assertIn("2 emitted over 1 page(s) of 18", err)
         self.assertIn("they agree", err)

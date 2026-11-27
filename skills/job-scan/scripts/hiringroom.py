@@ -42,7 +42,7 @@ vendor's form on `hiringroom.com` — never followed, never emitted.
 
 WITHHELD: the sections scrubbed of e-mail addresses and telephone
 numbers; the apply link, the banners and logos never emitted;
-`contacts_withheld` on every record. The country is the last element of
+`contacts_withheld` (with its witness `withheld_fields`) only when a marker says a contact was withheld (#1321). The country is the last element of
 the location line («…, Argentina») when the line ends with a name this
 adapter knows; `--country-code` stamps what the user names otherwise.
 """
@@ -61,6 +61,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import taken, withheld_a_contact
 
 BOARD, DOMAIN = "hiringroom", "hiringroom.com"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -300,8 +301,12 @@ def cmd_ad(a):
         "posted_relative": text(age.group(1)) if age else None,
         "description": (sections.get("Descripción del puesto") or next(iter(sections.values()), None) or "")[:20000] or None,
         "sections": {k: (v or "")[:8000] for k, v in sections.items() if v} or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True` on every record; it is now READ
+    # off the markers `scrub` wrote in this record, through the one point.
+    r["withheld_fields"] = taken(r) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 
