@@ -64223,5 +64223,98 @@ class AConstantDeclarationNowReadOffTheScrubMarksOnACardRecord(unittest.TestCase
         self.assertEqual(dirty["withheld_fields"], ["e-mail"])
 
 
+class AStructuredContactIsNamedWhenTheSourceFilledItAndOnlyThen(unittest.TestCase):
+    """#1321, the `present()` tranche of five. Each of these adapters dropped a STRUCTURED
+    contact — persons to call (jobbnorge), the `recruiter` object (pracezarohem), the
+    first-contact block and the establishment's e-mail and telephone (uradprace), the
+    company block and the recruiters in `users` (seamlesshiring), the jd-contact hooks
+    (jobscz) — and declared `contacts_withheld: True` as a CONSTANT on every record.
+
+    Each case runs the adapter's own emission path in THREE states, the texts kept free
+    of any contact so that the scrub marks cannot speak for the structured field:
+    the contact filled -> declared, and the witness names it; the contact empty -> not
+    declared, and no witness. Mutations, each in a throwaway worktree: the `present()`
+    call emptied in one adapter -> that adapter's case reddens on its own assertion."""
+
+    def _jobbnorge(self, contacts):
+        mod = AWholeBoardInOneAnswerWhereTheCountIsPositionsAndTheContactsAreAField()._mod()
+        d = {"components": [{"heading": "Tannlege", "text": "<p>Vi søker tannlege.</p>"}], "jobGapComponents": [],
+             "contacts": contacts, "positionCount": 1, "isPublished": True}
+        mod.request = lambda url: (200, json.dumps(d, ensure_ascii=False))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobbnorge.no/ledige-stillinger/stilling/306650/x", language="1"))
+        return json.loads(out.getvalue())
+
+    def test_jobbnorge_names_the_person_to_call_only_when_the_source_has_one(self):
+        r = self._jobbnorge([{"name": "Marit Aronsen", "phone": "+4793462668", "title": "Overtannlege"}])
+        self.assertTrue(r["contacts_withheld"]); self.assertEqual(r["withheld_fields"], ["contact:name", "contact:telephone"])
+        r = self._jobbnorge([{"name": "Marit Aronsen", "phone": "", "title": "Overtannlege"}])
+        self.assertNotIn("contacts_withheld", r); self.assertEqual(r["withheld_fields"], ["contact:name"])   # a name alone is not a contact
+        r = self._jobbnorge([])
+        self.assertNotIn("contacts_withheld", r); self.assertIsNone(r["withheld_fields"])
+
+    def _pracezarohem(self, recruiter):
+        cls = TwoNeighbourhoodBoardsOnOneNextStackWhoseAdCarriesTheRecruiterAndNeverEmitsHer()
+        mod = cls._mod()
+        adv = {"result": "success", "id": "G2-1", "title": "Referent", "company": "Firma", "companyWeb": None, "recruiter": recruiter,
+               "location": {"label": "Praha"}, "salary": None, "descFields": {"jobProperties": [], "jobText": [{"value": "<p>Klidná práce</p>"}], "companyText": []},
+               "desc": "<p>x</p>", "language": "cs", "valid": True, "locations": []}
+        page = '<html><body><script id="__NEXT_DATA__" type="application/json">' + json.dumps({"props": {"pageProps": {"advert": adv}}}, ensure_ascii=False) + "</script></body></html>"
+        rows, err, asked, raw = cls._run(mod, [(200, page)], cmd="ad", url="https://www.pracezarohem.cz/dl/jd/G2-1")
+        return rows[0]
+
+    def test_pracezarohem_names_the_recruiter_only_when_the_page_state_has_one(self):
+        r = self._pracezarohem({"name": "Tomáš R", "email": "t@x.example", "phone": "+420 771 264 896", "initials": "TR"})
+        self.assertTrue(r["contacts_withheld"]); self.assertEqual(r["withheld_fields"], ["consultant:e-mail", "consultant:name", "consultant:telephone"])
+        r = self._pracezarohem({"name": None, "email": "", "phone": None, "initials": "TR"})
+        self.assertNotIn("contacts_withheld", r); self.assertIsNone(r["withheld_fields"])
+
+    def _uradprace(self, kontakt, pracoviste):
+        cls = TheWholeRegisterIsOneOpenDataFileAndThePortalsOwnSearchIsNeverSent()
+        mod = cls._mod()
+        it = cls._item(1, "Doplňovači zboží", "CzIsco/93340")
+        it["upresnujiciInformace"] = {"cs": "Klidná práce"}; it["pozadovanaJazykovaZnalost"] = []
+        it["prvniKontaktSeZamestnavatelem"] = kontakt
+        it["mistoVykonuPrace"] = {"typMistaVykonuPrace": {"id": "TypMistaVykonuPrace/obec"}, "obec": {"id": "Obec/554782"}, "pracoviste": pracoviste}
+        return mod.record(it, {"name": {}, "okres_of_obec": {}, "kraj_of_okres": {}})
+
+    def test_uradprace_names_the_first_contact_and_the_establishment_only_when_the_file_filled_them(self):
+        r = self._uradprace({"komuSeHlasit": {"email": "hr@x.example", "telefon": None, "jmeno": "Z", "prijmeni": "H"}, "kdeSeHlasit": {"telefon": "+420 777 888 999"}},
+                            [{"email": None, "telefon": "222333444"}])
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["contact:e-mail", "contact:name", "contact:telephone", "establishment:telephone"])
+        r = self._uradprace({"komuSeHlasit": {"email": None, "telefon": "", "jmeno": None, "prijmeni": None}, "kdeSeHlasit": {"email": None, "telefon": None}}, None)
+        self.assertNotIn("contacts_withheld", r); self.assertIsNone(r["withheld_fields"])
+
+    def _seamless(self, company, users):
+        cls = ATenantPortalWhoseLoginShellHidesAJobApiThatStatesItsTotalAndLeaksItsRecruiters
+        mod = cls()._mod()
+        j = cls._job(10848, "POST 0"); j.update({"summary": "Coordinate shipments.", "details": "<p>Logistics.</p>", "company": company, "users": users})
+        return mod.row(j, "goldenoiltd.seamlesshiring.com", "NG")
+
+    def test_seamlesshiring_names_the_company_block_and_the_recruiters_only_when_the_api_filled_them(self):
+        r = self._seamless({"name": "GOIL", "phone": "+2347068955509", "email": "", "address": "12 Marina Road", "api_key": "k"}, [{"name": "O L", "email": "o@x.example"}])
+        self.assertTrue(r["contacts_withheld"])
+        self.assertEqual(r["withheld_fields"], ["company:street", "company:telephone", "consultant:e-mail", "consultant:name"])
+        r = self._seamless({"name": "GOIL", "phone": "", "email": None, "address": "", "api_key": "k"}, [])
+        self.assertNotIn("contacts_withheld", r); self.assertIsNone(r["withheld_fields"])
+
+    def _jobscz(self, html):
+        mod = AnEntryPageTheServerRendersEmptyAndACardWhoseFigureSitsInAStrong()._mod()
+        mod.request = lambda url: (200, html)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            mod.cmd_ad(argparse.Namespace(url="https://www.jobs.cz/rpd/2001424002/"))
+        return json.loads(out.getvalue())
+
+    def test_jobscz_names_the_contact_hooks_only_when_the_page_filled_them(self):
+        html = AnEntryPageTheServerRendersEmptyAndACardWhoseFigureSitsInAStrong()._ad()
+        r = self._jobscz(html)
+        self.assertTrue(r["contacts_withheld"])
+        self.assertTrue({"contact:address", "contact:name", "contact:telephone"} <= set(r["withheld_fields"]))
+        r = self._jobscz(html.replace('data-test="jd-contact-', 'data-test="gone-'))
+        self.assertFalse(any(n.startswith("contact:") for n in (r["withheld_fields"] or ())))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -47,6 +47,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 SITE = "www.jobbnorge.no"
 API = "https://publicapi.jobbnorge.no"
@@ -216,16 +217,21 @@ def cmd_ad(a):
     sections = [{"title": text(g.get("title") or "") or None, "text": scrub(text(g.get("content") or "")) or None} for g in gaps]
     body_text = "\n\n".join(x for x in (scrub(text(c.get("text") or "")) for c in comps) if x)
     # `contacts` — the persons to call, with their telephone — is never read
-    print(json.dumps({
+    _emis = {
         "source": "jobbnorge", "country": "NO", "ledger_id": f"jobbnorge:{ident}", "id": ident, "url": f"https://{SITE}/ledige-stillinger/stilling/{ident}",
         "title": text(title) if title else None,
         "positions": d.get("positionCount"),
         "published": d.get("isPublished"),
         "sections": sections,
         "description": (body_text or "\n\n".join(f"{s['title']}\n{s['text']}" for s in sections if s["text"]))[:20000] or None,
-        "contacts_withheld": True,
         "language": "no" if str(a.language) == "1" else "en",
-    }, ensure_ascii=False))
+    }
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the `contacts` persons) and from the marks `scrub` wrote, through the one point.
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(d, {"contact:name": [("contacts", "name")], "contact:telephone": [("contacts", "phone")]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    print(json.dumps(_emis, ensure_ascii=False))
 
 
 def main():
