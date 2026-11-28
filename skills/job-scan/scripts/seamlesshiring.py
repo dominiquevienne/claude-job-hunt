@@ -39,7 +39,7 @@ and `form_structure` the application form; `scoring_criteria`,
 `auto_screening_json`, `sentiment_analysis` the employer's screening.
 **None of it is emitted** — the record keeps the advert and its dates; the
 texts are scrubbed of e-mail addresses and telephones; the logo never
-emitted; `contacts_withheld` on every record.
+emitted; `contacts_withheld` (with its witness `withheld_fields`) only when the source filled a contact or a mark says one was withheld (#1321).
 """
 
 import _console  # noqa: F401  (patches argparse's writer -- see #1166)
@@ -56,6 +56,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD = "seamlesshiring"
 DOMAIN = "seamlesshiring.com"
@@ -191,8 +192,12 @@ def row(j, host, cc):
            "specializations": specs or None,
            "summary": scrub(text(j.get("summary"))),
            "description": (scrub(text(j.get("details"))) or "")[:20000] or None,
-           "experience": (scrub(text(j.get("experience"))) or "")[:5000] or None,
-           "contacts_withheld": True}
+           "experience": (scrub(text(j.get("experience"))) or "")[:5000] or None}
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the company block and the recruiters in `users`) and from the marks `scrub` wrote, through the one point.
+    rec["withheld_fields"] = sorted(set(taken(rec)) | set(present(j, {"company:telephone": [("company", "phone")], "company:e-mail": [("company", "email")], "company:street": [("company", "address")], "consultant:name": [("users", "name")], "consultant:e-mail": [("users", "email")]}))) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     return rec
 
 

@@ -49,6 +49,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 HOST = "www.jobs.cz"
 BASE = f"https://{HOST}"
@@ -252,8 +253,10 @@ def cmd_ad(a):
     smin, smax = salary(re.sub(r"^\D*", "", sal or "")) if sal else (None, None)
     desc = hook(body, "jd-body-richtext")
     benefits = [text(x) for x in re.findall(r'<div[^>]*data-test="jd-benefits"[^>]*>(.*?)</div>', body, re.S)]
-    # the contact block — jd-contact-company (a person), jd-contact-address, jd-contact-phone — is never read
-    print(json.dumps({
+    # the contact block — jd-contact-company (a person), jd-contact-address, jd-contact-phone — is never read;
+    # only whether each hook was FILLED is asked, so the record can say what left it (#1321)
+    contact = {"person": hook(body, "jd-contact-company", "a"), "address": hook(body, "jd-contact-address", "span"), "phone": hook(body, "jd-contact-phone", "p")}
+    _emis = {
         "source": "jobscz", "country": "CZ", "ledger_id": f"jobscz:{ident}", "id": ident, "url": f"{BASE}/{m.group(1)}/{ident}/",
         "title": text(h1.group(1)) or None,
         "employer": company,
@@ -262,9 +265,14 @@ def cmd_ad(a):
         "info": [scrub(i) for i in infos if not i.startswith("Společnost")],
         "benefits": benefits,
         "description": scrub(re.sub(r"^Pracovní nabídka\n", "", desc or ""))[:20000] or None,
-        "contacts_withheld": True,
         "language": "cs",
-    }, ensure_ascii=False))
+    }
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the jd-contact hooks) and from the marks `scrub` wrote, through the one point.
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(contact, {"contact:name": [("person",)], "contact:address": [("address",)], "contact:telephone": [("phone",)]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    print(json.dumps(_emis, ensure_ascii=False))
 
 
 def main():

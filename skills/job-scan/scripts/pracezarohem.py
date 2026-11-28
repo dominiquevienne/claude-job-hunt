@@ -49,6 +49,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARDS = {"cz": {"host": "www.pracezarohem.cz", "country": "CZ", "lang": "cs", "list": "/nabidky", "key": "pracezarohem"},
           "sk": {"host": "www.pracazarohom.sk", "country": "SK", "lang": "sk", "list": "/ponuky", "key": "pracazarohom"}}
@@ -258,7 +259,7 @@ def cmd_ad(a):
     smin, smax, cur = salary_of(ad.get("salary"))
     locs = [l.get("label") for l in (ad.get("locations") or []) if isinstance(l, dict) and l.get("label")]
     atm = ad.get("atmoskop") or {}
-    print(json.dumps({
+    _emis = {
         "source": b["key"], "country": b["country"], "ledger_id": f"{b['key']}:{m.group(1)}", "id": m.group(1), "url": url,
         "title": (ad.get("title") or "").strip() or None, "employer": (ad.get("company") or "").strip() or None, "employer_url": ad.get("companyWeb") or None,
         "locations": locs or None, "address": (ad.get("location") or {}).get("label"),
@@ -269,8 +270,14 @@ def cmd_ad(a):
         "employer_rating": atm.get("stars") if atm else None, "employer_reviews": atm.get("numberOfReviews") if atm else None,
         "description": scrub(body_text), "employer_text": scrub(company_text),
         # `recruiter` — {name, email, phone} — is in the page's state and is never emitted
-        "contacts_withheld": True, "language": ad.get("language") or b["lang"],
-    }, ensure_ascii=False))
+        "language": ad.get("language") or b["lang"],
+    }
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the `recruiter` object) and from the marks `scrub` wrote, through the one point.
+    _emis["withheld_fields"] = sorted(set(taken(_emis)) | set(present(ad, {"consultant:name": [("recruiter", "name")], "consultant:e-mail": [("recruiter", "email")], "consultant:telephone": [("recruiter", "phone")]}))) or None
+    if withheld_a_contact(_emis["withheld_fields"] or ()):
+        _emis["contacts_withheld"] = True
+    print(json.dumps(_emis, ensure_ascii=False))
     note(f"{url}: read from the page's own state; `recruiter` withheld; texts scrubbed; the app deep link never followed.")
 
 

@@ -67,6 +67,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 HOST = "data.mpsv.cz"
 DUMP = f"https://{HOST}/od/soubory/volna-mista/volna-mista.json"
@@ -268,10 +269,14 @@ def record(it, codes):
         "up_office": tail(it.get("kontaktniPracoviste")),
         "description": scrub((it.get("upresnujiciInformace") or {}).get("cs")),
         # `prvniKontaktSeZamestnavatelem` — the contact person's name, e-mail, telephone and where to report — is never read
-        "contacts_withheld": True,
         "language": "cs",
     }
     r.update(place(None if anonymous else it.get("mistoVykonuPrace"), codes))
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the contact person, where to report, the establishment's e-mail and telephone) and from the marks `scrub` wrote, through the one point.
+    r["withheld_fields"] = sorted(set(taken(r)) | set(present(it, {"contact:name": [("prvniKontaktSeZamestnavatelem", "komuSeHlasit", "jmeno"), ("prvniKontaktSeZamestnavatelem", "komuSeHlasit", "prijmeni")], "contact:e-mail": [("prvniKontaktSeZamestnavatelem", "komuSeHlasit", "email"), ("prvniKontaktSeZamestnavatelem", "kdeSeHlasit", "email")], "contact:telephone": [("prvniKontaktSeZamestnavatelem", "komuSeHlasit", "telefon"), ("prvniKontaktSeZamestnavatelem", "kdeSeHlasit", "telefon")], "establishment:e-mail": [("mistoVykonuPrace", "pracoviste", "email")], "establishment:telephone": [("mistoVykonuPrace", "pracoviste", "telefon")]}))) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     return r
 
 
