@@ -60,6 +60,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD, DOMAIN = "gupy", "gupy.io"
 EXIT_BROKEN, EXIT_GONE, EXIT_PARTIAL = 2, 3, 6
@@ -243,8 +244,12 @@ def cmd_ad(a):
         "description": (parts_txt[0][1] or "")[:20000] or None,
         "sections": {k: v[:8000] for k, v in parts_txt[1:] if v} or None,
         "steps": [s.get("name") for s in (job.get("jobSteps") or []) if isinstance(s, dict) and s.get("name")] or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the premises' street and postal code, never emitted) and from the marks `scrub` wrote.
+    r["withheld_fields"] = sorted(set(taken(r)) | set(present(job, {"job:postal_address": [("addressLine",)]}))) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 

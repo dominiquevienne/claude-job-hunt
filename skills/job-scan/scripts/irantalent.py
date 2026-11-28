@@ -54,6 +54,7 @@ from _ldjson import label, one, postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD, HOST, COUNTRY = "irantalent", "www.irantalent.com", "IR"
 BASE = f"https://{HOST}"
@@ -238,8 +239,12 @@ def cmd_ad(a):
            "employment_type": label(p.get("employmentType")), "posted": label(p.get("datePosted")),
            "board_identifier": label(one(p.get("identifier")).get("value")) if p.get("identifier") else None,
            "salary_currency": label(sal.get("currency")), "salary_value": sal.get("value") if not isinstance(sal.get("value"), (dict, list)) else label(one(sal.get("value")).get("value")),
-           "description": (scrub(text(desc)) or "")[:20000] or None,
-           "contacts_withheld": True}
+           "description": (scrub(text(desc)) or "")[:20000] or None,}
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the premises' street and postal code, never emitted) and from the marks `scrub` wrote.
+    rec["withheld_fields"] = sorted(set(taken(rec)) | set(present(addr, {"jobLocation:postal_address": [("streetAddress",), ("postalCode",)]}))) or None
+    if withheld_a_contact(rec["withheld_fields"] or ()):
+        rec["contacts_withheld"] = True
     print(json.dumps(rec, ensure_ascii=False))
 
 
