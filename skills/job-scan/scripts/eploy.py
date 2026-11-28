@@ -59,6 +59,7 @@ from _ldjson import postings as ld_postings
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 BOARD = "eploy"
 LIST_PATH = "/vacancies/vacancy-search-results.aspx?view=list"
@@ -341,8 +342,12 @@ def cmd_ad(a):
         "salary": sv.get("value") or sal.get("value") if not isinstance(sal.get("value"), dict) else sv.get("value"),
         "salary_currency": sal.get("currency"), "skills": p.get("skills"), "industry": p.get("industry"),
         "description": (scrub(text(p.get("description"))) or "")[:20000] or None,
-        "contacts_withheld": True,
     }
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the premises' street and postal code, never emitted) and from the marks `scrub` wrote.
+    r["withheld_fields"] = sorted(set(taken(r)) | set(present(addr, {"jobLocation:postal_address": [("streetAddress",), ("postalCode",)]}))) or None
+    if withheld_a_contact(r["withheld_fields"] or ()):
+        r["contacts_withheld"] = True
     print(json.dumps(r, ensure_ascii=False))
 
 

@@ -64393,5 +64393,94 @@ class AStructuredContactIsNamedWhenTheSourceFilledItAndOnlyThen(unittest.TestCas
         r = self._jobscz(html.replace('data-test="jd-contact-', 'data-test="gone-'))
         self.assertFalse(any(n.startswith("contact:") for n in (r["withheld_fields"] or ())))
 
+class APremisesStreetIsNamedWhenTheJobPostingFilledItAndOnlyThen(unittest.TestCase):
+    """#1321, the `present()` tranche of nine. Each of these adapters reads a JobPosting (or
+    Gupy's `pageProps.job`) whose `jobLocation.address` carries the premises' street and
+    postal code, never emits them, and declared `contacts_withheld: True` as a CONSTANT on
+    every record — true when the source filled the street, false when it did not.
+
+    Each case runs the adapter's own `ad` path with its `scrub` made the identity, so that
+    the scrub marks cannot speak for the structured field: the street filled -> declared,
+    the witness naming exactly the postal address; the street and the postal code gone ->
+    not declared, no witness. And once with the real `scrub`, the marks joining the witness.
+    Mutation, one adapter at a time in a throwaway worktree: its `present()` emptied ->
+    its own case reddens on its own assertion."""
+
+    JL = "jobLocation:postal_address"
+
+    def _cls(self, name):
+        return {
+            "eploy": AnATSWhoseTenantSiteRendersItsListAndPagesByAWebFormsPostbackThatNeedsThePagesOwnFieldsAndCookies,
+            "factorial": AnATSWhoseCareerPageRendersItsJobCardsNextToItsTeamsNames,
+            "gupy": AnATSWhoseCareerPageShipsEveryJobInItsNextDataAndPrintsTheCountItShips,
+            "irantalent": ABoardNamedForOthersAndRefusedForUsWhoseTextLivesInATransferredState,
+            "jobtoolz": AnATSWhoseJobsiteCarriesItsWholeListInlineAndWhoseRulesRefuseEveryQueryString,
+            "ostendis": AnATSWhoseListIsEmbeddedOnTheEmployersOwnPageByATokenAndFilledByAVersionedDataCall,
+            "prospective": AMultiEmployerATSWhoseCareerCenterFillsItselfByPostingItsOwnFormAndLinksToTheTenantsDomain,
+            "rexx": AnATSWhosePortalListsInATableOrCardsAndWhoseLinksCarryASessionIdAndACustomHost,
+            "seemehired": AnATSWhoseEmployersShareOneServerRenderedBoardThatStatesItsCountAndPageInAStatusLine,
+        }[name]()
+
+    def _row(self, name, gone=False, real_scrub=False):
+        c = self._cls(name)
+        mod = c._mod()
+        if not real_scrub:
+            mod.scrub = lambda s: s
+        if name == "gupy":
+            job = json.loads(json.dumps(c.JOB))
+            self.assertIn("addressLine", job)
+            if gone:
+                job.pop("addressLine")
+            page = c._page({"job": job, "subdomain": "farm"})
+            code, rows, err, _ = c._run(mod, ["ad", "--url", f"https://{c.HOST}/jobs/12057784"], lambda url: (200, page))
+            self.assertEqual(code, 0, err)
+            return rows[0]
+        ad = c._ad() if name == "eploy" else c.AD
+        for k in ('"streetAddress"', '"postalCode"'):
+            self.assertEqual(ad.count(k), 1, (name, k))
+            if gone:
+                ad = ad.replace(k, k[:-1] + 'Gone"')
+        if name == "eploy":
+            code, rows, err, _ = c._run(mod, ["ad", "--url", f"https://{c.HOST}/vacancies/13948/director-of-marketing.html"], ad=ad)
+        elif name in ("jobtoolz",):
+            code, rows, err, _ = c._run(mod, ["ad", "--url", f"https://{c.HOST}/en/harvesting-automation-concept-systems-engineer"], ad=ad)
+        elif name == "seemehired":
+            code, rows, err, _ = c._run(mod, ["ad", "--url", "https://seemehired.com/jobs/10821/"], ad=ad)
+        elif name == "irantalent":
+            code, rows, err, _ = c._run(mod, ["ad", "--url", "https://www.irantalent.com/job/back-end-developer/183595"], lambda u: (200, ad))
+        else:
+            url = {"factorial": "https://careers.factorialhr.com/job_posting/it-systems-engineer-323635/",
+                   "ostendis": "https://link.ostendis.com/publication/initiativbewerbung/t1xhujc6spqxjw86rgqq9jp9j5r81g503y0j1c7ayacs3rpdqixvltkpj2em9oep",
+                   "prospective": "https://ohws.prospective.ch/public/v1/jobs/{U1}",
+                   "rexx": "https://stadtfrankfurt-portal.rexx-recruitment.com/Abteilungsleiterin-wmd-Abwasserbehandlung-Betrieb-de-j11190.html"}[name].replace("{U1}", getattr(c, "U1", ""))
+            rows, err, _a, _raw = c._run(mod, [(200, ad)], cmd="ad", url=url)
+            code = 0
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(rows), 1, (name, err))
+        return rows[0]
+
+    def _both_ways(self, name, witness=None):
+        w = witness or self.JL
+        r = self._row(name)
+        self.assertTrue(r.get("contacts_withheld"), name)
+        self.assertEqual(r["withheld_fields"], [w], name)
+        r = self._row(name, gone=True)
+        self.assertNotIn("contacts_withheld", r, name)
+        self.assertIsNone(r["withheld_fields"], name)
+        r = self._row(name, real_scrub=True)
+        self.assertTrue(r.get("contacts_withheld"), name)
+        self.assertIn(w, r["withheld_fields"], name)
+
+    def test_eploy(self): self._both_ways("eploy")
+    def test_factorial(self): self._both_ways("factorial")
+    def test_gupy(self): self._both_ways("gupy", "job:postal_address")
+    def test_irantalent(self): self._both_ways("irantalent")
+    def test_jobtoolz(self): self._both_ways("jobtoolz")
+    def test_ostendis(self): self._both_ways("ostendis")
+    def test_prospective(self): self._both_ways("prospective")
+    def test_rexx(self): self._both_ways("rexx")
+    def test_seemehired(self): self._both_ways("seemehired")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

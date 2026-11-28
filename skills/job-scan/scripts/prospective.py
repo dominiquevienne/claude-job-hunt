@@ -59,6 +59,7 @@ from _decode import decode_body
 from _pace import Pace
 from _robots import allowed as robots_allowed, full_path, wire_url
 from _ua import UA
+from _withheld import present, taken, withheld_a_contact
 
 HOST = "ohws.prospective.ch"
 PAGE_SIZE = 100
@@ -262,11 +263,15 @@ def cmd_ad(a):
         "employment_type": et if isinstance(et, list) else ([et] if et else None),
         "published": when(p.get("datePosted")), "expires": when(p.get("validThrough")),
         "description": scrub(text(p.get("description") or "")),
-        "contacts_withheld": True,
     }
     if a.country_code and row["country"] and row["country"] != a.country_code.upper():
         note(f"{url}: the ad is in {row['country']}, not {a.country_code.upper()} — 0 emitted.")
         return
+    # #1321 : the declaration was a CONSTANT `True`; it is now DERIVED from what the SOURCE
+    # filled (the premises' street and postal code, never emitted) and from the marks `scrub` wrote.
+    row["withheld_fields"] = sorted(set(taken(row)) | set(present(addr, {"jobLocation:postal_address": [("streetAddress",), ("postalCode",)]}))) or None
+    if withheld_a_contact(row["withheld_fields"] or ()):
+        row["contacts_withheld"] = True
     print(json.dumps(row, ensure_ascii=False))
     note(f"{url}: read from the page's JobPosting; the street and the postal code never emitted; text scrubbed.")
 
